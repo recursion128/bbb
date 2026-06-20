@@ -55,6 +55,12 @@ pub struct EntityModelBounds {
     pub depth: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityModelTextureRef {
+    pub path: &'static str,
+    pub size: [u32; 2],
+}
+
 impl EntityModelKind {
     pub fn model_key(self) -> &'static str {
         match self {
@@ -153,6 +159,13 @@ impl EntityModelKind {
             Self::Boat { chest: false } => "boat",
             Self::Boat { chest: true } => "chest_boat",
             Self::Placeholder { name, .. } => name,
+        }
+    }
+
+    pub fn vanilla_texture_ref(self) -> Option<EntityModelTextureRef> {
+        match self {
+            Self::Creeper => Some(CREEPER_TEXTURE_REF),
+            _ => None,
         }
     }
 }
@@ -270,21 +283,21 @@ impl EntityModelMesh {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct ModelPartDesc {
     pose: PartPose,
     cubes: &'static [ModelCubeDesc],
     children: &'static [ModelPartDesc],
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct ModelCubeDesc {
     min: [f32; 3],
     size: [f32; 3],
     color: [f32; 4],
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct PartPose {
     offset: [f32; 3],
     rotation: [f32; 3],
@@ -350,6 +363,11 @@ const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
+
+const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/creeper/creeper.png",
+    size: [64, 32],
+};
 
 const ADULT_CHICKEN_BEAK: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-2.0, -4.0, -4.0],
@@ -547,6 +565,231 @@ const BABY_CHICKEN_PARTS: [ModelPartDesc; 5] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &BABY_CHICKEN_LEFT_WING,
+        children: &[],
+    },
+];
+
+const ADULT_PIG_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, -4.0, -8.0],
+        size: [8.0, 8.0, 8.0],
+        color: PIG_PINK,
+    },
+    ModelCubeDesc {
+        min: [-2.0, 0.0, -9.0],
+        size: [4.0, 3.0, 1.0],
+        color: PIG_PINK,
+    },
+];
+
+const ADULT_PIG_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-5.0, -10.0, -7.0],
+    size: [10.0, 16.0, 8.0],
+    color: PIG_PINK,
+}];
+
+const ADULT_PIG_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 6.0, 4.0],
+    color: PIG_PINK,
+}];
+
+// Vanilla 26.1 PigModel.createBodyLayer(CubeDeformation.NONE).
+const ADULT_PIG_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, -6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 11.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 18.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 18.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 18.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 18.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+];
+
+const BABY_PIG_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.5, -3.0, -4.5],
+    size: [7.0, 6.0, 9.0],
+    color: PIG_PINK,
+}];
+
+const BABY_PIG_HEAD: [ModelCubeDesc; 2] = [
+    // BabyPigModel bakes CubeDeformation into ModelPart.Cube render bounds.
+    ModelCubeDesc {
+        min: [-3.525, -5.025, -5.025],
+        size: [7.05, 6.05, 6.05],
+        color: PIG_PINK,
+    },
+    ModelCubeDesc {
+        min: [-1.515, -1.99, -6.015],
+        size: [3.03, 2.03, 1.03],
+        color: PIG_PINK,
+    },
+];
+
+const BABY_PIG_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 2.0, 2.0],
+    color: PIG_PINK,
+}];
+
+// Vanilla 26.1 BabyPigModel.createBodyLayer(CubeDeformation.NONE).
+const BABY_PIG_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 19.0, 0.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIG_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 19.0, -2.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIG_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 22.0, -3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 22.0, -3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 22.0, 4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 22.0, 4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIG_LEG,
+        children: &[],
+    },
+];
+
+const CREEPER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -4.0],
+    size: [8.0, 8.0, 8.0],
+    color: CREEPER_GREEN,
+}];
+
+const CREEPER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 12.0, 4.0],
+    color: CREEPER_GREEN,
+}];
+
+const CREEPER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 6.0, 4.0],
+    color: CREEPER_GREEN,
+}];
+
+// Vanilla 26.1 CreeperModel.createBodyLayer(CubeDeformation.NONE).
+const CREEPER_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 6.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &CREEPER_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 6.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &CREEPER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 18.0, 4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &CREEPER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 18.0, 4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &CREEPER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 18.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &CREEPER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 18.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &CREEPER_LEG,
         children: &[],
     },
 ];
@@ -786,6 +1029,11 @@ fn emit_quadruped_model(
     family: QuadrupedModelFamily,
     baby: bool,
 ) {
+    if family == QuadrupedModelFamily::Pig {
+        emit_pig_model(mesh, instance, baby);
+        return;
+    }
+
     let color = quadruped_model_color(family);
     let scale = if baby { 0.5 } else { 1.0 };
     let transform = scaled_model_root_transform(instance, scale);
@@ -875,30 +1123,20 @@ fn emit_quadruped_model(
     }
 }
 
+fn emit_pig_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    emit_model_parts(
+        mesh,
+        if baby {
+            &BABY_PIG_PARTS
+        } else {
+            &ADULT_PIG_PARTS
+        },
+        entity_model_root_transform(instance),
+    );
+}
+
 fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    let transform = entity_model_root_transform(instance);
-    for cube in [
-        ([-4.0, -8.0, -4.0], [8.0, 8.0, 8.0], [0.0, 6.0, 0.0]),
-        ([-4.0, 0.0, -2.0], [8.0, 12.0, 4.0], [0.0, 6.0, 0.0]),
-        ([-2.0, 0.0, -2.0], [4.0, 6.0, 4.0], [-2.0, 18.0, 4.0]),
-        ([-2.0, 0.0, -2.0], [4.0, 6.0, 4.0], [2.0, 18.0, 4.0]),
-        ([-2.0, 0.0, -2.0], [4.0, 6.0, 4.0], [-2.0, 18.0, -4.0]),
-        ([-2.0, 0.0, -2.0], [4.0, 6.0, 4.0], [2.0, 18.0, -4.0]),
-    ] {
-        emit_model_cube(
-            mesh,
-            transform
-                * part_pose_transform(PartPose {
-                    offset: cube.2,
-                    rotation: [0.0, 0.0, 0.0],
-                }),
-            ModelCubeDesc {
-                min: cube.0,
-                size: cube.1,
-                color: CREEPER_GREEN,
-            },
-        );
-    }
+    emit_model_parts(mesh, &CREEPER_PARTS, entity_model_root_transform(instance));
 }
 
 fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -1235,6 +1473,251 @@ mod tests {
     }
 
     #[test]
+    fn pig_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            ADULT_PIG_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-4.0, -4.0, -8.0],
+                    size: [8.0, 8.0, 8.0],
+                    color: PIG_PINK,
+                },
+                ModelCubeDesc {
+                    min: [-2.0, 0.0, -9.0],
+                    size: [4.0, 3.0, 1.0],
+                    color: PIG_PINK,
+                },
+            ]
+        );
+        assert_eq!(
+            ADULT_PIG_BODY[0],
+            ModelCubeDesc {
+                min: [-5.0, -10.0, -7.0],
+                size: [10.0, 16.0, 8.0],
+                color: PIG_PINK,
+            }
+        );
+        assert_eq!(
+            ADULT_PIG_LEG[0],
+            ModelCubeDesc {
+                min: [-2.0, 0.0, -2.0],
+                size: [4.0, 6.0, 4.0],
+                color: PIG_PINK,
+            }
+        );
+
+        assert_eq!(ADULT_PIG_PARTS.len(), 6);
+        assert_part(
+            &ADULT_PIG_PARTS[0],
+            [0.0, 12.0, -6.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIG_HEAD.as_slice(),
+        );
+        assert_part(
+            &ADULT_PIG_PARTS[1],
+            [0.0, 11.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_PIG_BODY.as_slice(),
+        );
+
+        for (part, expected_offset) in ADULT_PIG_PARTS[2..].iter().zip([
+            [-3.0, 18.0, 7.0],
+            [3.0, 18.0, 7.0],
+            [-3.0, 18.0, -5.0],
+            [3.0, 18.0, -5.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                ADULT_PIG_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn pig_adult_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::quadruped(
+            90,
+            [0.0, 64.0, 0.0],
+            0.0,
+            QuadrupedModelFamily::Pig,
+            false,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 42);
+        assert_eq!(mesh.vertices.len(), 168);
+        assert_eq!(mesh.indices.len(), 252);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.3125, 64.001, -0.5625]);
+        assert_close3(max, [0.3125, 65.001, 0.9375]);
+    }
+
+    #[test]
+    fn pig_baby_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            BABY_PIG_BODY[0],
+            ModelCubeDesc {
+                min: [-3.5, -3.0, -4.5],
+                size: [7.0, 6.0, 9.0],
+                color: PIG_PINK,
+            }
+        );
+        assert_eq!(
+            BABY_PIG_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-3.525, -5.025, -5.025],
+                    size: [7.05, 6.05, 6.05],
+                    color: PIG_PINK,
+                },
+                ModelCubeDesc {
+                    min: [-1.515, -1.99, -6.015],
+                    size: [3.03, 2.03, 1.03],
+                    color: PIG_PINK,
+                },
+            ]
+        );
+        assert_eq!(
+            BABY_PIG_LEG[0],
+            ModelCubeDesc {
+                min: [-1.0, 0.0, -1.0],
+                size: [2.0, 2.0, 2.0],
+                color: PIG_PINK,
+            }
+        );
+
+        assert_eq!(BABY_PIG_PARTS.len(), 6);
+        assert_part(
+            &BABY_PIG_PARTS[0],
+            [0.0, 19.0, 0.5],
+            [0.0, 0.0, 0.0],
+            BABY_PIG_BODY.as_slice(),
+        );
+        assert_part(
+            &BABY_PIG_PARTS[1],
+            [0.0, 19.0, -2.0],
+            [0.0, 0.0, 0.0],
+            BABY_PIG_HEAD.as_slice(),
+        );
+
+        for (part, expected_offset) in BABY_PIG_PARTS[2..].iter().zip([
+            [2.5, 22.0, -3.0],
+            [-2.5, 22.0, -3.0],
+            [2.5, 22.0, 4.0],
+            [-2.5, 22.0, 4.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_PIG_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn pig_baby_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::quadruped(
+            91,
+            [0.0, 64.0, 0.0],
+            0.0,
+            QuadrupedModelFamily::Pig,
+            true,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 42);
+        assert_eq!(mesh.vertices.len(), 168);
+        assert_eq!(mesh.indices.len(), 252);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.2203125, 64.001, -0.3125]);
+        assert_close3(max, [0.2203125, 64.62756, 0.5009375]);
+    }
+
+    #[test]
+    fn creeper_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            CREEPER_HEAD[0],
+            ModelCubeDesc {
+                min: [-4.0, -8.0, -4.0],
+                size: [8.0, 8.0, 8.0],
+                color: CREEPER_GREEN
+            }
+        );
+        assert_eq!(
+            CREEPER_BODY[0],
+            ModelCubeDesc {
+                min: [-4.0, 0.0, -2.0],
+                size: [8.0, 12.0, 4.0],
+                color: CREEPER_GREEN
+            }
+        );
+        assert_eq!(
+            CREEPER_LEG[0],
+            ModelCubeDesc {
+                min: [-2.0, 0.0, -2.0],
+                size: [4.0, 6.0, 4.0],
+                color: CREEPER_GREEN
+            }
+        );
+
+        assert_eq!(CREEPER_PARTS.len(), 6);
+        assert_eq!(CREEPER_PARTS[0].pose.offset, [0.0, 6.0, 0.0]);
+        assert_eq!(CREEPER_PARTS[0].cubes, CREEPER_HEAD.as_slice());
+        assert_eq!(CREEPER_PARTS[1].pose.offset, [0.0, 6.0, 0.0]);
+        assert_eq!(CREEPER_PARTS[1].cubes, CREEPER_BODY.as_slice());
+
+        let leg_offsets = [
+            [-2.0, 18.0, 4.0],
+            [2.0, 18.0, 4.0],
+            [-2.0, 18.0, -4.0],
+            [2.0, 18.0, -4.0],
+        ];
+        for (part, expected_offset) in CREEPER_PARTS[2..].iter().zip(leg_offsets) {
+            assert_eq!(part.pose.offset, expected_offset);
+            assert_eq!(part.pose.rotation, [0.0, 0.0, 0.0]);
+            assert_eq!(part.cubes, CREEPER_LEG.as_slice());
+            assert!(part.children.is_empty());
+        }
+    }
+
+    #[test]
+    fn creeper_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::new(
+            50,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 36);
+        assert_eq!(mesh.vertices.len(), 144);
+        assert_eq!(mesh.indices.len(), 216);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.25, 64.001, -0.375]);
+        assert_close3(max, [0.25, 65.626, 0.375]);
+    }
+
+    #[test]
+    fn creeper_texture_ref_matches_vanilla_renderer() {
+        assert_eq!(EntityModelKind::Creeper.model_key(), "creeper");
+        assert_eq!(
+            EntityModelKind::Creeper.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/creeper/creeper.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Chicken { baby: false }.vanilla_texture_ref(),
+            None
+        );
+    }
+
+    #[test]
     fn entity_model_root_transform_rotates_instances_by_body_yaw() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             26,
@@ -1402,5 +1885,17 @@ mod tests {
                 "expected {expected}, got {actual}"
             );
         }
+    }
+
+    fn assert_part(
+        part: &ModelPartDesc,
+        offset: [f32; 3],
+        rotation: [f32; 3],
+        cubes: &[ModelCubeDesc],
+    ) {
+        assert_eq!(part.pose.offset, offset);
+        assert_eq!(part.pose.rotation, rotation);
+        assert_eq!(part.cubes, cubes);
+        assert!(part.children.is_empty());
     }
 }

@@ -232,7 +232,8 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      primitive entity model families, and placeholder bounds
+      source-verified pig/creeper body-layer geometry, primitive entity model
+      families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -265,15 +266,25 @@ When an agent does any of the following, update this file in the same slice:
     - chicken entities as renderer-owned vanilla adult/baby cuboid model
       geometry, projected from canonical world entity state and rendered with
       temporary vertex colors
+    - pig entities as renderer-owned vanilla 26.1 adult/baby body-layer
+      geometry from `PigModel`, `BabyPigModel`, and `QuadrupedModel`, including
+      baked baby `CubeDeformation` bounds, still rendered with temporary vertex
+      colors while dynamic variant textures, saddle equipment, and animation
+      remain unsupported
+    - creeper entities as renderer-owned vanilla 26.1
+      `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
+      official `textures/entity/creeper/creeper.png` texture reference recorded
+      but not yet bound by the GPU entity model pipeline
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
     - primitive renderer-owned model families for humanoids, quadrupeds,
-      creepers, minecarts, boats, and chest boats, plus named placeholder bounds
-      for remaining entity types
+      minecarts, boats, and chest boats, plus named placeholder bounds for
+      remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
-    variants, equipment, skins, animation, lighting, and precise vanilla mesh
+    variants, equipment, skins, animation, lighting, pig variant/saddle
+    presentation, creeper swelling/powered overlays, and precise vanilla mesh
     parity for primitive/placeholder entity families.
 
 ### Audio Runtime Parity
