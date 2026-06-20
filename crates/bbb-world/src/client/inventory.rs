@@ -1297,6 +1297,19 @@ impl WorldStore {
                 request.input,
             ));
         }
+        if inventory_menu_result_click_requires_server_authority(
+            container_id,
+            request.slot_num,
+            request.input,
+            &slots_after,
+            self.default_item_crafting_remainders_known,
+            &self.default_item_crafting_remainders,
+            &self.recipe_specific_crafting_remainder_item_ids,
+        ) {
+            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                request.input,
+            ));
+        }
         if request.input != ProtocolContainerInput::QuickCraft && quick_craft_after.is_active() {
             quick_craft_after.reset();
         } else {
@@ -2321,6 +2334,36 @@ fn inventory_menu_result_was_taken(before: &[ContainerSlot], after: &[ContainerS
         || after_result.count < before_result.count
 }
 
+fn inventory_menu_result_click_requires_server_authority(
+    container_id: i32,
+    slot_num: i16,
+    input: ProtocolContainerInput,
+    slots: &[ContainerSlot],
+    default_item_crafting_remainders_known: bool,
+    default_item_crafting_remainders: &BTreeMap<i32, i32>,
+    recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
+) -> bool {
+    if container_id != INVENTORY_MENU_CONTAINER_ID
+        || slot_num != 0
+        || !matches!(
+            input,
+            ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
+        )
+        || container_slot_item(slots, 0).is_none_or(item_stack_is_empty)
+    {
+        return false;
+    }
+
+    !inventory_menu_non_empty_crafting_slot_nums(slots).is_empty()
+        && inventory_menu_predictable_input_slot_nums(
+            slots,
+            default_item_crafting_remainders_known,
+            default_item_crafting_remainders,
+            recipe_specific_crafting_remainder_item_ids,
+        )
+        .is_none()
+}
+
 fn apply_inventory_menu_result_take_side_effects(slots: &mut [ContainerSlot]) {
     let input_slot_nums = inventory_menu_non_empty_crafting_slot_nums(slots);
     apply_inventory_menu_result_take_side_effects_for_slots(slots, &input_slot_nums);
@@ -2366,6 +2409,56 @@ fn apply_inventory_menu_result_take_side_effects_for_slots(
         normalize_item_stack(&mut slot.item);
         normalize_container_slot_selection(slot);
     }
+}
+
+fn inventory_menu_predictable_input_slot_nums(
+    slots: &[ContainerSlot],
+    default_item_crafting_remainders_known: bool,
+    default_item_crafting_remainders: &BTreeMap<i32, i32>,
+    recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
+) -> Option<Vec<i16>> {
+    crafting_result_predictable_input_slot_nums(
+        slots,
+        1,
+        5,
+        default_item_crafting_remainders_known,
+        default_item_crafting_remainders,
+        recipe_specific_crafting_remainder_item_ids,
+    )
+}
+
+fn crafting_result_predictable_input_slot_nums(
+    slots: &[ContainerSlot],
+    start_slot: i16,
+    end_slot: i16,
+    default_item_crafting_remainders_known: bool,
+    default_item_crafting_remainders: &BTreeMap<i32, i32>,
+    recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
+) -> Option<Vec<i16>> {
+    if !default_item_crafting_remainders_known {
+        return None;
+    }
+    let input_slot_nums = non_empty_slot_nums(slots, start_slot, end_slot);
+    let can_predict = !input_slot_nums.is_empty()
+        && input_slot_nums.iter().all(|slot_num| {
+            slots
+                .iter()
+                .find(|slot| slot.slot == *slot_num)
+                .is_some_and(|slot| {
+                    let item_id = slot.item.item_id;
+                    item_stack_is_non_empty(&slot.item)
+                        && item_id.is_some()
+                        && slot.item.count > 0
+                        && !item_stack_has_default_crafting_remainder(
+                            &slot.item,
+                            default_item_crafting_remainders,
+                        )
+                        && !item_id.is_some_and(|item_id| {
+                            recipe_specific_crafting_remainder_item_ids.contains(&item_id)
+                        })
+                })
+        });
+    can_predict.then_some(input_slot_nums)
 }
 
 fn item_stack_has_default_crafting_remainder(

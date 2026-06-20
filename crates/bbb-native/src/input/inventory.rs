@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
     ContainerInput, ItemStackSummary, RenameItem, SelectTradeCommand, SetBeacon,
 };
 use bbb_world::{
-    ContainerClickSlotRequest, ItemEquipmentSlot, MountEquipmentSlotVisibility, MountInventoryKind,
-    WorldStore,
+    ContainerClickBuildError, ContainerClickSlotRequest, ItemEquipmentSlot,
+    MountEquipmentSlotVisibility, MountInventoryKind, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -845,6 +845,14 @@ fn local_inventory_apply_and_queue_click(
         ) {
         match world.apply_local_container_click_slot(request) {
             Ok(click) => click,
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(_))
+                if world.local_inventory_is_open() =>
+            {
+                let Ok(click) = world.build_container_click_slot(request) else {
+                    return false;
+                };
+                click
+            }
             Err(_) if !world.local_inventory_is_open() => {
                 let Ok(click) = world.build_container_click_slot(request) else {
                     return false;

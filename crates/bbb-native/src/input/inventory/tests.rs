@@ -6465,6 +6465,55 @@ fn inventory_mouse_click_queues_container_zero_pickup() {
 }
 
 #[test]
+fn inventory_result_with_remainder_queues_server_authoritative_container_zero_click() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
+    let mut items = vec![ItemStackSummary::empty(); 46];
+    items[0] = item_stack(90, 1);
+    items[1] = item_stack(42, 1);
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 0,
+        state_id: 12,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+    assert!(world.open_local_inventory());
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(714.0, 313.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClick(ContainerClick {
+            container_id: 0,
+            state_id: 12,
+            slot_num: 0,
+            button_num: 0,
+            input: ContainerInput::Pickup,
+            changed_slots: BTreeMap::new(),
+            carried_item: HashedStack::Empty,
+        })
+    );
+    let inventory = world.inventory();
+    assert_eq!(inventory.inventory_menu.slots[0].item, item_stack(90, 1));
+    assert_eq!(inventory.inventory_menu.slots[1].item, item_stack(42, 1));
+    assert_eq!(inventory.cursor_item, ItemStackSummary::empty());
+}
+
+#[test]
 fn creative_inventory_middle_click_queues_container_zero_clone() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

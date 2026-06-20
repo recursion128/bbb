@@ -192,34 +192,14 @@ fn crafting_menu_predictable_input_slot_nums(
     default_item_crafting_remainders: &BTreeMap<i32, i32>,
     recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
 ) -> Option<Vec<i16>> {
-    if !default_item_crafting_remainders_known {
-        return None;
-    }
-    let input_slot_nums = non_empty_slot_nums(
+    crafting_result_predictable_input_slot_nums(
         slots,
         CRAFTING_MENU_CRAFT_SLOT_START,
         CRAFTING_MENU_CRAFT_SLOT_END,
-    );
-    let can_predict = !input_slot_nums.is_empty()
-        && input_slot_nums.iter().all(|slot_num| {
-            slots
-                .iter()
-                .find(|slot| slot.slot == *slot_num)
-                .is_some_and(|slot| {
-                    let item_id = slot.item.item_id;
-                    item_stack_is_non_empty(&slot.item)
-                        && item_id.is_some()
-                        && slot.item.count > 0
-                        && !item_stack_has_default_crafting_remainder(
-                            &slot.item,
-                            default_item_crafting_remainders,
-                        )
-                        && !item_id.is_some_and(|item_id| {
-                            recipe_specific_crafting_remainder_item_ids.contains(&item_id)
-                        })
-                })
-        });
-    can_predict.then_some(input_slot_nums)
+        default_item_crafting_remainders_known,
+        default_item_crafting_remainders,
+        recipe_specific_crafting_remainder_item_ids,
+    )
 }
 
 pub(super) fn apply_crafter_menu_quick_move_to_slots(

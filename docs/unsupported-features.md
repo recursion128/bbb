@@ -960,6 +960,10 @@ When an agent does any of the following, update this file in the same slice:
         - repeated crafting result movement while the result stack remains the
           same item/components and the original input slots can still be
           consumed
+        - result-slot prediction only when default crafting remainders are
+          known and involved inputs have no default or recipe-specific
+          crafting remainder; otherwise the click is queued
+          server-authoritatively without mutating the local snapshot
         - vanilla-shaped result-to-player transfer order
       - routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation
       - routes hovered-slot number/F keys through a basic local `SWAP`

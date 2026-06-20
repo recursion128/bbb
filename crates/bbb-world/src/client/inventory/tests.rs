@@ -2496,6 +2496,7 @@ fn apply_local_container_quick_move_uses_inventory_fallback_when_equipment_slot_
 #[test]
 fn apply_local_container_pickup_result_consumes_crafting_inputs_once() {
     let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
     items[1] = item_stack(42, 2);
@@ -2543,6 +2544,7 @@ fn apply_local_container_pickup_result_consumes_crafting_inputs_once() {
 #[test]
 fn apply_local_container_quick_move_result_repeats_while_inputs_remain() {
     let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 2);
     items[1] = item_stack(42, 3);
@@ -2598,6 +2600,7 @@ fn apply_local_container_quick_move_result_repeats_while_inputs_remain() {
 #[test]
 fn apply_local_container_quick_move_result_consumes_after_partial_transfer() {
     let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
     store.set_default_item_max_stack_sizes(BTreeMap::from([(90, 1)]));
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 2);
@@ -2652,6 +2655,107 @@ fn apply_local_container_quick_move_result_consumes_after_partial_transfer() {
     assert_eq!(inventory_menu_slot_item(&store, 44), item_stack(90, 1));
     assert_eq!(player_slot_item(&store, 7), item_stack(90, 1));
     assert_eq!(player_slot_item(&store, 8), item_stack(90, 1));
+}
+
+#[test]
+fn apply_local_container_result_requires_known_crafting_remainders() {
+    let mut store = WorldStore::new();
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[0] = item_stack(90, 1);
+    items[1] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    assert!(store.open_local_inventory());
+
+    assert_eq!(
+        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        }),
+        Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+            ProtocolContainerInput::Pickup
+        ))
+    );
+    assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(90, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+    assert_eq!(
+        store.inventory().cursor_item,
+        ProtocolItemStackSummary::empty()
+    );
+}
+
+#[test]
+fn apply_local_container_result_with_default_remainder_requires_server_authority() {
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[0] = item_stack(90, 1);
+    items[1] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    assert!(store.open_local_inventory());
+
+    assert_eq!(
+        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        }),
+        Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+            ProtocolContainerInput::Pickup
+        ))
+    );
+    assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(90, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+    assert_eq!(
+        store.inventory().cursor_item,
+        ProtocolItemStackSummary::empty()
+    );
+}
+
+#[test]
+fn apply_local_container_result_with_recipe_specific_remainder_requires_server_authority() {
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
+    store.set_recipe_specific_crafting_remainder_item_ids(BTreeSet::from([42]));
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[0] = item_stack(90, 1);
+    items[1] = item_stack(42, 2);
+    items[5] = item_stack(43, 2);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    assert!(store.open_local_inventory());
+
+    assert_eq!(
+        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::QuickMove,
+        }),
+        Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+            ProtocolContainerInput::QuickMove
+        ))
+    );
+    assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(90, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 2));
+    assert_eq!(inventory_menu_slot_item(&store, 5), item_stack(43, 2));
+    assert_eq!(
+        inventory_menu_slot_item(&store, 44),
+        ProtocolItemStackSummary::empty()
+    );
 }
 
 #[test]
