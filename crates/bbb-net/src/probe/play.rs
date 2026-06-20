@@ -4339,6 +4339,116 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_player_position_sends_vanilla_teleport_ack_and_player_loaded_once() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerPosition(PlayerPositionUpdate {
+                id: 17,
+                position: ProtocolVec3d {
+                    x: 1.25,
+                    y: 64.5,
+                    z: -8.75,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 90.0,
+                x_rot: -15.0,
+                relatives_mask: 0,
+            }))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("teleport ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ACCEPT_TELEPORTATION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 17);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("move player pos/rot ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 1.25);
+        assert_eq!(decoder.read_f64().unwrap(), 64.5);
+        assert_eq!(decoder.read_f64().unwrap(), -8.75);
+        assert_eq!(decoder.read_f32().unwrap(), 90.0);
+        assert_eq!(decoder.read_f32().unwrap(), -15.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("player loaded should be sent after first position sync")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_LOADED);
+        assert!(payload.is_empty());
+        assert!(probe.player_loaded_sent);
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerPosition(PlayerPositionUpdate {
+                id: 18,
+                position: ProtocolVec3d {
+                    x: 2.0,
+                    y: 70.0,
+                    z: -9.0,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 100.0,
+                x_rot: 5.0,
+                relatives_mask: 0,
+            }))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("second teleport ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ACCEPT_TELEPORTATION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 18);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("second move player pos/rot ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 2.0);
+        assert_eq!(decoder.read_f64().unwrap(), 70.0);
+        assert_eq!(decoder.read_f64().unwrap(), -9.0);
+        assert_eq!(decoder.read_f32().unwrap(), 100.0);
+        assert_eq!(decoder.read_f32().unwrap(), 5.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0);
+        assert!(decoder.is_empty());
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "player loaded must only be sent for the first position sync"
+        );
+
+        assert_eq!(
+            probe.player_position_state.position,
+            ProtocolVec3d {
+                x: 2.0,
+                y: 70.0,
+                z: -9.0,
+            }
+        );
+        assert_eq!(probe.player_position_state.y_rot, 100.0);
+        assert_eq!(probe.player_position_state.x_rot, 5.0);
+    }
+
+    #[tokio::test]
     async fn probe_player_rotation_sends_vanilla_rot_ack() {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
