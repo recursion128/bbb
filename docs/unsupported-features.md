@@ -919,6 +919,7 @@ When an agent does any of the following, update this file in the same slice:
         - delete/backspace
         - Ctrl+left/right word movement
         - Ctrl+delete/backspace word deletion
+        - Ctrl+A selection replacement before chat or slash-command submit
       - queue explicit `ServerboundClientCommandPacket` commands:
         - perform-respawn
         - request-stats

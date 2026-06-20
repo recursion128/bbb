@@ -663,7 +663,9 @@ fn chat_entry_mid_cursor_insert_only_uses_remaining_vanilla_length() {
         &commands,
         &"b".repeat(CHAT_ENTRY_MAX_LENGTH - 1),
     );
-    input.chat_entry.as_mut().unwrap().cursor = 10;
+    let entry = input.chat_entry.as_mut().unwrap();
+    entry.cursor = 10;
+    entry.selection = 10;
 
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "XYZ");
 
@@ -1071,6 +1073,155 @@ fn command_entry_control_word_keys_edit_text() {
                 command: command.to_string(),
             })
         );
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn command_entry_control_a_selection_replaces_and_submits_command() {
+    let (tx, mut rx) = mpsc::channel(3);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "/gamemode creative",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "/time set day",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.chat_entry_is_active());
+    assert_eq!(counters.command_suggestion_commands_queued, 2);
+    assert_eq!(counters.chat_command_commands_queued, 1);
+    for (id, command) in [(0, "/gamemode creative"), (1, "/time set day")] {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+                id,
+                command: command.to_string(),
+            })
+        );
+    }
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChatCommand(ChatCommand {
+            command: "time set day".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn chat_entry_control_a_selection_replaces_message_before_submit() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "t");
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "wrong message",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "fixed message",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.chat_entry_is_active());
+    assert_eq!(counters.chat_message_commands_queued, 1);
+    match rx.try_recv().unwrap() {
+        NetCommand::ChatMessage(packet) => assert_eq!(packet.message, "fixed message"),
+        command => panic!("expected chat message command, got {command:?}"),
     }
     assert!(rx.try_recv().is_err());
 }
