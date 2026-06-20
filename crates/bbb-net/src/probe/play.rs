@@ -584,29 +584,29 @@ mod tests {
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
         DamageEvent, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
         DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor, EntityAnimation,
-        EntityDataValue, EntityDataValueKind, EntityPositionSync, EquipmentSlot,
-        EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameEvent,
-        GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameTestHighlightPos,
-        GameType, HurtAnimation, IngredientSummary, InitializeBorder, InteractionHand,
-        ItemCostSummary, ItemStackSummary, LevelChunkBlockEntity, LevelChunkData,
-        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdate, LightUpdateData,
-        MapColorPatch, MapDecoration, MapItemData, MerchantOffer, MerchantOffers, MessageSignature,
-        MinecartStep, MobEffectFlags, MountScreenOpen, MoveMinecartAlongTrack, MoveVehicle,
-        ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
-        ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat,
-        PlayerCombatEnd, PlayerCombatKill, PlayerExperience, PlayerHealth, PlayerInfoAction,
-        PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
-        PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
-        PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
-        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
-        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RegistryTags,
-        RemoteDebugSampleType, RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop,
-        ResourcePackPush, ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot,
-        SectionBlocksUpdate, SelectAdvancementsTab, ServerData, ServerLinkEntry,
-        ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter,
-        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
-        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove, EntityPositionSync,
+        EquipmentSlot, EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind,
+        ForgetLevelChunk, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
+        GameRuleValues, GameTestHighlightPos, GameType, HurtAnimation, IngredientSummary,
+        InitializeBorder, InteractionHand, ItemCostSummary, ItemStackSummary,
+        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
+        LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MerchantOffer,
+        MerchantOffers, MessageSignature, MinecartStep, MobEffectFlags, MountScreenOpen,
+        MoveMinecartAlongTrack, MoveVehicle, ObjectiveRenderType, OpenBook, OpenScreen,
+        OpenSignEditor, PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin,
+        PlayTime, PlayerAbilities, PlayerChat, PlayerCombatEnd, PlayerCombatKill, PlayerExperience,
+        PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove,
+        PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
+        PlayerTeamMethod, PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd,
+        RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
+        RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
+        RecipePropertySetSummary, RegistryTags, RemoteDebugSampleType, RemoveEntities,
+        RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
+        Respawn, RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate, SelectAdvancementsTab,
+        ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+        SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
         SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetObjectiveMethod,
         SetObjectiveParameters, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
         SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
@@ -1758,6 +1758,67 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_applies_block_destruction_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::BlockDestruction(
+                bbb_protocol::packets::BlockDestruction {
+                    id: 4,
+                    pos: ProtocolBlockPos {
+                        x: 12,
+                        y: 64,
+                        z: -5,
+                    },
+                    progress: 6,
+                },
+            ))
+            .await
+            .unwrap();
+        assert_eq!(
+            probe
+                .world
+                .block_destruction(4)
+                .map(|progress| progress.progress),
+            Some(6)
+        );
+
+        probe
+            .handle_play_packet(PlayClientbound::BlockDestruction(
+                bbb_protocol::packets::BlockDestruction {
+                    id: 4,
+                    pos: ProtocolBlockPos {
+                        x: 12,
+                        y: 64,
+                        z: -5,
+                    },
+                    progress: 10,
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::BlockDestruction(
+                bbb_protocol::packets::BlockDestruction {
+                    id: 99,
+                    pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                    progress: 255,
+                },
+            ))
+            .await
+            .unwrap();
+
+        let report = probe.finish(3, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.block_destructions_received, 3);
+        assert_eq!(report.world_counters.block_destructions_tracked, 0);
+        assert_eq!(report.world_counters.block_destructions_removed, 1);
+        assert_eq!(report.world_counters.block_destructions_ignored, 1);
+        assert!(report.world.block_destruction(4).is_none());
+    }
+
+    #[tokio::test]
     async fn probe_play_cookie_events_update_world_and_respond() {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
@@ -2348,6 +2409,13 @@ mod tests {
             .await
             .unwrap();
         probe
+            .handle_play_packet(PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 123,
+                event_id: 35,
+            }))
+            .await
+            .unwrap();
+        probe
             .handle_play_packet(PlayClientbound::HurtAnimation(HurtAnimation {
                 id: 123,
                 yaw: 45.5,
@@ -2355,7 +2423,7 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(6, ChunkPos { x: 0, z: 0 });
         let entity = report.world.probe_entity(123).unwrap();
 
         assert_eq!(entity.delta_movement.x, 0.1);
@@ -2363,6 +2431,7 @@ mod tests {
         assert_eq!(entity.delta_movement.z, -0.1);
         assert_eq!(entity.y_head_rot, 90.0);
         assert_eq!(entity.last_animation_action, Some(3));
+        assert_eq!(entity.last_event_id, Some(35));
         assert_eq!(entity.last_hurt_yaw, Some(45.5));
 
         assert_eq!(report.world_counters.entities_received, 1);
@@ -2376,6 +2445,9 @@ mod tests {
         assert_eq!(report.world_counters.entity_animation_updates_received, 1);
         assert_eq!(report.world_counters.entity_animation_updates_applied, 1);
         assert_eq!(report.world_counters.entity_animation_updates_ignored, 0);
+        assert_eq!(report.world_counters.entity_events_received, 1);
+        assert_eq!(report.world_counters.entity_events_applied, 1);
+        assert_eq!(report.world_counters.entity_events_ignored, 0);
         assert_eq!(report.world_counters.entity_hurt_animations_received, 1);
         assert_eq!(report.world_counters.entity_hurt_animations_applied, 1);
         assert_eq!(report.world_counters.entity_hurt_animations_ignored, 0);
@@ -2420,6 +2492,18 @@ mod tests {
                 y_rot: 180.0,
                 x_rot: 30.0,
                 on_ground: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MoveEntity(EntityMove {
+                id: 123,
+                delta_x: 4096,
+                delta_y: 0,
+                delta_z: -2048,
+                y_rot: Some(-90.0),
+                x_rot: Some(45.0),
+                on_ground: false,
             }))
             .await
             .unwrap();
@@ -2632,6 +2716,9 @@ mod tests {
         assert_eq!(report.world_counters.entity_position_syncs_received, 1);
         assert_eq!(report.world_counters.entity_position_syncs_applied, 1);
         assert_eq!(report.world_counters.entity_position_syncs_ignored, 0);
+        assert_eq!(report.world_counters.entity_moves_received, 1);
+        assert_eq!(report.world_counters.entity_moves_applied, 1);
+        assert_eq!(report.world_counters.entity_moves_ignored, 0);
         assert_eq!(report.world_counters.entity_teleports_received, 1);
         assert_eq!(report.world_counters.entity_teleports_applied, 1);
         assert_eq!(report.world_counters.entity_teleports_ignored, 0);
@@ -4285,6 +4372,118 @@ mod tests {
         assert_eq!(report.world_counters.set_camera_packets, 2);
         assert_eq!(report.world_counters.set_camera_updates_applied, 1);
         assert_eq!(report.world_counters.set_camera_updates_ignored, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_respawn_updates_world_and_clears_level_bound_state_when_dimension_changes() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Login(protocol_play_login(9)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(9)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(55)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetCamera(SetCamera { camera_id: 55 }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetHealth(PlayerHealth {
+                health: 4.0,
+                food: 7,
+                saturation: 0.5,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetExperience(PlayerExperience {
+                progress: 0.25,
+                level: 3,
+                total: 40,
+            }))
+            .await
+            .unwrap();
+        probe.world.set_local_player_pose(LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: 10.0,
+                y: 65.0,
+                z: -4.0,
+            },
+            on_ground: true,
+            horizontal_collision: true,
+            fall_distance: 2.0,
+            ..LocalPlayerPoseState::default()
+        });
+        probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(
+                synthetic_probe_level_chunk_packet(),
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::BlockDestruction(
+                bbb_protocol::packets::BlockDestruction {
+                    id: 4,
+                    pos: ProtocolBlockPos {
+                        x: 12,
+                        y: 64,
+                        z: -5,
+                    },
+                    progress: 6,
+                },
+            ))
+            .await
+            .unwrap();
+
+        let mut spawn_info = protocol_play_login(9).common_spawn_info;
+        spawn_info.dimension_type_id = 1;
+        spawn_info.dimension = "minecraft:the_nether".to_string();
+        spawn_info.sea_level = 32;
+        probe
+            .handle_play_packet(PlayClientbound::Respawn(Respawn {
+                common_spawn_info: spawn_info,
+                data_to_keep: 0,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(9, ChunkPos { x: 0, z: 0 });
+        let level = report.world.level_info().unwrap();
+
+        assert_eq!(level.dimension, "minecraft:the_nether");
+        assert_eq!(level.dimension_type_id, 1);
+        assert_eq!(
+            level.dimension_type_name.as_deref(),
+            Some("minecraft:the_nether")
+        );
+        assert_eq!(level.sea_level, 32);
+        assert_eq!(report.world.local_player_id(), Some(9));
+        assert_eq!(report.world.entity_count(), 0);
+        assert_eq!(report.world.chunk_count(), 0);
+        assert_eq!(report.world.first_chunk(), None);
+        assert_eq!(report.world.local_player().health, None);
+        assert_eq!(report.world.local_player().experience, None);
+        assert_eq!(
+            report.world.local_player().camera,
+            bbb_world::CameraState::default()
+        );
+        assert_eq!(report.world.local_player_pose(), None);
+        assert!(report.world.block_destructions().is_empty());
+
+        assert_eq!(report.world_counters.play_logins_received, 1);
+        assert_eq!(report.world_counters.respawns_received, 1);
+        assert_eq!(report.world_counters.chunks_received, 1);
+        assert_eq!(report.world_counters.block_destructions_received, 1);
+        assert_eq!(report.world_counters.block_destructions_tracked, 0);
+        assert_eq!(report.world_counters.entities_tracked, 0);
     }
 
     #[tokio::test]
