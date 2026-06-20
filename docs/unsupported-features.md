@@ -232,8 +232,8 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified pig/zombie/skeleton/creeper body-layer geometry,
-      primitive entity model families, and placeholder bounds
+      source-verified pig/cow/sheep/zombie/skeleton/creeper body-layer
+      geometry, primitive entity model families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -271,6 +271,15 @@ When an agent does any of the following, update this file in the same slice:
       baked baby `CubeDeformation` bounds, still rendered with temporary vertex
       colors while dynamic variant textures, saddle equipment, and animation
       remain unsupported
+    - base cow entities as renderer-owned vanilla 26.1 adult/baby body-layer
+      geometry from `CowModel`, `BabyCowModel`, and `CowRenderer`; dynamic
+      temperate/warm/cold variant textures remain unsupported until cow variant
+      metadata is projected into renderer state
+    - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
+      geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
+      official base texture references recorded; wool undercoat/outer layers,
+      sheared state, dye color, `jeb_` color cycling, and eating head animation
+      remain unsupported
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with official default texture references recorded; husk, drowned, zombie
@@ -292,10 +301,10 @@ When an agent does any of the following, update this file in the same slice:
       remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
-    variants, equipment, skins, animation, lighting, pig variant/saddle
-    presentation, zombie/skeleton variant presentation, creeper
-    swelling/powered overlays, and precise vanilla mesh parity for
-    primitive/placeholder entity families.
+    variants, equipment, skins, animation, lighting, pig/cow variant
+    presentation, pig saddle presentation, sheep wool presentation,
+    zombie/skeleton variant presentation, creeper swelling/powered overlays,
+    and precise vanilla mesh parity for primitive/placeholder entity families.
 
 ### Audio Runtime Parity
 

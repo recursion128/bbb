@@ -273,8 +273,10 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_PIG_ID => {
             quadruped(QuadrupedModelFamily::Pig, ageable_baby(data_values))
         }
-        VANILLA_ENTITY_TYPE_COW_ID
-        | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
+        VANILLA_ENTITY_TYPE_COW_ID => EntityModelKind::Cow {
+            baby: ageable_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID
         | VANILLA_ENTITY_TYPE_GOAT_ID
         | VANILLA_ENTITY_TYPE_HOGLIN_ID
         | VANILLA_ENTITY_TYPE_ZOGLIN_ID
@@ -284,9 +286,9 @@ fn entity_model_kind(
         | VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             quadruped(QuadrupedModelFamily::Cow, ageable_baby(data_values))
         }
-        VANILLA_ENTITY_TYPE_SHEEP_ID => {
-            quadruped(QuadrupedModelFamily::Sheep, ageable_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_SHEEP_ID => EntityModelKind::Sheep {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_HORSE_ID
         | VANILLA_ENTITY_TYPE_DONKEY_ID
         | VANILLA_ENTITY_TYPE_MULE_ID
@@ -705,6 +707,36 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_STRAY_ID, &[]),
             humanoid(HumanoidModelFamily::Skeleton, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_COW_ID, &[]),
+            EntityModelKind::Cow { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_COW_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Cow { baby: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SHEEP_ID, &[]),
+            EntityModelKind::Sheep { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Sheep { baby: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
+            quadruped(QuadrupedModelFamily::Cow, false)
         );
     }
 

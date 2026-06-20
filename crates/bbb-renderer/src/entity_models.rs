@@ -18,6 +18,12 @@ pub enum EntityModelKind {
         baby: bool,
     },
     Skeleton,
+    Cow {
+        baby: bool,
+    },
+    Sheep {
+        baby: bool,
+    },
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -121,6 +127,10 @@ impl EntityModelKind {
             Self::Zombie { baby: false } => "zombie",
             Self::Zombie { baby: true } => "zombie_baby",
             Self::Skeleton => "skeleton",
+            Self::Cow { baby: false } => "cow",
+            Self::Cow { baby: true } => "cow_baby",
+            Self::Sheep { baby: false } => "sheep",
+            Self::Sheep { baby: true } => "sheep_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -174,6 +184,8 @@ impl EntityModelKind {
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
             Self::Skeleton => Some(SKELETON_TEXTURE_REF),
+            Self::Sheep { baby: false } => Some(SHEEP_TEXTURE_REF),
+            Self::Sheep { baby: true } => Some(SHEEP_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             _ => None,
         }
@@ -228,6 +240,14 @@ impl EntityModelInstance {
 
     pub fn skeleton(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Skeleton, position, y_rot)
+    }
+
+    pub fn cow(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Cow { baby }, position, y_rot)
+    }
+
+    pub fn sheep(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Sheep { baby }, position, y_rot)
     }
 
     pub fn quadruped(
@@ -394,6 +414,16 @@ const ZOMBIE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const SKELETON_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/skeleton/skeleton.png",
+    size: [64, 32],
+};
+
+const SHEEP_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/sheep/sheep.png",
+    size: [64, 32],
+};
+
+const SHEEP_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/sheep/sheep_baby.png",
     size: [64, 32],
 };
 
@@ -1011,6 +1041,327 @@ const BABY_PIG_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const ADULT_COW_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-4.0, -4.0, -6.0],
+        size: [8.0, 8.0, 6.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-3.0, 1.0, -7.0],
+        size: [6.0, 3.0, 1.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-5.0, -5.0, -5.0],
+        size: [1.0, 3.0, 1.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [4.0, -5.0, -5.0],
+        size: [1.0, 3.0, 1.0],
+        color: COW_BROWN,
+    },
+];
+
+const ADULT_COW_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-6.0, -10.0, -7.0],
+        size: [12.0, 18.0, 10.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-2.0, 2.0, -8.0],
+        size: [4.0, 6.0, 1.0],
+        color: COW_BROWN,
+    },
+];
+
+const ADULT_COW_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: COW_BROWN,
+}];
+
+// Vanilla 26.1 CowModel.createBodyLayer().
+const ADULT_COW_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 5.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+];
+
+const BABY_COW_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-3.0, -4.569, -4.8333],
+        size: [6.0, 6.0, 5.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [3.0, -5.569, -3.8333],
+        size: [1.0, 2.0, 1.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-4.0, -5.569, -3.8333],
+        size: [1.0, 2.0, 1.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-2.0, -1.569, -5.8333],
+        size: [4.0, 3.0, 1.0],
+        color: COW_BROWN,
+    },
+];
+
+const BABY_COW_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-7.0, -7.0, -1.0],
+    size: [8.0, 6.0, 12.0],
+    color: COW_BROWN,
+}];
+
+const BABY_COW_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, 0.0, -1.5],
+    size: [3.0, 6.0, 3.0],
+    color: COW_BROWN,
+}];
+
+// Vanilla 26.1 BabyCowModel.createBodyLayer().
+const BABY_COW_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 13.569, -5.1667],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_COW_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 19.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_COW_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 18.0, -3.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 18.0, -3.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 18.0, 3.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 18.0, 3.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_COW_LEG,
+        children: &[],
+    },
+];
+
+const ADULT_SHEEP_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -4.0, -6.0],
+    size: [6.0, 6.0, 8.0],
+    color: SHEEP_WOOL,
+}];
+
+const ADULT_SHEEP_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -10.0, -7.0],
+    size: [8.0, 16.0, 6.0],
+    color: SHEEP_WOOL,
+}];
+
+const ADULT_SHEEP_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: SHEEP_WOOL,
+}];
+
+// Vanilla 26.1 SheepModel.createBodyLayer().
+const ADULT_SHEEP_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 6.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 5.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_LEG,
+        children: &[],
+    },
+];
+
+const BABY_SHEEP_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, -4.5, -3.5],
+    size: [5.0, 5.0, 5.0],
+    color: SHEEP_WOOL,
+}];
+
+const BABY_SHEEP_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -4.5],
+    size: [6.0, 4.0, 9.0],
+    color: SHEEP_WOOL,
+}];
+
+const BABY_SHEEP_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 5.0, 2.0],
+    color: SHEEP_WOOL,
+}];
+
+// Vanilla 26.1 BabySheepModel.createBodyLayer().
+const BABY_SHEEP_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 17.0, 0.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_SHEEP_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.5, -2.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_SHEEP_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 19.0, 3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_SHEEP_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 19.0, 3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_SHEEP_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 19.0, -2.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_SHEEP_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 19.0, -2.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_SHEEP_LEG,
+        children: &[],
+    },
+];
+
 const CREEPER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -8.0, -4.0],
     size: [8.0, 8.0, 8.0],
@@ -1218,6 +1569,8 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
             EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
+            EntityModelKind::Cow { baby } => emit_cow_model(&mut mesh, *instance, baby),
+            EntityModelKind::Sheep { baby } => emit_sheep_model(&mut mesh, *instance, baby),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -1326,6 +1679,30 @@ fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &SKELETON_PARTS, entity_model_root_transform(instance));
+}
+
+fn emit_cow_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    emit_model_parts(
+        mesh,
+        if baby {
+            &BABY_COW_PARTS
+        } else {
+            &ADULT_COW_PARTS
+        },
+        entity_model_root_transform(instance),
+    );
+}
+
+fn emit_sheep_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    emit_model_parts(
+        mesh,
+        if baby {
+            &BABY_SHEEP_PARTS
+        } else {
+            &ADULT_SHEEP_PARTS
+        },
+        entity_model_root_transform(instance),
+    );
 }
 
 fn emit_quadruped_model(
@@ -2185,6 +2562,271 @@ mod tests {
     }
 
     #[test]
+    fn cow_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            ADULT_COW_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-4.0, -4.0, -6.0],
+                    size: [8.0, 8.0, 6.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-3.0, 1.0, -7.0],
+                    size: [6.0, 3.0, 1.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-5.0, -5.0, -5.0],
+                    size: [1.0, 3.0, 1.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [4.0, -5.0, -5.0],
+                    size: [1.0, 3.0, 1.0],
+                    color: COW_BROWN,
+                },
+            ]
+        );
+        assert_eq!(ADULT_COW_PARTS.len(), 6);
+        assert_part(
+            &ADULT_COW_PARTS[0],
+            [0.0, 4.0, -8.0],
+            [0.0, 0.0, 0.0],
+            ADULT_COW_HEAD.as_slice(),
+        );
+        assert_part(
+            &ADULT_COW_PARTS[1],
+            [0.0, 5.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_COW_BODY.as_slice(),
+        );
+        for (part, expected_offset) in ADULT_COW_PARTS[2..].iter().zip([
+            [-4.0, 12.0, 7.0],
+            [4.0, 12.0, 7.0],
+            [-4.0, 12.0, -5.0],
+            [4.0, 12.0, -5.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                ADULT_COW_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn cow_adult_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::cow(92, [0.0, 64.0, 0.0], 0.0, false)]);
+
+        assert_eq!(mesh.opaque_faces, 60);
+        assert_eq!(mesh.vertices.len(), 240);
+        assert_eq!(mesh.indices.len(), 360);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.375, 64.001, -0.625]);
+        assert_close3(max, [0.375, 65.5635, 0.9375]);
+    }
+
+    #[test]
+    fn cow_baby_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            BABY_COW_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-3.0, -4.569, -4.8333],
+                    size: [6.0, 6.0, 5.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [3.0, -5.569, -3.8333],
+                    size: [1.0, 2.0, 1.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-4.0, -5.569, -3.8333],
+                    size: [1.0, 2.0, 1.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-2.0, -1.569, -5.8333],
+                    size: [4.0, 3.0, 1.0],
+                    color: COW_BROWN,
+                },
+            ]
+        );
+        assert_eq!(BABY_COW_PARTS.len(), 6);
+        assert_part(
+            &BABY_COW_PARTS[0],
+            [0.0, 13.569, -5.1667],
+            [0.0, 0.0, 0.0],
+            BABY_COW_HEAD.as_slice(),
+        );
+        assert_part(
+            &BABY_COW_PARTS[1],
+            [3.0, 19.0, -5.0],
+            [0.0, 0.0, 0.0],
+            BABY_COW_BODY.as_slice(),
+        );
+        for (part, expected_offset) in BABY_COW_PARTS[2..].iter().zip([
+            [-2.5, 18.0, -3.5],
+            [2.5, 18.0, -3.5],
+            [-2.5, 18.0, 3.5],
+            [2.5, 18.0, 3.5],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_COW_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn cow_baby_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::cow(93, [0.0, 64.0, 0.0], 0.0, true)]);
+
+        assert_eq!(mesh.opaque_faces, 54);
+        assert_eq!(mesh.vertices.len(), 216);
+        assert_eq!(mesh.indices.len(), 324);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.25, 64.001, -0.375]);
+        assert_close3(max, [0.25, 65.001, 0.6875]);
+    }
+
+    #[test]
+    fn sheep_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            ADULT_SHEEP_HEAD[0],
+            ModelCubeDesc {
+                min: [-3.0, -4.0, -6.0],
+                size: [6.0, 6.0, 8.0],
+                color: SHEEP_WOOL,
+            }
+        );
+        assert_eq!(ADULT_SHEEP_PARTS.len(), 6);
+        assert_part(
+            &ADULT_SHEEP_PARTS[0],
+            [0.0, 6.0, -8.0],
+            [0.0, 0.0, 0.0],
+            ADULT_SHEEP_HEAD.as_slice(),
+        );
+        assert_part(
+            &ADULT_SHEEP_PARTS[1],
+            [0.0, 5.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_SHEEP_BODY.as_slice(),
+        );
+        for (part, expected_offset) in ADULT_SHEEP_PARTS[2..].iter().zip([
+            [-3.0, 12.0, 7.0],
+            [3.0, 12.0, 7.0],
+            [-3.0, 12.0, -5.0],
+            [3.0, 12.0, -5.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                ADULT_SHEEP_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn sheep_adult_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh =
+            entity_model_mesh(&[EntityModelInstance::sheep(94, [0.0, 64.0, 0.0], 0.0, false)]);
+
+        assert_eq!(mesh.opaque_faces, 36);
+        assert_eq!(mesh.vertices.len(), 144);
+        assert_eq!(mesh.indices.len(), 216);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.3125, 64.001, -0.5625]);
+        assert_close3(max, [0.3125, 65.376, 0.875]);
+    }
+
+    #[test]
+    fn sheep_baby_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            BABY_SHEEP_BODY[0],
+            ModelCubeDesc {
+                min: [-3.0, -2.0, -4.5],
+                size: [6.0, 4.0, 9.0],
+                color: SHEEP_WOOL,
+            }
+        );
+        assert_eq!(BABY_SHEEP_PARTS.len(), 6);
+        assert_part(
+            &BABY_SHEEP_PARTS[0],
+            [0.0, 17.0, 0.5],
+            [0.0, 0.0, 0.0],
+            BABY_SHEEP_BODY.as_slice(),
+        );
+        assert_part(
+            &BABY_SHEEP_PARTS[1],
+            [0.0, 15.5, -2.5],
+            [0.0, 0.0, 0.0],
+            BABY_SHEEP_HEAD.as_slice(),
+        );
+        for (part, expected_offset) in BABY_SHEEP_PARTS[2..].iter().zip([
+            [-2.0, 19.0, 3.0],
+            [2.0, 19.0, 3.0],
+            [-2.0, 19.0, -2.0],
+            [2.0, 19.0, -2.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_SHEEP_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn sheep_baby_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh =
+            entity_model_mesh(&[EntityModelInstance::sheep(95, [0.0, 64.0, 0.0], 0.0, true)]);
+
+        assert_eq!(mesh.opaque_faces, 36);
+        assert_eq!(mesh.vertices.len(), 144);
+        assert_eq!(mesh.indices.len(), 216);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.1875, 64.001, -0.3125]);
+        assert_close3(max, [0.1875, 64.8135, 0.375]);
+    }
+
+    #[test]
+    fn cow_and_sheep_texture_refs_match_vanilla_renderers() {
+        assert_eq!(EntityModelKind::Cow { baby: false }.model_key(), "cow");
+        assert_eq!(EntityModelKind::Cow { baby: true }.model_key(), "cow_baby");
+        assert_eq!(
+            EntityModelKind::Cow { baby: false }.vanilla_texture_ref(),
+            None
+        );
+        assert_eq!(EntityModelKind::Sheep { baby: false }.model_key(), "sheep");
+        assert_eq!(
+            EntityModelKind::Sheep { baby: false }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/sheep/sheep.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Sheep { baby: true }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/sheep/sheep_baby.png",
+                size: [64, 32],
+            })
+        );
+    }
+
+    #[test]
     fn creeper_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             CREEPER_HEAD[0],
@@ -2379,6 +3021,11 @@ mod tests {
             "zombie_baby"
         );
         assert_eq!(EntityModelKind::Skeleton.model_key(), "skeleton");
+        assert_eq!(EntityModelKind::Cow { baby: true }.model_key(), "cow_baby");
+        assert_eq!(
+            EntityModelKind::Sheep { baby: true }.model_key(),
+            "sheep_baby"
+        );
         assert_eq!(
             EntityModelKind::Placeholder {
                 name: "todo_test_bounds",
