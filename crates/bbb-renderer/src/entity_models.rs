@@ -11,6 +11,8 @@ const HUSK_SCALE: f32 = 1.0625;
 const WITHER_SKELETON_SCALE: f32 = 1.2;
 const CAVE_SPIDER_SCALE: f32 = 0.7;
 const HORSE_SCALE: f32 = 1.1;
+const DONKEY_SCALE: f32 = 0.87;
+const MULE_SCALE: f32 = 0.92;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -62,6 +64,11 @@ pub enum EntityModelKind {
     },
     Horse {
         baby: bool,
+    },
+    Donkey {
+        family: DonkeyModelFamily,
+        baby: bool,
+        has_chest: bool,
     },
     Quadruped {
         family: QuadrupedModelFamily,
@@ -153,6 +160,12 @@ pub enum QuadrupedModelFamily {
     Sheep,
     Horse,
     Wolf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DonkeyModelFamily {
+    Donkey,
+    Mule,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -295,6 +308,26 @@ impl EntityModelKind {
             Self::Wolf { baby: true } => "wolf_baby",
             Self::Horse { baby: false } => "horse",
             Self::Horse { baby: true } => "horse_baby",
+            Self::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: false,
+                ..
+            } => "donkey",
+            Self::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: true,
+                ..
+            } => "donkey_baby",
+            Self::Donkey {
+                family: DonkeyModelFamily::Mule,
+                baby: false,
+                ..
+            } => "mule",
+            Self::Donkey {
+                family: DonkeyModelFamily::Mule,
+                baby: true,
+                ..
+            } => "mule_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -434,6 +467,26 @@ impl EntityModelKind {
             Self::Wolf { baby: true } => Some(WOLF_BABY_TEXTURE_REF),
             Self::Horse { baby: false } => Some(HORSE_WHITE_TEXTURE_REF),
             Self::Horse { baby: true } => Some(HORSE_WHITE_BABY_TEXTURE_REF),
+            Self::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: false,
+                ..
+            } => Some(DONKEY_TEXTURE_REF),
+            Self::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: true,
+                ..
+            } => Some(DONKEY_BABY_TEXTURE_REF),
+            Self::Donkey {
+                family: DonkeyModelFamily::Mule,
+                baby: false,
+                ..
+            } => Some(MULE_TEXTURE_REF),
+            Self::Donkey {
+                family: DonkeyModelFamily::Mule,
+                baby: true,
+                ..
+            } => Some(MULE_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -614,6 +667,26 @@ impl EntityModelInstance {
 
     pub fn horse(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
         Self::new(entity_id, EntityModelKind::Horse { baby }, position, y_rot)
+    }
+
+    pub fn donkey(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: DonkeyModelFamily,
+        baby: bool,
+        has_chest: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Donkey {
+                family,
+                baby,
+                has_chest,
+            },
+            position,
+            y_rot,
+        )
     }
 
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -811,6 +884,8 @@ const PIG_PINK: [f32; 4] = [0.92, 0.55, 0.62, 1.0];
 const COW_BROWN: [f32; 4] = [0.38, 0.25, 0.18, 1.0];
 const SHEEP_WOOL: [f32; 4] = [0.86, 0.86, 0.80, 1.0];
 const HORSE_BROWN: [f32; 4] = [0.44, 0.27, 0.14, 1.0];
+const DONKEY_GRAY: [f32; 4] = [0.46, 0.45, 0.42, 1.0];
+const MULE_BROWN: [f32; 4] = [0.34, 0.24, 0.17, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
@@ -961,6 +1036,26 @@ const HORSE_WHITE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const HORSE_WHITE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/horse/horse_white_baby.png",
+    size: [64, 64],
+};
+
+const DONKEY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/donkey.png",
+    size: [64, 64],
+};
+
+const DONKEY_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/donkey_baby.png",
+    size: [64, 64],
+};
+
+const MULE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/mule.png",
+    size: [64, 64],
+};
+
+const MULE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/mule_baby.png",
     size: [64, 64],
 };
 
@@ -3854,6 +3949,356 @@ const BABY_HORSE_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const ADULT_DONKEY_CHEST: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 8.0, 3.0],
+    color: DONKEY_GRAY,
+}];
+
+const ADULT_DONKEY_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -7.0, 0.0],
+    size: [2.0, 7.0, 1.0],
+    color: DONKEY_GRAY,
+}];
+
+const ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -5.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_TAIL,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [6.0, -8.0, 0.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &ADULT_DONKEY_CHEST,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-6.0, -8.0, 0.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &ADULT_DONKEY_CHEST,
+        children: &[],
+    },
+];
+
+const ADULT_DONKEY_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.25, -10.0, 4.0],
+            rotation: [0.2617994, 0.0, 0.2617994],
+        },
+        cubes: &ADULT_DONKEY_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.25, -10.0, 4.0],
+            rotation: [0.2617994, 0.0, -0.2617994],
+        },
+        cubes: &ADULT_DONKEY_EAR,
+        children: &[],
+    },
+];
+
+const ADULT_DONKEY_HEAD_PARTS_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_HEAD,
+        children: &ADULT_DONKEY_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_MANE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_UPPER_MOUTH,
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 ModelLayers.DONKEY and ModelLayers.MULE:
+// AbstractEquineModel.createBodyMesh(CubeDeformation.NONE), DonkeyModel.modifyMesh(),
+// then MeshTransformer.scaling(0.87F or 0.92F) applied by the emitter.
+const ADULT_DONKEY_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 11.0, 5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_BODY,
+        children: &ADULT_HORSE_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, -12.0],
+            rotation: [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_NECK,
+        children: &ADULT_DONKEY_HEAD_PARTS_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 14.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 14.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 14.0, -10.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 14.0, -10.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+];
+
+const ADULT_DONKEY_PARTS_WITH_CHEST: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 11.0, 5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_BODY,
+        children: &ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, -12.0],
+            rotation: [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_NECK,
+        children: &ADULT_DONKEY_HEAD_PARTS_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 14.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 14.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 14.0, -10.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 14.0, -10.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+];
+
+const BABY_DONKEY_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-5.0, -3.0, -7.0],
+    size: [8.0, 6.0, 14.0],
+    color: DONKEY_GRAY,
+}];
+
+const BABY_DONKEY_TAIL_R1: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, -1.0, -0.5],
+    size: [3.0, 3.0, 8.0],
+    color: DONKEY_GRAY,
+}];
+
+const BABY_DONKEY_TAIL_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, 0.0, 0.0],
+        rotation: [-0.7418, 0.0, 0.0],
+    },
+    cubes: &BABY_DONKEY_TAIL_R1,
+    children: &[],
+}];
+
+const BABY_DONKEY_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, -1.5, -1.5],
+    size: [3.0, 8.0, 3.0],
+    color: DONKEY_GRAY,
+}];
+
+const BABY_DONKEY_NECK_R1: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -6.0, -3.0],
+    size: [4.0, 8.0, 4.0],
+    color: DONKEY_GRAY,
+}];
+
+const BABY_DONKEY_HEAD_R1: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -3.6, -8.4],
+    size: [6.0, 4.0, 9.0],
+    color: DONKEY_GRAY,
+}];
+
+const BABY_DONKEY_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -6.5, -0.3],
+    size: [2.0, 7.0, 1.0],
+    color: DONKEY_GRAY,
+}];
+
+const BABY_DONKEY_HEAD_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -1.0, 1.0],
+            rotation: [0.3927, 0.0, 0.0],
+        },
+        cubes: &BABY_DONKEY_HEAD_R1,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, -3.5, -1.0],
+            rotation: [0.48, 0.0, 0.48],
+        },
+        cubes: &BABY_DONKEY_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -3.5, -1.0],
+            rotation: [0.48, 0.0, -0.48],
+        },
+        cubes: &BABY_DONKEY_EAR,
+        children: &[],
+    },
+];
+
+const BABY_DONKEY_HEAD_PARTS_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 0.0, 0.0],
+            rotation: [0.3927, 0.0, 0.0],
+        },
+        cubes: &BABY_DONKEY_NECK_R1,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -5.0, -3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &BABY_DONKEY_HEAD_CHILDREN,
+    },
+];
+
+const BABY_DONKEY_BODY_CHILDREN: [ModelPartDesc; 8] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -1.5, 6.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &BABY_DONKEY_TAIL_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.25, 3.5, 5.25],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_DONKEY_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.4, 3.5, 5.4],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_DONKEY_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.4, 3.5, -5.3],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_DONKEY_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.4, 3.5, -5.4],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_DONKEY_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -3.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &BABY_DONKEY_HEAD_PARTS_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 10.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 10.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 ModelLayers.DONKEY_BABY and ModelLayers.MULE_BABY:
+// BabyDonkeyModel.createBabyLayer(); both families share geometry and differ by texture.
+const BABY_DONKEY_PARTS: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [1.0, 14.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &BABY_DONKEY_BODY,
+    children: &BABY_DONKEY_BODY_CHILDREN,
+}];
+
 const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -10.0, -4.0],
     size: [8.0, 10.0, 8.0],
@@ -5175,6 +5620,11 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
             EntityModelKind::Wolf { baby } => emit_wolf_model(&mut mesh, *instance, baby),
             EntityModelKind::Horse { baby } => emit_horse_model(&mut mesh, *instance, baby),
+            EntityModelKind::Donkey {
+                family,
+                baby,
+                has_chest,
+            } => emit_donkey_model(&mut mesh, *instance, family, baby, has_chest),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -5554,6 +6004,28 @@ fn emit_horse_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, b
     );
 }
 
+fn emit_donkey_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: DonkeyModelFamily,
+    baby: bool,
+    has_chest: bool,
+) {
+    let parts: &[ModelPartDesc] = if baby {
+        &BABY_DONKEY_PARTS
+    } else if has_chest {
+        &ADULT_DONKEY_PARTS_WITH_CHEST
+    } else {
+        &ADULT_DONKEY_PARTS
+    };
+    let transform = if baby {
+        entity_model_root_transform(instance)
+    } else {
+        mesh_transformer_scaled_model_root_transform(instance, donkey_model_scale(family))
+    };
+    emit_model_parts_with_color(mesh, parts, transform, donkey_model_color(family));
+}
+
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
@@ -5926,6 +6398,20 @@ fn quadruped_model_color(family: QuadrupedModelFamily) -> [f32; 4] {
         QuadrupedModelFamily::Sheep => SHEEP_WOOL,
         QuadrupedModelFamily::Horse => HORSE_BROWN,
         QuadrupedModelFamily::Wolf => WOLF_GRAY,
+    }
+}
+
+fn donkey_model_scale(family: DonkeyModelFamily) -> f32 {
+    match family {
+        DonkeyModelFamily::Donkey => DONKEY_SCALE,
+        DonkeyModelFamily::Mule => MULE_SCALE,
+    }
+}
+
+fn donkey_model_color(family: DonkeyModelFamily) -> [f32; 4] {
+    match family {
+        DonkeyModelFamily::Donkey => DONKEY_GRAY,
+        DonkeyModelFamily::Mule => MULE_BROWN,
     }
 }
 
@@ -8120,6 +8606,292 @@ mod tests {
     }
 
     #[test]
+    fn donkey_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_DONKEY_CHEST[0],
+            ModelCubeDesc {
+                min: [-4.0, 0.0, -2.0],
+                size: [8.0, 8.0, 3.0],
+                color: DONKEY_GRAY,
+            }
+        );
+        assert_eq!(
+            ADULT_DONKEY_EAR[0],
+            ModelCubeDesc {
+                min: [-1.0, -7.0, 0.0],
+                size: [2.0, 7.0, 1.0],
+                color: DONKEY_GRAY,
+            }
+        );
+        assert_eq!(ADULT_DONKEY_PARTS.len(), 6);
+        assert_part_tree(
+            &ADULT_DONKEY_PARTS[0],
+            [0.0, 11.0, 5.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_BODY.as_slice(),
+            ADULT_HORSE_BODY_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_DONKEY_PARTS_WITH_CHEST[0],
+            [0.0, 11.0, 5.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_BODY.as_slice(),
+            ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST.as_slice(),
+        );
+        assert_part(
+            &ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST[0],
+            [0.0, -5.0, 2.0],
+            [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+            ADULT_HORSE_TAIL.as_slice(),
+        );
+        assert_part(
+            &ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST[1],
+            [6.0, -8.0, 0.0],
+            [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+            ADULT_DONKEY_CHEST.as_slice(),
+        );
+        assert_part(
+            &ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST[2],
+            [-6.0, -8.0, 0.0],
+            [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+            ADULT_DONKEY_CHEST.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_DONKEY_PARTS[1],
+            [0.0, 4.0, -12.0],
+            [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+            ADULT_HORSE_NECK.as_slice(),
+            ADULT_DONKEY_HEAD_PARTS_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_DONKEY_HEAD_PARTS_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_HEAD.as_slice(),
+            ADULT_DONKEY_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_DONKEY_HEAD_CHILDREN[0],
+            [1.25, -10.0, 4.0],
+            [0.2617994, 0.0, 0.2617994],
+            ADULT_DONKEY_EAR.as_slice(),
+        );
+        assert_part(
+            &ADULT_DONKEY_HEAD_CHILDREN[1],
+            [-1.25, -10.0, 4.0],
+            [0.2617994, 0.0, -0.2617994],
+            ADULT_DONKEY_EAR.as_slice(),
+        );
+
+        assert_eq!(BABY_DONKEY_PARTS.len(), 1);
+        assert_part_tree(
+            &BABY_DONKEY_PARTS[0],
+            [1.0, 14.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_DONKEY_BODY.as_slice(),
+            BABY_DONKEY_BODY_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_DONKEY_BODY_CHILDREN[0],
+            [0.0, -1.5, 6.5],
+            [0.0, 0.0, 0.0],
+            &[],
+            BABY_DONKEY_TAIL_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_DONKEY_TAIL_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [-0.7418, 0.0, 0.0],
+            BABY_DONKEY_TAIL_R1.as_slice(),
+        );
+        for (part, expected_offset) in [
+            (&BABY_DONKEY_BODY_CHILDREN[1], [2.25, 3.5, 5.25]),
+            (&BABY_DONKEY_BODY_CHILDREN[2], [-2.4, 3.5, 5.4]),
+            (&BABY_DONKEY_BODY_CHILDREN[3], [2.4, 3.5, -5.3]),
+            (&BABY_DONKEY_BODY_CHILDREN[4], [-2.4, 3.5, -5.4]),
+        ] {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_DONKEY_LEG.as_slice(),
+            );
+        }
+        assert_part_tree(
+            &BABY_DONKEY_BODY_CHILDREN[5],
+            [0.0, -3.0, -5.0],
+            [0.0, 0.0, 0.0],
+            &[],
+            BABY_DONKEY_HEAD_PARTS_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_DONKEY_HEAD_PARTS_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.3927, 0.0, 0.0],
+            BABY_DONKEY_NECK_R1.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_DONKEY_HEAD_PARTS_CHILDREN[1],
+            [0.0, -5.0, -3.0],
+            [0.0, 0.0, 0.0],
+            &[],
+            BABY_DONKEY_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_DONKEY_HEAD_CHILDREN[0],
+            [0.0, -1.0, 1.0],
+            [0.3927, 0.0, 0.0],
+            BABY_DONKEY_HEAD_R1.as_slice(),
+        );
+        assert_part(
+            &BABY_DONKEY_HEAD_CHILDREN[1],
+            [2.0, -3.5, -1.0],
+            [0.48, 0.0, 0.48],
+            BABY_DONKEY_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_DONKEY_HEAD_CHILDREN[2],
+            [-2.0, -3.5, -1.0],
+            [0.48, 0.0, -0.48],
+            BABY_DONKEY_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_DONKEY_BODY_CHILDREN[6],
+            [-1.0, 10.0, 0.0],
+            [0.0, 0.0, 0.0],
+            &[],
+        );
+        assert_part(
+            &BABY_DONKEY_BODY_CHILDREN[7],
+            [-1.0, 10.0, 0.0],
+            [0.0, 0.0, 0.0],
+            &[],
+        );
+    }
+
+    #[test]
+    fn donkey_meshes_use_vanilla_body_layer_geometry_and_chest_visibility() {
+        let adult = entity_model_mesh(&[EntityModelInstance::donkey(
+            160,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        )]);
+        assert_eq!(adult.opaque_faces, 72);
+        assert_eq!(adult.vertices.len(), 288);
+        assert_eq!(adult.indices.len(), 432);
+        assert!(adult
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(DONKEY_GRAY, 0.78)));
+
+        let with_chest = entity_model_mesh(&[EntityModelInstance::donkey(
+            161,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            true,
+        )]);
+        assert_eq!(with_chest.opaque_faces, 84);
+        assert_eq!(with_chest.vertices.len(), 336);
+        assert_eq!(with_chest.indices.len(), 504);
+
+        let mule = entity_model_mesh(&[EntityModelInstance::donkey(
+            162,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            false,
+            false,
+        )]);
+        assert_eq!(mule.opaque_faces, 72);
+        assert!(mule
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(MULE_BROWN, 0.78)));
+        let (donkey_min, donkey_max) = mesh_extents(&adult);
+        let (mule_min, mule_max) = mesh_extents(&mule);
+        assert!(mule_max[1] > donkey_max[1]);
+        assert!(mule_min[2] < donkey_min[2]);
+
+        let baby_without_chest = entity_model_mesh(&[EntityModelInstance::donkey(
+            163,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            true,
+            false,
+        )]);
+        let baby_with_chest = entity_model_mesh(&[EntityModelInstance::donkey(
+            164,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            true,
+            true,
+        )]);
+        assert_eq!(baby_without_chest.opaque_faces, 60);
+        assert_eq!(baby_without_chest.vertices.len(), 240);
+        assert_eq!(baby_without_chest.indices.len(), 360);
+        assert_same_geometry(&baby_with_chest, &baby_without_chest);
+    }
+
+    #[test]
+    fn donkey_texture_refs_match_vanilla_renderer() {
+        let cases = [
+            (
+                DonkeyModelFamily::Donkey,
+                false,
+                "donkey",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/donkey.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                DonkeyModelFamily::Donkey,
+                true,
+                "donkey_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/donkey_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                DonkeyModelFamily::Mule,
+                false,
+                "mule",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/mule.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                DonkeyModelFamily::Mule,
+                true,
+                "mule_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/mule_baby.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+
+        for (family, baby, model_key, texture) in cases {
+            let kind = EntityModelKind::Donkey {
+                family,
+                baby,
+                has_chest: true,
+            };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
+    }
+
+    #[test]
     fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_VILLAGER_HAT[0],
@@ -9819,6 +10591,42 @@ mod tests {
         assert_eq!(
             EntityModelKind::Horse { baby: true }.model_key(),
             "horse_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: false,
+                has_chest: false
+            }
+            .model_key(),
+            "donkey"
+        );
+        assert_eq!(
+            EntityModelKind::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: true,
+                has_chest: true
+            }
+            .model_key(),
+            "donkey_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Donkey {
+                family: DonkeyModelFamily::Mule,
+                baby: false,
+                has_chest: false
+            }
+            .model_key(),
+            "mule"
+        );
+        assert_eq!(
+            EntityModelKind::Donkey {
+                family: DonkeyModelFamily::Mule,
+                baby: true,
+                has_chest: true
+            }
+            .model_key(),
+            "mule_baby"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");

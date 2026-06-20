@@ -1,8 +1,9 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
-    ArmorStandModelPose, EntityModelInstance, EntityModelKind, HumanoidModelFamily,
-    IllagerModelFamily, PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline,
-    SkeletonModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ArmorStandModelPose, DonkeyModelFamily, EntityModelInstance, EntityModelKind,
+    HumanoidModelFamily, IllagerModelFamily, PiglinModelFamily, QuadrupedModelFamily, SelectionBox,
+    SelectionOutline, SkeletonModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
 
@@ -179,6 +180,7 @@ const ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 4;
 const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
+const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -336,9 +338,9 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_DONKEY_ID
-        | VANILLA_ENTITY_TYPE_MULE_ID
-        | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
+        VANILLA_ENTITY_TYPE_DONKEY_ID => donkey_model_kind(DonkeyModelFamily::Donkey, data_values),
+        VANILLA_ENTITY_TYPE_MULE_ID => donkey_model_kind(DonkeyModelFamily::Mule, data_values),
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
         | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
         | VANILLA_ENTITY_TYPE_LLAMA_ID
         | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
@@ -537,6 +539,17 @@ fn quadruped(family: QuadrupedModelFamily, baby: bool) -> EntityModelKind {
     EntityModelKind::Quadruped { family, baby }
 }
 
+fn donkey_model_kind(
+    family: DonkeyModelFamily,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityModelKind {
+    EntityModelKind::Donkey {
+        family,
+        baby: ageable_baby(values),
+        has_chest: chested_horse_has_chest(values),
+    }
+}
+
 fn placeholder(name: &'static str, width: f32, height: f32, depth: f32) -> EntityModelKind {
     EntityModelKind::Placeholder {
         name,
@@ -599,6 +612,10 @@ fn slime_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
 
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, false)
+}
+
+fn chested_horse_has_chest(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    entity_data_bool(values, ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, false)
 }
 
 fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -1215,6 +1232,42 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_DONKEY_ID, &[]),
+            EntityModelKind::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: false,
+                has_chest: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_DONKEY_ID,
+                &[
+                    protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                    protocol_bool_data(ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, true),
+                ]
+            ),
+            EntityModelKind::Donkey {
+                family: DonkeyModelFamily::Donkey,
+                baby: true,
+                has_chest: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_MULE_ID,
+                &[protocol_bool_data(
+                    ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
+                    true
+                )]
+            ),
+            EntityModelKind::Donkey {
+                family: DonkeyModelFamily::Mule,
+                baby: false,
+                has_chest: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, &[]),
             quadruped(QuadrupedModelFamily::Horse, false)
         );
     }
