@@ -4,7 +4,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bbb_protocol::packets::{MerchantOffer, MerchantOffers};
+use bbb_protocol::packets::{
+    BlockPos as ProtocolBlockPos, DialogHolder, MerchantOffer, MerchantOffers, OpenSignEditor,
+    ShowDialog,
+};
 use bbb_world::LocalPlayerPoseState;
 use tokio::sync::mpsc;
 use winit::{
@@ -105,7 +108,7 @@ fn server_container_open_releases_held_movement() {
         menu_type_id: 2,
         title: "Chest".to_string(),
     });
-    release_input_if_container_opened(false, &mut input, &mut world, &mut counters, &commands);
+    release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
 
     assert_eq!(
         rx.try_recv().unwrap(),
@@ -140,7 +143,7 @@ fn server_container_open_releases_held_mouse_actions() {
         menu_type_id: 2,
         title: "Chest".to_string(),
     });
-    release_input_if_container_opened(false, &mut input, &mut world, &mut counters, &commands);
+    release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
 
     assert_eq!(
         rx.try_recv().unwrap(),
@@ -159,6 +162,67 @@ fn server_container_open_releases_held_mouse_actions() {
             direction: bbb_protocol::packets::Direction::Down,
             sequence: 0,
         })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn server_dialog_open_releases_held_movement() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    world.apply_show_dialog(ShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(bbb_protocol::packets::PlayerInput::default())
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sign_editor_open_releases_held_movement() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+        is_front_text: true,
+    });
+    release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(bbb_protocol::packets::PlayerInput::default())
     );
     assert!(rx.try_recv().is_err());
 }
