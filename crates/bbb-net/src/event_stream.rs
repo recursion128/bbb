@@ -1599,6 +1599,164 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_level_state_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(8);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let time = packets::PlayTime {
+            game_time: 123,
+            clock_updates: vec![packets::ClockUpdate {
+                clock_id: 0,
+                total_ticks: 6000,
+                partial_tick: 0.25,
+                rate: 1.0,
+            }],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SetTime(time.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("world time event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::SetTime(update) if update == time));
+
+        let game_event = packets::GameEvent {
+            event_id: 7,
+            param: 0.5,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::GameEvent(game_event))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("game event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::GameEvent(update) if update == game_event));
+
+        let ticking_state = packets::TickingState {
+            tick_rate: 0.25,
+            frozen: true,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::TickingState(ticking_state))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("ticking state event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::TickingState(update) if update == ticking_state
+        ));
+
+        let ticking_step = packets::TickingStep { tick_steps: 7 };
+        stream
+            .handle_play_packet(PlayClientbound::TickingStep(ticking_step))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("ticking step event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::TickingStep(update) if update == ticking_step));
+
+        let ack = packets::BlockChangedAck { sequence: 17 };
+        stream
+            .handle_play_packet(PlayClientbound::BlockChangedAck(ack))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("block changed ack event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::BlockChangedAck(update) if update == ack));
+
+        let block_entity = packets::BlockEntityData {
+            pos: packets::BlockPos {
+                x: 12,
+                y: 65,
+                z: -5,
+            },
+            block_entity_type_id: 4,
+            raw_nbt: vec![10, 0],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::BlockEntityData(block_entity.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("block entity data event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::BlockEntityData(update) if update == block_entity
+        ));
+
+        let block_event = packets::BlockEvent {
+            pos: packets::BlockPos {
+                x: 12,
+                y: 65,
+                z: -5,
+            },
+            b0: 2,
+            b1: 9,
+            block_id: 54,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::BlockEvent(block_event))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("block event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::BlockEvent(update) if update == block_event));
+
+        let level_event = packets::LevelEvent {
+            event_type: 1001,
+            pos: packets::BlockPos { x: 3, y: 4, z: 5 },
+            data: 42,
+            global: true,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::LevelEvent(level_event))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("level event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::LevelEvent(update) if update == level_event));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "level state packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_passive_world_apply_packets_emit_matching_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
