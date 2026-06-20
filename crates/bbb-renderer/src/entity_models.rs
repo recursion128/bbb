@@ -18,10 +18,13 @@ use glam::Vec3;
 #[cfg(test)]
 use gpu::{
     build_entity_model_texture_atlas, entity_model_vertex_layout, rgba_offset,
-    sanitize_entity_model_instances, ENTITY_MODEL_TEXTURED_SHADER,
+    sanitize_entity_model_instances, ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_TEXTURED_SHADER,
     ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES, ENTITY_MODEL_VERTEX_ATTRIBUTES,
 };
-pub(crate) use gpu::{create_entity_model_pipeline, create_entity_model_textured_pipeline};
+pub(crate) use gpu::{
+    create_entity_model_eyes_pipeline, create_entity_model_pipeline,
+    create_entity_model_textured_pipeline,
+};
 pub(super) use gpu::{EntityModelMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu};
 #[cfg(test)]
 use model_layers::*;
@@ -31,13 +34,15 @@ pub use model_layers::{
     player_entity_texture_refs, sheep_entity_texture_refs, spider_entity_texture_refs,
     wolf_entity_texture_refs,
 };
+#[cfg(test)]
 use textured::entity_model_textured_mesh;
+use textured::entity_model_textured_meshes;
 #[cfg(test)]
 use textured::{
     boat_textured_layer_passes, chicken_textured_layer_passes, cow_textured_layer_passes,
     creeper_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
     sheep_textured_layer_passes, spider_textured_layer_passes, wolf_textured_layer_passes,
-    EntityModelLayerKind,
+    EntityModelLayerKind, EntityModelLayerRenderType,
 };
 
 #[cfg(test)]

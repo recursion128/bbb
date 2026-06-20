@@ -569,7 +569,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 56] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 57] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -606,6 +606,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     CREEPER_TEXTURE_REF,
     SPIDER_TEXTURE_REF,
     CAVE_SPIDER_TEXTURE_REF,
+    SPIDER_EYES_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -807,8 +808,20 @@ pub(in crate::entity_models) const CAVE_SPIDER_TEXTURE_REF: EntityModelTextureRe
         size: [64, 32],
     };
 
-pub(in crate::entity_models) const SPIDER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [SPIDER_TEXTURE_REF, CAVE_SPIDER_TEXTURE_REF];
+pub(in crate::entity_models) const SPIDER_EYES_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/spider/spider_eyes.png",
+        size: [64, 32],
+    };
+
+pub(in crate::entity_models) const SPIDER_EYES_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [SPIDER_EYES_TEXTURE_REF];
+
+pub(in crate::entity_models) const SPIDER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    SPIDER_TEXTURE_REF,
+    CAVE_SPIDER_TEXTURE_REF,
+    SPIDER_EYES_TEXTURE_REF,
+];
 
 pub fn spider_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SPIDER_ENTITY_TEXTURE_REFS

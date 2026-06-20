@@ -11,8 +11,8 @@ use super::{
         EntityModelInstance, EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout,
         EntityModelTextureImage, EntityModelUvRect,
     },
-    entity_model_colored_runtime_mesh, entity_model_textured_mesh,
-    geometry::{EntityModelTexturedVertex, EntityModelVertex},
+    entity_model_colored_runtime_mesh, entity_model_textured_meshes,
+    geometry::{EntityModelTexturedMesh, EntityModelTexturedVertex, EntityModelVertex},
 };
 
 pub(crate) struct EntityModelMeshGpu {
@@ -119,6 +119,47 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+pub(super) const ENTITY_MODEL_EYES_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
+}
+"#;
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -177,18 +218,57 @@ pub(crate) fn create_entity_model_textured_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-textured",
+        ENTITY_MODEL_TEXTURED_SHADER,
+        Some(wgpu::BlendState::REPLACE),
+        true,
+    )
+}
+
+pub(crate) fn create_entity_model_eyes_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-eyes",
+        ENTITY_MODEL_EYES_SHADER,
+        Some(wgpu::BlendState::ALPHA_BLENDING),
+        false,
+    )
+}
+
+fn create_entity_model_textured_pipeline_with_depth(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label_prefix: &str,
+    shader_source: &str,
+    blend: Option<wgpu::BlendState>,
+    depth_write_enabled: bool,
+) -> wgpu::RenderPipeline {
+    let shader_label = format!("{label_prefix}-shader");
+    let pipeline_layout_label = format!("{label_prefix}-pipeline-layout");
+    let pipeline_label = format!("{label_prefix}-pipeline");
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-entity-model-textured-shader"),
-        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_TEXTURED_SHADER.into()),
+        label: Some(shader_label.as_str()),
+        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-entity-model-textured-pipeline-layout"),
+        label: Some(pipeline_layout_label.as_str()),
         bind_group_layouts: &[bind_group_layout],
         push_constant_ranges: &[],
     });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-entity-model-textured-pipeline"),
+        label: Some(pipeline_label.as_str()),
         layout: Some(&layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -206,7 +286,7 @@ pub(crate) fn create_entity_model_textured_pipeline(
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: true,
+            depth_write_enabled,
             depth_compare: wgpu::CompareFunction::LessEqual,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
@@ -217,7 +297,7 @@ pub(crate) fn create_entity_model_textured_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::REPLACE),
+                blend,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -254,20 +334,31 @@ impl Renderer {
     fn rebuild_entity_model_meshes(&mut self) {
         self.entity_model_mesh =
             create_entity_model_mesh_gpu(&self.device, self.entity_model_instances.clone());
-        self.entity_model_textured_mesh =
-            self.entity_model_texture_atlas.as_ref().and_then(|atlas| {
-                create_entity_model_textured_mesh_gpu(
-                    &self.device,
-                    &self.entity_model_instances,
-                    &atlas.layout,
-                )
-            });
-        self.entity_model_bounds = merged_entity_model_bounds(
+        if let Some(atlas) = &self.entity_model_texture_atlas {
+            let meshes = entity_model_textured_meshes(&self.entity_model_instances, &atlas.layout);
+            self.entity_model_textured_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.cutout,
+                "bbb-entity-model-textured",
+            );
+            self.entity_model_eyes_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.eyes,
+                "bbb-entity-model-eyes",
+            );
+        } else {
+            self.entity_model_textured_mesh = None;
+            self.entity_model_eyes_mesh = None;
+        }
+        self.entity_model_bounds = merged_entity_model_bounds(&[
             self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
             self.entity_model_textured_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
-        );
+            self.entity_model_eyes_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+        ]);
         self.update_camera();
     }
 }
@@ -491,12 +582,11 @@ fn create_entity_model_mesh_gpu(
     })
 }
 
-fn create_entity_model_textured_mesh_gpu(
+fn create_entity_model_textured_mesh_gpu_from_mesh(
     device: &wgpu::Device,
-    instances: &[EntityModelInstance],
-    atlas: &EntityModelTextureAtlasLayout,
+    mesh: EntityModelTexturedMesh,
+    label_prefix: &str,
 ) -> Option<EntityModelTexturedMeshGpu> {
-    let mesh = entity_model_textured_mesh(instances, atlas);
     if mesh.vertices.is_empty() || mesh.indices.is_empty() {
         return None;
     }
@@ -505,13 +595,15 @@ fn create_entity_model_textured_mesh_gpu(
             .iter()
             .map(|vertex| Vec3::from_array(vertex.position)),
     );
+    let vertex_label = format!("{label_prefix}-vertices");
+    let index_label = format!("{label_prefix}-indices");
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-entity-model-textured-vertices"),
+        label: Some(vertex_label.as_str()),
         contents: bytemuck::cast_slice(&mesh.vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-entity-model-textured-indices"),
+        label: Some(index_label.as_str()),
         contents: bytemuck::cast_slice(&mesh.indices),
         usage: wgpu::BufferUsages::INDEX,
     });
@@ -524,18 +616,15 @@ fn create_entity_model_textured_mesh_gpu(
     })
 }
 
-fn merged_entity_model_bounds(
-    colored: Option<TerrainBounds>,
-    textured: Option<TerrainBounds>,
-) -> Option<TerrainBounds> {
-    match (colored, textured) {
-        (Some(mut colored), Some(textured)) => {
-            colored.include_bounds(textured);
-            Some(colored)
+fn merged_entity_model_bounds(bounds: &[Option<TerrainBounds>]) -> Option<TerrainBounds> {
+    let mut merged: Option<TerrainBounds> = None;
+    for bounds in bounds.iter().flatten() {
+        match &mut merged {
+            Some(merged) => merged.include_bounds(*bounds),
+            None => merged = Some(*bounds),
         }
-        (Some(bounds), None) | (None, Some(bounds)) => Some(bounds),
-        (None, None) => None,
     }
+    merged
 }
 
 pub(super) fn sanitize_entity_model_instances(

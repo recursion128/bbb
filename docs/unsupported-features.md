@@ -501,8 +501,11 @@ When an agent does any of the following, update this file in the same slice:
       `MeshTransformer.scaling(0.7F)`, the official
       `textures/entity/spider/cave_spider.png` texture reference from
       `CaveSpiderRenderer`, texture-backed base layer pass emission, and
-      official PNG atlas upload/bind/sample path; `spider_eyes.png` emissive
-      layer, head/walk animation, death flip, and lighting remain unsupported
+      official PNG atlas upload/bind/sample path; both spider and cave spider
+      include the vanilla `SpiderEyesLayer` `spider_eyes.png` texture-backed
+      eyes pass using the parent spider model parts, submit order `1`, and a
+      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path;
+      head/walk animation, death flip, and lighting remain unsupported
     - enderman entities as renderer-owned vanilla 26.1
       `EndermanModel.createBodyLayer()` geometry, including its
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,
@@ -586,7 +589,7 @@ When an agent does any of the following, update this file in the same slice:
     presentation, skeleton armor/overlay and bogged outer-clothing
     presentation,
     creeper swelling/powered overlays,
-    spider eyes/animation/death-flip presentation, enderman eyes/carried-block/creepy
+    spider animation/death-flip presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/translucency/

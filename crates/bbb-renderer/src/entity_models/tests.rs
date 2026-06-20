@@ -3377,6 +3377,17 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
 }
 
 #[test]
+fn entity_eyes_shader_samples_bound_texture_without_alpha_cutout() {
+    assert!(ENTITY_MODEL_EYES_SHADER
+        .contains("textureSample(entity_texture_atlas, entity_sampler, input.uv)"));
+    assert!(!ENTITY_MODEL_EYES_SHADER.contains("discard"));
+    assert_eq!(
+        ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4]
+    );
+}
+
+#[test]
 fn wolf_model_parts_match_vanilla_26_1_body_layers() {
     assert_eq!(
         ADULT_WOLF_REAL_HEAD,
