@@ -1241,6 +1241,17 @@ mod tests {
         let mut probe = ProbeContext::new(client);
 
         probe
+            .handle_play_packet(PlayClientbound::ChunkBatchStart)
+            .await
+            .unwrap();
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "chunk batch start must only update the local calculator"
+        );
+
+        probe
             .handle_play_packet(PlayClientbound::ChunkBatchFinished { batch_size: 0 })
             .await
             .unwrap();

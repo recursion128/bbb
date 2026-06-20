@@ -759,7 +759,7 @@ mod tests {
     #[tokio::test]
     async fn play_chunk_batch_feedback_uses_vanilla_calculator() {
         let (client, mut server) = raw_connection_pair().await;
-        let (events_tx, _events_rx) = mpsc::channel(1);
+        let (events_tx, mut events_rx) = mpsc::channel(1);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
         let mut stream = EventStreamContext {
             conn: client,
@@ -775,6 +775,23 @@ mod tests {
             accepted_code_of_conduct_hash: None,
             client_information: packets::ClientInformation::default(),
         };
+        stream
+            .handle_play_packet(PlayClientbound::ChunkBatchStart)
+            .await
+            .unwrap();
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "chunk batch start must not send serverbound packets"
+        );
+        assert!(
+            timeout(Duration::from_millis(50), events_rx.recv())
+                .await
+                .is_err(),
+            "chunk batch start must not emit gameplay events"
+        );
+
         stream
             .handle_play_packet(PlayClientbound::ChunkBatchFinished { batch_size: 0 })
             .await
