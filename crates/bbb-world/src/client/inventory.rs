@@ -1017,6 +1017,14 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_default_item_crafting_remainders(&mut self, remainders: BTreeMap<i32, i32>) {
+        self.default_item_crafting_remainders_known = true;
+        self.default_item_crafting_remainders = remainders
+            .into_iter()
+            .filter(|(item_id, remainder_id)| *item_id >= 0 && *remainder_id >= 0)
+            .collect();
+    }
+
     pub fn item_max_stack_size_for_protocol_id(&self, item_id: i32) -> i32 {
         self.default_item_max_stack_sizes
             .get(&item_id)
@@ -1244,6 +1252,22 @@ impl WorldStore {
         } else {
             match request.input {
                 ProtocolContainerInput::Pickup
+                    if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTING_ID)
+                        && request.slot_num == CRAFTING_MENU_RESULT_SLOT =>
+                {
+                    if !apply_crafting_menu_result_pickup_to_slots(
+                        &mut slots_after,
+                        &mut cursor_after,
+                        request.button_num,
+                        self.default_item_crafting_remainders_known,
+                        &self.default_item_crafting_remainders,
+                    ) {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::Pickup,
+                        ));
+                    }
+                }
+                ProtocolContainerInput::Pickup
                     if menu_type_id == Some(VANILLA_MENU_TYPE_MERCHANT_ID)
                         && request.slot_num == MERCHANT_RESULT_SLOT =>
                 {
@@ -1426,12 +1450,26 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTING_ID) {
-                        apply_crafting_menu_quick_move_to_slots(
-                            container_id,
-                            &mut slots_after,
-                            request.slot_num,
-                            &self.default_item_max_stack_sizes,
-                        )
+                        if request.slot_num == CRAFTING_MENU_RESULT_SLOT {
+                            if !apply_crafting_menu_result_quick_move_to_slots(
+                                container_id,
+                                &mut slots_after,
+                                self.default_item_crafting_remainders_known,
+                                &self.default_item_crafting_remainders,
+                                &self.default_item_max_stack_sizes,
+                            ) {
+                                return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                                    ProtocolContainerInput::QuickMove,
+                                ));
+                            }
+                        } else {
+                            apply_crafting_menu_quick_move_to_slots(
+                                container_id,
+                                &mut slots_after,
+                                request.slot_num,
+                                &self.default_item_max_stack_sizes,
+                            )
+                        }
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_ID) {
                         let disabled_slots = crafter_disabled_slots(&data_values);
                         apply_crafter_menu_quick_move_to_slots(
@@ -2237,7 +2275,11 @@ fn apply_inventory_menu_result_take_side_effects(slots: &mut [ContainerSlot]) {
 }
 
 fn inventory_menu_non_empty_crafting_slot_nums(slots: &[ContainerSlot]) -> Vec<i16> {
-    (1..=4)
+    non_empty_slot_nums(slots, 1, 5)
+}
+
+fn non_empty_slot_nums(slots: &[ContainerSlot], start_slot: i16, end_slot: i16) -> Vec<i16> {
+    (start_slot..end_slot)
         .filter(|slot_num| {
             slots
                 .iter()
@@ -2272,6 +2314,15 @@ fn apply_inventory_menu_result_take_side_effects_for_slots(
         normalize_item_stack(&mut slot.item);
         normalize_container_slot_selection(slot);
     }
+}
+
+fn item_stack_has_default_crafting_remainder(
+    stack: &ProtocolItemStackSummary,
+    default_item_crafting_remainders: &BTreeMap<i32, i32>,
+) -> bool {
+    stack
+        .item_id
+        .is_some_and(|item_id| default_item_crafting_remainders.contains_key(&item_id))
 }
 
 fn container_slot_item(
@@ -2799,6 +2850,14 @@ fn menu_result_slot_requires_server_authority(
         ) | (
             Some(VANILLA_MENU_TYPE_ANVIL_ID),
             ANVIL_RESULT_SLOT,
+            ProtocolContainerInput::Pickup
+        ) | (
+            Some(VANILLA_MENU_TYPE_CRAFTING_ID),
+            CRAFTING_MENU_RESULT_SLOT,
+            ProtocolContainerInput::QuickMove
+        ) | (
+            Some(VANILLA_MENU_TYPE_CRAFTING_ID),
+            CRAFTING_MENU_RESULT_SLOT,
             ProtocolContainerInput::Pickup
         ) | (
             Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID),
@@ -3355,6 +3414,124 @@ fn apply_crafting_menu_quick_move_to_slots(
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
     }
+}
+
+fn apply_crafting_menu_result_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    default_item_crafting_remainders_known: bool,
+    default_item_crafting_remainders: &BTreeMap<i32, i32>,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> bool {
+    let Some(source_index) = slots
+        .iter()
+        .position(|slot| slot.slot == CRAFTING_MENU_RESULT_SLOT)
+    else {
+        return false;
+    };
+    if item_stack_is_empty(&slots[source_index].item)
+        || !crafting_menu_inputs_can_predict_result_take(
+            slots,
+            default_item_crafting_remainders_known,
+            default_item_crafting_remainders,
+        )
+    {
+        return false;
+    }
+
+    let mut trial = slots.to_vec();
+    let mut moving = trial[source_index].item.clone();
+    if !move_item_stack_to_slots(
+        container_id,
+        &mut trial,
+        source_index,
+        &mut moving,
+        CRAFTING_MENU_PLAYER_MAIN_START,
+        CRAFTING_MENU_HOTBAR_END,
+        true,
+        default_item_max_stack_sizes,
+    ) || !item_stack_is_empty(&moving)
+    {
+        return false;
+    }
+
+    trial[source_index].item = ProtocolItemStackSummary::empty();
+    normalize_container_slot_selection(&mut trial[source_index]);
+    apply_crafting_menu_result_take_side_effects(&mut trial);
+    slots.clone_from_slice(&trial);
+    true
+}
+
+fn apply_crafting_menu_result_pickup_to_slots(
+    slots: &mut [ContainerSlot],
+    cursor: &mut ProtocolItemStackSummary,
+    button_num: i8,
+    default_item_crafting_remainders_known: bool,
+    default_item_crafting_remainders: &BTreeMap<i32, i32>,
+) -> bool {
+    if button_num != 0 || !item_stack_is_empty(cursor) {
+        return false;
+    }
+    let Some(source_index) = slots
+        .iter()
+        .position(|slot| slot.slot == CRAFTING_MENU_RESULT_SLOT)
+    else {
+        return false;
+    };
+    if item_stack_is_empty(&slots[source_index].item)
+        || !crafting_menu_inputs_can_predict_result_take(
+            slots,
+            default_item_crafting_remainders_known,
+            default_item_crafting_remainders,
+        )
+    {
+        return false;
+    }
+
+    *cursor = slots[source_index].item.clone();
+    slots[source_index].item = ProtocolItemStackSummary::empty();
+    normalize_container_slot_selection(&mut slots[source_index]);
+    apply_crafting_menu_result_take_side_effects(slots);
+    true
+}
+
+fn crafting_menu_inputs_can_predict_result_take(
+    slots: &[ContainerSlot],
+    default_item_crafting_remainders_known: bool,
+    default_item_crafting_remainders: &BTreeMap<i32, i32>,
+) -> bool {
+    if !default_item_crafting_remainders_known {
+        return false;
+    }
+    let input_slot_nums = non_empty_slot_nums(
+        slots,
+        CRAFTING_MENU_CRAFT_SLOT_START,
+        CRAFTING_MENU_CRAFT_SLOT_END,
+    );
+    !input_slot_nums.is_empty()
+        && input_slot_nums.iter().all(|slot_num| {
+            slots
+                .iter()
+                .find(|slot| slot.slot == *slot_num)
+                .is_some_and(|slot| {
+                    item_stack_is_non_empty(&slot.item)
+                        && slot.item.item_id.is_some()
+                        && slot.item.count == 1
+                        && !item_stack_has_default_crafting_remainder(
+                            &slot.item,
+                            default_item_crafting_remainders,
+                        )
+                })
+        })
+}
+
+fn apply_crafting_menu_result_take_side_effects(slots: &mut [ContainerSlot]) {
+    let input_slot_nums = non_empty_slot_nums(
+        slots,
+        CRAFTING_MENU_CRAFT_SLOT_START,
+        CRAFTING_MENU_CRAFT_SLOT_END,
+    );
+    apply_inventory_menu_result_take_side_effects_for_slots(slots, &input_slot_nums);
 }
 
 fn apply_crafter_menu_quick_move_to_slots(
@@ -8889,8 +9066,95 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_crafting_menu_result_quick_move_requires_server_authority() {
+    fn apply_local_crafting_menu_result_quick_move_consumes_single_inputs() {
         let mut store = WorldStore::new();
+        store.set_default_item_crafting_remainders(BTreeMap::new());
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+            title: "Crafting".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[0] = item_stack(90, 1);
+        items[1] = item_stack(42, 1);
+        items[5] = item_stack(43, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        let request = ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::QuickMove,
+        };
+
+        let quick_move = store.apply_local_container_click_slot(request).unwrap();
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (1, ProtocolHashedStack::Empty),
+                (5, ProtocolHashedStack::Empty),
+                (45, hashed_item_stack(90, 1)),
+            ])
+        );
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[1].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[5].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[45].item, item_stack(90, 1));
+    }
+
+    #[test]
+    fn apply_local_crafting_menu_result_pickup_consumes_single_inputs_to_cursor() {
+        let mut store = WorldStore::new();
+        store.set_default_item_crafting_remainders(BTreeMap::new());
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+            title: "Crafting".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[0] = item_stack(90, 1);
+        items[1] = item_stack(42, 1);
+        items[5] = item_stack(43, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let pickup = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+
+        assert_eq!(
+            pickup.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (1, ProtocolHashedStack::Empty),
+                (5, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(pickup.carried_item, hashed_item_stack(90, 1));
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[1].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[5].item, ProtocolItemStackSummary::empty());
+        assert_eq!(store.inventory().cursor_item, item_stack(90, 1));
+    }
+
+    #[test]
+    fn apply_local_crafting_menu_result_keeps_remainders_and_stacked_inputs_authoritative() {
+        let mut store = WorldStore::new();
+        store.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
@@ -8905,24 +9169,41 @@ mod tests {
             items,
             carried_item: ProtocolItemStackSummary::empty(),
         });
-        let request = ContainerClickSlotRequest {
-            slot_num: 0,
-            button_num: 0,
-            input: ProtocolContainerInput::QuickMove,
-        };
 
         assert_eq!(
-            store.apply_local_container_click_slot(request),
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            }),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::Pickup
+            ))
+        );
+
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[0] = item_stack(90, 1);
+        items[1] = item_stack(44, 2);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 15,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        assert_eq!(
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            }),
             Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                 ProtocolContainerInput::QuickMove
             ))
         );
-        let click = store.build_container_click_slot(request).unwrap();
-        assert_eq!(click.changed_slots, BTreeMap::new());
-        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
         let slots = &store.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, item_stack(90, 1));
-        assert_eq!(slots[1].item, item_stack(42, 1));
+        assert_eq!(slots[1].item, item_stack(44, 2));
     }
 
     #[test]

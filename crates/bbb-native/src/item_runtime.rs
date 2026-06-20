@@ -275,6 +275,17 @@ impl NativeItemRuntime {
         sizes
     }
 
+    pub(crate) fn item_crafting_remainders_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::crafting_remainders_by_protocol_id)
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn item_crafting_remainder_count(&self) -> usize {
+        self.item_crafting_remainders_by_protocol_id().len()
+    }
+
     pub(crate) fn item_equipment_slots_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, WorldItemEquipmentSlot> {

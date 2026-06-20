@@ -1169,9 +1169,16 @@ When an agent does any of the following, update this file in the same slice:
           - labels/tooltips
       - CraftingMenu:
         - non-result slots
-        - result-slot clicks kept server-authoritative until:
+        - result-slot primary pickup with an empty cursor and result-slot
+          quick-move are locally predicted from the current server result when
+          default crafting-remainder metadata is loaded, every non-empty
+          crafting-grid input has count `1`, and no input has a default
+          crafting remainder.
+        - result-slot paths are kept server-authoritative until:
+          - carried-cursor or secondary result-slot pickup
+          - repeated result pickup/quick-move with remaining inputs
           - recipe recomputation
-          - remainders are locally modeled
+          - recipe-specific remainders are locally modeled
       - CrafterMenu grid/player inventory transfers:
         - vanilla slot ranges
         - disabled grid slots from `ContainerSetData`

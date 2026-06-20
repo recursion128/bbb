@@ -62,6 +62,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_use_effects: BTreeMap<String, ItemUseEffects>,
     #[serde(default)]
+    crafting_remainders: BTreeMap<String, String>,
+    #[serde(default)]
     mining_profiles: BTreeMap<String, ItemMiningProfile>,
 }
 
@@ -174,6 +176,7 @@ impl ItemRegistryCatalog {
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
+        let mut crafting_remainders = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
             let kind = capture.get(1).unwrap().as_str();
@@ -186,6 +189,8 @@ impl ItemRegistryCatalog {
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range = default_attack_range_for_declaration(expression)?;
             let default_use_effect = default_use_effects_for_declaration(expression)?;
+            let crafting_remainder =
+                crafting_remainder_for_declaration(expression, item_id_constants)?;
             let mining_profile = mining_profile_for_declaration(expression, block_tags)?;
             if let Some(durability) = durability_for_declaration(expression)? {
                 for resource_id in &ids {
@@ -208,6 +213,9 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(default_use_effect) = default_use_effect {
                     default_use_effects.insert(resource_id.clone(), default_use_effect);
+                }
+                if let Some(crafting_remainder) = &crafting_remainder {
+                    crafting_remainders.insert(resource_id.clone(), crafting_remainder.clone());
                 }
                 if let Some(profile) = &mining_profile {
                     mining_profiles.insert(resource_id.clone(), profile.clone());
@@ -240,6 +248,7 @@ impl ItemRegistryCatalog {
             default_piercing_weapon_ids,
             default_attack_ranges,
             default_use_effects,
+            crafting_remainders,
             mining_profiles,
         })
     }
@@ -323,6 +332,24 @@ impl ItemRegistryCatalog {
     pub fn default_use_effects(&self, resource_id: &str) -> Option<ItemUseEffects> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_use_effects.get(&resource_id).copied()
+    }
+
+    pub fn crafting_remainder(&self, resource_id: &str) -> Option<&str> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.crafting_remainders
+            .get(&resource_id)
+            .map(String::as_str)
+    }
+
+    pub fn crafting_remainders_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        self.crafting_remainders
+            .iter()
+            .filter_map(|(resource_id, remainder_id)| {
+                let item_id = self.protocol_ids.get(resource_id).copied()?;
+                let remainder_item_id = self.protocol_ids.get(remainder_id).copied()?;
+                Some((item_id, remainder_item_id))
+            })
+            .collect()
     }
 
     pub fn mining_profile(&self, resource_id: &str) -> Option<&ItemMiningProfile> {
@@ -647,6 +674,22 @@ fn default_use_effects_for_declaration(expression: &str) -> Result<Option<ItemUs
         interact_vibrations: parse_java_bool_literal(capture.get(2).unwrap().as_str())?,
         speed_multiplier: parse_java_float_literal(capture.get(3).unwrap().as_str())?,
     }))
+}
+
+fn crafting_remainder_for_declaration(
+    expression: &str,
+    item_id_constants: &BTreeMap<String, String>,
+) -> Result<Option<String>> {
+    let Some(item_field) =
+        optional_capture(r#"\.craftRemainder\(\s*([A-Z0-9_]+)\s*\)"#, expression)?
+    else {
+        return Ok(None);
+    };
+    let name = item_id_constants
+        .get(&item_field)
+        .cloned()
+        .unwrap_or_else(|| item_field.to_ascii_lowercase());
+    minecraft_id(&name).map(Some)
 }
 
 fn mining_profile_for_declaration(
@@ -1054,6 +1097,50 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(decoded.default_use_effects("minecraft:wooden_spear"), None);
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_crafting_remainders() {
+        let mut constants = BTreeMap::new();
+        constants.insert("BUCKET".to_string(), "bucket".to_string());
+        let source = r#"
+            public class Items {
+               public static final Item BUCKET = registerItem(ItemIds.BUCKET, new Item.Properties().stacksTo(16));
+               public static final Item WATER_BUCKET = registerItem(
+                  "water_bucket",
+                  new Item.Properties().craftRemainder(BUCKET).stacksTo(1)
+               );
+               public static final Item GLASS_BOTTLE = registerItem("glass_bottle", new Item.Properties());
+               public static final Item HONEY_BOTTLE = registerItem(
+                  "honey_bottle",
+                  new Item.Properties().craftRemainder(GLASS_BOTTLE).stacksTo(16)
+               );
+               public static final Item STONE = registerBlock(Blocks.STONE);
+            }
+        "#;
+
+        let catalog = ItemRegistryCatalog::from_items_java_source(source, &constants).unwrap();
+
+        assert_eq!(
+            catalog.crafting_remainder("minecraft:water_bucket"),
+            Some("minecraft:bucket")
+        );
+        assert_eq!(
+            catalog.crafting_remainder("honey_bottle"),
+            Some("minecraft:glass_bottle")
+        );
+        assert_eq!(catalog.crafting_remainder("minecraft:stone"), None);
+        assert_eq!(
+            catalog.crafting_remainders_by_protocol_id(),
+            BTreeMap::from([(1, 0), (3, 2)])
+        );
+
+        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": ["minecraft:water_bucket", "minecraft:bucket"],
+            "protocol_ids": {"minecraft:water_bucket": 0, "minecraft:bucket": 1}
+        }))
+        .unwrap();
+        assert!(decoded.crafting_remainders_by_protocol_id().is_empty());
     }
 
     #[test]

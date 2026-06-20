@@ -104,6 +104,10 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) default_item_max_stack_sizes: BTreeMap<i32, i32>,
     #[serde(default)]
+    pub(crate) default_item_crafting_remainders: BTreeMap<i32, i32>,
+    #[serde(default)]
+    pub(crate) default_item_crafting_remainders_known: bool,
+    #[serde(default)]
     pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     #[serde(default)]
     pub(crate) default_mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
