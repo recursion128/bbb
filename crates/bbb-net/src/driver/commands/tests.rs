@@ -11,7 +11,7 @@ use super::{
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
     send_select_bundle_item, send_select_trade, send_set_beacon, send_set_creative_mode_slot,
     send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
-    send_teleport_to_entity, send_use_item, send_use_item_on,
+    send_teleport_to_entity, send_use_item, send_use_item_on, send_vehicle_move_command,
 };
 use crate::{
     connection::RawConnection,
@@ -366,6 +366,54 @@ fn vehicle_move_command_encodes_move_vehicle_packet() {
     assert_eq!(decoder.read_f32().unwrap(), 12.5);
     assert_eq!(decoder.read_bool().unwrap(), true);
     assert!(decoder.is_empty());
+}
+
+#[tokio::test]
+async fn send_vehicle_move_command_encodes_move_vehicle_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("move vehicle command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_VEHICLE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), -12.5);
+        assert_eq!(decoder.read_f64().unwrap(), 64.25);
+        assert_eq!(decoder.read_f64().unwrap(), 8.75);
+        assert_eq!(decoder.read_f32().unwrap(), 135.0);
+        assert_eq!(decoder.read_f32().unwrap(), -6.5);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_vehicle_move_command(
+        &mut conn,
+        VehicleMoveCommand {
+            position: Vec3d {
+                x: -12.5,
+                y: 64.25,
+                z: 8.75,
+            },
+            y_rot: 135.0,
+            x_rot: -6.5,
+            on_ground: false,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
 }
 
 #[tokio::test]
