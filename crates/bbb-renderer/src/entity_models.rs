@@ -118,6 +118,7 @@ pub enum EntityModelKind {
     },
     Minecart,
     Boat {
+        family: BoatModelFamily,
         chest: bool,
     },
     Placeholder {
@@ -230,6 +231,20 @@ pub enum LlamaVariant {
     White,
     Brown,
     Gray,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoatModelFamily {
+    Acacia,
+    Bamboo,
+    Birch,
+    Cherry,
+    DarkOak,
+    Jungle,
+    Mangrove,
+    Oak,
+    PaleOak,
+    Spruce,
 }
 
 impl LlamaVariant {
@@ -520,8 +535,7 @@ impl EntityModelKind {
                 family: IllagerModelFamily::Vindicator,
             } => "vindicator",
             Self::Minecart => "minecart",
-            Self::Boat { chest: false } => "boat",
-            Self::Boat { chest: true } => "chest_boat",
+            Self::Boat { family, chest } => boat_model_key(family, chest),
             Self::Placeholder { name, .. } => name,
         }
     }
@@ -690,6 +704,7 @@ impl EntityModelKind {
             Self::Illager {
                 family: IllagerModelFamily::Vindicator,
             } => Some(VINDICATOR_TEXTURE_REF),
+            Self::Boat { family, chest } => Some(boat_texture_ref(family, chest)),
             _ => None,
         }
     }
@@ -827,6 +842,21 @@ impl EntityModelInstance {
 
     pub fn ravager(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Ravager, position, y_rot)
+    }
+
+    pub fn boat(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: BoatModelFamily,
+        chest: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Boat { family, chest },
+            position,
+            y_rot,
+        )
     }
 
     pub fn skeleton(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -1783,6 +1813,227 @@ const PLAYER_SLIM_PARTS: [ModelPartDesc; 6] = [
         },
         cubes: &PLAYER_LEG,
         children: &PLAYER_LEFT_PANTS_CHILDREN,
+    },
+];
+
+const BOAT_BOTTOM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-14.0, -9.0, -3.0],
+    size: [28.0, 16.0, 3.0],
+    color: BOAT_WOOD,
+}];
+
+const BOAT_BACK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-13.0, -7.0, -1.0],
+    size: [18.0, 6.0, 2.0],
+    color: BOAT_WOOD,
+}];
+
+const BOAT_FRONT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-8.0, -7.0, -1.0],
+    size: [16.0, 6.0, 2.0],
+    color: BOAT_WOOD,
+}];
+
+const BOAT_SIDE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-14.0, -7.0, -1.0],
+    size: [28.0, 6.0, 2.0],
+    color: BOAT_WOOD,
+}];
+
+const BOAT_LEFT_PADDLE: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-1.0, 0.0, -5.0],
+        size: [2.0, 2.0, 18.0],
+        color: BOAT_WOOD,
+    },
+    ModelCubeDesc {
+        min: [-1.001, -3.0, 8.0],
+        size: [1.0, 6.0, 7.0],
+        color: BOAT_WOOD,
+    },
+];
+
+const BOAT_RIGHT_PADDLE: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-1.0, 0.0, -5.0],
+        size: [2.0, 2.0, 18.0],
+        color: BOAT_WOOD,
+    },
+    ModelCubeDesc {
+        min: [0.001, -3.0, 8.0],
+        size: [1.0, 6.0, 7.0],
+        color: BOAT_WOOD,
+    },
+];
+
+const BOAT_CHEST_BOTTOM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [12.0, 8.0, 12.0],
+    color: BOAT_WOOD,
+}];
+
+const BOAT_CHEST_LID: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [12.0, 4.0, 12.0],
+    color: BOAT_WOOD,
+}];
+
+const BOAT_CHEST_LOCK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [2.0, 4.0, 1.0],
+    color: BOAT_WOOD,
+}];
+
+const RAFT_BOTTOM: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-14.0, -11.0, -4.0],
+        size: [28.0, 20.0, 4.0],
+        color: BOAT_WOOD,
+    },
+    ModelCubeDesc {
+        min: [-14.0, -9.0, -8.0],
+        size: [28.0, 16.0, 4.0],
+        color: BOAT_WOOD,
+    },
+];
+
+const BOAT_COMMON_PARTS: [ModelPartDesc; 7] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 3.0, 1.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &BOAT_BOTTOM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-15.0, 4.0, 4.0],
+            rotation: [0.0, std::f32::consts::PI * 1.5, 0.0],
+        },
+        cubes: &BOAT_BACK,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [15.0, 4.0, 0.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &BOAT_FRONT,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, -9.0],
+            rotation: [0.0, std::f32::consts::PI, 0.0],
+        },
+        cubes: &BOAT_SIDE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, 9.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOAT_SIDE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, -5.0, 9.0],
+            rotation: [0.0, 0.0, std::f32::consts::PI / 16.0],
+        },
+        cubes: &BOAT_LEFT_PADDLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, -5.0, -9.0],
+            rotation: [0.0, std::f32::consts::PI, std::f32::consts::PI / 16.0],
+        },
+        cubes: &BOAT_RIGHT_PADDLE,
+        children: &[],
+    },
+];
+
+const BOAT_CHEST_PARTS: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -5.0, -6.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &BOAT_CHEST_BOTTOM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -9.0, -6.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &BOAT_CHEST_LID,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, -6.0, -1.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &BOAT_CHEST_LOCK,
+        children: &[],
+    },
+];
+
+const RAFT_COMMON_PARTS: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -2.1, 1.0],
+            rotation: [1.5708, 0.0, 0.0],
+        },
+        cubes: &RAFT_BOTTOM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, -4.0, 9.0],
+            rotation: [0.0, 0.0, std::f32::consts::PI / 16.0],
+        },
+        cubes: &BOAT_LEFT_PADDLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, -4.0, -9.0],
+            rotation: [0.0, std::f32::consts::PI, std::f32::consts::PI / 16.0],
+        },
+        cubes: &BOAT_RIGHT_PADDLE,
+        children: &[],
+    },
+];
+
+const RAFT_CHEST_PARTS: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -10.1, -6.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &BOAT_CHEST_BOTTOM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -14.1, -6.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &BOAT_CHEST_LID,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, -11.1, -1.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+        },
+        cubes: &BOAT_CHEST_LOCK,
+        children: &[],
     },
 ];
 
@@ -7740,7 +7991,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Witch => emit_witch_model(&mut mesh, *instance),
             EntityModelKind::Illager { family } => emit_illager_model(&mut mesh, *instance, family),
             EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
-            EntityModelKind::Boat { chest } => emit_boat_model(&mut mesh, *instance, chest),
+            EntityModelKind::Boat { family, chest } => {
+                emit_boat_model(&mut mesh, *instance, family, chest)
+            }
             EntityModelKind::Placeholder { bounds, .. } => {
                 emit_placeholder_bounds_model(&mut mesh, *instance, bounds)
             }
@@ -8546,75 +8799,23 @@ fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     }
 }
 
-fn emit_boat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, chest: bool) {
-    let transform = entity_model_root_transform(instance);
-    for (min, size, pose) in [
-        (
-            [-14.0, -9.0, -3.0],
-            [28.0, 16.0, 3.0],
-            PartPose {
-                offset: [0.0, 3.0, 1.0],
-                rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-            },
-        ),
-        (
-            [-13.0, -7.0, -1.0],
-            [18.0, 6.0, 2.0],
-            PartPose {
-                offset: [-15.0, 4.0, 4.0],
-                rotation: [0.0, std::f32::consts::PI * 1.5, 0.0],
-            },
-        ),
-        (
-            [-8.0, -7.0, -1.0],
-            [16.0, 6.0, 2.0],
-            PartPose {
-                offset: [15.0, 4.0, 0.0],
-                rotation: [0.0, std::f32::consts::FRAC_PI_2, 0.0],
-            },
-        ),
-        (
-            [-14.0, -7.0, -1.0],
-            [28.0, 6.0, 2.0],
-            PartPose {
-                offset: [0.0, 4.0, -9.0],
-                rotation: [0.0, std::f32::consts::PI, 0.0],
-            },
-        ),
-        (
-            [-14.0, -7.0, -1.0],
-            [28.0, 6.0, 2.0],
-            PartPose {
-                offset: [0.0, 4.0, 9.0],
-                rotation: [0.0, 0.0, 0.0],
-            },
-        ),
-    ] {
-        emit_model_cube(
-            mesh,
-            transform * part_pose_transform(pose),
-            ModelCubeDesc {
-                min,
-                size,
-                color: BOAT_WOOD,
-            },
-        );
-    }
-
-    if chest {
-        emit_model_cube(
-            mesh,
-            transform
-                * part_pose_transform(PartPose {
-                    offset: [-2.0, -5.0, -6.0],
-                    rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
-                }),
-            ModelCubeDesc {
-                min: [0.0, 0.0, 0.0],
-                size: [12.0, 8.0, 12.0],
-                color: BOAT_WOOD,
-            },
-        );
+fn emit_boat_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: BoatModelFamily,
+    chest: bool,
+) {
+    let transform = boat_model_root_transform(instance);
+    if family == BoatModelFamily::Bamboo {
+        emit_model_parts(mesh, &RAFT_COMMON_PARTS, transform);
+        if chest {
+            emit_model_parts(mesh, &RAFT_CHEST_PARTS, transform);
+        }
+    } else {
+        emit_model_parts(mesh, &BOAT_COMMON_PARTS, transform);
+        if chest {
+            emit_model_parts(mesh, &BOAT_CHEST_PARTS, transform);
+        }
     }
 }
 
@@ -8765,6 +8966,116 @@ fn llama_texture_ref(variant: LlamaVariant, baby: bool) -> EntityModelTextureRef
     }
 }
 
+fn boat_model_key(family: BoatModelFamily, chest: bool) -> &'static str {
+    match (family, chest) {
+        (BoatModelFamily::Acacia, false) => "boat_acacia",
+        (BoatModelFamily::Acacia, true) => "chest_boat_acacia",
+        (BoatModelFamily::Bamboo, false) => "boat_bamboo",
+        (BoatModelFamily::Bamboo, true) => "chest_boat_bamboo",
+        (BoatModelFamily::Birch, false) => "boat_birch",
+        (BoatModelFamily::Birch, true) => "chest_boat_birch",
+        (BoatModelFamily::Cherry, false) => "boat_cherry",
+        (BoatModelFamily::Cherry, true) => "chest_boat_cherry",
+        (BoatModelFamily::DarkOak, false) => "boat_dark_oak",
+        (BoatModelFamily::DarkOak, true) => "chest_boat_dark_oak",
+        (BoatModelFamily::Jungle, false) => "boat_jungle",
+        (BoatModelFamily::Jungle, true) => "chest_boat_jungle",
+        (BoatModelFamily::Mangrove, false) => "boat_mangrove",
+        (BoatModelFamily::Mangrove, true) => "chest_boat_mangrove",
+        (BoatModelFamily::Oak, false) => "boat_oak",
+        (BoatModelFamily::Oak, true) => "chest_boat_oak",
+        (BoatModelFamily::PaleOak, false) => "boat_pale_oak",
+        (BoatModelFamily::PaleOak, true) => "chest_boat_pale_oak",
+        (BoatModelFamily::Spruce, false) => "boat_spruce",
+        (BoatModelFamily::Spruce, true) => "chest_boat_spruce",
+    }
+}
+
+fn boat_texture_ref(family: BoatModelFamily, chest: bool) -> EntityModelTextureRef {
+    match (family, chest) {
+        (BoatModelFamily::Acacia, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/acacia.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Acacia, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/acacia.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::Bamboo, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/bamboo.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Bamboo, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/bamboo.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::Birch, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/birch.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Birch, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/birch.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::Cherry, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/cherry.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Cherry, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/cherry.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::DarkOak, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/dark_oak.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::DarkOak, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/dark_oak.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::Jungle, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/jungle.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Jungle, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/jungle.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::Mangrove, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/mangrove.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Mangrove, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/mangrove.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::Oak, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/oak.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Oak, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/oak.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::PaleOak, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/pale_oak.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::PaleOak, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/pale_oak.png",
+            size: [128, 128],
+        },
+        (BoatModelFamily::Spruce, false) => EntityModelTextureRef {
+            path: "textures/entity/boat/spruce.png",
+            size: [128, 64],
+        },
+        (BoatModelFamily::Spruce, true) => EntityModelTextureRef {
+            path: "textures/entity/chest_boat/spruce.png",
+            size: [128, 128],
+        },
+    }
+}
+
 fn emit_model_parts(mesh: &mut EntityModelMesh, parts: &[ModelPartDesc], parent_transform: Mat4) {
     for part in parts {
         emit_model_part(mesh, part, parent_transform);
@@ -8848,6 +9159,14 @@ fn living_entity_model_root_transform_with_renderer_transform(
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
+fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2)
 }
 
 fn part_pose_transform(pose: PartPose) -> Mat4 {
@@ -14219,12 +14538,229 @@ mod tests {
     }
 
     #[test]
+    fn boat_model_parts_match_vanilla_26_1_layers() {
+        assert_eq!(BOAT_COMMON_PARTS.len(), 7);
+        assert_part(
+            &BOAT_COMMON_PARTS[0],
+            [0.0, 3.0, 1.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            BOAT_BOTTOM.as_slice(),
+        );
+        assert_part(
+            &BOAT_COMMON_PARTS[1],
+            [-15.0, 4.0, 4.0],
+            [0.0, std::f32::consts::PI * 1.5, 0.0],
+            BOAT_BACK.as_slice(),
+        );
+        assert_part(
+            &BOAT_COMMON_PARTS[2],
+            [15.0, 4.0, 0.0],
+            [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+            BOAT_FRONT.as_slice(),
+        );
+        assert_part(
+            &BOAT_COMMON_PARTS[3],
+            [0.0, 4.0, -9.0],
+            [0.0, std::f32::consts::PI, 0.0],
+            BOAT_SIDE.as_slice(),
+        );
+        assert_part(
+            &BOAT_COMMON_PARTS[4],
+            [0.0, 4.0, 9.0],
+            [0.0, 0.0, 0.0],
+            BOAT_SIDE.as_slice(),
+        );
+        assert_part(
+            &BOAT_COMMON_PARTS[5],
+            [3.0, -5.0, 9.0],
+            [0.0, 0.0, std::f32::consts::PI / 16.0],
+            BOAT_LEFT_PADDLE.as_slice(),
+        );
+        assert_part(
+            &BOAT_COMMON_PARTS[6],
+            [3.0, -5.0, -9.0],
+            [0.0, std::f32::consts::PI, std::f32::consts::PI / 16.0],
+            BOAT_RIGHT_PADDLE.as_slice(),
+        );
+
+        assert_eq!(BOAT_CHEST_PARTS.len(), 3);
+        assert_part(
+            &BOAT_CHEST_PARTS[0],
+            [-2.0, -5.0, -6.0],
+            [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+            BOAT_CHEST_BOTTOM.as_slice(),
+        );
+        assert_part(
+            &BOAT_CHEST_PARTS[1],
+            [-2.0, -9.0, -6.0],
+            [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+            BOAT_CHEST_LID.as_slice(),
+        );
+        assert_part(
+            &BOAT_CHEST_PARTS[2],
+            [-1.0, -6.0, -1.0],
+            [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+            BOAT_CHEST_LOCK.as_slice(),
+        );
+
+        assert_eq!(RAFT_COMMON_PARTS.len(), 3);
+        assert_part(
+            &RAFT_COMMON_PARTS[0],
+            [0.0, -2.1, 1.0],
+            [1.5708, 0.0, 0.0],
+            RAFT_BOTTOM.as_slice(),
+        );
+        assert_part(
+            &RAFT_COMMON_PARTS[1],
+            [3.0, -4.0, 9.0],
+            [0.0, 0.0, std::f32::consts::PI / 16.0],
+            BOAT_LEFT_PADDLE.as_slice(),
+        );
+        assert_part(
+            &RAFT_COMMON_PARTS[2],
+            [3.0, -4.0, -9.0],
+            [0.0, std::f32::consts::PI, std::f32::consts::PI / 16.0],
+            BOAT_RIGHT_PADDLE.as_slice(),
+        );
+
+        assert_eq!(RAFT_CHEST_PARTS.len(), 3);
+        assert_part(
+            &RAFT_CHEST_PARTS[0],
+            [-2.0, -10.1, -6.0],
+            [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+            BOAT_CHEST_BOTTOM.as_slice(),
+        );
+        assert_part(
+            &RAFT_CHEST_PARTS[1],
+            [-2.0, -14.1, -6.0],
+            [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+            BOAT_CHEST_LID.as_slice(),
+        );
+        assert_part(
+            &RAFT_CHEST_PARTS[2],
+            [-1.0, -11.1, -1.0],
+            [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
+            BOAT_CHEST_LOCK.as_slice(),
+        );
+    }
+
+    #[test]
+    fn boat_meshes_use_vanilla_body_layer_geometry() {
+        let oak_boat = entity_model_mesh(&[EntityModelInstance::boat(
+            89,
+            [0.0, 64.0, 0.0],
+            0.0,
+            BoatModelFamily::Oak,
+            false,
+        )]);
+        let oak_chest_boat = entity_model_mesh(&[EntityModelInstance::boat(
+            90,
+            [0.0, 64.0, 0.0],
+            0.0,
+            BoatModelFamily::Oak,
+            true,
+        )]);
+        let bamboo_raft = entity_model_mesh(&[EntityModelInstance::boat(
+            9,
+            [0.0, 64.0, 0.0],
+            0.0,
+            BoatModelFamily::Bamboo,
+            false,
+        )]);
+        let bamboo_chest_raft = entity_model_mesh(&[EntityModelInstance::boat(
+            8,
+            [0.0, 64.0, 0.0],
+            0.0,
+            BoatModelFamily::Bamboo,
+            true,
+        )]);
+
+        assert_eq!(oak_boat.opaque_faces, 54);
+        assert_eq!(oak_boat.vertices.len(), 216);
+        assert_eq!(oak_boat.indices.len(), 324);
+        assert_eq!(oak_chest_boat.opaque_faces, 72);
+        assert_eq!(oak_chest_boat.vertices.len(), 288);
+        assert_eq!(oak_chest_boat.indices.len(), 432);
+        assert_eq!(bamboo_raft.opaque_faces, 36);
+        assert_eq!(bamboo_raft.vertices.len(), 144);
+        assert_eq!(bamboo_raft.indices.len(), 216);
+        assert_eq!(bamboo_chest_raft.opaque_faces, 54);
+        assert_eq!(bamboo_chest_raft.vertices.len(), 216);
+        assert_eq!(bamboo_chest_raft.indices.len(), 324);
+        assert_ne!(oak_boat.vertices, bamboo_raft.vertices);
+
+        let (min, max) = mesh_extents(&oak_boat);
+        assert!(max[0] - min[0] > 1.0);
+        assert!(max[2] - min[2] > 1.0);
+    }
+
+    #[test]
+    fn boat_texture_refs_match_vanilla_model_layer_paths() {
+        let cases = [
+            (
+                BoatModelFamily::Acacia,
+                false,
+                "boat_acacia",
+                "textures/entity/boat/acacia.png",
+                [128, 64],
+            ),
+            (
+                BoatModelFamily::Bamboo,
+                true,
+                "chest_boat_bamboo",
+                "textures/entity/chest_boat/bamboo.png",
+                [128, 128],
+            ),
+            (
+                BoatModelFamily::DarkOak,
+                false,
+                "boat_dark_oak",
+                "textures/entity/boat/dark_oak.png",
+                [128, 64],
+            ),
+            (
+                BoatModelFamily::Mangrove,
+                true,
+                "chest_boat_mangrove",
+                "textures/entity/chest_boat/mangrove.png",
+                [128, 128],
+            ),
+            (
+                BoatModelFamily::PaleOak,
+                false,
+                "boat_pale_oak",
+                "textures/entity/boat/pale_oak.png",
+                [128, 64],
+            ),
+            (
+                BoatModelFamily::Spruce,
+                true,
+                "chest_boat_spruce",
+                "textures/entity/chest_boat/spruce.png",
+                [128, 128],
+            ),
+        ];
+
+        for (family, chest, model_key, path, size) in cases {
+            let kind = EntityModelKind::Boat { family, chest };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(
+                kind.vanilla_texture_ref(),
+                Some(EntityModelTextureRef { path, size })
+            );
+        }
+    }
+
+    #[test]
     fn vehicle_and_placeholder_models_emit_sane_bounds() {
         let cases = [
             EntityModelInstance::new(1, EntityModelKind::Minecart, [0.0, 64.0, 0.0], 0.0),
             EntityModelInstance::new(
                 2,
-                EntityModelKind::Boat { chest: true },
+                EntityModelKind::Boat {
+                    family: BoatModelFamily::Oak,
+                    chest: true,
+                },
                 [3.0, 64.0, 0.0],
                 0.0,
             ),

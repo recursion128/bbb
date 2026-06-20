@@ -1,9 +1,10 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
-    ArmorStandModelPose, CamelModelFamily, DonkeyModelFamily, EntityModelInstance, EntityModelKind,
-    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
-    PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
-    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ArmorStandModelPose, BoatModelFamily, CamelModelFamily, DonkeyModelFamily, EntityModelInstance,
+    EntityModelKind, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily,
+    LlamaVariant, PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline,
+    SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
 
@@ -409,26 +410,26 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_ENDER_PEARL_ID => {
             placeholder("todo_ender_pearl_bounds", 0.25, 0.25, 0.25)
         }
-        VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID
-        | VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID
-        | VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID
-        | VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID
-        | VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID
-        | VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID
-        | VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID
-        | VANILLA_ENTITY_TYPE_OAK_BOAT_ID
-        | VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID
-        | VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID => EntityModelKind::Boat { chest: false },
-        VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
-        | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
-        | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID => EntityModelKind::Boat { chest: true },
+        VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID => boat(BoatModelFamily::Acacia, false),
+        VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID => boat(BoatModelFamily::Acacia, true),
+        VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID => boat(BoatModelFamily::Bamboo, false),
+        VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID => boat(BoatModelFamily::Bamboo, true),
+        VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID => boat(BoatModelFamily::Birch, false),
+        VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID => boat(BoatModelFamily::Birch, true),
+        VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID => boat(BoatModelFamily::Cherry, false),
+        VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID => boat(BoatModelFamily::Cherry, true),
+        VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID => boat(BoatModelFamily::DarkOak, false),
+        VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID => boat(BoatModelFamily::DarkOak, true),
+        VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID => boat(BoatModelFamily::Jungle, false),
+        VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID => boat(BoatModelFamily::Jungle, true),
+        VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID => boat(BoatModelFamily::Mangrove, false),
+        VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID => boat(BoatModelFamily::Mangrove, true),
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID => boat(BoatModelFamily::Oak, false),
+        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID => boat(BoatModelFamily::Oak, true),
+        VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID => boat(BoatModelFamily::PaleOak, false),
+        VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID => boat(BoatModelFamily::PaleOak, true),
+        VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID => boat(BoatModelFamily::Spruce, false),
+        VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID => boat(BoatModelFamily::Spruce, true),
         VANILLA_ENTITY_TYPE_ALLAY_ID => placeholder("todo_allay_bounds", 0.35, 0.6, 0.35),
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => placeholder("todo_armadillo_bounds", 0.7, 0.65, 0.7),
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => placeholder("todo_axolotl_bounds", 0.75, 0.42, 0.75),
@@ -559,6 +560,10 @@ fn humanoid(family: HumanoidModelFamily, baby: bool) -> EntityModelKind {
 
 fn quadruped(family: QuadrupedModelFamily, baby: bool) -> EntityModelKind {
     EntityModelKind::Quadruped { family, baby }
+}
+
+fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
+    EntityModelKind::Boat { family, chest }
 }
 
 fn donkey_model_kind(
@@ -1639,6 +1644,79 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
             humanoid(HumanoidModelFamily::Player, false)
         );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_boats_and_rafts() {
+        let cases = [
+            (
+                VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID,
+                BoatModelFamily::Acacia,
+                false,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID,
+                BoatModelFamily::Acacia,
+                true,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
+                BoatModelFamily::Bamboo,
+                false,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID,
+                BoatModelFamily::Bamboo,
+                true,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID,
+                BoatModelFamily::Birch,
+                false,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID,
+                BoatModelFamily::Cherry,
+                true,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID,
+                BoatModelFamily::DarkOak,
+                false,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID,
+                BoatModelFamily::Jungle,
+                true,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID,
+                BoatModelFamily::Mangrove,
+                false,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+                BoatModelFamily::Oak,
+                true,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID,
+                BoatModelFamily::PaleOak,
+                false,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID,
+                BoatModelFamily::Spruce,
+                true,
+            ),
+        ];
+
+        for (entity_type_id, family, chest) in cases {
+            assert_eq!(
+                entity_model_kind(entity_type_id, &[]),
+                EntityModelKind::Boat { family, chest }
+            );
+        }
     }
 
     #[test]

@@ -232,7 +232,8 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified player/player-slim/pig/cow/sheep/wolf/base-horse/donkey/mule/
+      source-verified player/player-slim/boat/chest-boat/raft/chest-raft/
+      pig/cow/sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
       goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
@@ -283,6 +284,15 @@ When an agent does any of the following, update this file in the same slice:
       elytra/wings, shoulder parrots, arrows/stingers, spectator visibility,
       crouch/flying offsets, name display, arm poses, and walk/head animation
       remain unsupported
+    - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
+      renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
+      geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,
+      `AbstractBoatRenderer`, and `LayerDefinitions`, including boat hull
+      parts, raft bottom logs, paddles, chest bottom/lid/lock parts, official
+      per-wood/per-bamboo texture references, and the vanilla boat root
+      translate/rotate/scale/rotate renderer transform; paddle rowing
+      animation, hurt/damage roll, bubble wobble, underwater state and water
+      mask submission, lighting, and GPU texture binding remain unsupported
     - chicken entities as renderer-owned vanilla adult/baby cuboid model
       geometry, projected from canonical world entity state and rendered with
       temporary vertex colors
@@ -498,14 +508,15 @@ When an agent does any of the following, update this file in the same slice:
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
-    - primitive renderer-owned model families for humanoids, quadrupeds,
-      minecarts, boats, and chest boats, plus named placeholder bounds for
-      remaining entity types
+    - primitive renderer-owned model families for humanoids, quadrupeds, and
+      minecarts, plus named placeholder bounds for remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, lighting, pig/cow variant
     presentation, pig saddle presentation, sheep wool presentation,
     wolf variant/tame/angry/collar/armor/wet-tint/pose presentation,
+    boat/raft paddle animation, damage roll, bubble wobble, and water-mask
+    presentation,
     horse variant/markings/saddle/armor/animation, donkey/mule saddle and
     animation presentation, undead horse body-armor/saddle/animation
     presentation, and remaining non-base-equine presentation,
