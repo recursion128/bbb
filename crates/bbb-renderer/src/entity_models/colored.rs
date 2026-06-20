@@ -91,9 +91,15 @@ fn entity_model_mesh_with_options(
                 emit_hoglin_model(&mut mesh, *instance, family, baby)
             }
             EntityModelKind::Ravager => emit_ravager_model(&mut mesh, *instance),
-            EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
+            EntityModelKind::Skeleton => {
+                if !skip_texture_backed_entities {
+                    emit_skeleton_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::SkeletonVariant { family } => {
-                emit_skeleton_variant_model(&mut mesh, *instance, family)
+                if !skip_texture_backed_entities {
+                    emit_skeleton_variant_model(&mut mesh, *instance, family)
+                }
             }
             EntityModelKind::Cow { variant, baby } => {
                 if !skip_texture_backed_entities {
@@ -486,6 +492,10 @@ fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     emit_model_parts(mesh, &RAVAGER_PARTS, entity_model_root_transform(instance));
 }
 
+pub(super) fn wither_skeleton_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    mesh_transformer_scaled_model_root_transform(instance, WITHER_SKELETON_SCALE)
+}
+
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &SKELETON_PARTS, entity_model_root_transform(instance));
 }
@@ -514,7 +524,7 @@ fn emit_skeleton_variant_model(
         SkeletonModelFamily::WitherSkeleton => emit_model_parts_with_color(
             mesh,
             &SKELETON_PARTS,
-            mesh_transformer_scaled_model_root_transform(instance, WITHER_SKELETON_SCALE),
+            wither_skeleton_model_root_transform(instance),
             WITHER_SKELETON_DARK,
         ),
     }

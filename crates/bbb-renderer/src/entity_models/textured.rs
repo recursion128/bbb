@@ -5,14 +5,14 @@ use super::{
         player_texture_ref, sheep_wool_layer_color, wolf_texture_ref, BoatModelFamily,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelKind,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        PigModelVariant, PlayerModelPartVisibility, SheepWoolColor,
+        PigModelVariant, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::*,
-    player_model_root_transform, slime_model_root_transform,
+    player_model_root_transform, slime_model_root_transform, wither_skeleton_model_root_transform,
 };
 use glam::Mat4;
 
@@ -29,6 +29,7 @@ pub(super) enum EntityModelLayerKind {
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
+    SkeletonBase,
     SlimeBase,
     SlimeOuter,
     MagmaCubeBase,
@@ -158,6 +159,12 @@ pub(super) fn entity_model_textured_meshes(
                     collar_color,
                     atlas,
                 );
+            }
+            EntityModelKind::Skeleton => {
+                emit_skeleton_textured_model(&mut meshes, *instance, None, atlas);
+            }
+            EntityModelKind::SkeletonVariant { family } => {
+                emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
             }
             EntityModelKind::Boat { family, chest } => {
                 emit_boat_textured_model(&mut meshes, *instance, family, chest, atlas);
@@ -327,6 +334,22 @@ fn emit_wolf_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in wolf_textured_layer_passes(baby, tame, angry, collar_color) {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_skeleton_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    family: Option<SkeletonModelFamily>,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = if matches!(family, Some(SkeletonModelFamily::WitherSkeleton)) {
+        wither_skeleton_model_root_transform(instance)
+    } else {
+        entity_model_root_transform(instance)
+    };
+    for pass in skeleton_textured_layer_passes(family) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }
@@ -683,6 +706,22 @@ pub(super) fn wolf_textured_layer_passes(
     passes
 }
 
+pub(super) fn skeleton_textured_layer_passes(
+    family: Option<SkeletonModelFamily>,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::SkeletonBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: skeleton_model_layer(family),
+        texture: skeleton_texture_ref(family),
+        parts: skeleton_textured_model_parts(family),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
 fn boat_model_layer(family: BoatModelFamily, chest: bool) -> &'static str {
     match (family, chest) {
         (BoatModelFamily::Acacia, false) => MODEL_LAYER_ACACIA_BOAT,
@@ -847,6 +886,39 @@ fn cow_textured_model_parts(
         (CowModelVariant::Warm, false) => &WARM_COW_TEXTURED_PARTS,
         (CowModelVariant::Cold, false) => &COLD_COW_TEXTURED_PARTS,
         (CowModelVariant::Temperate, false) => &ADULT_COW_TEXTURED_PARTS,
+    }
+}
+
+fn skeleton_model_layer(family: Option<SkeletonModelFamily>) -> &'static str {
+    match family {
+        None => MODEL_LAYER_SKELETON,
+        Some(SkeletonModelFamily::Stray) => MODEL_LAYER_STRAY,
+        Some(SkeletonModelFamily::Parched) => MODEL_LAYER_PARCHED,
+        Some(SkeletonModelFamily::WitherSkeleton) => MODEL_LAYER_WITHER_SKELETON,
+        Some(SkeletonModelFamily::Bogged { .. }) => MODEL_LAYER_BOGGED,
+    }
+}
+
+fn skeleton_texture_ref(family: Option<SkeletonModelFamily>) -> EntityModelTextureRef {
+    match family {
+        None => SKELETON_TEXTURE_REF,
+        Some(SkeletonModelFamily::Stray) => STRAY_TEXTURE_REF,
+        Some(SkeletonModelFamily::Parched) => PARCHED_TEXTURE_REF,
+        Some(SkeletonModelFamily::WitherSkeleton) => WITHER_SKELETON_TEXTURE_REF,
+        Some(SkeletonModelFamily::Bogged { .. }) => BOGGED_TEXTURE_REF,
+    }
+}
+
+fn skeleton_textured_model_parts(
+    family: Option<SkeletonModelFamily>,
+) -> &'static [TexturedModelPartDesc] {
+    match family {
+        None | Some(SkeletonModelFamily::Stray) | Some(SkeletonModelFamily::WitherSkeleton) => {
+            &SKELETON_TEXTURED_PARTS
+        }
+        Some(SkeletonModelFamily::Parched) => &PARCHED_TEXTURED_PARTS,
+        Some(SkeletonModelFamily::Bogged { sheared: false }) => &BOGGED_TEXTURED_PARTS,
+        Some(SkeletonModelFamily::Bogged { sheared: true }) => &BOGGED_SHEARED_TEXTURED_PARTS,
     }
 }
 

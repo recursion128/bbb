@@ -472,22 +472,18 @@ When an agent does any of the following, update this file in the same slice:
       converting shake, zombie-family and piglin-family armor, custom head
       layers, held items, attack/head/walk/dance/crossbow/admiring/zombie-arm
       animation, and GPU texture binding remain unsupported
-    - base skeleton and stray entities as renderer-owned vanilla 26.1
-      `SkeletonModel.createBodyLayer()` geometry with official
-      `SkeletonRenderer`/`StrayRenderer` texture references recorded; parched
-      skeletons use renderer-owned vanilla 26.1
-      `SkeletonModel.createSingleModelDualBodyLayer()` 64x64 geometry and the
-      official `textures/entity/skeleton/parched.png` texture reference;
-      wither skeletons use the vanilla 26.1 skeleton body layer with
-      `LayerDefinitions`' `MeshTransformer.scaling(1.2F)` root transform and
-      official `textures/entity/skeleton/wither_skeleton.png` texture
-      reference; bogged skeletons use vanilla 26.1
-      `BoggedModel.createBodyLayer()` geometry, including the head mushroom
-      children and metadata-driven sheared mushroom visibility, with official
-      `textures/entity/skeleton/bogged.png` texture reference recorded; stray
-      `stray_overlay.png` clothing, bogged `bogged_overlay.png` clothing,
-      skeleton-family armor, held bows/items, attack/head/walk animation, and
-      GPU texture binding remain unsupported
+    - base skeleton, stray, parched, wither skeleton, and bogged entities as
+      renderer-owned vanilla 26.1 skeleton-family geometry from
+      `SkeletonModel.createBodyLayer()`,
+      `SkeletonModel.createSingleModelDualBodyLayer()`, `BoggedModel`, and
+      `LayerDefinitions`, including `ModelLayers.SKELETON` / `STRAY` /
+      `PARCHED` / `WITHER_SKELETON` / `BOGGED`, wither skeleton
+      `MeshTransformer.scaling(1.2F)`, bogged head mushroom children and
+      metadata-driven sheared mushroom visibility, official base texture
+      references, texture-backed base layer pass emission, and official PNG
+      atlas upload/bind/sample path; stray `stray_overlay.png` clothing,
+      bogged `bogged_overlay.png` clothing, skeleton-family armor, held bows/
+      items, attack/head/walk animation, and lighting remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,

@@ -157,6 +157,18 @@ pub(in crate::entity_models) const BOGGED_TEXTURE_REF: EntityModelTextureRef =
         size: [64, 32],
     };
 
+pub(in crate::entity_models) const SKELETON_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
+    SKELETON_TEXTURE_REF,
+    STRAY_TEXTURE_REF,
+    PARCHED_TEXTURE_REF,
+    WITHER_SKELETON_TEXTURE_REF,
+    BOGGED_TEXTURE_REF,
+];
+
+pub fn skeleton_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &SKELETON_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const SHEEP_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/sheep/sheep.png",
@@ -569,7 +581,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 61] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 66] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -603,6 +615,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     COW_WARM_BABY_TEXTURE_REF,
     COW_COLD_TEXTURE_REF,
     COW_COLD_BABY_TEXTURE_REF,
+    SKELETON_TEXTURE_REF,
+    STRAY_TEXTURE_REF,
+    PARCHED_TEXTURE_REF,
+    WITHER_SKELETON_TEXTURE_REF,
+    BOGGED_TEXTURE_REF,
     CREEPER_TEXTURE_REF,
     SPIDER_TEXTURE_REF,
     CAVE_SPIDER_TEXTURE_REF,

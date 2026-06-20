@@ -1,4 +1,14 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, PART_POSE_ZERO};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    PART_POSE_ZERO,
+};
+
+pub(in crate::entity_models) const MODEL_LAYER_SKELETON: &str = "minecraft:skeleton#main";
+pub(in crate::entity_models) const MODEL_LAYER_STRAY: &str = "minecraft:stray#main";
+pub(in crate::entity_models) const MODEL_LAYER_PARCHED: &str = "minecraft:parched#main";
+pub(in crate::entity_models) const MODEL_LAYER_WITHER_SKELETON: &str =
+    "minecraft:wither_skeleton#main";
+pub(in crate::entity_models) const MODEL_LAYER_BOGGED: &str = "minecraft:bogged#main";
 
 pub(in crate::entity_models) const SKELETON_BONE: [f32; 4] = [0.82, 0.82, 0.72, 1.0];
 pub(in crate::entity_models) const WITHER_SKELETON_DARK: [f32; 4] = [0.14, 0.14, 0.14, 1.0];
@@ -85,6 +95,109 @@ pub(in crate::entity_models) const SKELETON_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &SKELETON_LEG,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, -8.0, -4.0],
+        size: [8.0, 8.0, 8.0],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_HAT: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.5, -8.5, -4.5],
+        size: [9.0, 9.0, 9.0],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [32.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SKELETON_TEXTURED_HAT,
+        children: &[],
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, 0.0, -2.0],
+        size: [8.0, 12.0, 4.0],
+        uv_size: [8.0, 12.0, 4.0],
+        tex: [16.0, 16.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [40.0, 16.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [40.0, 16.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [0.0, 16.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [0.0, 16.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const SKELETON_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: SKELETON_PARTS[0].pose,
+        cubes: &SKELETON_TEXTURED_HEAD,
+        children: &SKELETON_TEXTURED_HEAD_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: SKELETON_PARTS[1].pose,
+        cubes: &SKELETON_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: SKELETON_PARTS[2].pose,
+        cubes: &SKELETON_TEXTURED_RIGHT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: SKELETON_PARTS[3].pose,
+        cubes: &SKELETON_TEXTURED_LEFT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: SKELETON_PARTS[4].pose,
+        cubes: &SKELETON_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: SKELETON_PARTS[5].pose,
+        cubes: &SKELETON_TEXTURED_LEFT_LEG,
         children: &[],
     },
 ];
@@ -215,6 +328,152 @@ pub(in crate::entity_models) const BOGGED_HEAD_CHILDREN: [ModelPartDesc; 2] = [
         pose: PART_POSE_ZERO,
         cubes: &[],
         children: &BOGGED_MUSHROOM_CHILDREN,
+    },
+];
+
+pub(in crate::entity_models) const BOGGED_TEXTURED_RED_MUSHROOM_PLANE: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, -3.0, 0.0],
+        size: [6.0, 4.0, 0.0],
+        uv_size: [6.0, 4.0, 0.0],
+        tex: [50.0, 16.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BOGGED_TEXTURED_BROWN_MUSHROOM_PLANE: [TexturedModelCubeDesc;
+    1] = [TexturedModelCubeDesc {
+    min: [-3.0, -3.0, 0.0],
+    size: [6.0, 4.0, 0.0],
+    uv_size: [6.0, 4.0, 0.0],
+    tex: [50.0, 22.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const BOGGED_TEXTURED_BROWN_TOP_MUSHROOM_PLANE:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.0, -4.0, 0.0],
+    size: [6.0, 4.0, 0.0],
+    uv_size: [6.0, 4.0, 0.0],
+    tex: [50.0, 28.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const BOGGED_TEXTURED_MUSHROOM_CHILDREN: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: BOGGED_MUSHROOM_CHILDREN[0].pose,
+        cubes: &BOGGED_TEXTURED_RED_MUSHROOM_PLANE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_MUSHROOM_CHILDREN[1].pose,
+        cubes: &BOGGED_TEXTURED_RED_MUSHROOM_PLANE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_MUSHROOM_CHILDREN[2].pose,
+        cubes: &BOGGED_TEXTURED_BROWN_MUSHROOM_PLANE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_MUSHROOM_CHILDREN[3].pose,
+        cubes: &BOGGED_TEXTURED_BROWN_MUSHROOM_PLANE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_MUSHROOM_CHILDREN[4].pose,
+        cubes: &BOGGED_TEXTURED_BROWN_TOP_MUSHROOM_PLANE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_MUSHROOM_CHILDREN[5].pose,
+        cubes: &BOGGED_TEXTURED_BROWN_TOP_MUSHROOM_PLANE,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const BOGGED_TEXTURED_HAT_CHILDREN: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SKELETON_TEXTURED_HAT,
+        children: &[],
+    }];
+
+pub(in crate::entity_models) const BOGGED_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SKELETON_TEXTURED_HAT,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &[],
+        children: &BOGGED_TEXTURED_MUSHROOM_CHILDREN,
+    },
+];
+
+pub(in crate::entity_models) const BOGGED_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: BOGGED_PARTS[0].pose,
+        cubes: &SKELETON_TEXTURED_HEAD,
+        children: &BOGGED_TEXTURED_HEAD_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_PARTS[1].pose,
+        cubes: &SKELETON_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_PARTS[2].pose,
+        cubes: &SKELETON_TEXTURED_RIGHT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_PARTS[3].pose,
+        cubes: &SKELETON_TEXTURED_LEFT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_PARTS[4].pose,
+        cubes: &SKELETON_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_PARTS[5].pose,
+        cubes: &SKELETON_TEXTURED_LEFT_LEG,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const BOGGED_SHEARED_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: BOGGED_SHEARED_PARTS[0].pose,
+        cubes: &SKELETON_TEXTURED_HEAD,
+        children: &BOGGED_TEXTURED_HAT_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_SHEARED_PARTS[1].pose,
+        cubes: &SKELETON_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_SHEARED_PARTS[2].pose,
+        cubes: &SKELETON_TEXTURED_RIGHT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_SHEARED_PARTS[3].pose,
+        cubes: &SKELETON_TEXTURED_LEFT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_SHEARED_PARTS[4].pose,
+        cubes: &SKELETON_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOGGED_SHEARED_PARTS[5].pose,
+        cubes: &SKELETON_TEXTURED_LEFT_LEG,
+        children: &[],
     },
 ];
 
@@ -432,6 +691,157 @@ pub(in crate::entity_models) const PARCHED_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &PARCHED_LEG,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_BODY: [TexturedModelCubeDesc; 3] = [
+    TexturedModelCubeDesc {
+        min: [-4.0, 0.0, -2.0],
+        size: [8.0, 12.0, 4.0],
+        uv_size: [8.0, 12.0, 4.0],
+        tex: [16.0, 16.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-4.0, 10.0, -2.0],
+        size: [8.0, 1.0, 4.0],
+        uv_size: [8.0, 1.0, 4.0],
+        tex: [28.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-4.025, -0.025, -2.025],
+        size: [8.05, 12.05, 4.05],
+        uv_size: [8.0, 12.0, 4.0],
+        tex: [16.0, 48.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_HEAD: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-4.0, -8.0, -4.0],
+        size: [8.0, 8.0, 8.0],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-4.2, -8.2, -4.2],
+        size: [8.4, 8.4, 8.4],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [0.0, 32.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_EMPTY_HAT: [TexturedModelCubeDesc; 0] = [];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &PARCHED_TEXTURED_EMPTY_HAT,
+        children: &[],
+    }];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, -2.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [40.0, 16.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.55, -2.025, -1.5],
+        size: [3.0, 12.0, 3.0],
+        uv_size: [3.0, 12.0, 3.0],
+        tex: [42.0, 33.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, -2.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [56.0, 16.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.45, -2.025, -1.5],
+        size: [3.0, 12.0, 3.0],
+        uv_size: [3.0, 12.0, 3.0],
+        tex: [40.0, 48.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [0.0, 16.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.5, 0.0, -1.5],
+        size: [3.0, 12.0, 3.0],
+        uv_size: [3.0, 12.0, 3.0],
+        tex: [0.0, 49.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        uv_size: [2.0, 12.0, 2.0],
+        tex: [0.0, 16.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.5, 0.0, -1.5],
+        size: [3.0, 12.0, 3.0],
+        uv_size: [3.0, 12.0, 3.0],
+        tex: [4.0, 49.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const PARCHED_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: PARCHED_PARTS[0].pose,
+        cubes: &PARCHED_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PARCHED_PARTS[1].pose,
+        cubes: &PARCHED_TEXTURED_HEAD,
+        children: &PARCHED_TEXTURED_HEAD_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: PARCHED_PARTS[2].pose,
+        cubes: &PARCHED_TEXTURED_RIGHT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PARCHED_PARTS[3].pose,
+        cubes: &PARCHED_TEXTURED_LEFT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PARCHED_PARTS[4].pose,
+        cubes: &PARCHED_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PARCHED_PARTS[5].pose,
+        cubes: &PARCHED_TEXTURED_LEFT_LEG,
         children: &[],
     },
 ];
