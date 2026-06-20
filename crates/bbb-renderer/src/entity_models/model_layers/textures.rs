@@ -317,6 +317,55 @@ pub fn pig_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &PIG_ENTITY_TEXTURE_REFS
 }
 
+pub(in crate::entity_models) const COW_TEMPERATE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/cow_temperate.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COW_TEMPERATE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/cow_temperate_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COW_WARM_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/cow_warm.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COW_WARM_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/cow_warm_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COW_COLD_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/cow_cold.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COW_COLD_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/cow_cold_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COW_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 6] = [
+    COW_TEMPERATE_TEXTURE_REF,
+    COW_TEMPERATE_BABY_TEXTURE_REF,
+    COW_WARM_TEXTURE_REF,
+    COW_WARM_BABY_TEXTURE_REF,
+    COW_COLD_TEXTURE_REF,
+    COW_COLD_BABY_TEXTURE_REF,
+];
+
+pub fn cow_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &COW_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const BOAT_ACACIA_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/boat/acacia.png",
@@ -513,7 +562,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 45] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 51] = [
     SHEEP_TEXTURE_REF,
     SHEEP_BABY_TEXTURE_REF,
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
@@ -539,6 +588,12 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PIG_WARM_BABY_TEXTURE_REF,
     PIG_COLD_TEXTURE_REF,
     PIG_COLD_BABY_TEXTURE_REF,
+    COW_TEMPERATE_TEXTURE_REF,
+    COW_TEMPERATE_BABY_TEXTURE_REF,
+    COW_WARM_TEXTURE_REF,
+    COW_WARM_BABY_TEXTURE_REF,
+    COW_COLD_TEXTURE_REF,
+    COW_COLD_BABY_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,

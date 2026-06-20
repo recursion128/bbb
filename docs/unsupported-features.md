@@ -344,9 +344,11 @@ When an agent does any of the following, update this file in the same slice:
       metadata-driven temperate/warm/cold variant projection through the
       server-sent `minecraft:cow_variant` registry order, official adult/baby
       variant texture references, and vanilla fallback to temperate when no
-      variant metadata is present; variant sound metadata, custom/datapack cow
-      variant asset decoding, walk/head animation, lighting, and GPU texture
-      binding remain unsupported
+      variant metadata is present, texture-backed base layer pass emission,
+      adult/baby/warm/cold model-layer selection, and official PNG atlas
+      upload/bind/sample path; variant sound metadata, custom/datapack cow
+      variant asset decoding, walk/head animation, and lighting remain
+      unsupported
     - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
       official base/wool/undercoat texture references, texture-backed base,

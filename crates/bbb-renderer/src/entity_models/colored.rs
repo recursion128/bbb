@@ -85,7 +85,9 @@ fn entity_model_mesh_with_options(
                 emit_skeleton_variant_model(&mut mesh, *instance, family)
             }
             EntityModelKind::Cow { variant, baby } => {
-                emit_cow_model(&mut mesh, *instance, variant, baby)
+                if !skip_texture_backed_entities {
+                    emit_cow_model(&mut mesh, *instance, variant, baby);
+                }
             }
             EntityModelKind::Sheep {
                 baby,

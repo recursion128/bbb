@@ -1498,32 +1498,14 @@ fn cow_model_key(variant: CowModelVariant, baby: bool) -> &'static str {
     }
 }
 
-fn cow_texture_ref(variant: CowModelVariant, baby: bool) -> EntityModelTextureRef {
+pub(super) fn cow_texture_ref(variant: CowModelVariant, baby: bool) -> EntityModelTextureRef {
     match (variant, baby) {
-        (CowModelVariant::Temperate, false) => EntityModelTextureRef {
-            path: "textures/entity/cow/cow_temperate.png",
-            size: [64, 64],
-        },
-        (CowModelVariant::Temperate, true) => EntityModelTextureRef {
-            path: "textures/entity/cow/cow_temperate_baby.png",
-            size: [64, 64],
-        },
-        (CowModelVariant::Warm, false) => EntityModelTextureRef {
-            path: "textures/entity/cow/cow_warm.png",
-            size: [64, 64],
-        },
-        (CowModelVariant::Warm, true) => EntityModelTextureRef {
-            path: "textures/entity/cow/cow_warm_baby.png",
-            size: [64, 64],
-        },
-        (CowModelVariant::Cold, false) => EntityModelTextureRef {
-            path: "textures/entity/cow/cow_cold.png",
-            size: [64, 64],
-        },
-        (CowModelVariant::Cold, true) => EntityModelTextureRef {
-            path: "textures/entity/cow/cow_cold_baby.png",
-            size: [64, 64],
-        },
+        (CowModelVariant::Temperate, false) => COW_TEMPERATE_TEXTURE_REF,
+        (CowModelVariant::Temperate, true) => COW_TEMPERATE_BABY_TEXTURE_REF,
+        (CowModelVariant::Warm, false) => COW_WARM_TEXTURE_REF,
+        (CowModelVariant::Warm, true) => COW_WARM_BABY_TEXTURE_REF,
+        (CowModelVariant::Cold, false) => COW_COLD_TEXTURE_REF,
+        (CowModelVariant::Cold, true) => COW_COLD_BABY_TEXTURE_REF,
     }
 }
 

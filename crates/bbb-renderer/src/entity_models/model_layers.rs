@@ -66,12 +66,15 @@ pub(super) const MAGMA_CUBE_ORANGE: [f32; 4] = [0.92, 0.38, 0.12, 1.0];
 pub(super) const MAGMA_CUBE_CORE: [f32; 4] = [0.98, 0.72, 0.22, 1.0];
 pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
+mod cow;
 mod textures;
 
+pub(super) use cow::*;
 pub(super) use textures::*;
 pub use textures::{
-    boat_entity_texture_refs, chicken_entity_texture_refs, entity_model_texture_refs,
-    pig_entity_texture_refs, sheep_entity_texture_refs, wolf_entity_texture_refs,
+    boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
+    entity_model_texture_refs, pig_entity_texture_refs, sheep_entity_texture_refs,
+    wolf_entity_texture_refs,
 };
 
 pub(super) const PLAYER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {

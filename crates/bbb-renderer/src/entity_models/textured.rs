@@ -1,10 +1,11 @@
 use super::{
     boat_model_root_transform,
     catalog::{
-        boat_texture_ref, chicken_texture_ref, pig_texture_ref, sheep_wool_layer_color,
-        wolf_texture_ref, BoatModelFamily, ChickenModelVariant, EntityDyeColor,
-        EntityModelInstance, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, PigModelVariant, SheepWoolColor,
+        boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref,
+        sheep_wool_layer_color, wolf_texture_ref, BoatModelFamily, ChickenModelVariant,
+        CowModelVariant, EntityDyeColor, EntityModelInstance, EntityModelKind,
+        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
+        PigModelVariant, SheepWoolColor,
     },
     entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
@@ -15,6 +16,7 @@ use super::{
 pub(super) enum EntityModelLayerKind {
     BoatBase,
     ChickenBase,
+    CowBase,
     PigBase,
     SheepBase,
     SheepWool,
@@ -46,6 +48,9 @@ pub(super) fn entity_model_textured_mesh(
             }
             EntityModelKind::Pig { variant, baby } => {
                 emit_pig_textured_model(&mut mesh, *instance, variant, baby, atlas);
+            }
+            EntityModelKind::Cow { variant, baby } => {
+                emit_cow_textured_model(&mut mesh, *instance, variant, baby, atlas);
             }
             EntityModelKind::Sheep {
                 baby,
@@ -148,6 +153,29 @@ fn emit_pig_textured_model(
     }
 }
 
+fn emit_cow_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    variant: CowModelVariant,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in cow_textured_layer_passes(variant, baby) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
+}
+
 fn emit_sheep_textured_model(
     mesh: &mut EntityModelTexturedMesh,
     instance: EntityModelInstance,
@@ -236,6 +264,21 @@ pub(super) fn pig_textured_layer_passes(
         model_layer: pig_model_layer(variant, baby),
         texture: pig_texture_ref(variant, baby),
         parts: pig_textured_model_parts(variant, baby),
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(super) fn cow_textured_layer_passes(
+    variant: CowModelVariant,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::CowBase,
+        model_layer: cow_model_layer(variant, baby),
+        texture: cow_texture_ref(variant, baby),
+        parts: cow_textured_model_parts(variant, baby),
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -424,6 +467,29 @@ fn pig_textured_model_parts(
         (_, true) => &BABY_PIG_TEXTURED_PARTS,
         (PigModelVariant::Cold, false) => &COLD_PIG_TEXTURED_PARTS,
         (_, false) => &ADULT_PIG_TEXTURED_PARTS,
+    }
+}
+
+fn cow_model_layer(variant: CowModelVariant, baby: bool) -> &'static str {
+    match (variant, baby) {
+        (CowModelVariant::Temperate, false) => MODEL_LAYER_COW,
+        (CowModelVariant::Temperate, true) => MODEL_LAYER_COW_BABY,
+        (CowModelVariant::Warm, false) => MODEL_LAYER_WARM_COW,
+        (CowModelVariant::Warm, true) => MODEL_LAYER_WARM_COW_BABY,
+        (CowModelVariant::Cold, false) => MODEL_LAYER_COLD_COW,
+        (CowModelVariant::Cold, true) => MODEL_LAYER_COLD_COW_BABY,
+    }
+}
+
+fn cow_textured_model_parts(
+    variant: CowModelVariant,
+    baby: bool,
+) -> &'static [TexturedModelPartDesc] {
+    match (variant, baby) {
+        (_, true) => &BABY_COW_TEXTURED_PARTS,
+        (CowModelVariant::Warm, false) => &WARM_COW_TEXTURED_PARTS,
+        (CowModelVariant::Cold, false) => &COLD_COW_TEXTURED_PARTS,
+        (CowModelVariant::Temperate, false) => &ADULT_COW_TEXTURED_PARTS,
     }
 }
 
