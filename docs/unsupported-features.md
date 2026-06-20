@@ -233,9 +233,10 @@ When an agent does any of the following, update this file in the same slice:
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/villager/wandering-trader/zombie,
-      skeleton, creeper, spider, enderman, iron-golem, and snow-golem
-      witch, and evoker/illusioner/pillager/vindicator illager body-layer
-      geometry, primitive entity model families, and placeholder bounds
+      skeleton and stray/parched/wither-skeleton variants, creeper, spider,
+      enderman, iron-golem, snow-golem, witch, and
+      evoker/illusioner/pillager/vindicator illager body-layer geometry,
+      primitive entity model families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -297,10 +298,19 @@ When an agent does any of the following, update this file in the same slice:
       with official default texture references recorded; husk, drowned, zombie
       villager, piglin, and zombified piglin variants still use generic
       humanoid family geometry until their own model/texture paths are verified
-    - base skeleton entities as renderer-owned vanilla 26.1
-      `SkeletonModel.createBodyLayer()` geometry with the official default
-      texture reference recorded; stray, bogged, parched, wither skeleton,
-      overlays, and scale variants remain unsupported
+    - base skeleton and stray entities as renderer-owned vanilla 26.1
+      `SkeletonModel.createBodyLayer()` geometry with official
+      `SkeletonRenderer`/`StrayRenderer` texture references recorded; parched
+      skeletons use renderer-owned vanilla 26.1
+      `SkeletonModel.createSingleModelDualBodyLayer()` 64x64 geometry and the
+      official `textures/entity/skeleton/parched.png` texture reference;
+      wither skeletons use the vanilla 26.1 skeleton body layer with
+      `LayerDefinitions`' `MeshTransformer.scaling(1.2F)` root transform and
+      official `textures/entity/skeleton/wither_skeleton.png` texture
+      reference; stray `stray_overlay.png` clothing, bogged `BoggedModel`
+      mushrooms/outer layer/sheared-state visibility, skeleton-family armor,
+      held bows/items, attack/head/walk animation, and GPU texture binding
+      remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference recorded
@@ -363,7 +373,8 @@ When an agent does any of the following, update this file in the same slice:
     presentation, pig saddle presentation, sheep wool presentation,
     villager profession/type/held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie/skeleton
-    variant presentation, creeper swelling/powered overlays,
+    armor/overlay/bogged mushroom and sheared-state presentation,
+    creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, and precise vanilla mesh parity

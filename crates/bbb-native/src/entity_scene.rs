@@ -1,7 +1,7 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
     EntityModelInstance, EntityModelKind, HumanoidModelFamily, IllagerModelFamily,
-    QuadrupedModelFamily, SelectionBox, SelectionOutline,
+    QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
 
@@ -253,10 +253,16 @@ fn entity_model_kind(
             humanoid(HumanoidModelFamily::Zombie, piglin_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_SKELETON_ID => EntityModelKind::Skeleton,
-        VANILLA_ENTITY_TYPE_STRAY_ID
-        | VANILLA_ENTITY_TYPE_BOGGED_ID
-        | VANILLA_ENTITY_TYPE_PARCHED_ID
-        | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => humanoid(HumanoidModelFamily::Skeleton, false),
+        VANILLA_ENTITY_TYPE_STRAY_ID => EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::Stray,
+        },
+        VANILLA_ENTITY_TYPE_PARCHED_ID => EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::Parched,
+        },
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::WitherSkeleton,
+        },
+        VANILLA_ENTITY_TYPE_BOGGED_ID => humanoid(HumanoidModelFamily::Skeleton, false),
         VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {
             baby: ageable_baby(data_values),
         },
@@ -715,6 +721,24 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_STRAY_ID, &[]),
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Stray
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PARCHED_ID, &[]),
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Parched
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, &[]),
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::WitherSkeleton
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_BOGGED_ID, &[]),
             humanoid(HumanoidModelFamily::Skeleton, false)
         );
     }

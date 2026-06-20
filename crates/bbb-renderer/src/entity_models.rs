@@ -5,8 +5,9 @@ use crate::{camera::TerrainBounds, gpu::DEPTH_FORMAT, Renderer};
 
 const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
 const MODEL_UNIT_SCALE: f32 = 1.0 / 16.0;
+const MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS: f32 = 24.016;
 const VILLAGER_LIKE_SCALE: f32 = 0.9375;
-const VILLAGER_LIKE_ROOT_Y_OFFSET_PIXELS: f32 = 24.016 * (1.0 - VILLAGER_LIKE_SCALE);
+const WITHER_SKELETON_SCALE: f32 = 1.2;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -20,6 +21,9 @@ pub enum EntityModelKind {
         baby: bool,
     },
     Skeleton,
+    SkeletonVariant {
+        family: SkeletonModelFamily,
+    },
     Cow {
         baby: bool,
     },
@@ -61,6 +65,13 @@ pub enum HumanoidModelFamily {
     Villager,
     Illager,
     ArmorStand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkeletonModelFamily {
+    Stray,
+    Parched,
+    WitherSkeleton,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -149,6 +160,15 @@ impl EntityModelKind {
             Self::Zombie { baby: false } => "zombie",
             Self::Zombie { baby: true } => "zombie_baby",
             Self::Skeleton => "skeleton",
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Stray,
+            } => "stray",
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Parched,
+            } => "parched",
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::WitherSkeleton,
+            } => "wither_skeleton",
             Self::Cow { baby: false } => "cow",
             Self::Cow { baby: true } => "cow_baby",
             Self::Sheep { baby: false } => "sheep",
@@ -226,6 +246,15 @@ impl EntityModelKind {
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
             Self::Skeleton => Some(SKELETON_TEXTURE_REF),
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Stray,
+            } => Some(STRAY_TEXTURE_REF),
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Parched,
+            } => Some(PARCHED_TEXTURE_REF),
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::WitherSkeleton,
+            } => Some(WITHER_SKELETON_TEXTURE_REF),
             Self::Sheep { baby: false } => Some(SHEEP_TEXTURE_REF),
             Self::Sheep { baby: true } => Some(SHEEP_BABY_TEXTURE_REF),
             Self::Villager { baby: false } => Some(VILLAGER_TEXTURE_REF),
@@ -302,6 +331,20 @@ impl EntityModelInstance {
 
     pub fn skeleton(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Skeleton, position, y_rot)
+    }
+
+    pub fn skeleton_variant(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: SkeletonModelFamily,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::SkeletonVariant { family },
+            position,
+            y_rot,
+        )
     }
 
     pub fn cow(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
@@ -498,6 +541,8 @@ const CHICKEN_LEG: [f32; 4] = [0.82, 0.48, 0.12, 1.0];
 const PLAYER_BLUE: [f32; 4] = [0.22, 0.42, 0.78, 1.0];
 const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
 const SKELETON_BONE: [f32; 4] = [0.82, 0.82, 0.72, 1.0];
+const WITHER_SKELETON_DARK: [f32; 4] = [0.14, 0.14, 0.14, 1.0];
+const PARCHED_BONE: [f32; 4] = [0.70, 0.62, 0.48, 1.0];
 const VILLAGER_ROBE: [f32; 4] = [0.48, 0.34, 0.23, 1.0];
 const ILLAGER_GRAY: [f32; 4] = [0.42, 0.45, 0.48, 1.0];
 const ARMOR_STAND_WOOD: [f32; 4] = [0.55, 0.36, 0.19, 1.0];
@@ -531,6 +576,21 @@ const ZOMBIE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const SKELETON_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/skeleton/skeleton.png",
+    size: [64, 32],
+};
+
+const STRAY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/skeleton/stray.png",
+    size: [64, 32],
+};
+
+const PARCHED_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/skeleton/parched.png",
+    size: [64, 64],
+};
+
+const WITHER_SKELETON_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/skeleton/wither_skeleton.png",
     size: [64, 32],
 };
 
@@ -1059,6 +1119,130 @@ const SKELETON_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &SKELETON_LEG,
+        children: &[],
+    },
+];
+
+const PARCHED_BODY: [ModelCubeDesc; 3] = [
+    ModelCubeDesc {
+        min: [-4.0, 0.0, -2.0],
+        size: [8.0, 12.0, 4.0],
+        color: PARCHED_BONE,
+    },
+    ModelCubeDesc {
+        min: [-4.0, 10.0, -2.0],
+        size: [8.0, 1.0, 4.0],
+        color: PARCHED_BONE,
+    },
+    ModelCubeDesc {
+        min: [-4.025, -0.025, -2.025],
+        size: [8.05, 12.05, 4.05],
+        color: PARCHED_BONE,
+    },
+];
+
+const PARCHED_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, -8.0, -4.0],
+        size: [8.0, 8.0, 8.0],
+        color: PARCHED_BONE,
+    },
+    ModelCubeDesc {
+        min: [-4.2, -8.2, -4.2],
+        size: [8.4, 8.4, 8.4],
+        color: PARCHED_BONE,
+    },
+];
+
+const PARCHED_EMPTY_HAT: [ModelCubeDesc; 0] = [];
+
+const PARCHED_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PARCHED_EMPTY_HAT,
+    children: &[],
+}];
+
+const PARCHED_RIGHT_ARM: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-1.0, -2.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        color: PARCHED_BONE,
+    },
+    ModelCubeDesc {
+        min: [-1.55, -2.025, -1.5],
+        size: [3.0, 12.0, 3.0],
+        color: PARCHED_BONE,
+    },
+];
+
+const PARCHED_LEFT_ARM: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-1.0, -2.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        color: PARCHED_BONE,
+    },
+    ModelCubeDesc {
+        min: [-1.45, -2.025, -1.5],
+        size: [3.0, 12.0, 3.0],
+        color: PARCHED_BONE,
+    },
+];
+
+const PARCHED_LEG: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 12.0, 2.0],
+        color: PARCHED_BONE,
+    },
+    ModelCubeDesc {
+        min: [-1.5, 0.0, -1.5],
+        size: [3.0, 12.0, 3.0],
+        color: PARCHED_BONE,
+    },
+];
+
+// Vanilla 26.1 SkeletonModel.createSingleModelDualBodyLayer().
+const PARCHED_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &PARCHED_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &PARCHED_HEAD,
+        children: &PARCHED_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.5, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PARCHED_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.5, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PARCHED_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PARCHED_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PARCHED_LEG,
         children: &[],
     },
 ];
@@ -2828,6 +3012,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
             EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
+            EntityModelKind::SkeletonVariant { family } => {
+                emit_skeleton_variant_model(&mut mesh, *instance, family)
+            }
             EntityModelKind::Cow { baby } => emit_cow_model(&mut mesh, *instance, baby),
             EntityModelKind::Sheep { baby } => emit_sheep_model(&mut mesh, *instance, baby),
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
@@ -2946,6 +3133,27 @@ fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &SKELETON_PARTS, entity_model_root_transform(instance));
+}
+
+fn emit_skeleton_variant_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: SkeletonModelFamily,
+) {
+    match family {
+        SkeletonModelFamily::Stray => {
+            emit_model_parts(mesh, &SKELETON_PARTS, entity_model_root_transform(instance));
+        }
+        SkeletonModelFamily::Parched => {
+            emit_model_parts(mesh, &PARCHED_PARTS, entity_model_root_transform(instance));
+        }
+        SkeletonModelFamily::WitherSkeleton => emit_model_parts_with_color(
+            mesh,
+            &SKELETON_PARTS,
+            mesh_transformer_scaled_model_root_transform(instance, WITHER_SKELETON_SCALE),
+            WITHER_SKELETON_DARK,
+        ),
+    }
 }
 
 fn emit_cow_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
@@ -3317,13 +3525,21 @@ fn scaled_model_root_transform(instance: EntityModelInstance, scale: f32) -> Mat
     entity_model_root_transform(instance) * Mat4::from_scale(Vec3::splat(scale))
 }
 
-fn villager_adult_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+fn mesh_transformer_scaled_model_root_transform(instance: EntityModelInstance, scale: f32) -> Mat4 {
     entity_model_root_transform(instance)
         * part_pose_transform(PartPose {
-            offset: [0.0, VILLAGER_LIKE_ROOT_Y_OFFSET_PIXELS, 0.0],
+            offset: [
+                0.0,
+                MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS * (1.0 - scale),
+                0.0,
+            ],
             rotation: [0.0, 0.0, 0.0],
         })
-        * Mat4::from_scale(Vec3::splat(VILLAGER_LIKE_SCALE))
+        * Mat4::from_scale(Vec3::splat(scale))
+}
+
+fn villager_adult_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    mesh_transformer_scaled_model_root_transform(instance, VILLAGER_LIKE_SCALE)
 }
 
 fn humanoid_model_color(family: HumanoidModelFamily) -> [f32; 4] {
@@ -3353,12 +3569,53 @@ fn emit_model_parts(mesh: &mut EntityModelMesh, parts: &[ModelPartDesc], parent_
     }
 }
 
+fn emit_model_parts_with_color(
+    mesh: &mut EntityModelMesh,
+    parts: &[ModelPartDesc],
+    parent_transform: Mat4,
+    color: [f32; 4],
+) {
+    for part in parts {
+        emit_model_part_with_color(mesh, part, parent_transform, color);
+    }
+}
+
 fn emit_model_part(mesh: &mut EntityModelMesh, part: &ModelPartDesc, parent_transform: Mat4) {
     let transform = parent_transform * part_pose_transform(part.pose);
     for cube in part.cubes {
         emit_model_cube(mesh, transform, *cube);
     }
     emit_model_parts(mesh, part.children, transform);
+}
+
+fn emit_model_part_with_color(
+    mesh: &mut EntityModelMesh,
+    part: &ModelPartDesc,
+    parent_transform: Mat4,
+    color: [f32; 4],
+) {
+    let transform = parent_transform * part_pose_transform(part.pose);
+    for cube in part.cubes {
+        emit_model_cube_with_color(mesh, transform, *cube, color);
+    }
+    emit_model_parts_with_color(mesh, part.children, transform, color);
+}
+
+fn emit_model_cube_with_color(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    cube: ModelCubeDesc,
+    color: [f32; 4],
+) {
+    emit_model_cube(
+        mesh,
+        transform,
+        ModelCubeDesc {
+            min: cube.min,
+            size: cube.size,
+            color,
+        },
+    );
 }
 
 fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
@@ -3742,6 +3999,36 @@ mod tests {
             })
         );
         assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Stray
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/skeleton/stray.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Parched
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/skeleton/parched.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::WitherSkeleton
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/skeleton/wither_skeleton.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
             EntityModelKind::Humanoid {
                 family: HumanoidModelFamily::Zombie,
                 baby: false,
@@ -3749,6 +4036,127 @@ mod tests {
             .vanilla_texture_ref(),
             None
         );
+    }
+
+    #[test]
+    fn skeleton_variant_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            PARCHED_BODY,
+            [
+                ModelCubeDesc {
+                    min: [-4.0, 0.0, -2.0],
+                    size: [8.0, 12.0, 4.0],
+                    color: PARCHED_BONE,
+                },
+                ModelCubeDesc {
+                    min: [-4.0, 10.0, -2.0],
+                    size: [8.0, 1.0, 4.0],
+                    color: PARCHED_BONE,
+                },
+                ModelCubeDesc {
+                    min: [-4.025, -0.025, -2.025],
+                    size: [8.05, 12.05, 4.05],
+                    color: PARCHED_BONE,
+                },
+            ]
+        );
+        assert_eq!(
+            PARCHED_HEAD[1],
+            ModelCubeDesc {
+                min: [-4.2, -8.2, -4.2],
+                size: [8.4, 8.4, 8.4],
+                color: PARCHED_BONE,
+            }
+        );
+
+        assert_eq!(PARCHED_PARTS.len(), 6);
+        assert_part_tree(
+            &PARCHED_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PARCHED_HEAD.as_slice(),
+            PARCHED_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PARCHED_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PARCHED_EMPTY_HAT.as_slice(),
+        );
+        assert_part(
+            &PARCHED_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PARCHED_BODY.as_slice(),
+        );
+        assert_part(
+            &PARCHED_PARTS[2],
+            [-5.5, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PARCHED_RIGHT_ARM.as_slice(),
+        );
+        assert_part(
+            &PARCHED_PARTS[3],
+            [5.5, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PARCHED_LEFT_ARM.as_slice(),
+        );
+        assert_part(
+            &PARCHED_PARTS[4],
+            [-2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PARCHED_LEG.as_slice(),
+        );
+        assert_part(
+            &PARCHED_PARTS[5],
+            [2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PARCHED_LEG.as_slice(),
+        );
+    }
+
+    #[test]
+    fn skeleton_variant_meshes_use_vanilla_body_layer_geometry() {
+        let skeleton =
+            entity_model_mesh(&[EntityModelInstance::skeleton(51, [0.0, 64.0, 0.0], 0.0)]);
+        let stray = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
+            128,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Stray,
+        )]);
+        assert_eq!(stray.vertices, skeleton.vertices);
+        assert_eq!(stray.indices, skeleton.indices);
+
+        let wither = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
+            146,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::WitherSkeleton,
+        )]);
+        assert_eq!(wither.opaque_faces, 42);
+        assert_eq!(wither.vertices.len(), 168);
+        assert_eq!(wither.indices.len(), 252);
+        assert!(wither
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(WITHER_SKELETON_DARK, 0.78)));
+        let (wither_min, wither_max) = mesh_extents(&wither);
+        assert_close3(wither_min, [-0.45000002, 64.0012, -0.33750004]);
+        assert_close3(wither_max, [0.45000002, 66.4387, 0.33750004]);
+
+        let parched = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
+            97,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Parched,
+        )]);
+        assert_eq!(parched.opaque_faces, 78);
+        assert_eq!(parched.vertices.len(), 312);
+        assert_eq!(parched.indices.len(), 468);
+        let (parched_min, parched_max) = mesh_extents(&parched);
+        assert_close3(parched_min, [-0.440625, 64.001, -0.26250002]);
+        assert_close3(parched_max, [0.440625, 66.0135, 0.26250002]);
     }
 
     #[test]
@@ -5385,6 +5793,27 @@ mod tests {
             "zombie_baby"
         );
         assert_eq!(EntityModelKind::Skeleton.model_key(), "skeleton");
+        assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Stray
+            }
+            .model_key(),
+            "stray"
+        );
+        assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Parched
+            }
+            .model_key(),
+            "parched"
+        );
+        assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::WitherSkeleton
+            }
+            .model_key(),
+            "wither_skeleton"
+        );
         assert_eq!(EntityModelKind::Cow { baby: true }.model_key(), "cow_baby");
         assert_eq!(
             EntityModelKind::Sheep { baby: true }.model_key(),
