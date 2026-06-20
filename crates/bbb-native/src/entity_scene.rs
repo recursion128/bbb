@@ -1,7 +1,7 @@
 use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-    DonkeyModelFamily, EntityModelInstance, EntityModelKind, HoglinModelFamily,
+    DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
     PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SheepWoolColor,
     SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
@@ -192,6 +192,10 @@ const PIG_VARIANT_DATA_ID: u8 = 19;
 const SHEEP_WOOL_DATA_ID: u8 = 17;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
+const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
+const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
+const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
+const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -398,9 +402,7 @@ fn entity_model_kind_with_registries(
         VANILLA_ENTITY_TYPE_NAUTILUS_ID | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
-        VANILLA_ENTITY_TYPE_WOLF_ID => EntityModelKind::Wolf {
-            baby: ageable_baby(data_values),
-        },
+        VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values),
         VANILLA_ENTITY_TYPE_CAT_ID
         | VANILLA_ENTITY_TYPE_OCELOT_ID
         | VANILLA_ENTITY_TYPE_FOX_ID
@@ -627,6 +629,23 @@ fn sheep_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entity
         baby: ageable_baby(values),
         sheared: wool & SHEEP_WOOL_SHEARED_FLAG != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
+    }
+}
+
+fn wolf_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    let tame =
+        (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_TAME_FLAG) != 0;
+    EntityModelKind::Wolf {
+        baby: ageable_baby(values),
+        tame,
+        angry: false,
+        collar_color: tame.then(|| {
+            EntityDyeColor::from_vanilla_id(entity_data_int(
+                values,
+                WOLF_COLLAR_COLOR_DATA_ID,
+                WOLF_DEFAULT_COLLAR_COLOR_ID,
+            ))
+        }),
     }
 }
 
@@ -1996,14 +2015,66 @@ mod tests {
     fn entity_model_kind_uses_exact_models_for_wolves() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WOLF_ID, &[]),
-            EntityModelKind::Wolf { baby: false }
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: false,
+                collar_color: None,
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_WOLF_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Wolf { baby: true }
+            EntityModelKind::Wolf {
+                baby: true,
+                tame: false,
+                angry: false,
+                collar_color: None,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[protocol_byte_data(
+                    TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                    TAMABLE_ANIMAL_TAME_FLAG
+                )]
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: true,
+                angry: false,
+                collar_color: Some(EntityDyeColor::Red),
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[
+                    protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                    protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11),
+                ]
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: true,
+                angry: false,
+                collar_color: Some(EntityDyeColor::Blue),
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11)]
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: false,
+                collar_color: None,
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[]),

@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
-use bbb_renderer::{sheep_entity_texture_refs, EntityModelTextureImage, EntityModelTextureRef};
+use bbb_renderer::{entity_model_texture_refs, EntityModelTextureImage, EntityModelTextureRef};
 
 pub(crate) fn load_entity_model_textures(
     renderer: &mut bbb_renderer::Renderer,
@@ -31,7 +31,7 @@ fn try_load_entity_model_textures(
 }
 
 fn load_entity_model_texture_images(roots: &PackRoots) -> Result<Vec<EntityModelTextureImage>> {
-    sheep_entity_texture_refs()
+    entity_model_texture_refs()
         .iter()
         .copied()
         .map(|texture| load_entity_model_texture_image(roots, texture))
@@ -71,22 +71,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn loads_vanilla_sheep_entity_textures_from_resource_stack() {
+    fn loads_vanilla_entity_textures_from_resource_stack() {
         let temp = unique_temp_dir("bbb-entity-textures");
         let sources = temp.join("sources").join("26.1");
-        let texture_dir = sources
-            .join("assets")
-            .join("minecraft")
-            .join("textures")
-            .join("entity")
-            .join("sheep");
-        std::fs::create_dir_all(&texture_dir).unwrap();
-        for texture in sheep_entity_texture_refs() {
-            write_png(
-                &texture_dir.join(texture.path.rsplit('/').next().unwrap()),
-                texture.size[0],
-                texture.size[1],
-            );
+        for texture in entity_model_texture_refs() {
+            let texture_path = sources.join("assets").join("minecraft").join(texture.path);
+            std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+            write_png(&texture_path, texture.size[0], texture.size[1]);
         }
         let roots = PackRoots {
             mc_code_root: temp.clone(),
@@ -98,7 +89,7 @@ mod tests {
 
         let images = load_entity_model_texture_images(&roots).unwrap();
 
-        assert_eq!(images.len(), 5);
+        assert_eq!(images.len(), 13);
         assert_eq!(images[0].texture.path, "textures/entity/sheep/sheep.png");
         assert_eq!(
             images[1].texture.path,
@@ -116,36 +107,52 @@ mod tests {
             images[4].texture.path,
             "textures/entity/sheep/sheep_wool_baby.png"
         );
+        assert_eq!(images[5].texture.path, "textures/entity/wolf/wolf.png");
+        assert_eq!(images[6].texture.path, "textures/entity/wolf/wolf_tame.png");
+        assert_eq!(
+            images[7].texture.path,
+            "textures/entity/wolf/wolf_angry.png"
+        );
+        assert_eq!(images[8].texture.path, "textures/entity/wolf/wolf_baby.png");
+        assert_eq!(
+            images[9].texture.path,
+            "textures/entity/wolf/wolf_tame_baby.png"
+        );
+        assert_eq!(
+            images[10].texture.path,
+            "textures/entity/wolf/wolf_angry_baby.png"
+        );
+        assert_eq!(
+            images[11].texture.path,
+            "textures/entity/wolf/wolf_collar.png"
+        );
+        assert_eq!(
+            images[12].texture.path,
+            "textures/entity/wolf/wolf_collar_baby.png"
+        );
         for image in images {
-            assert_eq!(image.texture.size, [64, 32]);
-            assert_eq!(image.rgba.len(), 64 * 32 * 4);
+            assert_eq!(
+                image.rgba.len(),
+                usize::try_from(image.texture.size[0] * image.texture.size[1] * 4).unwrap()
+            );
         }
 
         std::fs::remove_dir_all(temp).unwrap();
     }
 
     #[test]
-    fn rejects_sheep_entity_texture_with_wrong_dimensions() {
+    fn rejects_entity_texture_with_wrong_dimensions() {
         let temp = unique_temp_dir("bbb-entity-textures-bad");
         let sources = temp.join("sources").join("26.1");
-        let texture_dir = sources
-            .join("assets")
-            .join("minecraft")
-            .join("textures")
-            .join("entity")
-            .join("sheep");
-        std::fs::create_dir_all(&texture_dir).unwrap();
-        for texture in sheep_entity_texture_refs() {
+        for texture in entity_model_texture_refs() {
+            let texture_path = sources.join("assets").join("minecraft").join(texture.path);
+            std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
             let [width, height] = if texture.path == "textures/entity/sheep/sheep.png" {
                 [32, 32]
             } else {
                 texture.size
             };
-            write_png(
-                &texture_dir.join(texture.path.rsplit('/').next().unwrap()),
-                width,
-                height,
-            );
+            write_png(&texture_path, width, height);
         }
         let roots = PackRoots {
             mc_code_root: temp.clone(),

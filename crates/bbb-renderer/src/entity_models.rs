@@ -82,6 +82,9 @@ pub enum EntityModelKind {
     WanderingTrader,
     Wolf {
         baby: bool,
+        tame: bool,
+        angry: bool,
+        collar_color: Option<EntityDyeColor>,
     },
     Horse {
         baby: bool,
@@ -256,6 +259,98 @@ pub enum BoatModelFamily {
     Oak,
     PaleOak,
     Spruce,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityDyeColor {
+    White,
+    Orange,
+    Magenta,
+    LightBlue,
+    Yellow,
+    Lime,
+    Pink,
+    Gray,
+    LightGray,
+    Cyan,
+    Purple,
+    Blue,
+    Brown,
+    Green,
+    Red,
+    Black,
+}
+
+impl EntityDyeColor {
+    pub fn from_vanilla_id(id: i32) -> Self {
+        match id {
+            0 => Self::White,
+            1 => Self::Orange,
+            2 => Self::Magenta,
+            3 => Self::LightBlue,
+            4 => Self::Yellow,
+            5 => Self::Lime,
+            6 => Self::Pink,
+            7 => Self::Gray,
+            8 => Self::LightGray,
+            9 => Self::Cyan,
+            10 => Self::Purple,
+            11 => Self::Blue,
+            12 => Self::Brown,
+            13 => Self::Green,
+            14 => Self::Red,
+            15 => Self::Black,
+            _ => Self::White,
+        }
+    }
+
+    pub fn vanilla_id(self) -> i32 {
+        match self {
+            Self::White => 0,
+            Self::Orange => 1,
+            Self::Magenta => 2,
+            Self::LightBlue => 3,
+            Self::Yellow => 4,
+            Self::Lime => 5,
+            Self::Pink => 6,
+            Self::Gray => 7,
+            Self::LightGray => 8,
+            Self::Cyan => 9,
+            Self::Purple => 10,
+            Self::Blue => 11,
+            Self::Brown => 12,
+            Self::Green => 13,
+            Self::Red => 14,
+            Self::Black => 15,
+        }
+    }
+
+    pub fn texture_diffuse_color(self) -> [f32; 4] {
+        let [red, green, blue] = match self {
+            Self::White => [249, 255, 254],
+            Self::Orange => [249, 128, 29],
+            Self::Magenta => [199, 78, 189],
+            Self::LightBlue => [58, 179, 218],
+            Self::Yellow => [254, 216, 61],
+            Self::Lime => [128, 199, 31],
+            Self::Pink => [243, 139, 170],
+            Self::Gray => [71, 79, 82],
+            Self::LightGray => [157, 157, 151],
+            Self::Cyan => [22, 156, 156],
+            Self::Purple => [137, 50, 184],
+            Self::Blue => [60, 68, 170],
+            Self::Brown => [131, 84, 50],
+            Self::Green => [94, 124, 22],
+            Self::Red => [176, 46, 38],
+            Self::Black => [29, 29, 33],
+        };
+        [
+            red as f32 / 255.0,
+            green as f32 / 255.0,
+            blue as f32 / 255.0,
+            1.0,
+        ]
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -543,8 +638,9 @@ impl EntityModelKind {
             Self::Villager { baby: false } => "villager",
             Self::Villager { baby: true } => "villager_baby",
             Self::WanderingTrader => "wandering_trader",
-            Self::Wolf { baby: false } => "wolf",
-            Self::Wolf { baby: true } => "wolf_baby",
+            Self::Wolf {
+                baby, tame, angry, ..
+            } => wolf_model_key(baby, tame, angry),
             Self::Horse { baby: false } => "horse",
             Self::Horse { baby: true } => "horse_baby",
             Self::Donkey {
@@ -761,8 +857,9 @@ impl EntityModelKind {
             Self::Villager { baby: false } => Some(VILLAGER_TEXTURE_REF),
             Self::Villager { baby: true } => Some(VILLAGER_BABY_TEXTURE_REF),
             Self::WanderingTrader => Some(WANDERING_TRADER_TEXTURE_REF),
-            Self::Wolf { baby: false } => Some(WOLF_TEXTURE_REF),
-            Self::Wolf { baby: true } => Some(WOLF_BABY_TEXTURE_REF),
+            Self::Wolf {
+                baby, tame, angry, ..
+            } => Some(wolf_texture_ref(baby, tame, angry)),
             Self::Horse { baby: false } => Some(HORSE_WHITE_TEXTURE_REF),
             Self::Horse { baby: true } => Some(HORSE_WHITE_BABY_TEXTURE_REF),
             Self::Donkey {
@@ -874,6 +971,18 @@ impl EntityModelKind {
                 sheared: true,
                 ..
             } => &[],
+            Self::Wolf {
+                baby: false,
+                tame: true,
+                collar_color: Some(_),
+                ..
+            } => &WOLF_COLLAR_LAYER_TEXTURE_REFS,
+            Self::Wolf {
+                baby: true,
+                tame: true,
+                collar_color: Some(_),
+                ..
+            } => &WOLF_BABY_COLLAR_LAYER_TEXTURE_REFS,
             _ => &[],
         }
     }
@@ -1141,7 +1250,29 @@ impl EntityModelInstance {
     }
 
     pub fn wolf(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
-        Self::new(entity_id, EntityModelKind::Wolf { baby }, position, y_rot)
+        Self::wolf_state(entity_id, position, y_rot, baby, false, false, None)
+    }
+
+    pub fn wolf_state(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        tame: bool,
+        angry: bool,
+        collar_color: Option<EntityDyeColor>,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Wolf {
+                baby,
+                tame,
+                angry,
+                collar_color: tame.then_some(collar_color).flatten(),
+            },
+            position,
+            y_rot,
+        )
     }
 
     pub fn horse(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
@@ -1423,6 +1554,7 @@ struct TexturedModelCubeDesc {
     size: [f32; 3],
     uv_size: [f32; 3],
     tex: [f32; 2],
+    mirror: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1430,6 +1562,8 @@ enum EntityModelLayerKind {
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
+    WolfBase,
+    WolfCollar,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1789,10 +1923,79 @@ const WOLF_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     size: [64, 32],
 };
 
+const WOLF_TAME_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf_tame.png",
+    size: [64, 32],
+};
+
+const WOLF_ANGRY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf_angry.png",
+    size: [64, 32],
+};
+
 const WOLF_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/wolf/wolf_baby.png",
     size: [32, 32],
 };
+
+const WOLF_TAME_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf_tame_baby.png",
+    size: [32, 32],
+};
+
+const WOLF_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf_angry_baby.png",
+    size: [32, 32],
+};
+
+const WOLF_COLLAR_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf_collar.png",
+    size: [64, 32],
+};
+
+const WOLF_BABY_COLLAR_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf_collar_baby.png",
+    size: [32, 32],
+};
+
+const WOLF_COLLAR_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] = [WOLF_COLLAR_TEXTURE_REF];
+const WOLF_BABY_COLLAR_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [WOLF_BABY_COLLAR_TEXTURE_REF];
+
+const WOLF_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 8] = [
+    WOLF_TEXTURE_REF,
+    WOLF_TAME_TEXTURE_REF,
+    WOLF_ANGRY_TEXTURE_REF,
+    WOLF_BABY_TEXTURE_REF,
+    WOLF_TAME_BABY_TEXTURE_REF,
+    WOLF_ANGRY_BABY_TEXTURE_REF,
+    WOLF_COLLAR_TEXTURE_REF,
+    WOLF_BABY_COLLAR_TEXTURE_REF,
+];
+
+pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &WOLF_ENTITY_TEXTURE_REFS
+}
+
+const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 13] = [
+    SHEEP_TEXTURE_REF,
+    SHEEP_BABY_TEXTURE_REF,
+    SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
+    SHEEP_WOOL_TEXTURE_REF,
+    SHEEP_WOOL_BABY_TEXTURE_REF,
+    WOLF_TEXTURE_REF,
+    WOLF_TAME_TEXTURE_REF,
+    WOLF_ANGRY_TEXTURE_REF,
+    WOLF_BABY_TEXTURE_REF,
+    WOLF_TAME_BABY_TEXTURE_REF,
+    WOLF_ANGRY_BABY_TEXTURE_REF,
+    WOLF_COLLAR_TEXTURE_REF,
+    WOLF_BABY_COLLAR_TEXTURE_REF,
+];
+
+pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ENTITY_MODEL_TEXTURE_REFS
+}
 
 const HORSE_WHITE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/horse/horse_white.png",
@@ -5516,12 +5719,15 @@ const MODEL_LAYER_SHEEP_BABY: &str = "minecraft:sheep_baby#main";
 const MODEL_LAYER_SHEEP_WOOL: &str = "minecraft:sheep#wool";
 const MODEL_LAYER_SHEEP_BABY_WOOL: &str = "minecraft:sheep_baby#wool";
 const MODEL_LAYER_SHEEP_WOOL_UNDERCOAT: &str = "minecraft:sheep#wool_undercoat";
+const MODEL_LAYER_WOLF: &str = "minecraft:wolf#main";
+const MODEL_LAYER_WOLF_BABY: &str = "minecraft:wolf_baby#main";
 
 const ADULT_SHEEP_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
     min: [-3.0, -4.0, -6.0],
     size: [6.0, 6.0, 8.0],
     uv_size: [6.0, 6.0, 8.0],
     tex: [0.0, 0.0],
+    mirror: false,
 }];
 
 const ADULT_SHEEP_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5529,6 +5735,7 @@ const ADULT_SHEEP_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCube
     size: [8.0, 16.0, 6.0],
     uv_size: [8.0, 16.0, 6.0],
     tex: [28.0, 8.0],
+    mirror: false,
 }];
 
 const ADULT_SHEEP_TEXTURED_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5536,6 +5743,7 @@ const ADULT_SHEEP_TEXTURED_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeD
     size: [4.0, 12.0, 4.0],
     uv_size: [4.0, 12.0, 4.0],
     tex: [0.0, 16.0],
+    mirror: false,
 }];
 
 const ADULT_SHEEP_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
@@ -5576,6 +5784,7 @@ const ADULT_SHEEP_WOOL_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [TexturedMode
     size: [7.2, 7.2, 7.2],
     uv_size: [6.0, 6.0, 6.0],
     tex: [0.0, 0.0],
+    mirror: false,
 }];
 
 const ADULT_SHEEP_WOOL_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5583,6 +5792,7 @@ const ADULT_SHEEP_WOOL_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedMode
     size: [11.5, 19.5, 9.5],
     uv_size: [8.0, 16.0, 6.0],
     tex: [28.0, 8.0],
+    mirror: false,
 }];
 
 const ADULT_SHEEP_WOOL_TEXTURED_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5590,6 +5800,7 @@ const ADULT_SHEEP_WOOL_TEXTURED_LEG: [TexturedModelCubeDesc; 1] = [TexturedModel
     size: [5.0, 7.0, 5.0],
     uv_size: [4.0, 6.0, 4.0],
     tex: [0.0, 16.0],
+    mirror: false,
 }];
 
 const ADULT_SHEEP_WOOL_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
@@ -5630,6 +5841,7 @@ const BABY_SHEEP_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeD
     size: [6.0, 4.0, 9.0],
     uv_size: [6.0, 4.0, 9.0],
     tex: [0.0, 10.0],
+    mirror: false,
 }];
 
 const BABY_SHEEP_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5637,6 +5849,7 @@ const BABY_SHEEP_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [TexturedModelCubeD
     size: [5.0, 5.0, 5.0],
     uv_size: [5.0, 5.0, 5.0],
     tex: [0.0, 0.0],
+    mirror: false,
 }];
 
 const BABY_SHEEP_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5644,6 +5857,7 @@ const BABY_SHEEP_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] = [Textured
     size: [2.0, 5.0, 2.0],
     uv_size: [2.0, 5.0, 2.0],
     tex: [0.0, 23.0],
+    mirror: false,
 }];
 
 const BABY_SHEEP_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5651,6 +5865,7 @@ const BABY_SHEEP_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] = [TexturedM
     size: [2.0, 5.0, 2.0],
     uv_size: [2.0, 5.0, 2.0],
     tex: [24.0, 12.0],
+    mirror: false,
 }];
 
 const BABY_SHEEP_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5658,6 +5873,7 @@ const BABY_SHEEP_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [Texture
     size: [2.0, 5.0, 2.0],
     uv_size: [2.0, 5.0, 2.0],
     tex: [8.0, 23.0],
+    mirror: false,
 }];
 
 const BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
@@ -5665,6 +5881,7 @@ const BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [Textured
     size: [2.0, 5.0, 2.0],
     uv_size: [2.0, 5.0, 2.0],
     tex: [24.0, 5.0],
+    mirror: false,
 }];
 
 const BABY_SHEEP_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
@@ -5697,6 +5914,270 @@ const BABY_SHEEP_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
         pose: BABY_SHEEP_PARTS[5].pose,
         cubes: &BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG,
         children: &[],
+    },
+];
+
+const ADULT_WOLF_TEXTURED_REAL_HEAD: [TexturedModelCubeDesc; 4] = [
+    TexturedModelCubeDesc {
+        min: [-2.0, -3.0, -2.0],
+        size: [6.0, 6.0, 4.0],
+        uv_size: [6.0, 6.0, 4.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-2.0, -5.0, 0.0],
+        size: [2.0, 2.0, 1.0],
+        uv_size: [2.0, 2.0, 1.0],
+        tex: [16.0, 14.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [2.0, -5.0, 0.0],
+        size: [2.0, 2.0, 1.0],
+        uv_size: [2.0, 2.0, 1.0],
+        tex: [16.0, 14.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-0.5, -0.001, -5.0],
+        size: [3.0, 3.0, 4.0],
+        uv_size: [3.0, 3.0, 4.0],
+        tex: [0.0, 10.0],
+        mirror: false,
+    },
+];
+
+const ADULT_WOLF_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_WOLF_TEXTURED_REAL_HEAD,
+    children: &[],
+}];
+
+const ADULT_WOLF_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.0, -2.0, -3.0],
+    size: [6.0, 9.0, 6.0],
+    uv_size: [6.0, 9.0, 6.0],
+    tex: [18.0, 14.0],
+    mirror: false,
+}];
+
+const ADULT_WOLF_TEXTURED_UPPER_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.0, -3.0, -3.0],
+    size: [8.0, 6.0, 7.0],
+    uv_size: [8.0, 6.0, 7.0],
+    tex: [21.0, 0.0],
+    mirror: false,
+}];
+
+const ADULT_WOLF_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [0.0, 0.0, -1.0],
+    size: [2.0, 8.0, 2.0],
+    uv_size: [2.0, 8.0, 2.0],
+    tex: [0.0, 18.0],
+    mirror: false,
+}];
+
+const ADULT_WOLF_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [0.0, 0.0, -1.0],
+    size: [2.0, 8.0, 2.0],
+    uv_size: [2.0, 8.0, 2.0],
+    tex: [0.0, 18.0],
+    mirror: true,
+}];
+
+const ADULT_WOLF_TEXTURED_REAL_TAIL: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [0.0, 0.0, -1.0],
+    size: [2.0, 8.0, 2.0],
+    uv_size: [2.0, 8.0, 2.0],
+    tex: [9.0, 18.0],
+    mirror: false,
+}];
+
+const ADULT_WOLF_TEXTURED_TAIL_CHILDREN: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_WOLF_TEXTURED_REAL_TAIL,
+    children: &[],
+}];
+
+const ADULT_WOLF_TEXTURED_PARTS: [TexturedModelPartDesc; 8] = [
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[0].pose,
+        cubes: &[],
+        children: &ADULT_WOLF_TEXTURED_HEAD_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[1].pose,
+        cubes: &ADULT_WOLF_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[2].pose,
+        cubes: &ADULT_WOLF_TEXTURED_UPPER_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[3].pose,
+        cubes: &ADULT_WOLF_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[4].pose,
+        cubes: &ADULT_WOLF_TEXTURED_LEFT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[5].pose,
+        cubes: &ADULT_WOLF_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[6].pose,
+        cubes: &ADULT_WOLF_TEXTURED_LEFT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_WOLF_PARTS[7].pose,
+        cubes: &[],
+        children: &ADULT_WOLF_TEXTURED_TAIL_CHILDREN,
+    },
+];
+
+const BABY_WOLF_TEXTURED_HEAD: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-3.015, -3.275, -3.025],
+        size: [6.05, 5.05, 5.05],
+        uv_size: [6.0, 5.0, 5.0],
+        tex: [0.0, 12.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.5, -0.24, -5.0],
+        size: [3.0, 2.0, 2.0],
+        uv_size: [3.0, 2.0, 2.0],
+        tex: [17.0, 12.0],
+        mirror: false,
+    },
+];
+
+const BABY_WOLF_TEXTURED_RIGHT_EAR: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, -1.0, -0.5],
+    size: [2.0, 2.0, 1.0],
+    uv_size: [2.0, 2.0, 1.0],
+    tex: [0.0, 5.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_LEFT_EAR: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, -1.0, -0.5],
+    size: [2.0, 2.0, 1.0],
+    uv_size: [2.0, 2.0, 1.0],
+    tex: [20.0, 5.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_HEAD_CHILDREN[0].pose,
+        cubes: &BABY_WOLF_TEXTURED_RIGHT_EAR,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_HEAD_CHILDREN[1].pose,
+        cubes: &BABY_WOLF_TEXTURED_LEFT_EAR,
+        children: &[],
+    },
+];
+
+const BABY_WOLF_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.0, -2.0, -4.0],
+    size: [6.0, 4.0, 8.0],
+    uv_size: [6.0, 4.0, 8.0],
+    tex: [0.0, 0.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 3.0, 2.0],
+    uv_size: [2.0, 3.0, 2.0],
+    tex: [0.0, 22.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 3.0, 2.0],
+    uv_size: [2.0, 3.0, 2.0],
+    tex: [8.0, 22.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 3.0, 2.0],
+    uv_size: [2.0, 3.0, 2.0],
+    tex: [0.0, 0.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 3.0, 2.0],
+    uv_size: [2.0, 3.0, 2.0],
+    tex: [20.0, 0.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_TAIL_R1: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, -5.7, -1.0],
+    size: [2.0, 6.0, 2.0],
+    uv_size: [2.0, 6.0, 2.0],
+    tex: [22.0, 16.0],
+    mirror: false,
+}];
+
+const BABY_WOLF_TEXTURED_TAIL_CHILDREN: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
+    pose: BABY_WOLF_TAIL_CHILDREN[0].pose,
+    cubes: &BABY_WOLF_TEXTURED_TAIL_R1,
+    children: &[],
+}];
+
+const BABY_WOLF_TEXTURED_PARTS: [TexturedModelPartDesc; 7] = [
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_PARTS[0].pose,
+        cubes: &BABY_WOLF_TEXTURED_HEAD,
+        children: &BABY_WOLF_TEXTURED_HEAD_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_PARTS[1].pose,
+        cubes: &BABY_WOLF_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_PARTS[2].pose,
+        cubes: &BABY_WOLF_TEXTURED_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_PARTS[3].pose,
+        cubes: &BABY_WOLF_TEXTURED_LEFT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_PARTS[4].pose,
+        cubes: &BABY_WOLF_TEXTURED_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_PARTS[5].pose,
+        cubes: &BABY_WOLF_TEXTURED_LEFT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_WOLF_PARTS[6].pose,
+        cubes: &[],
+        children: &BABY_WOLF_TEXTURED_TAIL_CHILDREN,
     },
 ];
 
@@ -9222,7 +9703,7 @@ fn entity_model_colored_runtime_mesh(instances: &[EntityModelInstance]) -> Entit
 
 fn entity_model_mesh_with_options(
     instances: &[EntityModelInstance],
-    skip_texture_backed_sheep: bool,
+    skip_texture_backed_entities: bool,
 ) -> EntityModelMesh {
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
@@ -9279,13 +9760,17 @@ fn entity_model_mesh_with_options(
                 sheared,
                 wool_color,
             } => {
-                if !skip_texture_backed_sheep {
+                if !skip_texture_backed_entities {
                     emit_sheep_model(&mut mesh, *instance, baby, sheared, wool_color);
                 }
             }
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
             EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
-            EntityModelKind::Wolf { baby } => emit_wolf_model(&mut mesh, *instance, baby),
+            EntityModelKind::Wolf { baby, .. } => {
+                if !skip_texture_backed_entities {
+                    emit_wolf_model(&mut mesh, *instance, baby);
+                }
+            }
             EntityModelKind::Horse { baby } => emit_horse_model(&mut mesh, *instance, baby),
             EntityModelKind::Donkey {
                 family,
@@ -9341,13 +9826,31 @@ fn entity_model_textured_mesh(
 ) -> EntityModelTexturedMesh {
     let mut mesh = EntityModelTexturedMesh::new();
     for instance in instances {
-        if let EntityModelKind::Sheep {
-            baby,
-            sheared,
-            wool_color,
-        } = instance.kind
-        {
-            emit_sheep_textured_model(&mut mesh, *instance, baby, sheared, wool_color, atlas);
+        match instance.kind {
+            EntityModelKind::Sheep {
+                baby,
+                sheared,
+                wool_color,
+            } => {
+                emit_sheep_textured_model(&mut mesh, *instance, baby, sheared, wool_color, atlas);
+            }
+            EntityModelKind::Wolf {
+                baby,
+                tame,
+                angry,
+                collar_color,
+            } => {
+                emit_wolf_textured_model(
+                    &mut mesh,
+                    *instance,
+                    baby,
+                    tame,
+                    angry,
+                    collar_color,
+                    atlas,
+                );
+            }
+            _ => {}
         }
     }
     mesh
@@ -9745,6 +10248,31 @@ fn emit_sheep_textured_model(
     }
 }
 
+fn emit_wolf_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    baby: bool,
+    tame: bool,
+    angry: bool,
+    collar_color: Option<EntityDyeColor>,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in wolf_textured_layer_passes(baby, tame, angry, collar_color) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
+}
+
 fn sheep_textured_layer_passes(
     baby: bool,
     sheared: bool,
@@ -9808,6 +10336,50 @@ fn sheep_textured_layer_passes(
         });
     }
     passes.sort_by_key(|pass| (pass.collector_order, pass.submit_sequence));
+    passes
+}
+
+fn wolf_textured_layer_passes(
+    baby: bool,
+    tame: bool,
+    angry: bool,
+    collar_color: Option<EntityDyeColor>,
+) -> Vec<EntityModelLayerPass> {
+    let parts = if baby {
+        BABY_WOLF_TEXTURED_PARTS.as_slice()
+    } else {
+        ADULT_WOLF_TEXTURED_PARTS.as_slice()
+    };
+    let model_layer = if baby {
+        MODEL_LAYER_WOLF_BABY
+    } else {
+        MODEL_LAYER_WOLF
+    };
+    let mut passes = Vec::with_capacity(2);
+    passes.push(EntityModelLayerPass {
+        kind: EntityModelLayerKind::WolfBase,
+        model_layer,
+        texture: wolf_texture_ref(baby, tame, angry),
+        parts,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    });
+    if let Some(collar_color) = tame.then_some(collar_color).flatten() {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::WolfCollar,
+            model_layer,
+            texture: if baby {
+                WOLF_BABY_COLLAR_TEXTURE_REF
+            } else {
+                WOLF_COLLAR_TEXTURE_REF
+            },
+            parts,
+            tint: collar_color.texture_diffuse_color(),
+            collector_order: 1,
+            submit_sequence: 1,
+        });
+    }
     passes
 }
 
@@ -10650,6 +11222,28 @@ fn sheep_wool_layer_color(wool_color: SheepWoolColor) -> [f32; 4] {
     ]
 }
 
+fn wolf_model_key(baby: bool, tame: bool, angry: bool) -> &'static str {
+    match (baby, tame, angry) {
+        (false, true, _) => "wolf_tame",
+        (false, false, true) => "wolf_angry",
+        (false, false, false) => "wolf",
+        (true, true, _) => "wolf_tame_baby",
+        (true, false, true) => "wolf_angry_baby",
+        (true, false, false) => "wolf_baby",
+    }
+}
+
+fn wolf_texture_ref(baby: bool, tame: bool, angry: bool) -> EntityModelTextureRef {
+    match (baby, tame, angry) {
+        (false, true, _) => WOLF_TAME_TEXTURE_REF,
+        (false, false, true) => WOLF_ANGRY_TEXTURE_REF,
+        (false, false, false) => WOLF_TEXTURE_REF,
+        (true, true, _) => WOLF_TAME_BABY_TEXTURE_REF,
+        (true, false, true) => WOLF_ANGRY_BABY_TEXTURE_REF,
+        (true, false, false) => WOLF_BABY_TEXTURE_REF,
+    }
+}
+
 fn llama_model_key(family: LlamaModelFamily, variant: LlamaVariant, baby: bool) -> &'static str {
     match (family, variant, baby) {
         (LlamaModelFamily::Llama, LlamaVariant::Creamy, false) => "llama_creamy",
@@ -10947,8 +11541,11 @@ fn emit_textured_model_cube(
     uv_rect: EntityModelUvRect,
     tint: [f32; 4],
 ) {
-    let min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
-    let max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
+    let mut min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
+    let mut max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
+    if cube.mirror {
+        std::mem::swap(&mut min.x, &mut max.x);
+    }
     emit_textured_model_cube_from_min_max(mesh, transform, min, max, cube, texture, uv_rect, tint);
 }
 
@@ -11040,6 +11637,7 @@ fn emit_textured_model_cube_from_min_max(
         texture,
         uv_rect,
         tint,
+        cube.mirror,
     );
     emit_textured_model_polygon(
         mesh,
@@ -11048,6 +11646,7 @@ fn emit_textured_model_cube_from_min_max(
         texture,
         uv_rect,
         tint,
+        cube.mirror,
     );
     emit_textured_model_polygon(
         mesh,
@@ -11056,6 +11655,7 @@ fn emit_textured_model_cube_from_min_max(
         texture,
         uv_rect,
         tint,
+        cube.mirror,
     );
     emit_textured_model_polygon(
         mesh,
@@ -11064,6 +11664,7 @@ fn emit_textured_model_cube_from_min_max(
         texture,
         uv_rect,
         tint,
+        cube.mirror,
     );
     emit_textured_model_polygon(
         mesh,
@@ -11072,6 +11673,7 @@ fn emit_textured_model_cube_from_min_max(
         texture,
         uv_rect,
         tint,
+        cube.mirror,
     );
     emit_textured_model_polygon(
         mesh,
@@ -11080,6 +11682,7 @@ fn emit_textured_model_cube_from_min_max(
         texture,
         uv_rect,
         tint,
+        cube.mirror,
     );
 }
 
@@ -11090,22 +11693,26 @@ fn emit_textured_model_polygon(
     texture: EntityModelTextureRef,
     uv_rect: EntityModelUvRect,
     tint: [f32; 4],
+    mirror: bool,
 ) {
     let [u0, v0, u1, v1] = texture_uv;
     let source_uv = [[u1, v0], [u0, v0], [u0, v1], [u1, v1]];
+    let mut vertices = [
+        (corners[0], source_uv[0]),
+        (corners[1], source_uv[1]),
+        (corners[2], source_uv[2]),
+        (corners[3], source_uv[3]),
+    ];
+    if mirror {
+        vertices.reverse();
+    }
     let base = mesh.vertices.len() as u32;
     mesh.vertices
-        .extend(
-            corners
-                .iter()
-                .copied()
-                .zip(source_uv.iter().copied())
-                .map(|(position, uv)| EntityModelTexturedVertex {
-                    position: position.to_array(),
-                    uv: atlas_uv(uv, texture, uv_rect),
-                    tint,
-                }),
-        );
+        .extend(vertices.map(|(position, uv)| EntityModelTexturedVertex {
+            position: position.to_array(),
+            uv: atlas_uv(uv, texture, uv_rect),
+            tint,
+        }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
     mesh.cutout_faces += 1;
@@ -14226,6 +14833,7 @@ mod tests {
                 size: [6.0, 6.0, 8.0],
                 uv_size: [6.0, 6.0, 8.0],
                 tex: [0.0, 0.0],
+                mirror: false,
             }
         );
         assert_eq!(
@@ -14235,6 +14843,7 @@ mod tests {
                 size: [7.2, 7.2, 7.2],
                 uv_size: [6.0, 6.0, 6.0],
                 tex: [0.0, 0.0],
+                mirror: false,
             }
         );
         assert_eq!(
@@ -14244,6 +14853,7 @@ mod tests {
                 size: [11.5, 19.5, 9.5],
                 uv_size: [8.0, 16.0, 6.0],
                 tex: [28.0, 8.0],
+                mirror: false,
             }
         );
         assert_eq!(
@@ -14253,6 +14863,7 @@ mod tests {
                 size: [2.0, 5.0, 2.0],
                 uv_size: [2.0, 5.0, 2.0],
                 tex: [24.0, 5.0],
+                mirror: false,
             }
         );
     }
@@ -14365,13 +14976,63 @@ mod tests {
     }
 
     #[test]
-    fn runtime_colored_mesh_excludes_texture_backed_sheep() {
+    fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
+        let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::wolf_state(
+                305,
+                [0.0, 64.0, 0.0],
+                0.0,
+                false,
+                true,
+                false,
+                Some(EntityDyeColor::Blue),
+            )],
+            &atlas,
+        );
+
+        assert_eq!(mesh.cutout_faces, 132);
+        assert_eq!(mesh.vertices.len(), 528);
+        assert_eq!(mesh.indices.len(), 792);
+        assert_close2(mesh.vertices[0].uv, [10.0 / 64.0, 32.0 / 256.0]);
+        assert_eq!(mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_close2(mesh.vertices[144].uv, [4.0 / 64.0, 52.0 / 256.0]);
+        assert_close2(mesh.vertices[264].uv, [10.0 / 64.0, 192.0 / 256.0]);
+        assert_eq!(
+            mesh.vertices[264].tint,
+            EntityDyeColor::Blue.texture_diffuse_color()
+        );
+
+        let untamed_with_collar_metadata = entity_model_textured_mesh(
+            &[EntityModelInstance::wolf_state(
+                306,
+                [0.0, 64.0, 0.0],
+                0.0,
+                false,
+                false,
+                false,
+                Some(EntityDyeColor::Red),
+            )],
+            &atlas,
+        );
+        assert_eq!(untamed_with_collar_metadata.cutout_faces, 66);
+        assert!(untamed_with_collar_metadata
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
+
+    #[test]
+    fn runtime_colored_mesh_excludes_texture_backed_entities() {
         let sheep = EntityModelInstance::sheep(304, [0.0, 64.0, 0.0], 0.0, false);
-        let colored = entity_model_colored_runtime_mesh(&[sheep]);
+        let wolf = EntityModelInstance::wolf(305, [2.0, 64.0, 0.0], 0.0, false);
+        let colored = entity_model_colored_runtime_mesh(&[sheep, wolf]);
         assert!(colored.vertices.is_empty());
         assert!(colored.indices.is_empty());
         let legacy_geometry_guard = entity_model_mesh(&[sheep]);
         assert!(!legacy_geometry_guard.vertices.is_empty());
+        let legacy_wolf_geometry_guard = entity_model_mesh(&[wolf]);
+        assert!(!legacy_wolf_geometry_guard.vertices.is_empty());
     }
 
     #[test]
@@ -14551,25 +15212,211 @@ mod tests {
     }
 
     #[test]
-    fn wolf_texture_refs_match_vanilla_renderer_defaults() {
-        assert_eq!(EntityModelKind::Wolf { baby: false }.model_key(), "wolf");
+    fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
+        let cases = [
+            (
+                false,
+                false,
+                false,
+                "wolf",
+                EntityModelTextureRef {
+                    path: "textures/entity/wolf/wolf.png",
+                    size: [64, 32],
+                },
+            ),
+            (
+                false,
+                true,
+                false,
+                "wolf_tame",
+                EntityModelTextureRef {
+                    path: "textures/entity/wolf/wolf_tame.png",
+                    size: [64, 32],
+                },
+            ),
+            (
+                false,
+                false,
+                true,
+                "wolf_angry",
+                EntityModelTextureRef {
+                    path: "textures/entity/wolf/wolf_angry.png",
+                    size: [64, 32],
+                },
+            ),
+            (
+                true,
+                false,
+                false,
+                "wolf_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/wolf/wolf_baby.png",
+                    size: [32, 32],
+                },
+            ),
+            (
+                true,
+                true,
+                false,
+                "wolf_tame_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/wolf/wolf_tame_baby.png",
+                    size: [32, 32],
+                },
+            ),
+            (
+                true,
+                false,
+                true,
+                "wolf_angry_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/wolf/wolf_angry_baby.png",
+                    size: [32, 32],
+                },
+            ),
+        ];
+        for (baby, tame, angry, model_key, texture) in cases {
+            let kind = EntityModelKind::Wolf {
+                baby,
+                tame,
+                angry,
+                collar_color: None,
+            };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
+
         assert_eq!(
-            EntityModelKind::Wolf { baby: false }.vanilla_texture_ref(),
-            Some(EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf.png",
-                size: [64, 32],
-            })
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: true,
+                angry: false,
+                collar_color: Some(EntityDyeColor::Red),
+            }
+            .vanilla_layer_texture_refs(),
+            &[WOLF_COLLAR_TEXTURE_REF]
         );
         assert_eq!(
-            EntityModelKind::Wolf { baby: true }.model_key(),
-            "wolf_baby"
+            EntityModelKind::Wolf {
+                baby: true,
+                tame: true,
+                angry: false,
+                collar_color: Some(EntityDyeColor::Red),
+            }
+            .vanilla_layer_texture_refs(),
+            &[WOLF_BABY_COLLAR_TEXTURE_REF]
+        );
+        assert!(EntityModelKind::Wolf {
+            baby: false,
+            tame: false,
+            angry: false,
+            collar_color: None,
+        }
+        .vanilla_layer_texture_refs()
+        .is_empty());
+        assert!(EntityModelKind::Wolf {
+            baby: false,
+            tame: false,
+            angry: false,
+            collar_color: Some(EntityDyeColor::Red),
+        }
+        .vanilla_layer_texture_refs()
+        .is_empty());
+    }
+
+    #[test]
+    fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
+        let wild = wolf_textured_layer_passes(false, false, false, None);
+        assert_eq!(
+            wild.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
+            vec![EntityModelLayerKind::WolfBase]
+        );
+        assert_eq!(wild[0].model_layer, MODEL_LAYER_WOLF);
+        assert_eq!(wild[0].texture, WOLF_TEXTURE_REF);
+        assert_eq!(wild[0].parts, ADULT_WOLF_TEXTURED_PARTS.as_slice());
+        assert_eq!(wild[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((wild[0].collector_order, wild[0].submit_sequence), (0, 0));
+
+        let tame_blue = wolf_textured_layer_passes(false, true, false, Some(EntityDyeColor::Blue));
+        assert_eq!(
+            tame_blue.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
+            vec![
+                EntityModelLayerKind::WolfBase,
+                EntityModelLayerKind::WolfCollar
+            ]
+        );
+        assert_eq!(tame_blue[0].texture, WOLF_TAME_TEXTURE_REF);
+        assert_eq!(tame_blue[1].model_layer, MODEL_LAYER_WOLF);
+        assert_eq!(tame_blue[1].texture, WOLF_COLLAR_TEXTURE_REF);
+        assert_eq!(tame_blue[1].parts, ADULT_WOLF_TEXTURED_PARTS.as_slice());
+        assert_eq!(
+            tame_blue[1].tint,
+            EntityDyeColor::Blue.texture_diffuse_color()
         );
         assert_eq!(
-            EntityModelKind::Wolf { baby: true }.vanilla_texture_ref(),
-            Some(EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf_baby.png",
-                size: [32, 32],
-            })
+            (tame_blue[1].collector_order, tame_blue[1].submit_sequence),
+            (1, 1)
+        );
+
+        let angry = wolf_textured_layer_passes(false, false, true, None);
+        assert_eq!(angry[0].texture, WOLF_ANGRY_TEXTURE_REF);
+        assert_eq!(angry.len(), 1);
+
+        let tame_angry = wolf_textured_layer_passes(false, true, true, Some(EntityDyeColor::Red));
+        assert_eq!(tame_angry[0].texture, WOLF_TAME_TEXTURE_REF);
+        assert_eq!(tame_angry.len(), 2);
+
+        let baby_tame = wolf_textured_layer_passes(true, true, false, Some(EntityDyeColor::Red));
+        assert_eq!(baby_tame[0].model_layer, MODEL_LAYER_WOLF_BABY);
+        assert_eq!(baby_tame[0].texture, WOLF_TAME_BABY_TEXTURE_REF);
+        assert_eq!(baby_tame[0].parts, BABY_WOLF_TEXTURED_PARTS.as_slice());
+        assert_eq!(baby_tame[1].texture, WOLF_BABY_COLLAR_TEXTURE_REF);
+        assert_eq!(baby_tame[1].parts, BABY_WOLF_TEXTURED_PARTS.as_slice());
+    }
+
+    #[test]
+    fn wolf_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+        assert_eq!(MODEL_LAYER_WOLF, "minecraft:wolf#main");
+        assert_eq!(MODEL_LAYER_WOLF_BABY, "minecraft:wolf_baby#main");
+        assert_eq!(
+            ADULT_WOLF_TEXTURED_REAL_HEAD[0],
+            TexturedModelCubeDesc {
+                min: [-2.0, -3.0, -2.0],
+                size: [6.0, 6.0, 4.0],
+                uv_size: [6.0, 6.0, 4.0],
+                tex: [0.0, 0.0],
+                mirror: false,
+            }
+        );
+        assert_eq!(
+            ADULT_WOLF_TEXTURED_RIGHT_LEG[0],
+            TexturedModelCubeDesc {
+                min: [0.0, 0.0, -1.0],
+                size: [2.0, 8.0, 2.0],
+                uv_size: [2.0, 8.0, 2.0],
+                tex: [0.0, 18.0],
+                mirror: true,
+            }
+        );
+        assert_eq!(
+            BABY_WOLF_TEXTURED_HEAD[0],
+            TexturedModelCubeDesc {
+                min: [-3.015, -3.275, -3.025],
+                size: [6.05, 5.05, 5.05],
+                uv_size: [6.0, 5.0, 5.0],
+                tex: [0.0, 12.0],
+                mirror: false,
+            }
+        );
+        assert_eq!(
+            BABY_WOLF_TEXTURED_LEFT_EAR[0],
+            TexturedModelCubeDesc {
+                min: [-1.0, -1.0, -0.5],
+                size: [2.0, 2.0, 1.0],
+                uv_size: [2.0, 2.0, 1.0],
+                tex: [20.0, 5.0],
+                mirror: false,
+            }
         );
     }
 
@@ -18004,7 +18851,9 @@ mod tests {
             "wandering_trader"
         );
         assert_eq!(
-            EntityModelKind::Wolf { baby: true }.model_key(),
+            EntityModelInstance::wolf(0, [0.0, 0.0, 0.0], 0.0, true)
+                .kind
+                .model_key(),
             "wolf_baby"
         );
         assert_eq!(
@@ -18258,6 +19107,17 @@ mod tests {
 
     fn sheep_texture_images() -> Vec<EntityModelTextureImage> {
         sheep_entity_texture_refs()
+            .iter()
+            .enumerate()
+            .map(|(index, texture)| {
+                let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                EntityModelTextureImage::new(*texture, vec![index as u8; len])
+            })
+            .collect()
+    }
+
+    fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
+        wolf_entity_texture_refs()
             .iter()
             .enumerate()
             .map(|(index, texture)| {

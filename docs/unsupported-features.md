@@ -238,7 +238,9 @@ When an agent does any of the following, update this file in the same slice:
       boat/chest-boat/raft/chest-raft/
       sheep base/wool/undercoat layer geometry plus texture-backed layer
       passes with sheared state and dye color projection/
-      wolf/base-horse/donkey/mule/
+      wolf base/collar layer geometry plus texture-backed layer passes with
+      tame flag and collar dye projection/
+      base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
       goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
@@ -260,6 +262,11 @@ When an agent does any of the following, update this file in the same slice:
       overlay, and render-state extraction parity
     - project custom-name `jeb_` color cycling from canonical entity data
     - apply eating head position/angle animation from entity event `10`
+  - Finish wolf presentation parity:
+    - project registry-driven wolf variants beyond the default/pale texture set
+    - project anger end-time against canonical client game time
+    - add armor, wet tint, sitting/head/tail/shake/walk pose, invisibility,
+      lighting, overlay, and render-state extraction parity
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -338,16 +345,22 @@ When an agent does any of the following, update this file in the same slice:
       binding remain unsupported
     - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
-      official base texture references recorded; wool undercoat/outer layers,
-      sheared state, dye color, `jeb_` color cycling, and eating head animation
-      remain unsupported
+      official base/wool/undercoat texture references, texture-backed base,
+      wool, and undercoat layer passes, metadata-driven sheared state, and dye
+      color projection; `jeb_` color cycling, eating head animation, lighting,
+      overlay, and full render-state extraction remain unsupported
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
-      `CubeDeformation` bounds; the default wild adult/baby texture references
-      are recorded from official assets, while wolf variant, tame/angry
-      texture, collar layer, armor layer, wet tint, sitting pose, head/tail
-      pose, shake, and walk animation remain unsupported
+      `CubeDeformation` bounds, official default/pale wild/tame/angry adult
+      and baby texture references, adult/baby collar texture references,
+      texture-backed base and collar layer passes, vanilla tame-over-angry
+      texture selection, metadata-driven tame flag projection, and collar dye
+      tint projection; registry-driven wolf variants beyond the default/pale
+      texture set, anger end-time/game-time projection, armor layer, wet tint,
+      sitting pose, head/tail pose, shake, walk animation, invisibility-gated
+      collar visibility, lighting, overlay, and full render-state extraction
+      remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -544,8 +557,9 @@ When an agent does any of the following, update this file in the same slice:
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
-    variant asset presentation, pig saddle presentation, sheep wool presentation,
-    wolf variant/tame/angry/collar/armor/wet-tint/pose presentation,
+    variant asset presentation, pig saddle presentation, sheep `jeb_`/eating
+    presentation,
+    wolf variant/anger-end-time/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
     horse variant/markings/saddle/armor/animation, donkey/mule saddle and
