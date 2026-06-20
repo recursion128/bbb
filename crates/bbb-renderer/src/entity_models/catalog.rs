@@ -965,6 +965,7 @@ impl EntityModelKind {
                 ..
             } => &WOLF_BABY_COLLAR_LAYER_TEXTURE_REFS,
             Self::Spider | Self::CaveSpider => &SPIDER_EYES_LAYER_TEXTURE_REFS,
+            Self::Enderman => &ENDERMAN_EYES_LAYER_TEXTURE_REFS,
             _ => &[],
         }
     }

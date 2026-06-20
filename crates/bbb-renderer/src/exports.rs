@@ -2,14 +2,15 @@ pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
 pub use crate::entity_models::{
     boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
-    creeper_entity_texture_refs, entity_model_texture_refs, pig_entity_texture_refs,
-    player_entity_texture_refs, sheep_entity_texture_refs, spider_entity_texture_refs,
-    wolf_entity_texture_refs, ArmorStandModelPose, BoatModelFamily, CamelModelFamily,
-    ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelBounds,
-    EntityModelInstance, EntityModelKind, EntityModelTextureImage, EntityModelTextureRef,
-    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
-    PigModelVariant, PiglinModelFamily, QuadrupedModelFamily, SheepWoolColor, SkeletonModelFamily,
-    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    creeper_entity_texture_refs, enderman_entity_texture_refs, entity_model_texture_refs,
+    pig_entity_texture_refs, player_entity_texture_refs, sheep_entity_texture_refs,
+    spider_entity_texture_refs, wolf_entity_texture_refs, ArmorStandModelPose, BoatModelFamily,
+    CamelModelFamily, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor,
+    EntityModelBounds, EntityModelInstance, EntityModelKind, EntityModelTextureImage,
+    EntityModelTextureRef, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily,
+    LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily, QuadrupedModelFamily,
+    SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 pub use crate::hud::{
     HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,

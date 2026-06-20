@@ -2894,6 +2894,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let creeper = EntityModelInstance::new(310, EntityModelKind::Creeper, [12.0, 64.0, 0.0], 0.0);
     let spider = EntityModelInstance::spider(311, [14.0, 64.0, 0.0], 0.0);
     let cave_spider = EntityModelInstance::cave_spider(312, [16.0, 64.0, 0.0], 0.0);
+    let enderman = EntityModelInstance::enderman(313, [18.0, 64.0, 0.0], 0.0);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -2905,6 +2906,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         creeper,
         spider,
         cave_spider,
+        enderman,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -2928,6 +2930,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_spider_geometry_guard.vertices.is_empty());
     let legacy_cave_spider_geometry_guard = entity_model_mesh(&[cave_spider]);
     assert!(!legacy_cave_spider_geometry_guard.vertices.is_empty());
+    let legacy_enderman_geometry_guard = entity_model_mesh(&[enderman]);
+    assert!(!legacy_enderman_geometry_guard.vertices.is_empty());
 }
 
 #[test]

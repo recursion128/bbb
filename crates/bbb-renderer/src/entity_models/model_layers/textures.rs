@@ -569,7 +569,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 57] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 59] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -607,6 +607,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SPIDER_TEXTURE_REF,
     CAVE_SPIDER_TEXTURE_REF,
     SPIDER_EYES_TEXTURE_REF,
+    ENDERMAN_TEXTURE_REF,
+    ENDERMAN_EYES_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -832,6 +834,22 @@ pub(in crate::entity_models) const ENDERMAN_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/enderman/enderman.png",
         size: [64, 32],
     };
+
+pub(in crate::entity_models) const ENDERMAN_EYES_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/enderman/enderman_eyes.png",
+        size: [64, 32],
+    };
+
+pub(in crate::entity_models) const ENDERMAN_EYES_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [ENDERMAN_EYES_TEXTURE_REF];
+
+pub(in crate::entity_models) const ENDERMAN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [ENDERMAN_TEXTURE_REF, ENDERMAN_EYES_TEXTURE_REF];
+
+pub fn enderman_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ENDERMAN_ENTITY_TEXTURE_REFS
+}
 
 pub(in crate::entity_models) const IRON_GOLEM_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {

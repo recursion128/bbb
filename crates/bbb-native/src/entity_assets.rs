@@ -132,6 +132,8 @@ mod tests {
                 "textures/entity/spider/spider.png",
                 "textures/entity/spider/cave_spider.png",
                 "textures/entity/spider/spider_eyes.png",
+                "textures/entity/enderman/enderman.png",
+                "textures/entity/enderman/enderman_eyes.png",
                 "textures/entity/boat/acacia.png",
                 "textures/entity/chest_boat/acacia.png",
                 "textures/entity/boat/bamboo.png",

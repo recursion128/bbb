@@ -511,9 +511,13 @@ When an agent does any of the following, update this file in the same slice:
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,
       overwritten long limbs, shrunken hat cube, and the official
       `textures/entity/enderman/enderman.png` texture reference from
-      `EndermanRenderer`; `enderman_eyes.png` emissive layer, carried-block
-      layer, carried-block arm pose, creepy head offset, creepy render jitter,
-      and humanoid walk/head animation remain unsupported
+      `EndermanRenderer`, texture-backed base layer pass emission, and the
+      vanilla `EnderEyesLayer` `enderman_eyes.png` texture-backed eyes pass
+      using the parent Enderman model parts, submit order `1`, and a
+      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path;
+      carried-block layer, carried-block arm pose, creepy head offset, creepy
+      render jitter, humanoid walk/head animation, and lighting remain
+      unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official
@@ -589,7 +593,7 @@ When an agent does any of the following, update this file in the same slice:
     presentation, skeleton armor/overlay and bogged outer-clothing
     presentation,
     creeper swelling/powered overlays,
-    spider animation/death-flip presentation, enderman eyes/carried-block/creepy
+    spider animation/death-flip presentation, enderman carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/translucency/

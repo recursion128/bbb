@@ -20,6 +20,8 @@ pub(super) enum EntityModelLayerKind {
     ChickenBase,
     CowBase,
     CreeperBase,
+    EndermanBase,
+    EndermanEyes,
     PigBase,
     PlayerBase,
     SheepBase,
@@ -105,6 +107,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::CaveSpider => {
                 emit_spider_textured_model(&mut meshes, *instance, true, atlas);
+            }
+            EntityModelKind::Enderman => {
+                emit_enderman_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Player { slim } => {
                 emit_player_textured_model(&mut meshes, *instance, slim, atlas);
@@ -216,6 +221,17 @@ fn emit_spider_textured_model(
         entity_model_root_transform(instance)
     };
     for pass in spider_textured_layer_passes(cave) {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_enderman_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in enderman_textured_layer_passes() {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }
@@ -384,6 +400,31 @@ pub(super) fn spider_textured_layer_passes(cave: bool) -> Vec<EntityModelLayerPa
             model_layer,
             texture: SPIDER_EYES_TEXTURE_REF,
             parts: &SPIDER_TEXTURED_PARTS,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 1,
+            submit_sequence: 1,
+        },
+    ]
+}
+
+pub(super) fn enderman_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::EndermanBase,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: MODEL_LAYER_ENDERMAN,
+            texture: ENDERMAN_TEXTURE_REF,
+            parts: &ENDERMAN_TEXTURED_PARTS,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::EndermanEyes,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_ENDERMAN,
+            texture: ENDERMAN_EYES_TEXTURE_REF,
+            parts: &ENDERMAN_TEXTURED_PARTS,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 1,
             submit_sequence: 1,

@@ -153,7 +153,11 @@ fn entity_model_mesh_with_options(
                     emit_cave_spider_model(&mut mesh, *instance);
                 }
             }
-            EntityModelKind::Enderman => emit_enderman_model(&mut mesh, *instance),
+            EntityModelKind::Enderman => {
+                if !skip_texture_backed_entities {
+                    emit_enderman_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::IronGolem => emit_iron_golem_model(&mut mesh, *instance),
             EntityModelKind::SnowGolem => emit_snow_golem_model(&mut mesh, *instance),
             EntityModelKind::Witch => emit_witch_model(&mut mesh, *instance),
