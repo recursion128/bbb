@@ -17,8 +17,10 @@ const TEST_MOUNT_TAME_FLAGS_DATA_ID: u8 = 18;
 const TEST_ABSTRACT_HORSE_TAME_FLAG: i8 = 2;
 const TEST_TAMABLE_ANIMAL_TAME_FLAG: i8 = 4;
 const TEST_MAX_DAMAGE_COMPONENT_ID: i32 = 2;
+const TEST_DAMAGE_COMPONENT_ID: i32 = 3;
 const TEST_MAP_ID_COMPONENT_ID: i32 = 41;
-const TEST_MAP_ID_7_HASH: i32 = -1_726_626_450;
+const TEST_HASH_OPS_INT_7_HASH: i32 = -1_726_626_450;
+const TEST_MAP_ID_7_HASH: i32 = TEST_HASH_OPS_INT_7_HASH;
 
 #[test]
 fn local_inventory_slot_layouts_match_vanilla_inventory_menu() {
@@ -6539,6 +6541,50 @@ fn inventory_mouse_click_queues_container_zero_pickup() {
 }
 
 #[test]
+fn inventory_mouse_click_hashes_integer_component_patch() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: damage_item_stack(42, 1, 7),
+    });
+    assert!(world.open_local_inventory());
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(560.0, 419.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClick(ContainerClick {
+            container_id: 0,
+            state_id: 0,
+            slot_num: 36,
+            button_num: 0,
+            input: ContainerInput::Pickup,
+            changed_slots: [(36, HashedStack::Empty)].into(),
+            carried_item: HashedStack::Item(hashed_int_component_item(
+                42,
+                1,
+                TEST_DAMAGE_COMPONENT_ID,
+                7
+            )),
+        })
+    );
+}
+
+#[test]
 fn inventory_result_with_default_remainder_queues_predicted_container_zero_click() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -7491,6 +7537,16 @@ fn map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ItemStackSummary 
     item
 }
 
+fn damage_item_stack(item_id: i32, count: i32, damage: i32) -> ItemStackSummary {
+    let mut item = item_stack(item_id, count);
+    item.component_patch.added = 1;
+    item.component_patch
+        .added_type_ids
+        .push(TEST_DAMAGE_COMPONENT_ID);
+    item.component_patch.damage = Some(damage);
+    item
+}
+
 fn apply_instabuild_abilities(world: &mut WorldStore) {
     world.apply_player_abilities(PlayerAbilities {
         invulnerable: false,
@@ -7545,6 +7601,26 @@ fn hashed_item(item_id: i32, count: i32) -> HashedItemStack {
         item_id,
         count,
         components: HashedComponentPatch::default(),
+    }
+}
+
+fn hashed_int_component_item(
+    item_id: i32,
+    count: i32,
+    component_type_id: i32,
+    value: i32,
+) -> HashedItemStack {
+    let value_hash = match value {
+        7 => TEST_HASH_OPS_INT_7_HASH,
+        other => panic!("missing test HashOps int hash for {other}"),
+    };
+    HashedItemStack {
+        item_id,
+        count,
+        components: HashedComponentPatch {
+            added_components: BTreeMap::from([(component_type_id, value_hash)]),
+            removed_components: BTreeSet::new(),
+        },
     }
 }
 

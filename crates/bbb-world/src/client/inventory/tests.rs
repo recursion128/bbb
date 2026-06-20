@@ -1581,6 +1581,120 @@ fn apply_local_container_click_slot_hashes_removed_only_component_patch() {
 }
 
 #[test]
+fn apply_local_container_click_slot_hashes_integer_component_patches() {
+    for (component_type_id, value) in [
+        (VANILLA_MAX_STACK_SIZE_COMPONENT_ID, 16),
+        (VANILLA_MAX_DAMAGE_COMPONENT_ID, 250),
+        (VANILLA_DAMAGE_COMPONENT_ID, 7),
+        (VANILLA_MAP_ID_COMPONENT_ID, 7),
+    ] {
+        let mut store = WorldStore::new();
+        let patched_stack = item_stack_with_int_component_summary(42, 1, component_type_id, value);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items: vec![ProtocolItemStackSummary::empty()],
+            carried_item: patched_stack.clone(),
+        });
+
+        let place = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+
+        assert_eq!(
+            place.changed_slots,
+            BTreeMap::from([(
+                0,
+                hashed_int_component_item_stack(42, 1, component_type_id, value)
+            )])
+        );
+        assert_eq!(place.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(open_container_slot_item(&store, 0), patched_stack);
+    }
+}
+
+#[test]
+fn apply_local_container_click_slot_hashes_multiple_integer_and_removed_component_patches() {
+    let mut store = WorldStore::new();
+    let mut patched_stack = item_stack(42, 1);
+    patched_stack.component_patch.added = 3;
+    patched_stack.component_patch.added_type_ids = vec![
+        VANILLA_MAX_STACK_SIZE_COMPONENT_ID,
+        VANILLA_MAX_DAMAGE_COMPONENT_ID,
+        VANILLA_DAMAGE_COMPONENT_ID,
+    ];
+    patched_stack.component_patch.max_stack_size = Some(16);
+    patched_stack.component_patch.max_damage = Some(250);
+    patched_stack.component_patch.damage = Some(7);
+    patched_stack.component_patch.removed_type_ids = vec![VANILLA_MAP_ID_COMPONENT_ID];
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items: vec![ProtocolItemStackSummary::empty()],
+        carried_item: patched_stack.clone(),
+    });
+
+    let place = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        place.changed_slots,
+        BTreeMap::from([(
+            0,
+            ProtocolHashedStack::Item(ProtocolHashedItemStack {
+                item_id: 42,
+                count: 1,
+                components: ProtocolHashedComponentPatch {
+                    added_components: BTreeMap::from([
+                        (VANILLA_MAX_STACK_SIZE_COMPONENT_ID, hash_ops_crc32c_int(16)),
+                        (VANILLA_MAX_DAMAGE_COMPONENT_ID, hash_ops_crc32c_int(250)),
+                        (VANILLA_DAMAGE_COMPONENT_ID, hash_ops_crc32c_int(7)),
+                    ]),
+                    removed_components: BTreeSet::from([VANILLA_MAP_ID_COMPONENT_ID]),
+                },
+            })
+        )])
+    );
+    assert_eq!(place.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(open_container_slot_item(&store, 0), patched_stack);
+}
+
+#[test]
+fn apply_local_container_click_slot_rejects_incomplete_integer_component_patch() {
+    let mut store = WorldStore::new();
+    let mut patched_stack = item_stack(42, 1);
+    patched_stack.component_patch.added = 1;
+    patched_stack
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DAMAGE_COMPONENT_ID);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items: vec![ProtocolItemStackSummary::empty()],
+        carried_item: patched_stack,
+    });
+
+    assert_eq!(
+        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        }),
+        Err(ContainerClickBuildError::UnhashableChangedSlot(0))
+    );
+}
+
+#[test]
 fn apply_local_container_click_slot_supports_secondary_pickup_place_and_outside_drop() {
     let mut store = WorldStore::new();
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
@@ -6686,7 +6800,7 @@ fn apply_local_cartography_table_map_id_with_removed_component_quick_move_routes
 }
 
 #[test]
-fn cartography_table_map_id_unknown_component_requires_server_authority() {
+fn cartography_table_map_id_unhashable_component_requires_server_authority() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
@@ -6700,8 +6814,12 @@ fn cartography_table_map_id_unknown_component_requires_server_authority() {
     map_stack
         .component_patch
         .added_type_ids
-        .push(VANILLA_MAX_DAMAGE_COMPONENT_ID);
-    map_stack.component_patch.max_damage = Some(100);
+        .push(VANILLA_USE_EFFECTS_COMPONENT_ID);
+    map_stack.component_patch.use_effects = Some(ProtocolUseEffectsSummary {
+        can_sprint: true,
+        interact_vibrations: true,
+        speed_multiplier: 1.0,
+    });
     items[CARTOGRAPHY_TABLE_PLAYER_MAIN_START as usize] = map_stack.clone();
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -8653,6 +8771,25 @@ fn map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ProtocolItemStack
     item
 }
 
+fn item_stack_with_int_component_summary(
+    item_id: i32,
+    count: i32,
+    component_type_id: i32,
+    value: i32,
+) -> ProtocolItemStackSummary {
+    let mut item = item_stack(item_id, count);
+    item.component_patch.added = 1;
+    item.component_patch.added_type_ids = vec![component_type_id];
+    match component_type_id {
+        VANILLA_MAX_STACK_SIZE_COMPONENT_ID => item.component_patch.max_stack_size = Some(value),
+        VANILLA_MAX_DAMAGE_COMPONENT_ID => item.component_patch.max_damage = Some(value),
+        VANILLA_DAMAGE_COMPONENT_ID => item.component_patch.damage = Some(value),
+        VANILLA_MAP_ID_COMPONENT_ID => item.component_patch.map_id = Some(value),
+        other => panic!("unsupported int component test id {other}"),
+    }
+    item
+}
+
 fn item_stack_with_removed_component_summary(
     item_id: i32,
     count: i32,
@@ -8693,6 +8830,22 @@ fn hashed_removed_component_item_stack(
         components: ProtocolHashedComponentPatch {
             added_components: BTreeMap::new(),
             removed_components: BTreeSet::from([component_type_id]),
+        },
+    })
+}
+
+fn hashed_int_component_item_stack(
+    item_id: i32,
+    count: i32,
+    component_type_id: i32,
+    value: i32,
+) -> ProtocolHashedStack {
+    ProtocolHashedStack::Item(ProtocolHashedItemStack {
+        item_id,
+        count,
+        components: ProtocolHashedComponentPatch {
+            added_components: BTreeMap::from([(component_type_id, hash_ops_crc32c_int(value))]),
+            removed_components: BTreeSet::new(),
         },
     })
 }

@@ -203,6 +203,7 @@ const INVENTORY_MENU_HOTBAR_END: i16 = 45;
 const INVENTORY_MENU_OFFHAND_SLOT: i16 = 45;
 const VANILLA_MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
 const VANILLA_MAX_DAMAGE_COMPONENT_ID: i32 = 2;
+const VANILLA_DAMAGE_COMPONENT_ID: i32 = 3;
 const VANILLA_USE_EFFECTS_COMPONENT_ID: i32 = 5;
 const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
 const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
@@ -2226,19 +2227,51 @@ fn hashed_component_patch_from_summary(
         return Some(ProtocolHashedComponentPatch::default());
     }
 
-    let mut expected = ProtocolDataComponentPatchSummary::default();
-    expected.removed_type_ids = patch.removed_type_ids.clone();
+    if patch.added != patch.added_type_ids.len() {
+        return None;
+    }
+
     let removed_components: BTreeSet<_> = patch.removed_type_ids.iter().copied().collect();
     if removed_components.len() != patch.removed_type_ids.len() {
         return None;
     }
 
+    let mut expected = ProtocolDataComponentPatchSummary {
+        added: patch.added,
+        added_type_ids: patch.added_type_ids.clone(),
+        removed_type_ids: patch.removed_type_ids.clone(),
+        ..ProtocolDataComponentPatchSummary::default()
+    };
     let mut added_components = BTreeMap::new();
-    if let Some(map_id) = patch.map_id {
-        expected.added = 1;
-        expected.added_type_ids.push(VANILLA_MAP_ID_COMPONENT_ID);
-        expected.map_id = Some(map_id);
-        added_components.insert(VANILLA_MAP_ID_COMPONENT_ID, hash_ops_crc32c_int(map_id));
+    let mut added_type_ids = BTreeSet::new();
+    for component_type_id in &patch.added_type_ids {
+        if !added_type_ids.insert(*component_type_id) {
+            return None;
+        }
+        let value = match *component_type_id {
+            VANILLA_MAX_STACK_SIZE_COMPONENT_ID => {
+                let value = patch.max_stack_size?;
+                expected.max_stack_size = Some(value);
+                value
+            }
+            VANILLA_MAX_DAMAGE_COMPONENT_ID => {
+                let value = patch.max_damage?;
+                expected.max_damage = Some(value);
+                value
+            }
+            VANILLA_DAMAGE_COMPONENT_ID => {
+                let value = patch.damage?;
+                expected.damage = Some(value);
+                value
+            }
+            VANILLA_MAP_ID_COMPONENT_ID => {
+                let value = patch.map_id?;
+                expected.map_id = Some(value);
+                value
+            }
+            _ => return None,
+        };
+        added_components.insert(*component_type_id, hash_ops_crc32c_int(value));
     }
     if patch != &expected {
         return None;

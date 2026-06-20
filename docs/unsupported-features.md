@@ -1011,8 +1011,9 @@ When an agent does any of the following, update this file in the same slice:
       - updates cursor/slot state
       - fills `ServerboundContainerClickPacket(0)` changed-slot hashes
       - hashes local container-click stacks with empty/default component
-        patches, removed-only component patches, and `map_id` component
-        patches, including `map_id` plus removed components
+        patches, removed-only component patches, and scalar integer
+        component patches (`max_stack_size`, `max_damage`, `damage`, and
+        `map_id`), including integer patches plus removed components
       - supports bundle wheel selection on hovered local inventory and
         server-opened container slots
       - clears selected bundle items before local and server-opened
@@ -1269,8 +1270,8 @@ When an agent does any of the following, update this file in the same slice:
           hash requirements.
         - player-inventory quick-move paths are locally predicted for:
           - filled-map routing into the map slot when the decoded stack summary
-            contains only a `map_id` component patch that can be hashed for
-            serverbound changed slots
+            contains hashable scalar integer component patches such as
+            `map_id` for serverbound changed slots
           - paper/map/glass-pane additional input routing when native item
             runtime provides the vanilla protocol ids
           - ordinary player inventory/hotbar range movement
