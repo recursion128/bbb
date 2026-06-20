@@ -233,8 +233,9 @@ When an agent does any of the following, update this file in the same slice:
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the source-verified
       player/player-slim/chicken normal/warm/cold adult and baby/
+      pig temperate/warm/cold adult and baby/
       boat/chest-boat/raft/chest-raft/
-      pig/cow/sheep/wolf/base-horse/donkey/mule/
+      cow/sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
       goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
@@ -304,11 +305,18 @@ When an agent does any of the following, update this file in the same slice:
       yaw/pitch, leg walk animation, wing flap animation, variant sound
       metadata, custom/datapack chicken variant asset decoding, lighting, and
       GPU texture binding remain unsupported
-    - pig entities as renderer-owned vanilla 26.1 adult/baby body-layer
-      geometry from `PigModel`, `BabyPigModel`, and `QuadrupedModel`, including
-      baked baby `CubeDeformation` bounds, still rendered with temporary vertex
-      colors while dynamic variant textures, saddle equipment, and animation
-      remain unsupported
+    - pig entities as renderer-owned vanilla 26.1
+      `PigModel`, `ColdPigModel`, and `BabyPigModel` body-layer geometry from
+      `PigModel`, `ColdPigModel`, `BabyPigModel`, `PigRenderer`,
+      `PigVariants`, and `LayerDefinitions`, including normal/warm adult base
+      model reuse, cold adult body overlay geometry, baked baby
+      `CubeDeformation` bounds, metadata-driven temperate/warm/cold variant
+      projection through the server-sent `minecraft:pig_variant` registry
+      order, official adult/baby variant texture references, and vanilla
+      fallback to temperate when no variant metadata is present; saddle
+      equipment layer, boost/ridden/leg/head animation, variant sound metadata,
+      custom/datapack pig variant asset decoding, lighting, and GPU texture
+      binding remain unsupported
     - base cow entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `CowModel`, `BabyCowModel`, and `CowRenderer`; dynamic
       temperate/warm/cold variant textures remain unsupported until cow variant
@@ -520,8 +528,9 @@ When an agent does any of the following, update this file in the same slice:
       minecarts, plus named placeholder bounds for remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
-    variants, equipment, skins, animation, lighting, pig/cow variant
-    presentation, pig saddle presentation, sheep wool presentation,
+    variants, equipment, skins, animation, lighting, cow variant presentation,
+    pig saddle presentation, custom/datapack pig variant asset presentation,
+    sheep wool presentation,
     wolf variant/tame/angry/collar/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,

@@ -2,9 +2,9 @@ use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, DonkeyModelFamily,
     EntityModelInstance, EntityModelKind, HoglinModelFamily, HumanoidModelFamily,
-    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PiglinModelFamily, QuadrupedModelFamily,
-    SelectionBox, SelectionOutline, SkeletonModelFamily, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
+    QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -186,6 +186,7 @@ const LLAMA_VARIANT_DATA_ID: u8 = 21;
 const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
+const PIG_VARIANT_DATA_ID: u8 = 19;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -211,13 +212,14 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
     let chicken_variants = world.registry_content("minecraft:chicken_variant");
+    let pig_variants = world.registry_content("minecraft:pig_variant");
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick.clamp(0.0, 1.0))
         .into_iter()
         .filter(|source| {
             local_player_id != Some(source.entity_id) && camera_entity_id != Some(source.entity_id)
         })
-        .filter_map(|source| entity_model_instance(source, chicken_variants))
+        .filter_map(|source| entity_model_instance(source, chicken_variants, pig_variants))
         .collect()
 }
 
@@ -239,11 +241,13 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
 fn entity_model_instance(
     source: EntityModelSourceState,
     chicken_variants: Option<&RegistryContentState>,
+    pig_variants: Option<&RegistryContentState>,
 ) -> Option<EntityModelInstance> {
     let kind = entity_model_kind_with_registries(
         source.entity_type_id,
         &source.data_values,
         chicken_variants,
+        pig_variants,
     );
     Some(EntityModelInstance::new(
         source.entity_id,
@@ -261,13 +265,14 @@ fn entity_model_kind(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    entity_model_kind_with_registries(entity_type_id, data_values, None)
+    entity_model_kind_with_registries(entity_type_id, data_values, None, None)
 }
 
 fn entity_model_kind_with_registries(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
     chicken_variants: Option<&RegistryContentState>,
+    pig_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, chicken_variants),
@@ -335,9 +340,7 @@ fn entity_model_kind_with_registries(
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => EntityModelKind::SnowGolem,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => humanoid(HumanoidModelFamily::Player, false),
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
-        VANILLA_ENTITY_TYPE_PIG_ID => {
-            quadruped(QuadrupedModelFamily::Pig, ageable_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, pig_variants),
         VANILLA_ENTITY_TYPE_COW_ID => EntityModelKind::Cow {
             baby: ageable_baby(data_values),
         },
@@ -591,6 +594,16 @@ fn chicken_model_kind(
     }
 }
 
+fn pig_model_kind(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> EntityModelKind {
+    EntityModelKind::Pig {
+        variant: pig_model_variant(values, variants),
+        baby: ageable_baby(values),
+    }
+}
+
 fn donkey_model_kind(
     family: DonkeyModelFamily,
     values: &[bbb_protocol::packets::EntityDataValue],
@@ -750,6 +763,61 @@ fn chicken_variant_from_vanilla_registry_id(registry_id: i32) -> ChickenModelVar
         1 => ChickenModelVariant::Warm,
         2 => ChickenModelVariant::Cold,
         _ => ChickenModelVariant::Temperate,
+    }
+}
+
+fn pig_model_variant(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> PigModelVariant {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == PIG_VARIANT_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::PigVariant,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .map(|id| {
+            if let Some(registry) = variants {
+                pig_variant_from_registry_id(registry, id).unwrap_or(PigModelVariant::Temperate)
+            } else {
+                pig_variant_from_vanilla_registry_id(id)
+            }
+        })
+        .unwrap_or(PigModelVariant::Temperate)
+}
+
+fn pig_variant_from_registry_id(
+    registry: &RegistryContentState,
+    registry_id: i32,
+) -> Option<PigModelVariant> {
+    if registry_id < 0 {
+        return None;
+    }
+    registry
+        .entries
+        .get(registry_id as usize)
+        .and_then(|entry| pig_variant_from_entry_id(entry.id.as_str()))
+}
+
+fn pig_variant_from_entry_id(id: &str) -> Option<PigModelVariant> {
+    match id {
+        "minecraft:temperate" => Some(PigModelVariant::Temperate),
+        "minecraft:warm" => Some(PigModelVariant::Warm),
+        "minecraft:cold" => Some(PigModelVariant::Cold),
+        _ => None,
+    }
+}
+
+fn pig_variant_from_vanilla_registry_id(registry_id: i32) -> PigModelVariant {
+    match registry_id {
+        1 => PigModelVariant::Warm,
+        2 => PigModelVariant::Cold,
+        _ => PigModelVariant::Temperate,
     }
 }
 
@@ -1008,7 +1076,8 @@ mod tests {
             entity_model_kind_with_registries(
                 VANILLA_ENTITY_TYPE_CHICKEN_ID,
                 &[protocol_chicken_variant_data(99)],
-                Some(chicken_registry)
+                Some(chicken_registry),
+                None
             ),
             EntityModelKind::Chicken {
                 variant: ChickenModelVariant::Temperate,
@@ -1056,6 +1125,95 @@ mod tests {
                     ChickenModelVariant::Warm,
                     true
                 ),
+            ]
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_vanilla_pig_variant_metadata() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PIG_ID, &[]),
+            EntityModelKind::Pig {
+                variant: PigModelVariant::Temperate,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PIG_ID, &[protocol_pig_variant_data(1)]),
+            EntityModelKind::Pig {
+                variant: PigModelVariant::Warm,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_PIG_ID,
+                &[
+                    protocol_pig_variant_data(2),
+                    protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                ]
+            ),
+            EntityModelKind::Pig {
+                variant: PigModelVariant::Cold,
+                baby: true
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_pig_variants_from_world_registry_order() {
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            "minecraft:pig_variant",
+            0,
+            vec![
+                RegistryPacketEntry::stub("minecraft:cold"),
+                RegistryPacketEntry::stub("minecraft:temperate"),
+                RegistryPacketEntry::stub("minecraft:warm"),
+            ],
+        );
+        let pig_registry = world.registry_content("minecraft:pig_variant").unwrap();
+        assert_eq!(
+            entity_model_kind_with_registries(
+                VANILLA_ENTITY_TYPE_PIG_ID,
+                &[protocol_pig_variant_data(99)],
+                None,
+                Some(pig_registry)
+            ),
+            EntityModelKind::Pig {
+                variant: PigModelVariant::Temperate,
+                baby: false
+            }
+        );
+        world.apply_add_entity(protocol_add_entity(
+            100,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            101,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 100,
+            values: vec![protocol_pig_variant_data(0)],
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 101,
+            values: vec![
+                protocol_pig_variant_data(2),
+                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            ],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![
+                EntityModelInstance::pig(100, [1.0, 64.0, -2.0], 0.0, PigModelVariant::Cold, false),
+                EntityModelInstance::pig(101, [3.0, 64.0, -2.0], 0.0, PigModelVariant::Warm, true),
             ]
         );
     }
@@ -2023,6 +2181,17 @@ mod tests {
             serializer_id: 30,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::ChickenVariant,
+                id,
+            },
+        }
+    }
+
+    fn protocol_pig_variant_data(id: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id: PIG_VARIANT_DATA_ID,
+            serializer_id: 28,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::PigVariant,
                 id,
             },
         }

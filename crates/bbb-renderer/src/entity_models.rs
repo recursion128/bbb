@@ -21,6 +21,10 @@ pub enum EntityModelKind {
         variant: ChickenModelVariant,
         baby: bool,
     },
+    Pig {
+        variant: PigModelVariant,
+        baby: bool,
+    },
     Player {
         slim: bool,
     },
@@ -255,6 +259,13 @@ pub enum ChickenModelVariant {
     Cold,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PigModelVariant {
+    Temperate,
+    Warm,
+    Cold,
+}
+
 impl LlamaVariant {
     pub fn from_vanilla_id(id: i32) -> Self {
         match id.clamp(0, 3) {
@@ -283,6 +294,7 @@ impl EntityModelKind {
     pub fn model_key(self) -> &'static str {
         match self {
             Self::Chicken { variant, baby } => chicken_model_key(variant, baby),
+            Self::Pig { variant, baby } => pig_model_key(variant, baby),
             Self::Player { slim: false } => "player",
             Self::Player { slim: true } => "player_slim",
             Self::Humanoid {
@@ -550,6 +562,7 @@ impl EntityModelKind {
     pub fn vanilla_texture_ref(self) -> Option<EntityModelTextureRef> {
         match self {
             Self::Chicken { variant, baby } => Some(chicken_texture_ref(variant, baby)),
+            Self::Pig { variant, baby } => Some(pig_texture_ref(variant, baby)),
             Self::Player { slim: false } => Some(PLAYER_WIDE_STEVE_TEXTURE_REF),
             Self::Player { slim: true } => Some(PLAYER_SLIM_STEVE_TEXTURE_REF),
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
@@ -756,6 +769,21 @@ impl EntityModelInstance {
         Self::new(
             entity_id,
             EntityModelKind::Chicken { variant, baby },
+            position,
+            y_rot,
+        )
+    }
+
+    pub fn pig(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        variant: PigModelVariant,
+        baby: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Pig { variant, baby },
             position,
             y_rot,
         )
@@ -1226,6 +1254,7 @@ const VILLAGER_ROBE: [f32; 4] = [0.48, 0.34, 0.23, 1.0];
 const ILLAGER_GRAY: [f32; 4] = [0.42, 0.45, 0.48, 1.0];
 const ARMOR_STAND_WOOD: [f32; 4] = [0.55, 0.36, 0.19, 1.0];
 const PIG_PINK: [f32; 4] = [0.92, 0.55, 0.62, 1.0];
+const PIG_COLD_FUR: [f32; 4] = [0.82, 0.78, 0.70, 1.0];
 const COW_BROWN: [f32; 4] = [0.38, 0.25, 0.18, 1.0];
 const SHEEP_WOOL: [f32; 4] = [0.86, 0.86, 0.80, 1.0];
 const HORSE_BROWN: [f32; 4] = [0.44, 0.27, 0.14, 1.0];
@@ -4347,6 +4376,19 @@ const ADULT_PIG_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
     color: PIG_PINK,
 }];
 
+const COLD_PIG_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-5.0, -10.0, -7.0],
+        size: [10.0, 16.0, 8.0],
+        color: PIG_PINK,
+    },
+    ModelCubeDesc {
+        min: [-5.5, -10.5, -7.5],
+        size: [11.0, 17.0, 9.0],
+        color: PIG_COLD_FUR,
+    },
+];
+
 const ADULT_PIG_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-2.0, 0.0, -2.0],
     size: [4.0, 6.0, 4.0],
@@ -4369,6 +4411,58 @@ const ADULT_PIG_PARTS: [ModelPartDesc; 6] = [
             rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
         },
         cubes: &ADULT_PIG_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 18.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 18.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 18.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 18.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_LEG,
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 ColdPigModel.createBodyLayer(CubeDeformation.NONE).
+const COLD_PIG_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, -6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIG_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 11.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &COLD_PIG_BODY,
         children: &[],
     },
     ModelPartDesc {
@@ -8009,6 +8103,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 chicken_model_parts(variant, baby),
                 entity_model_root_transform(*instance),
             ),
+            EntityModelKind::Pig { variant, baby } => {
+                emit_pig_model(&mut mesh, *instance, variant, baby)
+            }
             EntityModelKind::Player { slim } => emit_player_model(&mut mesh, *instance, slim),
             EntityModelKind::Humanoid { family, baby } => {
                 emit_humanoid_model(&mut mesh, *instance, family, baby)
@@ -8699,7 +8796,7 @@ fn emit_quadruped_model(
     baby: bool,
 ) {
     if family == QuadrupedModelFamily::Pig {
-        emit_pig_model(mesh, instance, baby);
+        emit_pig_model(mesh, instance, PigModelVariant::Temperate, baby);
         return;
     }
 
@@ -8792,14 +8889,15 @@ fn emit_quadruped_model(
     }
 }
 
-fn emit_pig_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+fn emit_pig_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    variant: PigModelVariant,
+    baby: bool,
+) {
     emit_model_parts(
         mesh,
-        if baby {
-            &BABY_PIG_PARTS
-        } else {
-            &ADULT_PIG_PARTS
-        },
+        pig_model_parts(variant, baby),
         entity_model_root_transform(instance),
     );
 }
@@ -9073,6 +9171,54 @@ fn chicken_texture_ref(variant: ChickenModelVariant, baby: bool) -> EntityModelT
         (ChickenModelVariant::Cold, true) => EntityModelTextureRef {
             path: "textures/entity/chicken/chicken_cold_baby.png",
             size: [16, 16],
+        },
+    }
+}
+
+fn pig_model_parts(variant: PigModelVariant, baby: bool) -> &'static [ModelPartDesc] {
+    match (variant, baby) {
+        (_, true) => &BABY_PIG_PARTS,
+        (PigModelVariant::Cold, false) => &COLD_PIG_PARTS,
+        (_, false) => &ADULT_PIG_PARTS,
+    }
+}
+
+fn pig_model_key(variant: PigModelVariant, baby: bool) -> &'static str {
+    match (variant, baby) {
+        (PigModelVariant::Temperate, false) => "pig_temperate",
+        (PigModelVariant::Temperate, true) => "pig_temperate_baby",
+        (PigModelVariant::Warm, false) => "pig_warm",
+        (PigModelVariant::Warm, true) => "pig_warm_baby",
+        (PigModelVariant::Cold, false) => "pig_cold",
+        (PigModelVariant::Cold, true) => "pig_cold_baby",
+    }
+}
+
+fn pig_texture_ref(variant: PigModelVariant, baby: bool) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (PigModelVariant::Temperate, false) => EntityModelTextureRef {
+            path: "textures/entity/pig/pig_temperate.png",
+            size: [64, 64],
+        },
+        (PigModelVariant::Temperate, true) => EntityModelTextureRef {
+            path: "textures/entity/pig/pig_temperate_baby.png",
+            size: [32, 32],
+        },
+        (PigModelVariant::Warm, false) => EntityModelTextureRef {
+            path: "textures/entity/pig/pig_warm.png",
+            size: [64, 64],
+        },
+        (PigModelVariant::Warm, true) => EntityModelTextureRef {
+            path: "textures/entity/pig/pig_warm_baby.png",
+            size: [32, 32],
+        },
+        (PigModelVariant::Cold, false) => EntityModelTextureRef {
+            path: "textures/entity/pig/pig_cold.png",
+            size: [64, 64],
+        },
+        (PigModelVariant::Cold, true) => EntityModelTextureRef {
+            path: "textures/entity/pig/pig_cold_baby.png",
+            size: [32, 32],
         },
     }
 }
@@ -11357,12 +11503,76 @@ mod tests {
     }
 
     #[test]
+    fn pig_cold_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            COLD_PIG_BODY,
+            [
+                ModelCubeDesc {
+                    min: [-5.0, -10.0, -7.0],
+                    size: [10.0, 16.0, 8.0],
+                    color: PIG_PINK,
+                },
+                ModelCubeDesc {
+                    min: [-5.5, -10.5, -7.5],
+                    size: [11.0, 17.0, 9.0],
+                    color: PIG_COLD_FUR,
+                },
+            ]
+        );
+
+        assert_eq!(COLD_PIG_PARTS.len(), 6);
+        assert_part(
+            &COLD_PIG_PARTS[0],
+            [0.0, 12.0, -6.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIG_HEAD.as_slice(),
+        );
+        assert_part(
+            &COLD_PIG_PARTS[1],
+            [0.0, 11.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            COLD_PIG_BODY.as_slice(),
+        );
+
+        for (part, expected_offset) in COLD_PIG_PARTS[2..].iter().zip([
+            [-3.0, 18.0, 7.0],
+            [3.0, 18.0, 7.0],
+            [-3.0, 18.0, -5.0],
+            [3.0, 18.0, -5.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                ADULT_PIG_LEG.as_slice(),
+            );
+        }
+
+        assert_eq!(
+            pig_model_parts(PigModelVariant::Temperate, false),
+            ADULT_PIG_PARTS.as_slice()
+        );
+        assert_eq!(
+            pig_model_parts(PigModelVariant::Warm, false),
+            ADULT_PIG_PARTS.as_slice()
+        );
+        assert_eq!(
+            pig_model_parts(PigModelVariant::Cold, false),
+            COLD_PIG_PARTS.as_slice()
+        );
+        assert_eq!(
+            pig_model_parts(PigModelVariant::Cold, true),
+            BABY_PIG_PARTS.as_slice()
+        );
+    }
+
+    #[test]
     fn pig_adult_model_mesh_uses_vanilla_body_layer_geometry() {
-        let mesh = entity_model_mesh(&[EntityModelInstance::quadruped(
+        let mesh = entity_model_mesh(&[EntityModelInstance::pig(
             90,
             [0.0, 64.0, 0.0],
             0.0,
-            QuadrupedModelFamily::Pig,
+            PigModelVariant::Temperate,
             false,
         )]);
 
@@ -11373,6 +11583,29 @@ mod tests {
         let (min, max) = mesh_extents(&mesh);
         assert_close3(min, [-0.3125, 64.001, -0.5625]);
         assert_close3(max, [0.3125, 65.001, 0.9375]);
+    }
+
+    #[test]
+    fn pig_cold_adult_model_mesh_uses_vanilla_cold_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::pig(
+            92,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PigModelVariant::Cold,
+            false,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 48);
+        assert_eq!(mesh.vertices.len(), 192);
+        assert_eq!(mesh.indices.len(), 288);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.34375, 64.001, -0.5625]);
+        assert_close3(max, [0.34375, 65.001, 0.9375]);
+        assert!(mesh
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(PIG_COLD_FUR, 0.78)));
     }
 
     #[test]
@@ -11440,11 +11673,11 @@ mod tests {
 
     #[test]
     fn pig_baby_model_mesh_uses_vanilla_body_layer_geometry() {
-        let mesh = entity_model_mesh(&[EntityModelInstance::quadruped(
+        let mesh = entity_model_mesh(&[EntityModelInstance::pig(
             91,
             [0.0, 64.0, 0.0],
             0.0,
-            QuadrupedModelFamily::Pig,
+            PigModelVariant::Warm,
             true,
         )]);
 
@@ -11455,6 +11688,72 @@ mod tests {
         let (min, max) = mesh_extents(&mesh);
         assert_close3(min, [-0.2203125, 64.001, -0.3125]);
         assert_close3(max, [0.2203125, 64.62756, 0.5009375]);
+    }
+
+    #[test]
+    fn pig_texture_refs_match_vanilla_variant_assets() {
+        let cases = [
+            (
+                PigModelVariant::Temperate,
+                false,
+                "pig_temperate",
+                EntityModelTextureRef {
+                    path: "textures/entity/pig/pig_temperate.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                PigModelVariant::Temperate,
+                true,
+                "pig_temperate_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/pig/pig_temperate_baby.png",
+                    size: [32, 32],
+                },
+            ),
+            (
+                PigModelVariant::Warm,
+                false,
+                "pig_warm",
+                EntityModelTextureRef {
+                    path: "textures/entity/pig/pig_warm.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                PigModelVariant::Warm,
+                true,
+                "pig_warm_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/pig/pig_warm_baby.png",
+                    size: [32, 32],
+                },
+            ),
+            (
+                PigModelVariant::Cold,
+                false,
+                "pig_cold",
+                EntityModelTextureRef {
+                    path: "textures/entity/pig/pig_cold.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                PigModelVariant::Cold,
+                true,
+                "pig_cold_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/pig/pig_cold_baby.png",
+                    size: [32, 32],
+                },
+            ),
+        ];
+
+        for (variant, baby, model_key, texture) in cases {
+            let kind = EntityModelKind::Pig { variant, baby };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
     }
 
     #[test]
@@ -15146,6 +15445,22 @@ mod tests {
             }
             .model_key(),
             "chicken_temperate"
+        );
+        assert_eq!(
+            EntityModelKind::Pig {
+                variant: PigModelVariant::Cold,
+                baby: false
+            }
+            .model_key(),
+            "pig_cold"
+        );
+        assert_eq!(
+            EntityModelKind::Pig {
+                variant: PigModelVariant::Warm,
+                baby: true
+            }
+            .model_key(),
+            "pig_warm_baby"
         );
         assert_eq!(
             EntityModelKind::Humanoid {
