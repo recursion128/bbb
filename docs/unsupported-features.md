@@ -234,8 +234,8 @@ When an agent does any of the following, update this file in the same slice:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/villager/wandering-trader/zombie,
       skeleton, creeper, spider, enderman, iron-golem, and snow-golem
-      body-layer geometry, primitive entity model families, and placeholder
-      bounds
+      witch, and evoker/illusioner/pillager/vindicator illager body-layer
+      geometry, primitive entity model families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -341,6 +341,16 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/witch/witch.png` texture reference from
       `WitchRenderer`; `WitchItemLayer`, held-potion state, head rotation, leg
       walk animation, and animated nose position/rotation remain unsupported
+    - evoker, illusioner, pillager, and vindicator entities as renderer-owned
+      vanilla 26.1 `IllagerModel.createBodyLayer()` geometry, including
+      `LayerDefinitions`' shared `MeshTransformer.scaling(0.9375F)`, baked
+      hat/body `CubeDeformation` bounds, official 64x64 texture references from
+      their vanilla renderers, illusioner's renderer-enabled hat, idle crossed
+      arms for evoker/illusioner/vindicator, and uncrossed base arms for
+      pillager; item-in-hand/custom-head layers, spell/crossbow/attacking/
+      celebrating/riding arm poses and animation, held item projection,
+      illusioner clone offsets/invisible-body rendering, and renderer state
+      extraction for dynamic arm visibility remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -352,7 +362,8 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, pig/cow variant
     presentation, pig saddle presentation, sheep wool presentation,
     villager profession/type/held-item/custom-head presentation,
-    zombie/skeleton variant presentation, creeper swelling/powered overlays,
+    illager held-item/custom-head/arm-pose presentation, zombie/skeleton
+    variant presentation, creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, and precise vanilla mesh parity

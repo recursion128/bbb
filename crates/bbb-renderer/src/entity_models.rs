@@ -40,6 +40,9 @@ pub enum EntityModelKind {
     IronGolem,
     SnowGolem,
     Witch,
+    Illager {
+        family: IllagerModelFamily,
+    },
     Minecart,
     Boat {
         chest: bool,
@@ -58,6 +61,14 @@ pub enum HumanoidModelFamily {
     Villager,
     Illager,
     ArmorStand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IllagerModelFamily {
+    Evoker,
+    Illusioner,
+    Pillager,
+    Vindicator,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -191,6 +202,18 @@ impl EntityModelKind {
             Self::IronGolem => "iron_golem",
             Self::SnowGolem => "snow_golem",
             Self::Witch => "witch",
+            Self::Illager {
+                family: IllagerModelFamily::Evoker,
+            } => "evoker",
+            Self::Illager {
+                family: IllagerModelFamily::Illusioner,
+            } => "illusioner",
+            Self::Illager {
+                family: IllagerModelFamily::Pillager,
+            } => "pillager",
+            Self::Illager {
+                family: IllagerModelFamily::Vindicator,
+            } => "vindicator",
             Self::Minecart => "minecart",
             Self::Boat { chest: false } => "boat",
             Self::Boat { chest: true } => "chest_boat",
@@ -214,6 +237,18 @@ impl EntityModelKind {
             Self::IronGolem => Some(IRON_GOLEM_TEXTURE_REF),
             Self::SnowGolem => Some(SNOW_GOLEM_TEXTURE_REF),
             Self::Witch => Some(WITCH_TEXTURE_REF),
+            Self::Illager {
+                family: IllagerModelFamily::Evoker,
+            } => Some(EVOKER_TEXTURE_REF),
+            Self::Illager {
+                family: IllagerModelFamily::Illusioner,
+            } => Some(ILLUSIONER_TEXTURE_REF),
+            Self::Illager {
+                family: IllagerModelFamily::Pillager,
+            } => Some(PILLAGER_TEXTURE_REF),
+            Self::Illager {
+                family: IllagerModelFamily::Vindicator,
+            } => Some(VINDICATOR_TEXTURE_REF),
             _ => None,
         }
     }
@@ -308,6 +343,20 @@ impl EntityModelInstance {
 
     pub fn witch(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Witch, position, y_rot)
+    }
+
+    pub fn illager(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: IllagerModelFamily,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Illager { family },
+            position,
+            y_rot,
+        )
     }
 
     pub fn quadruped(
@@ -464,6 +513,8 @@ const IRON_GOLEM_STONE: [f32; 4] = [0.74, 0.74, 0.68, 1.0];
 const SNOW_GOLEM_WHITE: [f32; 4] = [0.90, 0.92, 0.88, 1.0];
 const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
+const ILLAGER_ROBE: [f32; 4] = [0.38, 0.40, 0.44, 1.0];
+const ILLAGER_HAT_COLOR: [f32; 4] = [0.30, 0.31, 0.34, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
@@ -536,6 +587,26 @@ const SNOW_GOLEM_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const WITCH_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/witch/witch.png",
     size: [64, 128],
+};
+
+const EVOKER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/illager/evoker.png",
+    size: [64, 64],
+};
+
+const ILLUSIONER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/illager/illusioner.png",
+    size: [64, 64],
+};
+
+const PILLAGER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/illager/pillager.png",
+    size: [64, 64],
+};
+
+const VINDICATOR_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/illager/vindicator.png",
+    size: [64, 64],
 };
 
 const ADULT_CHICKEN_BEAK: [ModelCubeDesc; 1] = [ModelCubeDesc {
@@ -2401,6 +2472,225 @@ const WITCH_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
+const ILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -10.0, -4.0],
+    size: [8.0, 10.0, 8.0],
+    color: ILLAGER_ROBE,
+}];
+
+const ILLAGER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.45, -10.45, -4.45],
+    size: [8.9, 12.9, 8.9],
+    color: ILLAGER_HAT_COLOR,
+}];
+
+const ILLAGER_NOSE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.0, -6.0],
+    size: [2.0, 4.0, 2.0],
+    color: ILLAGER_ROBE,
+}];
+
+const ILLAGER_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, 0.0, -3.0],
+        size: [8.0, 12.0, 6.0],
+        color: ILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [-4.5, -0.5, -3.5],
+        size: [9.0, 21.0, 7.0],
+        color: ILLAGER_ROBE,
+    },
+];
+
+const ILLAGER_CROSSED_ARMS: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-8.0, -2.0, -2.0],
+        size: [4.0, 8.0, 4.0],
+        color: ILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [-4.0, 2.0, -2.0],
+        size: [8.0, 4.0, 4.0],
+        color: ILLAGER_ROBE,
+    },
+];
+
+const ILLAGER_LEFT_SHOULDER: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [4.0, -2.0, -2.0],
+    size: [4.0, 8.0, 4.0],
+    color: ILLAGER_ROBE,
+}];
+
+const ILLAGER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ILLAGER_ROBE,
+}];
+
+const ILLAGER_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ILLAGER_ROBE,
+}];
+
+const ILLAGER_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ILLAGER_ROBE,
+}];
+
+const ILLAGER_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -2.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &ILLAGER_NOSE,
+    children: &[],
+}];
+
+const ILLAGER_HEAD_WITH_HAT_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_HAT,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_NOSE,
+        children: &[],
+    },
+];
+
+const ILLAGER_CROSSED_ARM_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ILLAGER_LEFT_SHOULDER,
+    children: &[],
+}];
+
+const ILLAGER_CROSSED_ARM_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, 3.0, -1.0],
+        rotation: [-0.75, 0.0, 0.0],
+    },
+    cubes: &ILLAGER_CROSSED_ARMS,
+    children: &ILLAGER_CROSSED_ARM_CHILDREN,
+};
+
+const ILLAGER_RIGHT_ARM_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [-5.0, 2.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &ILLAGER_RIGHT_ARM,
+    children: &[],
+};
+
+const ILLAGER_LEFT_ARM_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [5.0, 2.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &ILLAGER_LEFT_ARM,
+    children: &[],
+};
+
+// Vanilla 26.1 IllagerModel.createBodyLayer(), with LayerDefinitions'
+// MeshTransformer.scaling(0.9375F) applied by the emitter root transform.
+const ILLAGER_SHARED_CROSSED_PARTS: [ModelPartDesc; 5] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_HEAD,
+        children: &ILLAGER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_BODY,
+        children: &[],
+    },
+    ILLAGER_CROSSED_ARM_PART,
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+];
+
+const ILLAGER_SHARED_UNCROSSED_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_HEAD,
+        children: &ILLAGER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+    ILLAGER_RIGHT_ARM_PART,
+    ILLAGER_LEFT_ARM_PART,
+];
+
+const ILLAGER_ILLUSIONER_PARTS: [ModelPartDesc; 5] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_HEAD,
+        children: &ILLAGER_HEAD_WITH_HAT_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_BODY,
+        children: &[],
+    },
+    ILLAGER_CROSSED_ARM_PART,
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+];
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2551,6 +2841,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::IronGolem => emit_iron_golem_model(&mut mesh, *instance),
             EntityModelKind::SnowGolem => emit_snow_golem_model(&mut mesh, *instance),
             EntityModelKind::Witch => emit_witch_model(&mut mesh, *instance),
+            EntityModelKind::Illager { family } => emit_illager_model(&mut mesh, *instance, family),
             EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
             EntityModelKind::Boat { chest } => emit_boat_model(&mut mesh, *instance, chest),
             EntityModelKind::Placeholder { bounds, .. } => {
@@ -2711,6 +3002,28 @@ fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         &WITCH_PARTS,
         villager_adult_model_root_transform(instance),
     );
+}
+
+fn emit_illager_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: IllagerModelFamily,
+) {
+    emit_model_parts(
+        mesh,
+        illager_model_parts(family),
+        villager_adult_model_root_transform(instance),
+    );
+}
+
+fn illager_model_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
+    match family {
+        IllagerModelFamily::Evoker | IllagerModelFamily::Vindicator => {
+            &ILLAGER_SHARED_CROSSED_PARTS
+        }
+        IllagerModelFamily::Illusioner => &ILLAGER_ILLUSIONER_PARTS,
+        IllagerModelFamily::Pillager => &ILLAGER_SHARED_UNCROSSED_PARTS,
+    }
 }
 
 fn emit_quadruped_model(
@@ -4768,6 +5081,197 @@ mod tests {
     }
 
     #[test]
+    fn illager_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            ILLAGER_HEAD[0],
+            ModelCubeDesc {
+                min: [-4.0, -10.0, -4.0],
+                size: [8.0, 10.0, 8.0],
+                color: ILLAGER_ROBE,
+            }
+        );
+        assert_eq!(
+            ILLAGER_HAT[0],
+            ModelCubeDesc {
+                min: [-4.45, -10.45, -4.45],
+                size: [8.9, 12.9, 8.9],
+                color: ILLAGER_HAT_COLOR,
+            }
+        );
+        assert_eq!(
+            ILLAGER_BODY[1],
+            ModelCubeDesc {
+                min: [-4.5, -0.5, -3.5],
+                size: [9.0, 21.0, 7.0],
+                color: ILLAGER_ROBE,
+            }
+        );
+
+        assert_eq!(ILLAGER_SHARED_CROSSED_PARTS.len(), 5);
+        assert_part_tree(
+            &ILLAGER_SHARED_CROSSED_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_HEAD.as_slice(),
+            ILLAGER_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ILLAGER_HEAD_CHILDREN[0],
+            [0.0, -2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_NOSE.as_slice(),
+        );
+        assert_part(
+            &ILLAGER_SHARED_CROSSED_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_BODY.as_slice(),
+        );
+        assert_part_tree(
+            &ILLAGER_SHARED_CROSSED_PARTS[2],
+            [0.0, 3.0, -1.0],
+            [-0.75, 0.0, 0.0],
+            ILLAGER_CROSSED_ARMS.as_slice(),
+            ILLAGER_CROSSED_ARM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ILLAGER_CROSSED_ARM_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_LEFT_SHOULDER.as_slice(),
+        );
+
+        assert_eq!(ILLAGER_SHARED_UNCROSSED_PARTS.len(), 6);
+        assert_part(
+            &ILLAGER_SHARED_UNCROSSED_PARTS[4],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_RIGHT_ARM.as_slice(),
+        );
+        assert_part(
+            &ILLAGER_SHARED_UNCROSSED_PARTS[5],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_LEFT_ARM.as_slice(),
+        );
+
+        assert_part_tree(
+            &ILLAGER_ILLUSIONER_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_HEAD.as_slice(),
+            ILLAGER_HEAD_WITH_HAT_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ILLAGER_HEAD_WITH_HAT_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_HAT.as_slice(),
+        );
+        assert_part(
+            &ILLAGER_HEAD_WITH_HAT_CHILDREN[1],
+            [0.0, -2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ILLAGER_NOSE.as_slice(),
+        );
+    }
+
+    #[test]
+    fn illager_model_meshes_use_vanilla_scaled_body_layer_geometry() {
+        let evoker = entity_model_mesh(&[EntityModelInstance::illager(
+            46,
+            [0.0, 64.0, 0.0],
+            0.0,
+            IllagerModelFamily::Evoker,
+        )]);
+        assert_eq!(evoker.opaque_faces, 54);
+        assert_eq!(evoker.vertices.len(), 216);
+        assert_eq!(evoker.indices.len(), 324);
+        let (evoker_min, evoker_max) = mesh_extents(&evoker);
+        assert_close3(evoker_min, [-0.46875, 64.00094, -0.23437501]);
+        assert_close3(evoker_max, [0.46875003, 65.993126, 0.3839772]);
+
+        let illusioner = entity_model_mesh(&[EntityModelInstance::illager(
+            68,
+            [0.0, 64.0, 0.0],
+            0.0,
+            IllagerModelFamily::Illusioner,
+        )]);
+        assert_eq!(illusioner.opaque_faces, 60);
+        assert_eq!(illusioner.vertices.len(), 240);
+        assert_eq!(illusioner.indices.len(), 360);
+        let (illusioner_min, illusioner_max) = mesh_extents(&illusioner);
+        assert_close3(illusioner_min, [-0.46875, 64.00094, -0.26074222]);
+        assert_close3(illusioner_max, [0.46875003, 66.01949, 0.3839772]);
+
+        let pillager = entity_model_mesh(&[EntityModelInstance::illager(
+            103,
+            [0.0, 64.0, 0.0],
+            0.0,
+            IllagerModelFamily::Pillager,
+        )]);
+        assert_eq!(pillager.opaque_faces, 48);
+        assert_eq!(pillager.vertices.len(), 192);
+        assert_eq!(pillager.indices.len(), 288);
+        let (pillager_min, pillager_max) = mesh_extents(&pillager);
+        assert_close3(pillager_min, [-0.46875, 64.00094, -0.23437501]);
+        assert_close3(pillager_max, [0.46875, 65.993126, 0.3515625]);
+
+        let vindicator = entity_model_mesh(&[EntityModelInstance::illager(
+            140,
+            [0.0, 64.0, 0.0],
+            0.0,
+            IllagerModelFamily::Vindicator,
+        )]);
+        assert_eq!(vindicator.vertices, evoker.vertices);
+        assert_eq!(vindicator.indices, evoker.indices);
+    }
+
+    #[test]
+    fn illager_texture_refs_match_vanilla_renderers() {
+        let cases = [
+            (
+                IllagerModelFamily::Evoker,
+                "evoker",
+                EntityModelTextureRef {
+                    path: "textures/entity/illager/evoker.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                IllagerModelFamily::Illusioner,
+                "illusioner",
+                EntityModelTextureRef {
+                    path: "textures/entity/illager/illusioner.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                IllagerModelFamily::Pillager,
+                "pillager",
+                EntityModelTextureRef {
+                    path: "textures/entity/illager/pillager.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                IllagerModelFamily::Vindicator,
+                "vindicator",
+                EntityModelTextureRef {
+                    path: "textures/entity/illager/vindicator.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+
+        for (family, model_key, texture) in cases {
+            let kind = EntityModelKind::Illager { family };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
+    }
+
+    #[test]
     fn entity_model_root_transform_rotates_instances_by_body_yaw() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             26,
@@ -4899,6 +5403,34 @@ mod tests {
         assert_eq!(EntityModelKind::IronGolem.model_key(), "iron_golem");
         assert_eq!(EntityModelKind::SnowGolem.model_key(), "snow_golem");
         assert_eq!(EntityModelKind::Witch.model_key(), "witch");
+        assert_eq!(
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Evoker
+            }
+            .model_key(),
+            "evoker"
+        );
+        assert_eq!(
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Illusioner
+            }
+            .model_key(),
+            "illusioner"
+        );
+        assert_eq!(
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Pillager
+            }
+            .model_key(),
+            "pillager"
+        );
+        assert_eq!(
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Vindicator
+            }
+            .model_key(),
+            "vindicator"
+        );
         assert_eq!(
             EntityModelKind::Placeholder {
                 name: "todo_test_bounds",

@@ -1,7 +1,7 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
-    EntityModelInstance, EntityModelKind, HumanoidModelFamily, QuadrupedModelFamily, SelectionBox,
-    SelectionOutline,
+    EntityModelInstance, EntityModelKind, HumanoidModelFamily, IllagerModelFamily,
+    QuadrupedModelFamily, SelectionBox, SelectionOutline,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
 
@@ -261,10 +261,18 @@ fn entity_model_kind(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => EntityModelKind::WanderingTrader,
-        VANILLA_ENTITY_TYPE_EVOKER_ID
-        | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
-        | VANILLA_ENTITY_TYPE_PILLAGER_ID
-        | VANILLA_ENTITY_TYPE_VINDICATOR_ID => humanoid(HumanoidModelFamily::Illager, false),
+        VANILLA_ENTITY_TYPE_EVOKER_ID => EntityModelKind::Illager {
+            family: IllagerModelFamily::Evoker,
+        },
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID => EntityModelKind::Illager {
+            family: IllagerModelFamily::Illusioner,
+        },
+        VANILLA_ENTITY_TYPE_PILLAGER_ID => EntityModelKind::Illager {
+            family: IllagerModelFamily::Pillager,
+        },
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID => EntityModelKind::Illager {
+            family: IllagerModelFamily::Vindicator,
+        },
         VANILLA_ENTITY_TYPE_WITCH_ID => EntityModelKind::Witch,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => EntityModelKind::Enderman,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => EntityModelKind::IronGolem,
@@ -761,26 +769,34 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_kind_uses_exact_model_for_witch_only_within_illagers() {
+    fn entity_model_kind_uses_exact_models_for_illagers_and_witch() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WITCH_ID, &[]),
             EntityModelKind::Witch
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_EVOKER_ID, &[]),
-            humanoid(HumanoidModelFamily::Illager, false)
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Evoker
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ILLUSIONER_ID, &[]),
-            humanoid(HumanoidModelFamily::Illager, false)
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Illusioner
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PILLAGER_ID, &[]),
-            humanoid(HumanoidModelFamily::Illager, false)
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Pillager
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_VINDICATOR_ID, &[]),
-            humanoid(HumanoidModelFamily::Illager, false)
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Vindicator
+            }
         );
     }
 
