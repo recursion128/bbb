@@ -1,7 +1,7 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
     EntityModelInstance, EntityModelKind, HumanoidModelFamily, IllagerModelFamily,
-    QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
+    PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
     ZombieVariantModelFamily,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
@@ -256,12 +256,14 @@ fn entity_model_kind(
             family: ZombieVariantModelFamily::ZombieVillager,
             baby: zombie_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
-            humanoid(HumanoidModelFamily::Zombie, zombie_baby(data_values))
-        }
-        VANILLA_ENTITY_TYPE_PIGLIN_ID => {
-            humanoid(HumanoidModelFamily::Zombie, piglin_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => EntityModelKind::Piglin {
+            family: PiglinModelFamily::ZombifiedPiglin,
+            baby: zombie_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_PIGLIN_ID => EntityModelKind::Piglin {
+            family: PiglinModelFamily::Piglin,
+            baby: piglin_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_SKELETON_ID => EntityModelKind::Skeleton,
         VANILLA_ENTITY_TYPE_STRAY_ID => EntityModelKind::SkeletonVariant {
             family: SkeletonModelFamily::Stray,
@@ -461,7 +463,10 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => placeholder("todo_parrot_bounds", 0.5, 0.9, 0.5),
         VANILLA_ENTITY_TYPE_PHANTOM_ID => placeholder("todo_phantom_bounds", 0.9, 0.5, 0.9),
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => humanoid(HumanoidModelFamily::Zombie, false),
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => EntityModelKind::Piglin {
+            family: PiglinModelFamily::PiglinBrute,
+            baby: false,
+        },
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID => placeholder("todo_pufferfish_bounds", 0.7, 0.7, 0.7),
         VANILLA_ENTITY_TYPE_SALMON_ID => placeholder("todo_salmon_bounds", 0.7, 0.4, 0.7),
         VANILLA_ENTITY_TYPE_SHULKER_ID => placeholder("todo_shulker_bounds", 1.0, 1.0, 1.0),
@@ -773,6 +778,47 @@ mod tests {
             ),
             EntityModelKind::ZombieVariant {
                 family: ZombieVariantModelFamily::ZombieVillager,
+                baby: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PIGLIN_ID, &[]),
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_PIGLIN_ID,
+                &[protocol_bool_data(PIGLIN_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, &[]),
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::PiglinBrute,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID, &[]),
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+                &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
                 baby: true
             }
         );

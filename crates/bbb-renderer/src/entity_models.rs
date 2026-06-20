@@ -25,6 +25,10 @@ pub enum EntityModelKind {
         family: ZombieVariantModelFamily,
         baby: bool,
     },
+    Piglin {
+        family: PiglinModelFamily,
+        baby: bool,
+    },
     Skeleton,
     SkeletonVariant {
         family: SkeletonModelFamily,
@@ -67,6 +71,13 @@ pub enum ZombieVariantModelFamily {
     Husk,
     Drowned,
     ZombieVillager,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PiglinModelFamily {
+    Piglin,
+    PiglinBrute,
+    ZombifiedPiglin,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -195,6 +206,26 @@ impl EntityModelKind {
                 family: ZombieVariantModelFamily::ZombieVillager,
                 baby: true,
             } => "zombie_villager_baby",
+            Self::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: false,
+            } => "piglin",
+            Self::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: true,
+            } => "piglin_baby",
+            Self::Piglin {
+                family: PiglinModelFamily::PiglinBrute,
+                ..
+            } => "piglin_brute",
+            Self::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: false,
+            } => "zombified_piglin",
+            Self::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: true,
+            } => "zombified_piglin_baby",
             Self::Skeleton => "skeleton",
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -305,6 +336,26 @@ impl EntityModelKind {
                 family: ZombieVariantModelFamily::ZombieVillager,
                 baby: true,
             } => Some(ZOMBIE_VILLAGER_BABY_TEXTURE_REF),
+            Self::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: false,
+            } => Some(PIGLIN_TEXTURE_REF),
+            Self::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: true,
+            } => Some(PIGLIN_BABY_TEXTURE_REF),
+            Self::Piglin {
+                family: PiglinModelFamily::PiglinBrute,
+                ..
+            } => Some(PIGLIN_BRUTE_TEXTURE_REF),
+            Self::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: false,
+            } => Some(ZOMBIFIED_PIGLIN_TEXTURE_REF),
+            Self::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: true,
+            } => Some(ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF),
             Self::Skeleton => Some(SKELETON_TEXTURE_REF),
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -399,6 +450,21 @@ impl EntityModelInstance {
         Self::new(
             entity_id,
             EntityModelKind::ZombieVariant { family, baby },
+            position,
+            y_rot,
+        )
+    }
+
+    pub fn piglin(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: PiglinModelFamily,
+        baby: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Piglin { family, baby },
             position,
             y_rot,
         )
@@ -618,6 +684,9 @@ const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
 const HUSK_TAN: [f32; 4] = [0.60, 0.50, 0.31, 1.0];
 const DROWNED_BLUE: [f32; 4] = [0.23, 0.48, 0.55, 1.0];
 const ZOMBIE_VILLAGER_ROBE: [f32; 4] = [0.38, 0.55, 0.34, 1.0];
+const PIGLIN_SKIN: [f32; 4] = [0.74, 0.44, 0.36, 1.0];
+const PIGLIN_BRUTE_SKIN: [f32; 4] = [0.58, 0.35, 0.29, 1.0];
+const ZOMBIFIED_PIGLIN_SKIN: [f32; 4] = [0.46, 0.62, 0.42, 1.0];
 const SKELETON_BONE: [f32; 4] = [0.82, 0.82, 0.72, 1.0];
 const WITHER_SKELETON_DARK: [f32; 4] = [0.14, 0.14, 0.14, 1.0];
 const PARCHED_BONE: [f32; 4] = [0.70, 0.62, 0.48, 1.0];
@@ -679,6 +748,31 @@ const ZOMBIE_VILLAGER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef
 
 const ZOMBIE_VILLAGER_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/zombie_villager/zombie_villager_baby.png",
+    size: [64, 64],
+};
+
+const PIGLIN_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/piglin/piglin.png",
+    size: [64, 64],
+};
+
+const PIGLIN_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/piglin/piglin_baby.png",
+    size: [64, 64],
+};
+
+const PIGLIN_BRUTE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/piglin/piglin_brute.png",
+    size: [64, 64],
+};
+
+const ZOMBIFIED_PIGLIN_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/piglin/zombified_piglin.png",
+    size: [64, 64],
+};
+
+const ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/piglin/zombified_piglin_baby.png",
     size: [64, 64],
 };
 
@@ -1390,6 +1484,311 @@ const BABY_ZOMBIE_VILLAGER_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &BABY_ZOMBIE_VILLAGER_LEG,
+        children: &[],
+    },
+];
+
+const ADULT_PIGLIN_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-5.0, -8.0, -4.0],
+        size: [10.0, 8.0, 8.0],
+        color: PIGLIN_SKIN,
+    },
+    ModelCubeDesc {
+        min: [-2.0, -4.0, -5.0],
+        size: [4.0, 4.0, 1.0],
+        color: PIGLIN_SKIN,
+    },
+    ModelCubeDesc {
+        min: [2.0, -2.0, -5.0],
+        size: [1.0, 2.0, 1.0],
+        color: PIGLIN_SKIN,
+    },
+    ModelCubeDesc {
+        min: [-3.0, -2.0, -5.0],
+        size: [1.0, 2.0, 1.0],
+        color: PIGLIN_SKIN,
+    },
+];
+
+const ADULT_PIGLIN_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, -2.0],
+    size: [1.0, 5.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -2.0],
+    size: [1.0, 5.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.5, -6.0, 0.0],
+            rotation: [0.0, 0.0, -std::f32::consts::FRAC_PI_6],
+        },
+        cubes: &ADULT_PIGLIN_LEFT_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.5, -6.0, 0.0],
+            rotation: [0.0, 0.0, std::f32::consts::FRAC_PI_6],
+        },
+        cubes: &ADULT_PIGLIN_RIGHT_EAR,
+        children: &[],
+    },
+];
+
+const ADULT_PIGLIN_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 12.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_RIGHT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.25, -2.25, -2.25],
+    size: [4.5, 12.5, 4.5],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_LEFT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.25, -2.25, -2.25],
+    size: [4.5, 12.5, 4.5],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_RIGHT_ARM_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_PIGLIN_RIGHT_SLEEVE,
+    children: &[],
+}];
+
+const ADULT_PIGLIN_LEFT_ARM_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_PIGLIN_LEFT_SLEEVE,
+    children: &[],
+}];
+
+const ADULT_PIGLIN_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_PANTS: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.25, -0.25, -2.25],
+    size: [4.5, 12.5, 4.5],
+    color: PIGLIN_SKIN,
+}];
+
+const ADULT_PIGLIN_LEG_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_PIGLIN_PANTS,
+    children: &[],
+}];
+
+// Vanilla 26.1 AdultPiglinModel.createBodyLayer().
+const ADULT_PIGLIN_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_PIGLIN_HEAD,
+        children: &ADULT_PIGLIN_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_PIGLIN_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIGLIN_RIGHT_ARM,
+        children: &ADULT_PIGLIN_RIGHT_ARM_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIGLIN_LEFT_ARM,
+        children: &ADULT_PIGLIN_LEFT_ARM_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIGLIN_LEG,
+        children: &ADULT_PIGLIN_LEG_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_PIGLIN_LEG,
+        children: &ADULT_PIGLIN_LEG_CHILDREN,
+    },
+];
+
+const BABY_PIGLIN_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -3.0, -1.0],
+    size: [6.0, 5.0, 3.0],
+    color: PIGLIN_SKIN,
+}];
+
+const BABY_PIGLIN_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-1.5, -3.0, -4.5],
+        size: [3.0, 3.0, 1.0],
+        color: PIGLIN_SKIN,
+    },
+    ModelCubeDesc {
+        min: [-4.5, -6.0, -3.5],
+        size: [9.0, 6.0, 7.0],
+        color: PIGLIN_SKIN,
+    },
+];
+
+const BABY_PIGLIN_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-0.5, -3.0, -2.0],
+    size: [1.0, 6.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const BABY_PIGLIN_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-0.5, -3.0, -2.0],
+    size: [1.0, 6.0, 4.0],
+    color: PIGLIN_SKIN,
+}];
+
+const BABY_PIGLIN_HAT_CHILD: ModelPartDesc = ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &[],
+    children: &[],
+};
+
+const BABY_PIGLIN_LEFT_EAR_ROTATED_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [1.0, 1.75, 0.0],
+        rotation: [0.0, 0.0, -0.6109],
+    },
+    cubes: &BABY_PIGLIN_LEFT_EAR,
+    children: &[],
+}];
+
+const BABY_PIGLIN_RIGHT_EAR_ROTATED_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [-1.0, 1.75, 0.0],
+        rotation: [0.0, 0.0, 0.6109],
+    },
+    cubes: &BABY_PIGLIN_RIGHT_EAR,
+    children: &[],
+}];
+
+const BABY_PIGLIN_HEAD_CHILDREN: [ModelPartDesc; 3] = [
+    BABY_PIGLIN_HAT_CHILD,
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.2, -4.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &BABY_PIGLIN_LEFT_EAR_ROTATED_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.2, -4.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &BABY_PIGLIN_RIGHT_EAR_ROTATED_CHILDREN,
+    },
+];
+
+const BABY_PIGLIN_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.5],
+    size: [2.0, 5.0, 3.0],
+    color: PIGLIN_SKIN,
+}];
+
+const BABY_PIGLIN_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.5],
+    size: [2.0, 5.0, 3.0],
+    color: PIGLIN_SKIN,
+}];
+
+const BABY_PIGLIN_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, 0.0, -1.5],
+    size: [3.0, 4.0, 3.0],
+    color: PIGLIN_SKIN,
+}];
+
+// Vanilla 26.1 BabyPiglinModel.createBodyLayer().
+const BABY_PIGLIN_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 18.0, -0.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIGLIN_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIGLIN_HEAD,
+        children: &BABY_PIGLIN_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 15.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIGLIN_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 15.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIGLIN_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.5, 20.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIGLIN_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.5, 20.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_PIGLIN_LEG,
         children: &[],
     },
 ];
@@ -3367,6 +3766,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::ZombieVariant { family, baby } => {
                 emit_zombie_variant_model(&mut mesh, *instance, family, baby)
             }
+            EntityModelKind::Piglin { family, baby } => {
+                emit_piglin_model(&mut mesh, *instance, family, baby)
+            }
             EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
             EntityModelKind::SkeletonVariant { family } => {
                 emit_skeleton_variant_model(&mut mesh, *instance, family)
@@ -3531,6 +3933,25 @@ fn emit_zombie_variant_model(
             ZOMBIE_VILLAGER_ROBE,
         ),
     }
+}
+
+fn emit_piglin_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: PiglinModelFamily,
+    baby: bool,
+) {
+    let parts = if baby && family != PiglinModelFamily::PiglinBrute {
+        &BABY_PIGLIN_PARTS
+    } else {
+        &ADULT_PIGLIN_PARTS
+    };
+    emit_model_parts_with_color(
+        mesh,
+        parts,
+        entity_model_root_transform(instance),
+        piglin_model_color(family),
+    );
 }
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -3952,6 +4373,14 @@ fn humanoid_model_color(family: HumanoidModelFamily) -> [f32; 4] {
         HumanoidModelFamily::Villager => VILLAGER_ROBE,
         HumanoidModelFamily::Illager => ILLAGER_GRAY,
         HumanoidModelFamily::ArmorStand => ARMOR_STAND_WOOD,
+    }
+}
+
+fn piglin_model_color(family: PiglinModelFamily) -> [f32; 4] {
+    match family {
+        PiglinModelFamily::Piglin => PIGLIN_SKIN,
+        PiglinModelFamily::PiglinBrute => PIGLIN_BRUTE_SKIN,
+        PiglinModelFamily::ZombifiedPiglin => ZOMBIFIED_PIGLIN_SKIN,
     }
 }
 
@@ -4440,6 +4869,178 @@ mod tests {
     }
 
     #[test]
+    fn piglin_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_PIGLIN_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-5.0, -8.0, -4.0],
+                    size: [10.0, 8.0, 8.0],
+                    color: PIGLIN_SKIN,
+                },
+                ModelCubeDesc {
+                    min: [-2.0, -4.0, -5.0],
+                    size: [4.0, 4.0, 1.0],
+                    color: PIGLIN_SKIN,
+                },
+                ModelCubeDesc {
+                    min: [2.0, -2.0, -5.0],
+                    size: [1.0, 2.0, 1.0],
+                    color: PIGLIN_SKIN,
+                },
+                ModelCubeDesc {
+                    min: [-3.0, -2.0, -5.0],
+                    size: [1.0, 2.0, 1.0],
+                    color: PIGLIN_SKIN,
+                },
+            ]
+        );
+        assert_eq!(ADULT_PIGLIN_PARTS.len(), 6);
+        assert_part_tree(
+            &ADULT_PIGLIN_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_HEAD.as_slice(),
+            ADULT_PIGLIN_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_PIGLIN_HEAD_CHILDREN[0],
+            [4.5, -6.0, 0.0],
+            [0.0, 0.0, -std::f32::consts::FRAC_PI_6],
+            ADULT_PIGLIN_LEFT_EAR.as_slice(),
+        );
+        assert_part(
+            &ADULT_PIGLIN_HEAD_CHILDREN[1],
+            [-4.5, -6.0, 0.0],
+            [0.0, 0.0, std::f32::consts::FRAC_PI_6],
+            ADULT_PIGLIN_RIGHT_EAR.as_slice(),
+        );
+        assert_part(
+            &ADULT_PIGLIN_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_BODY.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_PIGLIN_PARTS[2],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_RIGHT_ARM.as_slice(),
+            ADULT_PIGLIN_RIGHT_ARM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_PIGLIN_RIGHT_ARM_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_RIGHT_SLEEVE.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_PIGLIN_PARTS[3],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_LEFT_ARM.as_slice(),
+            ADULT_PIGLIN_LEFT_ARM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_PIGLIN_LEFT_ARM_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_LEFT_SLEEVE.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_PIGLIN_PARTS[4],
+            [-1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_LEG.as_slice(),
+            ADULT_PIGLIN_LEG_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_PIGLIN_LEG_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_PANTS.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_PIGLIN_PARTS[5],
+            [1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_PIGLIN_LEG.as_slice(),
+            ADULT_PIGLIN_LEG_CHILDREN.as_slice(),
+        );
+
+        assert_eq!(BABY_PIGLIN_PARTS.len(), 6);
+        assert_part(
+            &BABY_PIGLIN_PARTS[0],
+            [0.0, 18.0, -0.5],
+            [0.0, 0.0, 0.0],
+            BABY_PIGLIN_BODY.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_PIGLIN_PARTS[1],
+            [0.0, 15.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_PIGLIN_HEAD.as_slice(),
+            BABY_PIGLIN_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_PIGLIN_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            &[],
+        );
+        assert_part_tree(
+            &BABY_PIGLIN_HEAD_CHILDREN[1],
+            [4.2, -4.0, 0.0],
+            [0.0, 0.0, 0.0],
+            &[],
+            BABY_PIGLIN_LEFT_EAR_ROTATED_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_PIGLIN_LEFT_EAR_ROTATED_CHILDREN[0],
+            [1.0, 1.75, 0.0],
+            [0.0, 0.0, -0.6109],
+            BABY_PIGLIN_LEFT_EAR.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_PIGLIN_HEAD_CHILDREN[2],
+            [-4.2, -4.0, 0.0],
+            [0.0, 0.0, 0.0],
+            &[],
+            BABY_PIGLIN_RIGHT_EAR_ROTATED_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_PIGLIN_RIGHT_EAR_ROTATED_CHILDREN[0],
+            [-1.0, 1.75, 0.0],
+            [0.0, 0.0, 0.6109],
+            BABY_PIGLIN_RIGHT_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_PIGLIN_PARTS[2],
+            [4.0, 15.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_PIGLIN_LEFT_ARM.as_slice(),
+        );
+        assert_part(
+            &BABY_PIGLIN_PARTS[3],
+            [-4.0, 15.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_PIGLIN_RIGHT_ARM.as_slice(),
+        );
+        assert_part(
+            &BABY_PIGLIN_PARTS[4],
+            [-1.5, 20.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_PIGLIN_LEG.as_slice(),
+        );
+        assert_part(
+            &BABY_PIGLIN_PARTS[5],
+            [1.5, 20.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_PIGLIN_LEG.as_slice(),
+        );
+    }
+
+    #[test]
     fn zombie_baby_model_mesh_uses_vanilla_body_layer_geometry() {
         let mesh =
             entity_model_mesh(&[EntityModelInstance::zombie(55, [0.0, 64.0, 0.0], 0.0, true)]);
@@ -4561,6 +5162,84 @@ mod tests {
             mesh_extents(&baby_zombie_villager);
         assert_close3(baby_zombie_villager_min, [-0.43750003, 64.001, -0.37500003]);
         assert_close3(baby_zombie_villager_max, [0.43750003, 65.01975, 0.37500003]);
+    }
+
+    #[test]
+    fn piglin_meshes_use_vanilla_body_layer_geometry() {
+        let piglin = entity_model_mesh(&[EntityModelInstance::piglin(
+            101,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PiglinModelFamily::Piglin,
+            false,
+        )]);
+        assert_eq!(piglin.opaque_faces, 90);
+        assert_eq!(piglin.vertices.len(), 360);
+        assert_eq!(piglin.indices.len(), 540);
+        assert!(piglin
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(PIGLIN_SKIN, 0.78)));
+        let (piglin_min, piglin_max) = mesh_extents(&piglin);
+        assert_close3(piglin_min, [-0.515625, 63.985374, -0.25000003]);
+        assert_close3(piglin_max, [0.515625, 66.001, 0.31250003]);
+
+        let baby_piglin = entity_model_mesh(&[EntityModelInstance::piglin(
+            101,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PiglinModelFamily::Piglin,
+            true,
+        )]);
+        assert_eq!(baby_piglin.opaque_faces, 54);
+        assert_eq!(baby_piglin.vertices.len(), 216);
+        assert_eq!(baby_piglin.indices.len(), 324);
+        assert!(baby_piglin
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(PIGLIN_SKIN, 0.78)));
+        let (baby_piglin_min, baby_piglin_max) = mesh_extents(&baby_piglin);
+        assert_close3(baby_piglin_min, [-0.45814878, 64.001, -0.21875003]);
+        assert_close3(baby_piglin_max, [0.45814878, 64.9385, 0.28125]);
+
+        let brute = entity_model_mesh(&[EntityModelInstance::piglin(
+            102,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PiglinModelFamily::PiglinBrute,
+            false,
+        )]);
+        assert_same_geometry(&brute, &piglin);
+        assert!(brute
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(PIGLIN_BRUTE_SKIN, 0.78)));
+
+        let zombified = entity_model_mesh(&[EntityModelInstance::piglin(
+            154,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PiglinModelFamily::ZombifiedPiglin,
+            false,
+        )]);
+        assert_same_geometry(&zombified, &piglin);
+        assert!(zombified
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(ZOMBIFIED_PIGLIN_SKIN, 0.78)));
+
+        let baby_zombified = entity_model_mesh(&[EntityModelInstance::piglin(
+            154,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PiglinModelFamily::ZombifiedPiglin,
+            true,
+        )]);
+        assert_same_geometry(&baby_zombified, &baby_piglin);
+        assert!(baby_zombified
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(ZOMBIFIED_PIGLIN_SKIN, 0.78)));
     }
 
     #[test]
@@ -4708,6 +5387,61 @@ mod tests {
             .vanilla_texture_ref(),
             Some(EntityModelTextureRef {
                 path: "textures/entity/zombie_villager/zombie_villager_baby.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: false,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/piglin/piglin.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: true,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/piglin/piglin_baby.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::PiglinBrute,
+                baby: false,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/piglin/piglin_brute.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: false,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/piglin/zombified_piglin.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: true,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/piglin/zombified_piglin_baby.png",
                 size: [64, 64],
             })
         );
@@ -6560,6 +7294,46 @@ mod tests {
             }
             .model_key(),
             "zombie_villager_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: false
+            }
+            .model_key(),
+            "piglin"
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                baby: true
+            }
+            .model_key(),
+            "piglin_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::PiglinBrute,
+                baby: false
+            }
+            .model_key(),
+            "piglin_brute"
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: false
+            }
+            .model_key(),
+            "zombified_piglin"
+        );
+        assert_eq!(
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::ZombifiedPiglin,
+                baby: true
+            }
+            .model_key(),
+            "zombified_piglin_baby"
         );
         assert_eq!(EntityModelKind::Skeleton.model_key(), "skeleton");
         assert_eq!(
