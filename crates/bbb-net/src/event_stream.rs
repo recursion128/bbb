@@ -1772,6 +1772,165 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_hud_and_ui_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(13);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        macro_rules! assert_matching_event {
+            ($packet:expr, $message:literal, $pattern:pat $(if $guard:expr)? ) => {{
+                stream.handle_play_packet($packet).await.unwrap();
+                let event = timeout(Duration::from_secs(1), events_rx.recv())
+                    .await
+                    .expect($message)
+                    .unwrap();
+                assert!(matches!(event, $pattern $(if $guard)?));
+            }};
+        }
+
+        let action_bar = packets::SetActionBarText {
+            content: "Action ready".to_string(),
+        };
+        assert_matching_event!(
+            PlayClientbound::SetActionBarText(action_bar.clone()),
+            "action bar event should be emitted",
+            NetEvent::SetActionBarText(update) if update == action_bar
+        );
+
+        let title = packets::SetTitleText {
+            content: "Quest complete".to_string(),
+        };
+        assert_matching_event!(
+            PlayClientbound::SetTitleText(title.clone()),
+            "title text event should be emitted",
+            NetEvent::SetTitleText(update) if update == title
+        );
+
+        let subtitle = packets::SetSubtitleText {
+            content: "Return to camp".to_string(),
+        };
+        assert_matching_event!(
+            PlayClientbound::SetSubtitleText(subtitle.clone()),
+            "subtitle text event should be emitted",
+            NetEvent::SetSubtitleText(update) if update == subtitle
+        );
+
+        let clear_titles = packets::ClearTitles { reset_times: true };
+        assert_matching_event!(
+            PlayClientbound::ClearTitles(clear_titles),
+            "clear titles event should be emitted",
+            NetEvent::ClearTitles(update) if update == clear_titles
+        );
+
+        let titles_animation = packets::SetTitlesAnimation {
+            fade_in: 5,
+            stay: 40,
+            fade_out: 15,
+        };
+        assert_matching_event!(
+            PlayClientbound::SetTitlesAnimation(titles_animation),
+            "titles animation event should be emitted",
+            NetEvent::SetTitlesAnimation(update) if update == titles_animation
+        );
+
+        let show_dialog = packets::ShowDialog {
+            dialog: packets::DialogHolder::Direct {
+                raw_dialog_payload: vec![0xaa, 0xbb, 0xcc],
+            },
+        };
+        assert_matching_event!(
+            PlayClientbound::ShowDialog(show_dialog.clone()),
+            "show dialog event should be emitted",
+            NetEvent::ShowDialog(update) if update == show_dialog
+        );
+
+        assert_matching_event!(
+            PlayClientbound::ClearDialog,
+            "clear dialog event should be emitted",
+            NetEvent::ClearDialog
+        );
+
+        assert_matching_event!(
+            PlayClientbound::LowDiskSpaceWarning,
+            "low disk warning event should be emitted",
+            NetEvent::LowDiskSpaceWarning
+        );
+
+        let mount_screen = packets::MountScreenOpen {
+            container_id: 11,
+            inventory_columns: 5,
+            entity_id: 42,
+        };
+        assert_matching_event!(
+            PlayClientbound::MountScreenOpen(mount_screen),
+            "mount screen open event should be emitted",
+            NetEvent::MountScreenOpen(update) if update == mount_screen
+        );
+
+        let open_book = packets::OpenBook {
+            hand: packets::InteractionHand::OffHand,
+        };
+        assert_matching_event!(
+            PlayClientbound::OpenBook(open_book),
+            "open book event should be emitted",
+            NetEvent::OpenBook(update) if update == open_book
+        );
+
+        let open_sign = packets::OpenSignEditor {
+            pos: packets::BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+        };
+        assert_matching_event!(
+            PlayClientbound::OpenSignEditor(open_sign),
+            "open sign editor event should be emitted",
+            NetEvent::OpenSignEditor(update) if update == open_sign
+        );
+
+        let ghost_recipe = packets::PlaceGhostRecipe {
+            container_id: 9,
+            recipe_display_type: packets::RecipeDisplayType::Stonecutter,
+            recipe_display_body: vec![1, 2, 3],
+        };
+        assert_matching_event!(
+            PlayClientbound::PlaceGhostRecipe(ghost_recipe.clone()),
+            "place ghost recipe event should be emitted",
+            NetEvent::PlaceGhostRecipe(update) if update == ghost_recipe
+        );
+
+        let pong = packets::PongResponse { time: 123456789 };
+        assert_matching_event!(
+            PlayClientbound::PongResponse(pong),
+            "pong response event should be emitted",
+            NetEvent::PongResponse(update) if update == pong
+        );
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "HUD and UI packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_inventory_packets_emit_matching_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
