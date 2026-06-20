@@ -14,6 +14,10 @@ pub enum EntityModelKind {
         family: HumanoidModelFamily,
         baby: bool,
     },
+    Zombie {
+        baby: bool,
+    },
+    Skeleton,
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -114,6 +118,9 @@ impl EntityModelKind {
                 family: HumanoidModelFamily::ArmorStand,
                 baby: true,
             } => "humanoid_armor_stand_baby",
+            Self::Zombie { baby: false } => "zombie",
+            Self::Zombie { baby: true } => "zombie_baby",
+            Self::Skeleton => "skeleton",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -164,6 +171,9 @@ impl EntityModelKind {
 
     pub fn vanilla_texture_ref(self) -> Option<EntityModelTextureRef> {
         match self {
+            Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
+            Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
+            Self::Skeleton => Some(SKELETON_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             _ => None,
         }
@@ -210,6 +220,14 @@ impl EntityModelInstance {
             position,
             y_rot,
         )
+    }
+
+    pub fn zombie(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Zombie { baby }, position, y_rot)
+    }
+
+    pub fn skeleton(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Skeleton, position, y_rot)
     }
 
     pub fn quadruped(
@@ -363,6 +381,21 @@ const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
+
+const ZOMBIE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie/zombie.png",
+    size: [64, 64],
+};
+
+const ZOMBIE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie/zombie_baby.png",
+    size: [64, 64],
+};
+
+const SKELETON_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/skeleton/skeleton.png",
+    size: [64, 32],
+};
 
 const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/creeper/creeper.png",
@@ -565,6 +598,260 @@ const BABY_CHICKEN_PARTS: [ModelPartDesc; 5] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &BABY_CHICKEN_LEFT_WING,
+        children: &[],
+    },
+];
+
+const ADULT_ZOMBIE_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -4.0],
+    size: [8.0, 8.0, 8.0],
+    color: ZOMBIE_GREEN,
+}];
+
+const ADULT_ZOMBIE_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -8.5, -4.5],
+    size: [9.0, 9.0, 9.0],
+    color: ZOMBIE_GREEN,
+}];
+
+const ADULT_ZOMBIE_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_ZOMBIE_HAT,
+    children: &[],
+}];
+
+const ADULT_ZOMBIE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 12.0, 4.0],
+    color: ZOMBIE_GREEN,
+}];
+
+const ADULT_ZOMBIE_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ZOMBIE_GREEN,
+}];
+
+const ADULT_ZOMBIE_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ZOMBIE_GREEN,
+}];
+
+const ADULT_ZOMBIE_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ZOMBIE_GREEN,
+}];
+
+// Vanilla 26.1 ModelLayers.ZOMBIE: HumanoidModel.createMesh(CubeDeformation.NONE, 0.0F).
+const ADULT_ZOMBIE_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_ZOMBIE_HEAD,
+        children: &ADULT_ZOMBIE_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_ZOMBIE_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_LEG,
+        children: &[],
+    },
+];
+
+const BABY_ZOMBIE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -2.5, -1.0],
+    size: [4.0, 5.0, 2.0],
+    color: ZOMBIE_GREEN,
+}];
+
+const BABY_ZOMBIE_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-3.0, -6.25, -3.0],
+        size: [6.0, 6.0, 6.0],
+        color: ZOMBIE_GREEN,
+    },
+    // BabyZombieModel bakes CubeDeformation(0.25F) into ModelPart.Cube bounds.
+    ModelCubeDesc {
+        min: [-3.25, -6.4, -3.25],
+        size: [6.5, 6.5, 6.5],
+        color: ZOMBIE_GREEN,
+    },
+];
+
+const BABY_ZOMBIE_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -0.5, -1.0],
+    size: [2.0, 5.0, 2.0],
+    color: ZOMBIE_GREEN,
+}];
+
+const BABY_ZOMBIE_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 4.0, 2.0],
+    color: ZOMBIE_GREEN,
+}];
+
+// Vanilla 26.1 BabyZombieModel.createBodyLayer(CubeDeformation.NONE).
+const BABY_ZOMBIE_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 17.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.25, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 15.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 15.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 20.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.0, 20.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_LEG,
+        children: &[],
+    },
+];
+
+const SKELETON_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -4.0],
+    size: [8.0, 8.0, 8.0],
+    color: SKELETON_BONE,
+}];
+
+const SKELETON_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -8.5, -4.5],
+    size: [9.0, 9.0, 9.0],
+    color: SKELETON_BONE,
+}];
+
+const SKELETON_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &SKELETON_HAT,
+    children: &[],
+}];
+
+const SKELETON_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 12.0, 4.0],
+    color: SKELETON_BONE,
+}];
+
+const SKELETON_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -1.0],
+    size: [2.0, 12.0, 2.0],
+    color: SKELETON_BONE,
+}];
+
+const SKELETON_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 12.0, 2.0],
+    color: SKELETON_BONE,
+}];
+
+// Vanilla 26.1 SkeletonModel.createBodyLayer().
+const SKELETON_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SKELETON_HEAD,
+        children: &SKELETON_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SKELETON_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SKELETON_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SKELETON_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SKELETON_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SKELETON_LEG,
         children: &[],
     },
 ];
@@ -929,6 +1216,8 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Humanoid { family, baby } => {
                 emit_humanoid_model(&mut mesh, *instance, family, baby)
             }
+            EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
+            EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -1021,6 +1310,22 @@ fn emit_humanoid_model(
             },
         );
     }
+}
+
+fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    emit_model_parts(
+        mesh,
+        if baby {
+            &BABY_ZOMBIE_PARTS
+        } else {
+            &ADULT_ZOMBIE_PARTS
+        },
+        entity_model_root_transform(instance),
+    );
+}
+
+fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(mesh, &SKELETON_PARTS, entity_model_root_transform(instance));
 }
 
 fn emit_quadruped_model(
@@ -1473,6 +1778,249 @@ mod tests {
     }
 
     #[test]
+    fn zombie_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            ADULT_ZOMBIE_HAT[0],
+            ModelCubeDesc {
+                min: [-4.5, -8.5, -4.5],
+                size: [9.0, 9.0, 9.0],
+                color: ZOMBIE_GREEN,
+            }
+        );
+        assert_eq!(ADULT_ZOMBIE_PARTS.len(), 6);
+        assert_eq!(ADULT_ZOMBIE_PARTS[0].pose, PART_POSE_ZERO);
+        assert_eq!(ADULT_ZOMBIE_PARTS[0].cubes, ADULT_ZOMBIE_HEAD.as_slice());
+        assert_eq!(
+            ADULT_ZOMBIE_PARTS[0].children,
+            ADULT_ZOMBIE_HEAD_CHILDREN.as_slice()
+        );
+        assert_part(
+            &ADULT_ZOMBIE_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_HAT.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_BODY.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_PARTS[2],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_RIGHT_ARM.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_PARTS[3],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_LEFT_ARM.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_PARTS[4],
+            [-1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_LEG.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_PARTS[5],
+            [1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_LEG.as_slice(),
+        );
+    }
+
+    #[test]
+    fn zombie_adult_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::zombie(
+            54,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 42);
+        assert_eq!(mesh.vertices.len(), 168);
+        assert_eq!(mesh.indices.len(), 252);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.5, 64.001, -0.28125]);
+        assert_close3(max, [0.5, 66.03225, 0.28125]);
+    }
+
+    #[test]
+    fn zombie_baby_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            BABY_ZOMBIE_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-3.0, -6.25, -3.0],
+                    size: [6.0, 6.0, 6.0],
+                    color: ZOMBIE_GREEN,
+                },
+                ModelCubeDesc {
+                    min: [-3.25, -6.4, -3.25],
+                    size: [6.5, 6.5, 6.5],
+                    color: ZOMBIE_GREEN,
+                },
+            ]
+        );
+        assert_eq!(BABY_ZOMBIE_PARTS.len(), 6);
+        assert_part(
+            &BABY_ZOMBIE_PARTS[0],
+            [0.0, 17.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_BODY.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_PARTS[1],
+            [0.0, 15.25, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_HEAD.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_PARTS[2],
+            [-3.0, 15.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_ARM.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_PARTS[3],
+            [3.0, 15.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_ARM.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_PARTS[4],
+            [-1.0, 20.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_LEG.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_PARTS[5],
+            [1.0, 20.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_LEG.as_slice(),
+        );
+    }
+
+    #[test]
+    fn zombie_baby_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh =
+            entity_model_mesh(&[EntityModelInstance::zombie(55, [0.0, 64.0, 0.0], 0.0, true)]);
+
+        assert_eq!(mesh.opaque_faces, 42);
+        assert_eq!(mesh.vertices.len(), 168);
+        assert_eq!(mesh.indices.len(), 252);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.25, 64.001, -0.203125]);
+        assert_close3(max, [0.25, 64.947876, 0.203125]);
+    }
+
+    #[test]
+    fn skeleton_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            SKELETON_HAT[0],
+            ModelCubeDesc {
+                min: [-4.5, -8.5, -4.5],
+                size: [9.0, 9.0, 9.0],
+                color: SKELETON_BONE,
+            }
+        );
+        assert_eq!(SKELETON_PARTS.len(), 6);
+        assert_eq!(SKELETON_PARTS[0].pose, PART_POSE_ZERO);
+        assert_eq!(SKELETON_PARTS[0].cubes, SKELETON_HEAD.as_slice());
+        assert_eq!(
+            SKELETON_PARTS[0].children,
+            SKELETON_HEAD_CHILDREN.as_slice()
+        );
+        assert_part(
+            &SKELETON_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SKELETON_BODY.as_slice(),
+        );
+        assert_part(
+            &SKELETON_PARTS[2],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SKELETON_ARM.as_slice(),
+        );
+        assert_part(
+            &SKELETON_PARTS[3],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SKELETON_ARM.as_slice(),
+        );
+        assert_part(
+            &SKELETON_PARTS[4],
+            [-2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SKELETON_LEG.as_slice(),
+        );
+        assert_part(
+            &SKELETON_PARTS[5],
+            [2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SKELETON_LEG.as_slice(),
+        );
+    }
+
+    #[test]
+    fn skeleton_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::skeleton(115, [0.0, 64.0, 0.0], 0.0)]);
+
+        assert_eq!(mesh.opaque_faces, 42);
+        assert_eq!(mesh.vertices.len(), 168);
+        assert_eq!(mesh.indices.len(), 252);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.375, 64.001, -0.28125]);
+        assert_close3(max, [0.375, 66.03225, 0.28125]);
+    }
+
+    #[test]
+    fn zombie_and_skeleton_texture_refs_match_vanilla_renderers() {
+        assert_eq!(
+            EntityModelKind::Zombie { baby: false }.model_key(),
+            "zombie"
+        );
+        assert_eq!(
+            EntityModelKind::Zombie { baby: false }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie/zombie.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Zombie { baby: true }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie/zombie_baby.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(EntityModelKind::Skeleton.model_key(), "skeleton");
+        assert_eq!(
+            EntityModelKind::Skeleton.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/skeleton/skeleton.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Humanoid {
+                family: HumanoidModelFamily::Zombie,
+                baby: false,
+            }
+            .vanilla_texture_ref(),
+            None
+        );
+    }
+
+    #[test]
     fn pig_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_PIG_HEAD,
@@ -1826,6 +2374,11 @@ mod tests {
             .model_key(),
             "humanoid_zombie_baby"
         );
+        assert_eq!(
+            EntityModelKind::Zombie { baby: true }.model_key(),
+            "zombie_baby"
+        );
+        assert_eq!(EntityModelKind::Skeleton.model_key(), "skeleton");
         assert_eq!(
             EntityModelKind::Placeholder {
                 name: "todo_test_bounds",

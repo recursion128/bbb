@@ -240,8 +240,10 @@ fn entity_model_kind(
             humanoid(HumanoidModelFamily::Player, false)
         }
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => humanoid(HumanoidModelFamily::ArmorStand, false),
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID
-        | VANILLA_ENTITY_TYPE_DROWNED_ID
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID => EntityModelKind::Zombie {
+            baby: zombie_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_DROWNED_ID
         | VANILLA_ENTITY_TYPE_HUSK_ID
         | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
         | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
@@ -250,8 +252,8 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_PIGLIN_ID => {
             humanoid(HumanoidModelFamily::Zombie, piglin_baby(data_values))
         }
-        VANILLA_ENTITY_TYPE_SKELETON_ID
-        | VANILLA_ENTITY_TYPE_STRAY_ID
+        VANILLA_ENTITY_TYPE_SKELETON_ID => EntityModelKind::Skeleton,
+        VANILLA_ENTITY_TYPE_STRAY_ID
         | VANILLA_ENTITY_TYPE_BOGGED_ID
         | VANILLA_ENTITY_TYPE_PARCHED_ID
         | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => humanoid(HumanoidModelFamily::Skeleton, false),
@@ -677,6 +679,33 @@ mod tests {
                 "vanilla type id {entity_type_id} fell through to unknown renderer entity model fallback"
             );
         }
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_ID, &[]),
+            EntityModelKind::Zombie { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Zombie { baby: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SKELETON_ID, &[]),
+            EntityModelKind::Skeleton
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_HUSK_ID, &[]),
+            humanoid(HumanoidModelFamily::Zombie, false)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_STRAY_ID, &[]),
+            humanoid(HumanoidModelFamily::Skeleton, false)
+        );
     }
 
     #[test]
