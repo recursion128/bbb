@@ -419,6 +419,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn drive_connection_sends_client_tick_end_while_waiting_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(1);
+
+        let drive_task = tokio::spawn(async move {
+            let mut play_tick = Some(interval_at(TokioInstant::now(), Duration::from_secs(60)));
+            let mut player_position_state = PlayerPositionState::default();
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Play,
+                &mut play_tick,
+                &mut commands,
+                &mut player_position_state,
+            )
+            .await
+            .unwrap()
+        });
+
+        let (packet_id, payload) = read_server_packet(&mut server, "client tick end").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_TICK_END);
+        assert!(payload.is_empty());
+
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let result = timeout(Duration::from_secs(1), drive_task)
+            .await
+            .expect("drive should not hang")
+            .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+    }
+
+    #[tokio::test]
     async fn drive_connection_sends_movement_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
         let (tx, mut commands) = mpsc::channel(3);
