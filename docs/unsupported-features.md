@@ -234,7 +234,7 @@ When an agent does any of the following, update this file in the same slice:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
-      goat/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
+      goat/polar-bear/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton/
       bogged variants, creeper, spider, enderman, iron-golem, snow-golem,
@@ -342,6 +342,12 @@ When an agent does any of the following, update this file in the same slice:
       references, and metadata-driven left/right horn visibility; screaming
       goat sounds, ramming/lowering-head event animation, walk/head animation,
       lighting, and GPU texture binding remain unsupported
+    - polar bear entities as renderer-owned vanilla 26.1 adult/baby body-layer
+      geometry from `PolarBearModel`, `BabyPolarBearModel`, and
+      `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /
+      `POLAR_BEAR_BABY`, adult `MeshTransformer.scaling(1.2F)`, and official
+      adult/baby texture references; standing animation from `standScale`,
+      walk/head animation, lighting, and GPU texture binding remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`

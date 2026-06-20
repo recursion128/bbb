@@ -328,12 +328,14 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID
         | VANILLA_ENTITY_TYPE_HOGLIN_ID
         | VANILLA_ENTITY_TYPE_ZOGLIN_ID
-        | VANILLA_ENTITY_TYPE_POLAR_BEAR_ID
         | VANILLA_ENTITY_TYPE_PANDA_ID
         | VANILLA_ENTITY_TYPE_SNIFFER_ID
         | VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             quadruped(QuadrupedModelFamily::Cow, ageable_baby(data_values))
         }
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => EntityModelKind::PolarBear {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_SHEEP_ID => EntityModelKind::Sheep {
             baby: ageable_baby(data_values),
         },
@@ -1265,6 +1267,25 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
+            quadruped(QuadrupedModelFamily::Cow, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_polar_bears() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, &[]),
+            EntityModelKind::PolarBear { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::PolarBear { baby: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PANDA_ID, &[]),
             quadruped(QuadrupedModelFamily::Cow, false)
         );
     }

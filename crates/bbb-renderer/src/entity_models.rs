@@ -13,6 +13,7 @@ const CAVE_SPIDER_SCALE: f32 = 0.7;
 const HORSE_SCALE: f32 = 1.1;
 const DONKEY_SCALE: f32 = 0.87;
 const MULE_SCALE: f32 = 0.92;
+const POLAR_BEAR_SCALE: f32 = 1.2;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -88,6 +89,9 @@ pub enum EntityModelKind {
         baby: bool,
         left_horn: bool,
         right_horn: bool,
+    },
+    PolarBear {
+        baby: bool,
     },
     Quadruped {
         family: QuadrupedModelFamily,
@@ -420,6 +424,8 @@ impl EntityModelKind {
             } => llama_model_key(family, variant, baby),
             Self::Goat { baby: false, .. } => "goat",
             Self::Goat { baby: true, .. } => "goat_baby",
+            Self::PolarBear { baby: false } => "polar_bear",
+            Self::PolarBear { baby: true } => "polar_bear_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -610,6 +616,8 @@ impl EntityModelKind {
             Self::Llama { variant, baby, .. } => Some(llama_texture_ref(variant, baby)),
             Self::Goat { baby: false, .. } => Some(GOAT_TEXTURE_REF),
             Self::Goat { baby: true, .. } => Some(GOAT_BABY_TEXTURE_REF),
+            Self::PolarBear { baby: false } => Some(POLAR_BEAR_TEXTURE_REF),
+            Self::PolarBear { baby: true } => Some(POLAR_BEAR_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -884,6 +892,15 @@ impl EntityModelInstance {
         )
     }
 
+    pub fn polar_bear(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::PolarBear { baby },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
     }
@@ -1092,6 +1109,7 @@ const LLAMA_GRAY: [f32; 4] = [0.45, 0.44, 0.40, 1.0];
 const GOAT_WHITE: [f32; 4] = [0.84, 0.80, 0.70, 1.0];
 const GOAT_HORN: [f32; 4] = [0.72, 0.66, 0.54, 1.0];
 const GOAT_BEARD: [f32; 4] = [0.48, 0.42, 0.32, 1.0];
+const POLAR_BEAR_WHITE: [f32; 4] = [0.88, 0.88, 0.82, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
@@ -1347,6 +1365,16 @@ const GOAT_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const GOAT_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/goat/goat_baby.png",
+    size: [64, 64],
+};
+
+const POLAR_BEAR_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/bear/polarbear.png",
+    size: [128, 64],
+};
+
+const POLAR_BEAR_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/bear/polarbear_baby.png",
     size: [64, 64],
 };
 
@@ -5409,6 +5437,194 @@ const BABY_GOAT_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const ADULT_POLAR_BEAR_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-3.5, -3.0, -3.0],
+        size: [7.0, 7.0, 7.0],
+        color: POLAR_BEAR_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-2.5, 1.0, -6.0],
+        size: [5.0, 3.0, 3.0],
+        color: POLAR_BEAR_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-4.5, -4.0, -1.0],
+        size: [2.0, 2.0, 1.0],
+        color: POLAR_BEAR_WHITE,
+    },
+    ModelCubeDesc {
+        min: [2.5, -4.0, -1.0],
+        size: [2.0, 2.0, 1.0],
+        color: POLAR_BEAR_WHITE,
+    },
+];
+
+const ADULT_POLAR_BEAR_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-5.0, -13.0, -7.0],
+        size: [14.0, 14.0, 11.0],
+        color: POLAR_BEAR_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-4.0, -25.0, -7.0],
+        size: [12.0, 12.0, 10.0],
+        color: POLAR_BEAR_WHITE,
+    },
+];
+
+const ADULT_POLAR_BEAR_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 10.0, 8.0],
+    color: POLAR_BEAR_WHITE,
+}];
+
+const ADULT_POLAR_BEAR_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 10.0, 6.0],
+    color: POLAR_BEAR_WHITE,
+}];
+
+// Vanilla 26.1 ModelLayers.POLAR_BEAR: PolarBearModel.createBodyLayer()
+// with LayerDefinition MeshTransformer.scaling(1.2F) applied at emission.
+const ADULT_POLAR_BEAR_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 10.0, -16.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 9.0, 12.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.5, 14.0, 6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.5, 14.0, 6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.5, 14.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.5, 14.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_FRONT_LEG,
+        children: &[],
+    },
+];
+
+const BABY_POLAR_BEAR_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -3.5, -6.0],
+    size: [8.0, 7.0, 12.0],
+    color: POLAR_BEAR_WHITE,
+}];
+
+const BABY_POLAR_BEAR_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-3.0, -2.625, -4.25],
+        size: [6.0, 5.0, 4.0],
+        color: POLAR_BEAR_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-2.0, 0.375, -6.25],
+        size: [4.0, 2.0, 2.0],
+        color: POLAR_BEAR_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-4.0, -3.625, -2.75],
+        size: [2.0, 2.0, 1.0],
+        color: POLAR_BEAR_WHITE,
+    },
+    ModelCubeDesc {
+        min: [2.0, -3.625, -2.75],
+        size: [2.0, 2.0, 1.0],
+        color: POLAR_BEAR_WHITE,
+    },
+];
+
+const BABY_POLAR_BEAR_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -0.5, -1.5],
+    size: [3.0, 3.0, 3.0],
+    color: POLAR_BEAR_WHITE,
+}];
+
+// Vanilla 26.1 ModelLayers.POLAR_BEAR_BABY: BabyPolarBearModel.createBodyLayer().
+const BABY_POLAR_BEAR_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 17.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 18.625, -5.75],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 21.5, 4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 21.5, 4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 21.5, -4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 21.5, -4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_LEG,
+        children: &[],
+    },
+];
+
 const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -10.0, -4.0],
     size: [8.0, 10.0, 8.0],
@@ -6752,6 +6968,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 left_horn,
                 right_horn,
             } => emit_goat_model(&mut mesh, *instance, baby, left_horn, right_horn),
+            EntityModelKind::PolarBear { baby } => {
+                emit_polar_bear_model(&mut mesh, *instance, baby)
+            }
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -7280,6 +7499,22 @@ fn emit_goat_parts(
             emit_model_part(mesh, part, parent_transform);
         }
     }
+}
+
+fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    emit_model_parts(
+        mesh,
+        if baby {
+            &BABY_POLAR_BEAR_PARTS
+        } else {
+            &ADULT_POLAR_BEAR_PARTS
+        },
+        if baby {
+            entity_model_root_transform(instance)
+        } else {
+            mesh_transformer_scaled_model_root_transform(instance, POLAR_BEAR_SCALE)
+        },
+    );
 }
 
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -11023,6 +11258,150 @@ mod tests {
                 left_horn: false,
                 right_horn: true,
             };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
+    }
+
+    #[test]
+    fn polar_bear_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(ADULT_POLAR_BEAR_PARTS.len(), 6);
+        assert_part(
+            &ADULT_POLAR_BEAR_PARTS[0],
+            [0.0, 10.0, -16.0],
+            [0.0, 0.0, 0.0],
+            ADULT_POLAR_BEAR_HEAD.as_slice(),
+        );
+        assert_eq!(
+            ADULT_POLAR_BEAR_HEAD[1],
+            ModelCubeDesc {
+                min: [-2.5, 1.0, -6.0],
+                size: [5.0, 3.0, 3.0],
+                color: POLAR_BEAR_WHITE,
+            }
+        );
+        assert_part(
+            &ADULT_POLAR_BEAR_PARTS[1],
+            [-2.0, 9.0, 12.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_POLAR_BEAR_BODY.as_slice(),
+        );
+        for (part, expected_offset, expected_cubes) in [
+            (
+                &ADULT_POLAR_BEAR_PARTS[2],
+                [-4.5, 14.0, 6.0],
+                ADULT_POLAR_BEAR_HIND_LEG.as_slice(),
+            ),
+            (
+                &ADULT_POLAR_BEAR_PARTS[3],
+                [4.5, 14.0, 6.0],
+                ADULT_POLAR_BEAR_HIND_LEG.as_slice(),
+            ),
+            (
+                &ADULT_POLAR_BEAR_PARTS[4],
+                [-3.5, 14.0, -8.0],
+                ADULT_POLAR_BEAR_FRONT_LEG.as_slice(),
+            ),
+            (
+                &ADULT_POLAR_BEAR_PARTS[5],
+                [3.5, 14.0, -8.0],
+                ADULT_POLAR_BEAR_FRONT_LEG.as_slice(),
+            ),
+        ] {
+            assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        }
+
+        assert_eq!(BABY_POLAR_BEAR_PARTS.len(), 6);
+        assert_part(
+            &BABY_POLAR_BEAR_PARTS[0],
+            [0.0, 17.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_POLAR_BEAR_BODY.as_slice(),
+        );
+        assert_part(
+            &BABY_POLAR_BEAR_PARTS[1],
+            [0.0, 18.625, -5.75],
+            [0.0, 0.0, 0.0],
+            BABY_POLAR_BEAR_HEAD.as_slice(),
+        );
+        assert_eq!(
+            BABY_POLAR_BEAR_HEAD[1],
+            ModelCubeDesc {
+                min: [-2.0, 0.375, -6.25],
+                size: [4.0, 2.0, 2.0],
+                color: POLAR_BEAR_WHITE,
+            }
+        );
+        for (part, expected_offset) in [
+            (&BABY_POLAR_BEAR_PARTS[2], [-2.5, 21.5, 4.5]),
+            (&BABY_POLAR_BEAR_PARTS[3], [2.5, 21.5, 4.5]),
+            (&BABY_POLAR_BEAR_PARTS[4], [-2.5, 21.5, -4.5]),
+            (&BABY_POLAR_BEAR_PARTS[5], [2.5, 21.5, -4.5]),
+        ] {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_POLAR_BEAR_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn polar_bear_meshes_use_vanilla_body_layers() {
+        let adult = entity_model_mesh(&[EntityModelInstance::polar_bear(
+            210,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )]);
+        assert_eq!(adult.opaque_faces, 60);
+        assert_eq!(adult.vertices.len(), 240);
+        assert_eq!(adult.indices.len(), 360);
+        assert!(adult
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(POLAR_BEAR_WHITE, 0.78)));
+
+        let baby = entity_model_mesh(&[EntityModelInstance::polar_bear(
+            211,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+        )]);
+        assert_eq!(baby.opaque_faces, 54);
+        assert_eq!(baby.vertices.len(), 216);
+        assert_eq!(baby.indices.len(), 324);
+
+        let (adult_min, adult_max) = mesh_extents(&adult);
+        let (baby_min, baby_max) = mesh_extents(&baby);
+        assert!(adult_max[1] > baby_max[1]);
+        assert!(adult_min[2] < baby_min[2]);
+    }
+
+    #[test]
+    fn polar_bear_texture_refs_match_vanilla_renderer() {
+        let cases = [
+            (
+                false,
+                "polar_bear",
+                EntityModelTextureRef {
+                    path: "textures/entity/bear/polarbear.png",
+                    size: [128, 64],
+                },
+            ),
+            (
+                true,
+                "polar_bear_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/bear/polarbear_baby.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+
+        for (baby, model_key, texture) in cases {
+            let kind = EntityModelKind::PolarBear { baby };
             assert_eq!(kind.model_key(), model_key);
             assert_eq!(kind.vanilla_texture_ref(), Some(texture));
         }
