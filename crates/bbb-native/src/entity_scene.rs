@@ -1,8 +1,8 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
     ArmorStandModelPose, CamelModelFamily, DonkeyModelFamily, EntityModelInstance, EntityModelKind,
-    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
-    QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
+    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
+    PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
     UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
@@ -326,13 +326,19 @@ fn entity_model_kind(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID
-        | VANILLA_ENTITY_TYPE_HOGLIN_ID
-        | VANILLA_ENTITY_TYPE_ZOGLIN_ID
         | VANILLA_ENTITY_TYPE_PANDA_ID
         | VANILLA_ENTITY_TYPE_SNIFFER_ID
         | VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             quadruped(QuadrupedModelFamily::Cow, ageable_baby(data_values))
         }
+        VANILLA_ENTITY_TYPE_HOGLIN_ID => EntityModelKind::Hoglin {
+            family: HoglinModelFamily::Hoglin,
+            baby: ageable_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID => EntityModelKind::Hoglin {
+            family: HoglinModelFamily::Zoglin,
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => EntityModelKind::PolarBear {
             baby: ageable_baby(data_values),
         },
@@ -1263,6 +1269,48 @@ mod tests {
                 baby: false,
                 left_horn: false,
                 right_horn: false,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
+            quadruped(QuadrupedModelFamily::Cow, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_hoglins_and_zoglins() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_HOGLIN_ID, &[]),
+            EntityModelKind::Hoglin {
+                family: HoglinModelFamily::Hoglin,
+                baby: false,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_HOGLIN_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Hoglin {
+                family: HoglinModelFamily::Hoglin,
+                baby: true,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ZOGLIN_ID, &[]),
+            EntityModelKind::Hoglin {
+                family: HoglinModelFamily::Zoglin,
+                baby: false,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Hoglin {
+                family: HoglinModelFamily::Zoglin,
+                baby: true,
             }
         );
         assert_eq!(
