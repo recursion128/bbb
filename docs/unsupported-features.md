@@ -509,7 +509,8 @@ When an agent does any of the following, update this file in the same slice:
         - official tooltip background/frame sprites
         - italic and complex component styles
         - component-specific detail lines
-      - remaining dedicated server-opened menu layouts beyond:
+      - remaining dedicated server-opened menu layouts not already covered by
+        these baseline menu families:
         - `generic_9xN`
         - `generic_3x3`
         - anvil
@@ -531,6 +532,10 @@ When an agent does any of the following, update this file in the same slice:
       - remaining local crafting result parity for container `0`:
         - server-authored result recomputation from local 2x2 inputs
         - recipe-specific remainder items
+    - Higher-value next slices should prioritize missing player-visible flows
+      such as recipe book/creative variants or container `0` crafting result
+      parity over additional baseline layout/probe coverage for the menu
+      families listed above.
 - Evidence / boundary:
   - Movement:
     - Native movement projects world-computed `on_ground` and
