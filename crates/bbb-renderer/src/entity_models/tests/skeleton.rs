@@ -112,6 +112,40 @@ fn skeleton_texture_refs_match_vanilla_renderers() {
             size: [64, 32],
         })
     );
+    assert_eq!(
+        EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::Stray
+        }
+        .vanilla_layer_texture_refs(),
+        &[EntityModelTextureRef {
+            path: "textures/entity/skeleton/stray_overlay.png",
+            size: [64, 32],
+        }]
+    );
+    assert_eq!(
+        EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::Bogged { sheared: false }
+        }
+        .vanilla_layer_texture_refs(),
+        &[EntityModelTextureRef {
+            path: "textures/entity/skeleton/bogged_overlay.png",
+            size: [64, 32],
+        }]
+    );
+    assert_eq!(
+        EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::Bogged { sheared: true }
+        }
+        .vanilla_layer_texture_refs(),
+        &[BOGGED_OVERLAY_TEXTURE_REF]
+    );
+    assert_eq!(
+        EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::Parched
+        }
+        .vanilla_layer_texture_refs(),
+        &[]
+    );
 }
 
 #[test]
@@ -128,10 +162,18 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!((base[0].collector_order, base[0].submit_sequence), (0, 0));
 
     let stray = skeleton_textured_layer_passes(Some(SkeletonModelFamily::Stray));
-    assert_eq!(stray.len(), 1);
+    assert_eq!(stray.len(), 2);
     assert_eq!(stray[0].model_layer, MODEL_LAYER_STRAY);
     assert_eq!(stray[0].texture, STRAY_TEXTURE_REF);
     assert_eq!(stray[0].parts, SKELETON_TEXTURED_PARTS.as_slice());
+    assert_eq!(stray[1].kind, EntityModelLayerKind::SkeletonClothing);
+    assert_eq!(stray[1].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(stray[1].model_layer, MODEL_LAYER_STRAY_OUTER_LAYER);
+    assert_eq!(stray[1].texture, STRAY_OVERLAY_TEXTURE_REF);
+    assert_eq!(stray[1].parts, STRAY_OUTER_TEXTURED_PARTS.as_slice());
+    assert_eq!(stray[1].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(stray[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((stray[1].collector_order, stray[1].submit_sequence), (1, 1));
 
     let parched = skeleton_textured_layer_passes(Some(SkeletonModelFamily::Parched));
     assert_eq!(parched.len(), 1);
@@ -147,17 +189,29 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
 
     let bogged =
         skeleton_textured_layer_passes(Some(SkeletonModelFamily::Bogged { sheared: false }));
-    assert_eq!(bogged.len(), 1);
+    assert_eq!(bogged.len(), 2);
     assert_eq!(bogged[0].model_layer, MODEL_LAYER_BOGGED);
     assert_eq!(bogged[0].texture, BOGGED_TEXTURE_REF);
     assert_eq!(bogged[0].parts, BOGGED_TEXTURED_PARTS.as_slice());
+    assert_eq!(bogged[1].kind, EntityModelLayerKind::SkeletonClothing);
+    assert_eq!(bogged[1].model_layer, MODEL_LAYER_BOGGED_OUTER_LAYER);
+    assert_eq!(bogged[1].texture, BOGGED_OVERLAY_TEXTURE_REF);
+    assert_eq!(bogged[1].parts, BOGGED_OUTER_TEXTURED_PARTS.as_slice());
+    assert_eq!(
+        (bogged[1].collector_order, bogged[1].submit_sequence),
+        (1, 1)
+    );
 
     let sheared_bogged =
         skeleton_textured_layer_passes(Some(SkeletonModelFamily::Bogged { sheared: true }));
-    assert_eq!(sheared_bogged.len(), 1);
+    assert_eq!(sheared_bogged.len(), 2);
     assert_eq!(
         sheared_bogged[0].parts,
         BOGGED_SHEARED_TEXTURED_PARTS.as_slice()
+    );
+    assert_eq!(
+        sheared_bogged[1].parts,
+        BOGGED_OUTER_TEXTURED_PARTS.as_slice()
     );
 }
 
@@ -313,6 +367,8 @@ fn skeleton_textured_model_parts_match_vanilla_model_layer_uv_sources() {
         "minecraft:wither_skeleton#main"
     );
     assert_eq!(MODEL_LAYER_BOGGED, "minecraft:bogged#main");
+    assert_eq!(MODEL_LAYER_STRAY_OUTER_LAYER, "minecraft:stray#outer");
+    assert_eq!(MODEL_LAYER_BOGGED_OUTER_LAYER, "minecraft:bogged#outer");
     assert_eq!(
         SKELETON_TEXTURED_RIGHT_ARM[0],
         TexturedModelCubeDesc {
@@ -357,6 +413,57 @@ fn skeleton_textured_model_parts_match_vanilla_model_layer_uv_sources() {
         BOGGED_SHEARED_TEXTURED_PARTS[0].children,
         BOGGED_TEXTURED_HAT_CHILDREN.as_slice()
     );
+
+    assert_eq!(
+        STRAY_OUTER_TEXTURED_HEAD[0],
+        TexturedModelCubeDesc {
+            min: [-4.25, -8.25, -4.25],
+            size: [8.5, 8.5, 8.5],
+            uv_size: [8.0, 8.0, 8.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        STRAY_OUTER_TEXTURED_HAT[0],
+        TexturedModelCubeDesc {
+            min: [-4.75, -8.75, -4.75],
+            size: [9.5, 9.5, 9.5],
+            uv_size: [8.0, 8.0, 8.0],
+            tex: [32.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(STRAY_OUTER_TEXTURED_BODY[0].min, [-4.25, -0.25, -2.25]);
+    assert_eq!(STRAY_OUTER_TEXTURED_BODY[0].size, [8.5, 12.5, 4.5]);
+    assert_eq!(STRAY_OUTER_TEXTURED_RIGHT_ARM[0].tex, [40.0, 16.0]);
+    assert_eq!(STRAY_OUTER_TEXTURED_RIGHT_ARM[0].size, [4.5, 12.5, 4.5]);
+    assert!(STRAY_OUTER_TEXTURED_LEFT_ARM[0].mirror);
+    assert_eq!(STRAY_OUTER_TEXTURED_RIGHT_LEG[0].tex, [0.0, 16.0]);
+    assert_eq!(STRAY_OUTER_TEXTURED_PARTS[4].pose.offset, [-1.9, 12.0, 0.0]);
+    assert_eq!(
+        STRAY_OUTER_TEXTURED_PARTS[0].children,
+        STRAY_OUTER_TEXTURED_HEAD_CHILDREN.as_slice()
+    );
+
+    assert_eq!(
+        BOGGED_OUTER_TEXTURED_HEAD[0],
+        TexturedModelCubeDesc {
+            min: [-4.2, -8.2, -4.2],
+            size: [8.4, 8.4, 8.4],
+            uv_size: [8.0, 8.0, 8.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(BOGGED_OUTER_TEXTURED_HAT[0].min, [-4.7, -8.7, -4.7]);
+    assert_eq!(BOGGED_OUTER_TEXTURED_HAT[0].size, [9.4, 9.4, 9.4]);
+    assert_eq!(BOGGED_OUTER_TEXTURED_BODY[0].min, [-4.2, -0.2, -2.2]);
+    assert_eq!(BOGGED_OUTER_TEXTURED_BODY[0].size, [8.4, 12.4, 4.4]);
+    assert_eq!(BOGGED_OUTER_TEXTURED_RIGHT_ARM[0].min, [-3.2, -2.2, -2.2]);
+    assert_eq!(BOGGED_OUTER_TEXTURED_RIGHT_ARM[0].size, [4.4, 12.4, 4.4]);
+    assert!(BOGGED_OUTER_TEXTURED_LEFT_ARM[0].mirror);
+    assert_eq!(BOGGED_OUTER_TEXTURED_PARTS[5].pose.offset, [1.9, 12.0, 0.0]);
 }
 
 #[test]
@@ -364,7 +471,7 @@ fn entity_texture_atlas_stitches_official_skeleton_png_slots() {
     let (layout, rgba) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
 
     assert_eq!(layout.width, 64);
-    assert_eq!(layout.height, 192);
+    assert_eq!(layout.height, 256);
     assert_eq!(
         layout
             .entries
@@ -374,24 +481,36 @@ fn entity_texture_atlas_stitches_official_skeleton_png_slots() {
         vec![
             "textures/entity/skeleton/skeleton.png",
             "textures/entity/skeleton/stray.png",
+            "textures/entity/skeleton/stray_overlay.png",
             "textures/entity/skeleton/parched.png",
             "textures/entity/skeleton/wither_skeleton.png",
             "textures/entity/skeleton/bogged.png",
+            "textures/entity/skeleton/bogged_overlay.png",
         ]
     );
     assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
-    assert_close2(layout.entries[0].uv.max, [1.0, 32.0 / 192.0]);
-    assert_close2(layout.entries[2].uv.min, [0.0, 64.0 / 192.0]);
-    assert_close2(layout.entries[2].uv.max, [1.0, 128.0 / 192.0]);
-    assert_close2(layout.entries[4].uv.min, [0.0, 160.0 / 192.0]);
-    assert_close2(layout.entries[4].uv.max, [1.0, 1.0]);
+    assert_close2(layout.entries[0].uv.max, [1.0, 32.0 / 256.0]);
+    assert_close2(layout.entries[2].uv.min, [0.0, 64.0 / 256.0]);
+    assert_close2(layout.entries[2].uv.max, [1.0, 96.0 / 256.0]);
+    assert_close2(layout.entries[3].uv.min, [0.0, 96.0 / 256.0]);
+    assert_close2(layout.entries[3].uv.max, [1.0, 160.0 / 256.0]);
+    assert_close2(layout.entries[6].uv.min, [0.0, 224.0 / 256.0]);
+    assert_close2(layout.entries[6].uv.max, [1.0, 1.0]);
     assert!(entity_model_texture_refs().contains(&SKELETON_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&STRAY_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&STRAY_OVERLAY_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&PARCHED_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&WITHER_SKELETON_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&BOGGED_TEXTURE_REF));
-    let parched_first_pixel = rgba_offset(layout.width, 64, 0, "parched atlas row").unwrap();
-    assert_eq!(&rgba[parched_first_pixel..parched_first_pixel + 4], &[2; 4]);
+    assert!(entity_model_texture_refs().contains(&BOGGED_OVERLAY_TEXTURE_REF));
+    let stray_overlay_first_pixel =
+        rgba_offset(layout.width, 64, 0, "stray overlay atlas row").unwrap();
+    assert_eq!(
+        &rgba[stray_overlay_first_pixel..stray_overlay_first_pixel + 4],
+        &[2; 4]
+    );
+    let parched_first_pixel = rgba_offset(layout.width, 96, 0, "parched atlas row").unwrap();
+    assert_eq!(&rgba[parched_first_pixel..parched_first_pixel + 4], &[3; 4]);
 }
 
 #[test]
@@ -494,12 +613,13 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
         )],
         &atlas,
     );
-    assert_eq!(stray.vertices.len(), 168);
-    assert_close2(stray.vertices[0].uv, [16.0 / 64.0, 32.0 / 192.0]);
-    assert_eq!(
-        textured_mesh_extents(&stray),
-        textured_mesh_extents(&skeleton)
-    );
+    assert_eq!(stray.cutout_faces, 84);
+    assert_eq!(stray.vertices.len(), 336);
+    assert_close2(stray.vertices[0].uv, [16.0 / 64.0, 32.0 / 256.0]);
+    assert_close2(stray.vertices[168].uv, [16.0 / 64.0, 64.0 / 256.0]);
+    let (stray_min, stray_max) = textured_mesh_extents(&stray);
+    assert_close3(stray_min, [-0.515625, 63.985374, -0.296875]);
+    assert_close3(stray_max, [0.515625, 66.047875, 0.296875]);
 
     let wither = entity_model_textured_mesh(
         &[EntityModelInstance::skeleton_variant(
@@ -511,7 +631,7 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
         &atlas,
     );
     assert_eq!(wither.cutout_faces, 42);
-    assert_close2(wither.vertices[0].uv, [16.0 / 64.0, 128.0 / 192.0]);
+    assert_close2(wither.vertices[0].uv, [16.0 / 64.0, 160.0 / 256.0]);
     let (wither_min, wither_max) = textured_mesh_extents(&wither);
     assert_close3(wither_min, [-0.45000002, 64.0012, -0.33750004]);
     assert_close3(wither_max, [0.45000002, 66.4387, 0.33750004]);
@@ -527,7 +647,7 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     );
     assert_eq!(parched.cutout_faces, 78);
     assert_eq!(parched.vertices.len(), 312);
-    assert_close2(parched.vertices[0].uv, [28.0 / 64.0, 80.0 / 192.0]);
+    assert_close2(parched.vertices[0].uv, [28.0 / 64.0, 112.0 / 256.0]);
     let (parched_min, parched_max) = textured_mesh_extents(&parched);
     assert_close3(parched_min, [-0.440625, 64.001, -0.26250002]);
     assert_close3(parched_max, [0.440625, 66.0135, 0.26250002]);
@@ -541,12 +661,13 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
         )],
         &atlas,
     );
-    assert_eq!(bogged.cutout_faces, 78);
-    assert_eq!(bogged.vertices.len(), 312);
-    assert_close2(bogged.vertices[48].uv, [56.0 / 64.0, 176.0 / 192.0]);
+    assert_eq!(bogged.cutout_faces, 120);
+    assert_eq!(bogged.vertices.len(), 480);
+    assert_close2(bogged.vertices[48].uv, [56.0 / 64.0, 208.0 / 256.0]);
+    assert_close2(bogged.vertices[312].uv, [16.0 / 64.0, 224.0 / 256.0]);
     let (bogged_min, bogged_max) = textured_mesh_extents(&bogged);
-    assert_close3(bogged_min, [-0.375, 64.001, -0.5]);
-    assert_close3(bogged_max, [0.375, 66.1885, 0.32008255]);
+    assert_close3(bogged_min, [-0.51250005, 63.9885, -0.5]);
+    assert_close3(bogged_max, [0.51250005, 66.1885, 0.32008255]);
 
     let sheared_bogged = entity_model_textured_mesh(
         &[EntityModelInstance::skeleton_variant(
@@ -557,12 +678,15 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
         )],
         &atlas,
     );
-    assert_eq!(sheared_bogged.cutout_faces, 42);
-    assert_eq!(sheared_bogged.vertices.len(), 168);
-    assert_eq!(
-        textured_mesh_extents(&sheared_bogged),
-        textured_mesh_extents(&skeleton)
+    assert_eq!(sheared_bogged.cutout_faces, 84);
+    assert_eq!(sheared_bogged.vertices.len(), 336);
+    assert_close2(
+        sheared_bogged.vertices[168].uv,
+        [16.0 / 64.0, 224.0 / 256.0],
     );
+    let (sheared_bogged_min, sheared_bogged_max) = textured_mesh_extents(&sheared_bogged);
+    assert_close3(sheared_bogged_min, [-0.51250005, 63.9885, -0.29375]);
+    assert_close3(sheared_bogged_max, [0.51250005, 66.04475, 0.29375]);
 }
 
 fn skeleton_texture_images() -> Vec<EntityModelTextureImage> {

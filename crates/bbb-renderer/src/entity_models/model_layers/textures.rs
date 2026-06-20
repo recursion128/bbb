@@ -139,6 +139,12 @@ pub(in crate::entity_models) const STRAY_TEXTURE_REF: EntityModelTextureRef =
         size: [64, 32],
     };
 
+pub(in crate::entity_models) const STRAY_OVERLAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/skeleton/stray_overlay.png",
+        size: [64, 32],
+    };
+
 pub(in crate::entity_models) const PARCHED_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/parched.png",
@@ -157,12 +163,26 @@ pub(in crate::entity_models) const BOGGED_TEXTURE_REF: EntityModelTextureRef =
         size: [64, 32],
     };
 
-pub(in crate::entity_models) const SKELETON_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
+pub(in crate::entity_models) const BOGGED_OVERLAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/skeleton/bogged_overlay.png",
+        size: [64, 32],
+    };
+
+pub(in crate::entity_models) const STRAY_OVERLAY_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [STRAY_OVERLAY_TEXTURE_REF];
+
+pub(in crate::entity_models) const BOGGED_OVERLAY_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [BOGGED_OVERLAY_TEXTURE_REF];
+
+pub(in crate::entity_models) const SKELETON_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 7] = [
     SKELETON_TEXTURE_REF,
     STRAY_TEXTURE_REF,
+    STRAY_OVERLAY_TEXTURE_REF,
     PARCHED_TEXTURE_REF,
     WITHER_SKELETON_TEXTURE_REF,
     BOGGED_TEXTURE_REF,
+    BOGGED_OVERLAY_TEXTURE_REF,
 ];
 
 pub fn skeleton_entity_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -581,7 +601,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 66] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 68] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -617,9 +637,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     COW_COLD_BABY_TEXTURE_REF,
     SKELETON_TEXTURE_REF,
     STRAY_TEXTURE_REF,
+    STRAY_OVERLAY_TEXTURE_REF,
     PARCHED_TEXTURE_REF,
     WITHER_SKELETON_TEXTURE_REF,
     BOGGED_TEXTURE_REF,
+    BOGGED_OVERLAY_TEXTURE_REF,
     CREEPER_TEXTURE_REF,
     SPIDER_TEXTURE_REF,
     CAVE_SPIDER_TEXTURE_REF,

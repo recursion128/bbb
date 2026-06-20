@@ -489,6 +489,12 @@ impl EntityModelKind {
                 collar_color: Some(_),
                 ..
             } => &WOLF_BABY_COLLAR_LAYER_TEXTURE_REFS,
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Stray,
+            } => &STRAY_OVERLAY_LAYER_TEXTURE_REFS,
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged { .. },
+            } => &BOGGED_OVERLAY_LAYER_TEXTURE_REFS,
             Self::Spider | Self::CaveSpider => &SPIDER_EYES_LAYER_TEXTURE_REFS,
             Self::Enderman => &ENDERMAN_EYES_LAYER_TEXTURE_REFS,
             _ => &[],

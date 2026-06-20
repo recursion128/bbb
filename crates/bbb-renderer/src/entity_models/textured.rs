@@ -30,6 +30,7 @@ pub(super) enum EntityModelLayerKind {
     SheepWool,
     SheepWoolUndercoat,
     SkeletonBase,
+    SkeletonClothing,
     SlimeBase,
     SlimeOuter,
     MagmaCubeBase,
@@ -709,7 +710,7 @@ pub(super) fn wolf_textured_layer_passes(
 pub(super) fn skeleton_textured_layer_passes(
     family: Option<SkeletonModelFamily>,
 ) -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass {
+    let mut passes = vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SkeletonBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: skeleton_model_layer(family),
@@ -719,7 +720,21 @@ pub(super) fn skeleton_textured_layer_passes(
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
-    }]
+    }];
+    if let Some((model_layer, texture, parts)) = skeleton_clothing_layer_pass_parts(family) {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::SkeletonClothing,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer,
+            texture,
+            parts,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 1,
+            submit_sequence: 1,
+        });
+    }
+    passes
 }
 
 fn boat_model_layer(family: BoatModelFamily, chest: bool) -> &'static str {
@@ -919,6 +934,30 @@ fn skeleton_textured_model_parts(
         Some(SkeletonModelFamily::Parched) => &PARCHED_TEXTURED_PARTS,
         Some(SkeletonModelFamily::Bogged { sheared: false }) => &BOGGED_TEXTURED_PARTS,
         Some(SkeletonModelFamily::Bogged { sheared: true }) => &BOGGED_SHEARED_TEXTURED_PARTS,
+    }
+}
+
+fn skeleton_clothing_layer_pass_parts(
+    family: Option<SkeletonModelFamily>,
+) -> Option<(
+    &'static str,
+    EntityModelTextureRef,
+    &'static [TexturedModelPartDesc],
+)> {
+    match family {
+        Some(SkeletonModelFamily::Stray) => Some((
+            MODEL_LAYER_STRAY_OUTER_LAYER,
+            STRAY_OVERLAY_TEXTURE_REF,
+            &STRAY_OUTER_TEXTURED_PARTS,
+        )),
+        Some(SkeletonModelFamily::Bogged { .. }) => Some((
+            MODEL_LAYER_BOGGED_OUTER_LAYER,
+            BOGGED_OVERLAY_TEXTURE_REF,
+            &BOGGED_OUTER_TEXTURED_PARTS,
+        )),
+        None | Some(SkeletonModelFamily::Parched) | Some(SkeletonModelFamily::WitherSkeleton) => {
+            None
+        }
     }
 }
 

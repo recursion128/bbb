@@ -480,10 +480,12 @@ When an agent does any of the following, update this file in the same slice:
       `PARCHED` / `WITHER_SKELETON` / `BOGGED`, wither skeleton
       `MeshTransformer.scaling(1.2F)`, bogged head mushroom children and
       metadata-driven sheared mushroom visibility, official base texture
-      references, texture-backed base layer pass emission, and official PNG
-      atlas upload/bind/sample path; stray `stray_overlay.png` clothing,
-      bogged `bogged_overlay.png` clothing, skeleton-family armor, held bows/
-      items, attack/head/walk animation, and lighting remain unsupported
+      references, texture-backed base layer pass emission, stray
+      `SkeletonClothingLayer` `stray_overlay.png` pass through
+      `ModelLayers.STRAY_OUTER_LAYER`, bogged `SkeletonClothingLayer`
+      `bogged_overlay.png` pass through `ModelLayers.BOGGED_OUTER_LAYER`, and
+      official PNG atlas upload/bind/sample path; skeleton-family armor, held
+      bows/items, attack/head/walk animation, and lighting remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,
@@ -594,8 +596,7 @@ When an agent does any of the following, update this file in the same slice:
     illager held-item/custom-head/arm-pose presentation, zombie-family
     armor/drowned outer-layer/swim/trident/zombie-villager overlays/no-hat/
     converting-state/piglin-family armor/custom-head/arm-pose/converting-state
-    presentation, skeleton armor/overlay and bogged outer-clothing
-    presentation,
+    presentation, skeleton armor, held-item, and animation presentation,
     creeper swelling/powered overlays,
     spider animation/death-flip presentation, enderman carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
