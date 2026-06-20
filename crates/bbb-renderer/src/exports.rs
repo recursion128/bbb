@@ -4,8 +4,8 @@ pub use crate::entity_models::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
     DonkeyModelFamily, EntityModelBounds, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, QuadrupedModelFamily, SkeletonModelFamily, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    PiglinModelFamily, QuadrupedModelFamily, SheepWoolColor, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 pub use crate::hud::{
     HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,

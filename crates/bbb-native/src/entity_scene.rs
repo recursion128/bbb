@@ -3,8 +3,9 @@ use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
     DonkeyModelFamily, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
-    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SheepWoolColor,
+    SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -188,6 +189,9 @@ const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 const COW_VARIANT_DATA_ID: u8 = 18;
 const PIG_VARIANT_DATA_ID: u8 = 19;
+const SHEEP_WOOL_DATA_ID: u8 = 17;
+const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
+const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -366,9 +370,7 @@ fn entity_model_kind_with_registries(
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => EntityModelKind::PolarBear {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_SHEEP_ID => EntityModelKind::Sheep {
-            baby: ageable_baby(data_values),
-        },
+        VANILLA_ENTITY_TYPE_SHEEP_ID => sheep_model_kind(data_values),
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
             baby: ageable_baby(data_values),
         },
@@ -616,6 +618,15 @@ fn cow_model_kind(
     EntityModelKind::Cow {
         variant: cow_model_variant(values, variants),
         baby: ageable_baby(values),
+    }
+}
+
+fn sheep_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    let wool = entity_data_byte(values, SHEEP_WOOL_DATA_ID, 0) as u8;
+    EntityModelKind::Sheep {
+        baby: ageable_baby(values),
+        sheared: wool & SHEEP_WOOL_SHEARED_FLAG != 0,
+        wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
     }
 }
 
@@ -1744,18 +1755,103 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SHEEP_ID, &[]),
-            EntityModelKind::Sheep { baby: false }
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_SHEEP_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Sheep { baby: true }
+            EntityModelKind::Sheep {
+                baby: true,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
             quadruped(QuadrupedModelFamily::Cow, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_vanilla_sheep_wool_metadata() {
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[protocol_byte_data(
+                    SHEEP_WOOL_DATA_ID,
+                    (SHEEP_WOOL_SHEARED_FLAG | 14) as i8
+                )]
+            ),
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: true,
+                wool_color: SheepWoolColor::Red,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[
+                    protocol_byte_data(SHEEP_WOOL_DATA_ID, 15),
+                    protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                ]
+            ),
+            EntityModelKind::Sheep {
+                baby: true,
+                sheared: false,
+                wool_color: SheepWoolColor::Black,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[
+                    protocol_byte_data(SHEEP_WOOL_DATA_ID, 3),
+                    protocol_byte_data(SHEEP_WOOL_DATA_ID, (SHEEP_WOOL_SHEARED_FLAG | 5) as i8),
+                ]
+            ),
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: true,
+                wool_color: SheepWoolColor::Lime,
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_sheep_wool_metadata_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            111,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 111,
+            values: vec![protocol_byte_data(
+                SHEEP_WOOL_DATA_ID,
+                (SHEEP_WOOL_SHEARED_FLAG | 14) as i8,
+            )],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![EntityModelInstance::sheep_wool(
+                111,
+                [1.0, 64.0, -2.0],
+                0.0,
+                false,
+                true,
+                SheepWoolColor::Red,
+            )]
         );
     }
 

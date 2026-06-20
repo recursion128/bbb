@@ -70,6 +70,8 @@ pub enum EntityModelKind {
     },
     Sheep {
         baby: bool,
+        sheared: bool,
+        wool_color: SheepWoolColor,
     },
     Villager {
         baby: bool,
@@ -274,6 +276,26 @@ pub enum CowModelVariant {
     Cold,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SheepWoolColor {
+    White,
+    Orange,
+    Magenta,
+    LightBlue,
+    Yellow,
+    Lime,
+    Pink,
+    Gray,
+    LightGray,
+    Cyan,
+    Purple,
+    Blue,
+    Brown,
+    Green,
+    Red,
+    Black,
+}
+
 impl LlamaVariant {
     pub fn from_vanilla_id(id: i32) -> Self {
         match id.clamp(0, 3) {
@@ -281,6 +303,51 @@ impl LlamaVariant {
             1 => Self::White,
             2 => Self::Brown,
             _ => Self::Gray,
+        }
+    }
+}
+
+impl SheepWoolColor {
+    pub fn from_vanilla_id(id: u8) -> Self {
+        match id {
+            0 => Self::White,
+            1 => Self::Orange,
+            2 => Self::Magenta,
+            3 => Self::LightBlue,
+            4 => Self::Yellow,
+            5 => Self::Lime,
+            6 => Self::Pink,
+            7 => Self::Gray,
+            8 => Self::LightGray,
+            9 => Self::Cyan,
+            10 => Self::Purple,
+            11 => Self::Blue,
+            12 => Self::Brown,
+            13 => Self::Green,
+            14 => Self::Red,
+            15 => Self::Black,
+            _ => Self::White,
+        }
+    }
+
+    pub fn vanilla_id(self) -> u8 {
+        match self {
+            Self::White => 0,
+            Self::Orange => 1,
+            Self::Magenta => 2,
+            Self::LightBlue => 3,
+            Self::Yellow => 4,
+            Self::Lime => 5,
+            Self::Pink => 6,
+            Self::Gray => 7,
+            Self::LightGray => 8,
+            Self::Cyan => 9,
+            Self::Purple => 10,
+            Self::Blue => 11,
+            Self::Brown => 12,
+            Self::Green => 13,
+            Self::Red => 14,
+            Self::Black => 15,
         }
     }
 }
@@ -434,8 +501,11 @@ impl EntityModelKind {
                 family: SkeletonModelFamily::Bogged { .. },
             } => "bogged",
             Self::Cow { variant, baby } => cow_model_key(variant, baby),
-            Self::Sheep { baby: false } => "sheep",
-            Self::Sheep { baby: true } => "sheep_baby",
+            Self::Sheep {
+                baby,
+                sheared,
+                wool_color,
+            } => sheep_model_key(baby, sheared, wool_color),
             Self::Villager { baby: false } => "villager",
             Self::Villager { baby: true } => "villager_baby",
             Self::WanderingTrader => "wandering_trader",
@@ -652,8 +722,8 @@ impl EntityModelKind {
                 family: SkeletonModelFamily::Bogged { .. },
             } => Some(BOGGED_TEXTURE_REF),
             Self::Cow { variant, baby } => Some(cow_texture_ref(variant, baby)),
-            Self::Sheep { baby: false } => Some(SHEEP_TEXTURE_REF),
-            Self::Sheep { baby: true } => Some(SHEEP_BABY_TEXTURE_REF),
+            Self::Sheep { baby: false, .. } => Some(SHEEP_TEXTURE_REF),
+            Self::Sheep { baby: true, .. } => Some(SHEEP_BABY_TEXTURE_REF),
             Self::Villager { baby: false } => Some(VILLAGER_TEXTURE_REF),
             Self::Villager { baby: true } => Some(VILLAGER_BABY_TEXTURE_REF),
             Self::WanderingTrader => Some(WANDERING_TRADER_TEXTURE_REF),
@@ -735,6 +805,42 @@ impl EntityModelKind {
             } => Some(VINDICATOR_TEXTURE_REF),
             Self::Boat { family, chest } => Some(boat_texture_ref(family, chest)),
             _ => None,
+        }
+    }
+
+    pub fn vanilla_layer_texture_refs(self) -> &'static [EntityModelTextureRef] {
+        match self {
+            Self::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            } => &SHEEP_WOOL_LAYER_TEXTURE_REFS,
+            Self::Sheep {
+                baby: false,
+                sheared: false,
+                ..
+            } => &SHEEP_COLORED_WOOL_LAYER_TEXTURE_REFS,
+            Self::Sheep {
+                baby: false,
+                sheared: true,
+                wool_color: SheepWoolColor::White,
+            } => &[],
+            Self::Sheep {
+                baby: false,
+                sheared: true,
+                ..
+            } => &SHEEP_UNDERCOAT_LAYER_TEXTURE_REFS,
+            Self::Sheep {
+                baby: true,
+                sheared: false,
+                ..
+            } => &BABY_SHEEP_WOOL_LAYER_TEXTURE_REFS,
+            Self::Sheep {
+                baby: true,
+                sheared: true,
+                ..
+            } => &[],
+            _ => &[],
         }
     }
 }
@@ -957,7 +1063,34 @@ impl EntityModelInstance {
     }
 
     pub fn sheep(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
-        Self::new(entity_id, EntityModelKind::Sheep { baby }, position, y_rot)
+        Self::sheep_wool(
+            entity_id,
+            position,
+            y_rot,
+            baby,
+            false,
+            SheepWoolColor::White,
+        )
+    }
+
+    pub fn sheep_wool(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        sheared: bool,
+        wool_color: SheepWoolColor,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Sheep {
+                baby,
+                sheared,
+                wool_color,
+            },
+            position,
+            y_rot,
+        )
     }
 
     pub fn villager(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
@@ -1448,6 +1581,29 @@ const SHEEP_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/sheep/sheep_baby.png",
     size: [64, 32],
 };
+
+const SHEEP_WOOL_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/sheep/sheep_wool.png",
+    size: [64, 32],
+};
+
+const SHEEP_WOOL_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/sheep/sheep_wool_baby.png",
+    size: [64, 32],
+};
+
+const SHEEP_WOOL_UNDERCOAT_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/sheep/sheep_wool_undercoat.png",
+    size: [64, 32],
+};
+
+const SHEEP_WOOL_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] = [SHEEP_WOOL_TEXTURE_REF];
+const SHEEP_COLORED_WOOL_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [SHEEP_WOOL_UNDERCOAT_TEXTURE_REF, SHEEP_WOOL_TEXTURE_REF];
+const SHEEP_UNDERCOAT_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [SHEEP_WOOL_UNDERCOAT_TEXTURE_REF];
+const BABY_SHEEP_WOOL_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [SHEEP_WOOL_BABY_TEXTURE_REF];
 
 const VILLAGER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/villager/villager.png",
@@ -5051,6 +5207,76 @@ const ADULT_SHEEP_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const ADULT_SHEEP_WOOL_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.6, -4.6, -4.6],
+    size: [7.2, 7.2, 7.2],
+    color: SHEEP_WOOL,
+}];
+
+const ADULT_SHEEP_WOOL_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-5.75, -11.75, -8.75],
+    size: [11.5, 19.5, 9.5],
+    color: SHEEP_WOOL,
+}];
+
+const ADULT_SHEEP_WOOL_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, -0.5, -2.5],
+    size: [5.0, 7.0, 5.0],
+    color: SHEEP_WOOL,
+}];
+
+// Vanilla 26.1 SheepFurModel.createFurLayer().
+const ADULT_SHEEP_WOOL_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 6.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_WOOL_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 5.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_WOOL_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_WOOL_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_WOOL_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_WOOL_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_SHEEP_WOOL_LEG,
+        children: &[],
+    },
+];
+
 const BABY_SHEEP_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-2.5, -4.5, -3.5],
     size: [5.0, 5.0, 5.0],
@@ -8368,7 +8594,11 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Cow { variant, baby } => {
                 emit_cow_model(&mut mesh, *instance, variant, baby)
             }
-            EntityModelKind::Sheep { baby } => emit_sheep_model(&mut mesh, *instance, baby),
+            EntityModelKind::Sheep {
+                baby,
+                sheared,
+                wool_color,
+            } => emit_sheep_model(&mut mesh, *instance, baby, sheared, wool_color),
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
             EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
             EntityModelKind::Wolf { baby } => emit_wolf_model(&mut mesh, *instance, baby),
@@ -8754,7 +8984,14 @@ fn emit_cow_model(
     );
 }
 
-fn emit_sheep_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+fn emit_sheep_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    baby: bool,
+    sheared: bool,
+    wool_color: SheepWoolColor,
+) {
+    let transform = entity_model_root_transform(instance);
     emit_model_parts(
         mesh,
         if baby {
@@ -8762,8 +8999,24 @@ fn emit_sheep_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, b
         } else {
             &ADULT_SHEEP_PARTS
         },
-        entity_model_root_transform(instance),
+        transform,
     );
+    let wool_layer_color = sheep_wool_layer_color(wool_color);
+    if !baby && wool_color != SheepWoolColor::White {
+        emit_model_parts_with_color(mesh, &ADULT_SHEEP_PARTS, transform, wool_layer_color);
+    }
+    if !sheared {
+        emit_model_parts_with_color(
+            mesh,
+            if baby {
+                &BABY_SHEEP_PARTS
+            } else {
+                &ADULT_SHEEP_WOOL_PARTS
+            },
+            transform,
+            wool_layer_color,
+        );
+    }
 }
 
 fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
@@ -9496,6 +9749,102 @@ fn cow_texture_ref(variant: CowModelVariant, baby: bool) -> EntityModelTextureRe
             size: [64, 64],
         },
     }
+}
+
+const SHEEP_WOOL_COLOR_MODEL_KEYS: [&str; 16] = [
+    "sheep",
+    "sheep_orange",
+    "sheep_magenta",
+    "sheep_light_blue",
+    "sheep_yellow",
+    "sheep_lime",
+    "sheep_pink",
+    "sheep_gray",
+    "sheep_light_gray",
+    "sheep_cyan",
+    "sheep_purple",
+    "sheep_blue",
+    "sheep_brown",
+    "sheep_green",
+    "sheep_red",
+    "sheep_black",
+];
+
+const BABY_SHEEP_WOOL_COLOR_MODEL_KEYS: [&str; 16] = [
+    "sheep_baby",
+    "sheep_baby_orange",
+    "sheep_baby_magenta",
+    "sheep_baby_light_blue",
+    "sheep_baby_yellow",
+    "sheep_baby_lime",
+    "sheep_baby_pink",
+    "sheep_baby_gray",
+    "sheep_baby_light_gray",
+    "sheep_baby_cyan",
+    "sheep_baby_purple",
+    "sheep_baby_blue",
+    "sheep_baby_brown",
+    "sheep_baby_green",
+    "sheep_baby_red",
+    "sheep_baby_black",
+];
+
+const SHEEP_SHEARED_COLOR_MODEL_KEYS: [&str; 16] = [
+    "sheep_sheared",
+    "sheep_orange_sheared",
+    "sheep_magenta_sheared",
+    "sheep_light_blue_sheared",
+    "sheep_yellow_sheared",
+    "sheep_lime_sheared",
+    "sheep_pink_sheared",
+    "sheep_gray_sheared",
+    "sheep_light_gray_sheared",
+    "sheep_cyan_sheared",
+    "sheep_purple_sheared",
+    "sheep_blue_sheared",
+    "sheep_brown_sheared",
+    "sheep_green_sheared",
+    "sheep_red_sheared",
+    "sheep_black_sheared",
+];
+
+const SHEEP_WOOL_LAYER_COLOR_BYTES: [[u8; 3]; 16] = [
+    [230, 230, 230],
+    [186, 96, 21],
+    [149, 58, 141],
+    [43, 134, 163],
+    [190, 162, 45],
+    [96, 149, 23],
+    [182, 104, 127],
+    [53, 59, 61],
+    [117, 117, 113],
+    [16, 117, 117],
+    [102, 37, 138],
+    [45, 51, 127],
+    [98, 63, 37],
+    [70, 93, 16],
+    [132, 34, 28],
+    [21, 21, 24],
+];
+
+fn sheep_model_key(baby: bool, sheared: bool, wool_color: SheepWoolColor) -> &'static str {
+    let color = wool_color.vanilla_id() as usize;
+    match (baby, sheared) {
+        (false, false) => SHEEP_WOOL_COLOR_MODEL_KEYS[color],
+        (true, false) => BABY_SHEEP_WOOL_COLOR_MODEL_KEYS[color],
+        (false, true) => SHEEP_SHEARED_COLOR_MODEL_KEYS[color],
+        (true, true) => "sheep_baby_sheared",
+    }
+}
+
+fn sheep_wool_layer_color(wool_color: SheepWoolColor) -> [f32; 4] {
+    let [red, green, blue] = SHEEP_WOOL_LAYER_COLOR_BYTES[wool_color.vanilla_id() as usize];
+    [
+        f32::from(red) / 255.0,
+        f32::from(green) / 255.0,
+        f32::from(blue) / 255.0,
+        1.0,
+    ]
 }
 
 fn llama_model_key(family: LlamaModelFamily, variant: LlamaVariant, baby: bool) -> &'static str {
@@ -12379,8 +12728,14 @@ mod tests {
 
     #[test]
     fn sheep_adult_model_mesh_uses_vanilla_body_layer_geometry() {
-        let mesh =
-            entity_model_mesh(&[EntityModelInstance::sheep(94, [0.0, 64.0, 0.0], 0.0, false)]);
+        let mesh = entity_model_mesh(&[EntityModelInstance::sheep_wool(
+            94,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            SheepWoolColor::White,
+        )]);
 
         assert_eq!(mesh.opaque_faces, 36);
         assert_eq!(mesh.vertices.len(), 144);
@@ -12389,6 +12744,155 @@ mod tests {
         let (min, max) = mesh_extents(&mesh);
         assert_close3(min, [-0.3125, 64.001, -0.5625]);
         assert_close3(max, [0.3125, 65.376, 0.875]);
+    }
+
+    #[test]
+    fn sheep_wool_layer_parts_match_vanilla_26_1_fur_layer() {
+        assert_eq!(
+            ADULT_SHEEP_WOOL_HEAD[0],
+            ModelCubeDesc {
+                min: [-3.6, -4.6, -4.6],
+                size: [7.2, 7.2, 7.2],
+                color: SHEEP_WOOL,
+            }
+        );
+        assert_eq!(
+            ADULT_SHEEP_WOOL_BODY[0],
+            ModelCubeDesc {
+                min: [-5.75, -11.75, -8.75],
+                size: [11.5, 19.5, 9.5],
+                color: SHEEP_WOOL,
+            }
+        );
+        assert_eq!(
+            ADULT_SHEEP_WOOL_LEG[0],
+            ModelCubeDesc {
+                min: [-2.5, -0.5, -2.5],
+                size: [5.0, 7.0, 5.0],
+                color: SHEEP_WOOL,
+            }
+        );
+        assert_eq!(ADULT_SHEEP_WOOL_PARTS.len(), 6);
+        assert_part(
+            &ADULT_SHEEP_WOOL_PARTS[0],
+            [0.0, 6.0, -8.0],
+            [0.0, 0.0, 0.0],
+            ADULT_SHEEP_WOOL_HEAD.as_slice(),
+        );
+        assert_part(
+            &ADULT_SHEEP_WOOL_PARTS[1],
+            [0.0, 5.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_SHEEP_WOOL_BODY.as_slice(),
+        );
+        for (part, expected_offset) in ADULT_SHEEP_WOOL_PARTS[2..].iter().zip([
+            [-3.0, 12.0, 7.0],
+            [3.0, 12.0, 7.0],
+            [-3.0, 12.0, -5.0],
+            [3.0, 12.0, -5.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                ADULT_SHEEP_WOOL_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn sheep_wool_color_table_matches_vanilla_color_lerper() {
+        let cases: [(u8, SheepWoolColor, [u8; 3]); 16] = [
+            (0, SheepWoolColor::White, [230, 230, 230]),
+            (1, SheepWoolColor::Orange, [186, 96, 21]),
+            (2, SheepWoolColor::Magenta, [149, 58, 141]),
+            (3, SheepWoolColor::LightBlue, [43, 134, 163]),
+            (4, SheepWoolColor::Yellow, [190, 162, 45]),
+            (5, SheepWoolColor::Lime, [96, 149, 23]),
+            (6, SheepWoolColor::Pink, [182, 104, 127]),
+            (7, SheepWoolColor::Gray, [53, 59, 61]),
+            (8, SheepWoolColor::LightGray, [117, 117, 113]),
+            (9, SheepWoolColor::Cyan, [16, 117, 117]),
+            (10, SheepWoolColor::Purple, [102, 37, 138]),
+            (11, SheepWoolColor::Blue, [45, 51, 127]),
+            (12, SheepWoolColor::Brown, [98, 63, 37]),
+            (13, SheepWoolColor::Green, [70, 93, 16]),
+            (14, SheepWoolColor::Red, [132, 34, 28]),
+            (15, SheepWoolColor::Black, [21, 21, 24]),
+        ];
+
+        for (id, color, [red, green, blue]) in cases {
+            assert_eq!(SheepWoolColor::from_vanilla_id(id), color);
+            assert_eq!(color.vanilla_id(), id);
+            assert_eq!(
+                sheep_wool_layer_color(color),
+                [
+                    f32::from(red) / 255.0,
+                    f32::from(green) / 255.0,
+                    f32::from(blue) / 255.0,
+                    1.0
+                ]
+            );
+        }
+        assert_eq!(SheepWoolColor::from_vanilla_id(99), SheepWoolColor::White);
+    }
+
+    #[test]
+    fn sheep_wool_layer_mesh_applies_vanilla_visibility_and_color() {
+        let unsheared_white =
+            entity_model_mesh(&[EntityModelInstance::sheep(96, [0.0, 64.0, 0.0], 0.0, false)]);
+        assert_eq!(unsheared_white.opaque_faces, 72);
+        assert_eq!(unsheared_white.vertices.len(), 288);
+        assert_eq!(unsheared_white.indices.len(), 432);
+        assert!(unsheared_white.vertices.iter().any(|vertex| vertex.color
+            == shade_color(sheep_wool_layer_color(SheepWoolColor::White), 1.0)));
+
+        let unsheared_red = entity_model_mesh(&[EntityModelInstance::sheep_wool(
+            97,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            SheepWoolColor::Red,
+        )]);
+        assert_eq!(unsheared_red.opaque_faces, 108);
+        assert_eq!(unsheared_red.vertices.len(), 432);
+        assert_eq!(unsheared_red.indices.len(), 648);
+        assert!(unsheared_red
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color
+                == shade_color(sheep_wool_layer_color(SheepWoolColor::Red), 1.0)));
+
+        let sheared_red = entity_model_mesh(&[EntityModelInstance::sheep_wool(
+            98,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            SheepWoolColor::Red,
+        )]);
+        assert_eq!(sheared_red.opaque_faces, 72);
+        assert_eq!(sheared_red.vertices.len(), 288);
+        assert_eq!(sheared_red.indices.len(), 432);
+        let (min, max) = mesh_extents(&sheared_red);
+        assert_close3(min, [-0.3125, 64.001, -0.5625]);
+        assert_close3(max, [0.3125, 65.376, 0.875]);
+
+        let sheared_red_baby = entity_model_mesh(&[EntityModelInstance::sheep_wool(
+            99,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            true,
+            SheepWoolColor::Red,
+        )]);
+        assert_eq!(sheared_red_baby.opaque_faces, 36);
+        assert!(!sheared_red_baby
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color
+                == shade_color(sheep_wool_layer_color(SheepWoolColor::Red), 1.0)));
     }
 
     #[test]
@@ -12431,8 +12935,14 @@ mod tests {
 
     #[test]
     fn sheep_baby_model_mesh_uses_vanilla_body_layer_geometry() {
-        let mesh =
-            entity_model_mesh(&[EntityModelInstance::sheep(95, [0.0, 64.0, 0.0], 0.0, true)]);
+        let mesh = entity_model_mesh(&[EntityModelInstance::sheep_wool(
+            95,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            true,
+            SheepWoolColor::White,
+        )]);
 
         assert_eq!(mesh.opaque_faces, 36);
         assert_eq!(mesh.vertices.len(), 144);
@@ -12506,21 +13016,130 @@ mod tests {
             assert_eq!(kind.model_key(), model_key);
             assert_eq!(kind.vanilla_texture_ref(), Some(texture));
         }
-        assert_eq!(EntityModelKind::Sheep { baby: false }.model_key(), "sheep");
         assert_eq!(
-            EntityModelKind::Sheep { baby: false }.vanilla_texture_ref(),
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            }
+            .model_key(),
+            "sheep"
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::Red,
+            }
+            .model_key(),
+            "sheep_red"
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: true,
+                wool_color: SheepWoolColor::Red,
+            }
+            .model_key(),
+            "sheep_red_sheared"
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: true,
+                sheared: true,
+                wool_color: SheepWoolColor::Red,
+            }
+            .model_key(),
+            "sheep_baby_sheared"
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            }
+            .vanilla_texture_ref(),
             Some(EntityModelTextureRef {
                 path: "textures/entity/sheep/sheep.png",
                 size: [64, 32],
             })
         );
         assert_eq!(
-            EntityModelKind::Sheep { baby: true }.vanilla_texture_ref(),
+            EntityModelKind::Sheep {
+                baby: true,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            }
+            .vanilla_texture_ref(),
             Some(EntityModelTextureRef {
                 path: "textures/entity/sheep/sheep_baby.png",
                 size: [64, 32],
             })
         );
+        assert_eq!(
+            SHEEP_WOOL_TEXTURE_REF,
+            EntityModelTextureRef {
+                path: "textures/entity/sheep/sheep_wool.png",
+                size: [64, 32],
+            }
+        );
+        assert_eq!(
+            SHEEP_WOOL_BABY_TEXTURE_REF,
+            EntityModelTextureRef {
+                path: "textures/entity/sheep/sheep_wool_baby.png",
+                size: [64, 32],
+            }
+        );
+        assert_eq!(
+            SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
+            EntityModelTextureRef {
+                path: "textures/entity/sheep/sheep_wool_undercoat.png",
+                size: [64, 32],
+            }
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            }
+            .vanilla_layer_texture_refs(),
+            &[SHEEP_WOOL_TEXTURE_REF]
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::Red,
+            }
+            .vanilla_layer_texture_refs(),
+            &[SHEEP_WOOL_UNDERCOAT_TEXTURE_REF, SHEEP_WOOL_TEXTURE_REF]
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: true,
+                wool_color: SheepWoolColor::Red,
+            }
+            .vanilla_layer_texture_refs(),
+            &[SHEEP_WOOL_UNDERCOAT_TEXTURE_REF]
+        );
+        assert_eq!(
+            EntityModelKind::Sheep {
+                baby: true,
+                sheared: false,
+                wool_color: SheepWoolColor::Black,
+            }
+            .vanilla_layer_texture_refs(),
+            &[SHEEP_WOOL_BABY_TEXTURE_REF]
+        );
+        assert!(EntityModelKind::Sheep {
+            baby: true,
+            sheared: true,
+            wool_color: SheepWoolColor::Black,
+        }
+        .vanilla_layer_texture_refs()
+        .is_empty());
     }
 
     #[test]
@@ -16125,7 +16744,12 @@ mod tests {
             "cow_cold_baby"
         );
         assert_eq!(
-            EntityModelKind::Sheep { baby: true }.model_key(),
+            EntityModelKind::Sheep {
+                baby: true,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+            }
+            .model_key(),
             "sheep_baby"
         );
         assert_eq!(
