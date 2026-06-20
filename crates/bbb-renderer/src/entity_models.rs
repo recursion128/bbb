@@ -34,9 +34,9 @@ use model_layers::*;
 pub use model_layers::{
     boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
     creeper_entity_texture_refs, enderman_entity_texture_refs, entity_model_texture_refs,
-    pig_entity_texture_refs, player_entity_texture_refs, sheep_entity_texture_refs,
-    skeleton_entity_texture_refs, slime_entity_texture_refs, spider_entity_texture_refs,
-    wolf_entity_texture_refs,
+    goat_entity_texture_refs, pig_entity_texture_refs, player_entity_texture_refs,
+    sheep_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
+    spider_entity_texture_refs, wolf_entity_texture_refs,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;
@@ -44,7 +44,7 @@ use textured::entity_model_textured_meshes;
 #[cfg(test)]
 use textured::{
     boat_textured_layer_passes, chicken_textured_layer_passes, cow_textured_layer_passes,
-    creeper_textured_layer_passes, enderman_textured_layer_passes,
+    creeper_textured_layer_passes, enderman_textured_layer_passes, goat_textured_layer_passes,
     magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
     sheep_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     spider_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerKind,

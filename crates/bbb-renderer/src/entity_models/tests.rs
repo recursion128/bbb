@@ -559,6 +559,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let enderman = EntityModelInstance::enderman(313, [18.0, 64.0, 0.0], 0.0);
     let slime = EntityModelInstance::slime(314, [20.0, 64.0, 0.0], 0.0, 1);
     let magma_cube = EntityModelInstance::magma_cube(315, [22.0, 64.0, 0.0], 0.0, 3);
+    let goat = EntityModelInstance::goat(316, [24.0, 64.0, 0.0], 0.0, false, true, false);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -573,6 +574,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         enderman,
         slime,
         magma_cube,
+        goat,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -602,6 +604,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_slime_geometry_guard.vertices.is_empty());
     let legacy_magma_cube_geometry_guard = entity_model_mesh(&[magma_cube]);
     assert!(!legacy_magma_cube_geometry_guard.vertices.is_empty());
+    let legacy_goat_geometry_guard = entity_model_mesh(&[goat]);
+    assert!(!legacy_goat_geometry_guard.vertices.is_empty());
 }
 
 #[test]

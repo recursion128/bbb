@@ -24,6 +24,7 @@ pub(super) enum EntityModelLayerKind {
     CreeperBase,
     EndermanBase,
     EndermanEyes,
+    GoatBase,
     PigBase,
     PlayerBase,
     SheepBase,
@@ -158,6 +159,20 @@ pub(super) fn entity_model_textured_meshes(
                     tame,
                     angry,
                     collar_color,
+                    atlas,
+                );
+            }
+            EntityModelKind::Goat {
+                baby,
+                left_horn,
+                right_horn,
+            } => {
+                emit_goat_textured_model(
+                    &mut meshes,
+                    *instance,
+                    baby,
+                    left_horn,
+                    right_horn,
                     atlas,
                 );
             }
@@ -336,6 +351,27 @@ fn emit_wolf_textured_model(
     let transform = entity_model_root_transform(instance);
     for pass in wolf_textured_layer_passes(baby, tame, angry, collar_color) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_goat_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    left_horn: bool,
+    right_horn: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    let visible_parts = goat_visible_textured_model_parts(baby, left_horn, right_horn);
+    for pass in goat_textured_layer_passes(baby) {
+        emit_textured_layer_pass_with_parts(
+            meshes,
+            &pass,
+            visible_parts.as_slice(),
+            transform,
+            atlas,
+        );
     }
 }
 
@@ -707,6 +743,20 @@ pub(super) fn wolf_textured_layer_passes(
     passes
 }
 
+pub(super) fn goat_textured_layer_passes(baby: bool) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::GoatBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: goat_model_layer(baby),
+        texture: goat_texture_ref(baby),
+        parts: goat_textured_model_parts(baby).as_slice(),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
 pub(super) fn skeleton_textured_layer_passes(
     family: Option<SkeletonModelFamily>,
 ) -> Vec<EntityModelLayerPass> {
@@ -901,6 +951,67 @@ fn cow_textured_model_parts(
         (CowModelVariant::Warm, false) => &WARM_COW_TEXTURED_PARTS,
         (CowModelVariant::Cold, false) => &COLD_COW_TEXTURED_PARTS,
         (CowModelVariant::Temperate, false) => &ADULT_COW_TEXTURED_PARTS,
+    }
+}
+
+fn goat_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_GOAT_BABY
+    } else {
+        MODEL_LAYER_GOAT
+    }
+}
+
+fn goat_texture_ref(baby: bool) -> EntityModelTextureRef {
+    if baby {
+        GOAT_BABY_TEXTURE_REF
+    } else {
+        GOAT_TEXTURE_REF
+    }
+}
+
+fn goat_textured_model_parts(baby: bool) -> &'static [TexturedModelPartDesc; 6] {
+    if baby {
+        &BABY_GOAT_TEXTURED_PARTS
+    } else {
+        &ADULT_GOAT_TEXTURED_PARTS
+    }
+}
+
+fn goat_visible_textured_model_parts(
+    baby: bool,
+    left_horn: bool,
+    right_horn: bool,
+) -> [TexturedModelPartDesc; 6] {
+    let mut parts = *goat_textured_model_parts(baby);
+    let head_index = if baby {
+        BABY_GOAT_HEAD_INDEX
+    } else {
+        ADULT_GOAT_HEAD_INDEX
+    };
+    parts[head_index].children = if baby {
+        baby_goat_head_children(left_horn, right_horn)
+    } else {
+        adult_goat_head_children(left_horn, right_horn)
+    };
+    parts
+}
+
+fn adult_goat_head_children(left_horn: bool, right_horn: bool) -> &'static [TexturedModelPartDesc] {
+    match (left_horn, right_horn) {
+        (true, true) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN.as_slice(),
+        (true, false) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN_LEFT_ONLY.as_slice(),
+        (false, true) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN_RIGHT_ONLY.as_slice(),
+        (false, false) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS.as_slice(),
+    }
+}
+
+fn baby_goat_head_children(left_horn: bool, right_horn: bool) -> &'static [TexturedModelPartDesc] {
+    match (left_horn, right_horn) {
+        (true, true) => BABY_GOAT_TEXTURED_HEAD_CHILDREN.as_slice(),
+        (true, false) => BABY_GOAT_TEXTURED_HEAD_CHILDREN_LEFT_ONLY.as_slice(),
+        (false, true) => BABY_GOAT_TEXTURED_HEAD_CHILDREN_RIGHT_ONLY.as_slice(),
+        (false, false) => BABY_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS.as_slice(),
     }
 }
 

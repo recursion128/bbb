@@ -153,7 +153,11 @@ fn entity_model_mesh_with_options(
                 baby,
                 left_horn,
                 right_horn,
-            } => emit_goat_model(&mut mesh, *instance, baby, left_horn, right_horn),
+            } => {
+                if !skip_texture_backed_entities {
+                    emit_goat_model(&mut mesh, *instance, baby, left_horn, right_horn);
+                }
+            }
             EntityModelKind::PolarBear { baby } => {
                 emit_polar_bear_model(&mut mesh, *instance, baby)
             }

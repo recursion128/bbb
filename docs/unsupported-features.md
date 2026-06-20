@@ -416,9 +416,10 @@ When an agent does any of the following, update this file in the same slice:
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture
-      references, and metadata-driven left/right horn visibility; screaming
-      goat sounds, ramming/lowering-head event animation, walk/head animation,
-      lighting, and GPU texture binding remain unsupported
+      references, texture-backed base layer pass emission, official PNG atlas
+      upload/bind/sample path, and metadata-driven left/right horn visibility;
+      screaming goat sounds, ramming/lowering-head event animation, walk/head
+      animation, and lighting remain unsupported
     - polar bear entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `PolarBearModel`, `BabyPolarBearModel`, and
       `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /

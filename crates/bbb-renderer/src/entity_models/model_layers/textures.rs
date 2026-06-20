@@ -601,7 +601,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 68] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 70] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -617,6 +617,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     WOLF_ANGRY_BABY_TEXTURE_REF,
     WOLF_COLLAR_TEXTURE_REF,
     WOLF_BABY_COLLAR_TEXTURE_REF,
+    GOAT_TEXTURE_REF,
+    GOAT_BABY_TEXTURE_REF,
     CHICKEN_TEMPERATE_TEXTURE_REF,
     CHICKEN_TEMPERATE_BABY_TEXTURE_REF,
     CHICKEN_WARM_TEXTURE_REF,
@@ -813,6 +815,13 @@ pub(in crate::entity_models) const GOAT_BABY_TEXTURE_REF: EntityModelTextureRef 
         path: "textures/entity/goat/goat_baby.png",
         size: [64, 64],
     };
+
+pub(in crate::entity_models) const GOAT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [GOAT_TEXTURE_REF, GOAT_BABY_TEXTURE_REF];
+
+pub fn goat_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &GOAT_ENTITY_TEXTURE_REFS
+}
 
 pub(in crate::entity_models) const POLAR_BEAR_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {

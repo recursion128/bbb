@@ -232,4 +232,217 @@ fn goat_texture_refs_match_vanilla_renderer() {
         assert_eq!(kind.model_key(), model_key);
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
+
+    assert_eq!(
+        goat_entity_texture_refs(),
+        &[
+            EntityModelTextureRef {
+                path: "textures/entity/goat/goat.png",
+                size: [64, 64],
+            },
+            EntityModelTextureRef {
+                path: "textures/entity/goat/goat_baby.png",
+                size: [64, 64],
+            },
+        ]
+    );
+    assert!(entity_model_texture_refs().contains(&GOAT_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&GOAT_BABY_TEXTURE_REF));
+}
+
+#[test]
+fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
+    let adult = goat_textured_layer_passes(false);
+    assert_eq!(adult.len(), 1);
+    assert_eq!(adult[0].kind, EntityModelLayerKind::GoatBase);
+    assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(adult[0].model_layer, MODEL_LAYER_GOAT);
+    assert_eq!(adult[0].texture, GOAT_TEXTURE_REF);
+    assert_eq!(adult[0].parts, ADULT_GOAT_TEXTURED_PARTS.as_slice());
+    assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
+
+    let baby = goat_textured_layer_passes(true);
+    assert_eq!(baby.len(), 1);
+    assert_eq!(baby[0].kind, EntityModelLayerKind::GoatBase);
+    assert_eq!(baby[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(baby[0].model_layer, MODEL_LAYER_GOAT_BABY);
+    assert_eq!(baby[0].texture, GOAT_BABY_TEXTURE_REF);
+    assert_eq!(baby[0].parts, BABY_GOAT_TEXTURED_PARTS.as_slice());
+    assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(baby[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((baby[0].collector_order, baby[0].submit_sequence), (0, 0));
+}
+
+#[test]
+fn goat_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_GOAT, "minecraft:goat#main");
+    assert_eq!(MODEL_LAYER_GOAT_BABY, "minecraft:goat_baby#main");
+    assert_eq!(
+        ADULT_GOAT_TEXTURED_HEAD[1],
+        TexturedModelCubeDesc {
+            min: [2.0, -11.0, -10.0],
+            size: [3.0, 2.0, 1.0],
+            uv_size: [3.0, 2.0, 1.0],
+            tex: [2.0, 61.0],
+            mirror: true,
+        }
+    );
+    assert_eq!(
+        ADULT_GOAT_TEXTURED_HEAD[2],
+        TexturedModelCubeDesc {
+            min: [-0.5, -3.0, -14.0],
+            size: [0.0, 7.0, 5.0],
+            uv_size: [0.0, 7.0, 5.0],
+            tex: [23.0, 52.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(ADULT_GOAT_TEXTURED_LEFT_HORN[0].tex, [12.0, 55.0]);
+    assert_eq!(ADULT_GOAT_TEXTURED_RIGHT_HORN[0].tex, [12.0, 55.0]);
+    assert_eq!(ADULT_GOAT_TEXTURED_NOSE[0].tex, [34.0, 46.0]);
+    assert_eq!(ADULT_GOAT_TEXTURED_LEFT_HIND_LEG[0].tex, [36.0, 29.0]);
+    assert_eq!(ADULT_GOAT_TEXTURED_RIGHT_HIND_LEG[0].tex, [49.0, 29.0]);
+    assert_eq!(ADULT_GOAT_TEXTURED_LEFT_FRONT_LEG[0].tex, [49.0, 2.0]);
+    assert_eq!(ADULT_GOAT_TEXTURED_RIGHT_FRONT_LEG[0].tex, [35.0, 2.0]);
+    assert_eq!(
+        ADULT_GOAT_TEXTURED_PARTS[ADULT_GOAT_HEAD_INDEX].children,
+        ADULT_GOAT_TEXTURED_HEAD_CHILDREN.as_slice()
+    );
+    assert_eq!(
+        ADULT_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS,
+        [ADULT_GOAT_TEXTURED_NOSE_PART]
+    );
+
+    assert_eq!(BABY_GOAT_TEXTURED_LEFT_HIND_LEG[0].tex, [29.0, 12.0]);
+    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_HIND_LEG[0].tex, [21.0, 12.0]);
+    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_FRONT_LEG[0].tex, [21.0, 5.0]);
+    assert_eq!(BABY_GOAT_TEXTURED_LEFT_FRONT_LEG[0].tex, [29.0, 5.0]);
+    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_HORN[0].tex, [24.0, 0.0]);
+    assert!(BABY_GOAT_TEXTURED_RIGHT_HORN[0].mirror);
+    assert!(BABY_GOAT_TEXTURED_LEFT_HORN[0].mirror);
+    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_EAR[0].tex, [0.0, 12.0]);
+    assert!(BABY_GOAT_TEXTURED_RIGHT_EAR[0].mirror);
+    assert!(!BABY_GOAT_TEXTURED_LEFT_EAR[0].mirror);
+    assert_eq!(BABY_GOAT_TEXTURED_HEAD_MAIN[0].tex, [0.0, 0.0]);
+    assert_eq!(
+        BABY_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS,
+        [
+            BABY_GOAT_TEXTURED_RIGHT_EAR_PART,
+            BABY_GOAT_TEXTURED_LEFT_EAR_PART,
+            BABY_GOAT_TEXTURED_HEAD_MAIN_PART,
+        ]
+    );
+    assert_eq!(
+        BABY_GOAT_TEXTURED_PARTS[BABY_GOAT_HEAD_INDEX].children,
+        BABY_GOAT_TEXTURED_HEAD_CHILDREN.as_slice()
+    );
+}
+
+#[test]
+fn entity_texture_atlas_stitches_official_goat_png_slots() {
+    let (layout, rgba) = build_entity_model_texture_atlas(&goat_texture_images()).unwrap();
+
+    assert_eq!(layout.width, 64);
+    assert_eq!(layout.height, 128);
+    assert_eq!(
+        layout
+            .entries
+            .iter()
+            .map(|entry| entry.texture.path)
+            .collect::<Vec<_>>(),
+        vec![
+            "textures/entity/goat/goat.png",
+            "textures/entity/goat/goat_baby.png",
+        ]
+    );
+    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+    assert_close2(layout.entries[0].uv.max, [1.0, 0.5]);
+    assert_close2(layout.entries[1].uv.min, [0.0, 0.5]);
+    assert_close2(layout.entries[1].uv.max, [1.0, 1.0]);
+    assert_eq!(&rgba[0..4], &[0; 4]);
+    let baby_first_pixel = rgba_offset(layout.width, 64, 0, "goat baby atlas row").unwrap();
+    assert_eq!(&rgba[baby_first_pixel..baby_first_pixel + 4], &[1; 4]);
+}
+
+#[test]
+fn goat_textured_mesh_uses_vanilla_uvs_tints_and_horn_visibility() {
+    let (atlas, _) = build_entity_model_texture_atlas(&goat_texture_images()).unwrap();
+    let adult = EntityModelInstance::goat(401, [0.0, 64.0, 0.0], 0.0, false, true, true);
+    let adult_mesh = entity_model_textured_mesh(&[adult], &atlas);
+    assert_eq!(adult_mesh.cutout_faces, 72);
+    assert_eq!(adult_mesh.vertices.len(), 288);
+    assert_eq!(adult_mesh.indices.len(), 432);
+    assert_close2(adult_mesh.vertices[0].uv, [6.0 / 64.0, 61.0 / 128.0]);
+    assert_eq!(adult_mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    let (adult_textured_min, adult_textured_max) = textured_mesh_extents(&adult_mesh);
+    let (adult_colored_min, adult_colored_max) = mesh_extents(&entity_model_mesh(&[adult]));
+    assert_close3(adult_textured_min, adult_colored_min);
+    assert_close3(adult_textured_max, adult_colored_max);
+
+    let adult_left_horn_only = entity_model_textured_mesh(
+        &[EntityModelInstance::goat(
+            402,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(adult_left_horn_only.cutout_faces, 66);
+    assert_eq!(adult_left_horn_only.vertices.len(), 264);
+
+    let adult_no_horns = entity_model_textured_mesh(
+        &[EntityModelInstance::goat(
+            403,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(adult_no_horns.cutout_faces, 60);
+    assert_eq!(adult_no_horns.vertices.len(), 240);
+
+    let baby = EntityModelInstance::goat(404, [0.0, 64.0, 0.0], 0.0, true, true, true);
+    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    assert_eq!(baby_mesh.cutout_faces, 72);
+    assert_close2(baby_mesh.vertices[0].uv, [33.0 / 64.0, 76.0 / 128.0]);
+    let (baby_textured_min, baby_textured_max) = textured_mesh_extents(&baby_mesh);
+    let (baby_colored_min, baby_colored_max) = mesh_extents(&entity_model_mesh(&[baby]));
+    assert_close3(baby_textured_min, baby_colored_min);
+    assert_close3(baby_textured_max, baby_colored_max);
+
+    let baby_no_horns = entity_model_textured_mesh(
+        &[EntityModelInstance::goat(
+            405,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            false,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(baby_no_horns.cutout_faces, 60);
+    assert!(baby_no_horns
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}
+
+fn goat_texture_images() -> Vec<EntityModelTextureImage> {
+    goat_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
 }
