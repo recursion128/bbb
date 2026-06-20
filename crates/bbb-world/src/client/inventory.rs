@@ -1337,6 +1337,20 @@ impl WorldStore {
                         ));
                     }
                 }
+                ProtocolContainerInput::Pickup
+                    if menu_type_id == Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID)
+                        && request.slot_num == CARTOGRAPHY_TABLE_RESULT_SLOT =>
+                {
+                    if !apply_cartography_table_result_pickup_to_slots(
+                        &mut slots_after,
+                        &mut cursor_after,
+                        request.button_num,
+                    ) {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::Pickup,
+                        ));
+                    }
+                }
                 ProtocolContainerInput::Pickup => apply_pickup_click_to_slots(
                     container_id,
                     &mut slots_after,
@@ -2790,6 +2804,10 @@ fn menu_result_slot_requires_server_authority(
             Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID),
             CARTOGRAPHY_TABLE_RESULT_SLOT,
             ProtocolContainerInput::QuickMove
+        ) | (
+            Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID),
+            CARTOGRAPHY_TABLE_RESULT_SLOT,
+            ProtocolContainerInput::Pickup
         ) | (
             Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
             STONECUTTER_RESULT_SLOT,
@@ -4543,6 +4561,51 @@ fn apply_cartography_table_result_quick_move_to_slots(
     trial[source_index].item = ProtocolItemStackSummary::empty();
     normalize_container_slot_selection(&mut trial[source_index]);
     slots.clone_from_slice(&trial);
+}
+
+fn apply_cartography_table_result_pickup_to_slots(
+    slots: &mut [ContainerSlot],
+    cursor: &mut ProtocolItemStackSummary,
+    button_num: i8,
+) -> bool {
+    if button_num != 0 || !item_stack_is_empty(cursor) {
+        return false;
+    }
+    let Some(source_index) = slots
+        .iter()
+        .position(|slot| slot.slot == CARTOGRAPHY_TABLE_RESULT_SLOT)
+    else {
+        return false;
+    };
+    let Some(map_index) = slots
+        .iter()
+        .position(|slot| slot.slot == CARTOGRAPHY_TABLE_MAP_SLOT)
+    else {
+        return false;
+    };
+    let Some(additional_index) = slots
+        .iter()
+        .position(|slot| slot.slot == CARTOGRAPHY_TABLE_ADDITIONAL_SLOT)
+    else {
+        return false;
+    };
+    if item_stack_is_empty(&slots[source_index].item)
+        || item_stack_is_empty(&slots[map_index].item)
+        || item_stack_is_empty(&slots[additional_index].item)
+        || slots[map_index].item.count != 1
+        || slots[additional_index].item.count != 1
+    {
+        return false;
+    }
+
+    *cursor = slots[source_index].item.clone();
+    slots[map_index].item = ProtocolItemStackSummary::empty();
+    slots[additional_index].item = ProtocolItemStackSummary::empty();
+    slots[source_index].item = ProtocolItemStackSummary::empty();
+    normalize_container_slot_selection(&mut slots[map_index]);
+    normalize_container_slot_selection(&mut slots[additional_index]);
+    normalize_container_slot_selection(&mut slots[source_index]);
+    true
 }
 
 fn apply_loom_menu_quick_move_to_slots(
@@ -11459,16 +11522,69 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_cartography_table_result_pickup_requires_authority_and_quick_move_predicts() {
-        const CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT: usize = 39;
-
+    fn apply_local_cartography_table_result_pickup_consumes_single_inputs_to_cursor() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
             title: "Cartography Table".to_string(),
         });
-        let mut items = vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT];
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(43, 1);
+        items[CARTOGRAPHY_TABLE_RESULT_SLOT as usize] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let pickup = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+        assert_eq!(
+            pickup.changed_slots,
+            BTreeMap::from([
+                (CARTOGRAPHY_TABLE_MAP_SLOT, ProtocolHashedStack::Empty),
+                (
+                    CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
+                    ProtocolHashedStack::Empty
+                ),
+                (CARTOGRAPHY_TABLE_RESULT_SLOT, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(pickup.carried_item, hashed_item_stack(90, 1));
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_MAP_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_ADDITIONAL_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_RESULT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(90, 1));
+    }
+
+    #[test]
+    fn apply_local_cartography_table_result_quick_move_predicts_single_input_consumption() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            title: "Cartography Table".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
         items[0] = item_stack(42, 1);
         items[1] = item_stack(43, 1);
         items[CARTOGRAPHY_TABLE_RESULT_SLOT as usize] = item_stack(90, 1);
@@ -11480,16 +11596,6 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        assert_eq!(
-            store.apply_local_container_click_slot(ContainerClickSlotRequest {
-                slot_num: CARTOGRAPHY_TABLE_RESULT_SLOT,
-                button_num: 0,
-                input: ProtocolContainerInput::Pickup,
-            }),
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                ProtocolContainerInput::Pickup
-            ))
-        );
         let result_move = store
             .apply_local_container_click_slot(ContainerClickSlotRequest {
                 slot_num: CARTOGRAPHY_TABLE_RESULT_SLOT,
@@ -11568,6 +11674,16 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
+        assert_eq!(
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            }),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::Pickup
+            ))
+        );
         let quick_move = store
             .apply_local_container_click_slot(ContainerClickSlotRequest {
                 slot_num: CARTOGRAPHY_TABLE_RESULT_SLOT,

@@ -1219,9 +1219,12 @@ When an agent does any of the following, update this file in the same slice:
         - result-slot quick-move into the player inventory is locally predicted
           when the current server result fully fits and the single map and
           additional inputs are consumed to empty.
+        - result-slot primary pickup with an empty cursor is locally predicted
+          from the current server result when the single map and additional
+          inputs are consumed to empty.
         - result-slot and component-hash-unsupported filled-map paths are kept
           server-authoritative until:
-          - result-slot pickup
+          - carried-cursor or secondary result-slot pickup
           - component-hash-unsupported result stacks
           - local result stack prediction
           - result recomputation after partial input consumption
