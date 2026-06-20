@@ -37,6 +37,7 @@ pub enum EntityModelKind {
     Creeper,
     Spider,
     Enderman,
+    IronGolem,
     Minecart,
     Boat {
         chest: bool,
@@ -185,6 +186,7 @@ impl EntityModelKind {
             Self::Creeper => "creeper",
             Self::Spider => "spider",
             Self::Enderman => "enderman",
+            Self::IronGolem => "iron_golem",
             Self::Minecart => "minecart",
             Self::Boat { chest: false } => "boat",
             Self::Boat { chest: true } => "chest_boat",
@@ -205,6 +207,7 @@ impl EntityModelKind {
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::Enderman => Some(ENDERMAN_TEXTURE_REF),
+            Self::IronGolem => Some(IRON_GOLEM_TEXTURE_REF),
             _ => None,
         }
     }
@@ -287,6 +290,10 @@ impl EntityModelInstance {
 
     pub fn enderman(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Enderman, position, y_rot)
+    }
+
+    pub fn iron_golem(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::IronGolem, position, y_rot)
     }
 
     pub fn quadruped(
@@ -439,6 +446,7 @@ const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
 const ENDERMAN_DARK: [f32; 4] = [0.08, 0.06, 0.10, 1.0];
+const IRON_GOLEM_STONE: [f32; 4] = [0.74, 0.74, 0.68, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
@@ -496,6 +504,11 @@ const SPIDER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const ENDERMAN_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/enderman/enderman.png",
     size: [64, 32],
+};
+
+const IRON_GOLEM_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/iron_golem/iron_golem.png",
+    size: [128, 128],
 };
 
 const ADULT_CHICKEN_BEAK: [ModelCubeDesc; 1] = [ModelCubeDesc {
@@ -2013,6 +2026,108 @@ const ENDERMAN_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const IRON_GOLEM_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, -12.0, -5.5],
+        size: [8.0, 10.0, 8.0],
+        color: IRON_GOLEM_STONE,
+    },
+    ModelCubeDesc {
+        min: [-1.0, -5.0, -7.5],
+        size: [2.0, 4.0, 2.0],
+        color: IRON_GOLEM_STONE,
+    },
+];
+
+const IRON_GOLEM_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-9.0, -2.0, -6.0],
+        size: [18.0, 12.0, 11.0],
+        color: IRON_GOLEM_STONE,
+    },
+    ModelCubeDesc {
+        min: [-5.0, 9.5, -3.5],
+        size: [10.0, 6.0, 7.0],
+        color: IRON_GOLEM_STONE,
+    },
+];
+
+const IRON_GOLEM_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-13.0, -2.5, -3.0],
+    size: [4.0, 30.0, 6.0],
+    color: IRON_GOLEM_STONE,
+}];
+
+const IRON_GOLEM_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [9.0, -2.5, -3.0],
+    size: [4.0, 30.0, 6.0],
+    color: IRON_GOLEM_STONE,
+}];
+
+const IRON_GOLEM_RIGHT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.5, -3.0, -3.0],
+    size: [6.0, 16.0, 5.0],
+    color: IRON_GOLEM_STONE,
+}];
+
+const IRON_GOLEM_LEFT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.5, -3.0, -3.0],
+    size: [6.0, 16.0, 5.0],
+    color: IRON_GOLEM_STONE,
+}];
+
+// Vanilla 26.1 IronGolemModel.createBodyLayer().
+const IRON_GOLEM_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -7.0, -2.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &IRON_GOLEM_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -7.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &IRON_GOLEM_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -7.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &IRON_GOLEM_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -7.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &IRON_GOLEM_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 11.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &IRON_GOLEM_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 11.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &IRON_GOLEM_LEFT_LEG,
+        children: &[],
+    },
+];
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2160,6 +2275,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Creeper => emit_creeper_model(&mut mesh, *instance),
             EntityModelKind::Spider => emit_spider_model(&mut mesh, *instance),
             EntityModelKind::Enderman => emit_enderman_model(&mut mesh, *instance),
+            EntityModelKind::IronGolem => emit_iron_golem_model(&mut mesh, *instance),
             EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
             EntityModelKind::Boat { chest } => emit_boat_model(&mut mesh, *instance, chest),
             EntityModelKind::Placeholder { bounds, .. } => {
@@ -2436,6 +2552,14 @@ fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &ENDERMAN_PARTS, entity_model_root_transform(instance));
+}
+
+fn emit_iron_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(
+        mesh,
+        &IRON_GOLEM_PARTS,
+        entity_model_root_transform(instance),
+    );
 }
 
 fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -4037,6 +4161,103 @@ mod tests {
     }
 
     #[test]
+    fn iron_golem_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            IRON_GOLEM_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-4.0, -12.0, -5.5],
+                    size: [8.0, 10.0, 8.0],
+                    color: IRON_GOLEM_STONE,
+                },
+                ModelCubeDesc {
+                    min: [-1.0, -5.0, -7.5],
+                    size: [2.0, 4.0, 2.0],
+                    color: IRON_GOLEM_STONE,
+                },
+            ]
+        );
+        assert_eq!(
+            IRON_GOLEM_BODY,
+            [
+                ModelCubeDesc {
+                    min: [-9.0, -2.0, -6.0],
+                    size: [18.0, 12.0, 11.0],
+                    color: IRON_GOLEM_STONE,
+                },
+                ModelCubeDesc {
+                    min: [-5.0, 9.5, -3.5],
+                    size: [10.0, 6.0, 7.0],
+                    color: IRON_GOLEM_STONE,
+                },
+            ]
+        );
+        assert_eq!(
+            IRON_GOLEM_RIGHT_ARM[0],
+            ModelCubeDesc {
+                min: [-13.0, -2.5, -3.0],
+                size: [4.0, 30.0, 6.0],
+                color: IRON_GOLEM_STONE,
+            }
+        );
+        assert_eq!(
+            IRON_GOLEM_LEFT_ARM[0],
+            ModelCubeDesc {
+                min: [9.0, -2.5, -3.0],
+                size: [4.0, 30.0, 6.0],
+                color: IRON_GOLEM_STONE,
+            }
+        );
+        assert_eq!(
+            IRON_GOLEM_RIGHT_LEG[0],
+            ModelCubeDesc {
+                min: [-3.5, -3.0, -3.0],
+                size: [6.0, 16.0, 5.0],
+                color: IRON_GOLEM_STONE,
+            }
+        );
+        assert_eq!(IRON_GOLEM_LEFT_LEG, IRON_GOLEM_RIGHT_LEG);
+
+        assert_eq!(IRON_GOLEM_PARTS.len(), 6);
+        let part_specs = [
+            ([0.0, -7.0, -2.0], IRON_GOLEM_HEAD.as_slice()),
+            ([0.0, -7.0, 0.0], IRON_GOLEM_BODY.as_slice()),
+            ([0.0, -7.0, 0.0], IRON_GOLEM_RIGHT_ARM.as_slice()),
+            ([0.0, -7.0, 0.0], IRON_GOLEM_LEFT_ARM.as_slice()),
+            ([-4.0, 11.0, 0.0], IRON_GOLEM_RIGHT_LEG.as_slice()),
+            ([5.0, 11.0, 0.0], IRON_GOLEM_LEFT_LEG.as_slice()),
+        ];
+        for (part, (offset, cubes)) in IRON_GOLEM_PARTS.iter().zip(part_specs) {
+            assert_part(part, offset, [0.0, 0.0, 0.0], cubes);
+        }
+    }
+
+    #[test]
+    fn iron_golem_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::iron_golem(70, [0.0, 64.0, 0.0], 0.0)]);
+
+        assert_eq!(mesh.opaque_faces, 48);
+        assert_eq!(mesh.vertices.len(), 192);
+        assert_eq!(mesh.indices.len(), 288);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.8125, 64.001, -0.3125]);
+        assert_close3(max, [0.8125, 66.6885, 0.59375]);
+    }
+
+    #[test]
+    fn iron_golem_texture_ref_matches_vanilla_renderer() {
+        assert_eq!(EntityModelKind::IronGolem.model_key(), "iron_golem");
+        assert_eq!(
+            EntityModelKind::IronGolem.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/iron_golem/iron_golem.png",
+                size: [128, 128],
+            })
+        );
+    }
+
+    #[test]
     fn entity_model_root_transform_rotates_instances_by_body_yaw() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             26,
@@ -4165,6 +4386,7 @@ mod tests {
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::Enderman.model_key(), "enderman");
+        assert_eq!(EntityModelKind::IronGolem.model_key(), "iron_golem");
         assert_eq!(
             EntityModelKind::Placeholder {
                 name: "todo_test_bounds",

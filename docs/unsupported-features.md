@@ -233,8 +233,8 @@ When an agent does any of the following, update this file in the same slice:
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/villager/wandering-trader/zombie,
-      skeleton, creeper, spider, and enderman body-layer geometry, primitive
-      entity model families, and placeholder bounds
+      skeleton, creeper, spider, enderman, and iron-golem body-layer geometry,
+      primitive entity model families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -318,6 +318,13 @@ When an agent does any of the following, update this file in the same slice:
       `EndermanRenderer`; `enderman_eyes.png` emissive layer, carried-block
       layer, carried-block arm pose, creepy head offset, creepy render jitter,
       and humanoid walk/head animation remain unsupported
+    - iron golem entities as renderer-owned vanilla 26.1
+      `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
+      layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official
+      `textures/entity/iron_golem/iron_golem.png` texture reference from
+      `IronGolemRenderer`; crackiness overlay textures, flower block layer,
+      attack arm pose, offer-flower arm pose, head rotation, leg walk
+      animation, and renderer body-wobble rotation remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -331,8 +338,8 @@ When an agent does any of the following, update this file in the same slice:
     villager profession/type/held-item/custom-head presentation,
     zombie/skeleton variant presentation, creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
-    presentation, and precise vanilla mesh parity for primitive/placeholder
-    entity families.
+    presentation, iron golem crackiness/flower/animation presentation, and
+    precise vanilla mesh parity for primitive/placeholder entity families.
 
 ### Audio Runtime Parity
 
