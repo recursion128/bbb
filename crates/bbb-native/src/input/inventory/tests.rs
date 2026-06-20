@@ -4177,7 +4177,7 @@ fn crafting_table_left_click_result_slot_queues_predicted_pickup() {
 }
 
 #[test]
-fn crafting_table_result_slot_with_remainder_queues_server_authoritative_click() {
+fn crafting_table_result_slot_with_default_remainder_queues_predicted_pickup() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
@@ -4219,15 +4219,19 @@ fn crafting_table_result_slot_with_remainder_queues_server_authoritative_click()
             slot_num: 0,
             button_num: 0,
             input: ContainerInput::Pickup,
-            changed_slots: BTreeMap::new(),
-            carried_item: HashedStack::Empty,
+            changed_slots: [
+                (0, HashedStack::Empty),
+                (1, HashedStack::Item(hashed_item(43, 1))),
+            ]
+            .into(),
+            carried_item: HashedStack::Item(hashed_item(90, 1)),
         })
     );
     let inventory = world.inventory();
     let slots = &inventory.open_container.as_ref().unwrap().slots;
-    assert_eq!(slots[0].item, item_stack(90, 1));
-    assert_eq!(slots[1].item, item_stack(42, 1));
-    assert_eq!(inventory.cursor_item, ItemStackSummary::empty());
+    assert_eq!(slots[0].item, ItemStackSummary::empty());
+    assert_eq!(slots[1].item, item_stack(43, 1));
+    assert_eq!(inventory.cursor_item, item_stack(90, 1));
     assert!(rx.try_recv().is_err());
 }
 
@@ -6465,7 +6469,7 @@ fn inventory_mouse_click_queues_container_zero_pickup() {
 }
 
 #[test]
-fn inventory_result_with_remainder_queues_server_authoritative_container_zero_click() {
+fn inventory_result_with_default_remainder_queues_predicted_container_zero_click() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
@@ -6503,14 +6507,32 @@ fn inventory_result_with_remainder_queues_server_authoritative_container_zero_cl
             slot_num: 0,
             button_num: 0,
             input: ContainerInput::Pickup,
-            changed_slots: BTreeMap::new(),
-            carried_item: HashedStack::Empty,
+            changed_slots: [
+                (0, HashedStack::Empty),
+                (
+                    1,
+                    HashedStack::Item(HashedItemStack {
+                        item_id: 43,
+                        count: 1,
+                        components: HashedComponentPatch::default(),
+                    }),
+                ),
+            ]
+            .into(),
+            carried_item: HashedStack::Item(HashedItemStack {
+                item_id: 90,
+                count: 1,
+                components: HashedComponentPatch::default(),
+            }),
         })
     );
     let inventory = world.inventory();
-    assert_eq!(inventory.inventory_menu.slots[0].item, item_stack(90, 1));
-    assert_eq!(inventory.inventory_menu.slots[1].item, item_stack(42, 1));
-    assert_eq!(inventory.cursor_item, ItemStackSummary::empty());
+    assert_eq!(
+        inventory.inventory_menu.slots[0].item,
+        ItemStackSummary::empty()
+    );
+    assert_eq!(inventory.inventory_menu.slots[1].item, item_stack(43, 1));
+    assert_eq!(inventory.cursor_item, item_stack(90, 1));
 }
 
 #[test]

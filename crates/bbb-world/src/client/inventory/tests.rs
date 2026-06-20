@@ -2883,12 +2883,97 @@ fn apply_local_container_result_requires_known_crafting_remainders() {
 }
 
 #[test]
-fn apply_local_container_result_with_default_remainder_requires_server_authority() {
+fn apply_local_container_result_places_default_remainder_in_crafting_slot() {
     let mut store = WorldStore::new();
     store.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
     items[1] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    assert!(store.open_local_inventory());
+
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([
+            (0, ProtocolHashedStack::Empty),
+            (1, hashed_item_stack(43, 1))
+        ])
+    );
+    assert_eq!(pickup.carried_item, hashed_item_stack(90, 1));
+    assert_eq!(
+        inventory_menu_slot_item(&store, 0),
+        ProtocolItemStackSummary::empty()
+    );
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(43, 1));
+    assert_eq!(store.inventory().cursor_item, item_stack(90, 1));
+}
+
+#[test]
+fn apply_local_container_result_adds_default_remainder_to_visible_player_inventory() {
+    let mut store = WorldStore::new();
+    assert!(store.set_local_selected_hotbar_slot(2));
+    store.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[0] = item_stack(90, 1);
+    items[1] = item_stack(42, 2);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    assert!(store.open_local_inventory());
+
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([
+            (0, ProtocolHashedStack::Empty),
+            (1, hashed_item_stack(42, 1)),
+            (36, hashed_item_stack(43, 1)),
+        ])
+    );
+    assert_eq!(pickup.carried_item, hashed_item_stack(90, 1));
+    assert_eq!(
+        inventory_menu_slot_item(&store, 0),
+        ProtocolItemStackSummary::empty()
+    );
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 36), item_stack(43, 1));
+    assert_eq!(player_slot_item(&store, 0), item_stack(43, 1));
+}
+
+#[test]
+fn apply_local_container_result_requires_server_authority_when_default_remainder_cannot_fit() {
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
+    store.set_default_item_max_stack_sizes(BTreeMap::from([(43, 1), (99, 1)]));
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[0] = item_stack(90, 1);
+    items[1] = item_stack(42, 2);
+    for slot in 9..45 {
+        items[slot] = item_stack(99, 1);
+    }
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: INVENTORY_MENU_CONTAINER_ID,
         state_id: 12,
@@ -2908,7 +2993,7 @@ fn apply_local_container_result_with_default_remainder_requires_server_authority
         ))
     );
     assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(90, 1));
-    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 2));
     assert_eq!(
         store.inventory().cursor_item,
         ProtocolItemStackSummary::empty()
@@ -3380,7 +3465,7 @@ fn apply_local_crafting_menu_result_pickup_consumes_single_inputs_to_cursor() {
 }
 
 #[test]
-fn apply_local_crafting_menu_result_keeps_remainders_server_authoritative() {
+fn apply_local_crafting_menu_result_places_default_remainder_in_crafting_slot() {
     let mut store = WorldStore::new();
     store.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
     store.apply_open_screen(ProtocolOpenScreen {
@@ -3391,6 +3476,48 @@ fn apply_local_crafting_menu_result_keeps_remainders_server_authoritative() {
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
     items[1] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 14,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([
+            (0, ProtocolHashedStack::Empty),
+            (1, hashed_item_stack(43, 1))
+        ])
+    );
+    assert_eq!(pickup.carried_item, hashed_item_stack(90, 1));
+    let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+    assert_eq!(slots[0].item, ProtocolItemStackSummary::empty());
+    assert_eq!(slots[1].item, item_stack(43, 1));
+    assert_eq!(store.inventory().cursor_item, item_stack(90, 1));
+}
+
+#[test]
+fn apply_local_crafting_menu_result_needing_remainder_inventory_insert_stays_server_authoritative()
+{
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::from([(42, 43)]));
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+        title: "Crafting".to_string(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[0] = item_stack(90, 1);
+    items[1] = item_stack(42, 2);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 14,
@@ -3410,7 +3537,11 @@ fn apply_local_crafting_menu_result_keeps_remainders_server_authoritative() {
     );
     let slots = &store.inventory().open_container.as_ref().unwrap().slots;
     assert_eq!(slots[0].item, item_stack(90, 1));
-    assert_eq!(slots[1].item, item_stack(42, 1));
+    assert_eq!(slots[1].item, item_stack(42, 2));
+    assert_eq!(
+        store.inventory().cursor_item,
+        ProtocolItemStackSummary::empty()
+    );
 }
 
 #[test]

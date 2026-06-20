@@ -77,6 +77,7 @@ pub(super) fn apply_crafting_menu_result_quick_move_to_slots(
     default_item_crafting_remainders_known: bool,
     default_item_crafting_remainders: &BTreeMap<i32, i32>,
     recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
+    selected_hotbar_slot: u8,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) -> bool {
     let Some(source_index) = slots
@@ -134,8 +135,21 @@ pub(super) fn apply_crafting_menu_result_quick_move_to_slots(
 
         trial[source_index].item = ProtocolItemStackSummary::empty();
         normalize_container_slot_selection(&mut trial[source_index]);
-        apply_inventory_menu_result_take_side_effects_for_slots(&mut trial, &input_slot_nums);
+        let Some(side_effects) = apply_crafting_result_take_side_effects_for_slots(
+            container_id,
+            &mut trial,
+            &input_slot_nums,
+            default_item_crafting_remainders,
+            None,
+            selected_hotbar_slot,
+            default_item_max_stack_sizes,
+        ) else {
+            return false;
+        };
         if craft_index + 1 < max_crafts {
+            if !side_effects.inputs_can_still_take_result {
+                return false;
+            }
             trial[source_index].item = result_template.clone();
             normalize_container_slot_selection(&mut trial[source_index]);
         }
@@ -146,12 +160,15 @@ pub(super) fn apply_crafting_menu_result_quick_move_to_slots(
 }
 
 pub(super) fn apply_crafting_menu_result_pickup_to_slots(
+    container_id: i32,
     slots: &mut [ContainerSlot],
     cursor: &mut ProtocolItemStackSummary,
     button_num: i8,
     default_item_crafting_remainders_known: bool,
     default_item_crafting_remainders: &BTreeMap<i32, i32>,
     recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
+    selected_hotbar_slot: u8,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) -> bool {
     if button_num != 0 || !item_stack_is_empty(cursor) {
         return false;
@@ -175,14 +192,26 @@ pub(super) fn apply_crafting_menu_result_pickup_to_slots(
     };
 
     let result_template = slots[source_index].item.clone();
-    *cursor = result_template.clone();
-    slots[source_index].item = ProtocolItemStackSummary::empty();
-    normalize_container_slot_selection(&mut slots[source_index]);
-    apply_inventory_menu_result_take_side_effects_for_slots(slots, &input_slot_nums);
-    if inventory_menu_inputs_can_take_result(slots, &input_slot_nums) {
-        slots[source_index].item = result_template;
-        normalize_container_slot_selection(&mut slots[source_index]);
+    let mut trial = slots.to_vec();
+    trial[source_index].item = ProtocolItemStackSummary::empty();
+    normalize_container_slot_selection(&mut trial[source_index]);
+    let Some(side_effects) = apply_crafting_result_take_side_effects_for_slots(
+        container_id,
+        &mut trial,
+        &input_slot_nums,
+        default_item_crafting_remainders,
+        None,
+        selected_hotbar_slot,
+        default_item_max_stack_sizes,
+    ) else {
+        return false;
+    };
+    if side_effects.inputs_can_still_take_result {
+        trial[source_index].item = result_template.clone();
+        normalize_container_slot_selection(&mut trial[source_index]);
     }
+    *cursor = result_template;
+    slots.clone_from_slice(&trial);
     true
 }
 

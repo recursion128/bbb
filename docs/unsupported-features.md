@@ -975,9 +975,10 @@ When an agent does any of the following, update this file in the same slice:
           same item/components and the original input slots can still be
           consumed
         - result-slot prediction only when default crafting remainders are
-          known and involved inputs have no default or recipe-specific
-          crafting remainder; otherwise the click is queued
-          server-authoritatively without mutating the local snapshot
+          known and involved inputs have no recipe-specific crafting remainder;
+          default item crafting remainders are locally placed back into the
+          crafting grid or visible player inventory, otherwise the click is
+          queued server-authoritatively without mutating the local snapshot
         - local 2x2 input clicks recompute the result slot from server-authored
           recipe-book shaped/shapeless displays when the result is a direct
           item or item-stack display and inputs are direct items or
@@ -1213,12 +1214,14 @@ When an agent does any of the following, update this file in the same slice:
         - result-slot primary pickup with an empty cursor and result-slot
           quick-move are locally predicted from the current server result when
           default crafting-remainder metadata is loaded and every non-empty
-          crafting-grid input has no default crafting remainder and is not one
-          of the known vanilla recipe-specific remainder inputs for banner
-          duplication or book cloning. Empty-cursor primary pickup leaves the
-          current result in place when the same input slots remain populated;
-          quick-move repeats while all resulting stacks fully fit the player
-          inventory.
+          crafting-grid input is not one of the known vanilla recipe-specific
+          remainder inputs for banner duplication or book cloning. Default item
+          crafting remainders are locally placed back into the crafting grid
+          when that is sufficient; cases that require adding a remainder to
+          hidden player inventory slots remain server-authoritative. Empty-cursor
+          primary pickup leaves the current result in place when the same input
+          slots remain populated; quick-move repeats while all resulting stacks
+          and default remainders stay representable in the active container.
         - result-slot paths are kept server-authoritative until:
           - carried-cursor or secondary result-slot pickup
           - blocked or partial result transfers
