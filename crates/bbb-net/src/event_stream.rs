@@ -2479,6 +2479,171 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_border_and_scoreboard_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(11);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        macro_rules! assert_matching_event {
+            ($packet:expr, $message:literal, $pattern:pat $(if $guard:expr)? ) => {{
+                stream.handle_play_packet($packet).await.unwrap();
+                let event = timeout(Duration::from_secs(1), events_rx.recv())
+                    .await
+                    .expect($message)
+                    .unwrap();
+                assert!(matches!(event, $pattern $(if $guard)?));
+            }};
+        }
+
+        let initialize_border = packets::InitializeBorder {
+            new_center_x: 1.0,
+            new_center_z: 2.0,
+            old_size: 100.0,
+            new_size: 200.0,
+            lerp_time: 30,
+            new_absolute_max_size: 500,
+            warning_blocks: 6,
+            warning_time: 7,
+        };
+        assert_matching_event!(
+            PlayClientbound::InitializeBorder(initialize_border),
+            "initialize border event should be emitted",
+            NetEvent::InitializeBorder(update) if update == initialize_border
+        );
+
+        let border_center = packets::SetBorderCenter {
+            new_center_x: 3.0,
+            new_center_z: 4.0,
+        };
+        assert_matching_event!(
+            PlayClientbound::SetBorderCenter(border_center),
+            "border center event should be emitted",
+            NetEvent::SetBorderCenter(update) if update == border_center
+        );
+
+        let border_lerp = packets::SetBorderLerpSize {
+            old_size: 200.0,
+            new_size: 300.0,
+            lerp_time: 50,
+        };
+        assert_matching_event!(
+            PlayClientbound::SetBorderLerpSize(border_lerp),
+            "border lerp size event should be emitted",
+            NetEvent::SetBorderLerpSize(update) if update == border_lerp
+        );
+
+        let border_size = packets::SetBorderSize { size: 250.0 };
+        assert_matching_event!(
+            PlayClientbound::SetBorderSize(border_size),
+            "border size event should be emitted",
+            NetEvent::SetBorderSize(update) if update == border_size
+        );
+
+        let warning_delay = packets::SetBorderWarningDelay { warning_delay: 9 };
+        assert_matching_event!(
+            PlayClientbound::SetBorderWarningDelay(warning_delay),
+            "border warning delay event should be emitted",
+            NetEvent::SetBorderWarningDelay(update) if update == warning_delay
+        );
+
+        let warning_distance = packets::SetBorderWarningDistance { warning_blocks: 8 };
+        assert_matching_event!(
+            PlayClientbound::SetBorderWarningDistance(warning_distance),
+            "border warning distance event should be emitted",
+            NetEvent::SetBorderWarningDistance(update) if update == warning_distance
+        );
+
+        let objective = packets::SetObjective {
+            objective_name: "kills".to_string(),
+            method: packets::SetObjectiveMethod::Add,
+            parameters: Some(packets::SetObjectiveParameters {
+                display_name: "Kills".to_string(),
+                render_type: packets::ObjectiveRenderType::Integer,
+                number_format: Some(vec![9]),
+            }),
+        };
+        assert_matching_event!(
+            PlayClientbound::SetObjective(objective.clone()),
+            "scoreboard objective event should be emitted",
+            NetEvent::SetObjective(update) if update == objective
+        );
+
+        let display_objective = packets::SetDisplayObjective {
+            slot: packets::ScoreboardDisplaySlot::Sidebar,
+            objective_name: Some("kills".to_string()),
+        };
+        assert_matching_event!(
+            PlayClientbound::SetDisplayObjective(display_objective.clone()),
+            "scoreboard display objective event should be emitted",
+            NetEvent::SetDisplayObjective(update) if update == display_objective
+        );
+
+        let score = packets::SetScore {
+            owner: "Steve".to_string(),
+            objective_name: "kills".to_string(),
+            score: 4,
+            display: Some("Four".to_string()),
+            number_format: None,
+        };
+        assert_matching_event!(
+            PlayClientbound::SetScore(score.clone()),
+            "scoreboard score event should be emitted",
+            NetEvent::SetScore(update) if update == score
+        );
+
+        let team = packets::SetPlayerTeam {
+            name: "red".to_string(),
+            method: packets::PlayerTeamMethod::Add,
+            parameters: Some(packets::PlayerTeamParameters {
+                display_name: "Red Team".to_string(),
+                options: 0b11,
+                nametag_visibility: packets::TeamVisibility::Always,
+                collision_rule: packets::TeamCollisionRule::Never,
+                color: packets::ChatFormatting::Red,
+                player_prefix: "[R]".to_string(),
+                player_suffix: "!".to_string(),
+            }),
+            players: vec!["Steve".to_string()],
+        };
+        assert_matching_event!(
+            PlayClientbound::SetPlayerTeam(team.clone()),
+            "scoreboard team event should be emitted",
+            NetEvent::SetPlayerTeam(update) if update == team
+        );
+
+        let reset_score = packets::ResetScore {
+            owner: "Alex".to_string(),
+            objective_name: Some("kills".to_string()),
+        };
+        assert_matching_event!(
+            PlayClientbound::ResetScore(reset_score.clone()),
+            "scoreboard reset score event should be emitted",
+            NetEvent::ResetScore(update) if update == reset_score
+        );
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "border and scoreboard packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_debug_game_packets_emit_matching_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
