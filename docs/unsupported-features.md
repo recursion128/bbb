@@ -1010,6 +1010,9 @@ When an agent does any of the following, update this file in the same slice:
         - in supported server-opened screens
       - updates cursor/slot state
       - fills `ServerboundContainerClickPacket(0)` changed-slot hashes
+      - hashes local container-click stacks with empty/default component
+        patches, removed-only component patches, and `map_id` component
+        patches, including `map_id` plus removed components
       - supports bundle wheel selection on hovered local inventory and
         server-opened container slots
       - clears selected bundle items before local and server-opened

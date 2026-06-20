@@ -2226,21 +2226,27 @@ fn hashed_component_patch_from_summary(
         return Some(ProtocolHashedComponentPatch::default());
     }
 
-    let map_id = patch.map_id?;
     let mut expected = ProtocolDataComponentPatchSummary::default();
-    expected.added = 1;
-    expected.added_type_ids.push(VANILLA_MAP_ID_COMPONENT_ID);
-    expected.map_id = Some(map_id);
+    expected.removed_type_ids = patch.removed_type_ids.clone();
+    let removed_components: BTreeSet<_> = patch.removed_type_ids.iter().copied().collect();
+    if removed_components.len() != patch.removed_type_ids.len() {
+        return None;
+    }
+
+    let mut added_components = BTreeMap::new();
+    if let Some(map_id) = patch.map_id {
+        expected.added = 1;
+        expected.added_type_ids.push(VANILLA_MAP_ID_COMPONENT_ID);
+        expected.map_id = Some(map_id);
+        added_components.insert(VANILLA_MAP_ID_COMPONENT_ID, hash_ops_crc32c_int(map_id));
+    }
     if patch != &expected {
         return None;
     }
 
     Some(ProtocolHashedComponentPatch {
-        added_components: BTreeMap::from([(
-            VANILLA_MAP_ID_COMPONENT_ID,
-            hash_ops_crc32c_int(map_id),
-        )]),
-        removed_components: BTreeSet::new(),
+        added_components,
+        removed_components,
     })
 }
 

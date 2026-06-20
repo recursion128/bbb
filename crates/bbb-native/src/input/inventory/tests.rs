@@ -16,6 +16,7 @@ const TEST_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const TEST_MOUNT_TAME_FLAGS_DATA_ID: u8 = 18;
 const TEST_ABSTRACT_HORSE_TAME_FLAG: i8 = 2;
 const TEST_TAMABLE_ANIMAL_TAME_FLAG: i8 = 4;
+const TEST_MAX_DAMAGE_COMPONENT_ID: i32 = 2;
 const TEST_MAP_ID_COMPONENT_ID: i32 = 41;
 const TEST_MAP_ID_7_HASH: i32 = -1_726_626_450;
 
@@ -6012,6 +6013,75 @@ fn cartography_table_shift_click_player_map_id_item_queues_predicted_quick_move(
 }
 
 #[test]
+fn cartography_table_shift_click_player_map_id_removed_component_item_queues_predicted_quick_move()
+{
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.shift_left_down = true;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: CARTOGRAPHY_TABLE_MENU_TYPE_ID,
+        title: "Cartography Table".to_string(),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 39];
+    let mut map_stack = map_id_item_stack(42, 1, 7);
+    map_stack
+        .component_patch
+        .removed_type_ids
+        .push(TEST_MAX_DAMAGE_COMPONENT_ID);
+    items[3] = map_stack.clone();
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(568.0, 369.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClick(ContainerClick {
+            container_id: 7,
+            state_id: 12,
+            slot_num: 3,
+            button_num: 0,
+            input: ContainerInput::QuickMove,
+            changed_slots: [
+                (
+                    0,
+                    HashedStack::Item(hashed_map_id_removed_component_item(
+                        42,
+                        1,
+                        7,
+                        TEST_MAX_DAMAGE_COMPONENT_ID
+                    ))
+                ),
+                (3, HashedStack::Empty),
+            ]
+            .into(),
+            carried_item: HashedStack::Empty,
+        })
+    );
+    let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+    assert_eq!(slots[0].item, map_stack);
+    assert_eq!(slots[3].item, ItemStackSummary::empty());
+}
+
+#[test]
 fn loom_shift_click_input_slots_queue_predicted_quick_move() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -7489,6 +7559,26 @@ fn hashed_map_id_item(item_id: i32, count: i32, map_id: i32) -> HashedItemStack 
         components: HashedComponentPatch {
             added_components: BTreeMap::from([(TEST_MAP_ID_COMPONENT_ID, map_id_hash)]),
             removed_components: BTreeSet::new(),
+        },
+    }
+}
+
+fn hashed_map_id_removed_component_item(
+    item_id: i32,
+    count: i32,
+    map_id: i32,
+    component_type_id: i32,
+) -> HashedItemStack {
+    let map_id_hash = match map_id {
+        7 => TEST_MAP_ID_7_HASH,
+        other => panic!("missing test HashOps map_id hash for {other}"),
+    };
+    HashedItemStack {
+        item_id,
+        count,
+        components: HashedComponentPatch {
+            added_components: BTreeMap::from([(TEST_MAP_ID_COMPONENT_ID, map_id_hash)]),
+            removed_components: BTreeSet::from([component_type_id]),
         },
     }
 }
