@@ -321,6 +321,7 @@ pub(crate) fn release_active_input(
 ) {
     let before = player_input_from_state(input);
     let before_sprinting = effective_sprinting_from_state(world, input);
+    let riding_jump_charge_seconds = input.riding_jump_charge_seconds.take();
     input.clear_pressed();
     let after = player_input_from_state(input);
     let after_sprinting = effective_sprinting_from_state(world, input);
@@ -330,6 +331,12 @@ pub(crate) fn release_active_input(
             queue_sprint_command(counters, world, net_commands, after_sprinting);
         }
     }
+    movement::queue_released_riding_jump_command(
+        riding_jump_charge_seconds,
+        world,
+        counters,
+        net_commands,
+    );
     if let Some(pos) = world.take_local_destroying_block() {
         queue_player_action_command(
             counters,

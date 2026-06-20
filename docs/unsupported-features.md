@@ -882,7 +882,7 @@ When an agent does any of the following, update this file in the same slice:
     - They queue `START_RIDING_JUMP` player commands for vanilla
       `PlayerRideableJumping` vehicle types using:
       - the 26.1 charge scale
-      - jump release
+      - jump release, including focus/UI release cleanup
     - They toggle local creative/spectator-style flying with the vanilla
       double-jump window when synced abilities allow flight, then queue
       `ServerboundPlayerAbilitiesPacket`.

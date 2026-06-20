@@ -150,6 +150,21 @@ fn maybe_queue_riding_jump_command(
     let Some(charge_seconds) = input.riding_jump_charge_seconds.take() else {
         return;
     };
+    queue_released_riding_jump_command(Some(charge_seconds), world, counters, net_commands);
+}
+
+pub(super) fn queue_released_riding_jump_command(
+    charge_seconds: Option<f64>,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if world.local_player_rideable_jumping_vehicle_id().is_none() {
+        return;
+    }
+    let Some(charge_seconds) = charge_seconds else {
+        return;
+    };
     let jump_data = riding_jump_command_data(charge_seconds);
     if jump_data > 0 {
         queue_player_command_action(

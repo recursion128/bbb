@@ -4245,6 +4245,38 @@ fn focus_loss_stops_boat_paddles() {
 }
 
 #[test]
+fn focus_loss_releases_charged_riding_jump() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.jump = true;
+    input.riding_jump_charge_seconds = Some(0.2);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_vehicle(77, 10, VANILLA_26_1_HORSE_ENTITY_TYPE_ID);
+
+    handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
+
+    assert!(!input.focused);
+    assert_eq!(input.riding_jump_charge_seconds, None);
+    assert_eq!(player_input_from_state(&input), PlayerInput::default());
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StartRidingJump,
+            data: 40,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn focus_loss_aborts_destroying_block() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
