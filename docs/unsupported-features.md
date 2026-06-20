@@ -1241,9 +1241,13 @@ When an agent does any of the following, update this file in the same slice:
         - result-slot quick-move into the player inventory is locally
           predicted from the current server-provided result stack when the
           transfer fully fits and the input/result stacks are hashable.
-        - component/enchantment-only player-to-input, result-slot pickup,
-          partial/full-inventory result transfers, XP, and level-event side
-          effects are kept server-authoritative
+        - result-slot primary pickup with an empty cursor is locally predicted
+          from the current server-provided result stack; the vanilla take path
+          clears both input slots while XP and level-event side effects remain
+          server-authoritative.
+        - component/enchantment-only player-to-input, secondary or carried-cursor
+          result-slot pickup, partial/full-inventory result transfers, XP, and
+          level-event side effects are kept server-authoritative
           until:
           - component-hashable grindstone item/result prediction
           - full result recomputation parity
