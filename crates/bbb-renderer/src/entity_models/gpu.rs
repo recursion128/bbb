@@ -8,11 +8,12 @@ use crate::{camera::TerrainBounds, gpu::DEPTH_FORMAT, Renderer};
 
 use super::{
     catalog::{
-        EntityModelInstance, EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout,
-        EntityModelTextureImage, EntityModelUvRect,
+        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
+        EntityModelUvRect,
     },
     entity_model_colored_runtime_mesh, entity_model_textured_meshes,
     geometry::{EntityModelTexturedMesh, EntityModelTexturedVertex, EntityModelVertex},
+    instances::EntityModelInstance,
 };
 
 pub(crate) struct EntityModelMeshGpu {

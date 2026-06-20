@@ -2,6 +2,7 @@ mod catalog;
 mod colored;
 mod geometry;
 mod gpu;
+mod instances;
 mod model_layers;
 mod textured;
 
@@ -27,6 +28,7 @@ pub(crate) use gpu::{
     create_entity_model_textured_pipeline, create_entity_model_translucent_pipeline,
 };
 pub(super) use gpu::{EntityModelMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu};
+pub use instances::*;
 #[cfg(test)]
 use model_layers::*;
 pub use model_layers::{

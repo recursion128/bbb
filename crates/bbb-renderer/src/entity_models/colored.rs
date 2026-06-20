@@ -2,6 +2,7 @@ use glam::{Mat4, Vec3};
 
 use super::catalog::{sheep_wool_layer_color, *};
 use super::geometry::*;
+use super::instances::EntityModelInstance;
 use super::model_layers::*;
 
 const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
