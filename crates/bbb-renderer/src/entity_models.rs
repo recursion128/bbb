@@ -56,6 +56,9 @@ pub enum EntityModelKind {
         baby: bool,
     },
     WanderingTrader,
+    Wolf {
+        baby: bool,
+    },
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -280,6 +283,8 @@ impl EntityModelKind {
             Self::Villager { baby: false } => "villager",
             Self::Villager { baby: true } => "villager_baby",
             Self::WanderingTrader => "wandering_trader",
+            Self::Wolf { baby: false } => "wolf",
+            Self::Wolf { baby: true } => "wolf_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -412,6 +417,8 @@ impl EntityModelKind {
             Self::Villager { baby: false } => Some(VILLAGER_TEXTURE_REF),
             Self::Villager { baby: true } => Some(VILLAGER_BABY_TEXTURE_REF),
             Self::WanderingTrader => Some(WANDERING_TRADER_TEXTURE_REF),
+            Self::Wolf { baby: false } => Some(WOLF_TEXTURE_REF),
+            Self::Wolf { baby: true } => Some(WOLF_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -584,6 +591,10 @@ impl EntityModelInstance {
 
     pub fn wandering_trader(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::WanderingTrader, position, y_rot)
+    }
+
+    pub fn wolf(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Wolf { baby }, position, y_rot)
     }
 
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -904,6 +915,16 @@ const VILLAGER_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const WANDERING_TRADER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/wandering_trader/wandering_trader.png",
     size: [64, 64],
+};
+
+const WOLF_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf.png",
+    size: [64, 32],
+};
+
+const WOLF_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wolf/wolf_baby.png",
+    size: [32, 32],
 };
 
 const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -3008,6 +3029,258 @@ const BABY_SHEEP_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const ADULT_WOLF_REAL_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-2.0, -3.0, -2.0],
+        size: [6.0, 6.0, 4.0],
+        color: WOLF_GRAY,
+    },
+    ModelCubeDesc {
+        min: [-2.0, -5.0, 0.0],
+        size: [2.0, 2.0, 1.0],
+        color: WOLF_GRAY,
+    },
+    ModelCubeDesc {
+        min: [2.0, -5.0, 0.0],
+        size: [2.0, 2.0, 1.0],
+        color: WOLF_GRAY,
+    },
+    ModelCubeDesc {
+        min: [-0.5, -0.001, -5.0],
+        size: [3.0, 3.0, 4.0],
+        color: WOLF_GRAY,
+    },
+];
+
+const ADULT_WOLF_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_WOLF_REAL_HEAD,
+    children: &[],
+}];
+
+const ADULT_WOLF_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -3.0],
+    size: [6.0, 9.0, 6.0],
+    color: WOLF_GRAY,
+}];
+
+const ADULT_WOLF_UPPER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -3.0, -3.0],
+    size: [8.0, 6.0, 7.0],
+    color: WOLF_GRAY,
+}];
+
+const ADULT_WOLF_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, -1.0],
+    size: [2.0, 8.0, 2.0],
+    color: WOLF_GRAY,
+}];
+
+const ADULT_WOLF_REAL_TAIL: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, -1.0],
+    size: [2.0, 8.0, 2.0],
+    color: WOLF_GRAY,
+}];
+
+const ADULT_WOLF_TAIL_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_WOLF_REAL_TAIL,
+    children: &[],
+}];
+
+// Vanilla 26.1 AdultWolfModel.createBodyLayer(CubeDeformation.NONE).
+const ADULT_WOLF_PARTS: [ModelPartDesc; 8] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 13.5, -7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &ADULT_WOLF_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 14.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_WOLF_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 14.0, -3.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_WOLF_UPPER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 16.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.5, 16.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 16.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.5, 16.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 12.0, 8.0],
+            rotation: [0.62831855, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &ADULT_WOLF_TAIL_CHILDREN,
+    },
+];
+
+const BABY_WOLF_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-3.015, -3.275, -3.025],
+        size: [6.05, 5.05, 5.05],
+        color: WOLF_GRAY,
+    },
+    ModelCubeDesc {
+        min: [-1.5, -0.24, -5.0],
+        size: [3.0, 2.0, 2.0],
+        color: WOLF_GRAY,
+    },
+];
+
+const BABY_WOLF_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.0, -0.5],
+    size: [2.0, 2.0, 1.0],
+    color: WOLF_GRAY,
+}];
+
+const BABY_WOLF_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -4.25, -0.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, -4.25, -0.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_EAR,
+        children: &[],
+    },
+];
+
+const BABY_WOLF_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -4.0],
+    size: [6.0, 4.0, 8.0],
+    color: WOLF_GRAY,
+}];
+
+const BABY_WOLF_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 3.0, 2.0],
+    color: WOLF_GRAY,
+}];
+
+const BABY_WOLF_TAIL_R1: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -5.7, -1.0],
+    size: [2.0, 6.0, 2.0],
+    color: WOLF_GRAY,
+}];
+
+const BABY_WOLF_TAIL_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -0.6, 0.2],
+        rotation: [-3.1, 0.0, 0.0],
+    },
+    cubes: &BABY_WOLF_TAIL_R1,
+    children: &[],
+}];
+
+// Vanilla 26.1 BabyWolfModel.createBodyLayer().
+const BABY_WOLF_PARTS: [ModelPartDesc; 7] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 18.25, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_HEAD,
+        children: &BABY_WOLF_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 19.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.5, 21.0, 3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.5, 21.0, 3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.5, 21.0, -3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.5, 21.0, -3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_WOLF_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 19.0, 3.0],
+            rotation: [-0.5236, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &BABY_WOLF_TAIL_CHILDREN,
+    },
+];
+
 const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -10.0, -4.0],
     size: [8.0, 10.0, 8.0],
@@ -4327,6 +4600,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Sheep { baby } => emit_sheep_model(&mut mesh, *instance, baby),
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
             EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
+            EntityModelKind::Wolf { baby } => emit_wolf_model(&mut mesh, *instance, baby),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -4666,6 +4940,18 @@ fn emit_wandering_trader_model(mesh: &mut EntityModelMesh, instance: EntityModel
         mesh,
         &ADULT_VILLAGER_PARTS,
         villager_adult_model_root_transform(instance),
+    );
+}
+
+fn emit_wolf_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    emit_model_parts(
+        mesh,
+        if baby {
+            &BABY_WOLF_PARTS
+        } else {
+            &ADULT_WOLF_PARTS
+        },
+        entity_model_root_transform(instance),
     );
 }
 
@@ -6725,6 +7011,194 @@ mod tests {
     }
 
     #[test]
+    fn wolf_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_WOLF_REAL_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-2.0, -3.0, -2.0],
+                    size: [6.0, 6.0, 4.0],
+                    color: WOLF_GRAY,
+                },
+                ModelCubeDesc {
+                    min: [-2.0, -5.0, 0.0],
+                    size: [2.0, 2.0, 1.0],
+                    color: WOLF_GRAY,
+                },
+                ModelCubeDesc {
+                    min: [2.0, -5.0, 0.0],
+                    size: [2.0, 2.0, 1.0],
+                    color: WOLF_GRAY,
+                },
+                ModelCubeDesc {
+                    min: [-0.5, -0.001, -5.0],
+                    size: [3.0, 3.0, 4.0],
+                    color: WOLF_GRAY,
+                },
+            ]
+        );
+        assert_eq!(ADULT_WOLF_PARTS.len(), 8);
+        assert_part_tree(
+            &ADULT_WOLF_PARTS[0],
+            [-1.0, 13.5, -7.0],
+            [0.0, 0.0, 0.0],
+            &[],
+            ADULT_WOLF_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_WOLF_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_WOLF_REAL_HEAD.as_slice(),
+        );
+        assert_part(
+            &ADULT_WOLF_PARTS[1],
+            [0.0, 14.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_WOLF_BODY.as_slice(),
+        );
+        assert_part(
+            &ADULT_WOLF_PARTS[2],
+            [-1.0, 14.0, -3.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_WOLF_UPPER_BODY.as_slice(),
+        );
+        for (part, expected_offset) in ADULT_WOLF_PARTS[3..7].iter().zip([
+            [-2.5, 16.0, 7.0],
+            [0.5, 16.0, 7.0],
+            [-2.5, 16.0, -4.0],
+            [0.5, 16.0, -4.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                ADULT_WOLF_LEG.as_slice(),
+            );
+        }
+        assert_part_tree(
+            &ADULT_WOLF_PARTS[7],
+            [-1.0, 12.0, 8.0],
+            [0.62831855, 0.0, 0.0],
+            &[],
+            ADULT_WOLF_TAIL_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_WOLF_TAIL_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_WOLF_REAL_TAIL.as_slice(),
+        );
+
+        assert_eq!(
+            BABY_WOLF_HEAD[0],
+            ModelCubeDesc {
+                min: [-3.015, -3.275, -3.025],
+                size: [6.05, 5.05, 5.05],
+                color: WOLF_GRAY,
+            }
+        );
+        assert_eq!(BABY_WOLF_PARTS.len(), 7);
+        assert_part_tree(
+            &BABY_WOLF_PARTS[0],
+            [0.0, 18.25, -4.0],
+            [0.0, 0.0, 0.0],
+            BABY_WOLF_HEAD.as_slice(),
+            BABY_WOLF_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_WOLF_HEAD_CHILDREN[0],
+            [-2.0, -4.25, -0.5],
+            [0.0, 0.0, 0.0],
+            BABY_WOLF_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_WOLF_HEAD_CHILDREN[1],
+            [2.0, -4.25, -0.5],
+            [0.0, 0.0, 0.0],
+            BABY_WOLF_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_WOLF_PARTS[1],
+            [0.0, 19.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_WOLF_BODY.as_slice(),
+        );
+        for (part, expected_offset) in BABY_WOLF_PARTS[2..6].iter().zip([
+            [-1.5, 21.0, 3.0],
+            [1.5, 21.0, 3.0],
+            [-1.5, 21.0, -3.0],
+            [1.5, 21.0, -3.0],
+        ]) {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_WOLF_LEG.as_slice(),
+            );
+        }
+        assert_part_tree(
+            &BABY_WOLF_PARTS[6],
+            [0.0, 19.0, 3.0],
+            [-0.5236, 0.0, 0.0],
+            &[],
+            BABY_WOLF_TAIL_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_WOLF_TAIL_CHILDREN[0],
+            [0.0, -0.6, 0.2],
+            [-3.1, 0.0, 0.0],
+            BABY_WOLF_TAIL_R1.as_slice(),
+        );
+    }
+
+    #[test]
+    fn wolf_meshes_use_vanilla_body_layer_geometry() {
+        let adult =
+            entity_model_mesh(&[EntityModelInstance::wolf(148, [0.0, 64.0, 0.0], 0.0, false)]);
+
+        assert_eq!(adult.opaque_faces, 66);
+        assert_eq!(adult.vertices.len(), 264);
+        assert_eq!(adult.indices.len(), 396);
+        let (adult_min, adult_max) = mesh_extents(&adult);
+        assert_close3(adult_min, [-0.25, 64.001, -0.8444562]);
+        assert_close3(adult_max, [0.25000006, 64.96975, 0.75]);
+
+        let baby =
+            entity_model_mesh(&[EntityModelInstance::wolf(149, [0.0, 64.0, 0.0], 0.0, true)]);
+
+        assert_eq!(baby.opaque_faces, 60);
+        assert_eq!(baby.vertices.len(), 240);
+        assert_eq!(baby.indices.len(), 360);
+        let (baby_min, baby_max) = mesh_extents(&baby);
+        assert_close3(baby_min, [-0.1884375, 63.995087, -0.28114623]);
+        assert_close3(baby_max, [0.18968754, 64.6885, 0.5625]);
+    }
+
+    #[test]
+    fn wolf_texture_refs_match_vanilla_renderer_defaults() {
+        assert_eq!(EntityModelKind::Wolf { baby: false }.model_key(), "wolf");
+        assert_eq!(
+            EntityModelKind::Wolf { baby: false }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/wolf/wolf.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Wolf { baby: true }.model_key(),
+            "wolf_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Wolf { baby: true }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/wolf/wolf_baby.png",
+                size: [32, 32],
+            })
+        );
+    }
+
+    #[test]
     fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_VILLAGER_HAT[0],
@@ -8409,6 +8883,10 @@ mod tests {
         assert_eq!(
             EntityModelKind::WanderingTrader.model_key(),
             "wandering_trader"
+        );
+        assert_eq!(
+            EntityModelKind::Wolf { baby: true }.model_key(),
+            "wolf_baby"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");

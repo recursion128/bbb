@@ -232,7 +232,7 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified pig/cow/sheep/villager/wandering-trader/zombie and
+      source-verified pig/cow/sheep/wolf/villager/wandering-trader/zombie and
       husk/drowned/zombie-villager variants, piglin/piglin-brute/
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton
       variants, creeper, spider, enderman, iron-golem, snow-golem, witch, and
@@ -286,6 +286,13 @@ When an agent does any of the following, update this file in the same slice:
       official base texture references recorded; wool undercoat/outer layers,
       sheared state, dye color, `jeb_` color cycling, and eating head animation
       remain unsupported
+    - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
+      geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
+      including nested real-head and tail parts plus baked baby
+      `CubeDeformation` bounds; the default wild adult/baby texture references
+      are recorded from official assets, while wolf variant, tame/angry
+      texture, collar layer, armor layer, wet tint, sitting pose, head/tail
+      pose, shake, and walk animation remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
@@ -415,6 +422,7 @@ When an agent does any of the following, update this file in the same slice:
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, lighting, pig/cow variant
     presentation, pig saddle presentation, sheep wool presentation,
+    wolf variant/tame/angry/collar/armor/wet-tint/pose presentation,
     villager profession/type/held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie-family
     armor/drowned outer-layer/swim/trident/zombie-villager overlays/no-hat/
