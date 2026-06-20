@@ -1271,11 +1271,15 @@ When an agent does any of the following, update this file in the same slice:
           - result-slot quick-move into the player inventory when the current
             server result fully fits, the pattern slot is empty, and the single
             banner/dye inputs are consumed to empty
+          - result-slot primary pickup with an empty cursor when the current
+            server result is used, the pattern slot is empty, and the single
+            banner/dye inputs are consumed to empty
         - result-slot paths are kept server-authoritative until:
-          - result-slot pickup
+          - carried-cursor or secondary result-slot pickup
           - component-aware selectable banner pattern state
           - result recomputation after partial input consumption
           - pattern-item result quick-move
+          - pattern-item result pickup
           - blocked or partial result transfers
           - take-result sound side effects
         - deferred presentation parity work:
