@@ -712,9 +712,32 @@ fn hoglin_ear_sway_pose_matches_vanilla_formula() {
     assert!((swayed_right.rotation[2] - (-ear_z - sway)).abs() < 1e-6);
     assert!((swayed_left.rotation[2] - (ear_z + sway)).abs() < 1e-6);
 
-    // sin(pos) == 0 (pos = 0) leaves the ears at their rest splay.
+    // sin(pos) == 0 (pos = 0) leaves the adult ears at their ±2π/9 rest splay.
     let swayed_right = hoglin_ear_sway_pose(right, false, 0.0, 1.0);
     assert_eq!(swayed_right.rotation[2], right.rotation[2]);
+
+    // The baby ear poses rest at a wider angle (±BABY_HOGLIN_EAR_Z_ROT), but vanilla writes
+    // the absolute from the literal 2π/9, so hoglin_ear_sway_pose ignores the base angle and
+    // overrides the baby ears to ±2π/9 (± the sway).
+    let baby_right = BABY_HOGLIN_HEAD_CHILDREN[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose;
+    let baby_left = BABY_HOGLIN_HEAD_CHILDREN[HOGLIN_LEFT_EAR_CHILD_INDEX].pose;
+    assert!(
+        (baby_right.rotation[2] + BABY_HOGLIN_EAR_Z_ROT).abs() < 1e-6
+            && (BABY_HOGLIN_EAR_Z_ROT - ear_z).abs() > 1e-3,
+        "the baby layer ears rest at a wider angle than 2π/9"
+    );
+    let baby_rest_right = hoglin_ear_sway_pose(baby_right, false, 0.0, 1.0);
+    let baby_rest_left = hoglin_ear_sway_pose(baby_left, true, 0.0, 1.0);
+    assert!(
+        (baby_rest_right.rotation[2] + ear_z).abs() < 1e-6,
+        "baby right ear overridden to -2π/9 at rest: {}",
+        baby_rest_right.rotation[2]
+    );
+    assert!(
+        (baby_rest_left.rotation[2] - ear_z).abs() < 1e-6,
+        "baby left ear overridden to +2π/9 at rest: {}",
+        baby_rest_left.rotation[2]
+    );
 }
 
 #[test]
@@ -799,23 +822,39 @@ fn hoglin_textured_mesh_sways_its_ears_when_walking() {
 }
 
 #[test]
-fn baby_hoglin_ear_sway_is_deferred() {
-    // Vanilla overrides the baby hoglin's ear rest angle to ±2π/9 and sways it, but that
-    // rest-angle fix and the baby sway are deferred, so the baby ears (head children at the
-    // same [72, 120) block region) stay at their layer rest pose even when walking at a
-    // sin-nonzero phase; only the (cos-driven) legs move.
+fn baby_hoglin_sways_its_ears_when_walking() {
+    // The baby hoglin shares `HoglinModel.setupAnim`, so its ears sway too — and vanilla
+    // overrides the baby layer's wider ear rest angle to ±2π/9, so even a standing baby's
+    // ears sit at ±2π/9 (the renderer always re-poses them). The baby head subtree emits in
+    // the same order, so the ears occupy 24-vertex blocks [3, 5) = vertices [72, 120) and
+    // the legs blocks [7, 11) = vertices [168, 264).
     let base =
         EntityModelInstance::hoglin(252, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, true);
     let rest = entity_model_mesh(&[base]);
+
+    // A sin-nonzero phase sways the ears and swings the legs.
     let walking = entity_model_mesh(&[base.with_walk_animation(1.5, 1.0)]);
-    assert_eq!(
+    assert_ne!(
         rest.vertices[72..120],
         walking.vertices[72..120],
-        "baby ear sway is deferred"
+        "baby ears sway when walking"
     );
     assert_ne!(
         rest.vertices[168..264],
         walking.vertices[168..264],
-        "baby legs still swing"
+        "baby legs swing when walking"
+    );
+
+    // At a sin-zero phase the ears stay at their ±2π/9 rest; only the legs swing.
+    let legs_only = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(
+        rest.vertices[72..120],
+        legs_only.vertices[72..120],
+        "baby ears stay put when sin(pos) == 0"
+    );
+    assert_ne!(
+        rest.vertices[168..264],
+        legs_only.vertices[168..264],
+        "baby legs still swing when sin(pos) == 0"
     );
 }

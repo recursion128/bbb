@@ -760,9 +760,8 @@ fn emit_hoglin_textured_model(
     // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
     // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
     // left-hind in phase) after the yaw-only head look, and sways the ears
-    // `ear.zRot = ±2π/9 ± speed * sin(pos)`. Legs are at [2, 3, 4, 5]. The headbutt head
-    // tilt is deferred; the baby ear sway (vanilla overrides the baby ear rest angle) is
-    // deferred too, so only the adult ears sway.
+    // `ear.zRot = ±2π/9 ± speed * sin(pos)` (the literal 2π/9, which also overrides the
+    // baby layer's wider ear rest angle). Legs are at [2, 3, 4, 5]; the headbutt is deferred.
     let head_index = hoglin_head_part_index(baby);
     let transform = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
@@ -770,9 +769,11 @@ fn emit_hoglin_textured_model(
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let head_resting = head_yaw_at_rest(head_yaw);
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    let ears_sway = !baby && !legs_resting;
+    // The adult ears rest at ±2π/9, so they only need re-posing when walking; the baby ears
+    // rest at a wider angle that vanilla overrides to ±2π/9, so they are always re-posed.
+    let pose_ears = baby || !legs_resting;
     for pass in hoglin_textured_layer_passes(family, baby) {
-        if head_resting && legs_resting {
+        if !pose_ears && head_resting && legs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
             continue;
         }
@@ -789,12 +790,12 @@ fn emit_hoglin_textured_model(
                 }
             }
         }
-        if !ears_sway {
+        if !pose_ears {
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
             continue;
         }
-        // Walking adult: the ears are children of the head, whose children list is static,
-        // so emit the head subtree by hand with the swayed ears (the horns ride unchanged).
+        // The ears are children of the head, whose children list is static, so emit the
+        // head subtree by hand with the posed ears (the horns ride unchanged).
         let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
             continue;
         };

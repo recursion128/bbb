@@ -520,9 +520,9 @@ fn emit_hoglin_model(
     // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
     // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
     // left-hind in phase) after the yaw-only head look, and sways the ears
-    // `ear.zRot = ±2π/9 ± speed * sin(pos)`. Legs are at [2, 3, 4, 5] in both layers.
-    // The headbutt head tilt is deferred; the baby ear sway (vanilla overrides the baby
-    // ear rest angle to ±2π/9) is deferred too, so only the adult ears sway here.
+    // `ear.zRot = ±2π/9 ± speed * sin(pos)` (the literal 2π/9, which also overrides the
+    // baby layer's wider ear rest angle). Legs are at [2, 3, 4, 5] in both layers; the
+    // headbutt head tilt is deferred.
     let head_index = hoglin_head_part_index(baby);
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
@@ -533,12 +533,14 @@ fn emit_hoglin_model(
         limb_swing,
         limb_swing_amount,
     );
-    if baby || limb_swing_at_rest(limb_swing_amount) {
+    // The adult ears rest at ±2π/9, so they only need re-posing when walking; the baby ears
+    // rest at a wider angle that vanilla overrides to ±2π/9, so they are always re-posed.
+    if !baby && limb_swing_at_rest(limb_swing_amount) {
         emit_model_parts_with_color(mesh, &parts, transform, color);
         return;
     }
-    // Walking adult: the ears are children of the head, whose children list is static, so
-    // emit the head subtree by hand with the swayed ears (the horns ride unchanged).
+    // The ears are children of the head, whose children list is static, so emit the head
+    // subtree by hand with the posed ears (the horns ride unchanged).
     for (index, part) in parts.iter().enumerate() {
         if index == head_index {
             let head_transform = transform * part_pose_transform(part.pose);

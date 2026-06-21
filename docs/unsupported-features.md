@@ -279,7 +279,9 @@ When an agent does any of the following, update this file in the same slice:
       variants, wool layers, baby layers, the goat's per-baby leg order and horn layer,
       the polar bear's standing rear composed on top of the swing), plus the custom
       `HoglinModel` (hoglin and zoglin, its own `1.2` amplitude no-frequency formula, plus
-      the adult ear sway `±2π/9 ± speed * sin(pos)`), and the `HumanoidModel` leg sway
+      the ear sway `±2π/9 ± speed * sin(pos)` for both adults and babies — the formula
+      overrides the baby layer's wider rest angle to the same `±2π/9`), and the
+      `HumanoidModel` leg sway
       consumes them in the zombie family
       (zombie, husk, drowned, zombie villager) and the skeleton family (skeleton,
       stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
@@ -476,8 +478,10 @@ When an agent does any of the following, update this file in the same slice:
     `ear.zRot = ±2π/9 ± speed * sin(pos)` (`hoglin_ear_sway_pose`, right ear `−`, left
     `+`, ears at head children `[0, 1]`) in both render paths; because the ears' children
     list is static, the head subtree is hand-emitted with the swayed ears (the horns ride
-    unchanged). The adult hoglin/zoglin ears sway; the baby ear sway (vanilla overrides the
-    baby ear rest angle to `±2π/9`) and the headbutt head tilt are deferred. The creeper
+    unchanged). Adult and baby hoglin/zoglin ears both sway: vanilla `HoglinModel.setupAnim`
+    writes the literal `±2π/9` rest angle, overriding the wider angle baked into
+    `BabyHoglinModel`'s layer, so `hoglin_ear_sway_pose` sets (not accumulates) the absolute
+    angle and baby ears are always re-posed. The headbutt head tilt is deferred. The creeper
     (`emit_creeper_model` colored and `emit_creeper_textured_model` textured) is a custom
     `EntityModel` too, but its `setupAnim` leg swing is exactly the `QuadrupedModel`
     formula (legs at `[2, 3, 4, 5]`), so it reuses the shared quadruped swing; its
@@ -590,8 +594,7 @@ When an agent does any of the following, update this file in the same slice:
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
-    tilt, the baby `HoglinModel` ear sway (vanilla overrides the baby ear rest angle) and
-    the `HoglinModel` headbutt head tilt, the `EndermanModel`
+    tilt, the `HoglinModel` headbutt head tilt, the `EndermanModel`
     carried-block arm pose and creepy attack pose, the `IronGolemModel`
     attack swing and offer-flower arm pose,
     item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
@@ -902,11 +905,11 @@ When an agent does any of the following, update this file in the same slice:
       atlas upload/bind/sample path, the vanilla `HoglinModel.setupAnim`
       yaw-only head look (`head.yRot = yRot * π/180`, keeping `head.xRot` at the
       fixed headbutt-rest tilt `HOGLIN_HEAD_X_ROT`) on the head part, the
-      `1.2`-amplitude leg swing (legs at `[2, 3, 4, 5]`), and the adult ear sway
-      (`ear.zRot = ±2π/9 ± speed * sin(pos)`, ears at head children `[0, 1]`, the head
-      subtree hand-emitted) — all colored and textured; the headbutt attack animation,
-      the baby ear sway (vanilla overrides the baby ear rest angle), hoglin converting
-      shake, and lighting remain unsupported
+      `1.2`-amplitude leg swing (legs at `[2, 3, 4, 5]`), and the ear sway for both adults
+      and babies (`ear.zRot = ±2π/9 ± speed * sin(pos)`, ears at head children `[0, 1]`, the
+      head subtree hand-emitted; the formula sets the absolute `±2π/9`, overriding the wider
+      rest angle of `BabyHoglinModel`'s layer) — all colored and textured; the headbutt
+      attack animation, hoglin converting shake, and lighting remain unsupported
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official

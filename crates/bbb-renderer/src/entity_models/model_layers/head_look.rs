@@ -109,18 +109,21 @@ pub(in crate::entity_models) const HOGLIN_LEFT_EAR_CHILD_INDEX: usize = 1;
 
 /// Vanilla `HoglinModel.setupAnim` ear sway for one ear: `rightEar.zRot = -2π/9 -
 /// walkAnimationSpeed * sin(walkAnimationPos)`, `leftEar.zRot = +2π/9 + walkAnimationSpeed
-/// * sin(walkAnimationPos)`. The adult ear pose already rests at `±2π/9`, so the sway adds
-/// `∓speed * sin(pos)` onto it (the right ear subtracts, the left adds); only `zRot`
-/// changes. `left` selects the side. (The baby layer rests its ears at a different angle
-/// that vanilla overrides to `±2π/9`; that rest-angle fix and the baby sway are deferred.)
+/// * sin(walkAnimationPos)`. Vanilla writes the absolute angle from the literal `2π/9`, so
+/// this *sets* `zRot = ±(2π/9 + speed * sin(pos))` (right `−`, left `+`) rather than adding
+/// onto the layer's rest splay; only `zRot` changes. `left` selects the side. The adult
+/// ears already rest at `±2π/9`, so this matches their rest pose; the baby layer rests its
+/// ears at a wider angle that vanilla overrides to `±2π/9`, so the baby ears must always be
+/// re-posed through this (even standing).
 pub(in crate::entity_models) fn hoglin_ear_sway_pose(
     base: PartPose,
     left: bool,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
 ) -> PartPose {
-    let sway = walk_animation_speed * walk_animation_pos.sin();
-    let z_rot = base.rotation[2] + if left { sway } else { -sway };
+    let ear_z = std::f32::consts::PI * 2.0 / 9.0;
+    let magnitude = ear_z + walk_animation_speed * walk_animation_pos.sin();
+    let z_rot = if left { magnitude } else { -magnitude };
     PartPose {
         offset: base.offset,
         rotation: [base.rotation[0], base.rotation[1], z_rot],
