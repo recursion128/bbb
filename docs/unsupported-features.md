@@ -309,8 +309,11 @@ When an agent does any of the following, update this file in the same slice:
       `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored
       path), and the equines (`AbstractEquineModel` horse/donkey/mule/skeleton-horse/
       zombie-horse, the front-`0.8`/hind-`0.5` gait, legs `[2, 3, 4, 5]` adult /
-      `[1, 2, 3, 4]` baby horse, colored path; the baby donkey/mule nested legs and the
-      camel's sit/dash-entangled gait stay deferred). The remaining slices consume them
+      `[1, 2, 3, 4]` baby horse, plus the neck head look/bob — yaw clamped to ±20°, pitch
+      onto the π/6 tilt, and a `cos(pos * 0.8) * 0.15 * speed` walk bob — at `head_parts`
+      `1` adult / `5` baby horse, colored path; the baby donkey/mule nested legs and forced
+      head pitch and the camel's sit/dash-entangled gait stay deferred). The remaining
+      slices consume them
       in the other model families' `setupAnim` (the camel; fish; other birds; etc., plus
       the `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
       walk-driven swing (its `setupAnim` is the head-yaw twist/orbit, now implemented).
@@ -809,10 +812,12 @@ When an agent does any of the following, update this file in the same slice:
       assets, and the vanilla `AbstractEquineModel.setupAnim` walking leg swing
       (the equine gait `cos(pos * 0.6662 + π) * speed` at front amplitude `0.8` /
       hind `0.5`, legs at `[2, 3, 4, 5]` adult / `[1, 2, 3, 4]` on the re-parented
-      baby layer, colored render path); horse variant textures, markings, armor,
-      saddle, the ridden/eat/stand/mouth/tail poses, the head bob/look (the equine
-      head's `π/6` rest tilt is kept) and the in-water leg-frequency scaling, and
-      non-equine horse-fallback model parity remain unsupported
+      baby layer) and the default-branch neck head look/bob (`head_parts.yRot =
+      clamp(yRot, -20, 20) * π/180`, `head_parts.xRot = π/6 + xRot * π/180 +
+      (speed > 0.2 ? cos(pos * 0.8) * 0.15 * speed : 0)`, at `head_parts` `1` adult /
+      `5` baby horse, colored render path); horse variant textures, markings, armor,
+      saddle, the ridden/eat/stand/mouth/tail poses and the in-water leg-frequency
+      scaling, and non-equine horse-fallback model parity remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`, including adult `DONKEY_SCALE=0.87F` /
@@ -820,10 +825,13 @@ When an agent does any of the following, update this file in the same slice:
       the empty baby chest children from `BabyDonkeyModel.createBabyLayer()`,
       and official adult/baby donkey/mule texture references recorded from
       assets, and the adult `AbstractEquineModel.setupAnim` walking leg swing (the
-      equine gait, legs at `[2, 3, 4, 5]`, colored path); the baby donkey/mule leg
-      swing (its legs are re-parented under the body), saddle equipment layer, the
-      ridden/eat/stand/mouth/tail poses, head bob/look, lighting, and GPU texture
-      binding remain unsupported
+      equine gait, legs at `[2, 3, 4, 5]`) and the adult default-branch neck head
+      look/bob (`head_parts` at `1`, the same yaw-clamp/pitch/walk-bob as the horse,
+      since the adult `DonkeyModel` only adds chest visibility over the base
+      `setupAnim`, colored path); the baby donkey/mule leg swing and head look (its
+      legs are re-parented under the body and `BabyDonkeyModel.setupAnim` forces
+      `xRot = -30°`), saddle equipment layer, the ridden/eat/stand/mouth/tail poses,
+      lighting, and GPU texture binding remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, including the
@@ -831,9 +839,11 @@ When an agent does any of the following, update this file in the same slice:
       shared baby horse layer, official adult/baby skeleton/zombie horse
       texture references recorded from assets, and the shared
       `AbstractEquineModel.setupAnim` walking leg swing (the equine gait, legs at
-      `[2, 3, 4, 5]` adult / `[1, 2, 3, 4]` baby, colored path); undead horse
-      body-armor layer, saddle layer, the ridden/eat/stand/mouth/tail poses, head
-      bob/look, lighting, and GPU texture binding remain unsupported
+      `[2, 3, 4, 5]` adult / `[1, 2, 3, 4]` baby) and the default-branch neck head
+      look/bob (`head_parts` at `1` adult / `5` baby horse, the same yaw-clamp/pitch/
+      walk-bob as the horse it reuses, colored path); undead horse body-armor layer,
+      saddle layer, the ridden/eat/stand/mouth/tail poses, lighting, and GPU texture
+      binding remain unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
       `CamelHuskRenderer`, including normal camel adult/baby model selection,

@@ -602,9 +602,10 @@ fn undead_horse_texture_refs_match_vanilla_renderer() {
 #[test]
 fn equine_swings_its_legs_when_walking() {
     // Vanilla `AbstractEquineModel.setupAnim` swings the four legs with the equine gait
-    // (front amplitude 0.8, hind 0.5). A standing equine is inert; a walking one differs.
-    // The head bob/look and tail walk offsets are deferred. Covers horse (adult + the
-    // re-parented baby layout), donkey/mule (adult + with-chest), and the undead horses.
+    // (front amplitude 0.8, hind 0.5) and applies the head look/bob to the neck. A
+    // standing equine with a level head is inert; a walking one differs. The tail walk
+    // offsets are deferred. Covers horse (adult + the re-parented baby layout), donkey/mule
+    // (adult + with-chest), and the undead horses.
     for base in [
         EntityModelInstance::horse(150, [0.0, 64.0, 0.0], 0.0, false),
         EntityModelInstance::horse(151, [0.0, 64.0, 0.0], 0.0, true),
@@ -671,12 +672,12 @@ fn equine_swings_its_legs_when_walking() {
 }
 
 #[test]
-fn adult_equine_swings_only_its_legs() {
-    // The adult horse/donkey/mule/undead-horse layers list body and neck (and their
-    // children) first, then the four single-cube legs last — so the leg region is the
-    // final 96 vertices (4 cubes). A walking adult equine moves only that region; the
-    // body and head stay put. (The re-parented baby horse layout lists its head last
-    // instead, so this contiguous check is adult-only.)
+fn adult_equine_swings_its_legs_and_keeps_its_body_still() {
+    // The adult horse/donkey/mule/undead-horse layers list the body first (its cube is
+    // the first 24 vertices) and the four single-cube legs last (the final 96 vertices).
+    // A walking adult equine swings those legs while the body cube stays put. (The neck
+    // bobs too — checked by `adult_horse_turns_and_bobs_its_neck`; the re-parented baby
+    // horse layout lists its head last, so these contiguous checks are adult-only.)
     for base in [
         EntityModelInstance::horse(150, [0.0, 64.0, 0.0], 0.0, false),
         EntityModelInstance::donkey(
@@ -715,9 +716,9 @@ fn adult_equine_swings_only_its_legs() {
         let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
         let leg_start = rest.vertices.len() - 96;
         assert_eq!(
-            rest.vertices[..leg_start],
-            walking.vertices[..leg_start],
-            "{:?} body and head stay put",
+            rest.vertices[0..24],
+            walking.vertices[0..24],
+            "{:?} the body cube stays put",
             base.kind
         );
         assert_ne!(
@@ -727,6 +728,120 @@ fn adult_equine_swings_only_its_legs() {
             base.kind
         );
     }
+}
+
+#[test]
+fn adult_horse_turns_and_bobs_its_neck() {
+    // Adult horse layer (288 verts): the body and its tail child occupy blocks [0, 2) =
+    // vertices [0, 48); the neck (`head_parts`) and its head/mane/upper_mouth/ear children
+    // occupy blocks [2, 8) = vertices [48, 192); the four legs occupy blocks [8, 12) =
+    // vertices [192, 288). The vanilla `AbstractEquineModel.setupAnim` head look turns and
+    // tilts the neck subtree, and the walk bob also moves it, while neither touches the
+    // body; the legs move only when walking.
+    let base = EntityModelInstance::horse(160, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = entity_model_mesh(&[base]);
+
+    // Standing, head yawed (30° clamps to the equine ±20° limit, still a turn): only the
+    // neck subtree moves.
+    let yawed = entity_model_mesh(&[base.with_head_look(30.0, 0.0)]);
+    assert_eq!(
+        rest.vertices[0..48],
+        yawed.vertices[0..48],
+        "body/tail stay put when looking"
+    );
+    assert_ne!(
+        rest.vertices[48..192],
+        yawed.vertices[48..192],
+        "the neck turns"
+    );
+    assert_eq!(
+        rest.vertices[192..288],
+        yawed.vertices[192..288],
+        "legs stay put when standing"
+    );
+
+    // Standing, head pitched: the neck tilts, the legs stay put.
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -25.0)]);
+    assert_ne!(
+        rest.vertices[48..192],
+        pitched.vertices[48..192],
+        "the neck tilts"
+    );
+    assert_eq!(
+        rest.vertices[192..288],
+        pitched.vertices[192..288],
+        "legs stay put when standing"
+    );
+
+    // Walking with a level head: the neck still bobs (speed 1 > 0.2), and the legs swing,
+    // while the body stays put.
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(
+        rest.vertices[0..48],
+        walking.vertices[0..48],
+        "body/tail stay put when walking"
+    );
+    assert_ne!(
+        rest.vertices[48..192],
+        walking.vertices[48..192],
+        "the neck bobs when walking"
+    );
+    assert_ne!(
+        rest.vertices[192..288],
+        walking.vertices[192..288],
+        "the legs swing when walking"
+    );
+}
+
+#[test]
+fn equine_head_look_pose_clamps_yaw_and_tilts_pitch() {
+    use std::f32::consts::FRAC_PI_6;
+
+    // ADULT_HORSE_PARTS[1] is the neck (`head_parts`); its rest xRot is the layer's π/6
+    // tilt, onto which the look pitch (and walk bob) add.
+    let base = ADULT_HORSE_PARTS[1].pose;
+    assert!((base.rotation[0] - FRAC_PI_6).abs() < 1e-6);
+
+    // Yaw clamps to ±20° then converts to radians; pitch adds onto the π/6 neck tilt.
+    let look = equine_head_look_pose(base, 45.0, -25.0, 0.0, 0.0);
+    assert!(
+        (look.rotation[1] - 20.0_f32.to_radians()).abs() < 1e-6,
+        "yaw clamps to +20: {}",
+        look.rotation[1]
+    );
+    assert!((look.rotation[0] - (FRAC_PI_6 + (-25.0_f32).to_radians())).abs() < 1e-6);
+    let look = equine_head_look_pose(base, -50.0, 0.0, 0.0, 0.0);
+    assert!(
+        (look.rotation[1] - (-20.0_f32).to_radians()).abs() < 1e-6,
+        "yaw clamps to -20: {}",
+        look.rotation[1]
+    );
+    // Within ±20° the yaw passes through unchanged.
+    let look = equine_head_look_pose(base, 12.0, 0.0, 0.0, 0.0);
+    assert!((look.rotation[1] - 12.0_f32.to_radians()).abs() < 1e-6);
+
+    // The walk bob adds cos(pos * 0.8) * 0.15 * speed onto the pitch when speed > 0.2.
+    let look = equine_head_look_pose(base, 0.0, 0.0, 0.0, 1.0);
+    assert!(
+        (look.rotation[0] - (FRAC_PI_6 + 0.15)).abs() < 1e-6,
+        "bob at pos 0, speed 1: {}",
+        look.rotation[0]
+    );
+    // A slow gait (speed <= 0.2) adds no bob.
+    let look = equine_head_look_pose(base, 0.0, 0.0, 0.0, 0.2);
+    assert!(
+        (look.rotation[0] - FRAC_PI_6).abs() < 1e-6,
+        "no bob at speed 0.2"
+    );
+    // A general (pos, speed) bob.
+    let pos = 2.0_f32;
+    let speed = 0.5_f32;
+    let look = equine_head_look_pose(base, 0.0, 0.0, pos, speed);
+    assert!((look.rotation[0] - (FRAC_PI_6 + (pos * 0.8).cos() * 0.15 * speed)).abs() < 1e-6);
+
+    // zRot and offset are preserved.
+    assert_eq!(look.rotation[2], base.rotation[2]);
+    assert_eq!(look.offset, base.offset);
 }
 
 #[test]

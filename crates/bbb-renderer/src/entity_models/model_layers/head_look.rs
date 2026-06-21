@@ -520,8 +520,9 @@ pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(usize, f32, f32); 
 /// hind-left `-0.5`, hind-right `+0.5`: the front legs have `z < 0` and the left legs
 /// `x > 0`, so the sign is `+` when `(x > 0) == (z < 0)`. The base leg pose carries no
 /// `xRot`, so it is set (not accumulated). In water vanilla scales the frequency by
-/// `0.2`; that, the standing/eating/feeding poses, the head bob, and the tail walk
-/// offsets are deferred (they depend on state the client does not yet track).
+/// `0.2`; that and the standing/eating/feeding poses and the tail walk offsets are
+/// deferred (they depend on state the client does not yet track). The head look/bob is
+/// applied separately by [`equine_head_look_pose`].
 pub(in crate::entity_models) fn equine_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -538,6 +539,39 @@ pub(in crate::entity_models) fn equine_leg_swing_pose(
         rotation: [
             sign * amplitude * leg_anim,
             base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
+/// Vanilla `AbstractEquineModel.setupAnim` head (`head_parts`) look, in its default
+/// (non-standing, non-eating, non-feeding) branch — the branch a free-standing horse
+/// always takes. The net head yaw is clamped to `±20°` (a horse turns its head less than
+/// the body) and applied as `head_parts.yRot = clamp(yRot, -20, 20) * π/180`; the head
+/// pitch is added onto the layer's `π/6` neck tilt as `head_parts.xRot = π/6 + xRot *
+/// π/180`, with a walk-driven bob `+= cos(walkAnimationPos * 0.8) * 0.15 *
+/// walkAnimationSpeed` folded in when `walkAnimationSpeed > 0.2`. The rest `head_parts`
+/// xRot is exactly that `π/6` tilt, so at a level head and no fast gait the pose equals
+/// the rest pose. `HorseModel`/`BabyHorseModel` and the adult `DonkeyModel`/mule take this
+/// unchanged; the baby donkey/mule (which forces `xRot = -30°`), the ridden/stand/eat/feed
+/// poses, the in-water gait, and the tail animation are deferred.
+pub(in crate::entity_models) fn equine_head_look_pose(
+    base: PartPose,
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let clamped_yaw = head_yaw_deg.clamp(-20.0, 20.0);
+    let mut head_rot_x = head_pitch_deg.to_radians();
+    if walk_animation_speed > 0.2 {
+        head_rot_x += (walk_animation_pos * 0.8).cos() * 0.15 * walk_animation_speed;
+    }
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            std::f32::consts::FRAC_PI_6 + head_rot_x,
+            clamped_yaw.to_radians(),
             base.rotation[2],
         ],
     }
