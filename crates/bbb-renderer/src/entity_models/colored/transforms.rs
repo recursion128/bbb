@@ -18,7 +18,7 @@ pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;
 
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
+        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
@@ -28,7 +28,7 @@ fn living_entity_model_root_transform_with_renderer_transform(
     renderer_transform: Mat4,
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
+        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
@@ -37,7 +37,7 @@ fn living_entity_model_root_transform_with_renderer_transform(
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
-        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
+        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2)
 }

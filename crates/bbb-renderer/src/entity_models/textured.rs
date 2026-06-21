@@ -357,7 +357,7 @@ fn emit_polar_bear_textured_model(
     } else {
         polar_bear_model_root_transform(instance)
     };
-    let stand_scale = instance.polar_bear_stand_scale;
+    let stand_scale = instance.render_state.polar_bear_stand_scale;
     for pass in polar_bear_textured_layer_passes(baby) {
         if stand_scale == 0.0 {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
@@ -454,7 +454,7 @@ fn emit_sheep_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
-    let head_eat = instance.head_eat;
+    let head_eat = instance.render_state.head_eat;
     let head_index = sheep_head_part_index(baby);
     for pass in sheep_textured_layer_passes(baby, sheared, wool_color, invisible, jeb, age_ticks) {
         if head_eat.is_resting() {

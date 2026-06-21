@@ -56,7 +56,7 @@ pub(super) fn emit_armor_stand_model(
             mesh,
             transform,
             &parts[9],
-            [0.0, -instance.y_rot.to_radians(), 0.0],
+            [0.0, -instance.render_state.body_rot.to_radians(), 0.0],
         );
     }
 }

@@ -257,6 +257,16 @@ When an agent does any of the following, update this file in the same slice:
     - animation
     - culling
     - ordering
+  - Grow the renderer `EntityRenderState` projection as the single landing spot
+    for vanilla `LivingEntityRenderState`/`EntityRenderState` per-frame fields,
+    instead of adding ad hoc per-entity fields to `EntityModelInstance`:
+    - now projected: `bodyRot` (body yaw), the sheep eat-grass head pose, and the
+      polar-bear standing-rear scale
+    - deferred slots to add with their own slices, each carrying real vanilla
+      semantics and tests rather than tint fallbacks: block+sky `lightCoords`,
+      hurt/white `OverlayTexture` and creeper charge, `walkAnimationPos`/
+      `walkAnimationSpeed` limb-swing, head `yRot`/`xRot` look, `ageScale`,
+      unified `isInvisible`, and `outlineColor` glow
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick

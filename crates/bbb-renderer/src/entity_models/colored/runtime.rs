@@ -500,7 +500,7 @@ fn emit_sheep_model(
     age_ticks: f32,
 ) {
     let transform = entity_model_root_transform(instance);
-    let head_eat = instance.head_eat;
+    let head_eat = instance.render_state.head_eat;
     let base_parts: &[ModelPartDesc] = if baby {
         &BABY_SHEEP_PARTS
     } else {
@@ -670,7 +670,7 @@ fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
     } else {
         &ADULT_POLAR_BEAR_PARTS
     };
-    let stand_scale = instance.polar_bear_stand_scale;
+    let stand_scale = instance.render_state.polar_bear_stand_scale;
     if stand_scale == 0.0 {
         emit_model_parts(mesh, static_parts, transform);
     } else {
@@ -946,7 +946,7 @@ fn emit_placeholder_bounds_model(
     let height = bounds.height.max(0.0625);
     let depth = bounds.depth.max(0.0625);
     let transform = Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians());
+        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians());
     emit_model_cube_world_units(
         mesh,
         transform,

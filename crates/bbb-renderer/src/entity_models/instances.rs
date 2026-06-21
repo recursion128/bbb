@@ -1,18 +1,54 @@
 use super::catalog::*;
 use super::SheepHeadEatPose;
 
+/// Per-frame projection of the vanilla `LivingEntityRenderState` (and its
+/// `EntityRenderState` base) fields that the renderer entity pass consumes.
+///
+/// Vanilla renders entities from a render-state snapshot extracted once per
+/// frame in `EntityRenderer.extractRenderState`, not from the live entity. This
+/// struct is the matching projection and the single landing spot for the
+/// per-frame rotation, pose, and animation values shared across model families.
+/// Pipeline work added later (block+sky `lightCoords`, hurt/white
+/// `OverlayTexture`, `walkAnimationPos`/`walkAnimationSpeed` limb-swing, head
+/// `yRot`/`xRot` look, `ageScale`) extends this one structure instead of growing
+/// ad hoc fields on [`EntityModelInstance`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EntityRenderState {
+    /// Vanilla `LivingEntityRenderState.bodyRot`: the interpolated body yaw, in
+    /// degrees, that orients the model root transform. Head yaw/pitch
+    /// (`yRot`/`xRot`) are a separate look projection added by a later slice.
+    pub body_rot: f32,
+    /// Per-frame sheep eat-grass head pose (`Sheep.getHeadEatPositionScale` /
+    /// `getHeadEatAngleScale`). [`SheepHeadEatPose::NONE`] for every non-sheep
+    /// entity and for a sheep that is not currently eating.
+    pub head_eat: SheepHeadEatPose,
+    /// Per-frame polar bear standing-rear scale
+    /// (`PolarBear.getStandingAnimationScale`, `0.0..=1.0`). `0.0` for every
+    /// other entity and for a polar bear on all fours.
+    pub polar_bear_stand_scale: f32,
+}
+
+impl EntityRenderState {
+    /// Builds the resting render state for an entity facing `body_rot` degrees:
+    /// no eat-grass head pose and an all-fours polar bear stance. Per-frame
+    /// animation poses are layered on by the entity scene projection.
+    fn resting(body_rot: f32) -> Self {
+        Self {
+            body_rot,
+            head_eat: SheepHeadEatPose::NONE,
+            polar_bear_stand_scale: 0.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EntityModelInstance {
     pub entity_id: i32,
     pub kind: EntityModelKind,
     pub position: [f32; 3],
-    pub y_rot: f32,
-    /// Per-frame sheep eat-grass head pose. [`SheepHeadEatPose::NONE`] for every
-    /// other entity and for a sheep that is not currently eating.
-    pub head_eat: SheepHeadEatPose,
-    /// Per-frame polar bear standing-rear scale (`PolarBear.getStandingAnimationScale`,
-    /// `0.0..=1.0`). `0.0` for every other entity and for a polar bear on all fours.
-    pub polar_bear_stand_scale: f32,
+    /// Per-frame render-state projection (body rotation + animation poses)
+    /// consumed by the renderer entity pass.
+    pub render_state: EntityRenderState,
 }
 
 impl EntityModelInstance {
@@ -21,19 +57,17 @@ impl EntityModelInstance {
             entity_id,
             kind,
             position,
-            y_rot,
-            head_eat: SheepHeadEatPose::NONE,
-            polar_bear_stand_scale: 0.0,
+            render_state: EntityRenderState::resting(y_rot),
         }
     }
 
     pub fn with_head_eat(mut self, head_eat: SheepHeadEatPose) -> Self {
-        self.head_eat = head_eat;
+        self.render_state.head_eat = head_eat;
         self
     }
 
     pub fn with_polar_bear_stand_scale(mut self, polar_bear_stand_scale: f32) -> Self {
-        self.polar_bear_stand_scale = polar_bear_stand_scale;
+        self.render_state.polar_bear_stand_scale = polar_bear_stand_scale;
         self
     }
 
@@ -609,7 +643,7 @@ mod tests {
         );
         assert_eq!(placeholder.entity_id, 12);
         assert_eq!(placeholder.position, [4.0, 5.0, 6.0]);
-        assert_eq!(placeholder.y_rot, 90.0);
+        assert_eq!(placeholder.render_state.body_rot, 90.0);
         assert_eq!(
             placeholder.kind,
             EntityModelKind::Placeholder {
@@ -621,5 +655,47 @@ mod tests {
                 },
             }
         );
+    }
+
+    #[test]
+    fn new_projects_resting_render_state() {
+        let instance = EntityModelInstance::new(
+            7,
+            EntityModelKind::Quadruped {
+                family: QuadrupedModelFamily::Pig,
+                baby: false,
+            },
+            [0.0, 0.0, 0.0],
+            123.0,
+        );
+        assert_eq!(
+            instance.render_state,
+            EntityRenderState {
+                body_rot: 123.0,
+                head_eat: SheepHeadEatPose::NONE,
+                polar_bear_stand_scale: 0.0,
+            }
+        );
+    }
+
+    #[test]
+    fn builders_set_only_their_render_state_field() {
+        let base = EntityModelInstance::sheep(1, [0.0, 0.0, 0.0], 45.0, false);
+        assert_eq!(base.render_state.body_rot, 45.0);
+        assert_eq!(base.render_state.head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(base.render_state.polar_bear_stand_scale, 0.0);
+
+        let eating = base.with_head_eat(SheepHeadEatPose::from_eat_tick(40, 0.5));
+        assert_eq!(eating.render_state.body_rot, 45.0);
+        assert_eq!(
+            eating.render_state.head_eat,
+            SheepHeadEatPose::from_eat_tick(40, 0.5)
+        );
+        assert_eq!(eating.render_state.polar_bear_stand_scale, 0.0);
+
+        let bear = EntityModelInstance::polar_bear(2, [0.0, 0.0, 0.0], 0.0, false)
+            .with_polar_bear_stand_scale(0.5);
+        assert_eq!(bear.render_state.head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(bear.render_state.polar_bear_stand_scale, 0.5);
     }
 }

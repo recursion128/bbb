@@ -659,7 +659,7 @@ pub(super) fn sanitize_entity_model_instances(
     instances
         .into_iter()
         .filter(|instance| {
-            instance.y_rot.is_finite()
+            instance.render_state.body_rot.is_finite()
                 && instance
                     .position
                     .iter()

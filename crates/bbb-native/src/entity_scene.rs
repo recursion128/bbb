@@ -1272,8 +1272,8 @@ mod tests {
 
         // At rest both entities resolve to the resting head pose.
         let resting = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
-        assert_eq!(resting[0].head_eat, SheepHeadEatPose::NONE);
-        assert_eq!(resting[1].head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(resting[0].render_state.head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(resting[1].render_state.head_eat, SheepHeadEatPose::NONE);
 
         // Vanilla SheepRenderer.extractRenderState projects the eat animation
         // through the partial tick; the chicken stays at rest.
@@ -1282,14 +1282,20 @@ mod tests {
             event_id: 10,
         }));
         let eating = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
-        assert_eq!(eating[0].head_eat, SheepHeadEatPose::from_eat_tick(40, 0.5));
-        assert_ne!(eating[0].head_eat, SheepHeadEatPose::NONE);
-        assert_eq!(eating[1].head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(
+            eating[0].render_state.head_eat,
+            SheepHeadEatPose::from_eat_tick(40, 0.5)
+        );
+        assert_ne!(eating[0].render_state.head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(eating[1].render_state.head_eat, SheepHeadEatPose::NONE);
 
         // The pose follows the canonical countdown as it decrements.
         world.advance_entity_client_animations(20);
         let mid = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
-        assert_eq!(mid[0].head_eat, SheepHeadEatPose::from_eat_tick(20, 0.0));
+        assert_eq!(
+            mid[0].render_state.head_eat,
+            SheepHeadEatPose::from_eat_tick(20, 0.0)
+        );
     }
 
     #[test]
@@ -1310,8 +1316,8 @@ mod tests {
 
         // A polar bear on all fours and any other entity carry a zero scale.
         let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
-        assert_eq!(resting[0].polar_bear_stand_scale, 0.0);
-        assert_eq!(resting[1].polar_bear_stand_scale, 0.0);
+        assert_eq!(resting[0].render_state.polar_bear_stand_scale, 0.0);
+        assert_eq!(resting[1].render_state.polar_bear_stand_scale, 0.0);
 
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 80,
@@ -1323,8 +1329,8 @@ mod tests {
         // getStandingAnimationScale(partialTick); after one tick that is
         // lerp(0.5, 0, 1) / 6.
         let standing = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
-        assert_eq!(standing[0].polar_bear_stand_scale, 0.5 / 6.0);
-        assert_eq!(standing[1].polar_bear_stand_scale, 0.0);
+        assert_eq!(standing[0].render_state.polar_bear_stand_scale, 0.5 / 6.0);
+        assert_eq!(standing[1].render_state.polar_bear_stand_scale, 0.0);
     }
 
     #[test]
