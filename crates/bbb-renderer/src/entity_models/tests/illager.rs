@@ -255,8 +255,9 @@ fn illager_family_swings_its_legs_when_walking() {
     // legs `cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`. A standing illager is inert;
     // a walking one lifts its feet (a shorter model) and splays its legs along Z, for
     // every family (the crossed-arms evoker/vindicator/illusioner lists legs at
-    // [3, 4], the uncrossed pillager at [2, 3]). The arm poses and the riding sit pose
-    // are deferred.
+    // [3, 4], the uncrossed pillager at [2, 3]). The pillager also swings its separate arms
+    // (see `pillager_swings_its_arms_when_walking`); the arm-pose overrides and the riding
+    // sit pose are deferred.
     let families = [
         ("evoker", IllagerModelFamily::Evoker),
         ("vindicator", IllagerModelFamily::Vindicator),
@@ -283,4 +284,52 @@ fn illager_family_swings_its_legs_when_walking() {
             "{name}: a walking illager's legs should splay along Z"
         );
     }
+}
+
+#[test]
+fn pillager_swings_its_arms_when_walking() {
+    // Vanilla `IllagerModel.setupAnim` swings the separate arms with the `HumanoidModel`
+    // amplitude `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5` (right arm a half-cycle out of
+    // phase). The pillager renders the uncrossed layout head/body/leg/leg/right_arm/left_arm
+    // (192 verts, 8 cubes), so the two arm cubes occupy vertices [144, 192). A walking
+    // pillager swings them; a standing one keeps them at rest.
+    let base =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager);
+    let rest = entity_model_mesh(&[base]);
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(rest.vertices.len(), 192);
+    assert_ne!(
+        rest.vertices[144..192],
+        walking.vertices[144..192],
+        "the pillager swings its separate arms when walking"
+    );
+    let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+    assert_eq!(
+        rest.vertices[144..192],
+        still.vertices[144..192],
+        "a standing pillager's arms are inert"
+    );
+}
+
+#[test]
+fn crossed_arm_illagers_keep_their_arms_still_when_walking() {
+    // The evoker/vindicator/illusioner show the static crossed `arms` part: vanilla swings
+    // the *invisible* separate arms, so the visible crossed part holds still. The evoker
+    // layout is head/body/crossed_arm/leg/leg (216 verts, 9 cubes): the crossed arm part
+    // (3 cubes) occupies vertices [96, 168) and the two legs [168, 216). A walking evoker
+    // swings only its legs.
+    let base = EntityModelInstance::illager(46, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Evoker);
+    let rest = entity_model_mesh(&[base]);
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(rest.vertices.len(), 216);
+    assert_eq!(
+        rest.vertices[96..168],
+        walking.vertices[96..168],
+        "the crossed arms part stays still when walking"
+    );
+    assert_ne!(
+        rest.vertices[168..216],
+        walking.vertices[168..216],
+        "the legs still swing when walking"
+    );
 }

@@ -518,7 +518,11 @@ When an agent does any of the following, update this file in the same slice:
     `HumanoidModel` and adds an extra `0.5` amplitude factor (the shared
     `half_amplitude_leg_swing_pose`), and its body layers list the legs at `[3, 4]` for
     the crossed-arms layouts (evoker/vindicator/illusioner) and `[2, 3]` for the
-    uncrossed pillager, resolved per family. The villager family
+    uncrossed pillager, resolved per family. The pillager also swings its *separate* arms
+    with the exact `HumanoidModel` amplitude (`cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`,
+    [`humanoid_arm_swing_pose`], arms at `[4, 5]`); the evoker/vindicator/illusioner show
+    the static crossed `arms` part, which vanilla never animates (it swings the *invisible*
+    separate arms), so their visible arms stay put. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
     `emit_villager_family_textured_passes` textured — villager adult/baby, wandering
     trader, witch) shares the same `half_amplitude_leg_swing_pose`: `VillagerModel` and
@@ -600,8 +604,9 @@ When an agent does any of the following, update this file in the same slice:
     arms, the skeleton melee swing (`isAggressive && !isHoldingBow`) and bow-aiming
     `ArmPose`, the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
     `AbstractPiglinModel` ear sway and
-    `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
-    attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
+    `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel`
+    attack/spellcast/bow/crossbow/celebrate arm-pose overrides and riding sit pose (the
+    default walk arm swing is implemented for the pillager), the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
     tilt, the `HoglinModel` headbutt head tilt, the `EndermanModel`
     carried-block arm pose and creepy attack pose, the `IronGolemModel`

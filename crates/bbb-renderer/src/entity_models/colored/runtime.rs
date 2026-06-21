@@ -1266,21 +1266,68 @@ fn emit_illager_model(
     family: IllagerModelFamily,
 ) {
     // `IllagerModel.setupAnim` (the non-riding branch) swings the legs
-    // `cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5` after the head look. It is not a
-    // `HumanoidModel` (the extra `0.5` factor and the per-family part order differ),
-    // so it uses the dedicated `half_amplitude_leg_swing_pose` and its own leg indices. The
-    // arm swing/arm poses and the riding sit pose are deferred.
-    let parts = half_amplitude_limb_swing_parts(
+    // `cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5` after the head look. The legs are not a
+    // `HumanoidModel` swing (the extra `0.5` factor and the per-family part order differ),
+    // so they use the dedicated `half_amplitude_leg_swing_pose`. The separate arms, however,
+    // swing with the exact `HumanoidModel` amplitude `cos(pos * 0.6662 [+ π]) * 2.0 *
+    // speed * 0.5` ([`humanoid_arm_swing_pose`]) — but only the pillager renders the
+    // separate uncrossed arms; the evoker/vindicator/illusioner show the static crossed
+    // `arms` part (vanilla swings the *invisible* separate arms, so their visible arms hold
+    // still). The arm-pose overrides (attack/spellcast/bow/crossbow/celebrate) and the
+    // riding sit pose are deferred (they need the `IllagerArmPose`/riding render state).
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let legs_swung = half_amplitude_limb_swing_parts(
         villager_colored_head_look_parts(
             illager_model_parts(family),
             villager_head_part_index(false),
             instance,
         ),
         illager_leg_part_indices(family),
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
+        limb_swing,
+        limb_swing_amount,
     );
+    let parts = match illager_arm_part_indices(family) {
+        Some(arm_indices) => {
+            illager_arm_swing_parts(legs_swung, arm_indices, limb_swing, limb_swing_amount)
+        }
+        None => legs_swung,
+    };
     emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
+}
+
+/// The two separate arm part indices in an illager body layer, if the family renders the
+/// uncrossed (separate) arms. Only the pillager does (`ILLAGER_SHARED_UNCROSSED_PARTS`:
+/// head/body/leg/leg/right_arm/left_arm); the evoker/vindicator/illusioner show the static
+/// crossed `arms` part instead, so they have no separate arms to swing.
+fn illager_arm_part_indices(family: IllagerModelFamily) -> Option<[usize; 2]> {
+    match family {
+        IllagerModelFamily::Pillager => Some([4, 5]),
+        IllagerModelFamily::Evoker
+        | IllagerModelFamily::Vindicator
+        | IllagerModelFamily::Illusioner => None,
+    }
+}
+
+/// Applies the vanilla `IllagerModel.setupAnim` arm swing ([`humanoid_arm_swing_pose`]) to
+/// an illager layer's two separate arm parts. Borrows the static parts unchanged at rest
+/// (`walkAnimationSpeed == 0`).
+fn illager_arm_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    arm_indices: [usize; 2],
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in arm_indices {
+        if let Some(arm) = owned.get_mut(index) {
+            arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+        }
+    }
+    Cow::Owned(owned)
 }
 
 fn illager_model_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
