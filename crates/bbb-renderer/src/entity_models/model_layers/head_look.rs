@@ -54,6 +54,13 @@ pub(in crate::entity_models) const fn villager_head_part_index(baby: bool) -> us
     }
 }
 
+/// `PlayerModel` head-part index. The wide and slim player body layers list the
+/// head first; visibility filtering only toggles the overlay children, never the
+/// base part order.
+pub(in crate::entity_models) const fn player_head_part_index() -> usize {
+    0
+}
+
 /// `SkeletonModel` head-part index. The skeleton, stray, wither-skeleton, and
 /// bogged body layers list the head first.
 pub(in crate::entity_models) const fn skeleton_head_part_index() -> usize {

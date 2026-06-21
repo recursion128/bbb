@@ -61,6 +61,17 @@ fn head_part_indices_match_vanilla_body_layers() {
         ILLAGER_SHARED_CROSSED_PARTS[villager_head_part_index(false)].cubes,
         ILLAGER_HEAD.as_slice()
     );
+
+    // The wide and slim player layers both list the head first.
+    assert_eq!(player_head_part_index(), 0);
+    assert_eq!(
+        PLAYER_WIDE_PARTS[player_head_part_index()].cubes,
+        PLAYER_HEAD.as_slice()
+    );
+    assert_eq!(
+        PLAYER_SLIM_PARTS[player_head_part_index()].cubes,
+        PLAYER_HEAD.as_slice()
+    );
 }
 
 #[test]
@@ -333,6 +344,28 @@ fn witch_colored_mesh_applies_head_look() {
     assert_ne!(resting.vertices, looking.vertices);
     let n = resting.vertices.len();
     assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
+}
+
+#[test]
+fn player_colored_mesh_applies_head_look_to_head_only() {
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(740, [0.0, 64.0, 0.0], 0.0, slim);
+        let resting = entity_model_mesh(&[base]);
+        let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+        let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+        // Player head (with its hat child) is part 0, emitted first; the last
+        // part is a leg, which head look must leave untouched.
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "slim={slim} head turns");
+        let n = resting.vertices.len();
+        assert_eq!(
+            resting.vertices[n - 24..],
+            yawed.vertices[n - 24..],
+            "slim={slim} leg stays"
+        );
+        assert_ne!(yawed.vertices, pitched.vertices, "slim={slim} yaw != pitch");
+    }
 }
 
 #[test]

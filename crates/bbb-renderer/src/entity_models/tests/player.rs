@@ -419,6 +419,23 @@ fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts()
         .any(|vertex| vertex.uv[1] >= 32.0 / 64.0));
 }
 
+#[test]
+fn player_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(903, [0.0, 64.0, 0.0], 0.0, slim);
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+
+        // Head look turns the head part (index 0, shared across all passes)
+        // without changing the vertex count.
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "slim={slim}");
+        assert_ne!(yawed.vertices, pitched.vertices, "slim={slim}");
+    }
+}
+
 fn player_texture_images() -> Vec<EntityModelTextureImage> {
     player_entity_texture_refs()
         .iter()

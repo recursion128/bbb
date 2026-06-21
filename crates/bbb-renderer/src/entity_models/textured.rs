@@ -15,9 +15,9 @@ use super::{
     magma_cube_model_root_transform,
     model_layers::{
         apply_polar_bear_standing_pose, cow_head_part_index, head_look_at_rest, head_look_pose,
-        parched_head_part_index, pig_head_part_index, polar_bear_standing_part_roles,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        villager_head_part_index,
+        parched_head_part_index, pig_head_part_index, player_head_part_index,
+        polar_bear_standing_part_roles, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
+        skeleton_head_part_index, villager_head_part_index,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -496,7 +496,16 @@ fn emit_player_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = player_model_root_transform(instance);
-    let visible_parts = player_visible_textured_model_parts(slim, parts);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    // All passes share one visibility-filtered part array, so the head look is
+    // applied once to the head part (index 0) before emitting every pass.
+    let mut visible_parts = player_visible_textured_model_parts(slim, parts);
+    if !head_look_at_rest(head_yaw, head_pitch) {
+        if let Some(head) = visible_parts.get_mut(player_head_part_index()) {
+            head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+        }
+    }
     for pass in player_textured_layer_passes(slim, parts) {
         emit_textured_layer_pass_with_parts(
             meshes,

@@ -259,13 +259,19 @@ fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
 
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {
     let transform = player_model_root_transform(instance);
+    let parts: &[ModelPartDesc] = if slim {
+        &PLAYER_SLIM_PARTS
+    } else {
+        &PLAYER_WIDE_PARTS
+    };
     emit_model_parts(
         mesh,
-        if slim {
-            &PLAYER_SLIM_PARTS
-        } else {
-            &PLAYER_WIDE_PARTS
-        },
+        &colored_head_look_parts(
+            parts,
+            player_head_part_index(),
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        ),
         transform,
     );
 }

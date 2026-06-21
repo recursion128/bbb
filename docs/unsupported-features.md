@@ -314,9 +314,11 @@ When an agent does any of the following, update this file in the same slice:
     colored path; and the `VillagerModel`/`IllagerModel`/`WitchModel` family
     (villager and wandering trader colored+textured, witch colored+textured,
     illagers colored) — the baby villager's index-3 head included. Remaining
-    head-look work: apply the same projection to the player model's head, and the
-    fall-flying/swimming `head.xRot` overrides (currently untracked, default
-    upright).
+    head-look work: now applied to every part-list humanoid and quadruped,
+    including the wide/slim player model (colored and textured). The remaining
+    head-look gaps are the fall-flying/swimming `head.xRot` overrides (currently
+    untracked, default upright), and the placeholder raw-cuboid `Humanoid`
+    fallback path (which is not yet a vanilla-faithful part-list model).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -365,14 +367,16 @@ When an agent does any of the following, update this file in the same slice:
       from `PlayerModel`, `AvatarRenderer`, and `LayerDefinitions`, including
       base head/body/arms/legs plus hat/jacket/sleeves/pants children, the
       `AvatarRenderer` `0.9375F` render scale, texture-backed base layer pass
-      emission, `ModelLayers.PLAYER` / `PLAYER_SLIM` selection, and official
-      wide/slim Steve PNG atlas upload/bind/sample path; true
+      emission, `ModelLayers.PLAYER` / `PLAYER_SLIM` selection, official
+      wide/slim Steve PNG atlas upload/bind/sample path, and the vanilla
+      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part (colored and
+      textured, applied once to the shared visibility-filtered part array); true
       `RenderTypes.entityTranslucent` alpha blending, UUID/default-skin
       selection, live skin downloads, automatic slim-vs-wide model selection
       from `PlayerSkin`, capes, ears, armor/equipment, held items,
       elytra/wings, shoulder parrots,
       arrows/stingers, spectator visibility, crouch/flying offsets, name
-      display, arm poses, and walk/head animation remain unsupported
+      display, arm poses, and walk animation remain unsupported
       (metadata-driven `DATA_PLAYER_MODE_CUSTOMISATION` projection now controls
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer
