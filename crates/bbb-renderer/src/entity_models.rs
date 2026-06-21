@@ -11,7 +11,7 @@ use colored::{
     boat_model_root_transform, cave_spider_model_root_transform, entity_model_colored_runtime_mesh,
     entity_model_root_transform, magma_cube_model_root_transform, player_model_root_transform,
     polar_bear_model_root_transform, slime_model_root_transform,
-    wither_skeleton_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform,
 };
 #[cfg(test)]
 use colored::{chicken_model_parts, cow_model_parts, entity_model_mesh, pig_model_parts};
@@ -38,7 +38,7 @@ pub use model_layers::{
     goat_entity_texture_refs, hoglin_entity_texture_refs, pig_entity_texture_refs,
     player_entity_texture_refs, polar_bear_entity_texture_refs, ravager_entity_texture_refs,
     sheep_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
-    spider_entity_texture_refs, wolf_entity_texture_refs,
+    spider_entity_texture_refs, villager_entity_texture_refs, wolf_entity_texture_refs,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;
@@ -51,7 +51,8 @@ use textured::{
     magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
     polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
-    spider_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerKind,
+    spider_textured_layer_passes, villager_textured_layer_passes,
+    wandering_trader_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerKind,
     EntityModelLayerRenderType, EntityModelLayerVisibility,
 };
 

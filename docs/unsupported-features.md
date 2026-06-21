@@ -448,13 +448,16 @@ When an agent does any of the following, update this file in the same slice:
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
-      root transform and official base texture references recorded; wandering
-      trader uses the same adult body layer with the official
-      `textures/entity/wandering_trader/wandering_trader.png` reference;
-      villager type/profession/level overlays, hat metadata/no-hat model
-      selection, crossed-arms item layer, custom head layer, unhappy animation,
-      leg walk animation, and wandering trader baby presentation remain
-      unsupported
+      root transform, official base texture references, texture-backed base
+      layer pass emission, adult/baby model-layer selection, and official PNG
+      atlas upload/bind/sample path; wandering trader uses
+      `ModelLayers.WANDERING_TRADER`, the same adult body layer, the official
+      `textures/entity/wandering_trader/wandering_trader.png` reference,
+      texture-backed base layer pass emission, and official PNG atlas
+      upload/bind/sample path; villager type/profession/level overlays, hat
+      metadata/no-hat model selection, crossed-arms item layer, custom head
+      layer, unhappy animation, leg walk animation, lighting, and wandering
+      trader baby presentation remain unsupported
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with official default texture references recorded; husk entities use the

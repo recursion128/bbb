@@ -61,6 +61,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let zoglin_baby =
         EntityModelInstance::hoglin(319, [30.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, true);
     let ravager = EntityModelInstance::ravager(320, [32.0, 64.0, 0.0], 0.0);
+    let villager = EntityModelInstance::villager(321, [34.0, 64.0, 0.0], 0.0, false);
+    let wandering_trader = EntityModelInstance::wandering_trader(322, [36.0, 64.0, 0.0], 0.0);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -80,6 +82,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         hoglin,
         zoglin_baby,
         ravager,
+        villager,
+        wandering_trader,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -119,6 +123,10 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_zoglin_baby_geometry_guard.vertices.is_empty());
     let legacy_ravager_geometry_guard = entity_model_mesh(&[ravager]);
     assert!(!legacy_ravager_geometry_guard.vertices.is_empty());
+    let legacy_villager_geometry_guard = entity_model_mesh(&[villager]);
+    assert!(!legacy_villager_geometry_guard.vertices.is_empty());
+    let legacy_wandering_trader_geometry_guard = entity_model_mesh(&[wandering_trader]);
+    assert!(!legacy_wandering_trader_geometry_guard.vertices.is_empty());
 }
 
 #[test]

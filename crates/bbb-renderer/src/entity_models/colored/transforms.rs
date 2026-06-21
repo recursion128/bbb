@@ -109,6 +109,8 @@ pub(super) fn mesh_transformer_scaled_model_root_transform(
         * Mat4::from_scale(Vec3::splat(scale))
 }
 
-pub(super) fn villager_adult_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+pub(in crate::entity_models) fn villager_adult_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
     mesh_transformer_scaled_model_root_transform(instance, VILLAGER_LIKE_SCALE)
 }

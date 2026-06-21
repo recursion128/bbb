@@ -10,7 +10,8 @@ use super::{
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
     instances::EntityModelInstance,
     magma_cube_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    slime_model_root_transform, wither_skeleton_model_root_transform,
+    slime_model_root_transform, villager_adult_model_root_transform,
+    wither_skeleton_model_root_transform,
 };
 use glam::Mat4;
 
@@ -23,7 +24,8 @@ pub(super) use layers::{
     magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
     polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
-    spider_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerPass,
+    spider_textured_layer_passes, villager_textured_layer_passes,
+    wandering_trader_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerPass,
     EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
@@ -113,6 +115,12 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Ravager => {
                 emit_ravager_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Villager { baby } => {
+                emit_villager_textured_model(&mut meshes, *instance, baby, atlas);
+            }
+            EntityModelKind::WanderingTrader => {
+                emit_wandering_trader_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Player { slim, parts } => {
                 emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
@@ -352,6 +360,33 @@ fn emit_ravager_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in ravager_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_villager_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = if baby {
+        entity_model_root_transform(instance)
+    } else {
+        villager_adult_model_root_transform(instance)
+    };
+    for pass in villager_textured_layer_passes(baby) {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_wandering_trader_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = villager_adult_model_root_transform(instance);
+    for pass in wandering_trader_textured_layer_passes() {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }

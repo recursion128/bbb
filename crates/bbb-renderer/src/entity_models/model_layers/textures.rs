@@ -280,6 +280,16 @@ pub(in crate::entity_models) const WANDERING_TRADER_TEXTURE_REF: EntityModelText
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const VILLAGER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    VILLAGER_TEXTURE_REF,
+    VILLAGER_BABY_TEXTURE_REF,
+    WANDERING_TRADER_TEXTURE_REF,
+];
+
+pub fn villager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &VILLAGER_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const CHICKEN_TEMPERATE_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/chicken/chicken_temperate.png",
@@ -623,7 +633,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 79] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 82] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -648,6 +658,9 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ZOGLIN_TEXTURE_REF,
     ZOGLIN_BABY_TEXTURE_REF,
     RAVAGER_TEXTURE_REF,
+    VILLAGER_TEXTURE_REF,
+    VILLAGER_BABY_TEXTURE_REF,
+    WANDERING_TRADER_TEXTURE_REF,
     CHICKEN_TEMPERATE_TEXTURE_REF,
     CHICKEN_TEMPERATE_BABY_TEXTURE_REF,
     CHICKEN_WARM_TEXTURE_REF,

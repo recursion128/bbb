@@ -36,6 +36,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SnowGolemBase,
     SpiderBase,
     SpiderEyes,
+    VillagerBase,
+    WanderingTraderBase,
     WolfBase,
     WolfCollar,
 }
@@ -317,6 +319,49 @@ pub(in crate::entity_models) fn ravager_textured_layer_passes() -> Vec<EntityMod
         model_layer: MODEL_LAYER_RAVAGER,
         texture: RAVAGER_TEXTURE_REF,
         parts: &RAVAGER_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn villager_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::VillagerBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: if baby {
+            MODEL_LAYER_VILLAGER_BABY
+        } else {
+            MODEL_LAYER_VILLAGER
+        },
+        texture: if baby {
+            VILLAGER_BABY_TEXTURE_REF
+        } else {
+            VILLAGER_TEXTURE_REF
+        },
+        parts: if baby {
+            &BABY_VILLAGER_TEXTURED_PARTS
+        } else {
+            &ADULT_VILLAGER_TEXTURED_PARTS
+        },
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn wandering_trader_textured_layer_passes() -> Vec<EntityModelLayerPass>
+{
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::WanderingTraderBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_WANDERING_TRADER,
+        texture: WANDERING_TRADER_TEXTURE_REF,
+        parts: &ADULT_VILLAGER_TEXTURED_PARTS,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
