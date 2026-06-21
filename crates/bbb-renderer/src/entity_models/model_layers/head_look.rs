@@ -29,6 +29,19 @@ pub(in crate::entity_models) const fn zombie_head_part_index(baby: bool) -> usiz
     }
 }
 
+/// `HumanoidModel` head-part index for the piglin family body layers (piglin,
+/// piglin brute, zombified piglin). The adult layer lists the head first; the
+/// baby layer lists the body first, so the head is second. `baby_layout` is
+/// whether the baby part layout is in use — a baby piglin *brute* still renders
+/// the adult layout.
+pub(in crate::entity_models) const fn piglin_head_part_index(baby_layout: bool) -> usize {
+    if baby_layout {
+        1
+    } else {
+        0
+    }
+}
+
 /// `SkeletonModel` head-part index. The skeleton, stray, wither-skeleton, and
 /// bogged body layers list the head first.
 pub(in crate::entity_models) const fn skeleton_head_part_index() -> usize {

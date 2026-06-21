@@ -310,11 +310,12 @@ When an agent does any of the following, update this file in the same slice:
     eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned,
     zombie villager) in the colored path; and the skeleton family (skeleton,
     stray, parched, wither skeleton, bogged) in both the colored and textured
-    paths. Remaining head-look work: apply the same projection to the other
-    humanoid families' head parts (player, villager, illager, piglin, etc.; each
-    model names its own head part, so this is a per-family grind), and the
-    fall-flying/swimming `head.xRot` overrides (currently untracked, default
-    upright).
+    paths; and the piglin family (piglin, piglin brute, zombified piglin) in the
+    colored path. Remaining head-look work: apply the same projection to the other
+    humanoid families' head parts (player, villager, illager, wandering trader,
+    witch, etc.; each model names its own head part, so this is a per-family
+    grind), and the fall-flying/swimming `head.xRot` overrides (currently
+    untracked, default upright).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -562,9 +563,10 @@ When an agent does any of the following, update this file in the same slice:
       converting shake, zombie-family and piglin-family armor, custom head
       layers, held items, attack/walk/dance/crossbow/admiring/zombie-arm
       animation, and GPU texture binding remain unsupported; the zombie, husk,
-      drowned, and zombie-villager head parts now apply the vanilla
-      `HumanoidModel.setupAnim` head-look yaw/pitch, but the
-      piglin/piglin-brute/zombified-piglin head look is still unsupported
+      drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
+      parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
+      (the baby layout's index-1 head, and the baby piglin brute's adult-layout
+      head, included)
     - base skeleton, stray, parched, wither skeleton, and bogged entities as
       renderer-owned vanilla 26.1 skeleton-family geometry from
       `SkeletonModel.createBodyLayer()`,

@@ -430,14 +430,20 @@ fn emit_piglin_model(
     family: PiglinModelFamily,
     baby: bool,
 ) {
-    let parts = if baby && family != PiglinModelFamily::PiglinBrute {
+    let baby_layout = baby && family != PiglinModelFamily::PiglinBrute;
+    let parts: &[ModelPartDesc] = if baby_layout {
         &BABY_PIGLIN_PARTS
     } else {
         &ADULT_PIGLIN_PARTS
     };
     emit_model_parts_with_color(
         mesh,
-        parts,
+        &colored_head_look_parts(
+            parts,
+            piglin_head_part_index(baby_layout),
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        ),
         entity_model_root_transform(instance),
         piglin_model_color(family),
     );

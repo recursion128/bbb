@@ -12,6 +12,16 @@ fn head_part_indices_match_vanilla_body_layers() {
     assert_eq!(pig_head_part_index(true), 1);
     assert_eq!(zombie_head_part_index(false), 0);
     assert_eq!(zombie_head_part_index(true), 1);
+    assert_eq!(piglin_head_part_index(false), 0);
+    assert_eq!(piglin_head_part_index(true), 1);
+    assert_eq!(
+        ADULT_PIGLIN_PARTS[piglin_head_part_index(false)].cubes,
+        ADULT_PIGLIN_HEAD.as_slice()
+    );
+    assert_eq!(
+        BABY_PIGLIN_PARTS[piglin_head_part_index(true)].cubes,
+        BABY_PIGLIN_HEAD.as_slice()
+    );
 
     // Skeleton/stray/wither/bogged list the head first; parched lists the body
     // first (head second). Tie the indices to the actual head parts so the
@@ -149,6 +159,54 @@ fn zombie_villager_variant_colored_mesh_applies_head_look() {
     assert_ne!(resting.vertices, looking.vertices);
     let n = resting.vertices.len();
     assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
+}
+
+#[test]
+fn piglin_colored_mesh_applies_head_look_to_head_only() {
+    let base =
+        EntityModelInstance::piglin(720, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false);
+    let resting = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+    // Adult piglin head (with its ear children) is part 0, emitted first; the
+    // last part is a leg, which head look must leave untouched.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], yawed.vertices[n - 24..]);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
+#[test]
+fn baby_piglin_colored_mesh_turns_head_part_not_body() {
+    let base =
+        EntityModelInstance::piglin(721, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, true);
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    // Baby piglin lists the body first (index 0); the head is index 1. Head look
+    // must leave the leading body cube untouched.
+    assert_ne!(resting.vertices, looking.vertices);
+    assert_eq!(resting.vertices[0..24], looking.vertices[0..24]);
+}
+
+#[test]
+fn baby_piglin_brute_colored_mesh_uses_adult_head_index() {
+    // A baby piglin brute renders the adult layout (head at index 0), so head
+    // look must turn the leading head cube, unlike a baby piglin.
+    let base = EntityModelInstance::piglin(
+        722,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PiglinModelFamily::PiglinBrute,
+        true,
+    );
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    assert_ne!(resting.vertices, looking.vertices);
+    assert_ne!(resting.vertices[0..24], looking.vertices[0..24]);
 }
 
 #[test]
