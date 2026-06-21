@@ -629,17 +629,31 @@ fn emit_polar_bear_textured_model(
     let stand_scale = instance.render_state.polar_bear_stand_scale;
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
     let head_index = polar_bear_head_part_index(baby);
     for pass in polar_bear_textured_layer_passes(baby) {
-        if stand_scale == 0.0 && head_resting {
+        if stand_scale == 0.0 && head_resting && legs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {
-            // Vanilla runs `super.setupAnim` (the head look) before the standing
-            // rear adds its deltas on top, so apply the look first.
+            // Vanilla runs `super.setupAnim` (the head look and four-leg swing) before
+            // the standing rear adds its deltas on top (`frontLeg.xRot -= ...` on top
+            // of the swing), so apply the look and leg swing before the standing pose.
             let mut parts = pass.parts.to_vec();
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+                }
+            }
+            if !legs_resting {
+                for index in QUADRUPED_LEG_PART_INDICES {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose =
+                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
             }
             if stand_scale != 0.0 {
                 for (index, part) in polar_bear_standing_part_roles(baby) {

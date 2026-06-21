@@ -275,9 +275,10 @@ When an agent does any of the following, update this file in the same slice:
       through `EntityModelSourceState.walk_animation_position`/`_speed` to the
       renderer `EntityRenderState.walk_animation_pos`/`_speed`, the `QuadrupedModel`
       leg sway consumes them in the generic quadruped path and the dedicated
-      `CowModel`, `PigModel`, `SheepModel`, and `GoatModel` paths (all variants, wool
-      layers, baby layers, the goat's per-baby leg order and horn-visibility layer),
-      and the `HumanoidModel` leg sway consumes them in the zombie family
+      `CowModel`, `PigModel`, `SheepModel`, `GoatModel`, and `PolarBearModel` paths (all
+      variants, wool layers, baby layers, the goat's per-baby leg order and horn layer,
+      the polar bear's standing rear composed on top of the swing), and the
+      `HumanoidModel` leg sway consumes them in the zombie family
       (zombie, husk, drowned, zombie villager) and the skeleton family (skeleton,
       stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
       Stray/Bogged clothing overlay, since the overlay's layer `SkeletonModel` runs the
@@ -430,13 +431,16 @@ When an agent does any of the following, update this file in the same slice:
     pair (resolved from each leg part's `x * z < 0` offset, so the differing leg
     order of the adult and baby layers does not matter). It is consumed by the generic
     `emit_quadruped_model` path and the dedicated `CowModel`, `PigModel`, `SheepModel`,
-    and `GoatModel` paths (both the colored and textured renders, every variant, the
-    wool layers, and the baby layers; `PigModel`/`SheepModel`/`GoatModel` extend
-    `QuadrupedModel`, with `SheepModel.setupAnim` running `super.setupAnim` — the leg
-    swing — before its eat-grass head pose, and `GoatModel.setupAnim` running it before
-    its horn visibility and ramming head tilt, the legs at `[2, 3, 4, 5]` adult /
-    `[0, 1, 2, 3]` baby), so a walking quadruped's legs swing (`0.0` for a standing
-    entity, every non-living entity, and the deferred overrides below). The
+    `GoatModel`, and `PolarBearModel` paths (both the colored and textured renders,
+    every variant, the wool layers, and the baby layers; `PigModel`/`SheepModel`/
+    `GoatModel`/`PolarBearModel` extend `QuadrupedModel`, with `SheepModel.setupAnim`
+    running `super.setupAnim` — the leg swing — before its eat-grass head pose,
+    `GoatModel.setupAnim` running it before its horn visibility and ramming head tilt
+    (legs at `[2, 3, 4, 5]` adult / `[0, 1, 2, 3]` baby), and `PolarBearModel.setupAnim`
+    running it before the standing rear, which then adds `frontLeg.xRot -= standScale *
+    π * 0.45` on top of the swing — applied in that order so the rear composes with the
+    swing), so a walking quadruped's legs swing (`0.0` for a standing entity, every
+    non-living entity, and the deferred overrides below). The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
     consumed by the zombie family (`emit_zombie_model`/`emit_zombie_variant_model` —

@@ -469,6 +469,128 @@ fn polar_bear_standing_mesh_rears_head_body_and_front_legs() {
     );
 }
 
+#[test]
+fn polar_bear_swings_its_legs_when_walking() {
+    // Vanilla `PolarBearModel extends QuadrupedModel`: `setupAnim` runs
+    // `super.setupAnim` (the four-leg swing) before the standing pose. A standing
+    // (not rearing) polar bear is inert; a walking one swings all four legs (head and
+    // body untouched) and lifts its feet. Adult layout: head 0..96, body 96..144,
+    // hind legs 144..192, front legs 192..240.
+    let base = EntityModelInstance::polar_bear(230, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = entity_model_mesh(&[base]);
+    let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+    assert_eq!(rest.vertices, still.vertices, "rest is inert");
+
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(
+        rest.vertices[0..96],
+        walking.vertices[0..96],
+        "head unmoved"
+    );
+    assert_eq!(
+        rest.vertices[96..144],
+        walking.vertices[96..144],
+        "body unmoved"
+    );
+    assert_ne!(
+        rest.vertices[144..192],
+        walking.vertices[144..192],
+        "hind legs swing"
+    );
+    assert_ne!(
+        rest.vertices[192..240],
+        walking.vertices[192..240],
+        "front legs swing"
+    );
+
+    let (rest_min, rest_max) = mesh_extents(&rest);
+    let (walk_min, walk_max) = mesh_extents(&walking);
+    assert!(
+        (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+        "a walking polar bear's feet should lift off the ground"
+    );
+}
+
+#[test]
+fn polar_bear_leg_swing_composes_with_the_standing_rear() {
+    // Vanilla applies the leg swing in `super.setupAnim`, then the standing rear adds
+    // `frontLeg.xRot -= standScale * π * 0.45` on top. So a walking, rearing bear's
+    // front legs differ from a still, rearing bear's (the swing rides on top of the
+    // standing delta), and the hind legs (untouched by the rear) differ too, while
+    // the head and body (no swing) stay identical between the two.
+    let standing = EntityModelInstance::polar_bear_standing(231, [0.0, 64.0, 0.0], 0.0, false, 1.0);
+    let standing_still = entity_model_mesh(&[standing]);
+    let standing_walking = entity_model_mesh(&[standing.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(
+        standing_still.vertices[0..96],
+        standing_walking.vertices[0..96],
+        "standing head unaffected by the swing"
+    );
+    assert_eq!(
+        standing_still.vertices[96..144],
+        standing_walking.vertices[96..144],
+        "standing body unaffected by the swing"
+    );
+    assert_ne!(
+        standing_still.vertices[144..192],
+        standing_walking.vertices[144..192],
+        "standing hind legs still swing"
+    );
+    assert_ne!(
+        standing_still.vertices[192..240],
+        standing_walking.vertices[192..240],
+        "standing front legs swing on top of the rear delta"
+    );
+}
+
+#[test]
+fn polar_bear_textured_mesh_swings_legs_when_walking() {
+    // The real polar bear render path (texture-backed) swings the same
+    // `QuadrupedModel` legs. A standing bear is byte-identical however far the swing
+    // has advanced; a walking adult lifts its feet. Baby legs swing too (asserted via
+    // the vertex difference, as the short legs stay inside the bounding box).
+    let (atlas, _) = build_entity_model_texture_atlas(&polar_bear_texture_images()).unwrap();
+    for (name, base, adult_size) in [
+        (
+            "adult",
+            EntityModelInstance::polar_bear(232, [0.0, 64.0, 0.0], 0.0, false),
+            true,
+        ),
+        (
+            "baby",
+            EntityModelInstance::polar_bear(233, [0.0, 64.0, 0.0], 0.0, true),
+            false,
+        ),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{name}: a standing polar bear is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{name}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{name}: a walking polar bear differs"
+        );
+
+        if adult_size {
+            let (rest_min, rest_max) = textured_mesh_extents(&resting);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "{name}: a walking polar bear's feet should lift off the ground"
+            );
+        }
+    }
+}
+
 fn polar_bear_texture_images() -> Vec<EntityModelTextureImage> {
     polar_bear_entity_texture_refs()
         .iter()
