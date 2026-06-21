@@ -280,9 +280,10 @@ When an agent does any of the following, update this file in the same slice:
       (zombie, husk, drowned, zombie villager) and the skeleton family (skeleton,
       stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
       Stray/Bogged clothing overlay, since the overlay's layer `SkeletonModel` runs the
-      same `setupAnim`). The remaining slices consume them in the other model families'
-      `setupAnim` (the rest of the `HumanoidModel` families — piglin, villager, illager,
-      player — plus the `HumanoidModel` arm swing, birds, fish, etc.).
+      same `setupAnim`) and the piglin family (piglin, piglin brute, zombified piglin,
+      adult and baby). The remaining slices consume them in the other model families'
+      `setupAnim` (the rest of the `HumanoidModel` families — villager, illager, player —
+      plus the `HumanoidModel` arm swing, birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -436,16 +437,21 @@ When an agent does any of the following, update this file in the same slice:
     parched, wither skeleton, bogged sheared/unsheared; the Stray/Bogged clothing
     overlay swings too, since its layer `SkeletonModel` runs the same `setupAnim`).
     Both families inherit the `HumanoidModel` legs unchanged (`SkeletonModel`/
-    `AbstractZombieModel extends HumanoidModel`, overriding only the arms). Deferred:
-    (1) the `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
-    distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash animation states
-    the client does not yet track), so their limb swing is left at rest rather than
-    approximated; (2) the `HumanoidModel` arm swing and the per-subclass arm poses (the
-    zombie held-out arms, skeleton aiming, item/attack/crouch/swim/elytra poses, and the
+    `AbstractZombieModel extends HumanoidModel`, overriding only the arms). The piglin
+    family (`emit_piglin_model` — piglin, piglin brute, zombified piglin, adult and
+    baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
+    `setupAnim` runs `super.setupAnim` (the inherited legs) before swaying only the ears,
+    and `PiglinModel` overrides only the arms. Deferred: (1) the `Camel`/`Creaking`/
+    `Frog` `updateWalkAnimation` overrides use different distance→speed mappings (and
+    `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
+    track), so their limb swing is left at rest rather than approximated; (2) the
+    `HumanoidModel` arm swing and the per-subclass arm/ear poses (the zombie held-out
+    arms, skeleton aiming, the `AbstractPiglinModel` ear sway and `PiglinModel`
+    dance/attack/crossbow/admire poses, item/attack/crouch/swim/elytra poses, and the
     always-on arm bob) are separate animations driven by states the client does not yet
     track; (3) consuming the projected values in the other model families' `setupAnim`
-    (the rest of the `HumanoidModel` families — piglin, villager, illager, player — and
-    birds, fish, etc.) are the next slices.
+    (the rest of the `HumanoidModel` families — villager, illager, player — and birds,
+    fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -765,7 +771,9 @@ When an agent does any of the following, update this file in the same slice:
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
       (the baby layout's index-1 head, and the baby piglin brute's adult-layout
-      head, included)
+      head, included), and the zombie and piglin families also apply the inherited
+      `HumanoidModel` leg swing on their two leg parts (the `AbstractPiglinModel`
+      ear sway and per-subclass arm poses stay deferred)
     - base skeleton, stray, parched, wither skeleton, and bogged entities as
       renderer-owned vanilla 26.1 skeleton-family geometry from
       `SkeletonModel.createBodyLayer()`,

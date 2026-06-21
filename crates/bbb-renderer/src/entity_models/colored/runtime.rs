@@ -445,14 +445,25 @@ fn emit_piglin_model(
     } else {
         &ADULT_PIGLIN_PARTS
     };
-    emit_model_parts_with_color(
-        mesh,
-        &colored_head_look_parts(
+    // `AbstractPiglinModel extends HumanoidModel`: its `setupAnim` runs
+    // `super.setupAnim` (the inherited leg swing) before swaying only the ears, and
+    // `PiglinModel` overrides only the arms (dance/attack/crossbow/admire poses), so
+    // the legs swing exactly as in `HumanoidModel.setupAnim`. The ear sway and arm
+    // poses are deferred (they need `ageInTicks`/arm-pose state the client lacks).
+    let parts = humanoid_limb_swing_parts(
+        colored_head_look_parts(
             parts,
             piglin_head_part_index(baby_layout),
             instance.render_state.head_yaw,
             instance.render_state.head_pitch,
         ),
+        HUMANOID_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+    );
+    emit_model_parts_with_color(
+        mesh,
+        &parts,
         entity_model_root_transform(instance),
         piglin_model_color(family),
     );

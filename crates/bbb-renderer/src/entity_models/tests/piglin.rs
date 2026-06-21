@@ -308,3 +308,78 @@ fn piglin_texture_refs_match_vanilla_renderers() {
         })
     );
 }
+
+#[test]
+fn piglin_family_swings_its_legs_when_walking() {
+    // `AbstractPiglinModel extends HumanoidModel`: its `setupAnim` runs
+    // `super.setupAnim` (the inherited leg swing) then sways only the ears, and
+    // `PiglinModel` overrides only the arms, so the piglin family inherits the
+    // `HumanoidModel` legs unchanged. A standing piglin is inert; a walking one
+    // lifts its feet (a shorter model) and splays its legs along Z, for every
+    // family and the baby layout. The ear sway and arm poses are deferred.
+    let instances: [(&str, EntityModelInstance); 5] = [
+        (
+            "piglin",
+            EntityModelInstance::piglin(
+                90,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::Piglin,
+                false,
+            ),
+        ),
+        (
+            "piglin_baby",
+            EntityModelInstance::piglin(91, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, true),
+        ),
+        (
+            "piglin_brute",
+            EntityModelInstance::piglin(
+                92,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::PiglinBrute,
+                false,
+            ),
+        ),
+        (
+            "zombified_piglin",
+            EntityModelInstance::piglin(
+                93,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::ZombifiedPiglin,
+                false,
+            ),
+        ),
+        (
+            "zombified_piglin_baby",
+            EntityModelInstance::piglin(
+                94,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::ZombifiedPiglin,
+                true,
+            ),
+        ),
+    ];
+    for (name, base) in instances {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{name}: a walking piglin's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "{name}: a walking piglin's legs should splay along Z"
+        );
+    }
+}
