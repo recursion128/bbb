@@ -467,6 +467,22 @@ fn wolf_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     );
 }
 
+#[test]
+fn wolf_textured_meshes_apply_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    for base in [
+        EntityModelInstance::wolf(480, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::wolf(481, [0.0, 64.0, 0.0], 0.0, true),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
+        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+    }
+}
+
 fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
     wolf_entity_texture_refs()
         .iter()

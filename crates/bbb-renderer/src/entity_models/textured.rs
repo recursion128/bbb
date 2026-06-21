@@ -18,6 +18,7 @@ use super::{
         head_look_at_rest, head_look_pose, parched_head_part_index, pig_head_part_index,
         player_head_part_index, polar_bear_standing_part_roles, sheep_head_at_rest,
         sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
+        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -578,10 +579,14 @@ fn emit_wolf_textured_model(
     collar_color: Option<EntityDyeColor>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let transform = entity_model_root_transform(instance);
-    for pass in wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
-    }
+    emit_textured_passes_with_head_look(
+        meshes,
+        wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color),
+        head_first_part_index(),
+        entity_model_root_transform(instance),
+        instance,
+        atlas,
+    );
 }
 
 fn emit_goat_textured_model(
@@ -593,7 +598,21 @@ fn emit_goat_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
-    let visible_parts = goat_visible_textured_model_parts(baby, left_horn, right_horn);
+    let head_index = if baby {
+        BABY_GOAT_HEAD_INDEX
+    } else {
+        ADULT_GOAT_HEAD_INDEX
+    };
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    // All passes share one visibility-filtered part array (like the player), so
+    // the head look is applied once to the head part before emitting every pass.
+    let mut visible_parts = goat_visible_textured_model_parts(baby, left_horn, right_horn);
+    if !head_look_at_rest(head_yaw, head_pitch) {
+        if let Some(head) = visible_parts.get_mut(head_index) {
+            head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+        }
+    }
     for pass in goat_textured_layer_passes(baby) {
         emit_textured_layer_pass_with_parts(
             meshes,

@@ -436,6 +436,22 @@ fn goat_textured_mesh_uses_vanilla_uvs_tints_and_horn_visibility() {
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }
 
+#[test]
+fn goat_textured_meshes_apply_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&goat_texture_images()).unwrap();
+    for base in [
+        EntityModelInstance::goat(440, [0.0, 64.0, 0.0], 0.0, false, true, true),
+        EntityModelInstance::goat(441, [0.0, 64.0, 0.0], 0.0, true, true, true),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
+        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+    }
+}
+
 fn goat_texture_images() -> Vec<EntityModelTextureImage> {
     goat_entity_texture_refs()
         .iter()

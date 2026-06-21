@@ -695,13 +695,14 @@ fn villager_colored_head_look_parts(
 }
 
 fn emit_wolf_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    let parts: &[ModelPartDesc] = if baby {
+        &BABY_WOLF_PARTS
+    } else {
+        &ADULT_WOLF_PARTS
+    };
     emit_model_parts(
         mesh,
-        if baby {
-            &BABY_WOLF_PARTS
-        } else {
-            &ADULT_WOLF_PARTS
-        },
+        &head_first_colored_head_look_parts(parts, instance),
         entity_model_root_transform(instance),
     );
 }
@@ -743,9 +744,12 @@ fn emit_goat_model(
         right_horn_child_index,
         left_horn,
         right_horn,
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn emit_goat_parts(
     mesh: &mut EntityModelMesh,
     parts: &[ModelPartDesc],
@@ -755,9 +759,19 @@ fn emit_goat_parts(
     right_horn_child_index: usize,
     left_horn: bool,
     right_horn: bool,
+    head_yaw: f32,
+    head_pitch: f32,
 ) {
     let head = &parts[head_index];
-    let head_transform = parent_transform * part_pose_transform(head.pose);
+    // Vanilla GoatModel extends QuadrupedModel: the head look (set by the super
+    // setupAnim) survives because the ramming override only fires when the goat
+    // is actively ramming, which is an untracked event animation.
+    let head_pose = if head_look_at_rest(head_yaw, head_pitch) {
+        head.pose
+    } else {
+        head_look_pose(head.pose, head_yaw, head_pitch)
+    };
+    let head_transform = parent_transform * part_pose_transform(head_pose);
     for cube in head.cubes {
         emit_model_cube(mesh, head_transform, *cube);
     }

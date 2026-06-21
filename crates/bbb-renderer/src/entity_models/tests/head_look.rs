@@ -409,6 +409,50 @@ fn standalone_head_first_colored_meshes_apply_head_look() {
 }
 
 #[test]
+fn wolf_colored_meshes_apply_head_look() {
+    for base in [
+        EntityModelInstance::wolf(760, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::wolf(761, [0.0, 64.0, 0.0], 0.0, true),
+    ] {
+        let resting = entity_model_mesh(&[base]);
+        let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+        let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+        // Wolf head pivot is part 0 (head + ears as children), emitted first; the
+        // last part is a leg/tail, which head look must leave untouched.
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
+        let n = resting.vertices.len();
+        assert_eq!(
+            resting.vertices[n - 24..],
+            yawed.vertices[n - 24..],
+            "{:?}",
+            base.kind
+        );
+        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+    }
+}
+
+#[test]
+fn goat_colored_meshes_apply_head_look() {
+    // Adult goat head is part 0 (head index 0); the baby goat head is part 5.
+    for base in [
+        EntityModelInstance::goat(762, [0.0, 64.0, 0.0], 0.0, false, true, true),
+        EntityModelInstance::goat(763, [0.0, 64.0, 0.0], 0.0, true, true, true),
+    ] {
+        let resting = entity_model_mesh(&[base]);
+        let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+        let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+        // The goat emitter only re-poses the head subtree (head + horn children),
+        // so head look turns it without adding or dropping vertices.
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
+        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+    }
+}
+
+#[test]
 fn player_colored_mesh_applies_head_look_to_head_only() {
     for slim in [false, true] {
         let base = EntityModelInstance::player(740, [0.0, 64.0, 0.0], 0.0, slim);

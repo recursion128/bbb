@@ -317,11 +317,14 @@ When an agent does any of the following, update this file in the same slice:
     head-look work: now applied to every part-list humanoid and quadruped,
     including the wide/slim player model, and the standalone head-first models
     (creeper, spider/cave spider, enderman, iron golem, snow golem) — all colored
-    and textured. The remaining head-look gaps are the other head-bearing models
-    (goat, wolf, polar bear, hoglin, ravager, etc.), the fall-flying/swimming
-    `head.xRot` overrides (currently untracked, default upright), and the
-    placeholder raw-cuboid `Humanoid` fallback path (not yet a vanilla-faithful
-    part-list model).
+    and textured; and the goat (colored+textured, horn children rotating with the
+    head) and wolf (colored+textured) `QuadrupedModel`/`EntityModel` head parts.
+    The remaining head-look gaps are the models whose head pitch is animation- or
+    pose-driven rather than look-driven (polar bear's standing-rear `head.xRot`
+    term, hoglin's fixed headbutt `head.xRot`, ravager's neck-nested head), the
+    fall-flying/swimming `head.xRot` overrides (currently untracked, default
+    upright), and the placeholder raw-cuboid `Humanoid` fallback path (not yet a
+    vanilla-faithful part-list model).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -457,9 +460,11 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed base and collar layer passes, vanilla tame-over-angry
       texture selection, metadata-driven tame flag projection, collar dye
       tint projection, anger end-time projection against canonical client game
-      time, and vanilla shared-flags invisibility gating for the collar layer;
-      registry-driven wolf variants beyond the default/pale texture set, armor
-      layer, wet tint, sitting pose, head/tail pose, shake, walk animation,
+      time, vanilla shared-flags invisibility gating for the collar layer, and the
+      vanilla `WolfModel.setupAnim` head-look yaw/pitch on the head part (colored
+      and textured, with the head/ear children rotating with the head); registry-
+      driven wolf variants beyond the default/pale texture set, armor layer, wet
+      tint, sitting pose, head-shake/begging tilt pose, tail pose, walk animation,
       base-model invisibility/outline handling, lighting, overlay, and remaining
       render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
@@ -506,9 +511,11 @@ When an agent does any of the following, update this file in the same slice:
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture
       references, texture-backed base layer pass emission, official PNG atlas
-      upload/bind/sample path, and metadata-driven left/right horn visibility;
-      screaming goat sounds, ramming/lowering-head event animation, walk/head
-      animation, and lighting remain unsupported
+      upload/bind/sample path, metadata-driven left/right horn visibility, and the
+      vanilla `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part
+      (colored and textured, with the horn children rotating with the head);
+      screaming goat sounds, ramming/lowering-head event animation (which would
+      override the head pitch), walk animation, and lighting remain unsupported
     - polar bear entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `PolarBearModel`, `BabyPolarBearModel`, and
       `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /
