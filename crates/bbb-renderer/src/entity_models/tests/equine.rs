@@ -598,3 +598,211 @@ fn undead_horse_texture_refs_match_vanilla_renderer() {
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
 }
+
+#[test]
+fn equine_swings_its_legs_when_walking() {
+    // Vanilla `AbstractEquineModel.setupAnim` swings the four legs with the equine gait
+    // (front amplitude 0.8, hind 0.5). A standing equine is inert; a walking one differs.
+    // The head bob/look and tail walk offsets are deferred. Covers horse (adult + the
+    // re-parented baby layout), donkey/mule (adult + with-chest), and the undead horses.
+    for base in [
+        EntityModelInstance::horse(150, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::horse(151, [0.0, 64.0, 0.0], 0.0, true),
+        EntityModelInstance::donkey(
+            36,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        ),
+        EntityModelInstance::donkey(
+            37,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            true,
+        ),
+        EntityModelInstance::donkey(
+            87,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            false,
+            false,
+        ),
+        EntityModelInstance::undead_horse(
+            116,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            false,
+        ),
+        EntityModelInstance::undead_horse(
+            151,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Zombie,
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(
+            rest.vertices, still.vertices,
+            "{:?} rest is inert",
+            base.kind
+        );
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_eq!(
+            rest.vertices.len(),
+            walking.vertices.len(),
+            "{:?}",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "{:?} walking differs",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn adult_equine_swings_only_its_legs() {
+    // The adult horse/donkey/mule/undead-horse layers list body and neck (and their
+    // children) first, then the four single-cube legs last — so the leg region is the
+    // final 96 vertices (4 cubes). A walking adult equine moves only that region; the
+    // body and head stay put. (The re-parented baby horse layout lists its head last
+    // instead, so this contiguous check is adult-only.)
+    for base in [
+        EntityModelInstance::horse(150, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::donkey(
+            36,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        ),
+        EntityModelInstance::donkey(
+            37,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            true,
+        ),
+        EntityModelInstance::donkey(
+            87,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            false,
+            false,
+        ),
+        EntityModelInstance::undead_horse(
+            116,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        let leg_start = rest.vertices.len() - 96;
+        assert_eq!(
+            rest.vertices[..leg_start],
+            walking.vertices[..leg_start],
+            "{:?} body and head stay put",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices[leg_start..],
+            walking.vertices[leg_start..],
+            "{:?} the four legs swing",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn baby_donkey_leg_swing_is_deferred() {
+    // The baby donkey/mule layer re-parents its legs under the body
+    // (`BabyDonkeyModel.createBabyLayer`), unlike the top-level adult layout, so the
+    // equine leg swing is deferred for it: a walking baby donkey is unchanged for now.
+    for base in [
+        EntityModelInstance::donkey(
+            36,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            true,
+            false,
+        ),
+        EntityModelInstance::donkey(
+            87,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            true,
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_eq!(
+            rest.vertices, walking.vertices,
+            "{:?} baby leg swing deferred",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn equine_leg_swing_pose_matches_vanilla_gait() {
+    // Vanilla AbstractEquineModel.setupAnim (non-standing, land): with legAnim =
+    // cos(pos*0.6662 + π) * speed, leftHind = -0.5*legAnim, rightHind = +0.5*legAnim,
+    // leftFront = +0.8*legAnim, rightFront = -0.8*legAnim. ADULT_HORSE_PARTS lists
+    // left_hind [2], right_hind [3], left_front [4], right_front [5].
+    let pos = 1.3_f32;
+    let speed = 0.7_f32;
+    let leg_anim = (pos * 0.6662 + std::f32::consts::PI).cos() * speed;
+    let left_hind = equine_leg_swing_pose(ADULT_HORSE_PARTS[2].pose, pos, speed);
+    let right_hind = equine_leg_swing_pose(ADULT_HORSE_PARTS[3].pose, pos, speed);
+    let left_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, speed);
+    let right_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[5].pose, pos, speed);
+    assert!(
+        (left_hind.rotation[0] - (-0.5 * leg_anim)).abs() < 1e-6,
+        "left hind"
+    );
+    assert!(
+        (right_hind.rotation[0] - (0.5 * leg_anim)).abs() < 1e-6,
+        "right hind"
+    );
+    assert!(
+        (left_front.rotation[0] - (0.8 * leg_anim)).abs() < 1e-6,
+        "left front"
+    );
+    assert!(
+        (right_front.rotation[0] - (-0.8 * leg_anim)).abs() < 1e-6,
+        "right front"
+    );
+
+    // Only xRot changes; offset and yRot/zRot are preserved.
+    for (posed, index) in [(left_hind, 2), (right_front, 5)] {
+        let base = ADULT_HORSE_PARTS[index].pose;
+        assert_eq!(posed.offset, base.offset);
+        assert_eq!(posed.rotation[1], base.rotation[1]);
+        assert_eq!(posed.rotation[2], base.rotation[2]);
+    }
+
+    // At rest (speed 0) every leg holds its body-layer pose.
+    assert_eq!(
+        equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, 0.0),
+        ADULT_HORSE_PARTS[4].pose
+    );
+}

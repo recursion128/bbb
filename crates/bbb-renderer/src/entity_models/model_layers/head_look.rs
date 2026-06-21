@@ -429,6 +429,37 @@ pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(usize, f32, f32); 
     ]
 }
 
+/// Vanilla `AbstractEquineModel.setupAnim` walking leg swing (the non-standing branch).
+/// With `legAnim = cos(walkAnimationPos * 0.6662 + π) * walkAnimationSpeed`, the front
+/// legs swing `±0.8 * legAnim` and the hind legs `±0.5 * legAnim` — a horse-specific
+/// gait (front amplitude `0.8`, hind `0.5`) rather than the uniform `1.4`
+/// `QuadrupedModel` swing. The signs are front-left `+0.8`, front-right `-0.8`,
+/// hind-left `-0.5`, hind-right `+0.5`: the front legs have `z < 0` and the left legs
+/// `x > 0`, so the sign is `+` when `(x > 0) == (z < 0)`. The base leg pose carries no
+/// `xRot`, so it is set (not accumulated). In water vanilla scales the frequency by
+/// `0.2`; that, the standing/eating/feeding poses, the head bob, and the tail walk
+/// offsets are deferred (they depend on state the client does not yet track).
+pub(in crate::entity_models) fn equine_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let leg_anim =
+        (walk_animation_pos * 0.6662 + std::f32::consts::PI).cos() * walk_animation_speed;
+    let [x, _, z] = base.offset;
+    let front = z < 0.0;
+    let amplitude = if front { 0.8 } else { 0.5 };
+    let sign = if (x > 0.0) == front { 1.0 } else { -1.0 };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            sign * amplitude * leg_anim,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla `SnowGolemModel.setupAnim` upper-body twist: the middle snow ball turns a
 /// quarter of the head yaw, `upperBody.yRot = headYaw * π/180 * 0.25`. The base upper
 /// body carries no rotation, so the twist is set (not accumulated); `xRot`/`zRot` and
