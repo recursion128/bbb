@@ -362,11 +362,13 @@ fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     } else {
         &ADULT_ZOMBIE_PARTS
     };
-    emit_model_parts(
-        mesh,
-        &zombie_colored_head_look_parts(parts, instance, baby),
-        entity_model_root_transform(instance),
+    let parts = humanoid_limb_swing_parts(
+        zombie_colored_head_look_parts(parts, instance, baby),
+        HUMANOID_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_zombie_variant_model(
@@ -407,12 +409,13 @@ fn emit_zombie_variant_model(
             ZOMBIE_VILLAGER_ROBE,
         ),
     };
-    emit_model_parts_with_color(
-        mesh,
-        &zombie_colored_head_look_parts(parts, instance, baby),
-        transform,
-        color,
+    let parts = humanoid_limb_swing_parts(
+        zombie_colored_head_look_parts(parts, instance, baby),
+        HUMANOID_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts_with_color(mesh, &parts, transform, color);
 }
 
 /// Applies the vanilla `HumanoidModel.setupAnim` head look to a zombie-family
@@ -621,6 +624,36 @@ pub(in crate::entity_models) fn quadruped_limb_swing_parts(
     for index in leg_indices {
         if let Some(leg) = owned.get_mut(index) {
             leg.pose = quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+        }
+    }
+    Cow::Owned(owned)
+}
+
+/// Vanilla `HumanoidModel` leg part indices: the head, body, and the two arms
+/// occupy the lower slots, then the right and left legs. Every humanoid body layer
+/// here lists the legs last at `[4, 5]` (the baby layers swap head/body to `1`/`0`
+/// but keep arms at `2`/`3` and legs at `4`/`5`).
+pub(in crate::entity_models) const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
+
+/// Applies the vanilla `HumanoidModel.setupAnim` leg swing
+/// ([`humanoid_leg_swing_pose`]) to a colored layer's two leg parts at
+/// `leg_indices`. Borrows the static parts unchanged at rest
+/// (`walkAnimationSpeed == 0`). The arm swing is left to each humanoid subclass,
+/// which overrides the arms (e.g. the zombie held-out pose), so only the legs —
+/// which subclasses inherit unchanged from `HumanoidModel` — are swung here.
+pub(in crate::entity_models) fn humanoid_limb_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    leg_indices: [usize; 2],
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in leg_indices {
+        if let Some(leg) = owned.get_mut(index) {
+            leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
         }
     }
     Cow::Owned(owned)

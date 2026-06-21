@@ -181,6 +181,37 @@ pub(in crate::entity_models) fn quadruped_leg_swing_pose(
     }
 }
 
+/// Vanilla `HumanoidModel.setupAnim` leg swing for a single leg part: sets
+/// `leg.xRot = cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`.
+/// The right leg (part offset `x < 0`) is in phase (`cos(...)`) and the left leg a
+/// half-cycle out of phase (`cos(... + π)`) — the legs swing oppositely, each
+/// coordinated against the same-side arm. Both legs sit at `z = 0`, so the phase is
+/// resolved from the `x` sign alone (the `QuadrupedModel` `x * z` rule would be
+/// ambiguous). The base leg pose carries no `xRot`, so it is set (not accumulated),
+/// matching the vanilla assignment. `state.speedValue` is `1.0` for every entity
+/// that is not elytra fall-flying (a deferred pose) so it is omitted; the constant
+/// `±0.005` leg yaw/roll splay vanilla always applies is ~0.3° and is omitted too.
+pub(in crate::entity_models) fn humanoid_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let phase = walk_animation_pos * 0.6662;
+    let angle = if base.offset[0] < 0.0 {
+        phase
+    } else {
+        phase + std::f32::consts::PI
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            angle.cos() * 1.4 * walk_animation_speed,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw

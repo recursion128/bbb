@@ -273,12 +273,14 @@ When an agent does any of the following, update this file in the same slice:
       `WalkAnimationState` accumulator is implemented and tracked per living entity
       (see the dedicated bullet below), its lerped `position`/`speed` are projected
       through `EntityModelSourceState.walk_animation_position`/`_speed` to the
-      renderer `EntityRenderState.walk_animation_pos`/`_speed`, and the
-      `QuadrupedModel` leg sway consumes them in the generic quadruped path and the
-      dedicated `CowModel`, `PigModel`, and `SheepModel` paths (both the colored and
-      textured renders, all variants, wool layers, and the baby layers). The remaining
-      slices consume them in the other model families' `setupAnim` (the
-      `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.).
+      renderer `EntityRenderState.walk_animation_pos`/`_speed`, the `QuadrupedModel`
+      leg sway consumes them in the generic quadruped path and the dedicated
+      `CowModel`, `PigModel`, and `SheepModel` paths (all variants, wool layers, baby
+      layers), and the `HumanoidModel` leg sway consumes them in the zombie family
+      (zombie, husk, drowned, zombie villager). The remaining slices consume them in
+      the other model families' `setupAnim` (the rest of the `HumanoidModel` families —
+      skeleton, piglin, villager, illager, player — plus the `HumanoidModel` arm swing,
+      birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -422,13 +424,21 @@ When an agent does any of the following, update this file in the same slice:
     layers, and the baby layers; `PigModel`/`SheepModel` extend `QuadrupedModel`, with
     `SheepModel.setupAnim` running `super.setupAnim` — the leg swing — before its
     eat-grass head pose), so a walking quadruped's legs swing (`0.0` for a standing
-    entity, every non-living entity, and the deferred overrides below). Deferred:
-    (1) the `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
-    distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash animation
-    states the client does not yet track), so their limb swing is left at rest rather
-    than approximated; (2) consuming the projected values in the other model families'
-    `setupAnim` (the `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.) are
-    the next slices.
+    entity, every non-living entity, and the deferred overrides below). The
+    `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
+    `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
+    consumed by the zombie family (`emit_zombie_model`/`emit_zombie_variant_model` —
+    zombie, husk, drowned, zombie villager, adult and baby), which inherit the
+    `HumanoidModel` legs unchanged. Deferred: (1) the `Camel`/`Creaking`/`Frog`
+    `updateWalkAnimation` overrides use different distance→speed mappings (and
+    `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
+    track), so their limb swing is left at rest rather than approximated; (2) the
+    `HumanoidModel` arm swing and the per-subclass arm poses (the zombie held-out arms,
+    skeleton aiming, item/attack/crouch/swim/elytra poses, and the always-on arm bob)
+    are separate animations driven by states the client does not yet track; (3)
+    consuming the projected values in the other model families' `setupAnim` (the rest
+    of the `HumanoidModel` families — skeleton, piglin, villager, illager, player — and
+    birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

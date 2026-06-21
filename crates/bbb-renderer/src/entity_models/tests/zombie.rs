@@ -489,3 +489,116 @@ fn zombie_variant_meshes_use_vanilla_body_layer_geometry() {
     assert_close3(baby_zombie_villager_min, [-0.43750003, 64.001, -0.37500003]);
     assert_close3(baby_zombie_villager_max, [0.43750003, 65.01975, 0.37500003]);
 }
+
+#[test]
+fn humanoid_limb_swing_parts_assign_vanilla_leg_phases_by_side() {
+    use std::borrow::Cow;
+
+    // Vanilla HumanoidModel.setupAnim: rightLeg.xRot = cos(pos * 0.6662) * 1.4 *
+    // speed (in phase), leftLeg.xRot = cos(pos * 0.6662 + π) * 1.4 * speed (out of
+    // phase). The adult zombie lists rightLeg (offset x = -1.9) at index 4 and
+    // leftLeg (x = +1.9) at index 5. With pos = 0, speed = 1: rightLeg = 1.4,
+    // leftLeg = -1.4.
+    let posed = humanoid_limb_swing_parts(
+        Cow::Borrowed(&ADULT_ZOMBIE_PARTS),
+        HUMANOID_LEG_PART_INDICES,
+        0.0,
+        1.0,
+    );
+    assert!(
+        (posed[4].pose.rotation[0] - 1.4).abs() < 1e-5,
+        "right leg in phase: {}",
+        posed[4].pose.rotation[0]
+    );
+    assert!(
+        (posed[5].pose.rotation[0] + 1.4).abs() < 1e-5,
+        "left leg out of phase: {}",
+        posed[5].pose.rotation[0]
+    );
+    // The arms (indices 2, 3) are left to the zombie arm pose, untouched here.
+    assert_eq!(posed[2].pose.rotation, ADULT_ZOMBIE_PARTS[2].pose.rotation);
+    assert_eq!(posed[3].pose.rotation, ADULT_ZOMBIE_PARTS[3].pose.rotation);
+
+    // A general (pos, speed) reproduces the cos(pos * 0.6662 [+ π]) * 1.4 * speed
+    // formula including the 0.6662 frequency factor.
+    let posed = humanoid_limb_swing_parts(
+        Cow::Borrowed(&ADULT_ZOMBIE_PARTS),
+        HUMANOID_LEG_PART_INDICES,
+        1.5,
+        0.5,
+    );
+    let phase = 1.5_f32 * 0.6662;
+    assert!((posed[4].pose.rotation[0] - phase.cos() * 1.4 * 0.5).abs() < 1e-5);
+    assert!(
+        (posed[5].pose.rotation[0] - (phase + std::f32::consts::PI).cos() * 1.4 * 0.5).abs() < 1e-5
+    );
+}
+
+#[test]
+fn zombie_family_swings_its_legs_when_walking() {
+    // Vanilla HumanoidModel.setupAnim swings the legs `cos(pos * 0.6662 [+ π]) * 1.4
+    // * speed` (the right leg in phase, the left out of phase) before the zombie arm
+    // pose runs, and zombies inherit those legs unchanged. A standing zombie is
+    // inert, a walking one lifts its feet (a shorter model) and splays its legs
+    // forward/back (a deeper footprint). The held-out zombie arm pose is a separate
+    // deferred feature, so the arms stay put.
+    let instances: [(&str, EntityModelInstance); 5] = [
+        (
+            "zombie",
+            EntityModelInstance::zombie(60, [0.0, 64.0, 0.0], 0.0, false),
+        ),
+        (
+            "zombie_baby",
+            EntityModelInstance::zombie(61, [0.0, 64.0, 0.0], 0.0, true),
+        ),
+        (
+            "husk",
+            EntityModelInstance::zombie_variant(
+                62,
+                [0.0, 64.0, 0.0],
+                0.0,
+                ZombieVariantModelFamily::Husk,
+                false,
+            ),
+        ),
+        (
+            "drowned",
+            EntityModelInstance::zombie_variant(
+                63,
+                [0.0, 64.0, 0.0],
+                0.0,
+                ZombieVariantModelFamily::Drowned,
+                false,
+            ),
+        ),
+        (
+            "zombie_villager",
+            EntityModelInstance::zombie_variant(
+                64,
+                [0.0, 64.0, 0.0],
+                0.0,
+                ZombieVariantModelFamily::ZombieVillager,
+                false,
+            ),
+        ),
+    ];
+    for (name, base) in instances {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{name}: a walking zombie's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "{name}: a walking zombie's legs should splay along Z"
+        );
+    }
+}
