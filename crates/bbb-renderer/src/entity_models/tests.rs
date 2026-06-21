@@ -10,6 +10,7 @@ mod enderman;
 mod equine;
 mod goat;
 mod golem;
+mod head_look;
 mod hoglin;
 mod illager;
 mod llama;

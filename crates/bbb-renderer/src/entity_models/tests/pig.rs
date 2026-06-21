@@ -460,6 +460,27 @@ fn pig_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     assert_close3([min[1], max[1], max[2] - min[2]], [64.001, 65.001, 1.5]);
 }
 
+#[test]
+fn pig_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
+    let base = EntityModelInstance::pig(
+        504,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PigModelVariant::Temperate,
+        false,
+    );
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let yawed = entity_model_textured_mesh(&[base.with_head_look(55.0, 0.0)], &atlas);
+    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -25.0)], &atlas);
+
+    // Head look turns the textured head part without adding or dropping vertices.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    assert_ne!(resting.vertices, pitched.vertices);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
 fn pig_texture_images() -> Vec<EntityModelTextureImage> {
     pig_entity_texture_refs()
         .iter()

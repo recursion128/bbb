@@ -14,8 +14,9 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, polar_bear_standing_part_roles, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose,
+        apply_polar_bear_standing_pose, cow_head_part_index, head_look_at_rest,
+        pig_head_part_index, polar_bear_standing_part_roles, quadruped_head_look_pose,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -246,10 +247,13 @@ fn emit_pig_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let transform = entity_model_root_transform(instance);
-    for pass in pig_textured_layer_passes(variant, baby) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
-    }
+    emit_quadruped_textured_with_head_look(
+        meshes,
+        pig_textured_layer_passes(variant, baby),
+        pig_head_part_index(baby),
+        instance,
+        atlas,
+    );
 }
 
 fn emit_cow_textured_model(
@@ -259,9 +263,40 @@ fn emit_cow_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    emit_quadruped_textured_with_head_look(
+        meshes,
+        cow_textured_layer_passes(variant, baby),
+        cow_head_part_index(baby),
+        instance,
+        atlas,
+    );
+}
+
+/// Emits a plain textured quadruped (pig/cow), applying the vanilla
+/// `QuadrupedModel.setupAnim` head look to each layer pass's head part. The
+/// static parts are reused unchanged while the head is level and aligned with
+/// the body.
+fn emit_quadruped_textured_with_head_look(
+    meshes: &mut EntityModelTexturedMeshes,
+    passes: Vec<EntityModelLayerPass>,
+    head_index: usize,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
     let transform = entity_model_root_transform(instance);
-    for pass in cow_textured_layer_passes(variant, baby) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    for pass in passes {
+        if head_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = quadruped_head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
     }
 }
 

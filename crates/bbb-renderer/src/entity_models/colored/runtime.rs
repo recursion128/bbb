@@ -491,9 +491,33 @@ fn emit_cow_model(
 ) {
     emit_model_parts(
         mesh,
-        cow_model_parts(variant, baby),
+        &quadruped_colored_head_look_parts(
+            cow_model_parts(variant, baby),
+            cow_head_part_index(baby),
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        ),
         entity_model_root_transform(instance),
     );
+}
+
+/// Applies the vanilla `QuadrupedModel.setupAnim` head look to a plain colored
+/// quadruped layer's head part, borrowing the static parts unchanged while the
+/// head is level and aligned with the body.
+fn quadruped_colored_head_look_parts(
+    parts: &[ModelPartDesc],
+    head_index: usize,
+    head_yaw: f32,
+    head_pitch: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if head_look_at_rest(head_yaw, head_pitch) {
+        return Cow::Borrowed(parts);
+    }
+    let mut parts = parts.to_vec();
+    if let Some(head) = parts.get_mut(head_index) {
+        head.pose = quadruped_head_look_pose(head.pose, head_yaw, head_pitch);
+    }
+    Cow::Owned(parts)
 }
 
 fn emit_sheep_model(
@@ -832,7 +856,12 @@ fn emit_pig_model(
 ) {
     emit_model_parts(
         mesh,
-        pig_model_parts(variant, baby),
+        &quadruped_colored_head_look_parts(
+            pig_model_parts(variant, baby),
+            pig_head_part_index(baby),
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        ),
         entity_model_root_transform(instance),
     );
 }

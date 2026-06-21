@@ -300,14 +300,16 @@ When an agent does any of the following, update this file in the same slice:
     canonical `Entity.yHeadRot`/`getXRot` flow through `EntityModelSourceState`,
     the native scene derives `LivingEntityRenderState.yRot` =
     `Mth.wrapDegrees(yHeadRot - bodyRot)` (net head yaw) and `xRot` (head pitch),
-    and `EntityRenderState.head_yaw`/`head_pitch` carry them in degrees. The sheep
-    `QuadrupedModel` is the first consumer: its head part applies
-    `head.yRot = yRot * π/180` (`QuadrupedModel.setupAnim`) and
+    and `EntityRenderState.head_yaw`/`head_pitch` carry them in degrees. The
+    `QuadrupedModel` family consumes it in both the colored and textured paths:
+    pig and cow apply the plain `QuadrupedModel.setupAnim` look (`head.xRot =
+    xRot * π/180`, `head.yRot = yRot * π/180`) via the shared
+    `quadruped_head_look_pose`, and the sheep additionally overrides
     `head.xRot = headEatAngleScale`, whose non-eating branch is exactly the look
     pitch `getXRot * π/180` (`Sheep.getHeadEatAngleScale`), composing with the
     eat-grass dip. Remaining head-look work: apply the same projection to the
-    other model families' head parts (each model names its own head part, so this
-    is a per-family grind).
+    non-quadruped model families' head parts (humanoid, etc.; each model names its
+    own head part, so this is a per-family grind).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -401,9 +403,10 @@ When an agent does any of the following, update this file in the same slice:
       order, official adult/baby variant texture references, vanilla fallback
       to temperate when no variant metadata is present, texture-backed base
       layer pass emission, adult/baby/cold model-layer selection, and official
-      PNG atlas upload/bind/sample path; saddle equipment layer,
-      boost/ridden/leg/head animation, variant sound metadata, custom/datapack
-      pig variant asset decoding, and lighting remain unsupported
+      PNG atlas upload/bind/sample path, and the vanilla
+      `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part; saddle
+      equipment layer, boost/ridden/leg animation, variant sound metadata,
+      custom/datapack pig variant asset decoding, and lighting remain unsupported
     - cow entities as renderer-owned vanilla 26.1 `CowModel`, `WarmCowModel`,
       `ColdCowModel`, and `BabyCowModel` body-layer geometry from `CowModel`,
       `WarmCowModel`, `ColdCowModel`, `BabyCowModel`, `CowRenderer`,
@@ -413,10 +416,11 @@ When an agent does any of the following, update this file in the same slice:
       server-sent `minecraft:cow_variant` registry order, official adult/baby
       variant texture references, and vanilla fallback to temperate when no
       variant metadata is present, texture-backed base layer pass emission,
-      adult/baby/warm/cold model-layer selection, and official PNG atlas
-      upload/bind/sample path; variant sound metadata, custom/datapack cow
-      variant asset decoding, walk/head animation, and lighting remain
-      unsupported
+      adult/baby/warm/cold model-layer selection, official PNG atlas
+      upload/bind/sample path, and the vanilla `QuadrupedModel.setupAnim`
+      head-look yaw/pitch on the head part; variant sound metadata,
+      custom/datapack cow variant asset decoding, walk animation, and lighting
+      remain unsupported
     - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
       official base/wool/undercoat texture references, texture-backed base,
