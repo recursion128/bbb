@@ -17,12 +17,12 @@ use super::{
     model_layers::{
         apply_polar_bear_standing_pose, cow_head_part_index, head_first_part_index,
         head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_head_part_index, parched_head_part_index, pig_head_part_index,
+        hoglin_head_part_index, limb_swing_at_rest, parched_head_part_index, pig_head_part_index,
         player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
-        ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
-        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
-        RAVAGER_TEXTURED_PARTS,
+        quadruped_leg_swing_pose, ravager_head_child_index, ravager_neck_part_index,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
+        RAVAGER_TEXTURED_NECK_CHILDREN, RAVAGER_TEXTURED_PARTS,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -263,6 +263,12 @@ fn emit_pig_textured_model(
     );
 }
 
+/// `QuadrupedModel` leg part indices in the cow body layer (head/body occupy slots
+/// `0`/`1`). [`quadruped_leg_swing_pose`] resolves each leg's phase from its offset,
+/// so the differing leg order of the adult (hind-first) and baby (front-first)
+/// layers does not matter.
+const COW_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
 fn emit_cow_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -270,14 +276,59 @@ fn emit_cow_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
+    emit_quadruped_textured_passes(
         meshes,
         cow_textured_layer_passes(variant, baby),
         cow_head_part_index(baby),
+        COW_LEG_PART_INDICES,
         entity_model_root_transform(instance),
         instance,
         atlas,
     );
+}
+
+/// Emits a quadruped's textured layer passes, applying the vanilla
+/// `QuadrupedModel.setupAnim` head look ([`head_look_pose`]) to the head part at
+/// `head_index` and the leg swing ([`quadruped_leg_swing_pose`]) to the four leg
+/// parts at `leg_indices`. The static parts are reused unchanged while both the
+/// head is level/aligned and the legs are at rest.
+#[allow(clippy::too_many_arguments)]
+fn emit_quadruped_textured_passes(
+    meshes: &mut EntityModelTexturedMeshes,
+    passes: Vec<EntityModelLayerPass>,
+    head_index: usize,
+    leg_indices: [usize; 4],
+    transform: Mat4,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in passes {
+        if head_resting && legs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+                }
+            }
+            if !legs_resting {
+                for index in leg_indices {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose =
+                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
 }
 
 /// Emits textured layer passes, applying the vanilla `QuadrupedModel`/

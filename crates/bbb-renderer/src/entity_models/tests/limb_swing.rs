@@ -1,5 +1,6 @@
 use super::*;
 
+use std::borrow::Cow;
 use std::f32::consts::PI;
 
 #[test]
@@ -70,4 +71,103 @@ fn limb_swing_lifts_quadruped_feet_off_the_ground() {
         walk_height < rest_height - 0.3,
         "walking height {walk_height} should be well under standing height {rest_height}"
     );
+}
+
+#[test]
+fn quadruped_limb_swing_parts_assign_vanilla_leg_phases_by_offset() {
+    // The adult cow body layer lists its legs hind-first: indices [2, 3, 4, 5] are
+    // [rightHind, leftHind, rightFront, leftFront] with offsets
+    // [-4,_,7], [4,_,7], [-4,_,-5], [4,_,-5]. With walkAnimationPos = 0 and
+    // walkAnimationSpeed = 1, vanilla sets rightHind/leftFront to cos(0)*1.4 = 1.4
+    // and leftHind/rightFront to cos(π)*1.4 = -1.4.
+    let posed = quadruped_limb_swing_parts(
+        Cow::Borrowed(&ADULT_COW_PARTS),
+        QUADRUPED_LEG_PART_INDICES,
+        0.0,
+        1.0,
+    );
+    assert!(
+        (posed[2].pose.rotation[0] - 1.4).abs() < 1e-5,
+        "right hind in phase"
+    );
+    assert!(
+        (posed[3].pose.rotation[0] + 1.4).abs() < 1e-5,
+        "left hind out of phase"
+    );
+    assert!(
+        (posed[4].pose.rotation[0] + 1.4).abs() < 1e-5,
+        "right front out of phase"
+    );
+    assert!(
+        (posed[5].pose.rotation[0] - 1.4).abs() < 1e-5,
+        "left front in phase"
+    );
+    // The head and body parts are untouched by the leg swing.
+    assert_eq!(posed[0].pose.rotation, [0.0, 0.0, 0.0]);
+    assert_eq!(posed[1].pose.rotation, ADULT_COW_PARTS[1].pose.rotation);
+
+    // The baby cow body layer lists its legs front-first: indices [2, 3, 4, 5] are
+    // [rightFront, leftFront, rightHind, leftHind]. The offset-based phase keeps the
+    // diagonal pairing correct despite the different ordering.
+    let posed = quadruped_limb_swing_parts(
+        Cow::Borrowed(&BABY_COW_PARTS),
+        QUADRUPED_LEG_PART_INDICES,
+        0.0,
+        1.0,
+    );
+    assert!(
+        (posed[2].pose.rotation[0] + 1.4).abs() < 1e-5,
+        "baby right front out of phase"
+    );
+    assert!(
+        (posed[3].pose.rotation[0] - 1.4).abs() < 1e-5,
+        "baby left front in phase"
+    );
+    assert!(
+        (posed[4].pose.rotation[0] - 1.4).abs() < 1e-5,
+        "baby right hind in phase"
+    );
+    assert!(
+        (posed[5].pose.rotation[0] + 1.4).abs() < 1e-5,
+        "baby left hind out of phase"
+    );
+}
+
+#[test]
+fn quadruped_limb_swing_parts_borrow_unchanged_at_rest() {
+    // walkAnimationSpeed == 0 leaves the static parts untouched (a borrow, no clone).
+    let posed = quadruped_limb_swing_parts(
+        Cow::Borrowed(&ADULT_COW_PARTS),
+        QUADRUPED_LEG_PART_INDICES,
+        2.5,
+        0.0,
+    );
+    assert!(matches!(posed, Cow::Borrowed(_)));
+}
+
+#[test]
+fn dedicated_cow_model_swings_its_legs_when_walking() {
+    // The dedicated CowModel path (EntityModelKind::Cow, used by real cows with
+    // their variants/horns) consumes the projected limb swing: a standing cow is
+    // byte-identical with or without a swing position, and a walking cow's feet lift
+    // (its lowest point rises), shortening the model.
+    for baby in [false, true] {
+        let base = EntityModelInstance::cow(5, [0.0, 64.0, 0.0], 0.0, baby);
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "baby={baby}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "baby={baby}: walking differs"
+        );
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.1,
+            "baby={baby}: walking cow's feet should lift off the ground"
+        );
+    }
 }

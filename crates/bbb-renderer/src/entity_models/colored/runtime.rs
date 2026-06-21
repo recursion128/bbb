@@ -576,22 +576,54 @@ fn skeleton_colored_head_look_parts(
     )
 }
 
+/// Vanilla `QuadrupedModel` leg part indices in the cow body layer: head and body
+/// occupy slots `0` and `1`, then the four legs. The cow variants order the legs
+/// differently (the adult layers list them hind-first, the baby layer front-first),
+/// so [`quadruped_limb_swing_parts`] resolves each leg's phase from its offset
+/// rather than its slot.
+pub(in crate::entity_models) const QUADRUPED_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
 fn emit_cow_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
     variant: CowModelVariant,
     baby: bool,
 ) {
-    emit_model_parts(
-        mesh,
-        &colored_head_look_parts(
-            cow_model_parts(variant, baby),
-            cow_head_part_index(baby),
-            instance.render_state.head_yaw,
-            instance.render_state.head_pitch,
-        ),
-        entity_model_root_transform(instance),
+    let parts = colored_head_look_parts(
+        cow_model_parts(variant, baby),
+        cow_head_part_index(baby),
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
     );
+    let parts = quadruped_limb_swing_parts(
+        parts,
+        QUADRUPED_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+    );
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+}
+
+/// Applies the vanilla `QuadrupedModel.setupAnim` leg swing
+/// ([`quadruped_leg_swing_pose`]) to a colored layer's four leg parts at
+/// `leg_indices`. Borrows the static parts unchanged at rest
+/// (`walkAnimationSpeed == 0`).
+pub(in crate::entity_models) fn quadruped_limb_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    leg_indices: [usize; 4],
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in leg_indices {
+        if let Some(leg) = owned.get_mut(index) {
+            leg.pose = quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+        }
+    }
+    Cow::Owned(owned)
 }
 
 /// Applies the vanilla `QuadrupedModel`/`HumanoidModel.setupAnim` head look to a

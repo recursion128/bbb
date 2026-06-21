@@ -8,7 +8,9 @@ pub(super) use runtime::entity_model_colored_runtime_mesh;
 #[cfg(test)]
 pub(super) use runtime::entity_model_mesh;
 #[cfg(test)]
-pub(super) use runtime::quadruped_leg_x_rotations;
+pub(super) use runtime::{
+    quadruped_leg_x_rotations, quadruped_limb_swing_parts, QUADRUPED_LEG_PART_INDICES,
+};
 #[cfg(test)]
 pub(super) use selection::{chicken_model_parts, cow_model_parts, pig_model_parts};
 pub(super) use transforms::{

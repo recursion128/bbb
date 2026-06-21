@@ -592,6 +592,47 @@ fn cow_textured_mesh_applies_head_look() {
     assert_ne!(yawed.vertices, pitched.vertices);
 }
 
+#[test]
+fn cow_textured_mesh_swings_legs_when_walking() {
+    // The real cow render path (textured) consumes the projected limb swing via the
+    // vanilla QuadrupedModel.setupAnim leg rotation. A standing cow is byte-identical
+    // however far the swing position has advanced, and a walking cow's feet lift off
+    // the ground (its lowest point rises), for every variant and the baby layer.
+    let (atlas, _) = build_entity_model_texture_atlas(&cow_texture_images()).unwrap();
+    for (variant, baby) in [
+        (CowModelVariant::Temperate, false),
+        (CowModelVariant::Warm, false),
+        (CowModelVariant::Cold, false),
+        (CowModelVariant::Temperate, true),
+    ] {
+        let base = EntityModelInstance::cow_variant(605, [0.0, 64.0, 0.0], 0.0, variant, baby);
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{variant:?} baby={baby}: a standing cow is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{variant:?} baby={baby}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{variant:?} baby={baby}: a walking cow differs"
+        );
+
+        let (rest_min, rest_max) = textured_mesh_extents(&resting);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.1,
+            "{variant:?} baby={baby}: a walking cow's feet should lift off the ground"
+        );
+    }
+}
+
 fn cow_texture_images() -> Vec<EntityModelTextureImage> {
     cow_entity_texture_refs()
         .iter()

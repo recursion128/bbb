@@ -16,7 +16,8 @@ use colored::{
 #[cfg(test)]
 use colored::{
     chicken_model_parts, cow_model_parts, death_fall_factor, entity_flip_degrees,
-    entity_model_mesh, pig_model_parts, quadruped_leg_x_rotations,
+    entity_model_mesh, pig_model_parts, quadruped_leg_x_rotations, quadruped_limb_swing_parts,
+    QUADRUPED_LEG_PART_INDICES,
 };
 use geometry::*;
 #[cfg(test)]

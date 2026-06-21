@@ -274,9 +274,10 @@ When an agent does any of the following, update this file in the same slice:
       (see the dedicated bullet below), its lerped `position`/`speed` are projected
       through `EntityModelSourceState.walk_animation_position`/`_speed` to the
       renderer `EntityRenderState.walk_animation_pos`/`_speed`, and the
-      `QuadrupedModel` leg sway consumes them (the generic quadruped path). The
-      remaining slices consume them in the other model families' `setupAnim`
-      (dedicated `CowModel`/`PigModel`/`SheepModel` static-part paths, the
+      `QuadrupedModel` leg sway consumes them in the generic quadruped path and the
+      dedicated `CowModel` path (both the colored and textured cow renders, all
+      variants and the baby layer). The remaining slices consume them in the other
+      model families' `setupAnim` (the `PigModel`/`SheepModel` static-part paths, the
       `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
@@ -410,17 +411,20 @@ When an agent does any of the following, update this file in the same slice:
     `speed(partialTick)` are projected onto
     `EntityModelSourceState.walk_animation_position` / `walk_animation_speed`, and the
     native projection carries them to `EntityRenderState.walk_animation_pos` /
-    `walk_animation_speed`. Renderer side: the generic `emit_quadruped_model` applies
-    the vanilla `QuadrupedModel.setupAnim` leg sway — each leg's `xRot =
+    `walk_animation_speed`. Renderer side: the shared `quadruped_leg_swing_pose`
+    applies the vanilla `QuadrupedModel.setupAnim` leg sway — each leg's `xRot =
     cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`, with the
     hind-left/front-right pair a half-cycle out of phase with the hind-right/front-left
-    pair — so a walking quadruped's legs swing (`0.0` for a standing entity, every
-    non-living entity, and the deferred overrides below). Deferred: (1) the
-    `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
-    distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash animation
-    states the client does not yet track), so their limb swing is left at rest rather
-    than approximated; (2) consuming the projected values in the other model families'
-    `setupAnim` (the dedicated `CowModel`/`PigModel`/`SheepModel` static-part paths,
+    pair (resolved from each leg part's `x * z < 0` offset, so the differing leg
+    order of the adult and baby layers does not matter). It is consumed by the generic
+    `emit_quadruped_model` path and the dedicated `CowModel` path (both the colored and
+    textured cow renders, every variant and the baby layer), so a walking quadruped's
+    legs swing (`0.0` for a standing entity, every non-living entity, and the deferred
+    overrides below). Deferred: (1) the `Camel`/`Creaking`/`Frog` `updateWalkAnimation`
+    overrides use different distance→speed mappings (and `Camel`/`Frog` gate on
+    pose/jump/dash animation states the client does not yet track), so their limb swing
+    is left at rest rather than approximated; (2) consuming the projected values in the
+    other model families' `setupAnim` (the `PigModel`/`SheepModel` static-part paths,
     the `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.) are the next
     slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.

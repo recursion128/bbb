@@ -143,6 +143,44 @@ pub(in crate::entity_models) fn head_look_yaw_pose(base: PartPose, head_yaw_deg:
     }
 }
 
+/// True when the limb swing is at rest (`walkAnimationSpeed == 0`), so callers can
+/// borrow the static leg parts unchanged instead of cloning to apply
+/// [`quadruped_leg_swing_pose`].
+pub(in crate::entity_models) fn limb_swing_at_rest(walk_animation_speed: f32) -> bool {
+    walk_animation_speed == 0.0
+}
+
+/// Vanilla `QuadrupedModel.setupAnim` leg swing for a single leg part: sets
+/// `leg.xRot = cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`.
+/// Vanilla puts the right-hind and left-front legs in phase (`cos(...)`) and the
+/// left-hind and right-front legs a half-cycle out of phase (`cos(... + π)`). That
+/// diagonal pairing is exactly the legs whose part offset satisfies `x * z < 0`
+/// (right is `x < 0`, hind is `z > 0`), so the phase is resolved from the leg's
+/// offset and is correct whatever order a model lists its legs in. The base leg
+/// pose carries no `xRot`, so it is set (not accumulated), matching the vanilla
+/// assignment.
+pub(in crate::entity_models) fn quadruped_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let phase = walk_animation_pos * 0.6662;
+    let [x, _, z] = base.offset;
+    let angle = if x * z < 0.0 {
+        phase
+    } else {
+        phase + std::f32::consts::PI
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            angle.cos() * 1.4 * walk_animation_speed,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw
