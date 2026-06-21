@@ -301,15 +301,18 @@ When an agent does any of the following, update this file in the same slice:
     the native scene derives `LivingEntityRenderState.yRot` =
     `Mth.wrapDegrees(yHeadRot - bodyRot)` (net head yaw) and `xRot` (head pitch),
     and `EntityRenderState.head_yaw`/`head_pitch` carry them in degrees. The
-    `QuadrupedModel` family consumes it in both the colored and textured paths:
-    pig and cow apply the plain `QuadrupedModel.setupAnim` look (`head.xRot =
-    xRot * π/180`, `head.yRot = yRot * π/180`) via the shared
-    `quadruped_head_look_pose`, and the sheep additionally overrides
-    `head.xRot = headEatAngleScale`, whose non-eating branch is exactly the look
-    pitch `getXRot * π/180` (`Sheep.getHeadEatAngleScale`), composing with the
-    eat-grass dip. Remaining head-look work: apply the same projection to the
-    non-quadruped model families' head parts (humanoid, etc.; each model names its
-    own head part, so this is a per-family grind).
+    shared `head_look_pose` applies the look that both `QuadrupedModel.setupAnim`
+    and `HumanoidModel.setupAnim` set (`head.xRot = xRot * π/180`, `head.yRot =
+    yRot * π/180`). Consumers so far: the `QuadrupedModel` family — pig and cow in
+    both colored and textured paths, and the sheep, which additionally overrides
+    `head.xRot = headEatAngleScale` (its non-eating branch is exactly the look
+    pitch `getXRot * π/180`, `Sheep.getHeadEatAngleScale`) composing with the
+    eat-grass dip; and the `HumanoidModel` zombie family (zombie, husk, drowned,
+    zombie villager) in the colored path. Remaining head-look work: apply the same
+    projection to the other humanoid families' head parts (skeleton, player,
+    villager, illager, piglin, etc.; each model names its own head part, so this
+    is a per-family grind), and the fall-flying/swimming `head.xRot` overrides
+    (currently untracked, default upright).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -555,8 +558,11 @@ When an agent does any of the following, update this file in the same slice:
       rotation, trident throw arm pose, zombie villager type/profession/level
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
-      layers, held items, attack/head/walk/dance/crossbow/admiring/zombie-arm
-      animation, and GPU texture binding remain unsupported
+      layers, held items, attack/walk/dance/crossbow/admiring/zombie-arm
+      animation, and GPU texture binding remain unsupported; the zombie, husk,
+      drowned, and zombie-villager head parts now apply the vanilla
+      `HumanoidModel.setupAnim` head-look yaw/pitch, but the
+      piglin/piglin-brute/zombified-piglin head look is still unsupported
     - base skeleton, stray, parched, wither skeleton, and bogged entities as
       renderer-owned vanilla 26.1 skeleton-family geometry from
       `SkeletonModel.createBodyLayer()`,

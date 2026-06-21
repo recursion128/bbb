@@ -351,13 +351,14 @@ fn emit_humanoid_model(
 }
 
 fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    let parts: &[ModelPartDesc] = if baby {
+        &BABY_ZOMBIE_PARTS
+    } else {
+        &ADULT_ZOMBIE_PARTS
+    };
     emit_model_parts(
         mesh,
-        if baby {
-            &BABY_ZOMBIE_PARTS
-        } else {
-            &ADULT_ZOMBIE_PARTS
-        },
+        &zombie_colored_head_look_parts(parts, instance, baby),
         entity_model_root_transform(instance),
     );
 }
@@ -368,44 +369,59 @@ fn emit_zombie_variant_model(
     family: ZombieVariantModelFamily,
     baby: bool,
 ) {
-    match (family, baby) {
-        (ZombieVariantModelFamily::Husk, false) => emit_model_parts_with_color(
-            mesh,
+    let (parts, transform, color): (&[ModelPartDesc], _, _) = match (family, baby) {
+        (ZombieVariantModelFamily::Husk, false) => (
             &ADULT_ZOMBIE_PARTS,
             mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE),
             HUSK_TAN,
         ),
-        (ZombieVariantModelFamily::Husk, true) => emit_model_parts_with_color(
-            mesh,
+        (ZombieVariantModelFamily::Husk, true) => (
             &BABY_ZOMBIE_PARTS,
             entity_model_root_transform(instance),
             HUSK_TAN,
         ),
-        (ZombieVariantModelFamily::Drowned, false) => emit_model_parts_with_color(
-            mesh,
+        (ZombieVariantModelFamily::Drowned, false) => (
             &ADULT_ZOMBIE_PARTS,
             entity_model_root_transform(instance),
             DROWNED_BLUE,
         ),
-        (ZombieVariantModelFamily::Drowned, true) => emit_model_parts_with_color(
-            mesh,
+        (ZombieVariantModelFamily::Drowned, true) => (
             &BABY_ZOMBIE_PARTS,
             entity_model_root_transform(instance),
             DROWNED_BLUE,
         ),
-        (ZombieVariantModelFamily::ZombieVillager, false) => emit_model_parts_with_color(
-            mesh,
+        (ZombieVariantModelFamily::ZombieVillager, false) => (
             &ADULT_ZOMBIE_VILLAGER_PARTS,
             entity_model_root_transform(instance),
             ZOMBIE_VILLAGER_ROBE,
         ),
-        (ZombieVariantModelFamily::ZombieVillager, true) => emit_model_parts_with_color(
-            mesh,
+        (ZombieVariantModelFamily::ZombieVillager, true) => (
             &BABY_ZOMBIE_VILLAGER_PARTS,
             entity_model_root_transform(instance),
             ZOMBIE_VILLAGER_ROBE,
         ),
-    }
+    };
+    emit_model_parts_with_color(
+        mesh,
+        &zombie_colored_head_look_parts(parts, instance, baby),
+        transform,
+        color,
+    );
+}
+
+/// Applies the vanilla `HumanoidModel.setupAnim` head look to a zombie-family
+/// layer's head part (index `baby ? 1 : 0`).
+fn zombie_colored_head_look_parts(
+    parts: &[ModelPartDesc],
+    instance: EntityModelInstance,
+    baby: bool,
+) -> Cow<'_, [ModelPartDesc]> {
+    colored_head_look_parts(
+        parts,
+        zombie_head_part_index(baby),
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    )
 }
 
 fn emit_piglin_model(
@@ -491,7 +507,7 @@ fn emit_cow_model(
 ) {
     emit_model_parts(
         mesh,
-        &quadruped_colored_head_look_parts(
+        &colored_head_look_parts(
             cow_model_parts(variant, baby),
             cow_head_part_index(baby),
             instance.render_state.head_yaw,
@@ -501,10 +517,10 @@ fn emit_cow_model(
     );
 }
 
-/// Applies the vanilla `QuadrupedModel.setupAnim` head look to a plain colored
-/// quadruped layer's head part, borrowing the static parts unchanged while the
+/// Applies the vanilla `QuadrupedModel`/`HumanoidModel.setupAnim` head look to a
+/// colored layer's head part, borrowing the static parts unchanged while the
 /// head is level and aligned with the body.
-fn quadruped_colored_head_look_parts(
+fn colored_head_look_parts(
     parts: &[ModelPartDesc],
     head_index: usize,
     head_yaw: f32,
@@ -515,7 +531,7 @@ fn quadruped_colored_head_look_parts(
     }
     let mut parts = parts.to_vec();
     if let Some(head) = parts.get_mut(head_index) {
-        head.pose = quadruped_head_look_pose(head.pose, head_yaw, head_pitch);
+        head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
     }
     Cow::Owned(parts)
 }
@@ -856,7 +872,7 @@ fn emit_pig_model(
 ) {
     emit_model_parts(
         mesh,
-        &quadruped_colored_head_look_parts(
+        &colored_head_look_parts(
             pig_model_parts(variant, baby),
             pig_head_part_index(baby),
             instance.render_state.head_yaw,

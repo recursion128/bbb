@@ -14,9 +14,9 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, cow_head_part_index, head_look_at_rest,
-        pig_head_part_index, polar_bear_standing_part_roles, quadruped_head_look_pose,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
+        apply_polar_bear_standing_pose, cow_head_part_index, head_look_at_rest, head_look_pose,
+        pig_head_part_index, polar_bear_standing_part_roles, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -293,7 +293,7 @@ fn emit_quadruped_textured_with_head_look(
         } else {
             let mut parts = pass.parts.to_vec();
             if let Some(head) = parts.get_mut(head_index) {
-                head.pose = quadruped_head_look_pose(head.pose, head_yaw, head_pitch);
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
             }
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
         }

@@ -18,20 +18,32 @@ pub(in crate::entity_models) const fn pig_head_part_index(baby: bool) -> usize {
     }
 }
 
-/// True when a plain `QuadrupedModel` head has no look turn (head aligned with
-/// the body and level), so callers can borrow the static parts unchanged instead
-/// of cloning to apply [`quadruped_head_look_pose`].
+/// `HumanoidModel` head-part index for the zombie family body layers (zombie,
+/// husk, drowned, and zombie villager). The adult layer lists the head first;
+/// the baby layer lists the body first, so the head is second.
+pub(in crate::entity_models) const fn zombie_head_part_index(baby: bool) -> usize {
+    if baby {
+        1
+    } else {
+        0
+    }
+}
+
+/// True when a head has no look turn (head aligned with the body and level), so
+/// callers can borrow the static parts unchanged instead of cloning to apply
+/// [`head_look_pose`].
 pub(in crate::entity_models) fn head_look_at_rest(head_yaw_deg: f32, head_pitch_deg: f32) -> bool {
     head_yaw_deg == 0.0 && head_pitch_deg == 0.0
 }
 
-/// Vanilla `QuadrupedModel.setupAnim` head look: `head.xRot = xRot * π/180` and
-/// `head.yRot = yRot * π/180`, where `xRot` is the head pitch and `yRot` is the
-/// net head yaw (`Mth.wrapDegrees(headRot - bodyRot)`). The base head pose
-/// carries no rotation, so the look angles are set (not accumulated), matching
-/// the vanilla assignments. Pig and cow extend `QuadrupedModel` without
-/// overriding `setupAnim`, so this is their full head animation.
-pub(in crate::entity_models) fn quadruped_head_look_pose(
+/// Vanilla head look shared by `QuadrupedModel.setupAnim` and
+/// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
+/// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw
+/// (`Mth.wrapDegrees(headRot - bodyRot)`). The base head pose carries no
+/// rotation, so the look angles are set (not accumulated), matching the vanilla
+/// assignments. Pig, cow, and the zombie family extend these base models without
+/// overriding the head animation, so this is their full head pose.
+pub(in crate::entity_models) fn head_look_pose(
     base: PartPose,
     head_yaw_deg: f32,
     head_pitch_deg: f32,

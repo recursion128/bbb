@@ -1,19 +1,23 @@
 use super::*;
 
 #[test]
-fn quadruped_head_part_indices_match_vanilla_body_layers() {
-    // The cow body layer lists the head first for both ages; the pig adult layer
-    // lists the head first, the baby layer lists the body first (head second).
-    // The per-variant part tests assert that the part at this index is the head.
+fn head_part_indices_match_vanilla_body_layers() {
+    // The cow body layer lists the head first for both ages; the pig adult and
+    // zombie adult layers list the head first, their baby layers list the body
+    // first (head second). The per-family part tests assert that the part at this
+    // index is the head.
     assert_eq!(cow_head_part_index(false), 0);
     assert_eq!(cow_head_part_index(true), 0);
     assert_eq!(pig_head_part_index(false), 0);
     assert_eq!(pig_head_part_index(true), 1);
+    assert_eq!(zombie_head_part_index(false), 0);
+    assert_eq!(zombie_head_part_index(true), 1);
 }
 
 #[test]
-fn quadruped_head_look_pose_matches_vanilla_setup_anim() {
-    // QuadrupedModel.setupAnim: head.xRot = xRot*PI/180, head.yRot = yRot*PI/180.
+fn head_look_pose_matches_vanilla_setup_anim() {
+    // QuadrupedModel/HumanoidModel.setupAnim: head.xRot = xRot*PI/180,
+    // head.yRot = yRot*PI/180.
     let base = PartPose {
         offset: [0.0, 4.0, -8.0],
         rotation: [0.0, 0.0, 0.3],
@@ -22,7 +26,7 @@ fn quadruped_head_look_pose_matches_vanilla_setup_anim() {
     assert!(!head_look_at_rest(10.0, 0.0));
     assert!(!head_look_at_rest(0.0, 10.0));
 
-    let posed = quadruped_head_look_pose(base, 40.0, -18.0);
+    let posed = head_look_pose(base, 40.0, -18.0);
     // The pivot offset is untouched; the look angles set the head rotation.
     assert_eq!(posed.offset, base.offset);
     assert!((posed.rotation[0] - (-18.0_f32).to_radians()).abs() < 1e-6);
@@ -31,7 +35,7 @@ fn quadruped_head_look_pose_matches_vanilla_setup_anim() {
     assert_eq!(posed.rotation[2], 0.3);
 
     // No look turn returns the base pose unchanged.
-    assert_eq!(quadruped_head_look_pose(base, 0.0, 0.0), base);
+    assert_eq!(head_look_pose(base, 0.0, 0.0), base);
 }
 
 #[test]
@@ -79,4 +83,52 @@ fn cow_colored_mesh_applies_head_look_to_head_only() {
     assert_ne!(resting.vertices[0..96], pitched.vertices[0..96]);
     assert_eq!(resting.vertices[96..], pitched.vertices[96..]);
     assert_ne!(yawed.vertices[0..96], pitched.vertices[0..96]);
+}
+
+#[test]
+fn zombie_colored_mesh_applies_head_look_to_head_only() {
+    let base = EntityModelInstance::zombie(700, [0.0, 64.0, 0.0], 0.0, false);
+    let resting = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+    // The zombie head (with its hat children) is part 0, emitted first; the last
+    // part is a leg, which head look must leave untouched.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], yawed.vertices[n - 24..]);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
+#[test]
+fn baby_zombie_colored_mesh_turns_head_part_not_body() {
+    let base = EntityModelInstance::zombie(701, [0.0, 64.0, 0.0], 0.0, true);
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    // Baby zombie lists the body first (index 0, one cube = first 24 vertices)
+    // and the head second (index 1). Head look must leave the body untouched.
+    assert_ne!(resting.vertices, looking.vertices);
+    assert_eq!(resting.vertices[0..24], looking.vertices[0..24]);
+}
+
+#[test]
+fn zombie_villager_variant_colored_mesh_applies_head_look() {
+    let base = EntityModelInstance::zombie_variant(
+        702,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::ZombieVillager,
+        false,
+    );
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(40.0, -15.0)]);
+
+    // The variant emitter routes through the same head-look helper; the last
+    // part (a leg) stays put while the head turns.
+    assert_eq!(resting.vertices.len(), looking.vertices.len());
+    assert_ne!(resting.vertices, looking.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
 }
