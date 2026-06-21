@@ -349,6 +349,11 @@ pub struct EntityModelSourceState {
     /// 0]` when the entity is not sleeping in a bed.
     #[serde(default)]
     pub sleeping_bed_offset: [f32; 2],
+    /// Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the `SCALE`
+    /// attribute): the uniform model scale applied before `setupRotations`. `1.0`
+    /// for an entity at its default size (and every non-living entity).
+    #[serde(default = "entity_model_source_default_scale")]
+    pub scale: f32,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
     #[serde(default)]
@@ -385,6 +390,12 @@ pub(crate) const ENTITY_LIGHT_PROBE_FULL_BRIGHT: TerrainLight = TerrainLight { s
 
 fn entity_model_source_full_bright_light() -> TerrainLight {
     ENTITY_LIGHT_PROBE_FULL_BRIGHT
+}
+
+/// Vanilla default `LivingEntity.getScale` (the unmodified `SCALE` attribute) used
+/// when an `EntityModelSourceState` is deserialized without a recorded scale.
+fn entity_model_source_default_scale() -> f32 {
+    1.0
 }
 
 impl EntityTransformState {

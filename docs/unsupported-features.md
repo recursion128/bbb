@@ -265,13 +265,15 @@ When an agent does any of the following, update this file in the same slice:
       counter), `isAutoSpinAttack` (the riptide spin, carried as the lerped
       `auto_spin_age_ticks`), `isUpsideDown`/`boundingBoxHeight` (the Dinnerbone/Grumm
       flip, carried as `upside_down_height`), `hasPose(SLEEPING)` (the sleeping-in-bed
-      pose, carried as `sleeping` with the resolved bed yaw and head offset),
-      `lightCoords` (block+sky packed light), `hasRedOverlay` (hurt/death red
-      `OverlayTexture` flash), and `whiteOverlayProgress` (creeper swelling white flash)
+      pose, carried as `sleeping` with the resolved bed yaw and head offset), `scale`
+      (the `SCALE`-attribute uniform model scale), `lightCoords` (block+sky packed
+      light), `hasRedOverlay` (hurt/death red `OverlayTexture` flash), and
+      `whiteOverlayProgress` (creeper swelling white flash)
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `walkAnimationPos`/
-      `walkAnimationSpeed` limb-swing, `ageScale`, unified `isInvisible`, and
-      `outlineColor` glow
+      `walkAnimationSpeed` limb-swing, `ageScale` (the baby `0.5` proportions applied
+      in model `setupAnim`, distinct from the now-projected `SCALE`-attribute
+      `scale`), unified `isInvisible`, and `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -367,6 +369,19 @@ When an agent does any of the following, update this file in the same slice:
     the riptide spin, before the upside-down flip) `Ry(yaw_angle) * Rz(getFlipDegrees)
     * Ry(270)`, with the bed offset applied as a pre-scale world-space translate, so
     every colored and textured living model lies down in its bed.
+  - The `LivingEntityRenderState.scale` uniform model scale is implemented end to end.
+    World side: a living entity's `LivingEntity.getScale` (the `SCALE` attribute id
+    `25`, clamped to `[0.0625, 16.0]` and passed through the per-entity `sanitizeScale`
+    overrides — `HappyGhast` ≤ 1.0, `Shulker` ≤ 3.0 via `entity_scale`) is projected as
+    `EntityModelSourceState.scale` (`1.0` for default-size and non-living entities).
+    Native side projects it to `EntityRenderState.scale`. Renderer side applies it as
+    `poseStack.scale(scale, scale, scale)` before `setupRotations` (between the bed
+    pre-scale translate and the rotation stage), matching vanilla. The death/spin/
+    sleeping branches are pure rotations about the post-scale origin so they are
+    unaffected; the upside-down branch divides its lift by the scale
+    (`(bbHeight + 0.1) / entityScale`) so the world-space lift stays `bbHeight + 0.1`.
+    The baby `ageScale` (the `0.5` head/body proportions applied in model `setupAnim`)
+    is a separate value and stays deferred.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

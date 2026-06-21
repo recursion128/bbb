@@ -98,6 +98,11 @@ pub struct EntityRenderState {
     /// the riptide spin take precedence over this branch; this branch takes
     /// precedence over the upside-down flip.
     pub sleeping: Option<SleepingPose>,
+    /// Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the `SCALE`
+    /// attribute): the uniform model scale `LivingEntityRenderer.submit` applies as
+    /// `poseStack.scale(scale, scale, scale)` before `setupRotations`. `1.0` for an
+    /// entity at its default size.
+    pub scale: f32,
 }
 
 impl EntityRenderState {
@@ -119,6 +124,7 @@ impl EntityRenderState {
             auto_spin_age_ticks: None,
             upside_down_height: None,
             sleeping: None,
+            scale: 1.0,
         }
     }
 
@@ -226,6 +232,14 @@ impl EntityModelInstance {
     /// `LivingEntityRenderer.setupRotations`/`submit` sleeping branch.
     pub fn with_sleeping(mut self, sleeping: Option<SleepingPose>) -> Self {
         self.render_state.sleeping = sleeping;
+        self
+    }
+
+    /// Sets the uniform model scale (vanilla `LivingEntityRenderState.scale`,
+    /// `LivingEntity.getScale`). Drives the `LivingEntityRenderer.submit`
+    /// `poseStack.scale` applied before `setupRotations`.
+    pub fn with_scale(mut self, scale: f32) -> Self {
+        self.render_state.scale = scale;
         self
     }
 
@@ -841,6 +855,7 @@ mod tests {
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,
+                scale: 1.0,
             }
         );
     }

@@ -17,8 +17,8 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, ENTITY_DATA_POSE_ID,
-    VANILLA_POSE_SLEEPING_ID,
+    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, vanilla_render_scale,
+    ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -374,6 +374,7 @@ impl EntityStore {
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
@@ -410,6 +411,14 @@ impl EntityStore {
         // source defaults to the no-bed fallback.
         let is_sleeping = vanilla_living_entity_type(identity.entity_type_id)
             && entity_data_pose(&metadata.data_values) == VANILLA_POSE_SLEEPING_ID;
+        // Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the SCALE
+        // attribute): only living entities carry a render scale; everything else
+        // renders at its default size.
+        let scale = if vanilla_living_entity_type(identity.entity_type_id) {
+            vanilla_render_scale(identity.entity_type_id, &attributes.attributes)
+        } else {
+            1.0
+        };
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
@@ -425,6 +434,7 @@ impl EntityStore {
             is_sleeping,
             sleeping_bed_yaw: None,
             sleeping_bed_offset: [0.0, 0.0],
+            scale,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             polar_bear_stand_scale: client_animations
                 .animations

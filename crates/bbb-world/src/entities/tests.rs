@@ -1331,6 +1331,58 @@ fn entity_model_sources_resolve_sleeping_bed_orientation() {
 }
 
 #[test]
+fn entity_model_sources_project_scale_attribute() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+
+    let scale = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .scale
+    };
+    let set_scale = |store: &mut WorldStore, id: i32, value: f64| {
+        store.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: id,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+                base: value,
+                modifiers: Vec::new(),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        95,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // No SCALE attribute synced -> vanilla getScale() default of 1.0.
+    assert_eq!(scale(&store, 95), 1.0);
+
+    // Vanilla LivingEntity.getScale() is the SCALE attribute value.
+    assert!(set_scale(&mut store, 95, 1.5));
+    assert_eq!(scale(&store, 95), 1.5);
+
+    // The SCALE attribute is clamped to [0.0625, 16.0].
+    assert!(set_scale(&mut store, 95, 20.0));
+    assert_eq!(scale(&store, 95), 16.0);
+    assert!(set_scale(&mut store, 95, 0.001));
+    assert_eq!(scale(&store, 95), 0.0625);
+
+    // A non-living entity (boat) is gated out of the living render scale (the same
+    // `vanilla_living_entity_type` gate as the other render-state projections).
+    store.apply_add_entity(protocol_add_entity_with_type(
+        96,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert_eq!(scale(&store, 96), 1.0);
+}
+
+#[test]
 fn death_animation_gates_on_living_entity_health() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;

@@ -21,6 +21,7 @@ mod piglin;
 mod player;
 mod polar_bear;
 mod ravager;
+mod scale;
 mod sheep;
 mod skeleton;
 mod sleeping;

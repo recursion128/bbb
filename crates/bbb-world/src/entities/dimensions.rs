@@ -635,6 +635,16 @@ fn vanilla_scale_attribute(attributes: &[AttributeSnapshot]) -> Option<f32> {
         .map(vanilla_attribute_value)
 }
 
+/// Vanilla `LivingEntity.getScale` used as `LivingEntityRenderState.scale`: the
+/// `SCALE` attribute value (clamped to `[0.0625, 16.0]`) passed through the
+/// per-entity `sanitizeScale` overrides (`HappyGhast` ≤ 1.0, `Shulker` ≤ 3.0,
+/// captured by [`entity_scale`]). Defaults to `1.0` when no `SCALE` attribute is
+/// synced. `LivingEntityRenderer.submit` applies it as a uniform `poseStack.scale`.
+pub(crate) fn vanilla_render_scale(entity_type_id: i32, attributes: &[AttributeSnapshot]) -> f32 {
+    let scale = vanilla_scale_attribute(attributes).unwrap_or(1.0);
+    entity_scale(entity_type_id, scale)
+}
+
 fn vanilla_attribute_value(attribute: &AttributeSnapshot) -> f32 {
     let mut base = attribute.base;
     for modifier in &attribute.modifiers {

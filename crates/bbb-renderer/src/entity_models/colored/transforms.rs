@@ -20,6 +20,7 @@ pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
@@ -31,6 +32,7 @@ fn living_entity_model_root_transform_with_renderer_transform(
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * renderer_transform
@@ -70,8 +72,7 @@ fn entity_setup_rotations_transform(instance: EntityModelInstance) -> Mat4 {
 /// tip-over takes precedence over the riptide auto-spin, which takes precedence
 /// over the Dinnerbone/Grumm upside-down flip (mirroring vanilla's `if deathTime >
 /// 0 ... else if isAutoSpinAttack ... else if hasPose(SLEEPING) ... else if
-/// isUpsideDown ...`). Identity for a living, upright, non-spinning entity.
-/// (Sleeping is not yet projected and falls through.)
+/// isUpsideDown ...`). Identity for a living, upright, awake, non-spinning entity.
 fn entity_post_yaw_transform(instance: EntityModelInstance) -> Mat4 {
     let death_time = instance.render_state.death_time;
     if death_time > 0.0 {
@@ -92,13 +93,16 @@ fn entity_post_yaw_transform(instance: EntityModelInstance) -> Mat4 {
             * Mat4::from_rotation_z(entity_flip_degrees(instance.kind).to_radians())
             * Mat4::from_rotation_y(270.0_f32.to_radians());
     }
-    // Vanilla Dinnerbone/Grumm upside-down: translate up by the bounding box height
-    // (plus 0.1) then flip 180 about Z. The vanilla `(bbHeight + 0.1) / entityScale`
-    // cancels the leading `scale(entityScale)`; our post-yaw frame is already in
-    // world units (the model scale is applied innermost), so the height is used as is.
+    // Vanilla Dinnerbone/Grumm upside-down: translate up by `(bbHeight + 0.1) /
+    // entityScale` then flip 180 about Z. The `/ entityScale` divisor undoes the
+    // leading `scale(entityScale)` so the world-space lift is exactly `bbHeight + 0.1`
+    // (the bounding box height already includes the scale attribute).
     if let Some(height) = instance.render_state.upside_down_height {
-        return Mat4::from_translation(Vec3::new(0.0, height + 0.1, 0.0))
-            * Mat4::from_rotation_z(180.0_f32.to_radians());
+        return Mat4::from_translation(Vec3::new(
+            0.0,
+            (height + 0.1) / instance.render_state.scale,
+            0.0,
+        )) * Mat4::from_rotation_z(180.0_f32.to_radians());
     }
     Mat4::IDENTITY
 }

@@ -348,6 +348,7 @@ fn entity_model_instance(
         .with_auto_spin_age_ticks(auto_spin_age_ticks)
         .with_upside_down_height(upside_down_height)
         .with_sleeping(sleeping)
+        .with_scale(source.scale)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1269,8 +1270,8 @@ fn entity_data_rotations(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, CommonPlayerSpawnInfo, EntityDataValue, EntityEvent, PlayLogin, PlayTime,
-        SetCamera, SetEntityData, Vec3d,
+        AddEntity, AttributeSnapshot, CommonPlayerSpawnInfo, EntityDataValue, EntityEvent,
+        PlayLogin, PlayTime, SetCamera, SetEntityData, UpdateAttributes, Vec3d,
     };
     use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
     use uuid::Uuid;
@@ -1812,6 +1813,41 @@ mod tests {
                 bed_offset: [0.0, 0.0],
             })
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_scale_attribute() {
+        const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            97,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let scale = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 97)
+                .unwrap()
+                .render_state
+                .scale
+        };
+
+        // Default size projects scale 1.0.
+        assert_eq!(scale(&world), 1.0);
+
+        // Vanilla getScale() (the SCALE attribute) flows through to the render state.
+        assert!(world.apply_update_attributes(UpdateAttributes {
+            entity_id: 97,
+            attributes: vec![AttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+                base: 1.25,
+                modifiers: Vec::new(),
+            }],
+        }));
+        assert_eq!(scale(&world), 1.25);
     }
 
     #[test]
