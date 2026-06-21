@@ -19,6 +19,8 @@ const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
+    #[serde(default)]
+    pub age_ticks: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub polar_bear_standing: Option<PolarBearStandingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -156,6 +158,7 @@ impl EntityClientAnimationState {
     }
 
     pub(crate) fn advance_client_tick(&mut self, entity_type_id: i32, transform: EntityTransform) {
+        self.age_ticks = self.age_ticks.saturating_add(1);
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
                 if let Some(standing) = self.polar_bear_standing.as_mut() {

@@ -257,10 +257,12 @@ When an agent does any of the following, update this file in the same slice:
     - animation
     - culling
     - ordering
-  - Finish sheep presentation parity:
+  - Keep covered sheep behavior derived from canonical renderer inputs:
+    - custom-name `jeb_` color cycling from entity metadata, per-entity client
+      age ticks, and renderer partial tick
+  - Finish remaining sheep presentation parity:
     - extend the texture-backed sheep path with vanilla entity lighting,
       overlay, and render-state extraction parity
-    - project custom-name `jeb_` color cycling from canonical entity data
     - apply eating head position/angle animation from entity event `10`
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set

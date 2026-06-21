@@ -147,6 +147,22 @@ fn sheep_wool_color_table_matches_vanilla_color_lerper() {
         );
     }
     assert_eq!(SheepWoolColor::from_vanilla_id(99), SheepWoolColor::White);
+    assert_eq!(
+        sheep_jeb_wool_layer_color(0.0),
+        sheep_wool_layer_color(SheepWoolColor::White)
+    );
+    assert_eq!(
+        sheep_jeb_wool_layer_color(25.0),
+        sheep_wool_layer_color(SheepWoolColor::Orange)
+    );
+    assert_eq!(
+        sheep_jeb_wool_layer_color(12.5),
+        [208.0 / 255.0, 163.0 / 255.0, 125.0 / 255.0, 1.0]
+    );
+    assert_eq!(
+        sheep_jeb_wool_layer_color(37.5),
+        [167.0 / 255.0, 77.0 / 255.0, 81.0 / 255.0, 1.0]
+    );
 }
 
 #[test]
@@ -271,6 +287,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .model_key(),
         "sheep"
@@ -280,6 +298,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::Red,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .model_key(),
         "sheep_red"
@@ -289,6 +309,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: true,
             wool_color: SheepWoolColor::Red,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .model_key(),
         "sheep_red_sheared"
@@ -298,6 +320,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: true,
             sheared: true,
             wool_color: SheepWoolColor::Red,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .model_key(),
         "sheep_baby_sheared"
@@ -307,6 +331,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
@@ -319,6 +345,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: true,
             sheared: false,
             wool_color: SheepWoolColor::White,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
@@ -352,6 +380,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .vanilla_layer_texture_refs(),
         &[SHEEP_WOOL_TEXTURE_REF]
@@ -361,6 +391,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::Red,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .vanilla_layer_texture_refs(),
         &[SHEEP_WOOL_UNDERCOAT_TEXTURE_REF, SHEEP_WOOL_TEXTURE_REF]
@@ -370,6 +402,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: true,
             wool_color: SheepWoolColor::Red,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .vanilla_layer_texture_refs(),
         &[SHEEP_WOOL_UNDERCOAT_TEXTURE_REF]
@@ -379,6 +413,8 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: true,
             sheared: false,
             wool_color: SheepWoolColor::Black,
+            jeb: false,
+            age_ticks: 0.0,
         }
         .vanilla_layer_texture_refs(),
         &[SHEEP_WOOL_BABY_TEXTURE_REF]
@@ -387,14 +423,49 @@ fn sheep_texture_refs_match_vanilla_renderers() {
         baby: true,
         sheared: true,
         wool_color: SheepWoolColor::Black,
+        jeb: false,
+        age_ticks: 0.0,
     }
     .vanilla_layer_texture_refs()
     .is_empty());
+    assert_eq!(
+        EntityModelKind::Sheep {
+            baby: false,
+            sheared: false,
+            wool_color: SheepWoolColor::White,
+            jeb: true,
+            age_ticks: 12.5,
+        }
+        .model_key(),
+        "sheep_jeb"
+    );
+    assert_eq!(
+        EntityModelKind::Sheep {
+            baby: false,
+            sheared: false,
+            wool_color: SheepWoolColor::White,
+            jeb: true,
+            age_ticks: 12.5,
+        }
+        .vanilla_layer_texture_refs(),
+        &[SHEEP_WOOL_UNDERCOAT_TEXTURE_REF, SHEEP_WOOL_TEXTURE_REF]
+    );
+    assert_eq!(
+        EntityModelKind::Sheep {
+            baby: false,
+            sheared: true,
+            wool_color: SheepWoolColor::White,
+            jeb: true,
+            age_ticks: 25.0,
+        }
+        .vanilla_layer_texture_refs(),
+        &[SHEEP_WOOL_UNDERCOAT_TEXTURE_REF]
+    );
 }
 
 #[test]
 fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
-    let adult_red = sheep_textured_layer_passes(false, false, SheepWoolColor::Red);
+    let adult_red = sheep_textured_layer_passes(false, false, SheepWoolColor::Red, false, 0.0);
     assert_eq!(
         adult_red.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
         vec![
@@ -437,7 +508,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
         (1, 1)
     );
 
-    let sheared_red = sheep_textured_layer_passes(false, true, SheepWoolColor::Red);
+    let sheared_red = sheep_textured_layer_passes(false, true, SheepWoolColor::Red, false, 0.0);
     assert_eq!(
         sheared_red.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
         vec![
@@ -445,11 +516,27 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
             EntityModelLayerKind::SheepWoolUndercoat,
         ]
     );
-    let sheared_white = sheep_textured_layer_passes(false, true, SheepWoolColor::White);
+    let sheared_white = sheep_textured_layer_passes(false, true, SheepWoolColor::White, false, 0.0);
     assert_eq!(sheared_white.len(), 1);
     assert_eq!(sheared_white[0].kind, EntityModelLayerKind::SheepBase);
 
-    let baby_black = sheep_textured_layer_passes(true, false, SheepWoolColor::Black);
+    let adult_jeb_white =
+        sheep_textured_layer_passes(false, false, SheepWoolColor::White, true, 12.5);
+    assert_eq!(
+        adult_jeb_white
+            .iter()
+            .map(|pass| pass.kind)
+            .collect::<Vec<_>>(),
+        vec![
+            EntityModelLayerKind::SheepBase,
+            EntityModelLayerKind::SheepWool,
+            EntityModelLayerKind::SheepWoolUndercoat,
+        ]
+    );
+    assert_eq!(adult_jeb_white[1].tint, sheep_jeb_wool_layer_color(12.5));
+    assert_eq!(adult_jeb_white[2].tint, sheep_jeb_wool_layer_color(12.5));
+
+    let baby_black = sheep_textured_layer_passes(true, false, SheepWoolColor::Black, false, 0.0);
     assert_eq!(
         baby_black
             .iter()
@@ -476,8 +563,22 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
         ]
     );
     assert_eq!(baby_black[1].parts, BABY_SHEEP_TEXTURED_PARTS.as_slice());
-    let sheared_baby_black = sheep_textured_layer_passes(true, true, SheepWoolColor::Black);
+    let sheared_baby_black =
+        sheep_textured_layer_passes(true, true, SheepWoolColor::Black, false, 0.0);
     assert_eq!(sheared_baby_black.len(), 1);
+    let jeb_baby_white =
+        sheep_textured_layer_passes(true, false, SheepWoolColor::White, true, 25.0);
+    assert_eq!(
+        jeb_baby_white
+            .iter()
+            .map(|pass| pass.kind)
+            .collect::<Vec<_>>(),
+        vec![
+            EntityModelLayerKind::SheepBase,
+            EntityModelLayerKind::SheepWool
+        ]
+    );
+    assert_eq!(jeb_baby_white[1].tint, sheep_jeb_wool_layer_color(25.0));
 }
 
 #[test]
@@ -637,6 +738,30 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    let jeb_white = entity_model_textured_mesh(
+        &[EntityModelInstance::sheep_render_state(
+            304,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            SheepWoolColor::White,
+            true,
+            12.5,
+        )],
+        &atlas,
+    );
+    assert_eq!(jeb_white.cutout_faces, 108);
+    assert_eq!(jeb_white.vertices.len(), 432);
+    assert_eq!(
+        jeb_white.vertices[144].tint,
+        sheep_jeb_wool_layer_color(12.5)
+    );
+    assert_eq!(
+        jeb_white.vertices[288].tint,
+        sheep_jeb_wool_layer_color(12.5)
+    );
 }
 
 fn sheep_texture_images() -> Vec<EntityModelTextureImage> {

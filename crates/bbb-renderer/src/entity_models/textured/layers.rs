@@ -1,7 +1,7 @@
 use super::super::{
     catalog::{
         boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref,
-        player_texture_ref, sheep_wool_layer_color, wolf_texture_ref, BoatModelFamily,
+        player_texture_ref, sheep_wool_render_color, wolf_texture_ref, BoatModelFamily,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
         HoglinModelFamily, PigModelVariant, PlayerModelPartVisibility, SheepWoolColor,
         SkeletonModelFamily,
@@ -339,8 +339,10 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
+    jeb: bool,
+    age_ticks: f32,
 ) -> Vec<EntityModelLayerPass> {
-    let wool_tint = sheep_wool_layer_color(wool_color);
+    let wool_tint = sheep_wool_render_color(wool_color, jeb, age_ticks);
     let mut passes = Vec::with_capacity(3);
     passes.push(EntityModelLayerPass {
         kind: EntityModelLayerKind::SheepBase,
@@ -365,7 +367,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
         collector_order: 0,
         submit_sequence: 0,
     });
-    if !baby && wool_color != SheepWoolColor::White {
+    if !baby && (jeb || wool_color != SheepWoolColor::White) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SheepWoolUndercoat,
             render_type: EntityModelLayerRenderType::Cutout,

@@ -169,6 +169,7 @@ const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
 const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
+const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
@@ -222,6 +223,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     world: &WorldStore,
     entity_partial_tick: f32,
 ) -> Vec<EntityModelInstance> {
+    let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
     let chicken_variants = world.registry_content("minecraft:chicken_variant");
@@ -229,7 +231,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let pig_variants = world.registry_content("minecraft:pig_variant");
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     world
-        .entity_model_sources_at_partial_tick(entity_partial_tick.clamp(0.0, 1.0))
+        .entity_model_sources_at_partial_tick(entity_partial_tick)
         .into_iter()
         .filter(|source| {
             local_player_id != Some(source.entity_id) && camera_entity_id != Some(source.entity_id)
@@ -238,6 +240,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
             entity_model_instance(
                 source,
                 game_time,
+                entity_partial_tick,
                 chicken_variants,
                 cow_variants,
                 pig_variants,
@@ -264,6 +267,7 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
 fn entity_model_instance(
     source: EntityModelSourceState,
     game_time: i64,
+    entity_partial_tick: f32,
     chicken_variants: Option<&RegistryContentState>,
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
@@ -271,6 +275,7 @@ fn entity_model_instance(
     let kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
         &source.data_values,
+        source.age_ticks as f32 + entity_partial_tick,
         game_time,
         chicken_variants,
         cow_variants,
@@ -305,6 +310,7 @@ fn entity_model_kind_with_registries(
     entity_model_kind_with_time_and_registries(
         entity_type_id,
         data_values,
+        0.0,
         0,
         chicken_variants,
         cow_variants,
@@ -315,6 +321,7 @@ fn entity_model_kind_with_registries(
 fn entity_model_kind_with_time_and_registries(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
+    entity_age_ticks: f32,
     game_time: i64,
     chicken_variants: Option<&RegistryContentState>,
     cow_variants: Option<&RegistryContentState>,
@@ -405,7 +412,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => EntityModelKind::PolarBear {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_SHEEP_ID => sheep_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_SHEEP_ID => sheep_model_kind(data_values, entity_age_ticks),
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
             baby: ageable_baby(data_values),
         },
@@ -654,12 +661,18 @@ fn cow_model_kind(
     }
 }
 
-fn sheep_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+fn sheep_model_kind(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    age_ticks: f32,
+) -> EntityModelKind {
     let wool = entity_data_byte(values, SHEEP_WOOL_DATA_ID, 0) as u8;
     EntityModelKind::Sheep {
         baby: ageable_baby(values),
         sheared: wool & SHEEP_WOOL_SHEARED_FLAG != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
+        jeb: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
+            .is_some_and(|name| name == "jeb_"),
+        age_ticks,
     }
 }
 
@@ -1038,6 +1051,20 @@ fn entity_data_long(
             _ => None,
         })
         .unwrap_or(default)
+}
+
+fn entity_data_optional_component<'a>(
+    values: &'a [bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+) -> Option<&'a str> {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::OptionalComponent(Some(value)) => Some(value.as_str()),
+            _ => None,
+        })
 }
 
 fn entity_data_byte(
@@ -1900,6 +1927,8 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
+                jeb: false,
+                age_ticks: 0.0,
             }
         );
         assert_eq!(
@@ -1911,6 +1940,8 @@ mod tests {
                 baby: true,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
+                jeb: false,
+                age_ticks: 0.0,
             }
         );
         assert_eq!(
@@ -1933,6 +1964,8 @@ mod tests {
                 baby: false,
                 sheared: true,
                 wool_color: SheepWoolColor::Red,
+                jeb: false,
+                age_ticks: 0.0,
             }
         );
         assert_eq!(
@@ -1947,6 +1980,8 @@ mod tests {
                 baby: true,
                 sheared: false,
                 wool_color: SheepWoolColor::Black,
+                jeb: false,
+                age_ticks: 0.0,
             }
         );
         assert_eq!(
@@ -1961,6 +1996,75 @@ mod tests {
                 baby: false,
                 sheared: true,
                 wool_color: SheepWoolColor::Lime,
+                jeb: false,
+                age_ticks: 0.0,
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[
+                    protocol_optional_component_data(ENTITY_CUSTOM_NAME_DATA_ID, Some("jeb_")),
+                    protocol_byte_data(SHEEP_WOOL_DATA_ID, 0),
+                ],
+                12.5,
+                0,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+                jeb: true,
+                age_ticks: 12.5,
+            }
+        );
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[protocol_optional_component_data(
+                    ENTITY_CUSTOM_NAME_DATA_ID,
+                    Some("Not jeb_"),
+                )],
+                25.0,
+                0,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+                jeb: false,
+                age_ticks: 25.0,
+            }
+        );
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[protocol_optional_component_data(
+                    ENTITY_CUSTOM_NAME_DATA_ID,
+                    None
+                )],
+                25.0,
+                0,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::White,
+                jeb: false,
+                age_ticks: 25.0,
             }
         );
     }
@@ -1985,13 +2089,49 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![EntityModelInstance::sheep_wool(
+            vec![EntityModelInstance::sheep_render_state(
                 111,
                 [1.0, 64.0, -2.0],
                 0.0,
                 false,
                 true,
                 SheepWoolColor::Red,
+                false,
+                1.0,
+            )]
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_sheep_jeb_custom_name_and_age_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            112,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 112,
+            values: vec![protocol_optional_component_data(
+                ENTITY_CUSTOM_NAME_DATA_ID,
+                Some("jeb_"),
+            )],
+        }));
+        world.advance_entity_client_animations(12);
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
+
+        assert_eq!(
+            instances,
+            vec![EntityModelInstance::sheep_render_state(
+                112,
+                [1.0, 64.0, -2.0],
+                0.0,
+                false,
+                false,
+                SheepWoolColor::White,
+                true,
+                12.5,
             )]
         );
     }
@@ -2210,6 +2350,7 @@ mod tests {
             entity_model_kind_with_time_and_registries(
                 VANILLA_ENTITY_TYPE_WOLF_ID,
                 &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
+                0.0,
                 199,
                 None,
                 None,
@@ -2226,6 +2367,7 @@ mod tests {
             entity_model_kind_with_time_and_registries(
                 VANILLA_ENTITY_TYPE_WOLF_ID,
                 &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
+                0.0,
                 200,
                 None,
                 None,
@@ -2245,6 +2387,7 @@ mod tests {
                     protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
                     protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200),
                 ],
+                0.0,
                 199,
                 None,
                 None,
@@ -2832,6 +2975,14 @@ mod tests {
             data_id,
             serializer_id: 2,
             value: EntityDataValueKind::Long(value),
+        }
+    }
+
+    fn protocol_optional_component_data(data_id: u8, value: Option<&str>) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 6,
+            value: EntityDataValueKind::OptionalComponent(value.map(str::to_string)),
         }
     }
 

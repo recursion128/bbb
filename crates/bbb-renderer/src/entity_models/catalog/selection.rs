@@ -141,7 +141,9 @@ impl EntityModelKind {
                 baby,
                 sheared,
                 wool_color,
-            } => sheep_model_key(baby, sheared, wool_color),
+                jeb,
+                ..
+            } => sheep_model_key(baby, sheared, wool_color, jeb),
             Self::Villager { baby: false } => "villager",
             Self::Villager { baby: true } => "villager_baby",
             Self::WanderingTrader => "wandering_trader",
@@ -450,7 +452,9 @@ impl EntityModelKind {
             Self::Sheep {
                 baby: false,
                 sheared: false,
+                jeb: false,
                 wool_color: SheepWoolColor::White,
+                ..
             } => &SHEEP_WOOL_LAYER_TEXTURE_REFS,
             Self::Sheep {
                 baby: false,
@@ -460,7 +464,9 @@ impl EntityModelKind {
             Self::Sheep {
                 baby: false,
                 sheared: true,
+                jeb: false,
                 wool_color: SheepWoolColor::White,
+                ..
             } => &[],
             Self::Sheep {
                 baby: false,
@@ -653,7 +659,21 @@ const SHEEP_WOOL_LAYER_COLOR_BYTES: [[u8; 3]; 16] = [
     [21, 21, 24],
 ];
 
-fn sheep_model_key(baby: bool, sheared: bool, wool_color: SheepWoolColor) -> &'static str {
+fn sheep_model_key(
+    baby: bool,
+    sheared: bool,
+    wool_color: SheepWoolColor,
+    jeb: bool,
+) -> &'static str {
+    if jeb {
+        return match (baby, sheared) {
+            (false, false) => "sheep_jeb",
+            (true, false) => "sheep_jeb_baby",
+            (false, true) => "sheep_jeb_sheared",
+            (true, true) => "sheep_jeb_baby_sheared",
+        };
+    }
+
     let color = wool_color.vanilla_id() as usize;
     match (baby, sheared) {
         (false, false) => SHEEP_WOOL_COLOR_MODEL_KEYS[color],
@@ -665,12 +685,59 @@ fn sheep_model_key(baby: bool, sheared: bool, wool_color: SheepWoolColor) -> &'s
 
 pub(in crate::entity_models) fn sheep_wool_layer_color(wool_color: SheepWoolColor) -> [f32; 4] {
     let [red, green, blue] = SHEEP_WOOL_LAYER_COLOR_BYTES[wool_color.vanilla_id() as usize];
+    sheep_wool_layer_color_from_bytes([red, green, blue])
+}
+
+pub(in crate::entity_models) fn sheep_wool_render_color(
+    wool_color: SheepWoolColor,
+    jeb: bool,
+    age_ticks: f32,
+) -> [f32; 4] {
+    if jeb {
+        sheep_jeb_wool_layer_color(age_ticks)
+    } else {
+        sheep_wool_layer_color(wool_color)
+    }
+}
+
+pub(in crate::entity_models) fn sheep_jeb_wool_layer_color(age_ticks: f32) -> [f32; 4] {
+    const SHEEP_COLOR_DURATION_TICKS: i32 = 25;
+    let tick = age_ticks.max(0.0);
+    let tick_floor = tick.floor() as i32;
+    let color_step = tick_floor / SHEEP_COLOR_DURATION_TICKS;
+    let color_count = SHEEP_WOOL_LAYER_COLOR_BYTES.len() as i32;
+    let from = color_step.rem_euclid(color_count) as usize;
+    let to = (color_step + 1).rem_euclid(color_count) as usize;
+    let alpha = ((tick_floor % SHEEP_COLOR_DURATION_TICKS) as f32 + tick.fract())
+        / SHEEP_COLOR_DURATION_TICKS as f32;
+    sheep_wool_layer_color_from_bytes(sheep_lerp_color_bytes(
+        SHEEP_WOOL_LAYER_COLOR_BYTES[from],
+        SHEEP_WOOL_LAYER_COLOR_BYTES[to],
+        alpha,
+    ))
+}
+
+fn sheep_wool_layer_color_from_bytes([red, green, blue]: [u8; 3]) -> [f32; 4] {
     [
         f32::from(red) / 255.0,
         f32::from(green) / 255.0,
         f32::from(blue) / 255.0,
         1.0,
     ]
+}
+
+fn sheep_lerp_color_bytes(from: [u8; 3], to: [u8; 3], alpha: f32) -> [u8; 3] {
+    [
+        sheep_lerp_color_channel(from[0], to[0], alpha),
+        sheep_lerp_color_channel(from[1], to[1], alpha),
+        sheep_lerp_color_channel(from[2], to[2], alpha),
+    ]
+}
+
+fn sheep_lerp_color_channel(from: u8, to: u8, alpha: f32) -> u8 {
+    let from = i32::from(from);
+    let to = i32::from(to);
+    (from + (alpha * (to - from) as f32).floor() as i32).clamp(0, 255) as u8
 }
 
 fn wolf_model_key(baby: bool, tame: bool, angry: bool) -> &'static str {

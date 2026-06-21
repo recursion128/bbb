@@ -16,7 +16,6 @@ pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -
 
     let mut out = String::new();
     append_component_text(&root, &mut out);
-    let out = out.trim().to_string();
     if out.is_empty() {
         Ok("component nbt".to_string())
     } else {
@@ -253,6 +252,12 @@ mod tests {
             decode_component_summary(&payload).unwrap(),
             "Disconnected".to_string()
         );
+    }
+
+    #[test]
+    fn decodes_component_text_without_trimming_magic_names() {
+        let payload = nbt_string_root(" jeb_ ");
+        assert_eq!(decode_component_summary(&payload).unwrap(), " jeb_ ");
     }
 
     #[test]

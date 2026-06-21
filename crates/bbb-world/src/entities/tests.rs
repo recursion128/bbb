@@ -896,10 +896,15 @@ fn entity_model_sources_project_narrow_render_state_from_pick_targets() {
         }
     );
     assert_eq!(sources[0].y_rot, 135.0);
+    assert_eq!(sources[0].age_ticks, 0);
     assert_eq!(
         sources[0].data_values,
         vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)]
     );
+
+    store.advance_entity_client_animations(3);
+    let sources = store.entity_model_sources_at_partial_tick(0.5);
+    assert_eq!(sources[0].age_ticks, 3);
 }
 
 #[test]

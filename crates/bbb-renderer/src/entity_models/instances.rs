@@ -257,12 +257,29 @@ impl EntityModelInstance {
         sheared: bool,
         wool_color: SheepWoolColor,
     ) -> Self {
+        Self::sheep_render_state(
+            entity_id, position, y_rot, baby, sheared, wool_color, false, 0.0,
+        )
+    }
+
+    pub fn sheep_render_state(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        sheared: bool,
+        wool_color: SheepWoolColor,
+        jeb: bool,
+        age_ticks: f32,
+    ) -> Self {
         Self::new(
             entity_id,
             EntityModelKind::Sheep {
                 baby,
                 sheared,
                 wool_color,
+                jeb,
+                age_ticks,
             },
             position,
             y_rot,

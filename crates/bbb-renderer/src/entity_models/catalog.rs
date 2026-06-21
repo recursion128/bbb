@@ -2,8 +2,10 @@ mod selection;
 
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref, player_texture_ref,
-    sheep_wool_layer_color, wolf_texture_ref,
+    sheep_wool_render_color, wolf_texture_ref,
 };
+#[cfg(test)]
+pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_wool_layer_color};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
@@ -63,6 +65,8 @@ pub enum EntityModelKind {
         baby: bool,
         sheared: bool,
         wool_color: SheepWoolColor,
+        jeb: bool,
+        age_ticks: f32,
     },
     Villager {
         baby: bool,

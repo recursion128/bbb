@@ -275,11 +275,13 @@ impl EntityStore {
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
             position,
             y_rot: transform.y_rot,
+            age_ticks: client_animations.animations.age_ticks,
             data_values: metadata.data_values.clone(),
         })
     }

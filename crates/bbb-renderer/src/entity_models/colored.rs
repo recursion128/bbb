@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 
-use super::catalog::{sheep_wool_layer_color, *};
+use super::catalog::{sheep_wool_render_color, *};
 use super::geometry::*;
 use super::instances::EntityModelInstance;
 use super::model_layers::*;
@@ -121,9 +121,13 @@ fn entity_model_mesh_with_options(
                 baby,
                 sheared,
                 wool_color,
+                jeb,
+                age_ticks,
             } => {
                 if !skip_texture_backed_entities {
-                    emit_sheep_model(&mut mesh, *instance, baby, sheared, wool_color);
+                    emit_sheep_model(
+                        &mut mesh, *instance, baby, sheared, wool_color, jeb, age_ticks,
+                    );
                 }
             }
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
@@ -467,6 +471,8 @@ fn emit_sheep_model(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
+    jeb: bool,
+    age_ticks: f32,
 ) {
     let transform = entity_model_root_transform(instance);
     emit_model_parts(
@@ -478,8 +484,8 @@ fn emit_sheep_model(
         },
         transform,
     );
-    let wool_layer_color = sheep_wool_layer_color(wool_color);
-    if !baby && wool_color != SheepWoolColor::White {
+    let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
+    if !baby && (jeb || wool_color != SheepWoolColor::White) {
         emit_model_parts_with_color(mesh, &ADULT_SHEEP_PARTS, transform, wool_layer_color);
     }
     if !sheared {

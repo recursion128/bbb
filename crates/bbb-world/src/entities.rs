@@ -298,6 +298,8 @@ pub struct EntityModelSourceState {
     pub entity_type_id: i32,
     pub position: EntityVec3,
     pub y_rot: f32,
+    #[serde(default)]
+    pub age_ticks: u32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 

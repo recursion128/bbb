@@ -110,8 +110,19 @@ pub(super) fn entity_model_textured_meshes(
                 baby,
                 sheared,
                 wool_color,
+                jeb,
+                age_ticks,
             } => {
-                emit_sheep_textured_model(&mut meshes, *instance, baby, sheared, wool_color, atlas);
+                emit_sheep_textured_model(
+                    &mut meshes,
+                    *instance,
+                    baby,
+                    sheared,
+                    wool_color,
+                    jeb,
+                    age_ticks,
+                    atlas,
+                );
             }
             EntityModelKind::Wolf {
                 baby,
@@ -327,10 +338,12 @@ fn emit_sheep_textured_model(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
+    jeb: bool,
+    age_ticks: f32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
-    for pass in sheep_textured_layer_passes(baby, sheared, wool_color) {
+    for pass in sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }
