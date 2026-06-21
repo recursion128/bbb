@@ -519,23 +519,50 @@ fn emit_hoglin_model(
     };
     // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
     // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
-    // left-hind in phase) after the yaw-only head look. The ear sway and headbutt
-    // head tilt are deferred. Legs are at [2, 3, 4, 5] in both layers.
+    // left-hind in phase) after the yaw-only head look, and sways the ears
+    // `ear.zRot = ±2π/9 ± speed * sin(pos)`. Legs are at [2, 3, 4, 5] in both layers.
+    // The headbutt head tilt is deferred; the baby ear sway (vanilla overrides the baby
+    // ear rest angle to ±2π/9) is deferred too, so only the adult ears sway here.
+    let head_index = hoglin_head_part_index(baby);
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let transform = entity_model_root_transform(instance);
+    let color = hoglin_model_color(family);
     let parts = hoglin_limb_swing_parts(
-        hoglin_colored_head_look_parts(
-            parts,
-            hoglin_head_part_index(baby),
-            instance.render_state.head_yaw,
-        ),
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
+        hoglin_colored_head_look_parts(parts, head_index, instance.render_state.head_yaw),
+        limb_swing,
+        limb_swing_amount,
     );
-    emit_model_parts_with_color(
-        mesh,
-        &parts,
-        entity_model_root_transform(instance),
-        hoglin_model_color(family),
-    );
+    if baby || limb_swing_at_rest(limb_swing_amount) {
+        emit_model_parts_with_color(mesh, &parts, transform, color);
+        return;
+    }
+    // Walking adult: the ears are children of the head, whose children list is static, so
+    // emit the head subtree by hand with the swayed ears (the horns ride unchanged).
+    for (index, part) in parts.iter().enumerate() {
+        if index == head_index {
+            let head_transform = transform * part_pose_transform(part.pose);
+            for cube in part.cubes {
+                emit_model_cube_with_color(mesh, head_transform, *cube, color);
+            }
+            let mut children = part.children.to_vec();
+            children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
+                children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose,
+                false,
+                limb_swing,
+                limb_swing_amount,
+            );
+            children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
+                children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose,
+                true,
+                limb_swing,
+                limb_swing_amount,
+            );
+            emit_model_parts_with_color(mesh, &children, head_transform, color);
+        } else {
+            emit_model_part_with_color(mesh, part, transform, color);
+        }
+    }
 }
 
 /// The four leg part indices in the hoglin/zoglin body layers (the head and body

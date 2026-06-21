@@ -18,17 +18,19 @@ use super::{
         apply_polar_bear_standing_pose, chicken_leg_part_indices, cow_head_part_index,
         enderman_arm_swing_pose, enderman_leg_swing_pose, half_amplitude_leg_swing_pose,
         head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
-        head_yaw_at_rest, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_swing_pose,
-        humanoid_leg_swing_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
-        limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
-        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
-        wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
-        RAVAGER_TEXTURED_NECK_CHILDREN, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
-        SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX,
+        head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
+        humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
+        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, pig_head_part_index,
+        player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
+        quadruped_leg_swing_pose, ravager_head_child_index, ravager_leg_swing_pose,
+        ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
+        skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
+        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
+        villager_head_part_index, wolf_tail_part_index, wolf_tail_swing_pose,
+        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN, SNOW_GOLEM_HEAD_PART_INDEX,
+        SNOW_GOLEM_LEFT_ARM_PART_INDEX, SNOW_GOLEM_RIGHT_ARM_PART_INDEX,
+        SNOW_GOLEM_UPPER_BODY_PART_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -757,7 +759,10 @@ fn emit_hoglin_textured_model(
 ) {
     // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
     // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
-    // left-hind in phase) after the yaw-only head look. Legs are at [2, 3, 4, 5].
+    // left-hind in phase) after the yaw-only head look, and sways the ears
+    // `ear.zRot = ±2π/9 ± speed * sin(pos)`. Legs are at [2, 3, 4, 5]. The headbutt head
+    // tilt is deferred; the baby ear sway (vanilla overrides the baby ear rest angle) is
+    // deferred too, so only the adult ears sway.
     let head_index = hoglin_head_part_index(baby);
     let transform = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
@@ -765,24 +770,79 @@ fn emit_hoglin_textured_model(
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let head_resting = head_yaw_at_rest(head_yaw);
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let ears_sway = !baby && !legs_resting;
     for pass in hoglin_textured_layer_passes(family, baby) {
         if head_resting && legs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_yaw_pose(head.pose, head_yaw);
+            continue;
+        }
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_yaw_pose(head.pose, head_yaw);
+            }
+        }
+        if !legs_resting {
+            for index in HOGLIN_LEG_PART_INDICES {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = hoglin_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
                 }
             }
-            if !legs_resting {
-                for index in HOGLIN_LEG_PART_INDICES {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose = hoglin_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
+        }
+        if !ears_sway {
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+            continue;
+        }
+        // Walking adult: the ears are children of the head, whose children list is static,
+        // so emit the head subtree by hand with the swayed ears (the horns ride unchanged).
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        let mesh = meshes.mesh_mut(pass.render_type);
+        for (index, part) in parts.iter().enumerate() {
+            if index == head_index {
+                let head_transform = transform * part_pose_transform(part.pose);
+                for cube in part.cubes {
+                    emit_textured_model_cube(
+                        mesh,
+                        head_transform,
+                        *cube,
+                        pass.texture,
+                        entry.uv,
+                        pass.tint,
+                    );
+                }
+                let mut children = part.children.to_vec();
+                children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
+                    children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose,
+                    false,
+                    limb_swing,
+                    limb_swing_amount,
+                );
+                children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
+                    children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose,
+                    true,
+                    limb_swing,
+                    limb_swing_amount,
+                );
+                emit_textured_model_parts(
+                    mesh,
+                    &children,
+                    head_transform,
+                    pass.texture,
+                    entry.uv,
+                    pass.tint,
+                );
+            } else {
+                emit_textured_model_parts(
+                    mesh,
+                    std::slice::from_ref(part),
+                    transform,
+                    pass.texture,
+                    entry.uv,
+                    pass.tint,
+                );
+            }
         }
     }
 }

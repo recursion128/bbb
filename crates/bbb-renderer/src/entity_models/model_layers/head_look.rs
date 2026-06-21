@@ -101,6 +101,32 @@ pub(in crate::entity_models) const fn hoglin_head_part_index(baby: bool) -> usiz
     }
 }
 
+/// Indices of the right and left ears within the hoglin head's children (both the adult
+/// and baby layers list the right ear first, then the left, then — for the adult — the
+/// two horns).
+pub(in crate::entity_models) const HOGLIN_RIGHT_EAR_CHILD_INDEX: usize = 0;
+pub(in crate::entity_models) const HOGLIN_LEFT_EAR_CHILD_INDEX: usize = 1;
+
+/// Vanilla `HoglinModel.setupAnim` ear sway for one ear: `rightEar.zRot = -2π/9 -
+/// walkAnimationSpeed * sin(walkAnimationPos)`, `leftEar.zRot = +2π/9 + walkAnimationSpeed
+/// * sin(walkAnimationPos)`. The adult ear pose already rests at `±2π/9`, so the sway adds
+/// `∓speed * sin(pos)` onto it (the right ear subtracts, the left adds); only `zRot`
+/// changes. `left` selects the side. (The baby layer rests its ears at a different angle
+/// that vanilla overrides to `±2π/9`; that rest-angle fix and the baby sway are deferred.)
+pub(in crate::entity_models) fn hoglin_ear_sway_pose(
+    base: PartPose,
+    left: bool,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let sway = walk_animation_speed * walk_animation_pos.sin();
+    let z_rot = base.rotation[2] + if left { sway } else { -sway };
+    PartPose {
+        offset: base.offset,
+        rotation: [base.rotation[0], base.rotation[1], z_rot],
+    }
+}
+
 /// `RavagerModel` neck-part index. The ravager body layer lists the neck first;
 /// vanilla nests the head inside the neck (`neck.getChild("head")`).
 pub(in crate::entity_models) const fn ravager_neck_part_index() -> usize {

@@ -537,8 +537,8 @@ fn hoglin_family_swings_its_legs_when_walking() {
     // `HoglinModel` (zoglin shares it) swings the four legs with its own
     // `cos(pos [+ π]) * 1.2 * speed` formula. A standing hoglin is inert; a walking
     // adult lifts its feet and splays its legs along Z; the baby's short legs swing
-    // too but the motion stays inside its bounding box. The ear sway and headbutt are
-    // deferred. Colored path.
+    // too but the motion stays inside its bounding box. The adult ear sway is covered by
+    // `adult_hoglin_sways_its_ears_when_walking`; the headbutt is deferred. Colored path.
     for (name, base, adult_size) in [
         (
             "hoglin",
@@ -664,4 +664,158 @@ fn hoglin_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+#[test]
+fn hoglin_ear_sway_pose_matches_vanilla_formula() {
+    // Vanilla HoglinModel.setupAnim: rightEar.zRot = -2π/9 - speed * sin(pos),
+    // leftEar.zRot = +2π/9 + speed * sin(pos). The adult ear poses rest at ∓2π/9
+    // (right = ADULT_HOGLIN_HEAD_CHILDREN[0], left = [1]), so the sway adds ∓speed *
+    // sin(pos) onto each; only zRot changes.
+    let right = ADULT_HOGLIN_HEAD_CHILDREN[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose;
+    let left = ADULT_HOGLIN_HEAD_CHILDREN[HOGLIN_LEFT_EAR_CHILD_INDEX].pose;
+    let ear_z = std::f32::consts::PI * 2.0 / 9.0;
+    assert!(
+        (right.rotation[2] + ear_z).abs() < 1e-6,
+        "right ear rests at -2π/9"
+    );
+    assert!(
+        (left.rotation[2] - ear_z).abs() < 1e-6,
+        "left ear rests at +2π/9"
+    );
+
+    // At pos = π/2, speed = 1: sin = 1, so the sway magnitude is 1.0.
+    let pos = std::f32::consts::FRAC_PI_2;
+    let swayed_right = hoglin_ear_sway_pose(right, false, pos, 1.0);
+    let swayed_left = hoglin_ear_sway_pose(left, true, pos, 1.0);
+    assert!(
+        (swayed_right.rotation[2] - (-ear_z - 1.0)).abs() < 1e-6,
+        "right ear: {}",
+        swayed_right.rotation[2]
+    );
+    assert!(
+        (swayed_left.rotation[2] - (ear_z + 1.0)).abs() < 1e-6,
+        "left ear: {}",
+        swayed_left.rotation[2]
+    );
+    // Only zRot changes; the offset and other axes are preserved.
+    assert_eq!(swayed_right.offset, right.offset);
+    assert_eq!(swayed_right.rotation[0], right.rotation[0]);
+    assert_eq!(swayed_right.rotation[1], right.rotation[1]);
+
+    // A general (pos, speed): sway = speed * sin(pos).
+    let pos = 1.3_f32;
+    let speed = 0.6_f32;
+    let sway = speed * pos.sin();
+    let swayed_right = hoglin_ear_sway_pose(right, false, pos, speed);
+    let swayed_left = hoglin_ear_sway_pose(left, true, pos, speed);
+    assert!((swayed_right.rotation[2] - (-ear_z - sway)).abs() < 1e-6);
+    assert!((swayed_left.rotation[2] - (ear_z + sway)).abs() < 1e-6);
+
+    // sin(pos) == 0 (pos = 0) leaves the ears at their rest splay.
+    let swayed_right = hoglin_ear_sway_pose(right, false, 0.0, 1.0);
+    assert_eq!(swayed_right.rotation[2], right.rotation[2]);
+}
+
+#[test]
+fn adult_hoglin_sways_its_ears_when_walking() {
+    // The adult hoglin/zoglin ears (children of the head) sway side to side as the gait
+    // advances. In the body layer the head subtree emits head cubes + ears + horns, so the
+    // ears occupy 24-vertex blocks [3, 5) = vertices [72, 120); the four legs occupy blocks
+    // [7, 11) = vertices [168, 264). The ear sway is `speed * sin(pos)`, so it shows only
+    // when sin(pos) != 0 — a walking hoglin at a sin-zero phase moves only its (cos-driven)
+    // legs. Covers hoglin and zoglin in the colored path.
+    for (name, family) in [
+        ("hoglin", HoglinModelFamily::Hoglin),
+        ("zoglin", HoglinModelFamily::Zoglin),
+    ] {
+        let base = EntityModelInstance::hoglin(250, [0.0, 64.0, 0.0], 0.0, family, false);
+        let rest = entity_model_mesh(&[base]);
+
+        // A sin-nonzero phase sways the ears and (cos-nonzero) swings the legs.
+        let walking = entity_model_mesh(&[base.with_walk_animation(1.5, 1.0)]);
+        assert_ne!(
+            rest.vertices[72..120],
+            walking.vertices[72..120],
+            "{name}: ears sway when walking"
+        );
+        assert_ne!(
+            rest.vertices[168..264],
+            walking.vertices[168..264],
+            "{name}: legs swing when walking"
+        );
+        // Head cubes, horns, body and mane stay put (only the ear children and legs move).
+        assert_eq!(
+            rest.vertices[0..72],
+            walking.vertices[0..72],
+            "{name}: body/mane/head cubes stay put"
+        );
+        assert_eq!(
+            rest.vertices[120..168],
+            walking.vertices[120..168],
+            "{name}: horns stay put"
+        );
+
+        // At a sin-zero phase (pos = 0) the ears stay at rest; only the legs swing.
+        let legs_only = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_eq!(
+            rest.vertices[72..120],
+            legs_only.vertices[72..120],
+            "{name}: ears stay put when sin(pos) == 0"
+        );
+        assert_ne!(
+            rest.vertices[168..264],
+            legs_only.vertices[168..264],
+            "{name}: legs still swing when sin(pos) == 0"
+        );
+    }
+}
+
+#[test]
+fn hoglin_textured_mesh_sways_its_ears_when_walking() {
+    // The texture-backed hoglin runs the same adult ear sway, emitting the head subtree in
+    // the same order, so the ears occupy textured vertices [72, 120). A standing hoglin is
+    // byte-identical; a walking one (sin-nonzero phase) sways its ears.
+    let (atlas, _) = build_entity_model_texture_atlas(&hoglin_texture_images()).unwrap();
+    let base =
+        EntityModelInstance::hoglin(251, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, false);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(1.5, 1.0)], &atlas);
+    assert_eq!(
+        resting.vertices.len(),
+        walking.vertices.len(),
+        "the ear sway keeps the vertex count"
+    );
+    assert_ne!(
+        resting.vertices[72..120],
+        walking.vertices[72..120],
+        "the textured ears sway when walking"
+    );
+    assert_eq!(
+        resting.vertices[0..72],
+        walking.vertices[0..72],
+        "body/mane/head cubes stay put"
+    );
+}
+
+#[test]
+fn baby_hoglin_ear_sway_is_deferred() {
+    // Vanilla overrides the baby hoglin's ear rest angle to ±2π/9 and sways it, but that
+    // rest-angle fix and the baby sway are deferred, so the baby ears (head children at the
+    // same [72, 120) block region) stay at their layer rest pose even when walking at a
+    // sin-nonzero phase; only the (cos-driven) legs move.
+    let base =
+        EntityModelInstance::hoglin(252, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, true);
+    let rest = entity_model_mesh(&[base]);
+    let walking = entity_model_mesh(&[base.with_walk_animation(1.5, 1.0)]);
+    assert_eq!(
+        rest.vertices[72..120],
+        walking.vertices[72..120],
+        "baby ear sway is deferred"
+    );
+    assert_ne!(
+        rest.vertices[168..264],
+        walking.vertices[168..264],
+        "baby legs still swing"
+    );
 }

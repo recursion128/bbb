@@ -278,8 +278,9 @@ When an agent does any of the following, update this file in the same slice:
       `CowModel`, `PigModel`, `SheepModel`, `GoatModel`, and `PolarBearModel` paths (all
       variants, wool layers, baby layers, the goat's per-baby leg order and horn layer,
       the polar bear's standing rear composed on top of the swing), plus the custom
-      `HoglinModel` (hoglin and zoglin, its own `1.2` amplitude no-frequency formula),
-      and the `HumanoidModel` leg sway consumes them in the zombie family
+      `HoglinModel` (hoglin and zoglin, its own `1.2` amplitude no-frequency formula, plus
+      the adult ear sway `±2π/9 ± speed * sin(pos)`), and the `HumanoidModel` leg sway
+      consumes them in the zombie family
       (zombie, husk, drowned, zombie villager) and the skeleton family (skeleton,
       stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
       Stray/Bogged clothing overlay, since the overlay's layer `SkeletonModel` runs the
@@ -471,7 +472,12 @@ When an agent does any of the following, update this file in the same slice:
     `EntityModel` (not a `QuadrupedModel`) whose four legs swing `cos(pos [+ π]) * 1.2 *
     speed` — amplitude `1.2`, no `0.6662` factor, and the right-front/left-hind pair in
     phase (resolved from `x * z > 0`, the opposite sign of the `QuadrupedModel` rule),
-    legs at `[2, 3, 4, 5]`; its ear sway and headbutt head tilt are deferred. The creeper
+    legs at `[2, 3, 4, 5]`. It also sways the ears (children of the head)
+    `ear.zRot = ±2π/9 ± speed * sin(pos)` (`hoglin_ear_sway_pose`, right ear `−`, left
+    `+`, ears at head children `[0, 1]`) in both render paths; because the ears' children
+    list is static, the head subtree is hand-emitted with the swayed ears (the horns ride
+    unchanged). The adult hoglin/zoglin ears sway; the baby ear sway (vanilla overrides the
+    baby ear rest angle to `±2π/9`) and the headbutt head tilt are deferred. The creeper
     (`emit_creeper_model` colored and `emit_creeper_textured_model` textured) is a custom
     `EntityModel` too, but its `setupAnim` leg swing is exactly the `QuadrupedModel`
     formula (legs at `[2, 3, 4, 5]`), so it reuses the shared quadruped swing; its
@@ -584,7 +590,8 @@ When an agent does any of the following, update this file in the same slice:
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
-    tilt, the `HoglinModel` ear sway and headbutt head tilt, the `EndermanModel`
+    tilt, the baby `HoglinModel` ear sway (vanilla overrides the baby ear rest angle) and
+    the `HoglinModel` headbutt head tilt, the `EndermanModel`
     carried-block arm pose and creepy attack pose, the `IronGolemModel`
     attack swing and offer-flower arm pose,
     item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
@@ -892,10 +899,13 @@ When an agent does any of the following, update this file in the same slice:
       including shared `ModelLayers.HOGLIN` / `ZOGLIN` and `HOGLIN_BABY` /
       `ZOGLIN_BABY` layers plus official adult/baby hoglin/zoglin texture
       references, texture-backed base layer pass emission, official PNG
-      atlas upload/bind/sample path, and the vanilla `HoglinModel.setupAnim`
+      atlas upload/bind/sample path, the vanilla `HoglinModel.setupAnim`
       yaw-only head look (`head.yRot = yRot * π/180`, keeping `head.xRot` at the
-      fixed headbutt-rest tilt `HOGLIN_HEAD_X_ROT`) on the head part (colored and
-      textured); headbutt attack animation, ear/walk animation, hoglin converting
+      fixed headbutt-rest tilt `HOGLIN_HEAD_X_ROT`) on the head part, the
+      `1.2`-amplitude leg swing (legs at `[2, 3, 4, 5]`), and the adult ear sway
+      (`ear.zRot = ±2π/9 ± speed * sin(pos)`, ears at head children `[0, 1]`, the head
+      subtree hand-emitted) — all colored and textured; the headbutt attack animation,
+      the baby ear sway (vanilla overrides the baby ear rest angle), hoglin converting
       shake, and lighting remain unsupported
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
