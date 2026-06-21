@@ -19,9 +19,10 @@ mod layers;
 pub(super) use layers::{
     boat_textured_layer_passes, chicken_textured_layer_passes, cow_textured_layer_passes,
     creeper_textured_layer_passes, enderman_textured_layer_passes, goat_textured_layer_passes,
-    hoglin_textured_layer_passes, magma_cube_textured_layer_passes, pig_textured_layer_passes,
-    player_textured_layer_passes, polar_bear_textured_layer_passes, sheep_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, spider_textured_layer_passes,
+    hoglin_textured_layer_passes, iron_golem_textured_layer_passes,
+    magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
+    polar_bear_textured_layer_passes, sheep_textured_layer_passes, skeleton_textured_layer_passes,
+    slime_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
     wolf_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
@@ -90,6 +91,12 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Enderman => {
                 emit_enderman_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::IronGolem => {
+                emit_iron_golem_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::SnowGolem => {
+                emit_snow_golem_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Slime { size } => {
                 emit_slime_textured_model(&mut meshes, *instance, size, atlas);
@@ -255,6 +262,28 @@ fn emit_enderman_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in enderman_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_iron_golem_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in iron_golem_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_snow_golem_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in snow_golem_textured_layer_passes() {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }

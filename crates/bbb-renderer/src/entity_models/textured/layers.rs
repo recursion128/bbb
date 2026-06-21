@@ -20,6 +20,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EndermanEyes,
     GoatBase,
     HoglinBase,
+    IronGolemBase,
     PigBase,
     PlayerBase,
     SheepBase,
@@ -31,6 +32,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SlimeOuter,
     MagmaCubeBase,
     PolarBearBase,
+    SnowGolemBase,
     SpiderBase,
     SpiderEyes,
     WolfBase,
@@ -208,6 +210,34 @@ pub(in crate::entity_models) fn enderman_textured_layer_passes() -> Vec<EntityMo
             submit_sequence: 1,
         },
     ]
+}
+
+pub(in crate::entity_models) fn iron_golem_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::IronGolemBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_IRON_GOLEM,
+        texture: IRON_GOLEM_TEXTURE_REF,
+        parts: &IRON_GOLEM_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn snow_golem_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::SnowGolemBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_SNOW_GOLEM,
+        texture: SNOW_GOLEM_TEXTURE_REF,
+        parts: &SNOW_GOLEM_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn slime_textured_layer_passes() -> Vec<EntityModelLayerPass> {

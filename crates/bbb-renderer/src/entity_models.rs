@@ -47,9 +47,10 @@ use textured::entity_model_textured_meshes;
 use textured::{
     boat_textured_layer_passes, chicken_textured_layer_passes, cow_textured_layer_passes,
     creeper_textured_layer_passes, enderman_textured_layer_passes, goat_textured_layer_passes,
-    hoglin_textured_layer_passes, magma_cube_textured_layer_passes, pig_textured_layer_passes,
-    player_textured_layer_passes, polar_bear_textured_layer_passes, sheep_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, spider_textured_layer_passes,
+    hoglin_textured_layer_passes, iron_golem_textured_layer_passes,
+    magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
+    polar_bear_textured_layer_passes, sheep_textured_layer_passes, skeleton_textured_layer_passes,
+    slime_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
     wolf_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
     EntityModelLayerVisibility,
 };

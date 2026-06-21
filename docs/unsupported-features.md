@@ -529,16 +529,18 @@ When an agent does any of the following, update this file in the same slice:
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official
       `textures/entity/iron_golem/iron_golem.png` texture reference from
-      `IronGolemRenderer`; crackiness overlay textures, flower block layer,
-      attack arm pose, offer-flower arm pose, head rotation, leg walk
-      animation, and renderer body-wobble rotation remain unsupported
+      `IronGolemRenderer`, texture-backed base layer pass emission, and
+      official PNG atlas upload/bind/sample path; crackiness overlay textures,
+      flower block layer, attack arm pose, offer-flower arm pose, head rotation,
+      leg walk animation, and renderer body-wobble rotation remain unsupported
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the
       official `textures/entity/snow_golem/snow_golem.png` texture reference
-      from `SnowGolemRenderer`; carved pumpkin head block layer, pumpkin/no
-      pumpkin state projection, head rotation, upper-body yaw, and arm
-      repositioning animation remain unsupported
+      from `SnowGolemRenderer`, texture-backed base layer pass emission, and
+      official PNG atlas upload/bind/sample path; carved pumpkin head block
+      layer, pumpkin/no pumpkin state projection, head rotation, upper-body yaw,
+      and arm repositioning animation remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
