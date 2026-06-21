@@ -461,13 +461,18 @@ fn emit_hoglin_model(
     family: HoglinModelFamily,
     baby: bool,
 ) {
+    let parts: &[ModelPartDesc] = if baby {
+        &BABY_HOGLIN_PARTS
+    } else {
+        &ADULT_HOGLIN_PARTS
+    };
     emit_model_parts_with_color(
         mesh,
-        if baby {
-            &BABY_HOGLIN_PARTS
-        } else {
-            &ADULT_HOGLIN_PARTS
-        },
+        &hoglin_colored_head_look_parts(
+            parts,
+            hoglin_head_part_index(baby),
+            instance.render_state.head_yaw,
+        ),
         entity_model_root_transform(instance),
         hoglin_model_color(family),
     );
@@ -578,6 +583,25 @@ fn colored_head_look_parts(
     let mut parts = parts.to_vec();
     if let Some(head) = parts.get_mut(head_index) {
         head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+    }
+    Cow::Owned(parts)
+}
+
+/// Applies the vanilla `HoglinModel.setupAnim` yaw-only head look to a colored
+/// hoglin layer's head part. Vanilla sets `head.yRot = yRot * π/180` but leaves
+/// `head.xRot` at the headbutt animation value (the fixed `HOGLIN_HEAD_X_ROT`
+/// rest tilt baked into the base pose), so only the yaw is applied here.
+fn hoglin_colored_head_look_parts(
+    parts: &[ModelPartDesc],
+    head_index: usize,
+    head_yaw: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if head_yaw_at_rest(head_yaw) {
+        return Cow::Borrowed(parts);
+    }
+    let mut parts = parts.to_vec();
+    if let Some(head) = parts.get_mut(head_index) {
+        head.pose = head_look_yaw_pose(head.pose, head_yaw);
     }
     Cow::Owned(parts)
 }
@@ -802,15 +826,25 @@ fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
         &ADULT_POLAR_BEAR_PARTS
     };
     let stand_scale = instance.render_state.polar_bear_stand_scale;
-    if stand_scale == 0.0 {
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    if stand_scale == 0.0 && head_look_at_rest(head_yaw, head_pitch) {
         emit_model_parts(mesh, static_parts, transform);
-    } else {
-        let mut parts = static_parts.to_vec();
+        return;
+    }
+    // Vanilla `PolarBearModel.setupAnim` first runs `super.setupAnim` (the
+    // `QuadrupedModel` head look that sets `head.xRot`/`yRot`), then the standing
+    // rear adds its deltas on top, so apply the look before the standing pose.
+    let mut parts = static_parts.to_vec();
+    if let Some(head) = parts.get_mut(polar_bear_head_part_index(baby)) {
+        head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+    }
+    if stand_scale != 0.0 {
         for (index, part) in polar_bear_standing_part_roles(baby) {
             apply_polar_bear_standing_pose(&mut parts[index].pose, part, baby, stand_scale);
         }
-        emit_model_parts(mesh, &parts, transform);
     }
+    emit_model_parts(mesh, &parts, transform);
 }
 
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

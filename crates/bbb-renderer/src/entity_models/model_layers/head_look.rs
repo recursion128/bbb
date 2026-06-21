@@ -81,11 +81,54 @@ pub(in crate::entity_models) const fn parched_head_part_index() -> usize {
     1
 }
 
+/// `PolarBearModel` head-part index. The adult body layer lists the head first;
+/// the baby body layer lists the body first, so the head is second.
+pub(in crate::entity_models) const fn polar_bear_head_part_index(baby: bool) -> usize {
+    if baby {
+        1
+    } else {
+        0
+    }
+}
+
+/// `HoglinModel` head-part index. The adult body layer lists the body first (head
+/// second); the baby body layer lists the head first.
+pub(in crate::entity_models) const fn hoglin_head_part_index(baby: bool) -> usize {
+    if baby {
+        0
+    } else {
+        1
+    }
+}
+
 /// True when a head has no look turn (head aligned with the body and level), so
 /// callers can borrow the static parts unchanged instead of cloning to apply
 /// [`head_look_pose`].
 pub(in crate::entity_models) fn head_look_at_rest(head_yaw_deg: f32, head_pitch_deg: f32) -> bool {
     head_yaw_deg == 0.0 && head_pitch_deg == 0.0
+}
+
+/// True when a yaw-only head has no turn, so callers (e.g. the hoglin, whose
+/// `head.xRot` is the fixed headbutt-resting tilt rather than a look pitch) can
+/// borrow the static parts unchanged instead of cloning to apply
+/// [`head_look_yaw_pose`].
+pub(in crate::entity_models) fn head_yaw_at_rest(head_yaw_deg: f32) -> bool {
+    head_yaw_deg == 0.0
+}
+
+/// Vanilla yaw-only head look: sets `head.yRot = yRot * π/180` while leaving the
+/// base `head.xRot` (and `head.zRot`) untouched. Used by `HoglinModel`, whose
+/// `setupAnim` keeps `head.xRot` at the headbutt animation value (the fixed
+/// `HOGLIN_HEAD_X_ROT` tilt at rest) instead of following the look pitch.
+pub(in crate::entity_models) fn head_look_yaw_pose(base: PartPose, head_yaw_deg: f32) -> PartPose {
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            base.rotation[0],
+            head_yaw_deg.to_radians(),
+            base.rotation[2],
+        ],
+    }
 }
 
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and

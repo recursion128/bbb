@@ -15,10 +15,11 @@ use super::{
     magma_cube_model_root_transform,
     model_layers::{
         apply_polar_bear_standing_pose, cow_head_part_index, head_first_part_index,
-        head_look_at_rest, head_look_pose, parched_head_part_index, pig_head_part_index,
-        player_head_part_index, polar_bear_standing_part_roles, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
-        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
+        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
+        hoglin_head_part_index, parched_head_part_index, pig_head_part_index,
+        player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -305,6 +306,33 @@ fn emit_textured_passes_with_head_look(
     }
 }
 
+/// Emits textured layer passes after applying the vanilla `HoglinModel.setupAnim`
+/// yaw-only head look to each pass's head part. Vanilla sets `head.yRot` from the
+/// look yaw but keeps `head.xRot` at the headbutt rest tilt baked into the base
+/// pose, so only the yaw is applied (see [`head_look_yaw_pose`]).
+fn emit_textured_passes_with_head_yaw(
+    meshes: &mut EntityModelTexturedMeshes,
+    passes: Vec<EntityModelLayerPass>,
+    head_index: usize,
+    transform: Mat4,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let head_yaw = instance.render_state.head_yaw;
+    let head_resting = head_yaw_at_rest(head_yaw);
+    for pass in passes {
+        if head_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_yaw_pose(head.pose, head_yaw);
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
+}
+
 fn emit_creeper_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -437,13 +465,24 @@ fn emit_polar_bear_textured_model(
         polar_bear_model_root_transform(instance)
     };
     let stand_scale = instance.render_state.polar_bear_stand_scale;
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let head_index = polar_bear_head_part_index(baby);
     for pass in polar_bear_textured_layer_passes(baby) {
-        if stand_scale == 0.0 {
+        if stand_scale == 0.0 && head_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {
+            // Vanilla runs `super.setupAnim` (the head look) before the standing
+            // rear adds its deltas on top, so apply the look first.
             let mut parts = pass.parts.to_vec();
-            for (index, part) in polar_bear_standing_part_roles(baby) {
-                apply_polar_bear_standing_pose(&mut parts[index].pose, part, baby, stand_scale);
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+            if stand_scale != 0.0 {
+                for (index, part) in polar_bear_standing_part_roles(baby) {
+                    apply_polar_bear_standing_pose(&mut parts[index].pose, part, baby, stand_scale);
+                }
             }
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
         }
@@ -457,10 +496,14 @@ fn emit_hoglin_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let transform = entity_model_root_transform(instance);
-    for pass in hoglin_textured_layer_passes(family, baby) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
-    }
+    emit_textured_passes_with_head_yaw(
+        meshes,
+        hoglin_textured_layer_passes(family, baby),
+        hoglin_head_part_index(baby),
+        entity_model_root_transform(instance),
+        instance,
+        atlas,
+    );
 }
 
 fn emit_ravager_textured_model(

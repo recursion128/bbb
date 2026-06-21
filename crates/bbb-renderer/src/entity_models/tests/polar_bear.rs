@@ -298,6 +298,49 @@ fn polar_bear_textured_mesh_uses_vanilla_uvs_tints_and_scale() {
 }
 
 #[test]
+fn polar_bear_textured_meshes_apply_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&polar_bear_texture_images()).unwrap();
+
+    // Adult head is part 0 (4 cubes = first 96 vertices); body and legs follow and
+    // must stay put under a head look.
+    let adult = EntityModelInstance::polar_bear(214, [0.0, 64.0, 0.0], 0.0, false);
+    let resting = entity_model_textured_mesh(&[adult], &atlas);
+    let yawed = entity_model_textured_mesh(&[adult.with_head_look(50.0, 0.0)], &atlas);
+    let pitched = entity_model_textured_mesh(&[adult.with_head_look(0.0, -20.0)], &atlas);
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices[0..96], yawed.vertices[0..96]);
+    assert_eq!(resting.vertices[96..], yawed.vertices[96..]);
+    assert_ne!(yawed.vertices[0..96], pitched.vertices[0..96]);
+
+    // Baby lists the body first (1 cube = first 24 vertices); head is index 1.
+    let baby = EntityModelInstance::polar_bear(215, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_resting = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_looking = entity_model_textured_mesh(&[baby.with_head_look(50.0, -20.0)], &atlas);
+    assert_ne!(baby_resting.vertices, baby_looking.vertices);
+    assert_eq!(baby_resting.vertices[0..24], baby_looking.vertices[0..24]);
+
+    // While rearing, the head look still applies, composed on top of the standing
+    // pose and distinct from a flat (non-standing) look.
+    let standing = EntityModelInstance::polar_bear_standing(216, [0.0, 64.0, 0.0], 0.0, false, 1.0);
+    let standing_resting = entity_model_textured_mesh(&[standing], &atlas);
+    let standing_looking =
+        entity_model_textured_mesh(&[standing.with_head_look(50.0, -20.0)], &atlas);
+    let flat_looking = entity_model_textured_mesh(&[adult.with_head_look(50.0, -20.0)], &atlas);
+    assert_ne!(
+        standing_resting.vertices[0..96],
+        standing_looking.vertices[0..96]
+    );
+    assert_eq!(
+        standing_resting.vertices[96..],
+        standing_looking.vertices[96..]
+    );
+    assert_ne!(
+        standing_looking.vertices[0..96],
+        flat_looking.vertices[0..96]
+    );
+}
+
+#[test]
 fn polar_bear_standing_part_roles_match_vanilla_layer_order() {
     // Adult layer lists head first then body; baby layer lists body first.
     assert_eq!(

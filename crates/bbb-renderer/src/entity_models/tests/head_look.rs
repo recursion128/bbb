@@ -96,6 +96,53 @@ fn head_part_indices_match_vanilla_body_layers() {
         SNOW_GOLEM_PARTS[head_first_part_index()].cubes,
         SNOW_GOLEM_HEAD.as_slice()
     );
+
+    // The adult polar bear layer lists the head first; the baby layer lists the
+    // body first (head second). The adult hoglin layer lists the body first (head
+    // second); the baby hoglin layer lists the head first.
+    assert_eq!(polar_bear_head_part_index(false), 0);
+    assert_eq!(polar_bear_head_part_index(true), 1);
+    assert_eq!(
+        ADULT_POLAR_BEAR_PARTS[polar_bear_head_part_index(false)].cubes,
+        ADULT_POLAR_BEAR_HEAD.as_slice()
+    );
+    assert_eq!(
+        BABY_POLAR_BEAR_PARTS[polar_bear_head_part_index(true)].cubes,
+        BABY_POLAR_BEAR_HEAD.as_slice()
+    );
+    assert_eq!(hoglin_head_part_index(false), 1);
+    assert_eq!(hoglin_head_part_index(true), 0);
+    assert_eq!(
+        ADULT_HOGLIN_PARTS[hoglin_head_part_index(false)].cubes,
+        ADULT_HOGLIN_HEAD.as_slice()
+    );
+    assert_eq!(
+        BABY_HOGLIN_PARTS[hoglin_head_part_index(true)].cubes,
+        BABY_HOGLIN_HEAD.as_slice()
+    );
+}
+
+#[test]
+fn head_look_yaw_pose_matches_vanilla_hoglin_setup_anim() {
+    // HoglinModel.setupAnim sets head.yRot = yRot*PI/180 but keeps head.xRot at the
+    // headbutt-rest tilt baked into the base pose, so yaw-only look preserves xRot
+    // and zRot.
+    let base = PartPose {
+        offset: [0.0, 2.0, -12.0],
+        rotation: [HOGLIN_HEAD_X_ROT, 0.0, 0.2],
+    };
+    assert!(head_yaw_at_rest(0.0));
+    assert!(!head_yaw_at_rest(10.0));
+
+    let posed = head_look_yaw_pose(base, 35.0);
+    assert_eq!(posed.offset, base.offset);
+    // Only the yaw is set; the base headbutt-rest pitch and zRot are untouched.
+    assert_eq!(posed.rotation[0], HOGLIN_HEAD_X_ROT);
+    assert!((posed.rotation[1] - 35.0_f32.to_radians()).abs() < 1e-6);
+    assert_eq!(posed.rotation[2], 0.2);
+
+    // No yaw turn returns the base pose unchanged.
+    assert_eq!(head_look_yaw_pose(base, 0.0), base);
 }
 
 #[test]
@@ -449,6 +496,87 @@ fn goat_colored_meshes_apply_head_look() {
         assert_eq!(resting.vertices.len(), yawed.vertices.len());
         assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
         assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+    }
+}
+
+#[test]
+fn polar_bear_colored_mesh_applies_head_look_to_head_only() {
+    // Adult polar bear head is part 0 (4 cubes = first 96 vertices); the body and
+    // legs follow and must stay put under a head look.
+    let base = EntityModelInstance::polar_bear(770, [0.0, 64.0, 0.0], 0.0, false);
+    let resting = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices[0..96], yawed.vertices[0..96]);
+    assert_eq!(resting.vertices[96..], yawed.vertices[96..]);
+    assert_ne!(resting.vertices[0..96], pitched.vertices[0..96]);
+    assert_eq!(resting.vertices[96..], pitched.vertices[96..]);
+    assert_ne!(yawed.vertices[0..96], pitched.vertices[0..96]);
+}
+
+#[test]
+fn baby_polar_bear_colored_mesh_turns_head_part_not_body() {
+    // Baby polar bear lists the body first (index 0, one cube = first 24
+    // vertices); the head is index 1. Head look must leave the body untouched.
+    let base = EntityModelInstance::polar_bear(771, [0.0, 64.0, 0.0], 0.0, true);
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    assert_eq!(resting.vertices.len(), looking.vertices.len());
+    assert_ne!(resting.vertices, looking.vertices);
+    assert_eq!(resting.vertices[0..24], looking.vertices[0..24]);
+}
+
+#[test]
+fn standing_polar_bear_colored_mesh_composes_head_look_with_rear() {
+    // While the bear is rearing, the head look still applies on top of the
+    // standing pose, and combining the two is distinct from either alone.
+    let base = EntityModelInstance::polar_bear_standing(772, [0.0, 64.0, 0.0], 0.0, false, 1.0);
+    let standing = entity_model_mesh(&[base]);
+    let standing_looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+    let flat_looking =
+        entity_model_mesh(&[
+            EntityModelInstance::polar_bear(772, [0.0, 64.0, 0.0], 0.0, false)
+                .with_head_look(50.0, -20.0),
+        ]);
+
+    assert_eq!(standing.vertices.len(), standing_looking.vertices.len());
+    // Head look turns the head while rearing...
+    assert_ne!(standing.vertices[0..96], standing_looking.vertices[0..96]);
+    // ...and the rear leaves body/legs identical to the non-looking stand.
+    assert_eq!(standing.vertices[96..], standing_looking.vertices[96..]);
+    // The composed (stand + look) head differs from the flat (look only) head,
+    // proving the standing delta is added on top of the look.
+    assert_ne!(
+        standing_looking.vertices[0..96],
+        flat_looking.vertices[0..96]
+    );
+}
+
+#[test]
+fn hoglin_colored_meshes_apply_yaw_only_head_look() {
+    // Adult hoglin lists the body first; the head is index 1. Baby hoglin lists
+    // the head first (index 0). Vanilla turns the head in yaw only, keeping the
+    // headbutt-rest pitch, so a pitch-only look must leave the mesh unchanged.
+    for (id, baby) in [(773, false), (774, true)] {
+        let base =
+            EntityModelInstance::hoglin(id, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, baby);
+        let resting = entity_model_mesh(&[base]);
+        let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+        let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(
+            resting.vertices, yawed.vertices,
+            "baby={baby} yaw turns head"
+        );
+        // Yaw-only: a pure pitch look leaves the hoglin head at the headbutt rest.
+        assert_eq!(
+            resting.vertices, pitched.vertices,
+            "baby={baby} pitch ignored"
+        );
     }
 }
 

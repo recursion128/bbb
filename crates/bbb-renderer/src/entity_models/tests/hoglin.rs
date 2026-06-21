@@ -472,6 +472,30 @@ fn hoglin_textured_mesh_uses_vanilla_uvs_tints_and_family_textures() {
     assert_close3(baby_textured_max, baby_colored_max);
 }
 
+#[test]
+fn hoglin_textured_meshes_apply_yaw_only_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&hoglin_texture_images()).unwrap();
+    // Vanilla `HoglinModel.setupAnim` turns the head in yaw only, keeping the
+    // headbutt-rest pitch baked into the base pose, so a pitch-only look leaves the
+    // mesh unchanged while a yaw look turns the head.
+    for (id, baby) in [(228, false), (229, true)] {
+        let base =
+            EntityModelInstance::hoglin(id, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, baby);
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let yawed = entity_model_textured_mesh(&[base.with_head_look(50.0, 0.0)], &atlas);
+        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(
+            resting.vertices, yawed.vertices,
+            "baby={baby} yaw turns head"
+        );
+        assert_eq!(
+            resting.vertices, pitched.vertices,
+            "baby={baby} pitch ignored"
+        );
+    }
+}
+
 fn hoglin_texture_images() -> Vec<EntityModelTextureImage> {
     hoglin_entity_texture_refs()
         .iter()

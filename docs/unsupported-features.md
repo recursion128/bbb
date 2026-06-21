@@ -319,12 +319,16 @@ When an agent does any of the following, update this file in the same slice:
     (creeper, spider/cave spider, enderman, iron golem, snow golem) — all colored
     and textured; and the goat (colored+textured, horn children rotating with the
     head) and wolf (colored+textured) `QuadrupedModel`/`EntityModel` head parts.
-    The remaining head-look gaps are the models whose head pitch is animation- or
-    pose-driven rather than look-driven (polar bear's standing-rear `head.xRot`
-    term, hoglin's fixed headbutt `head.xRot`, ravager's neck-nested head), the
-    fall-flying/swimming `head.xRot` overrides (currently untracked, default
-    upright), and the placeholder raw-cuboid `Humanoid` fallback path (not yet a
-    vanilla-faithful part-list model).
+    The animation-/pose-driven head models are also covered: the polar bear
+    (colored+textured) applies the `QuadrupedModel` look before the standing-rear
+    delta, matching vanilla's `super.setupAnim` then `head.xRot += standScale * π *
+    0.15` order; the hoglin/zoglin (colored+textured) apply the vanilla yaw-only
+    look (`head.yRot = yRot * π/180`) while keeping `head.xRot` at the fixed
+    headbutt-rest tilt `HOGLIN_HEAD_X_ROT`. The remaining head-look gaps are the
+    ravager's neck-nested head (head is a child of the `neck` part, needs nested
+    rotation), the fall-flying/swimming `head.xRot` overrides (currently untracked,
+    default upright), and the placeholder raw-cuboid `Humanoid` fallback path (not
+    yet a vanilla-faithful part-list model).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -524,16 +528,22 @@ When an agent does any of the following, update this file in the same slice:
       official PNG atlas upload/bind/sample path, and the vanilla
       `PolarBearModel.setupAnim` standing-rear head/body/front-leg pose driven by
       the canonical `clientSideStandAnimation` countdown projected through
-      `PolarBear.getStandingAnimationScale` and the renderer partial tick; walk
-      animation, head rotation, and lighting remain unsupported
+      `PolarBear.getStandingAnimationScale` and the renderer partial tick, and the
+      vanilla `QuadrupedModel.setupAnim` head-look yaw/pitch applied before the
+      standing-rear `head.xRot += standScale * π * 0.15` term (colored and
+      textured, matching vanilla's `super.setupAnim`-then-rear order); walk
+      animation and lighting remain unsupported
     - hoglin and zoglin entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `HoglinModel`, `BabyHoglinModel`,
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,
       including shared `ModelLayers.HOGLIN` / `ZOGLIN` and `HOGLIN_BABY` /
       `ZOGLIN_BABY` layers plus official adult/baby hoglin/zoglin texture
-      references, texture-backed base layer pass emission, and official PNG
-      atlas upload/bind/sample path; headbutt attack animation, ear/head/walk
-      animation, hoglin converting shake, and lighting remain unsupported
+      references, texture-backed base layer pass emission, official PNG
+      atlas upload/bind/sample path, and the vanilla `HoglinModel.setupAnim`
+      yaw-only head look (`head.yRot = yRot * π/180`, keeping `head.xRot` at the
+      fixed headbutt-rest tilt `HOGLIN_HEAD_X_ROT`) on the head part (colored and
+      textured); headbutt attack animation, ear/walk animation, hoglin converting
+      shake, and lighting remain unsupported
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official
