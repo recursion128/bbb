@@ -479,7 +479,10 @@ When an agent does any of the following, update this file in the same slice:
     parched, wither skeleton, bogged sheared/unsheared; the Stray/Bogged clothing
     overlay swings too, since its layer `SkeletonModel` runs the same `setupAnim`).
     Both families inherit the `HumanoidModel` legs unchanged (`SkeletonModel`/
-    `AbstractZombieModel extends HumanoidModel`, overriding only the arms). The piglin
+    `AbstractZombieModel extends HumanoidModel`); the zombie family then overrides the
+    arms with its constant held-out pose (deferred), while the skeleton family keeps the
+    inherited arm counter-swing in its default (non-aiming) state (implemented — see the
+    arm-swing note below). The piglin
     family (`emit_piglin_model` — piglin, piglin brute, zombified piglin, adult and
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
     `setupAnim` runs `super.setupAnim` (the inherited legs) before swaying only the ears,
@@ -548,11 +551,15 @@ When an agent does any of the following, update this file in the same slice:
     distance→speed mappings (and
     `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
     track), so their limb swing is left at rest rather than approximated; (2) the base
-    `HumanoidModel.setupAnim` arm swing is implemented for the player
-    (`humanoid_arm_swing_pose`, arms at `[2, 3]`, the counter-swing
-    `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`); the per-subclass arm/ear/nose poses
-    that override it stay deferred (the
-    zombie held-out arms, skeleton aiming, the `AbstractPiglinModel` ear sway and
+    `HumanoidModel.setupAnim` arm swing is implemented for the player and the skeleton
+    family (`humanoid_arm_swing_pose`/`humanoid_arm_swing_parts`, arms at `[2, 3]`, the
+    counter-swing `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`; `SkeletonModel` runs
+    `super.setupAnim` and overrides the arms only in its melee branch, so the default
+    arms swing in both the colored and textured paths, every variant — skeleton, stray,
+    parched, wither skeleton, bogged sheared/unsheared); the per-subclass arm/ear/nose
+    poses that override it stay deferred (the zombie held-out arms, the skeleton melee
+    swing (`isAggressive && !isHoldingBow`) and bow-aiming `ArmPose`, the
+    `AbstractPiglinModel` ear sway and
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
@@ -932,13 +939,14 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.STRAY_OUTER_LAYER`, bogged `SkeletonClothingLayer`
       `bogged_overlay.png` pass through `ModelLayers.BOGGED_OUTER_LAYER`,
       official PNG atlas upload/bind/sample path, and the vanilla
-      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part and the
-      inherited `HumanoidModel` leg swing on the two leg parts (colored and
+      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part, the
+      inherited `HumanoidModel` leg swing on the two leg parts, and the inherited
+      `HumanoidModel` arm counter-swing on the two arm parts (colored and
       textured, including the parched body-first part order, the wither scaled
       transform, and the Stray/Bogged clothing overlay whose layer
       `SkeletonModel` runs the same `setupAnim`); skeleton-family armor, held
-      bows/items, `SkeletonModel` arm aiming/attack animation, and lighting remain
-      unsupported
+      bows/items, the `SkeletonModel` melee arm swing (`isAggressive &&
+      !isHoldingBow`) and bow-aiming `ArmPose`, and lighting remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,

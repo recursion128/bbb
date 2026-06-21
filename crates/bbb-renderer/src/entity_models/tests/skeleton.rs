@@ -745,7 +745,8 @@ fn humanoid_limb_swing_parts_assign_vanilla_skeleton_leg_phases_by_side() {
         "left leg out of phase: {}",
         posed[5].pose.rotation[0]
     );
-    // The arms (indices 2, 3) are left to the SkeletonModel aiming pose, untouched.
+    // humanoid_limb_swing_parts only swings the legs; the arms (indices 2, 3) are
+    // posed separately by humanoid_arm_swing_parts, so this helper leaves them at rest.
     assert_eq!(posed[2].pose.rotation, SKELETON_PARTS[2].pose.rotation);
     assert_eq!(posed[3].pose.rotation, SKELETON_PARTS[3].pose.rotation);
 
@@ -928,6 +929,217 @@ fn skeleton_textured_mesh_swings_legs_when_walking() {
             "{name}: a walking skeleton's feet should lift off the ground"
         );
     }
+}
+
+#[test]
+fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
+    use std::borrow::Cow;
+
+    // SkeletonModel extends HumanoidModel and, in its default (non-aiming, non-melee)
+    // state, inherits the HumanoidModel.setupAnim arm swing:
+    //   rightArm.xRot = cos(pos * 0.6662 + π) * 2.0 * speed * 0.5
+    //   leftArm.xRot  = cos(pos * 0.6662)     * 2.0 * speed * 0.5
+    // SKELETON_PARTS lists rightArm (offset x = -5) at index 2 and leftArm (x = +5) at
+    // index 3. With pos = 0, speed = 1: rightArm = -1.0, leftArm = +1.0 — the opposite
+    // phase to the same-side leg (right leg = +1.4), as in vanilla walking.
+    let posed = humanoid_arm_swing_parts(
+        Cow::Borrowed(&SKELETON_PARTS),
+        HUMANOID_ARM_PART_INDICES,
+        0.0,
+        1.0,
+    );
+    assert!(
+        (posed[2].pose.rotation[0] + 1.0).abs() < 1e-5,
+        "right arm out of phase: {}",
+        posed[2].pose.rotation[0]
+    );
+    assert!(
+        (posed[3].pose.rotation[0] - 1.0).abs() < 1e-5,
+        "left arm in phase: {}",
+        posed[3].pose.rotation[0]
+    );
+    // humanoid_arm_swing_parts only swings the arms; the legs (indices 4, 5) are posed
+    // separately, so this helper leaves them at rest.
+    assert_eq!(posed[4].pose.rotation, SKELETON_PARTS[4].pose.rotation);
+    assert_eq!(posed[5].pose.rotation, SKELETON_PARTS[5].pose.rotation);
+
+    // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5,
+    // including the 0.6662 frequency factor and the 0.5 amplitude scale.
+    let posed = humanoid_arm_swing_parts(
+        Cow::Borrowed(&SKELETON_PARTS),
+        HUMANOID_ARM_PART_INDICES,
+        1.5,
+        0.5,
+    );
+    let phase = 1.5_f32 * 0.6662;
+    assert!(
+        (posed[2].pose.rotation[0] - (phase + std::f32::consts::PI).cos() * 2.0 * 0.5 * 0.5).abs()
+            < 1e-5
+    );
+    assert!((posed[3].pose.rotation[0] - phase.cos() * 2.0 * 0.5 * 0.5).abs() < 1e-5);
+
+    // At rest (speed = 0) the static parts are borrowed unchanged.
+    let resting = humanoid_arm_swing_parts(
+        Cow::Borrowed(&SKELETON_PARTS),
+        HUMANOID_ARM_PART_INDICES,
+        3.0,
+        0.0,
+    );
+    assert!(matches!(resting, Cow::Borrowed(_)));
+}
+
+#[test]
+fn skeleton_family_swings_its_arms_when_walking() {
+    // SkeletonModel inherits the HumanoidModel arm counter-swing in its default state
+    // (the arms are overridden only in the deferred melee/aiming poses). In the colored
+    // body layer the parts emit head(0)+hat(1)+body(2), then right_arm(3), left_arm(4),
+    // right_leg(5), left_leg(6) as 24-vertex blocks, so the head/body occupy vertices
+    // [0, 72), the arms [72, 120) and the legs [120, 168). A standing skeleton is inert;
+    // a walking one swings both arms and legs while the head and body stay put.
+    let z_extent = |verts: &[EntityModelVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    let families: [(&str, EntityModelInstance); 6] = [
+        (
+            "skeleton",
+            EntityModelInstance::skeleton(90, [0.0, 64.0, 0.0], 0.0),
+        ),
+        (
+            "stray",
+            EntityModelInstance::skeleton_variant(
+                91,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Stray,
+            ),
+        ),
+        (
+            "wither_skeleton",
+            EntityModelInstance::skeleton_variant(
+                92,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::WitherSkeleton,
+            ),
+        ),
+        (
+            "parched",
+            EntityModelInstance::skeleton_variant(
+                93,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Parched,
+            ),
+        ),
+        (
+            "bogged",
+            EntityModelInstance::skeleton_variant(
+                94,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Bogged { sheared: false },
+            ),
+        ),
+        (
+            "bogged_sheared",
+            EntityModelInstance::skeleton_variant(
+                95,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Bogged { sheared: true },
+            ),
+        ),
+    ];
+    for (name, base) in families {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        // The skeleton/wither/bogged-sheared families share the plain body geometry whose
+        // first three blocks are head/hat/body and whose arms/legs sit at known offsets;
+        // assert the per-block split there. The overlaid/extra-cube variants only need to
+        // show the arms move on top of the leg swing, which the splay check below covers.
+        if matches!(name, "skeleton" | "wither_skeleton" | "bogged_sheared") {
+            assert_eq!(
+                rest.vertices[0..72],
+                walking.vertices[0..72],
+                "{name}: head and body never swing"
+            );
+            assert_ne!(
+                rest.vertices[72..120],
+                walking.vertices[72..120],
+                "{name}: arms swing"
+            );
+            assert_ne!(
+                rest.vertices[120..168],
+                walking.vertices[120..168],
+                "{name}: legs swing"
+            );
+            let rest_arm_z = z_extent(&rest.vertices[72..120]);
+            let walk_arm_z = z_extent(&walking.vertices[72..120]);
+            assert!(
+                walk_arm_z > rest_arm_z + 0.1,
+                "{name}: a forward/back arm swing deepens the arm Z footprint: {rest_arm_z} -> {walk_arm_z}"
+            );
+        } else {
+            assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+        }
+    }
+}
+
+#[test]
+fn skeleton_textured_mesh_swings_arms_when_walking() {
+    // The texture-backed skeleton render path runs the same inherited HumanoidModel
+    // arm swing. The plain body layer emits the parts in the same order as the colored
+    // path, so the arms occupy textured vertices [72, 120). A standing skeleton is
+    // byte-identical however far the swing has advanced; a walking one swings its arms.
+    let z_extent = |verts: &[EntityModelTexturedVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
+    let base = EntityModelInstance::skeleton(96, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+    assert_eq!(
+        resting.vertices, still.vertices,
+        "a standing skeleton is inert"
+    );
+    assert_eq!(
+        resting.vertices[0..72],
+        walking.vertices[0..72],
+        "head and body never swing"
+    );
+    assert_ne!(
+        resting.vertices[72..120],
+        walking.vertices[72..120],
+        "arms swing"
+    );
+    assert_ne!(
+        resting.vertices[120..168],
+        walking.vertices[120..168],
+        "legs swing"
+    );
+    let rest_arm_z = z_extent(&resting.vertices[72..120]);
+    let walk_arm_z = z_extent(&walking.vertices[72..120]);
+    assert!(
+        walk_arm_z > rest_arm_z + 0.1,
+        "the textured arms splay along Z when walking: {rest_arm_z} -> {walk_arm_z}"
+    );
 }
 
 fn skeleton_texture_images() -> Vec<EntityModelTextureImage> {

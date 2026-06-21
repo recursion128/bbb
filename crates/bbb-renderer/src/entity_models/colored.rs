@@ -9,8 +9,9 @@ pub(super) use runtime::entity_model_colored_runtime_mesh;
 pub(super) use runtime::entity_model_mesh;
 #[cfg(test)]
 pub(super) use runtime::{
-    humanoid_limb_swing_parts, quadruped_leg_x_rotations, quadruped_limb_swing_parts,
-    HUMANOID_LEG_PART_INDICES, QUADRUPED_LEG_PART_INDICES,
+    humanoid_arm_swing_parts, humanoid_limb_swing_parts, quadruped_leg_x_rotations,
+    quadruped_limb_swing_parts, HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
+    QUADRUPED_LEG_PART_INDICES,
 };
 #[cfg(test)]
 pub(super) use selection::{chicken_model_parts, cow_model_parts, pig_model_parts};

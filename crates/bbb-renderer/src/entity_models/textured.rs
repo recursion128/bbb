@@ -365,12 +365,14 @@ const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
 /// `HumanoidModel` arm part indices (head/body at `0`/`1`, arms at `[2, 3]`).
 const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
 
-/// Emits a humanoid's textured layer passes, applying the vanilla
+/// Emits the skeleton family's textured layer passes, applying the vanilla
 /// `HumanoidModel.setupAnim` head look ([`head_look_pose`]) to the head part at
-/// `head_index` and the leg swing ([`humanoid_leg_swing_pose`]) to the two leg
-/// parts at `leg_indices`. The static parts are reused unchanged while both the
-/// head is level/aligned and the legs are at rest. The arms are left to each
-/// subclass override (e.g. the skeleton aiming pose), which is deferred.
+/// `head_index`, the leg swing ([`humanoid_leg_swing_pose`]) to the two leg parts at
+/// `leg_indices`, and the inherited arm counter-swing ([`humanoid_arm_swing_pose`]) to
+/// the arms at `[2, 3]`. `SkeletonModel` overrides the arms only in its melee branch
+/// (`isAggressive && !isHoldingBow`) and the bow aiming is a deferred `ArmPose`, so in
+/// the default state the arms swing as inherited. The static parts are reused unchanged
+/// while the head is level/aligned and the limbs are at rest.
 #[allow(clippy::too_many_arguments)]
 fn emit_humanoid_textured_passes(
     meshes: &mut EntityModelTexturedMeshes,
@@ -386,9 +388,9 @@ fn emit_humanoid_textured_passes(
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     for pass in passes {
-        if head_resting && legs_resting {
+        if head_resting && limbs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {
             let mut parts = pass.parts.to_vec();
@@ -397,10 +399,15 @@ fn emit_humanoid_textured_passes(
                     head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
                 }
             }
-            if !legs_resting {
+            if !limbs_resting {
                 for index in leg_indices {
                     if let Some(leg) = parts.get_mut(index) {
                         leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
+                for index in HUMANOID_ARM_PART_INDICES {
+                    if let Some(arm) = parts.get_mut(index) {
+                        arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
                     }
                 }
             }

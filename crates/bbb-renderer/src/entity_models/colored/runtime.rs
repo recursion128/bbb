@@ -654,25 +654,35 @@ fn emit_skeleton_variant_model(
     }
 }
 
-/// Applies the vanilla `HumanoidModel.setupAnim` head look and leg swing to a
-/// skeleton-family layer. `SkeletonModel extends HumanoidModel` and overrides
-/// only the arms (when aiming, deferred), so the legs swing exactly as in the
-/// inherited `HumanoidModel.setupAnim`.
+/// Applies the vanilla `HumanoidModel.setupAnim` head look, leg swing, and arm swing to
+/// a skeleton-family layer. `SkeletonModel extends HumanoidModel` and overrides the arms
+/// only in its melee branch (`isAggressive && !isHoldingBow`, deferred) and the bow
+/// aiming is a deferred `ArmPose`, so in the default state the legs and arms swing
+/// exactly as in the inherited `HumanoidModel.setupAnim` (arms at `[2, 3]`).
 fn skeleton_colored_posed_parts(
     parts: &[ModelPartDesc],
     head_index: usize,
     instance: EntityModelInstance,
 ) -> Cow<'_, [ModelPartDesc]> {
-    humanoid_limb_swing_parts(
-        colored_head_look_parts(
-            parts,
-            head_index,
-            instance.render_state.head_yaw,
-            instance.render_state.head_pitch,
-        ),
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let parts = colored_head_look_parts(
+        parts,
+        head_index,
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    );
+    let parts = humanoid_limb_swing_parts(
+        parts,
         HUMANOID_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
+        limb_swing,
+        limb_swing_amount,
+    );
+    humanoid_arm_swing_parts(
+        parts,
+        HUMANOID_ARM_PART_INDICES,
+        limb_swing,
+        limb_swing_amount,
     )
 }
 
@@ -762,9 +772,9 @@ pub(in crate::entity_models) const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3
 
 /// Applies the vanilla `HumanoidModel.setupAnim` arm swing ([`humanoid_arm_swing_pose`])
 /// to a colored layer's two arm parts at `arm_indices`. Borrows the static parts
-/// unchanged at rest (`walkAnimationSpeed == 0`). Only callers whose subclass does not
-/// override the arms (e.g. the player) use this; the zombie/skeleton/piglin arm poses
-/// stay deferred.
+/// unchanged at rest (`walkAnimationSpeed == 0`). Callers whose subclass keeps the
+/// inherited default arms use this (the player and the skeleton family); the
+/// zombie/piglin constant arms-out poses stay deferred.
 pub(in crate::entity_models) fn humanoid_arm_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     arm_indices: [usize; 2],
