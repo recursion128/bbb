@@ -535,8 +535,17 @@ fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     let transform = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
+    // Vanilla `RavagerModel.setupAnim` swings the four legs `cos(pos * 0.6662 [+ π]) *
+    // 0.4 * speed` (`ravager_leg_swing_pose`, legs at [2, 3, 4, 5]). The neck/mouth
+    // attack/stun/roar poses are deferred. Pre-pose the legs; the neck (part 0) is
+    // untouched by the swing, so the head handling below still works on it.
+    let parts = ravager_limb_swing_parts(
+        Cow::Borrowed(&RAVAGER_PARTS),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+    );
     if head_look_at_rest(head_yaw, head_pitch) {
-        emit_model_parts(mesh, &RAVAGER_PARTS, transform);
+        emit_model_parts(mesh, &parts, transform);
         return;
     }
     // Vanilla `RavagerModel.setupAnim` sets `head.xRot`/`head.yRot` from the look,
@@ -544,7 +553,7 @@ fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     // (can't be swapped for an owned copy), so emit the neck subtree by hand: the
     // neck cubes, then the head child carrying the look (its horn/mouth children
     // inherit the rotation as in vanilla), keeping the original emit order.
-    let neck = &RAVAGER_PARTS[ravager_neck_part_index()];
+    let neck = &parts[ravager_neck_part_index()];
     let neck_transform = transform * part_pose_transform(neck.pose);
     for cube in neck.cubes {
         emit_model_cube(mesh, neck_transform, *cube);
@@ -555,10 +564,33 @@ fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
         ..head
     };
     emit_model_parts(mesh, &[looked_head], neck_transform);
-    // The remaining body and leg parts are unaffected by the head look.
-    for part in &RAVAGER_PARTS[ravager_neck_part_index() + 1..] {
+    // The remaining body and (swung) leg parts are unaffected by the head look.
+    for part in &parts[ravager_neck_part_index() + 1..] {
         emit_model_part(mesh, part, transform);
     }
+}
+
+/// The four leg part indices in the ravager body layer: the neck and body occupy
+/// `0`/`1`, then the right/left hind and right/left front legs.
+const RAVAGER_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
+/// Applies the vanilla `RavagerModel.setupAnim` leg swing
+/// ([`ravager_leg_swing_pose`]) to a colored ravager layer's four leg parts. Borrows
+/// the static parts unchanged at rest (`walkAnimationSpeed == 0`).
+fn ravager_limb_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in RAVAGER_LEG_PART_INDICES {
+        owned[index].pose =
+            ravager_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
+    }
+    Cow::Owned(owned)
 }
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

@@ -293,10 +293,11 @@ When an agent does any of the following, update this file in the same slice:
       textured, wide and slim, the pants children riding the leg parts), and the
       enderman (`EndermanModel extends HumanoidModel`, the inherited swing halved and
       clamped to `[-0.4, 0.4]`), and the iron golem (`IronGolemModel`, a triangle-wave
-      gait swinging both legs and — its only walk-driven arm animation — the arms). The
-      remaining slices consume them in the other model families' `setupAnim` (snow
-      golem, ravager, spider, wolf, birds, fish, etc., plus the `HumanoidModel`/illager/
-      villager arm and ear/nose poses).
+      gait swinging both legs and — its only walk-driven arm animation — the arms), and
+      the ravager (`RavagerModel`, the `QuadrupedModel` diagonal phase at a shorter `0.4`
+      amplitude, legs `[2, 3, 4, 5]`). The remaining slices consume them in the other
+      model families' `setupAnim` (snow golem, spider, wolf, birds, fish, etc., plus the
+      `HumanoidModel`/illager/villager arm and ear/nose poses).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -499,7 +500,15 @@ When an agent does any of the following, update this file in the same slice:
     arms sit at part offset `x = 0`, so the right/left role is fixed by slot (arms
     `[2, 3]`, legs `[4, 5]`). This is the first model whose **arm** swing is a pure
     walk-driven animation (so it is implemented); the attack swing and the offer-flower
-    arm pose are deferred event animations. Deferred:
+    arm pose are deferred event animations. The ravager (`emit_ravager_model` colored and
+    `emit_ravager_textured_model` textured) uses a dedicated `ravager_leg_swing_pose`:
+    `RavagerModel` is a custom `EntityModel` whose `setupAnim` swings the four legs with
+    the `QuadrupedModel` diagonal phase (`cos(pos * 0.6662 [+ π])`, in phase when
+    `x*z < 0`) but a shorter `0.4` amplitude (`legRot = 0.4 * speed`) rather than the
+    usual `1.4`; legs sit at `[2, 3, 4, 5]` and the swing only sets `xRot`, leaving the
+    nested neck/head subtree (which the head-look pose drives) untouched. Its mouth-open
+    attack pose, the stunned-shake `xRot`, and the roar/biting head animations are
+    deferred event animations. Deferred:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
@@ -517,7 +526,7 @@ When an agent does any of the following, update this file in the same slice:
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (snow golem, ravager, spider, wolf, birds, fish, etc.) are the next slices.
+    (snow golem, spider, wolf, birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -794,8 +803,12 @@ When an agent does any of the following, update this file in the same slice:
       `RavagerModel.setupAnim` head look (`head.xRot/yRot = xRot/yRot * π/180`) on
       the neck-nested head part — the neck subtree is emitted by hand so the head
       carries the look while its horn/mouth children inherit it (colored and
-      textured); attack neck motion, stunned neck/mouth animation, roar mouth
-      animation, leg walk animation, and lighting remain unsupported
+      textured), and the vanilla `RavagerModel.setupAnim` leg walk swing
+      (`ravager_leg_swing_pose`: the `QuadrupedModel` diagonal phase
+      `cos(pos * 0.6662 [+ π])` at the shorter `0.4` amplitude, legs `[2, 3, 4, 5]`,
+      `xRot` only so the neck/head subtree is untouched) on both render paths; attack
+      neck motion, stunned neck/mouth animation, roar mouth animation, and lighting
+      remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`

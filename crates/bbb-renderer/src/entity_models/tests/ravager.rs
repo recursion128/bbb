@@ -254,6 +254,113 @@ fn ravager_textured_mesh_turns_nested_head_not_neck_or_body() {
     assert_eq!(resting.vertices[144..], yawed.vertices[144..]);
 }
 
+#[test]
+fn ravager_swings_its_legs_when_walking() {
+    // Vanilla `RavagerModel.setupAnim` swings the four legs `cos(pos * 0.6662 [+ π]) *
+    // 0.4 * speed` (the `QuadrupedModel` phase with a shorter 0.4 amplitude, legs at
+    // [2, 3, 4, 5]). A standing ravager is inert; a walking one lifts its feet and
+    // splays its legs along Z. The neck/mouth attack/stun/roar poses are deferred.
+    let base = EntityModelInstance::ravager(280, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+    assert_eq!(rest.vertices, still.vertices, "rest is inert");
+
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_ne!(rest.vertices, walking.vertices, "walking differs");
+
+    let (rest_min, rest_max) = mesh_extents(&rest);
+    let (walk_min, walk_max) = mesh_extents(&walking);
+    // The 0.4 amplitude is small, so the overall height barely changes; assert the two
+    // direct signals instead: the lowest point (the feet) rises off the ground, and the
+    // legs splay along Z (hind legs back, front legs forward).
+    assert!(
+        walk_min[1] > rest_min[1] + 0.02,
+        "a walking ravager's feet should lift off the ground"
+    );
+    assert!(
+        (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+        "a walking ravager's legs should splay along Z"
+    );
+}
+
+#[test]
+fn ravager_textured_mesh_swings_legs_not_neck_or_head() {
+    // The real ravager render path (texture-backed) swings the same legs while the
+    // nested-head neck handling is unaffected. Emit order: neck cube 0..24, head +
+    // children 24..144, body and legs 144.. . A walking ravager (head at rest) changes
+    // only the body/leg region; the neck and head stay put. A standing ravager is
+    // byte-identical however far the swing has advanced.
+    let (atlas, _) = build_entity_model_texture_atlas(&ravager_texture_images()).unwrap();
+    let base = EntityModelInstance::ravager(281, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+    assert_eq!(
+        resting.vertices, still.vertices,
+        "a standing ravager is inert"
+    );
+    assert_eq!(
+        resting.vertices.len(),
+        walking.vertices.len(),
+        "leg swing keeps the vertex count"
+    );
+    assert_eq!(
+        resting.vertices[0..144],
+        walking.vertices[0..144],
+        "the neck and head stay put while walking"
+    );
+    assert_ne!(
+        resting.vertices[144..],
+        walking.vertices[144..],
+        "the body/leg region swings"
+    );
+}
+
+#[test]
+fn ravager_leg_swing_pose_matches_vanilla_formula() {
+    // Vanilla RavagerModel.setupAnim: legRot = 0.4 * walkAnimationSpeed;
+    // rightHindLeg.xRot = cos(pos * 0.6662) * legRot;
+    // leftHindLeg.xRot  = cos(pos * 0.6662 + π) * legRot;
+    // rightFrontLeg.xRot = cos(pos * 0.6662 + π) * legRot;
+    // leftFrontLeg.xRot  = cos(pos * 0.6662) * legRot.
+    // This is the QuadrupedModel diagonal phase (in phase when x*z < 0) but with a 0.4
+    // amplitude rather than the usual 1.4. RAVAGER_PARTS lists right hind at index 2
+    // (x = -8, z = 18 -> x*z < 0 -> in phase) and left hind at index 3 (x = 8 -> out of
+    // phase); front legs are at z = -5 so their phases flip.
+    let right_hind = ravager_leg_swing_pose(RAVAGER_PARTS[2].pose, 0.0, 1.0);
+    let left_hind = ravager_leg_swing_pose(RAVAGER_PARTS[3].pose, 0.0, 1.0);
+    let right_front = ravager_leg_swing_pose(RAVAGER_PARTS[4].pose, 0.0, 1.0);
+    let left_front = ravager_leg_swing_pose(RAVAGER_PARTS[5].pose, 0.0, 1.0);
+    assert!(
+        (right_hind.rotation[0] - 0.4).abs() < 1e-6,
+        "right hind in phase at amplitude 0.4: {}",
+        right_hind.rotation[0]
+    );
+    assert!(
+        (left_hind.rotation[0] + 0.4).abs() < 1e-6,
+        "left hind out of phase at amplitude 0.4: {}",
+        left_hind.rotation[0]
+    );
+    // Diagonal pairs: right front matches left hind, left front matches right hind.
+    assert!((right_front.rotation[0] - left_hind.rotation[0]).abs() < 1e-6);
+    assert!((left_front.rotation[0] - right_hind.rotation[0]).abs() < 1e-6);
+
+    // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 0.4 * speed.
+    let right_hind = ravager_leg_swing_pose(RAVAGER_PARTS[2].pose, 1.5, 0.5);
+    let left_hind = ravager_leg_swing_pose(RAVAGER_PARTS[3].pose, 1.5, 0.5);
+    assert!((right_hind.rotation[0] - (1.5_f32 * 0.6662).cos() * 0.4 * 0.5).abs() < 1e-6);
+    assert!(
+        (left_hind.rotation[0] - (1.5_f32 * 0.6662 + std::f32::consts::PI).cos() * 0.4 * 0.5).abs()
+            < 1e-6
+    );
+
+    // The swing only sets xRot; the resting offset and yRot/zRot are preserved.
+    assert_eq!(right_hind.offset, RAVAGER_PARTS[2].pose.offset);
+    assert_eq!(right_hind.rotation[1], RAVAGER_PARTS[2].pose.rotation[1]);
+    assert_eq!(right_hind.rotation[2], RAVAGER_PARTS[2].pose.rotation[2]);
+}
+
 fn ravager_texture_images() -> Vec<EntityModelTextureImage> {
     ravager_entity_texture_refs()
         .iter()

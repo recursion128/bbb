@@ -300,6 +300,35 @@ pub(in crate::entity_models) fn enderman_leg_swing_pose(
     }
 }
 
+/// Vanilla `RavagerModel.setupAnim` leg swing for a single leg part: `leg.xRot =
+/// cos(walkAnimationPos * 0.6662 [+ π]) * 0.4 * walkAnimationSpeed`. `RavagerModel`
+/// is a custom `EntityModel`, but the leg swing follows the `QuadrupedModel` phase
+/// (the right-hind/left-front pair in phase, resolved from `x * z < 0`) with a
+/// shorter `0.4` amplitude (vanilla `legRot = 0.4 * walkAnimationSpeed`, no `1.4`
+/// factor). The base leg pose carries no `xRot`, so it is set (not accumulated). The
+/// neck/mouth attack/stun/roar poses are separate deferred event animations.
+pub(in crate::entity_models) fn ravager_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let phase = walk_animation_pos * 0.6662;
+    let [x, _, z] = base.offset;
+    let angle = if x * z < 0.0 {
+        phase
+    } else {
+        phase + std::f32::consts::PI
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            angle.cos() * 0.4 * walk_animation_speed,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla `Mth.triangleWave(index, period)`: a triangle wave in `[-1, 1]`,
 /// `(|index % period - period/2| - period/4) / (period/4)`.
 fn triangle_wave(index: f32, period: f32) -> f32 {

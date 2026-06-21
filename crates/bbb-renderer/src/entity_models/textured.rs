@@ -21,10 +21,10 @@ use super::{
         humanoid_leg_swing_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
         limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
-        ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
-        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
-        RAVAGER_TEXTURED_PARTS,
+        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
+        RAVAGER_TEXTURED_NECK_CHILDREN,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -743,10 +743,28 @@ fn emit_ravager_textured_model(
     let transform = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    // Vanilla `RavagerModel.setupAnim` swings the four legs `cos(pos * 0.6662 [+ π]) *
+    // 0.4 * speed` (legs at [2, 3, 4, 5]); the neck (part 0) is untouched by the swing.
+    let leg_indices: [usize; 4] = [2, 3, 4, 5];
     for pass in ravager_textured_layer_passes() {
-        if head_resting {
+        if head_resting && legs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            continue;
+        }
+        let mut parts = pass.parts.to_vec();
+        if !legs_resting {
+            for index in leg_indices {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = ravager_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+        }
+        if head_resting {
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
             continue;
         }
         // Vanilla nests the ravager head inside the neck (`neck.getChild("head")`).
@@ -756,7 +774,7 @@ fn emit_ravager_textured_model(
             continue;
         };
         let mesh = meshes.mesh_mut(pass.render_type);
-        let neck = &RAVAGER_TEXTURED_PARTS[ravager_neck_part_index()];
+        let neck = &parts[ravager_neck_part_index()];
         let neck_transform = transform * part_pose_transform(neck.pose);
         for cube in neck.cubes {
             emit_textured_model_cube(
@@ -783,7 +801,7 @@ fn emit_ravager_textured_model(
         );
         emit_textured_model_parts(
             mesh,
-            &RAVAGER_TEXTURED_PARTS[ravager_neck_part_index() + 1..],
+            &parts[ravager_neck_part_index() + 1..],
             transform,
             pass.texture,
             entry.uv,
