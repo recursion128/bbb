@@ -381,6 +381,54 @@ pub(in crate::entity_models) const fn iron_golem_walk_part_roles() -> [(usize, I
     ]
 }
 
+/// Vanilla `SpiderModel.setupAnim` walking swing for one leg part. With
+/// `animationPos = walkAnimationPos * 0.6662`, vanilla computes a horizontal `swing`
+/// `-(cos(animationPos * 2 + phase) * 0.4) * walkAnimationSpeed` accumulated onto
+/// `yRot`, and a vertical `step` `|sin(animationPos + phase) * 0.4| *
+/// walkAnimationSpeed` accumulated onto `zRot`; the right legs add both (`+=`), the
+/// left legs subtract both (`-=`). `phase` is the per-leg-pair offset (`0`, `π`,
+/// `π/2`, `3π/2` for hind, middle-hind, middle-front, front), and `side_sign` is
+/// `+1` for the right legs and `-1` for the left. Both terms are accumulated onto the
+/// leg's resting `yRot`/`zRot` (the splay set in the body layer); `xRot` is untouched.
+pub(in crate::entity_models) fn spider_leg_swing_pose(
+    base: PartPose,
+    phase: f32,
+    side_sign: f32,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let animation_pos = walk_animation_pos * 0.6662;
+    let swing = -((animation_pos * 2.0 + phase).cos() * 0.4) * walk_animation_speed;
+    let step = (animation_pos + phase).sin().abs() * 0.4 * walk_animation_speed;
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            base.rotation[0],
+            base.rotation[1] + side_sign * swing,
+            base.rotation[2] + side_sign * step,
+        ],
+    }
+}
+
+/// The eight spider leg part indices paired with their `(phase, side_sign)` swing
+/// roles. `SpiderModel.createSpiderBodyLayer` lists the legs after head/body0/body1 in
+/// right/left pairs from hind to front: hind (`3`/`4`, phase `0`), middle-hind
+/// (`5`/`6`, phase `π`), middle-front (`7`/`8`, phase `π/2`), front (`9`/`10`, phase
+/// `3π/2`). Right legs swing `+`, left legs swing `-`.
+pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(usize, f32, f32); 8] {
+    use std::f32::consts::{FRAC_PI_2, PI};
+    [
+        (3, 0.0, 1.0),
+        (4, 0.0, -1.0),
+        (5, PI, 1.0),
+        (6, PI, -1.0),
+        (7, FRAC_PI_2, 1.0),
+        (8, FRAC_PI_2, -1.0),
+        (9, PI * 1.5, 1.0),
+        (10, PI * 1.5, -1.0),
+    ]
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw

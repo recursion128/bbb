@@ -295,9 +295,11 @@ When an agent does any of the following, update this file in the same slice:
       clamped to `[-0.4, 0.4]`), and the iron golem (`IronGolemModel`, a triangle-wave
       gait swinging both legs and — its only walk-driven arm animation — the arms), and
       the ravager (`RavagerModel`, the `QuadrupedModel` diagonal phase at a shorter `0.4`
-      amplitude, legs `[2, 3, 4, 5]`). The remaining slices consume them in the other
-      model families' `setupAnim` (snow golem, spider, wolf, birds, fish, etc., plus the
-      `HumanoidModel`/illager/villager arm and ear/nose poses).
+      amplitude, legs `[2, 3, 4, 5]`), and the spider/cave spider (`SpiderModel`, the
+      eight legs each sweeping about yRot and stepping about zRot, legs `[3..=10]`). The
+      remaining slices consume them in the other model families' `setupAnim` (snow golem,
+      wolf, birds, fish, etc., plus the `HumanoidModel`/illager/villager arm and ear/nose
+      poses).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -508,7 +510,18 @@ When an agent does any of the following, update this file in the same slice:
     usual `1.4`; legs sit at `[2, 3, 4, 5]` and the swing only sets `xRot`, leaving the
     nested neck/head subtree (which the head-look pose drives) untouched. Its mouth-open
     attack pose, the stunned-shake `xRot`, and the roar/biting head animations are
-    deferred event animations. Deferred:
+    deferred event animations. The spider and cave spider (`emit_spider_model` /
+    `emit_cave_spider_model` colored and `emit_spider_textured_model` textured, both base
+    and eyes passes) use a dedicated `spider_leg_swing_pose`: `SpiderModel` is a custom
+    `EntityModel` whose `setupAnim` accumulates onto each of the eight legs a horizontal
+    sweep `yRot += -(cos(animationPos*2 + phase) * 0.4) * speed` and a vertical step
+    `zRot += |sin(animationPos + phase) * 0.4| * speed` (with `animationPos =
+    walkAnimationPos * 0.6662`); the right legs add both terms and the left legs subtract
+    them, with the per-leg-pair `phase` `0`/`π`/`π/2`/`3π/2` for hind/middle-hind/
+    middle-front/front (`spider_leg_swing_roles` maps body-layer indices `3..=10`). The
+    cave spider shares the model, differing only by its smaller root transform. The swing
+    accumulates onto the legs' resting splay and leaves `xRot` untouched; spiders have no
+    other walk-driven animation. Deferred:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
@@ -526,7 +539,7 @@ When an agent does any of the following, update this file in the same slice:
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (snow golem, spider, wolf, birds, fish, etc.) are the next slices.
+    (snow golem, wolf, birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -895,9 +908,13 @@ When an agent does any of the following, update this file in the same slice:
       include the vanilla `SpiderEyesLayer` `spider_eyes.png` texture-backed
       eyes pass using the parent spider model parts, submit order `1`, and a
       `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
-      vanilla `SpiderModel.setupAnim` head-look yaw/pitch on the head part
-      (colored and textured, both spider and cave spider); walk animation, death
-      flip, and lighting remain unsupported
+      vanilla `SpiderModel.setupAnim` head-look yaw/pitch on the head part and the
+      vanilla `SpiderModel.setupAnim` eight-leg walk swing (`spider_leg_swing_pose`:
+      each leg sweeps `yRot += -(cos(animationPos*2 + phase) * 0.4) * speed` and steps
+      `zRot += |sin(animationPos + phase) * 0.4| * speed`, right legs `+`/left legs `-`,
+      per-pair phases `0`/`π`/`π/2`/`3π/2`, legs at `[3..=10]`) on both render paths and
+      passes (colored and textured, both spider and cave spider); death
+      flip and lighting remain unsupported
     - enderman entities as renderer-owned vanilla 26.1
       `EndermanModel.createBodyLayer()` geometry, including its
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,

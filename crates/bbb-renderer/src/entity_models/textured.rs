@@ -23,8 +23,8 @@ use super::{
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
-        RAVAGER_TEXTURED_NECK_CHILDREN,
+        spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
+        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -493,19 +493,48 @@ fn emit_spider_textured_model(
     cave: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // Vanilla `SpiderModel.setupAnim`: full head look, then the eight legs sweep about
+    // their yRot and step about their zRot (`spider_leg_swing_pose`). Both the base and
+    // eyes passes carry every part, so the swing is applied per pass. The cave spider
+    // shares the model and differs only by its smaller root transform.
+    let head_index = head_first_part_index();
     let transform = if cave {
         cave_spider_model_root_transform(instance)
     } else {
         entity_model_root_transform(instance)
     };
-    emit_textured_passes_with_head_look(
-        meshes,
-        spider_textured_layer_passes(cave),
-        head_first_part_index(),
-        transform,
-        instance,
-        atlas,
-    );
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in spider_textured_layer_passes(cave) {
+        if head_resting && legs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            continue;
+        }
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+        }
+        if !legs_resting {
+            for (index, phase, side_sign) in spider_leg_swing_roles() {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = spider_leg_swing_pose(
+                        leg.pose,
+                        phase,
+                        side_sign,
+                        limb_swing,
+                        limb_swing_amount,
+                    );
+                }
+            }
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
 }
 
 fn emit_enderman_textured_model(

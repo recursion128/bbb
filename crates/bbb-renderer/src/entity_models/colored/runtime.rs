@@ -1325,19 +1325,49 @@ fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 }
 
 fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &head_first_colored_head_look_parts(&SPIDER_PARTS, instance),
-        entity_model_root_transform(instance),
+    // Vanilla `SpiderModel.setupAnim` sweeps each of the eight legs about its yRot and
+    // steps it about its zRot after the head look (`spider_leg_swing_pose`).
+    let parts = spider_limb_swing_parts(
+        head_first_colored_head_look_parts(&SPIDER_PARTS, instance),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &head_first_colored_head_look_parts(&SPIDER_PARTS, instance),
-        cave_spider_model_root_transform(instance),
+    // The cave spider shares `SpiderModel`, so it sweeps and steps its legs identically;
+    // only the root transform (a smaller scale) differs.
+    let parts = spider_limb_swing_parts(
+        head_first_colored_head_look_parts(&SPIDER_PARTS, instance),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, cave_spider_model_root_transform(instance));
+}
+
+/// Applies the vanilla `SpiderModel.setupAnim` walking swing ([`spider_leg_swing_pose`])
+/// to a colored spider layer's eight leg parts. Borrows the static parts unchanged at
+/// rest (`walkAnimationSpeed == 0`).
+fn spider_limb_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for (index, phase, side_sign) in spider_leg_swing_roles() {
+        owned[index].pose = spider_leg_swing_pose(
+            owned[index].pose,
+            phase,
+            side_sign,
+            limb_swing,
+            limb_swing_amount,
+        );
+    }
+    Cow::Owned(owned)
 }
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
