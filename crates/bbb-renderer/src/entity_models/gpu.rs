@@ -38,10 +38,9 @@ pub(crate) struct EntityModelTextureAtlasGpu {
     pub(crate) layout: EntityModelTextureAtlasLayout,
 }
 
-pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2];
-pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
+pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2];
+pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2];
 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
 struct Camera {
@@ -55,12 +54,14 @@ struct VertexIn {
     @location(0) position: vec3<f32>,
     @location(1) color: vec4<f32>,
     @location(2) light: vec2<f32>,
+    @location(3) overlay: vec2<f32>,
 };
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) light: vec2<f32>,
+    @location(2) overlay: vec2<f32>,
 };
 
 @vertex
@@ -69,14 +70,22 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
     out.color = input.color;
     out.light = input.light;
+    out.overlay = input.overlay;
     return out;
 }
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    var rgb = input.color.rgb;
+    if (input.overlay.y < 8.0) {
+        rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
+    } else {
+        let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
+        rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
+    }
     let light_level = max(input.light.x, input.light.y * 0.95);
     let shade = 0.16 + light_level * 0.84;
-    return vec4<f32>(input.color.rgb * shade, input.color.a);
+    return vec4<f32>(rgb * shade, input.color.a);
 }
 "#;
 
@@ -99,6 +108,7 @@ struct VertexIn {
     @location(1) uv: vec2<f32>,
     @location(2) tint: vec4<f32>,
     @location(3) light: vec2<f32>,
+    @location(4) overlay: vec2<f32>,
 };
 
 struct VertexOut {
@@ -106,6 +116,7 @@ struct VertexOut {
     @location(0) uv: vec2<f32>,
     @location(1) tint: vec4<f32>,
     @location(2) light: vec2<f32>,
+    @location(3) overlay: vec2<f32>,
 };
 
 @vertex
@@ -115,6 +126,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.uv = input.uv;
     out.tint = input.tint;
     out.light = input.light;
+    out.overlay = input.overlay;
     return out;
 }
 
@@ -124,9 +136,16 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if texel.a <= 0.01 {
         discard;
     }
+    var rgb = texel.rgb;
+    if (input.overlay.y < 8.0) {
+        rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
+    } else {
+        let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
+        rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
+    }
     let light_level = max(input.light.x, input.light.y * 0.95);
     let shade = 0.16 + light_level * 0.84;
-    return vec4<f32>(texel.rgb * shade, texel.a);
+    return vec4<f32>(rgb * shade, texel.a);
 }
 "#;
 

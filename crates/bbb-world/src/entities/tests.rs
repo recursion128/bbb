@@ -3,8 +3,9 @@ use super::*;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-    DataComponentPatchSummary, EntityAnimation as ProtocolEntityAnimation,
-    EntityDataEnumSerializer, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+    DamageEvent as ProtocolDamageEvent, DataComponentPatchSummary,
+    EntityAnimation as ProtocolEntityAnimation, EntityDataEnumSerializer,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     GameProfile as ProtocolGameProfile, GameType as ProtocolGameType,
@@ -905,6 +906,46 @@ fn entity_model_sources_project_narrow_render_state_from_pick_targets() {
     store.advance_entity_client_animations(3);
     let sources = store.entity_model_sources_at_partial_tick(0.5);
     assert_eq!(sources[0].age_ticks, 3);
+}
+
+#[test]
+fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let red_overlay = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 40)
+            .unwrap()
+            .has_red_overlay
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        40,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(!red_overlay(&store));
+
+    // Vanilla animateHurt sets hurtTime = hurtDuration = 10, so hasRedOverlay
+    // stays true through the next 9 client ticks and clears on the 10th.
+    assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 40, yaw: 0.0 }));
+    assert!(red_overlay(&store));
+    store.advance_entity_client_animations(9);
+    assert!(red_overlay(&store));
+    store.advance_entity_client_animations(1);
+    assert!(!red_overlay(&store));
+
+    // A damage event re-triggers the same hurtTime countdown.
+    assert!(store.apply_damage_event(ProtocolDamageEvent {
+        entity_id: 40,
+        source_type_id: 0,
+        source_cause_id: 0,
+        source_direct_id: 0,
+        source_position: None,
+    }));
+    assert!(red_overlay(&store));
 }
 
 #[test]

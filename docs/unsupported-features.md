@@ -260,12 +260,13 @@ When an agent does any of the following, update this file in the same slice:
     for vanilla `LivingEntityRenderState`/`EntityRenderState` per-frame fields,
     instead of adding ad hoc per-entity fields to `EntityModelInstance`:
     - now projected: `bodyRot` (body yaw), the sheep eat-grass head pose, the
-      polar-bear standing-rear scale, and `lightCoords` (block+sky packed light)
+      polar-bear standing-rear scale, `lightCoords` (block+sky packed light), and
+      `hasRedOverlay` (hurt red `OverlayTexture` flash)
     - deferred slots to add with their own slices, each carrying real vanilla
-      semantics and tests rather than tint fallbacks: hurt/white `OverlayTexture`
-      and creeper charge, `walkAnimationPos`/`walkAnimationSpeed` limb-swing,
-      head `yRot`/`xRot` look, `ageScale`, unified `isInvisible`, and
-      `outlineColor` glow
+      semantics and tests rather than tint fallbacks: white `OverlayTexture`
+      progress (creeper charge / freezing) and the `deathTime` overlay term,
+      `walkAnimationPos`/`walkAnimationSpeed` limb-swing, head `yRot`/`xRot`
+      look, `ageScale`, unified `isInvisible`, and `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -276,6 +277,15 @@ When an agent does any of the following, update this file in the same slice:
     stays emissive. Remaining lighting gaps: smooth/AO entity light, the colored
     block-light tint and gamma curve of the real vanilla `LightTexture`, and
     directional `Lighting.setupLevel` diffuse shading.
+  - The hurt red damage overlay is implemented end to end as a real overlay pass,
+    not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
+    `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented
+    each client tick), projected as `hasRedOverlay`, and the colored and textured
+    entity shaders reproduce vanilla `OverlayTexture` per-vertex (the red row
+    `y < 8` mixes toward red at alpha `179/255`, the white rows mix toward white at
+    alpha `1 - u/15 * 0.75`) applied before the lightmap; the eyes pass is
+    unaffected. Remaining overlay gaps: the `deathTime > 0` term and the white
+    overlay producers (creeper charge, freezing) that drive the `u` channel.
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -285,8 +295,9 @@ When an agent does any of the following, update this file in the same slice:
       canonical `Sheep.eatAnimationTick` countdown and renderer partial tick
       into the base, wool, and undercoat head part pose
   - Finish remaining sheep presentation parity:
-    - extend the texture-backed sheep path with the vanilla hurt/white overlay
-      (packed block+sky lighting is now applied to every textured entity pass)
+    - extend the texture-backed sheep path with the white `OverlayTexture`
+      progress (packed lighting and the hurt red overlay are now applied to every
+      textured entity pass)
     - implement invisible glowing outline wool rendering
     - implement base-model invisibility/outline handling
     - project the head-look pitch that vanilla folds into the non-eating
@@ -294,8 +305,9 @@ When an agent does any of the following, update this file in the same slice:
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set
     - add armor, wet tint, sitting/head/tail/shake/walk pose, base-model
-      invisibility/outline handling, overlay, and remaining render-state
-      extraction parity (packed block+sky lighting is now applied)
+      invisibility/outline handling, the white overlay, and remaining
+      render-state extraction parity (packed lighting and the hurt red overlay
+      are now applied)
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing

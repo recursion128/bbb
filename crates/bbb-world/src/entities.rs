@@ -310,6 +310,10 @@ pub struct EntityModelSourceState {
     /// render-state light coords.
     #[serde(default = "entity_model_source_full_bright_light")]
     pub light: TerrainLight,
+    /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0`): drives
+    /// the red damage overlay pass.
+    #[serde(default)]
+    pub has_red_overlay: bool,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 

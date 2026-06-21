@@ -51,6 +51,9 @@ impl WorldStore {
             self.counters.entity_hurt_animations_ignored += 1;
             return false;
         };
+        // Vanilla `LivingEntity.animateHurt`: a hurt animation also drives the
+        // hurtTime countdown behind the red damage overlay.
+        let _ = self.entities.trigger_client_animation_hurt(packet.id);
         self.counters.entity_hurt_animations_applied += 1;
         true
     }

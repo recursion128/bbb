@@ -17,6 +17,9 @@ const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 const SHULKER_PEEK_DATA_ID: u8 = 17;
 const SHULKER_PEEK_PER_TICK: f32 = 0.05;
 const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
+/// Vanilla `LivingEntity.hurtDuration`: the hurt animation (and red damage
+/// overlay) runs for 10 client ticks after a hurt animation or damage event.
+const HURT_ANIMATION_DURATION: i32 = 10;
 /// Vanilla `Sheep.EAT_ANIMATION_TICKS`: the eat-grass animation runs for 40
 /// client ticks after entity event `10`.
 const SHEEP_EAT_ANIMATION_TICKS: i32 = 40;
@@ -36,6 +39,18 @@ pub struct EntityClientAnimationState {
     pub ender_dragon: Option<EnderDragonAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sheep_eat: Option<SheepEatAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hurt: Option<HurtAnimationState>,
+}
+
+/// Canonical client-side hurt animation countdown, mirroring vanilla
+/// `LivingEntity.hurtTime`. A hurt animation or damage event resets it to
+/// [`HURT_ANIMATION_DURATION`]; each client tick decrements it toward `0`. While
+/// it is positive the renderer projects the red damage overlay
+/// (`LivingEntityRenderState.hasRedOverlay`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HurtAnimationState {
+    pub hurt_time: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -205,6 +220,22 @@ impl EntityClientAnimationState {
         self.sheep_eat.map_or(0, |state| state.eat_animation_tick)
     }
 
+    /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
+    /// mirroring vanilla `LivingEntity.animateHurt` / `handleDamageEvent` setting
+    /// `hurtTime = hurtDuration`.
+    pub(crate) fn trigger_hurt(&mut self) {
+        self.hurt = Some(HurtAnimationState {
+            hurt_time: HURT_ANIMATION_DURATION,
+        });
+    }
+
+    /// Vanilla `LivingEntityRenderer.extractRenderState`:
+    /// `hasRedOverlay = hurtTime > 0`. The `deathTime > 0` term is deferred with
+    /// the death animation.
+    pub fn has_red_overlay(&self) -> bool {
+        self.hurt.is_some_and(|state| state.hurt_time > 0)
+    }
+
     /// Vanilla `PolarBear.getStandingAnimationScale(partialTick)` projected for
     /// the renderer `PolarBearModel.setupAnim` standing pose. Returns `0.0` when
     /// the entity is not a rearing polar bear.
@@ -215,6 +246,14 @@ impl EntityClientAnimationState {
 
     pub(crate) fn advance_client_tick(&mut self, entity_type_id: i32, transform: EntityTransform) {
         self.age_ticks = self.age_ticks.saturating_add(1);
+        // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
+        // to every living entity, so it runs outside the per-type match.
+        if let Some(hurt) = self.hurt.as_mut() {
+            hurt.hurt_time = (hurt.hurt_time - 1).max(0);
+            if hurt.hurt_time == 0 {
+                self.hurt = None;
+            }
+        }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
                 if let Some(standing) = self.polar_bear_standing.as_mut() {

@@ -165,6 +165,9 @@ impl WorldStore {
             self.counters.damage_events_ignored += 1;
             return false;
         };
+        // Vanilla `LivingEntity.handleDamageEvent`: a damage event sets
+        // `hurtTime = hurtDuration`, driving the red damage overlay.
+        let _ = self.entities.trigger_client_animation_hurt(entity_id);
         self.counters.damage_events_applied += 1;
         true
     }

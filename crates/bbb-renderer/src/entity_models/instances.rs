@@ -36,6 +36,9 @@ pub struct EntityRenderState {
     /// block position. Defaults to [`ENTITY_FULL_BRIGHT_LIGHT_COORDS`]; the
     /// entity scene projects the sampled value with the on-fire override.
     pub light_coords: u32,
+    /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0`): selects
+    /// the red row of `OverlayTexture` so the entity flashes red when hurt.
+    pub has_red_overlay: bool,
 }
 
 impl EntityRenderState {
@@ -49,6 +52,7 @@ impl EntityRenderState {
             head_eat: SheepHeadEatPose::NONE,
             polar_bear_stand_scale: 0.0,
             light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+            has_red_overlay: false,
         }
     }
 
@@ -59,6 +63,15 @@ impl EntityRenderState {
         let block = (self.light_coords >> 4) & 0xF;
         let sky = (self.light_coords >> 20) & 0xF;
         [block as f32 / 15.0, sky as f32 / 15.0]
+    }
+
+    /// Projects the entity overlay into the renderer per-vertex overlay coords
+    /// `[u, v]` (vanilla `OverlayTexture.pack` channels). `u` is the white-flash
+    /// column (`NO_WHITE_U` = `0` until creeper charge / freezing land), `v` is
+    /// `RED_OVERLAY_V` (`3`) when hurt and `WHITE_OVERLAY_V` (`10`, no overlay)
+    /// otherwise.
+    pub(in crate::entity_models) fn overlay_coords(&self) -> [f32; 2] {
+        [0.0, if self.has_red_overlay { 3.0 } else { 10.0 }]
     }
 }
 
@@ -94,6 +107,11 @@ impl EntityModelInstance {
 
     pub fn with_light_coords(mut self, light_coords: u32) -> Self {
         self.render_state.light_coords = light_coords;
+        self
+    }
+
+    pub fn with_has_red_overlay(mut self, has_red_overlay: bool) -> Self {
+        self.render_state.has_red_overlay = has_red_overlay;
         self
     }
 
@@ -701,8 +719,20 @@ mod tests {
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+                has_red_overlay: false,
             }
         );
+    }
+
+    #[test]
+    fn overlay_coords_select_vanilla_red_row_when_hurt() {
+        let calm = EntityModelInstance::zombie(1, [0.0, 0.0, 0.0], 0.0, false);
+        // NO_WHITE_U = 0, WHITE_OVERLAY_V = 10 (no overlay).
+        assert_eq!(calm.render_state.overlay_coords(), [0.0, 10.0]);
+
+        let hurt = calm.with_has_red_overlay(true);
+        // NO_WHITE_U = 0, RED_OVERLAY_V = 3.
+        assert_eq!(hurt.render_state.overlay_coords(), [0.0, 3.0]);
     }
 
     #[test]

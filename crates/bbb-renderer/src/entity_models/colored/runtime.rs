@@ -232,6 +232,11 @@ fn entity_model_mesh_with_options(
             }
         }
         fill_entity_model_light(&mut mesh, light_start, instance.render_state.shader_light());
+        fill_entity_model_overlay(
+            &mut mesh,
+            light_start,
+            instance.render_state.overlay_coords(),
+        );
     }
     mesh
 }

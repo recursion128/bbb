@@ -290,6 +290,7 @@ impl EntityStore {
             // Spatial light is sampled by the WorldStore aggregation, which owns
             // the chunk light data; the per-entity source defaults to full bright.
             light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
+            has_red_overlay: client_animations.animations.has_red_overlay(),
             data_values: metadata.data_values.clone(),
         })
     }
@@ -589,6 +590,13 @@ impl EntityStore {
         animations
             .animations
             .handle_entity_event(entity_type_id, event_id);
+        Some(())
+    }
+
+    pub(crate) fn trigger_client_animation_hurt(&mut self, id: i32) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        animations.animations.trigger_hurt();
         Some(())
     }
 

@@ -9,12 +9,18 @@ const MODEL_UNIT_SCALE: f32 = 1.0 / 16.0;
 /// fully lit so any vertex the fill misses renders bright rather than black.
 pub(super) const ENTITY_VERTEX_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
 
+/// Per-vertex overlay coords `[u, v]` (vanilla `OverlayTexture.NO_OVERLAY` =
+/// `pack(0, 10)`): no white flash, no red row. The scene overlay fill overwrites
+/// it per entity when the entity is hurt.
+pub(super) const ENTITY_VERTEX_NO_OVERLAY: [f32; 2] = [0.0, 10.0];
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct EntityModelVertex {
     pub(super) position: [f32; 3],
     pub(super) color: [f32; 4],
     pub(super) light: [f32; 2],
+    pub(super) overlay: [f32; 2],
 }
 
 #[repr(C)]
@@ -24,6 +30,7 @@ pub(super) struct EntityModelTexturedVertex {
     pub(super) uv: [f32; 2],
     pub(super) tint: [f32; 4],
     pub(super) light: [f32; 2],
+    pub(super) overlay: [f32; 2],
 }
 
 pub(super) struct EntityModelMesh {
@@ -117,6 +124,30 @@ pub(super) fn fill_entity_textured_light(
 ) {
     for vertex in &mut mesh.vertices[start..] {
         vertex.light = light;
+    }
+}
+
+/// Overwrites the overlay coords on every colored vertex appended since `start`,
+/// applying one entity's `OverlayTexture` coords (`[u, v]`) to all of its
+/// emitted geometry. Mirrors vanilla using a single per-entity overlay value.
+pub(super) fn fill_entity_model_overlay(
+    mesh: &mut EntityModelMesh,
+    start: usize,
+    overlay: [f32; 2],
+) {
+    for vertex in &mut mesh.vertices[start..] {
+        vertex.overlay = overlay;
+    }
+}
+
+/// Textured/eyes/translucent counterpart of [`fill_entity_model_overlay`].
+pub(super) fn fill_entity_textured_overlay(
+    mesh: &mut EntityModelTexturedMesh,
+    start: usize,
+    overlay: [f32; 2],
+) {
+    for vertex in &mut mesh.vertices[start..] {
+        vertex.overlay = overlay;
     }
 }
 
@@ -419,6 +450,7 @@ fn emit_textured_model_polygon(
             uv: atlas_uv(uv, texture, uv_rect),
             tint,
             light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
@@ -447,6 +479,7 @@ fn emit_model_face(mesh: &mut EntityModelMesh, corners: [Vec3; 4], color: [f32; 
             position: position.to_array(),
             color,
             light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);

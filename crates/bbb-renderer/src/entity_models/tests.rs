@@ -148,7 +148,7 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("discard"));
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2]
     );
 }
 
@@ -158,14 +158,28 @@ fn entity_textured_shader_applies_packed_light_lightmap() {
     // 0.16..=1.0 and multiplied into the texel rgb (alpha untouched).
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("0.16 + light_level * 0.84"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("texel.rgb * shade"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("rgb * shade"));
 }
 
 #[test]
 fn entity_colored_shader_applies_packed_light_lightmap() {
     assert!(ENTITY_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
     assert!(ENTITY_MODEL_SHADER.contains("0.16 + light_level * 0.84"));
-    assert!(ENTITY_MODEL_SHADER.contains("input.color.rgb * shade"));
+    assert!(ENTITY_MODEL_SHADER.contains("input.color.rgb"));
+}
+
+#[test]
+fn entity_shaders_apply_vanilla_overlay_texture_mix() {
+    // OverlayTexture: hurt row (v < 8) mixes toward red at alpha 179/255; white
+    // rows mix toward white at alpha 1 - u/15 * 0.75. Applied before the
+    // lightmap, matching the vanilla entity fragment shader order.
+    for shader in [ENTITY_MODEL_SHADER, ENTITY_MODEL_TEXTURED_SHADER] {
+        assert!(shader.contains("input.overlay.y < 8.0"));
+        assert!(shader.contains("mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0)"));
+        assert!(shader.contains("1.0 - input.overlay.x / 15.0 * 0.75"));
+    }
+    // Eyes stay emissive and unaffected by the overlay.
+    assert!(!ENTITY_MODEL_EYES_SHADER.contains("overlay"));
 }
 
 #[test]
@@ -175,7 +189,7 @@ fn entity_eyes_shader_samples_bound_texture_without_alpha_cutout() {
     assert!(!ENTITY_MODEL_EYES_SHADER.contains("discard"));
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2]
     );
     // Eyes stay emissive: the lightmap shade must not dim them.
     assert!(!ENTITY_MODEL_EYES_SHADER.contains("light_level"));
@@ -720,6 +734,30 @@ fn entity_mesh_fills_per_instance_packed_light() {
 }
 
 #[test]
+fn entity_mesh_fills_per_instance_hurt_overlay() {
+    let calm = EntityModelInstance::placeholder(1, [0.0, 0.0, 0.0], 0.0, "calm", 1.0, 1.0, 1.0);
+    let hurt = EntityModelInstance::placeholder(2, [4.0, 0.0, 0.0], 0.0, "hurt", 1.0, 1.0, 1.0)
+        .with_has_red_overlay(true);
+
+    let mesh = entity_model_mesh(&[calm, hurt]);
+    assert!(!mesh.vertices.is_empty());
+    // Calm entities carry OverlayTexture NO_OVERLAY = [0, 10]; hurt entities the
+    // red row [0, 3]. Both appear: each entity got its own overlay coords.
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay == [0.0, 10.0] || vertex.overlay == [0.0, 3.0]));
+    assert!(mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == [0.0, 10.0]));
+    assert!(mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == [0.0, 3.0]));
+}
+
+#[test]
 fn entity_model_vertex_layout_matches_shader_inputs() {
     let layout = entity_model_vertex_layout();
 
@@ -727,10 +765,11 @@ fn entity_model_vertex_layout_matches_shader_inputs() {
         layout.array_stride,
         std::mem::size_of::<EntityModelVertex>() as wgpu::BufferAddress
     );
-    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES.len(), 3);
+    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES.len(), 4);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[0].shader_location, 0);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[1].shader_location, 1);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[2].shader_location, 2);
+    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[3].shader_location, 3);
 }
 
 fn mesh_extents(mesh: &EntityModelMesh) -> ([f32; 3], [f32; 3]) {

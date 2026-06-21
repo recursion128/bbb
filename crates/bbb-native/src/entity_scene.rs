@@ -303,7 +303,8 @@ fn entity_model_instance(
         )
         .with_head_eat(head_eat)
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
-        .with_light_coords(light_coords),
+        .with_light_coords(light_coords)
+        .with_has_red_overlay(source.has_red_overlay),
     )
 }
 
@@ -1401,6 +1402,25 @@ mod tests {
             instances[0].render_state.light_coords,
             bbb_renderer::ENTITY_FULL_BRIGHT_LIGHT_COORDS
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_hurt_red_overlay_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            91,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let calm = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(!calm[0].render_state.has_red_overlay);
+
+        assert!(
+            world.apply_hurt_animation(bbb_protocol::packets::HurtAnimation { id: 91, yaw: 0.0 })
+        );
+        let hurt = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(hurt[0].render_state.has_red_overlay);
     }
 
     #[test]

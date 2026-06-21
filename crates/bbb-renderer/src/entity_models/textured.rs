@@ -8,8 +8,8 @@ use super::{
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{
-        emit_textured_model_parts, fill_entity_textured_light, EntityModelTexturedMesh,
-        TexturedModelPartDesc,
+        emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
+        EntityModelTexturedMesh, TexturedModelPartDesc,
     },
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
@@ -205,6 +205,10 @@ pub(super) fn entity_model_textured_meshes(
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
         fill_entity_textured_light(&mut meshes.eyes, eyes_start, light);
+        let overlay = instance.render_state.overlay_coords();
+        fill_entity_textured_overlay(&mut meshes.cutout, cutout_start, overlay);
+        fill_entity_textured_overlay(&mut meshes.translucent, translucent_start, overlay);
+        fill_entity_textured_overlay(&mut meshes.eyes, eyes_start, overlay);
     }
     meshes
 }
