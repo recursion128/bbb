@@ -298,10 +298,13 @@ When an agent does any of the following, update this file in the same slice:
       amplitude, legs `[2, 3, 4, 5]`), the spider/cave spider (`SpiderModel`, the
       eight legs each sweeping about yRot and stepping about zRot, legs `[3..=10]`), and
       the wolf (`WolfModel`, the non-sitting `QuadrupedModel` diagonal leg swing, legs
-      `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby), and the chicken (`ChickenModel`, the
-      two-leg `HumanoidModel` phase, legs `[2, 3]` adult/cold / `[1, 2]` headless baby).
-      The remaining slices consume them in the other model families' `setupAnim` (fish,
-      other birds, etc., plus the
+      `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby), the chicken (`ChickenModel`, the
+      two-leg `HumanoidModel` phase, legs `[2, 3]` adult/cold / `[1, 2]` headless baby),
+      and the llama/trader llama (`LlamaModel`, the `QuadrupedModel` diagonal phase, legs
+      `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored
+      path). The remaining slices consume them in the other model families' `setupAnim`
+      (the equine `AbstractEquineModel` horse/donkey/mule and the camel, both heavily
+      state-entangled; fish; other birds; etc., plus the
       `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
       walk-driven swing (its `setupAnim` is the head-yaw twist/orbit, now implemented).
     - deferred slots to add with their own slices, each carrying real vanilla
@@ -793,20 +796,25 @@ When an agent does any of the following, update this file in the same slice:
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including variant texture references, metadata-driven
-      adult chest visibility, baby chest suppression, and the shared
-      `ModelLayers.TRADER_LLAMA` / `TRADER_LLAMA_BABY` body layers; llama
-      decor/body equipment layers, trader llama decor equipment assets, head
-      rotation, walk animation, llama spit projectile model, lighting, and GPU
-      texture binding remain unsupported
+      adult chest visibility, baby chest suppression, the shared
+      `ModelLayers.TRADER_LLAMA` / `TRADER_LLAMA_BABY` body layers, and the vanilla
+      `LlamaModel.setupAnim` head-look yaw/pitch on the head part plus the standard
+      `QuadrupedModel` diagonal leg swing (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`,
+      legs at `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby,
+      colored render path); llama decor/body equipment layers, trader llama decor
+      equipment assets, llama spit projectile model, lighting, and GPU texture
+      binding (the texture-backed render path) remain unsupported
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture
       references, texture-backed base layer pass emission, official PNG atlas
       upload/bind/sample path, metadata-driven left/right horn visibility, and the
-      vanilla `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part
-      (colored and textured, with the horn children rotating with the head);
-      screaming goat sounds, ramming/lowering-head event animation (which would
-      override the head pitch), walk animation, and lighting remain unsupported
+      vanilla `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part plus the
+      `QuadrupedModel` leg swing (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at
+      `[2, 3, 4, 5]` adult / `[0, 1, 2, 3]` baby, colored and textured, with the horn
+      children rotating with the head); screaming goat sounds and the
+      ramming/lowering-head event animation (which would override the head pitch)
+      remain unsupported
     - polar bear entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `PolarBearModel`, `BabyPolarBearModel`, and
       `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /

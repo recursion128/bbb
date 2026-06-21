@@ -268,3 +268,106 @@ fn llama_texture_refs_match_vanilla_renderer() {
         assert_eq!(trader.vanilla_texture_ref(), Some(texture));
     }
 }
+
+#[test]
+fn llama_swings_its_legs_when_walking() {
+    // Vanilla `LlamaModel.setupAnim` swings the four legs with the standard
+    // `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` (right-hind/
+    // left-front in phase). A standing llama is inert; a walking one lifts its feet and
+    // splays its legs along Z. The chest layout (legs pushed to [4, 5, 6, 7]) and the
+    // baby layout (legs at [1, 2, 3, 4]) both swing only their legs, not the chests/body.
+    for base in [
+        EntityModelInstance::llama(
+            190,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            LlamaVariant::Creamy,
+            false,
+            false,
+        ),
+        EntityModelInstance::llama(
+            191,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            LlamaVariant::Brown,
+            false,
+            true,
+        ),
+        EntityModelInstance::llama(
+            192,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            LlamaVariant::Gray,
+            true,
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(
+            rest.vertices, still.vertices,
+            "{:?} rest is inert",
+            base.kind
+        );
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "{:?} walking differs",
+            base.kind
+        );
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{:?} feet should lift off the ground",
+            base.kind
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "{:?} legs should splay along Z",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn llama_applies_head_look() {
+    // Vanilla `LlamaModel.setupAnim` sets `head.xRot = pitch`, `head.yRot = yaw` on the
+    // head part (index 0 in every layout). Turning or pitching the head changes the mesh.
+    for base in [
+        EntityModelInstance::llama(
+            195,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            LlamaVariant::Creamy,
+            false,
+            false,
+        ),
+        EntityModelInstance::llama(
+            196,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::TraderLlama,
+            LlamaVariant::Gray,
+            true,
+            false,
+        ),
+    ] {
+        let resting = entity_model_mesh(&[base]);
+        let yawed = entity_model_mesh(&[base.with_head_look(40.0, 0.0)]);
+        let pitched = entity_model_mesh(&[base.with_head_look(0.0, -25.0)]);
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "{:?} head yaw", base.kind);
+        assert_ne!(
+            yawed.vertices, pitched.vertices,
+            "{:?} head pitch",
+            base.kind
+        );
+    }
+}
