@@ -1063,6 +1063,60 @@ fn entity_model_sources_project_full_freeze_for_living_entities() {
 }
 
 #[test]
+fn entity_model_sources_project_auto_spin_attack_flag() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    // Vanilla LivingEntity.LIVING_ENTITY_FLAG_SPIN_ATTACK (4); IS_USING is bit 1.
+    const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
+    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+    let auto_spin = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .is_auto_spin_attack
+    };
+    let set_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![living_entity_flags_data(flags)],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // A living entity with no living-entity flags is not spinning.
+    assert!(!auto_spin(&store, 72));
+
+    // Vanilla LivingEntity.isAutoSpinAttack(): (DATA_LIVING_ENTITY_FLAGS & 4) != 0.
+    // The bit is detected even alongside other living-entity flags.
+    assert!(set_flags(
+        &mut store,
+        72,
+        LIVING_ENTITY_FLAG_SPIN_ATTACK | LIVING_ENTITY_FLAG_IS_USING,
+    ));
+    assert!(auto_spin(&store, 72));
+
+    // Clearing the spin bit (other flags still set) stops the spin.
+    assert!(set_flags(&mut store, 72, LIVING_ENTITY_FLAG_IS_USING));
+    assert!(!auto_spin(&store, 72));
+
+    // A non-living entity (boat) never spins even with a stray spin-attack bit at
+    // the living-entity-flags id: only LivingEntityRenderer reads it.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(set_flags(&mut store, 73, LIVING_ENTITY_FLAG_SPIN_ATTACK));
+    assert!(!auto_spin(&store, 73));
+}
+
+#[test]
 fn death_animation_gates_on_living_entity_health() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;

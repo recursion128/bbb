@@ -59,6 +59,13 @@ pub struct EntityRenderState {
     /// the white-flash column of `OverlayTexture` so a priming creeper flashes
     /// white. `0.0` for every entity that is not flashing white.
     pub white_overlay_progress: f32,
+    /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
+    /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
+    /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
+    /// branch `Axis.XP.rotationDegrees(-90 - xRot)` then
+    /// `Axis.YP.rotationDegrees(ageInTicks * -75)`. `None` for every entity that is
+    /// not spinning (the death tip-over takes precedence over this branch).
+    pub auto_spin_age_ticks: Option<f32>,
 }
 
 impl EntityRenderState {
@@ -77,6 +84,7 @@ impl EntityRenderState {
             light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
             has_red_overlay: false,
             white_overlay_progress: 0.0,
+            auto_spin_age_ticks: None,
         }
     }
 
@@ -160,6 +168,14 @@ impl EntityModelInstance {
 
     pub fn with_white_overlay_progress(mut self, white_overlay_progress: f32) -> Self {
         self.render_state.white_overlay_progress = white_overlay_progress;
+        self
+    }
+
+    /// Sets the riptide auto-spin projection (vanilla
+    /// `LivingEntityRenderState.isAutoSpinAttack` plus the lerped `ageInTicks`).
+    /// Drives the `LivingEntityRenderer.setupRotations` trident-spin branch.
+    pub fn with_auto_spin_age_ticks(mut self, auto_spin_age_ticks: Option<f32>) -> Self {
+        self.render_state.auto_spin_age_ticks = auto_spin_age_ticks;
         self
     }
 
@@ -772,6 +788,7 @@ mod tests {
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
                 has_red_overlay: false,
                 white_overlay_progress: 0.0,
+                auto_spin_age_ticks: None,
             }
         );
     }

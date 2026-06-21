@@ -262,9 +262,10 @@ When an agent does any of the following, update this file in the same slice:
     - now projected: `bodyRot` (body yaw, with the freezing shake folded in),
       `yRot`/`xRot` (net head-look yaw and head pitch), the sheep eat-grass head
       pose, the polar-bear standing-rear scale, `deathTime` (the death tip-over
-      counter), `lightCoords` (block+sky packed light), `hasRedOverlay` (hurt/death
-      red `OverlayTexture` flash), and `whiteOverlayProgress` (creeper swelling
-      white flash)
+      counter), `isAutoSpinAttack` (the riptide spin, carried as the lerped
+      `auto_spin_age_ticks`), `lightCoords` (block+sky packed light), `hasRedOverlay`
+      (hurt/death red `OverlayTexture` flash), and `whiteOverlayProgress` (creeper
+      swelling white flash)
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `walkAnimationPos`/
       `walkAnimationSpeed` limb-swing, `ageScale`, unified `isInvisible`, and
@@ -315,6 +316,20 @@ When an agent does any of the following, update this file in the same slice:
     `180 - bodyRot` yaw and before the `(-1, -1, 1)` flip in both shared living
     root transforms, so every colored and textured living model tips over, and is
     identity while alive.
+  - The riptide auto-spin attack is implemented end to end. World side: a living
+    entity (`vanilla_living_entity_type` gate) whose synced
+    `DATA_LIVING_ENTITY_FLAGS` (id `8`) carries the `LIVING_ENTITY_FLAG_SPIN_ATTACK`
+    bit (`4`) is marked `isAutoSpinAttack` in `EntityModelSourceState`; non-living
+    entities have no living-entity-flags byte so they never spin. Native side
+    projects `auto_spin_age_ticks = Some(ageInTicks + partialTick)` while spinning
+    (`None` otherwise). Renderer side: the shared `entity_post_yaw_transform`
+    reproduces the vanilla `setupRotations` else-if chain after the `180 - bodyRot`
+    yaw — `deathTime > 0` tips over first (the death flip), `else if isAutoSpinAttack`
+    applies `Axis.XP.rotationDegrees(-90 - xRot)` then
+    `Axis.YP.rotationDegrees(ageInTicks * -75)`. Both branches are pure rotations
+    about the post-yaw origin, so (like the death flip) they commute with the
+    trailing uniform model scale and tip/spin every colored and textured living
+    model; the death flip takes precedence over the spin, matching vanilla.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

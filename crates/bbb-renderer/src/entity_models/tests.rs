@@ -1,6 +1,7 @@
 use super::*;
 
 mod armor_stand;
+mod auto_spin;
 mod boat;
 mod camel;
 mod chicken;

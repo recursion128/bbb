@@ -314,6 +314,13 @@ pub struct EntityModelSourceState {
     /// non-living entities and any entity that is not frozen solid.
     #[serde(default)]
     pub is_fully_frozen: bool,
+    /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
+    /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
+    /// entity mid riptide-trident spin, which the renderer flips onto the spin
+    /// axis in `LivingEntityRenderer.setupRotations`. `false` for non-living
+    /// entities and any living entity that is not spinning.
+    #[serde(default)]
+    pub is_auto_spin_attack: bool,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
     #[serde(default)]

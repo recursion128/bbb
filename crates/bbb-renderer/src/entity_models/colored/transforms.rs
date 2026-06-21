@@ -20,7 +20,7 @@ pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
-        * entity_death_flip_transform(instance)
+        * entity_post_yaw_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
@@ -31,25 +31,32 @@ fn living_entity_model_root_transform_with_renderer_transform(
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
-        * entity_death_flip_transform(instance)
+        * entity_post_yaw_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
 
-/// Vanilla `LivingEntityRenderer.setupRotations` death tip-over: when
-/// `state.deathTime > 0`, rotate the model about the Z axis by `fall *
-/// getFlipDegrees()`. Inserted right after the `180 - bodyRot` yaw and before the
-/// `(-1, -1, 1)` flip, matching the vanilla pose-stack order. Identity while the
-/// entity is alive (`death_time == 0`).
-fn entity_death_flip_transform(instance: EntityModelInstance) -> Mat4 {
+/// Vanilla `LivingEntityRenderer.setupRotations` else-if chain, inserted right
+/// after the `180 - bodyRot` yaw and before the `(-1, -1, 1)` flip. The death
+/// tip-over takes precedence over the riptide auto-spin (mirroring vanilla's
+/// `if deathTime > 0 ... else if isAutoSpinAttack ...`). Identity for a living,
+/// non-spinning entity. (Sleeping and Dinnerbone/Grumm upside-down are not yet
+/// projected and fall through to identity.)
+fn entity_post_yaw_transform(instance: EntityModelInstance) -> Mat4 {
     let death_time = instance.render_state.death_time;
-    if death_time <= 0.0 {
-        return Mat4::IDENTITY;
+    if death_time > 0.0 {
+        return Mat4::from_rotation_z(
+            (death_fall_factor(death_time) * entity_flip_degrees(instance.kind)).to_radians(),
+        );
     }
-    Mat4::from_rotation_z(
-        (death_fall_factor(death_time) * entity_flip_degrees(instance.kind)).to_radians(),
-    )
+    // Vanilla auto-spin attack (riptide): Rx(-90 - xRot) then Ry(ageInTicks * -75),
+    // about the post-yaw origin, so it is scale-agnostic like the death flip.
+    if let Some(age_ticks) = instance.render_state.auto_spin_age_ticks {
+        return Mat4::from_rotation_x((-90.0 - instance.render_state.head_pitch).to_radians())
+            * Mat4::from_rotation_y((age_ticks * -75.0).to_radians());
+    }
+    Mat4::IDENTITY
 }
 
 /// Vanilla `LivingEntityRenderer.setupRotations` fall factor: `fall =

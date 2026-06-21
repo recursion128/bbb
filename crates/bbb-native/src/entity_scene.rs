@@ -312,6 +312,11 @@ fn entity_model_instance(
         source.is_fully_frozen,
     );
     let body_rot = source.y_rot + entity_body_shake_degrees(source.age_ticks, is_shaking);
+    // Vanilla LivingEntityRenderer.setupRotations riptide branch reads the lerped
+    // `state.ageInTicks` (= tickCount + partialTick) only while `isAutoSpinAttack`.
+    let auto_spin_age_ticks = source
+        .is_auto_spin_attack
+        .then_some(source.age_ticks as f32 + entity_partial_tick);
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -329,6 +334,7 @@ fn entity_model_instance(
         .with_light_coords(light_coords)
         .with_has_red_overlay(source.has_red_overlay)
         .with_death_time(source.death_time)
+        .with_auto_spin_age_ticks(auto_spin_age_ticks)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1601,6 +1607,71 @@ mod tests {
             values: vec![protocol_bool_data(ZOMBIE_VILLAGER_CONVERTING_DATA_ID, true)],
         }));
         assert!((body_rot(&world, 85) - shake).abs() < 1e-6);
+    }
+
+    #[test]
+    fn entity_model_instances_project_auto_spin_attack() {
+        // Vanilla LivingEntity.DATA_LIVING_ENTITY_FLAGS id and the spin-attack bit.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            86,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // A non-living entity never carries the living-entity flags byte.
+        world.apply_add_entity(protocol_add_entity(
+            87,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let auto_spin = |world: &WorldStore, id: i32, partial: f32| {
+            entity_model_instances_from_world_at_partial_tick(world, partial)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .auto_spin_age_ticks
+        };
+
+        // A living entity at rest is not spinning.
+        assert_eq!(auto_spin(&world, 86, 0.0), None);
+
+        // Vanilla LivingEntity.isAutoSpinAttack(): DATA_LIVING_ENTITY_FLAGS & 4.
+        // setupRotations then reads the lerped ageInTicks (tickCount + partial).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 86,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_SPIN_ATTACK | 0x01,
+            )],
+        }));
+        world.advance_entity_client_animations(3);
+        assert_eq!(auto_spin(&world, 86, 0.5), Some(3.5));
+
+        // Clearing the spin bit (other living flags still set) stops the spin.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 86,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                0x01
+            )],
+        }));
+        assert_eq!(auto_spin(&world, 86, 0.5), None);
+
+        // The living-entity gate keeps a non-living entity from ever spinning, even
+        // if a stray flags byte is present.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 87,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_SPIN_ATTACK,
+            )],
+        }));
+        assert_eq!(auto_spin(&world, 87, 0.5), None);
     }
 
     #[test]

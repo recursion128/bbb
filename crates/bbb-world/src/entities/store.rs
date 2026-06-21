@@ -28,6 +28,15 @@ use crate::entities::projectiles::entity_hurting_projectile_from_state;
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
 const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 
+/// Vanilla `LivingEntity.DATA_LIVING_ENTITY_FLAGS` data id (8): the byte holding
+/// the using-item / off-hand / spin-attack flags.
+const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+
+/// Vanilla `LivingEntity.LIVING_ENTITY_FLAG_SPIN_ATTACK` (4): the
+/// `DATA_LIVING_ENTITY_FLAGS` bit set while a riptide trident spin is active
+/// (`LivingEntity.isAutoSpinAttack`).
+const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
+
 pub(crate) struct EntityStore {
     ecs: World,
     by_protocol_id: BTreeMap<i32, Entity>,
@@ -111,6 +120,22 @@ impl EntityStore {
 
     pub(crate) fn ticks_frozen(&self, id: i32) -> Option<i32> {
         self.metadata_int(id, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 0)
+    }
+
+    fn metadata_byte(&self, id: i32, data_id: u8, default: i8) -> Option<i8> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::Byte(value) => Some(*value),
+                    _ => None,
+                })
+                .unwrap_or(default),
+        )
     }
 
     fn metadata_bool(&self, id: i32, data_id: u8, default: bool) -> Option<bool> {
@@ -285,6 +310,15 @@ impl EntityStore {
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
             && self.ticks_frozen(id).unwrap_or(0) >= VANILLA_TICKS_REQUIRED_TO_FREEZE;
+        // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
+        // a living entity mid riptide-trident spin. Non-living entities have no
+        // living-entity flags byte, so they never spin.
+        let is_auto_spin_attack = vanilla_living_entity_type(identity.entity_type_id)
+            && self
+                .metadata_byte(id, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+                & LIVING_ENTITY_FLAG_SPIN_ATTACK
+                != 0;
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
@@ -294,6 +328,7 @@ impl EntityStore {
             y_head_rot: transform.y_head_rot,
             age_ticks: client_animations.animations.age_ticks,
             is_fully_frozen,
+            is_auto_spin_attack,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             polar_bear_stand_scale: client_animations
                 .animations
