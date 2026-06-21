@@ -524,8 +524,9 @@ When an agent does any of the following, update this file in the same slice:
     the static crossed `arms` part, which vanilla never animates (it swings the *invisible*
     separate arms), so their visible arms stay put. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
-    `emit_villager_family_textured_passes` textured — villager adult/baby, wandering
-    trader, witch) shares the same `half_amplitude_leg_swing_pose`: `VillagerModel` and
+    `emit_villager_family_textured_passes` textured for the villager/wandering-trader, plus
+    the witch's own `emit_witch_model`/`emit_witch_textured_model` that add the idle nose bob)
+    shares the same `half_amplitude_leg_swing_pose`: `VillagerModel` and
     `WitchModel` are also `EntityModel` (not `HumanoidModel`) with the identical `* 0.5`
     formula and no riding branch, with legs at `[3, 4]` (adult villager/witch/trader)
     or `[1, 2]` (baby villager). The player model
@@ -607,7 +608,8 @@ When an agent does any of the following, update this file in the same slice:
     implemented for every piglin/zombified-piglin subclass — see below), the `IllagerModel`
     attack/spellcast/bow/crossbow/celebrate arm-pose overrides and riding sit pose (the
     default walk arm swing is implemented for the pillager), the `VillagerModel` unhappy
-    head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
+    head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
+    implemented — see below), the `GoatModel` ramming head
     tilt, the `HoglinModel` headbutt head tilt, the `EndermanModel`
     carried-block arm pose and creepy attack pose, the `IronGolemModel`
     attack swing and offer-flower arm pose,
@@ -628,6 +630,15 @@ When an agent does any of the following, update this file in the same slice:
     brute) or `5°` (baby). The ears are `&'static` head children, so the head subtree is
     hand-emitted with the flapped ears (colored path; piglins have no textured path); because
     the `±0.08` baseline and `ageInTicks` advance every frame, the ears never sit still.
+    The same `ageInTicks` projection drives the continuous `WitchModel.setupAnim` idle nose
+    bob (`witch_nose_bob_pose`): `speed = 0.01 * (entityId % 10)`, `nose.xRot =
+    sin(ageInTicks * speed) * 4.5°`, `nose.zRot = cos(ageInTicks * speed) * 2.5°`, both SET
+    absolutely on top of the head look and the half-amplitude leg swing. The nose is a
+    `&'static` head child (and carries the mole as its own child), so the witch's head subtree
+    is hand-emitted with the bobbed nose in both the colored and textured paths; because
+    `cos` never reaches a zRot of `0`, the nose is always re-posed (there is no static fast
+    path). Only the `isHoldingItem` nose hold pose (`setPos(0, 1, -1.5)`, `xRot = -0.9`) stays
+    deferred, since it needs the witch's held-potion render state.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -1099,9 +1110,13 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/witch/witch.png` texture reference from
       `WitchRenderer`, `ModelLayers.WITCH`, texture-backed base layer pass
       emission, official PNG atlas upload/bind/sample path, and the vanilla
-      `WitchModel.setupAnim` head-look yaw/pitch on the head part (colored and
-      textured); `WitchItemLayer`, held-potion state, leg walk animation, and
-      animated nose position/rotation remain unsupported
+      `WitchModel.setupAnim` head-look yaw/pitch on the head part, the
+      half-amplitude leg walk swing (legs at `[3, 4]`), and the continuous
+      `ageInTicks`-driven idle nose bob (`nose.xRot = sin(ageInTicks * speed) *
+      4.5°`, `nose.zRot = cos(ageInTicks * speed) * 2.5°`, `speed = 0.01 *
+      (entityId % 10)`), all on both render paths (colored and textured);
+      `WitchItemLayer`, the held-potion state, and the `isHoldingItem` nose hold
+      pose remain unsupported
     - evoker, illusioner, pillager, and vindicator entities as renderer-owned
       vanilla 26.1 `IllagerModel.createBodyLayer()` geometry, including
       `LayerDefinitions`' shared `MeshTransformer.scaling(0.9375F)`, baked

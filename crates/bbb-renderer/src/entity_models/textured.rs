@@ -26,11 +26,11 @@ use super::{
         ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
         skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
         snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
-        villager_head_part_index, wolf_angry_tail_pose, wolf_tail_part_index, wolf_tail_swing_pose,
-        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
-        HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN, SNOW_GOLEM_HEAD_PART_INDEX,
-        SNOW_GOLEM_LEFT_ARM_PART_INDEX, SNOW_GOLEM_RIGHT_ARM_PART_INDEX,
-        SNOW_GOLEM_UPPER_BODY_PART_INDEX,
+        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose, wolf_tail_part_index,
+        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
+        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
+        SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -427,13 +427,14 @@ const VILLAGER_ADULT_LEG_PART_INDICES: [usize; 2] = [3, 4];
 /// the parts and lists the legs at `[1, 2]`.
 const VILLAGER_BABY_LEG_PART_INDICES: [usize; 2] = [1, 2];
 
-/// Emits an `IllagerModel`/`VillagerModel`/`WitchModel` family entity's textured
+/// Emits a `VillagerModel`/`WanderingTraderModel` family entity's textured
 /// layer passes, applying the vanilla head look ([`head_look_pose`]) to the head
 /// part at `head_index` and the half-amplitude leg swing
 /// ([`half_amplitude_leg_swing_pose`]) to the two leg parts at `leg_indices`. The
 /// static parts are reused unchanged while both the head is level/aligned and the
-/// legs are at rest. The combined `arms` part, the witch nose bob, and the villager
-/// unhappy head shake are deferred.
+/// legs are at rest. The villager unhappy head shake is deferred. The witch shares
+/// this family's body layer but bobs its nose continuously, so it has its own
+/// emitter ([`emit_witch_textured_model`]) rather than this shared path.
 #[allow(clippy::too_many_arguments)]
 fn emit_villager_family_textured_passes(
     meshes: &mut EntityModelTexturedMeshes,
@@ -665,15 +666,83 @@ fn emit_witch_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_villager_family_textured_passes(
-        meshes,
-        witch_textured_layer_passes(),
-        villager_head_part_index(false),
-        VILLAGER_ADULT_LEG_PART_INDICES,
-        villager_adult_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    // Vanilla `WitchModel.setupAnim` runs the villager head look and the half-amplitude
+    // leg swing (legs at `[3, 4]`), then bobs the nose continuously
+    // (`witch_nose_bob_pose`, driven by `ageInTicks` and the entity id). The nose is a
+    // `&'static` head child, so the head subtree is always hand-emitted with the bobbed
+    // nose — its zRot is `cos(...) * 2.5°`, which is never at rest, so there is no static
+    // fast path. The `isHoldingItem` nose hold pose and the combined `arms` part defer.
+    let head_index = villager_head_part_index(false);
+    let transform = villager_adult_model_root_transform(instance);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let entity_id = instance.entity_id;
+    for pass in witch_textured_layer_passes() {
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+        }
+        if !legs_resting {
+            for index in VILLAGER_ADULT_LEG_PART_INDICES {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose =
+                        half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+        }
+        // The nose is a child of the head, whose children list is static, so emit the head
+        // subtree by hand with the bobbed nose (the hat rides unchanged; the mole rides the
+        // nose as its own child).
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        let mesh = meshes.mesh_mut(pass.render_type);
+        for (index, part) in parts.iter().enumerate() {
+            if index == head_index {
+                let head_transform = transform * part_pose_transform(part.pose);
+                for cube in part.cubes {
+                    emit_textured_model_cube(
+                        mesh,
+                        head_transform,
+                        *cube,
+                        pass.texture,
+                        entry.uv,
+                        pass.tint,
+                    );
+                }
+                let mut children = part.children.to_vec();
+                children[WITCH_NOSE_CHILD_INDEX].pose = witch_nose_bob_pose(
+                    children[WITCH_NOSE_CHILD_INDEX].pose,
+                    age_in_ticks,
+                    entity_id,
+                );
+                emit_textured_model_parts(
+                    mesh,
+                    &children,
+                    head_transform,
+                    pass.texture,
+                    entry.uv,
+                    pass.tint,
+                );
+            } else {
+                emit_textured_model_parts(
+                    mesh,
+                    std::slice::from_ref(part),
+                    transform,
+                    pass.texture,
+                    entry.uv,
+                    pass.tint,
+                );
+            }
+        }
+    }
 }
 
 fn emit_slime_textured_model(

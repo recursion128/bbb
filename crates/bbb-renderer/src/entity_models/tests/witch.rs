@@ -318,6 +318,83 @@ fn witch_textured_mesh_swings_legs_when_walking() {
     );
 }
 
+#[test]
+fn witch_nose_bob_pose_matches_vanilla_formula() {
+    // Vanilla `WitchModel.setupAnim`:
+    //   speed = 0.01 * (entityId % 10);
+    //   nose.xRot = sin(ageInTicks * speed) * 4.5°;
+    //   nose.zRot = cos(ageInTicks * speed) * 2.5°.
+    // Both are SET absolutely (the base nose pose carries rotation [0, 0, 0]); the yRot and
+    // the offset are preserved. The nose is head child 1, after the hat.
+    assert_eq!(WITCH_NOSE_CHILD_INDEX, 1);
+    let base = WITCH_HEAD_CHILDREN[WITCH_NOSE_CHILD_INDEX].pose;
+    assert_eq!(base.offset, [0.0, -2.0, 0.0]);
+    assert_eq!(base.rotation, [0.0, 0.0, 0.0]);
+
+    // entityId 66 → speed 0.06; ageInTicks 40 reproduces the sin/cos amplitudes exactly.
+    let (entity_id, age) = (66_i32, 40.0_f32);
+    let speed = 0.01 * (entity_id % 10) as f32;
+    let phase = age * speed;
+    let posed = witch_nose_bob_pose(base, age, entity_id);
+    assert!((posed.rotation[0] - phase.sin() * 4.5_f32.to_radians()).abs() < 1e-7);
+    assert!((posed.rotation[2] - phase.cos() * 2.5_f32.to_radians()).abs() < 1e-7);
+    assert_eq!(posed.rotation[1], base.rotation[1]);
+    assert_eq!(posed.offset, base.offset);
+
+    // At age 0 the bob is not neutral: zRot = cos(0) * 2.5° = 2.5°, xRot = sin(0) = 0.
+    let at_zero = witch_nose_bob_pose(base, 0.0, entity_id);
+    assert_eq!(at_zero.rotation[0], 0.0);
+    assert!((at_zero.rotation[2] - 2.5_f32.to_radians()).abs() < 1e-7);
+
+    // entityId % 10 == 0 freezes the bob (speed 0): the nose holds the age-0 pose forever.
+    let frozen = witch_nose_bob_pose(base, age, 310);
+    assert_eq!(frozen.rotation[0], 0.0);
+    assert!((frozen.rotation[2] - 2.5_f32.to_radians()).abs() < 1e-7);
+}
+
+#[test]
+fn witch_colored_mesh_bobs_its_nose_as_age_advances() {
+    // Vanilla runs `WitchModel.setupAnim` every frame, bobbing the nose from `ageInTicks`
+    // (`speed = 0.01 * (entityId % 10)`). Advancing `ageInTicks` re-poses only the nose
+    // subtree, so the mesh changes while the age-independent legs hold still. entityId 313
+    // → speed 0.03 (nonzero, so the bob actually moves). Colored path here; textured below.
+    let base = EntityModelInstance::witch(313, [0.0, 64.0, 0.0], 0.0);
+    let early = entity_model_mesh(&[base]);
+    let later = entity_model_mesh(&[base.with_age_in_ticks(31.4)]);
+    assert_eq!(early.vertices.len(), later.vertices.len());
+    assert_ne!(
+        early.vertices, later.vertices,
+        "the nose bobs as ageInTicks advances"
+    );
+    // The left leg is the final part and carries no age term, so it is byte-identical.
+    let leg_tail = early.vertices.len() - 24;
+    assert_eq!(
+        early.vertices[leg_tail..],
+        later.vertices[leg_tail..],
+        "the legs do not depend on ageInTicks"
+    );
+}
+
+#[test]
+fn witch_textured_mesh_bobs_its_nose_as_age_advances() {
+    // The texture-backed render path bobs the same nose. entityId 313 → speed 0.03.
+    let (atlas, _) = build_entity_model_texture_atlas(&witch_texture_images()).unwrap();
+    let base = EntityModelInstance::witch(313, [0.0, 64.0, 0.0], 0.0);
+    let early = entity_model_textured_mesh(&[base], &atlas);
+    let later = entity_model_textured_mesh(&[base.with_age_in_ticks(31.4)], &atlas);
+    assert_eq!(early.vertices.len(), later.vertices.len());
+    assert_ne!(
+        early.vertices, later.vertices,
+        "the nose bobs as ageInTicks advances"
+    );
+    let leg_tail = early.vertices.len() - 24;
+    assert_eq!(
+        early.vertices[leg_tail..],
+        later.vertices[leg_tail..],
+        "the legs do not depend on ageInTicks"
+    );
+}
+
 fn witch_texture_images() -> Vec<EntityModelTextureImage> {
     witch_entity_texture_refs()
         .iter()

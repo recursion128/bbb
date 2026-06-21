@@ -308,6 +308,35 @@ pub(in crate::entity_models) fn piglin_ear_flap_pose(
     }
 }
 
+/// Index of the nose within the witch head's children. `WitchModel` lists the hat at `0`
+/// and the nose (which parents the mole) at `1`.
+pub(in crate::entity_models) const WITCH_NOSE_CHILD_INDEX: usize = 1;
+
+/// Vanilla `WitchModel.setupAnim` idle nose bob: a per-entity `speed = 0.01 * (entityId %
+/// 10)` drives `nose.xRot = sin(ageInTicks * speed) * 4.5°` and `nose.zRot =
+/// cos(ageInTicks * speed) * 2.5°` (degrees → radians), *set* absolutely (overriding the
+/// layer's zeroed rest) and preserving the offset and `yRot`. Because `cos(0) = 1`, the
+/// nose carries a constant `+2.5°` zRot baseline even at `ageInTicks = 0`, and `ageInTicks`
+/// advances every frame, so the nose never sits at the layer rest. The `isHoldingItem`
+/// drinking pose (which repositions the nose and sets `xRot = -0.9`) needs the held-item
+/// render state and is deferred.
+pub(in crate::entity_models) fn witch_nose_bob_pose(
+    base: PartPose,
+    age_in_ticks: f32,
+    entity_id: i32,
+) -> PartPose {
+    let speed = 0.01 * (entity_id % 10) as f32;
+    let phase = age_in_ticks * speed;
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            phase.sin() * 4.5_f32.to_radians(),
+            base.rotation[1],
+            phase.cos() * 2.5_f32.to_radians(),
+        ],
+    }
+}
+
 /// Vanilla half-amplitude leg swing for a single leg part: `leg.xRot =
 /// cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed * 0.5`. The
 /// `EntityModel` bipeds that are not `HumanoidModel` — `IllagerModel` (non-riding

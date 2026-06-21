@@ -1302,15 +1302,37 @@ fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
 
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // `WitchModel.setupAnim` swings the legs `cos(pos * 0.6662 [+ π]) * 1.4 * speed *
-    // 0.5` (half amplitude, legs at `[3, 4]`) after the head look. The nose bob/hold
-    // pose and the combined `arms` part are deferred.
+    // 0.5` (half amplitude, legs at `[3, 4]`) after the head look, then bobs the nose
+    // continuously (`witch_nose_bob_pose`, driven by `ageInTicks` and the entity id). The
+    // nose is a `&'static` head child, so the head subtree is hand-emitted with the bobbed
+    // nose. The `isHoldingItem` nose hold pose and the combined `arms` part are deferred.
+    let head_index = villager_head_part_index(false);
     let parts = half_amplitude_limb_swing_parts(
-        villager_colored_head_look_parts(&WITCH_PARTS, villager_head_part_index(false), instance),
+        villager_colored_head_look_parts(&WITCH_PARTS, head_index, instance),
         villager_leg_part_indices(false),
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
     );
-    emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
+    let transform = villager_adult_model_root_transform(instance);
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let entity_id = instance.entity_id;
+    for (index, part) in parts.iter().enumerate() {
+        if index == head_index {
+            let head_transform = transform * part_pose_transform(part.pose);
+            for cube in part.cubes {
+                emit_model_cube(mesh, head_transform, *cube);
+            }
+            let mut head_children = part.children.to_vec();
+            head_children[WITCH_NOSE_CHILD_INDEX].pose = witch_nose_bob_pose(
+                head_children[WITCH_NOSE_CHILD_INDEX].pose,
+                age_in_ticks,
+                entity_id,
+            );
+            emit_model_parts(mesh, &head_children, head_transform);
+        } else {
+            emit_model_part(mesh, part, transform);
+        }
+    }
 }
 
 fn emit_illager_model(
