@@ -485,8 +485,13 @@ When an agent does any of the following, update this file in the same slice:
     arm-swing note below). The piglin
     family (`emit_piglin_model` — piglin, piglin brute, zombified piglin, adult and
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
-    `setupAnim` runs `super.setupAnim` (the inherited legs) before swaying only the ears,
-    and `PiglinModel` overrides only the arms. The illager family (`emit_illager_model`
+    `setupAnim` runs `super.setupAnim` (the inherited legs and arms) before swaying only
+    the ears. The adult/baby piglin and the brute keep the inherited arm counter-swing in
+    their default state (`PiglinModel` overrides the arms only in its deferred dance/
+    attack/crossbow/admire poses), so the arm swing is implemented for them too; the
+    zombified piglin instead overwrites the arms with `AnimationUtils.animateZombieArms`
+    (the deferred held-out zombie pose), so only its legs swing. The illager family
+    (`emit_illager_model`
     — evoker, vindicator, illusioner, pillager) uses a dedicated `illager_leg_swing_pose`
     (`cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`): `IllagerModel` is not a
     `HumanoidModel` and adds an extra `0.5` amplitude factor (the shared
@@ -551,14 +556,17 @@ When an agent does any of the following, update this file in the same slice:
     distance→speed mappings (and
     `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
     track), so their limb swing is left at rest rather than approximated; (2) the base
-    `HumanoidModel.setupAnim` arm swing is implemented for the player and the skeleton
-    family (`humanoid_arm_swing_pose`/`humanoid_arm_swing_parts`, arms at `[2, 3]`, the
-    counter-swing `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`; `SkeletonModel` runs
-    `super.setupAnim` and overrides the arms only in its melee branch, so the default
-    arms swing in both the colored and textured paths, every variant — skeleton, stray,
-    parched, wither skeleton, bogged sheared/unsheared); the per-subclass arm/ear/nose
-    poses that override it stay deferred (the zombie held-out arms, the skeleton melee
-    swing (`isAggressive && !isHoldingBow`) and bow-aiming `ArmPose`, the
+    `HumanoidModel.setupAnim` arm swing is implemented for the player, the skeleton
+    family, and the non-zombified piglin family
+    (`humanoid_arm_swing_pose`/`humanoid_arm_swing_parts`, arms at `[2, 3]`, the
+    counter-swing `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`; `SkeletonModel` and
+    `(Abstract)PiglinModel` run `super.setupAnim` and override the arms only in their
+    deferred pose branches, so the default arms swing — for the skeleton in both the
+    colored and textured paths, every variant (skeleton, stray, parched, wither skeleton,
+    bogged sheared/unsheared), and for the colored adult/baby piglin and brute); the
+    per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
+    arms, the skeleton melee swing (`isAggressive && !isHoldingBow`) and bow-aiming
+    `ArmPose`, the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
     `AbstractPiglinModel` ear sway and
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
@@ -924,8 +932,11 @@ When an agent does any of the following, update this file in the same slice:
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
       (the baby layout's index-1 head, and the baby piglin brute's adult-layout
       head, included), and the zombie and piglin families also apply the inherited
-      `HumanoidModel` leg swing on their two leg parts (the `AbstractPiglinModel`
-      ear sway and per-subclass arm poses stay deferred)
+      `HumanoidModel` leg swing on their two leg parts, with the inherited arm
+      counter-swing added on the two arm parts for the non-zombified piglin family
+      (adult/baby piglin and brute; the zombified piglin's arms keep the deferred
+      `animateZombieArms` held-out pose, and the `AbstractPiglinModel` ear sway and
+      `PiglinModel` override arm poses stay deferred)
     - base skeleton, stray, parched, wither skeleton, and bogged entities as
       renderer-owned vanilla 26.1 skeleton-family geometry from
       `SkeletonModel.createBodyLayer()`,

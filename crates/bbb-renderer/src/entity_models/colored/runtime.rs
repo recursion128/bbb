@@ -468,10 +468,15 @@ fn emit_piglin_model(
         &ADULT_PIGLIN_PARTS
     };
     // `AbstractPiglinModel extends HumanoidModel`: its `setupAnim` runs
-    // `super.setupAnim` (the inherited leg swing) before swaying only the ears, and
-    // `PiglinModel` overrides only the arms (dance/attack/crossbow/admire poses), so
-    // the legs swing exactly as in `HumanoidModel.setupAnim`. The ear sway and arm
-    // poses are deferred (they need `ageInTicks`/arm-pose state the client lacks).
+    // `super.setupAnim` (the inherited leg and arm swing) before swaying only the ears.
+    // `PiglinModel` (adult/baby piglin and the brute, which reuses `AdultPiglinModel`)
+    // overrides the arms only in its dance/attack/crossbow/admire poses (deferred), so
+    // the default arms keep the `HumanoidModel.setupAnim` counter-swing. The zombified
+    // piglin instead overwrites the arms with `AnimationUtils.animateZombieArms` (the
+    // held-out zombie pose, deferred), so its arms stay at rest. The ear sway and the
+    // overriding arm poses need `ageInTicks`/arm-pose state the client lacks.
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
     let parts = humanoid_limb_swing_parts(
         colored_head_look_parts(
             parts,
@@ -480,9 +485,19 @@ fn emit_piglin_model(
             instance.render_state.head_pitch,
         ),
         HUMANOID_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
+        limb_swing,
+        limb_swing_amount,
     );
+    let parts = if family == PiglinModelFamily::ZombifiedPiglin {
+        parts
+    } else {
+        humanoid_arm_swing_parts(
+            parts,
+            HUMANOID_ARM_PART_INDICES,
+            limb_swing,
+            limb_swing_amount,
+        )
+    };
     emit_model_parts_with_color(
         mesh,
         &parts,

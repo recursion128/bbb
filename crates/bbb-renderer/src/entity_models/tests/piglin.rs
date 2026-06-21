@@ -310,13 +310,89 @@ fn piglin_texture_refs_match_vanilla_renderers() {
 }
 
 #[test]
+fn piglin_family_swings_its_arms_when_walking() {
+    // `AbstractPiglinModel extends HumanoidModel`, so `super.setupAnim` gives the default
+    // arms the inherited counter-swing `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`
+    // (the arms are overridden only by `PiglinModel`'s deferred dance/attack/crossbow/
+    // admire poses). The zombified piglin instead overwrites the arms via
+    // `AnimationUtils.animateZombieArms` (the held-out zombie pose, deferred), so its arms
+    // must stay at rest. In the adult layer (15 cubes) the head/snout/ears and body fill
+    // 24-vertex blocks [0, 7); the two arms (each a cube plus its sleeve child) fill blocks
+    // [7, 11) = vertices [168, 264); the legs fill [11, 15). The baby layer's arms (no
+    // sleeve children) fill blocks [5, 7) = vertices [120, 168).
+    let z_extent = |verts: &[EntityModelVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    let arm_slice = |baby: bool| -> std::ops::Range<usize> {
+        if baby {
+            120..168
+        } else {
+            168..264
+        }
+    };
+    // Families whose default arms swing: adult and baby piglin, and the brute (which
+    // reuses the adult piglin body layer).
+    let swings: [(&str, PiglinModelFamily, bool); 3] = [
+        ("piglin", PiglinModelFamily::Piglin, false),
+        ("piglin_baby", PiglinModelFamily::Piglin, true),
+        ("piglin_brute", PiglinModelFamily::PiglinBrute, false),
+    ];
+    for (name, family, baby) in swings {
+        let base = EntityModelInstance::piglin(95, [0.0, 64.0, 0.0], 0.0, family, baby);
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        let arms = arm_slice(baby);
+        assert_ne!(
+            rest.vertices[arms.clone()],
+            walking.vertices[arms.clone()],
+            "{name}: arms swing when walking"
+        );
+        let rest_arm_z = z_extent(&rest.vertices[arms.clone()]);
+        let walk_arm_z = z_extent(&walking.vertices[arms.clone()]);
+        assert!(
+            walk_arm_z > rest_arm_z + 0.1,
+            "{name}: a forward/back arm swing deepens the arm Z footprint: {rest_arm_z} -> {walk_arm_z}"
+        );
+    }
+    // The zombified piglin overwrites its arms with the deferred zombie pose, so the arm
+    // region is byte-identical between standing and walking — only its legs swing.
+    for (name, baby) in [("zombified_piglin", false), ("zombified_piglin_baby", true)] {
+        let base = EntityModelInstance::piglin(
+            96,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PiglinModelFamily::ZombifiedPiglin,
+            baby,
+        );
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        let arms = arm_slice(baby);
+        assert_eq!(
+            rest.vertices[arms.clone()],
+            walking.vertices[arms.clone()],
+            "{name}: the deferred zombie arm pose keeps the arms at rest"
+        );
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "{name}: the legs still swing"
+        );
+    }
+}
+
+#[test]
 fn piglin_family_swings_its_legs_when_walking() {
     // `AbstractPiglinModel extends HumanoidModel`: its `setupAnim` runs
-    // `super.setupAnim` (the inherited leg swing) then sways only the ears, and
-    // `PiglinModel` overrides only the arms, so the piglin family inherits the
-    // `HumanoidModel` legs unchanged. A standing piglin is inert; a walking one
-    // lifts its feet (a shorter model) and splays its legs along Z, for every
-    // family and the baby layout. The ear sway and arm poses are deferred.
+    // `super.setupAnim` (the inherited leg swing) then sways only the ears, so the
+    // piglin family inherits the `HumanoidModel` legs unchanged (the default arm swing
+    // is covered by `piglin_family_swings_its_arms_when_walking`). A standing piglin is
+    // inert; a walking one lifts its feet (a shorter model) and splays along Z, for
+    // every family and the baby layout. The ear sway and override arm poses are deferred.
     let instances: [(&str, EntityModelInstance); 5] = [
         (
             "piglin",
