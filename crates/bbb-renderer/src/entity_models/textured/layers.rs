@@ -32,6 +32,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SlimeOuter,
     MagmaCubeBase,
     PolarBearBase,
+    RavagerBase,
     SnowGolemBase,
     SpiderBase,
     SpiderEyes,
@@ -302,6 +303,20 @@ pub(in crate::entity_models) fn polar_bear_textured_layer_passes(
         } else {
             &ADULT_POLAR_BEAR_TEXTURED_PARTS
         },
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn ravager_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::RavagerBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_RAVAGER,
+        texture: RAVAGER_TEXTURE_REF,
+        parts: &RAVAGER_TEXTURED_PARTS,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

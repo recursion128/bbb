@@ -101,7 +101,11 @@ fn entity_model_mesh_with_options(
                     emit_hoglin_model(&mut mesh, *instance, family, baby)
                 }
             }
-            EntityModelKind::Ravager => emit_ravager_model(&mut mesh, *instance),
+            EntityModelKind::Ravager => {
+                if !skip_texture_backed_entities {
+                    emit_ravager_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::Skeleton => {
                 if !skip_texture_backed_entities {
                     emit_skeleton_model(&mut mesh, *instance);

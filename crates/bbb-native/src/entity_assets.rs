@@ -118,6 +118,7 @@ mod tests {
                 "textures/entity/hoglin/hoglin_baby.png",
                 "textures/entity/hoglin/zoglin.png",
                 "textures/entity/hoglin/zoglin_baby.png",
+                "textures/entity/illager/ravager.png",
                 "textures/entity/chicken/chicken_temperate.png",
                 "textures/entity/chicken/chicken_temperate_baby.png",
                 "textures/entity/chicken/chicken_warm.png",

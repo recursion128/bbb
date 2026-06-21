@@ -142,6 +142,13 @@ pub(in crate::entity_models) const RAVAGER_TEXTURE_REF: EntityModelTextureRef =
         size: [128, 128],
     };
 
+pub(in crate::entity_models) const RAVAGER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [RAVAGER_TEXTURE_REF];
+
+pub fn ravager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &RAVAGER_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",
@@ -616,7 +623,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 78] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 79] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -640,6 +647,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     HOGLIN_BABY_TEXTURE_REF,
     ZOGLIN_TEXTURE_REF,
     ZOGLIN_BABY_TEXTURE_REF,
+    RAVAGER_TEXTURE_REF,
     CHICKEN_TEMPERATE_TEXTURE_REF,
     CHICKEN_TEMPERATE_BABY_TEXTURE_REF,
     CHICKEN_WARM_TEXTURE_REF,

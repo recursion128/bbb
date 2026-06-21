@@ -441,9 +441,10 @@ When an agent does any of the following, update this file in the same slice:
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official
       `textures/entity/illager/ravager.png` texture reference, and
-      `ModelLayers.RAVAGER`; attack neck motion, stunned neck/mouth animation,
-      roar mouth animation, head rotation, leg walk animation, lighting, and
-      GPU texture binding remain unsupported
+      `ModelLayers.RAVAGER`, texture-backed base layer pass emission, and
+      official PNG atlas upload/bind/sample path; attack neck motion, stunned
+      neck/mouth animation, roar mouth animation, head rotation, leg walk
+      animation, and lighting remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`

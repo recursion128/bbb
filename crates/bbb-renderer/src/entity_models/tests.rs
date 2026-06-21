@@ -60,6 +60,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     );
     let zoglin_baby =
         EntityModelInstance::hoglin(319, [30.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, true);
+    let ravager = EntityModelInstance::ravager(320, [32.0, 64.0, 0.0], 0.0);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -78,6 +79,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         polar_bear,
         hoglin,
         zoglin_baby,
+        ravager,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -115,6 +117,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_hoglin_geometry_guard.vertices.is_empty());
     let legacy_zoglin_baby_geometry_guard = entity_model_mesh(&[zoglin_baby]);
     assert!(!legacy_zoglin_baby_geometry_guard.vertices.is_empty());
+    let legacy_ravager_geometry_guard = entity_model_mesh(&[ravager]);
+    assert!(!legacy_ravager_geometry_guard.vertices.is_empty());
 }
 
 #[test]
