@@ -486,12 +486,14 @@ impl EntityModelKind {
             Self::Wolf {
                 baby: false,
                 tame: true,
+                invisible: false,
                 collar_color: Some(_),
                 ..
             } => &WOLF_COLLAR_LAYER_TEXTURE_REFS,
             Self::Wolf {
                 baby: true,
                 tame: true,
+                invisible: false,
                 collar_color: Some(_),
                 ..
             } => &WOLF_BABY_COLLAR_LAYER_TEXTURE_REFS,

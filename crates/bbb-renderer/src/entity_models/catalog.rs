@@ -76,6 +76,7 @@ pub enum EntityModelKind {
         baby: bool,
         tame: bool,
         angry: bool,
+        invisible: bool,
         collar_color: Option<EntityDyeColor>,
     },
     Horse {

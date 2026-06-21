@@ -169,6 +169,8 @@ const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
 const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
+const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 0x20;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
@@ -702,6 +704,7 @@ fn wolf_model_kind(
         baby: ageable_baby(values),
         tame,
         angry: wolf_is_angry(values, game_time),
+        invisible: entity_invisible(values),
         collar_color: tame.then(|| {
             EntityDyeColor::from_vanilla_id(entity_data_int(
                 values,
@@ -710,6 +713,10 @@ fn wolf_model_kind(
             ))
         }),
     }
+}
+
+fn entity_invisible(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    (entity_data_byte(values, ENTITY_SHARED_FLAGS_DATA_ID, 0) & ENTITY_SHARED_FLAG_INVISIBLE) != 0
 }
 
 fn wolf_is_angry(values: &[bbb_protocol::packets::EntityDataValue], game_time: i64) -> bool {
@@ -2281,6 +2288,7 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
+                invisible: false,
                 collar_color: None,
             }
         );
@@ -2293,6 +2301,7 @@ mod tests {
                 baby: true,
                 tame: false,
                 angry: false,
+                invisible: false,
                 collar_color: None,
             }
         );
@@ -2308,6 +2317,7 @@ mod tests {
                 baby: false,
                 tame: true,
                 angry: false,
+                invisible: false,
                 collar_color: Some(EntityDyeColor::Red),
             }
         );
@@ -2323,6 +2333,24 @@ mod tests {
                 baby: false,
                 tame: true,
                 angry: false,
+                invisible: false,
+                collar_color: Some(EntityDyeColor::Blue),
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[
+                    protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
+                    protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                    protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11),
+                ]
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: true,
+                angry: false,
+                invisible: true,
                 collar_color: Some(EntityDyeColor::Blue),
             }
         );
@@ -2335,6 +2363,7 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
+                invisible: false,
                 collar_color: None,
             }
         );
@@ -2360,6 +2389,7 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: true,
+                invisible: false,
                 collar_color: None,
             }
         );
@@ -2377,6 +2407,7 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
+                invisible: false,
                 collar_color: None,
             }
         );
@@ -2397,6 +2428,7 @@ mod tests {
                 baby: false,
                 tame: true,
                 angry: true,
+                invisible: false,
                 collar_color: Some(EntityDyeColor::Red),
             }
         );
@@ -2430,6 +2462,7 @@ mod tests {
                 false,
                 false,
                 true,
+                false,
                 None,
             )]
         );
@@ -2450,7 +2483,42 @@ mod tests {
                 false,
                 false,
                 false,
+                false,
                 None,
+            )]
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_wolf_invisible_shared_flag_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            148,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 148,
+            values: vec![
+                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
+                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11),
+            ],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![EntityModelInstance::wolf_state(
+                148,
+                [1.0, 64.0, -2.0],
+                0.0,
+                false,
+                true,
+                false,
+                true,
+                Some(EntityDyeColor::Blue),
             )]
         );
     }

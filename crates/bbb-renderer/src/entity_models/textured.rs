@@ -150,6 +150,7 @@ pub(super) fn entity_model_textured_meshes(
                 baby,
                 tame,
                 angry,
+                invisible,
                 collar_color,
             } => {
                 emit_wolf_textured_model(
@@ -158,6 +159,7 @@ pub(super) fn entity_model_textured_meshes(
                     baby,
                     tame,
                     angry,
+                    invisible,
                     collar_color,
                     atlas,
                 );
@@ -447,11 +449,12 @@ fn emit_wolf_textured_model(
     baby: bool,
     tame: bool,
     angry: bool,
+    invisible: bool,
     collar_color: Option<EntityDyeColor>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
-    for pass in wolf_textured_layer_passes(baby, tame, angry, collar_color) {
+    for pass in wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }

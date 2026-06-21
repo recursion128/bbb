@@ -266,8 +266,9 @@ When an agent does any of the following, update this file in the same slice:
     - apply eating head position/angle animation from entity event `10`
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set
-    - add armor, wet tint, sitting/head/tail/shake/walk pose, invisibility,
-      lighting, overlay, and remaining render-state extraction parity
+    - add armor, wet tint, sitting/head/tail/shake/walk pose, base-model
+      invisibility/outline handling, lighting, overlay, and remaining
+      render-state extraction parity
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -370,11 +371,12 @@ When an agent does any of the following, update this file in the same slice:
       and baby texture references, adult/baby collar texture references,
       texture-backed base and collar layer passes, vanilla tame-over-angry
       texture selection, metadata-driven tame flag projection, collar dye
-      tint projection, and anger end-time projection against canonical client
-      game time; registry-driven wolf variants beyond the default/pale texture
-      set, armor layer, wet tint, sitting pose, head/tail pose, shake, walk
-      animation, invisibility-gated collar visibility, lighting, overlay, and
-      remaining render-state extraction remain unsupported
+      tint projection, anger end-time projection against canonical client game
+      time, and vanilla shared-flags invisibility gating for the collar layer;
+      registry-driven wolf variants beyond the default/pale texture set, armor
+      layer, wet tint, sitting pose, head/tail pose, shake, walk animation,
+      base-model invisibility/outline handling, lighting, overlay, and remaining
+      render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

@@ -300,7 +300,7 @@ impl EntityModelInstance {
     }
 
     pub fn wolf(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
-        Self::wolf_state(entity_id, position, y_rot, baby, false, false, None)
+        Self::wolf_state(entity_id, position, y_rot, baby, false, false, false, None)
     }
 
     pub fn wolf_state(
@@ -310,6 +310,7 @@ impl EntityModelInstance {
         baby: bool,
         tame: bool,
         angry: bool,
+        invisible: bool,
         collar_color: Option<EntityDyeColor>,
     ) -> Self {
         Self::new(
@@ -318,6 +319,7 @@ impl EntityModelInstance {
                 baby,
                 tame,
                 angry,
+                invisible,
                 collar_color: tame.then_some(collar_color).flatten(),
             },
             position,
@@ -534,6 +536,7 @@ mod tests {
             false,
             false,
             false,
+            false,
             Some(EntityDyeColor::Blue),
         );
         assert_eq!(
@@ -542,6 +545,7 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
+                invisible: false,
                 collar_color: None,
             }
         );
