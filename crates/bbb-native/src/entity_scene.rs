@@ -175,6 +175,13 @@ const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 0x20;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
+/// Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID` (synced boolean): `Entity` 0..=7,
+/// `LivingEntity` 8..=14, `Mob` 15, `Zombie` baby 16 / special-type 17 /
+/// drowned-conversion 18. Drives `Zombie.isUnderWaterConverting()`.
+const ZOMBIE_DROWNED_CONVERSION_DATA_ID: u8 = 18;
+/// Vanilla `ZombieVillager.DATA_CONVERTING_ID` (synced boolean, id 19, right
+/// after the inherited `Zombie` ids). Drives `ZombieVillager.isConverting()`.
+const ZOMBIE_VILLAGER_CONVERTING_DATA_ID: u8 = 19;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
@@ -293,13 +300,18 @@ fn entity_model_instance(
     // Vanilla LivingEntityRenderer.extractRenderState:
     //   state.yRot = Mth.wrapDegrees(headRot - bodyRot)  (net head-look yaw)
     //   state.xRot = entity.getXRot(partialTicks)         (head-look pitch)
-    // The net head yaw is taken against the unshaken body yaw; the freezing body
-    // shake is then folded into the projected body_rot so the whole model jitters
-    // while the head turn relative to the body is unchanged.
+    // The net head yaw is taken against the unshaken body yaw; the setupRotations
+    // body shake (freezing or a per-renderer conversion) is then folded into the
+    // projected body_rot so the whole model jitters while the head turn relative to
+    // the body is unchanged.
     let net_head_yaw = wrap_degrees(source.y_head_rot - source.y_rot);
     let head_pitch = source.x_rot;
-    let body_rot =
-        source.y_rot + entity_freeze_shake_degrees(source.age_ticks, source.is_fully_frozen);
+    let is_shaking = entity_shaking(
+        source.entity_type_id,
+        &source.data_values,
+        source.is_fully_frozen,
+    );
+    let body_rot = source.y_rot + entity_body_shake_degrees(source.age_ticks, is_shaking);
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -321,15 +333,45 @@ fn entity_model_instance(
     )
 }
 
-/// Vanilla `LivingEntityRenderer.setupRotations` freezing body shake, folded into
-/// the projected body yaw: `cos(Mth.floor(ageInTicks) * 3.25) * π * 0.4` degrees
-/// while the entity is fully frozen (`isShaking`), otherwise `0`. `age_ticks` is
-/// the integer tick count, so it already equals `Mth.floor(ageInTicks)`.
-fn entity_freeze_shake_degrees(age_ticks: u32, is_fully_frozen: bool) -> f32 {
-    if !is_fully_frozen {
+/// Vanilla `LivingEntityRenderer.setupRotations` body shake, folded into the
+/// projected body yaw: `cos(Mth.floor(ageInTicks) * 3.25) * π * 0.4` degrees while
+/// the entity `isShaking`, otherwise `0`. `age_ticks` is the integer tick count,
+/// so it already equals `Mth.floor(ageInTicks)`.
+fn entity_body_shake_degrees(age_ticks: u32, is_shaking: bool) -> f32 {
+    if !is_shaking {
         return 0.0;
     }
     (age_ticks as f32 * 3.25).cos() * std::f32::consts::PI * 0.4
+}
+
+/// Vanilla `LivingEntityRenderer.isShaking`: the base renderer's `isFullyFrozen`,
+/// plus the per-renderer conversion overrides. `AbstractZombieRenderer.isShaking`
+/// ORs in `Zombie.isUnderWaterConverting()` (synced `DATA_DROWNED_CONVERSION_ID`,
+/// id 18) for the whole zombie family, and `ZombieVillagerRenderer` additionally
+/// ORs in `ZombieVillager.isConverting()` (synced `DATA_CONVERTING_ID`, id 19).
+/// The hoglin/piglin zombification shake is environment-attribute-derived (not a
+/// synced flag) and the base-`Skeleton` freeze-conversion shake is server-side
+/// `conversionTime`, so both remain deferred.
+fn entity_shaking(
+    entity_type_id: i32,
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    is_fully_frozen: bool,
+) -> bool {
+    if is_fully_frozen {
+        return true;
+    }
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID
+        | VANILLA_ENTITY_TYPE_HUSK_ID
+        | VANILLA_ENTITY_TYPE_DROWNED_ID => {
+            entity_data_bool(data_values, ZOMBIE_DROWNED_CONVERSION_DATA_ID, false)
+        }
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => {
+            entity_data_bool(data_values, ZOMBIE_DROWNED_CONVERSION_DATA_ID, false)
+                || entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
+        }
+        _ => false,
+    }
 }
 
 /// Vanilla `Mth.wrapDegrees`: wraps an angle in degrees to `-180.0..=180.0`.
@@ -1515,6 +1557,50 @@ mod tests {
         assert!((frozen[0].render_state.body_rot - expected_shake).abs() < 1e-6);
         // The head turn relative to the body is unchanged by the shake.
         assert_eq!(frozen[0].render_state.head_yaw, 0.0);
+    }
+
+    #[test]
+    fn entity_model_instances_shake_zombie_family_while_converting() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            84,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            85,
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        world.advance_entity_client_animations(2);
+
+        let shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
+        let body_rot = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .body_rot
+        };
+
+        // A non-converting zombie / zombie villager does not shake.
+        assert_eq!(body_rot(&world, 84), 0.0);
+        assert_eq!(body_rot(&world, 85), 0.0);
+
+        // AbstractZombieRenderer.isShaking ORs in DATA_DROWNED_CONVERSION_ID (18).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 84,
+            values: vec![protocol_bool_data(ZOMBIE_DROWNED_CONVERSION_DATA_ID, true)],
+        }));
+        assert!((body_rot(&world, 84) - shake).abs() < 1e-6);
+
+        // ZombieVillagerRenderer additionally ORs in DATA_CONVERTING_ID (19).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 85,
+            values: vec![protocol_bool_data(ZOMBIE_VILLAGER_CONVERTING_DATA_ID, true)],
+        }));
+        assert!((body_rot(&world, 85) - shake).abs() < 1e-6);
     }
 
     #[test]

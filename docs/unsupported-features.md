@@ -315,20 +315,24 @@ When an agent does any of the following, update this file in the same slice:
     `180 - bodyRot` yaw and before the `(-1, -1, 1)` flip in both shared living
     root transforms, so every colored and textured living model tips over, and is
     identity while alive.
-  - The freezing body shake is implemented end to end. World side: a living entity
-    (`vanilla_living_entity_type` gate) whose synced `ticksFrozen`
-    (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()` = `140` is
-    marked `isFullyFrozen` in `EntityModelSourceState`. The native scene folds the
-    vanilla `LivingEntityRenderer.setupRotations` shake `cos(floor(ageInTicks) *
-    3.25) * π * 0.4` (degrees) into the projected `body_rot`, computed against the
-    already-projected integer `ageInTicks` (= `Mth.floor(ageInTicks)`, so it does
-    not lerp with the partial tick). The net head-look yaw is taken against the
-    unshaken body yaw, so the whole model jitters while the head turn relative to
-    the body is unchanged. Remaining gap: the per-renderer `isShaking` overrides
-    that OR in conversion/cold states (`AbstractZombieRenderer`/
-    `ZombieVillagerRenderer`/`PiglinRenderer`/`HoglinRenderer` converting,
-    `StriderRenderer` cold, `AbstractSkeletonRenderer` converting) — additional
-    shake producers layered on the base `isFullyFrozen`.
+  - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
+    World side: a living entity (`vanilla_living_entity_type` gate) whose synced
+    `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
+    = `140` is marked `isFullyFrozen` in `EntityModelSourceState`. Native side:
+    `entity_shaking` reproduces vanilla `isShaking` — the base `isFullyFrozen` plus
+    the per-renderer conversion overrides that are synced to the client:
+    `AbstractZombieRenderer` ORs in `Zombie.isUnderWaterConverting()`
+    (`DATA_DROWNED_CONVERSION_ID`, id `18`) for the whole zombie family, and
+    `ZombieVillagerRenderer` additionally ORs in `ZombieVillager.isConverting()`
+    (`DATA_CONVERTING_ID`, id `19`). While shaking, the scene folds
+    `cos(floor(ageInTicks) * 3.25) * π * 0.4` (degrees) into the projected
+    `body_rot`, computed against the integer `ageInTicks` (= `Mth.floor`, so no
+    partial lerp); the net head-look yaw is taken against the unshaken body yaw, so
+    the whole model jitters while the head turn relative to the body is unchanged.
+    Remaining gap: the conversion shakes that are not a synced client flag — the
+    hoglin/piglin zombification shake (environment-attribute derived, server-side)
+    and the base-`Skeleton` freeze-conversion shake (server-side `conversionTime`),
+    plus `StriderRenderer` cold (the strider model itself is still a placeholder).
   - The head-look projection is implemented as a reusable render-state field: the
     canonical `Entity.yHeadRot`/`getXRot` flow through `EntityModelSourceState`,
     the native scene derives `LivingEntityRenderState.yRot` =
