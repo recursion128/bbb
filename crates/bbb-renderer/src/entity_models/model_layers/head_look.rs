@@ -330,6 +330,28 @@ pub(in crate::entity_models) fn enderman_leg_swing_pose(
     }
 }
 
+/// Vanilla `EndermanModel.setupAnim` arm swing for a single arm part. `EndermanModel
+/// extends HumanoidModel`, so `super.setupAnim` first sets the inherited arm
+/// counter-swing ([`humanoid_arm_swing_pose`]: `arm.xRot = cos(walkAnimationPos *
+/// 0.6662 [+ π]) * 2.0 * walkAnimationSpeed * 0.5`, the right arm — part offset `x < 0`
+/// — out of phase), then the enderman halves it (`*= 0.5`) and clamps it to
+/// `[-0.4, 0.4]` exactly as it does the legs. The base arm pose carries no `xRot`, so
+/// it is set (not accumulated). The carried-block arm pose (`xRot = -0.5`, `zRot =
+/// ±0.05`) and the creepy attack head/hat shift are separate deferred animations gated
+/// on state the client does not yet track.
+pub(in crate::entity_models) fn enderman_arm_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let swung = humanoid_arm_swing_pose(base, walk_animation_pos, walk_animation_speed);
+    let x_rot = (swung.rotation[0] * 0.5).clamp(-0.4, 0.4);
+    PartPose {
+        offset: base.offset,
+        rotation: [x_rot, base.rotation[1], base.rotation[2]],
+    }
+}
+
 /// Vanilla `RavagerModel.setupAnim` leg swing for a single leg part: `leg.xRot =
 /// cos(walkAnimationPos * 0.6662 [+ π]) * 0.4 * walkAnimationSpeed`. `RavagerModel`
 /// is a custom `EntityModel`, but the leg swing follows the `QuadrupedModel` phase

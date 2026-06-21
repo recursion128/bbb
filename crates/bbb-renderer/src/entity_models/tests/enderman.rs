@@ -323,11 +323,58 @@ fn enderman_leg_swing_pose_halves_and_clamps_the_humanoid_swing() {
 }
 
 #[test]
+fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
+    // Vanilla EndermanModel.setupAnim: super.setupAnim sets arm.xRot =
+    // cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5 (amplitude 1.0), then the enderman
+    // halves it (*= 0.5) and clamps it to [-0.4, 0.4], exactly as it does the legs.
+    // ENDERMAN_PARTS lists the right arm at index 2 (x = -5, the out-of-phase + π side)
+    // and the left at index 3 (x = +5, in phase). The combined amplitude is
+    // 2.0 * 0.5 * 0.5 = 0.5, so unclamped arm.xRot = cos(angle) * speed * 0.5.
+    // At pos = 0, speed = 1: right raw = cos(π) * 0.5 = -0.5, clamped to -0.4; left raw
+    // = cos(0) * 0.5 = +0.5, clamped to +0.4.
+    let right = enderman_arm_swing_pose(ENDERMAN_PARTS[2].pose, 0.0, 1.0);
+    let left = enderman_arm_swing_pose(ENDERMAN_PARTS[3].pose, 0.0, 1.0);
+    assert!(
+        (right.rotation[0] + 0.4).abs() < 1e-6,
+        "right arm clamps to -0.4: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (left.rotation[0] - 0.4).abs() < 1e-6,
+        "left arm clamps to +0.4: {}",
+        left.rotation[0]
+    );
+
+    // A low speed stays inside the clamp window, showing the bare halving:
+    // cos(π) * 1 * 0.5 * 0.3 = -0.15 (right), the opposite phase to the same-side leg.
+    let right_slow = enderman_arm_swing_pose(ENDERMAN_PARTS[2].pose, 0.0, 0.3);
+    assert!(
+        (right_slow.rotation[0] + 0.3 * 0.5).abs() < 1e-6,
+        "unclamped half amplitude, out of phase: {}",
+        right_slow.rotation[0]
+    );
+    // A general (pos, speed) within the window: cos(pos * 0.6662 + π) * 2.0 * speed * 0.5
+    // * 0.5 for the right arm; the arm's + π phase is the leg's negation.
+    let phase = 2.0_f32 * 0.6662;
+    let right_general = enderman_arm_swing_pose(ENDERMAN_PARTS[2].pose, 2.0, 0.3);
+    assert!(
+        (right_general.rotation[0] - (phase + std::f32::consts::PI).cos() * 2.0 * 0.3 * 0.5 * 0.5)
+            .abs()
+            < 1e-6
+    );
+    // The arm and same-side leg counter-swing: the right arm (+ π) is the negation of
+    // the right leg (in phase) at the same half amplitude.
+    let right_leg = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 2.0, 0.3);
+    assert!((right_general.rotation[0] + right_leg.rotation[0] * (1.0 / 1.4)).abs() < 1e-6);
+}
+
+#[test]
 fn enderman_swings_its_legs_when_walking() {
     // `EndermanModel extends HumanoidModel`; its legs swing the inherited swing,
     // halved and clamped. A standing enderman is inert; a walking one lifts its feet
-    // and splays its legs along Z. The arm halve/clamp, carried-block, and creepy
-    // poses are deferred. Colored path here, textured below.
+    // and splays its legs along Z. The arm halve/clamp is covered separately by
+    // `enderman_swings_its_arms_when_walking`; the carried-block and creepy poses are
+    // deferred. Colored path here, textured below.
     let base = EntityModelInstance::enderman(260, [0.0, 64.0, 0.0], 0.0);
     let rest = entity_model_mesh(&[base]);
     let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
@@ -378,6 +425,85 @@ fn enderman_textured_mesh_swings_legs_when_walking() {
     assert!(
         (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
         "a walking enderman's feet should lift off the ground"
+    );
+}
+
+#[test]
+fn enderman_swings_its_arms_when_walking() {
+    // The enderman applies the inherited HumanoidModel arm swing, halved and clamped to
+    // [-0.4, 0.4], to its long arms. In the body layer the parts emit head(0)+hat(1)+
+    // body(2), then right_arm(3), left_arm(4), right_leg(5), left_leg(6) as 24-vertex
+    // blocks, so the arms occupy vertices [72, 120) and the legs [120, 168). A standing
+    // enderman is inert; a walking one swings both its arms and legs while the head and
+    // body stay put. Colored path here, textured below.
+    let z_extent = |verts: &[EntityModelVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    let base = EntityModelInstance::enderman(262, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(
+        rest.vertices[0..72],
+        walking.vertices[0..72],
+        "head and body never swing"
+    );
+    assert_ne!(
+        rest.vertices[72..120],
+        walking.vertices[72..120],
+        "arms swing"
+    );
+    assert_ne!(
+        rest.vertices[120..168],
+        walking.vertices[120..168],
+        "legs swing"
+    );
+    let rest_arm_z = z_extent(&rest.vertices[72..120]);
+    let walk_arm_z = z_extent(&walking.vertices[72..120]);
+    assert!(
+        walk_arm_z > rest_arm_z + 0.1,
+        "a forward/back arm swing deepens the arm Z footprint: {rest_arm_z} -> {walk_arm_z}"
+    );
+}
+
+#[test]
+fn enderman_textured_mesh_swings_arms_when_walking() {
+    // The texture-backed enderman base layer runs the same halved/clamped arm swing,
+    // emitting the parts in the same order, so the arms occupy textured vertices
+    // [72, 120). A standing enderman is byte-identical; a walking one swings its arms.
+    let z_extent = |verts: &[EntityModelTexturedVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
+    let base = EntityModelInstance::enderman(263, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    assert_eq!(
+        resting.vertices[0..72],
+        walking.vertices[0..72],
+        "head and body never swing"
+    );
+    assert_ne!(
+        resting.vertices[72..120],
+        walking.vertices[72..120],
+        "arms swing"
+    );
+    let rest_arm_z = z_extent(&resting.vertices[72..120]);
+    let walk_arm_z = z_extent(&walking.vertices[72..120]);
+    assert!(
+        walk_arm_z > rest_arm_z + 0.1,
+        "the textured arms splay along Z when walking: {rest_arm_z} -> {walk_arm_z}"
     );
 }
 

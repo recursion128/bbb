@@ -290,11 +290,13 @@ When an agent does any of the following, update this file in the same slice:
       family (villager adult/baby, wandering trader, witch — `VillagerModel`/
       `WitchModel`, both also non-`HumanoidModel` with the same `0.5` factor), and the
       player model (`PlayerModel extends HumanoidModel`, remote players, colored and
-      textured, wide and slim, the pants children riding the leg parts — and, uniquely so
-      far, the inherited `HumanoidModel` **arm** counter-swing at `[2, 3]` with its
-      sleeve children, since `PlayerModel` does not override the arms), and the
-      enderman (`EndermanModel extends HumanoidModel`, the inherited swing halved and
-      clamped to `[-0.4, 0.4]`), and the iron golem (`IronGolemModel`, a triangle-wave
+      textured, wide and slim, the pants children riding the leg parts — and the inherited
+      `HumanoidModel` **arm** counter-swing at `[2, 3]` with its sleeve children, since
+      `PlayerModel` does not override the arms; the skeleton and non-zombified piglin
+      families and the enderman share that inherited arm swing too), and the
+      enderman (`EndermanModel extends HumanoidModel`, the inherited arm and leg swing
+      halved and clamped to `[-0.4, 0.4]`, arms `[2, 3]`), and the iron golem
+      (`IronGolemModel`, a triangle-wave
       gait swinging both legs and — its only walk-driven arm animation — the arms), and
       the ravager (`RavagerModel`, the `QuadrupedModel` diagonal phase at a shorter `0.4`
       amplitude, legs `[2, 3, 4, 5]`), the spider/cave spider (`SpiderModel`, the
@@ -509,10 +511,14 @@ When an agent does any of the following, update this file in the same slice:
     toggles part visibility before `super.setupAnim`; the pants children ride the leg
     parts and the visibility-filtered part array keeps the legs at `[4, 5]`). The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
-    uses a dedicated `enderman_leg_swing_pose`: `EndermanModel extends HumanoidModel`,
-    so `super.setupAnim` sets the inherited swing, then the enderman halves it
-    (`*= 0.5`) and clamps it to `[-0.4, 0.4]` (legs at `[4, 5]`); its arm halve/clamp,
-    carried-block arm pose, and creepy attack pose are deferred. The iron golem
+    uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
+    extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
+    then the enderman halves both (`*= 0.5`) and clamps them to `[-0.4, 0.4]` (arms at
+    `[2, 3]`, legs at `[4, 5]`); the arm swing reuses the base
+    [`humanoid_arm_swing_pose`] (the right arm — part offset `x < 0` — the half-cycle out
+    of phase, counter to the same-side leg) before the halve/clamp. Its carried-block arm
+    pose (`xRot = -0.5`, `zRot = ±0.05`) and creepy attack head/hat shift are deferred.
+    The iron golem
     (`emit_iron_golem_model` colored and `emit_iron_golem_textured_model` textured) uses
     `iron_golem_walk_pose`: `IronGolemModel` is a custom `EntityModel` whose
     `setupAnim` swings both the legs (`±1.5 * Mth.triangleWave(pos, 13) * speed`) and —
@@ -571,8 +577,8 @@ When an agent does any of the following, update this file in the same slice:
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
-    tilt, the `HoglinModel` ear sway and headbutt head tilt, the `EndermanModel` arm
-    halve/clamp, carried-block arm pose, and creepy attack pose, the `IronGolemModel`
+    tilt, the `HoglinModel` ear sway and headbutt head tilt, the `EndermanModel`
+    carried-block arm pose and creepy attack pose, the `IronGolemModel`
     attack swing and offer-flower arm pose,
     item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
@@ -996,10 +1002,11 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `EnderEyesLayer` `enderman_eyes.png` texture-backed eyes pass
       using the parent Enderman model parts, submit order `1`, and a
       `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
-      vanilla `HumanoidModel.setupAnim` head-look yaw/pitch on the head part
-      (colored and textured); carried-block layer, carried-block arm pose, creepy
-      head offset, creepy render jitter, humanoid walk animation, and lighting
-      remain unsupported
+      vanilla `HumanoidModel.setupAnim` head-look yaw/pitch on the head part and
+      the enderman walk animation — the inherited arm and leg swing halved and
+      clamped to `[-0.4, 0.4]` (arms `[2, 3]`, legs `[4, 5]`) — (colored and
+      textured); the carried-block layer, carried-block arm pose, creepy head
+      offset, creepy render jitter, and lighting remain unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official

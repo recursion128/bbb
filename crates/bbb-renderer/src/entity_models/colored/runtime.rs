@@ -1460,9 +1460,10 @@ fn spider_limb_swing_parts(
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `EndermanModel extends HumanoidModel`: `setupAnim` runs `super.setupAnim`
-    // (the inherited leg swing) then halves and clamps the legs to `[-0.4, 0.4]`
-    // (`enderman_leg_swing_pose`). Legs are at [4, 5]. The arm halve/clamp, the
-    // carried-block arm pose, and the creepy attack pose are deferred.
+    // (the inherited arm and leg swing) then halves and clamps both the arms and the
+    // legs to `[-0.4, 0.4]` (`enderman_arm_swing_pose`/`enderman_leg_swing_pose`). Arms
+    // are at [2, 3], legs at [4, 5]. The carried-block arm pose and the creepy attack
+    // pose are deferred.
     let parts = enderman_limb_swing_parts(
         head_first_colored_head_look_parts(&ENDERMAN_PARTS, instance),
         instance.render_state.walk_animation_pos,
@@ -1471,10 +1472,11 @@ fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
-/// Applies the vanilla `EndermanModel.setupAnim` leg swing
-/// ([`enderman_leg_swing_pose`]: the inherited `HumanoidModel` swing, halved and
-/// clamped to `[-0.4, 0.4]`) to a colored enderman layer's two leg parts at
-/// `[4, 5]`. Borrows the static parts unchanged at rest (`walkAnimationSpeed == 0`).
+/// Applies the vanilla `EndermanModel.setupAnim` arm and leg swing
+/// ([`enderman_arm_swing_pose`]/[`enderman_leg_swing_pose`]: the inherited
+/// `HumanoidModel` swing, halved and clamped to `[-0.4, 0.4]`) to a colored enderman
+/// layer's two arm parts at `[2, 3]` and two leg parts at `[4, 5]`. Borrows the static
+/// parts unchanged at rest (`walkAnimationSpeed == 0`).
 fn enderman_limb_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     limb_swing: f32,
@@ -1484,6 +1486,10 @@ fn enderman_limb_swing_parts(
         return parts;
     }
     let mut owned = parts.into_owned();
+    for index in HUMANOID_ARM_PART_INDICES {
+        owned[index].pose =
+            enderman_arm_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
+    }
     for index in HUMANOID_LEG_PART_INDICES {
         owned[index].pose =
             enderman_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);

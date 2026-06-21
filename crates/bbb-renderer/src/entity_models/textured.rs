@@ -16,9 +16,9 @@ use super::{
     magma_cube_model_root_transform,
     model_layers::{
         apply_polar_bear_standing_pose, chicken_leg_part_indices, cow_head_part_index,
-        enderman_leg_swing_pose, half_amplitude_leg_swing_pose, head_first_part_index,
-        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_swing_pose,
+        enderman_arm_swing_pose, enderman_leg_swing_pose, half_amplitude_leg_swing_pose,
+        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
+        head_yaw_at_rest, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_swing_pose,
         humanoid_leg_swing_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
         limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
@@ -545,9 +545,10 @@ fn emit_enderman_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `EndermanModel extends HumanoidModel`: full head look, then the
-    // inherited leg swing halved and clamped to `[-0.4, 0.4]` (`enderman_leg_swing_pose`,
-    // legs at [4, 5]). The arm halve/clamp, carried-block, and creepy poses defer.
+    // Vanilla `EndermanModel extends HumanoidModel`: full head look, then the inherited
+    // arm and leg swing halved and clamped to `[-0.4, 0.4]`
+    // (`enderman_arm_swing_pose`/`enderman_leg_swing_pose`, arms at [2, 3], legs at
+    // [4, 5]). The carried-block and creepy poses defer.
     let head_index = head_first_part_index();
     let transform = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
@@ -555,9 +556,9 @@ fn emit_enderman_textured_model(
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     for pass in enderman_textured_layer_passes() {
-        if head_resting && legs_resting {
+        if head_resting && limbs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {
             let mut parts = pass.parts.to_vec();
@@ -566,7 +567,12 @@ fn emit_enderman_textured_model(
                     head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
                 }
             }
-            if !legs_resting {
+            if !limbs_resting {
+                for index in HUMANOID_ARM_PART_INDICES {
+                    if let Some(arm) = parts.get_mut(index) {
+                        arm.pose = enderman_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                    }
+                }
                 for index in HUMANOID_LEG_PART_INDICES {
                     if let Some(leg) = parts.get_mut(index) {
                         leg.pose = enderman_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
