@@ -349,6 +349,7 @@ fn entity_model_instance(
         .with_upside_down_height(upside_down_height)
         .with_sleeping(sleeping)
         .with_scale(source.scale)
+        .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1271,7 +1272,7 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity, AttributeSnapshot, CommonPlayerSpawnInfo, EntityDataValue, EntityEvent,
-        PlayLogin, PlayTime, SetCamera, SetEntityData, UpdateAttributes, Vec3d,
+        EntityPositionSync, PlayLogin, PlayTime, SetCamera, SetEntityData, UpdateAttributes, Vec3d,
     };
     use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
     use uuid::Uuid;
@@ -1848,6 +1849,52 @@ mod tests {
             }],
         }));
         assert_eq!(scale(&world), 1.25);
+    }
+
+    #[test]
+    fn entity_model_instances_project_walk_animation() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            98,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            [0.0, 64.0, 0.0],
+        ));
+
+        let walk = |world: &WorldStore| -> (f32, f32) {
+            let state = entity_model_instances_from_world_at_partial_tick(world, 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 98)
+                .unwrap()
+                .render_state;
+            (state.walk_animation_pos, state.walk_animation_speed)
+        };
+        let sync = |world: &mut WorldStore, x: f64| {
+            assert!(world.apply_entity_position_sync(EntityPositionSync {
+                id: 98,
+                position: Vec3d { x, y: 64.0, z: 0.0 },
+                delta_movement: Vec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            }));
+        };
+
+        // A standing cow projects no limb swing.
+        world.advance_entity_client_animations(1);
+        assert_eq!(walk(&world), (0.0, 0.0));
+
+        // After one 0.5-block step, the WalkAnimationState reaches speed = 0.4 and
+        // position = 0.4 (targetSpeed = min(0.5 * 4, 1) = 1.0), and both flow through
+        // EntityModelSourceState to the renderer EntityRenderState.
+        sync(&mut world, 0.5);
+        world.advance_entity_client_animations(1);
+        let (pos, speed) = walk(&world);
+        assert!((speed - 0.4).abs() < 1e-5, "walk speed: {speed}");
+        assert!((pos - 0.4).abs() < 1e-5, "walk position: {pos}");
     }
 
     #[test]

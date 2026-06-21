@@ -990,13 +990,22 @@ fn emit_quadruped_model(
             color,
         },
     );
-    for (x, z) in [(-leg_x, 7.0), (leg_x, 7.0), (-leg_x, -5.0), (leg_x, -5.0)] {
+    // Vanilla QuadrupedModel.setupAnim leg swing: each leg's xRot is
+    // `cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`, with the
+    // hind-left / front-right legs a half-cycle (π) out of phase with the
+    // hind-right / front-left pair. The legs are emitted in the vanilla order
+    // [right hind, left hind, right front, left front].
+    let leg_x_rots = quadruped_leg_x_rotations(instance);
+    for ((x, z), leg_x_rot) in [(-leg_x, 7.0), (leg_x, 7.0), (-leg_x, -5.0), (leg_x, -5.0)]
+        .into_iter()
+        .zip(leg_x_rots)
+    {
         emit_model_cube(
             mesh,
             transform
                 * part_pose_transform(PartPose {
                     offset: [x, 24.0 - leg_size, z],
-                    rotation: [0.0, 0.0, 0.0],
+                    rotation: [leg_x_rot, 0.0, 0.0],
                 }),
             ModelCubeDesc {
                 min: [-2.0, 0.0, -2.0],
@@ -1005,6 +1014,22 @@ fn emit_quadruped_model(
             },
         );
     }
+}
+
+/// Vanilla `QuadrupedModel.setupAnim` leg `xRot` values in the model part order
+/// `[right hind, left hind, right front, left front]`:
+/// `cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`. The
+/// hind-left and front-right legs are a half-cycle out of phase. Returns all
+/// zeros for a standing entity (`walkAnimationSpeed == 0`).
+pub(in crate::entity_models) fn quadruped_leg_x_rotations(
+    instance: EntityModelInstance,
+) -> [f32; 4] {
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let phase = limb_swing * 0.6662;
+    let in_phase = phase.cos() * 1.4 * limb_swing_amount;
+    let out_of_phase = (phase + std::f32::consts::PI).cos() * 1.4 * limb_swing_amount;
+    [in_phase, out_of_phase, out_of_phase, in_phase]
 }
 
 fn emit_pig_model(

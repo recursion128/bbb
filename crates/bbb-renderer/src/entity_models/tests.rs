@@ -15,6 +15,7 @@ mod golem;
 mod head_look;
 mod hoglin;
 mod illager;
+mod limb_swing;
 mod llama;
 mod pig;
 mod piglin;

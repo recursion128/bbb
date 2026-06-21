@@ -103,6 +103,16 @@ pub struct EntityRenderState {
     /// `poseStack.scale(scale, scale, scale)` before `setupRotations`. `1.0` for an
     /// entity at its default size.
     pub scale: f32,
+    /// Vanilla `LivingEntityRenderState.walkAnimationPos`
+    /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
+    /// that models feed into the `cos(animationPos * 0.6662 ...)` leg/arm sway in
+    /// `setupAnim`. `0.0` for a standing entity.
+    pub walk_animation_pos: f32,
+    /// Vanilla `LivingEntityRenderState.walkAnimationSpeed`
+    /// (`WalkAnimationState.speed(partialTick)`): the lerped limb-swing amplitude
+    /// (`0.0..=1.0`) that scales the sway in `setupAnim`. `0.0` for a standing
+    /// entity, leaving the model in its rest pose.
+    pub walk_animation_speed: f32,
 }
 
 impl EntityRenderState {
@@ -125,6 +135,8 @@ impl EntityRenderState {
             upside_down_height: None,
             sleeping: None,
             scale: 1.0,
+            walk_animation_pos: 0.0,
+            walk_animation_speed: 0.0,
         }
     }
 
@@ -240,6 +252,19 @@ impl EntityModelInstance {
     /// `poseStack.scale` applied before `setupRotations`.
     pub fn with_scale(mut self, scale: f32) -> Self {
         self.render_state.scale = scale;
+        self
+    }
+
+    /// Sets the limb-swing projection (vanilla `LivingEntityRenderState.walkAnimationPos`
+    /// / `.walkAnimationSpeed`). Consumed by model families with a walk cycle
+    /// (currently the `QuadrupedModel` legs) to sway the limbs in `setupAnim`.
+    pub fn with_walk_animation(
+        mut self,
+        walk_animation_pos: f32,
+        walk_animation_speed: f32,
+    ) -> Self {
+        self.render_state.walk_animation_pos = walk_animation_pos;
+        self.render_state.walk_animation_speed = walk_animation_speed;
         self
     }
 
@@ -856,6 +881,8 @@ mod tests {
                 upside_down_height: None,
                 sleeping: None,
                 scale: 1.0,
+                walk_animation_pos: 0.0,
+                walk_animation_speed: 0.0,
             }
         );
     }

@@ -271,10 +271,13 @@ When an agent does any of the following, update this file in the same slice:
       `whiteOverlayProgress` (creeper swelling white flash)
     - `walkAnimationPos`/`walkAnimationSpeed` limb-swing: the client-side
       `WalkAnimationState` accumulator is implemented and tracked per living entity
-      (see the dedicated bullet below), and its lerped `position`/`speed` are
-      projected onto `EntityModelSourceState.walk_animation_position`/`_speed`. The
-      remaining slices carry those values into the renderer `EntityRenderState` and
-      consume them in each model's `setupAnim` (the actual leg/arm sway).
+      (see the dedicated bullet below), its lerped `position`/`speed` are projected
+      through `EntityModelSourceState.walk_animation_position`/`_speed` to the
+      renderer `EntityRenderState.walk_animation_pos`/`_speed`, and the
+      `QuadrupedModel` leg sway consumes them (the generic quadruped path). The
+      remaining slices consume them in the other model families' `setupAnim`
+      (dedicated `CowModel`/`PigModel`/`SheepModel` static-part paths, the
+      `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -393,8 +396,8 @@ When an agent does any of the following, update this file in the same slice:
     The baby `ageScale` (the `0.5` head/body proportions applied in model `setupAnim`)
     is a separate value and stays deferred.
   - The `WalkAnimationState` limb-swing accumulator is implemented and tracked client
-    side (the renderer/`setupAnim` consumption is a later slice). World side: each
-    client tick `EntityStore::advance_client_animations` runs vanilla
+    side, projected end to end, and consumed by the `QuadrupedModel` legs. World side:
+    each client tick `EntityStore::advance_client_animations` runs vanilla
     `LivingEntity.calculateEntityAnimation` for every living entity — it measures the
     per-tick feet travel (`Mth.length` of the position delta, including the vertical
     component only for `FlyingAnimal` Bee/Parrot, like
@@ -405,14 +408,21 @@ When an agent does any of the following, update this file in the same slice:
     (`!isAlive`, mirrored by the client death-animation state) stops the swing
     (`walkAnimation.stop()`), matching vanilla. The lerped `position(partialTick)` /
     `speed(partialTick)` are projected onto
-    `EntityModelSourceState.walk_animation_position` / `walk_animation_speed` (`0.0`
-    for a standing entity, every non-living entity, and the deferred overrides
-    below). Deferred: the `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides
-    use different distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash
-    animation states the client does not yet track), so their limb swing is left at
-    rest rather than approximated; carrying the values into the renderer
-    `EntityRenderState` and consuming them in each model's `setupAnim` (the actual
-    leg/arm sway) are the next slices.
+    `EntityModelSourceState.walk_animation_position` / `walk_animation_speed`, and the
+    native projection carries them to `EntityRenderState.walk_animation_pos` /
+    `walk_animation_speed`. Renderer side: the generic `emit_quadruped_model` applies
+    the vanilla `QuadrupedModel.setupAnim` leg sway — each leg's `xRot =
+    cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`, with the
+    hind-left/front-right pair a half-cycle out of phase with the hind-right/front-left
+    pair — so a walking quadruped's legs swing (`0.0` for a standing entity, every
+    non-living entity, and the deferred overrides below). Deferred: (1) the
+    `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
+    distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash animation
+    states the client does not yet track), so their limb swing is left at rest rather
+    than approximated; (2) consuming the projected values in the other model families'
+    `setupAnim` (the dedicated `CowModel`/`PigModel`/`SheepModel` static-part paths,
+    the `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.) are the next
+    slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

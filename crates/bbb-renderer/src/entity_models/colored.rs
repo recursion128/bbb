@@ -8,6 +8,8 @@ pub(super) use runtime::entity_model_colored_runtime_mesh;
 #[cfg(test)]
 pub(super) use runtime::entity_model_mesh;
 #[cfg(test)]
+pub(super) use runtime::quadruped_leg_x_rotations;
+#[cfg(test)]
 pub(super) use selection::{chicken_model_parts, cow_model_parts, pig_model_parts};
 pub(super) use transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, entity_model_root_transform,
