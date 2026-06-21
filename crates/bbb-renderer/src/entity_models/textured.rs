@@ -17,8 +17,8 @@ use super::{
     model_layers::{
         apply_polar_bear_standing_pose, cow_head_part_index, half_amplitude_leg_swing_pose,
         head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
-        head_yaw_at_rest, hoglin_head_part_index, humanoid_leg_swing_pose, limb_swing_at_rest,
-        parched_head_part_index, pig_head_part_index, player_head_part_index,
+        head_yaw_at_rest, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_leg_swing_pose,
+        limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
         sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
@@ -467,33 +467,6 @@ fn emit_textured_passes_with_head_look(
     }
 }
 
-/// Emits textured layer passes after applying the vanilla `HoglinModel.setupAnim`
-/// yaw-only head look to each pass's head part. Vanilla sets `head.yRot` from the
-/// look yaw but keeps `head.xRot` at the headbutt rest tilt baked into the base
-/// pose, so only the yaw is applied (see [`head_look_yaw_pose`]).
-fn emit_textured_passes_with_head_yaw(
-    meshes: &mut EntityModelTexturedMeshes,
-    passes: Vec<EntityModelLayerPass>,
-    head_index: usize,
-    transform: Mat4,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let head_yaw = instance.render_state.head_yaw;
-    let head_resting = head_yaw_at_rest(head_yaw);
-    for pass in passes {
-        if head_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_yaw_pose(head.pose, head_yaw);
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-        }
-    }
-}
-
 fn emit_creeper_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -672,15 +645,42 @@ fn emit_hoglin_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_yaw(
-        meshes,
-        hoglin_textured_layer_passes(family, baby),
-        hoglin_head_part_index(baby),
-        entity_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
+    // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
+    // left-hind in phase) after the yaw-only head look. Legs are at [2, 3, 4, 5].
+    let head_index = hoglin_head_part_index(baby);
+    let transform = entity_model_root_transform(instance);
+    let head_yaw = instance.render_state.head_yaw;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_yaw_at_rest(head_yaw);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in hoglin_textured_layer_passes(family, baby) {
+        if head_resting && legs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_yaw_pose(head.pose, head_yaw);
+                }
+            }
+            if !legs_resting {
+                for index in HOGLIN_LEG_PART_INDICES {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose = hoglin_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
 }
+
+/// The four leg part indices in the hoglin/zoglin textured body layers (the head
+/// and body occupy `0`/`1` in either order). [`hoglin_leg_swing_pose`] resolves each
+/// leg's phase from its offset.
+const HOGLIN_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
 
 fn emit_ravager_textured_model(
     meshes: &mut EntityModelTexturedMeshes,

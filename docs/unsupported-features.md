@@ -277,8 +277,9 @@ When an agent does any of the following, update this file in the same slice:
       leg sway consumes them in the generic quadruped path and the dedicated
       `CowModel`, `PigModel`, `SheepModel`, `GoatModel`, and `PolarBearModel` paths (all
       variants, wool layers, baby layers, the goat's per-baby leg order and horn layer,
-      the polar bear's standing rear composed on top of the swing), and the
-      `HumanoidModel` leg sway consumes them in the zombie family
+      the polar bear's standing rear composed on top of the swing), plus the custom
+      `HoglinModel` (hoglin and zoglin, its own `1.2` amplitude no-frequency formula),
+      and the `HumanoidModel` leg sway consumes them in the zombie family
       (zombie, husk, drowned, zombie villager) and the skeleton family (skeleton,
       stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
       Stray/Bogged clothing overlay, since the overlay's layer `SkeletonModel` runs the
@@ -440,7 +441,13 @@ When an agent does any of the following, update this file in the same slice:
     running it before the standing rear, which then adds `frontLeg.xRot -= standScale *
     π * 0.45` on top of the swing — applied in that order so the rear composes with the
     swing), so a walking quadruped's legs swing (`0.0` for a standing entity, every
-    non-living entity, and the deferred overrides below). The
+    non-living entity, and the deferred overrides below). The hoglin family (hoglin and
+    zoglin, adult and baby — `emit_hoglin_model` colored and `emit_hoglin_textured_model`
+    textured) uses a dedicated `hoglin_leg_swing_pose`: `HoglinModel` is a custom
+    `EntityModel` (not a `QuadrupedModel`) whose four legs swing `cos(pos [+ π]) * 1.2 *
+    speed` — amplitude `1.2`, no `0.6662` factor, and the right-front/left-hind pair in
+    phase (resolved from `x * z > 0`, the opposite sign of the `QuadrupedModel` rule),
+    legs at `[2, 3, 4, 5]`; its ear sway and headbutt head tilt are deferred. The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
     consumed by the zombie family (`emit_zombie_model`/`emit_zombie_variant_model` —
@@ -481,7 +488,8 @@ When an agent does any of the following, update this file in the same slice:
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
-    tilt, item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
+    tilt, the `HoglinModel` ear sway and headbutt head tilt,
+    item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`

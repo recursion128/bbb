@@ -486,16 +486,49 @@ fn emit_hoglin_model(
     } else {
         &ADULT_HOGLIN_PARTS
     };
-    emit_model_parts_with_color(
-        mesh,
-        &hoglin_colored_head_look_parts(
+    // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
+    // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
+    // left-hind in phase) after the yaw-only head look. The ear sway and headbutt
+    // head tilt are deferred. Legs are at [2, 3, 4, 5] in both layers.
+    let parts = hoglin_limb_swing_parts(
+        hoglin_colored_head_look_parts(
             parts,
             hoglin_head_part_index(baby),
             instance.render_state.head_yaw,
         ),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+    );
+    emit_model_parts_with_color(
+        mesh,
+        &parts,
         entity_model_root_transform(instance),
         hoglin_model_color(family),
     );
+}
+
+/// The four leg part indices in the hoglin/zoglin body layers (the head and body
+/// occupy `0`/`1` in either order). [`hoglin_leg_swing_pose`] resolves each leg's
+/// phase from its offset, so the differing head/body order of the adult and baby
+/// layers does not matter.
+const HOGLIN_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
+/// Applies the vanilla `HoglinModel.setupAnim` leg swing ([`hoglin_leg_swing_pose`])
+/// to a colored hoglin layer's four leg parts. Borrows the static parts unchanged at
+/// rest (`walkAnimationSpeed == 0`).
+fn hoglin_limb_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in HOGLIN_LEG_PART_INDICES {
+        owned[index].pose = hoglin_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
+    }
+    Cow::Owned(owned)
 }
 
 fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

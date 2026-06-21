@@ -243,6 +243,37 @@ pub(in crate::entity_models) fn half_amplitude_leg_swing_pose(
     }
 }
 
+/// Vanilla `HoglinModel.setupAnim` leg swing for a single leg part: `leg.xRot =
+/// cos(walkAnimationPos [+ π]) * 1.2 * walkAnimationSpeed`. `HoglinModel` is a custom
+/// `EntityModel` (zoglin shares it) with its own formula — amplitude `1.2` (not the
+/// `QuadrupedModel` `1.4`) and no `0.6662` frequency factor. The right-front and
+/// left-hind legs are in phase (`cos(pos)`) and the left-front and right-hind a
+/// half-cycle out (`cos(pos + π)`); that diagonal pairing is exactly the legs whose
+/// part offset satisfies `x * z > 0` (right-front is `x < 0, z < 0`; left-hind is
+/// `x > 0, z > 0`), the opposite sign from the `QuadrupedModel` rule. The base leg
+/// pose carries no `xRot`, so it is set (not accumulated). The ear sway and the
+/// headbutt head tilt are separate deferred animations.
+pub(in crate::entity_models) fn hoglin_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let [x, _, z] = base.offset;
+    let angle = if x * z > 0.0 {
+        walk_animation_pos
+    } else {
+        walk_animation_pos + std::f32::consts::PI
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            angle.cos() * 1.2 * walk_animation_speed,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw

@@ -496,6 +496,165 @@ fn hoglin_textured_meshes_apply_yaw_only_head_look() {
     }
 }
 
+#[test]
+fn hoglin_leg_swing_pose_matches_vanilla_formula() {
+    // Vanilla HoglinModel.setupAnim: rightFrontLeg.xRot = cos(pos) * 1.2 * speed,
+    // leftFrontLeg.xRot = cos(pos + π) * 1.2 * speed, rightHindLeg = leftFrontLeg,
+    // leftHindLeg = rightFrontLeg. The amplitude is 1.2 (not the QuadrupedModel 1.4)
+    // and there is NO 0.6662 frequency factor. ADULT_HOGLIN_PARTS lists rightFront at
+    // index 2 (offset x = -4, z = -8.5, so x*z > 0 -> in phase) and leftFront at index
+    // 3 (x = 4, z = -8.5, x*z < 0 -> out of phase).
+    let right_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[2].pose, 0.0, 1.0);
+    let left_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[3].pose, 0.0, 1.0);
+    assert!(
+        (right_front.rotation[0] - 1.2).abs() < 1e-6,
+        "right front in phase at amplitude 1.2: {}",
+        right_front.rotation[0]
+    );
+    assert!(
+        (left_front.rotation[0] + 1.2).abs() < 1e-6,
+        "left front out of phase at amplitude 1.2: {}",
+        left_front.rotation[0]
+    );
+    // The diagonal pair: right hind (index 4, x*z < 0) matches left front, and left
+    // hind (index 5, x*z > 0) matches right front.
+    let right_hind = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[4].pose, 0.0, 1.0);
+    let left_hind = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[5].pose, 0.0, 1.0);
+    assert!((right_hind.rotation[0] - left_front.rotation[0]).abs() < 1e-6);
+    assert!((left_hind.rotation[0] - right_front.rotation[0]).abs() < 1e-6);
+
+    // A general (pos, speed) reproduces cos(pos [+ π]) * 1.2 * speed, with no 0.6662.
+    let right_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[2].pose, 1.5, 0.5);
+    let left_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[3].pose, 1.5, 0.5);
+    assert!((right_front.rotation[0] - 1.5_f32.cos() * 1.2 * 0.5).abs() < 1e-6);
+    assert!(
+        (left_front.rotation[0] - (1.5_f32 + std::f32::consts::PI).cos() * 1.2 * 0.5).abs() < 1e-6
+    );
+}
+
+#[test]
+fn hoglin_family_swings_its_legs_when_walking() {
+    // `HoglinModel` (zoglin shares it) swings the four legs with its own
+    // `cos(pos [+ π]) * 1.2 * speed` formula. A standing hoglin is inert; a walking
+    // adult lifts its feet and splays its legs along Z; the baby's short legs swing
+    // too but the motion stays inside its bounding box. The ear sway and headbutt are
+    // deferred. Colored path.
+    for (name, base, adult_size) in [
+        (
+            "hoglin",
+            EntityModelInstance::hoglin(
+                240,
+                [0.0, 64.0, 0.0],
+                0.0,
+                HoglinModelFamily::Hoglin,
+                false,
+            ),
+            true,
+        ),
+        (
+            "zoglin",
+            EntityModelInstance::hoglin(
+                241,
+                [0.0, 64.0, 0.0],
+                0.0,
+                HoglinModelFamily::Zoglin,
+                false,
+            ),
+            true,
+        ),
+        (
+            "hoglin_baby",
+            EntityModelInstance::hoglin(
+                242,
+                [0.0, 64.0, 0.0],
+                0.0,
+                HoglinModelFamily::Hoglin,
+                true,
+            ),
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+
+        if adult_size {
+            let (rest_min, rest_max) = mesh_extents(&rest);
+            let (walk_min, walk_max) = mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "{name}: a walking hoglin's feet should lift off the ground"
+            );
+            assert!(
+                (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+                "{name}: a walking hoglin's legs should splay along Z"
+            );
+        }
+    }
+}
+
+#[test]
+fn hoglin_textured_mesh_swings_legs_when_walking() {
+    // The real hoglin render path (texture-backed) swings the same legs. A standing
+    // hoglin is byte-identical however far the swing has advanced; a walking adult
+    // lifts its feet.
+    let (atlas, _) = build_entity_model_texture_atlas(&hoglin_texture_images()).unwrap();
+    for (name, base, adult_size) in [
+        (
+            "hoglin",
+            EntityModelInstance::hoglin(
+                243,
+                [0.0, 64.0, 0.0],
+                0.0,
+                HoglinModelFamily::Hoglin,
+                false,
+            ),
+            true,
+        ),
+        (
+            "hoglin_baby",
+            EntityModelInstance::hoglin(
+                244,
+                [0.0, 64.0, 0.0],
+                0.0,
+                HoglinModelFamily::Hoglin,
+                true,
+            ),
+            false,
+        ),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{name}: a standing hoglin is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{name}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{name}: a walking hoglin differs"
+        );
+
+        if adult_size {
+            let (rest_min, rest_max) = textured_mesh_extents(&resting);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "{name}: a walking hoglin's feet should lift off the ground"
+            );
+        }
+    }
+}
+
 fn hoglin_texture_images() -> Vec<EntityModelTextureImage> {
     hoglin_entity_texture_refs()
         .iter()
