@@ -646,27 +646,46 @@ fn sheep_colored_head_parts(
 }
 
 fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    if baby {
-        emit_model_parts(
-            mesh,
-            &BABY_VILLAGER_PARTS,
-            entity_model_root_transform(instance),
-        );
+    let (parts, transform): (&[ModelPartDesc], _) = if baby {
+        (&BABY_VILLAGER_PARTS, entity_model_root_transform(instance))
     } else {
-        emit_model_parts(
-            mesh,
+        (
             &ADULT_VILLAGER_PARTS,
             villager_adult_model_root_transform(instance),
-        );
-    }
+        )
+    };
+    emit_model_parts(
+        mesh,
+        &villager_colored_head_look_parts(parts, villager_head_part_index(baby), instance),
+        transform,
+    );
 }
 
 fn emit_wandering_trader_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
-        &ADULT_VILLAGER_PARTS,
+        &villager_colored_head_look_parts(
+            &ADULT_VILLAGER_PARTS,
+            villager_head_part_index(false),
+            instance,
+        ),
         villager_adult_model_root_transform(instance),
     );
+}
+
+/// Applies the vanilla `VillagerModel`/`IllagerModel`/`WitchModel.setupAnim` head
+/// look to a villager-family layer's head part at `head_index`.
+fn villager_colored_head_look_parts(
+    parts: &[ModelPartDesc],
+    head_index: usize,
+    instance: EntityModelInstance,
+) -> Cow<'_, [ModelPartDesc]> {
+    colored_head_look_parts(
+        parts,
+        head_index,
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    )
 }
 
 fn emit_wolf_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
@@ -777,7 +796,7 @@ fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
-        &WITCH_PARTS,
+        &villager_colored_head_look_parts(&WITCH_PARTS, villager_head_part_index(false), instance),
         villager_adult_model_root_transform(instance),
     );
 }
@@ -789,7 +808,11 @@ fn emit_illager_model(
 ) {
     emit_model_parts(
         mesh,
-        illager_model_parts(family),
+        &villager_colored_head_look_parts(
+            illager_model_parts(family),
+            villager_head_part_index(false),
+            instance,
+        ),
         villager_adult_model_root_transform(instance),
     );
 }

@@ -310,12 +310,13 @@ When an agent does any of the following, update this file in the same slice:
     eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned,
     zombie villager) in the colored path; and the skeleton family (skeleton,
     stray, parched, wither skeleton, bogged) in both the colored and textured
-    paths; and the piglin family (piglin, piglin brute, zombified piglin) in the
-    colored path. Remaining head-look work: apply the same projection to the other
-    humanoid families' head parts (player, villager, illager, wandering trader,
-    witch, etc.; each model names its own head part, so this is a per-family
-    grind), and the fall-flying/swimming `head.xRot` overrides (currently
-    untracked, default upright).
+    paths; the piglin family (piglin, piglin brute, zombified piglin) in the
+    colored path; and the `VillagerModel`/`IllagerModel`/`WitchModel` family
+    (villager and wandering trader colored+textured, witch colored+textured,
+    illagers colored) — the baby villager's index-3 head included. Remaining
+    head-look work: apply the same projection to the player model's head, and the
+    fall-flying/swimming `head.xRot` overrides (currently untracked, default
+    upright).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -535,8 +536,10 @@ When an agent does any of the following, update this file in the same slice:
       atlas upload/bind/sample path; wandering trader uses
       `ModelLayers.WANDERING_TRADER`, the same adult body layer, the official
       `textures/entity/wandering_trader/wandering_trader.png` reference,
-      texture-backed base layer pass emission, and official PNG atlas
-      upload/bind/sample path; villager type/profession/level overlays, hat
+      texture-backed base layer pass emission, official PNG atlas
+      upload/bind/sample path, and the vanilla `VillagerModel.setupAnim`
+      head-look yaw/pitch on the head part (colored and textured, including the
+      baby villager index-3 head); villager type/profession/level overlays, hat
       metadata/no-hat model selection, crossed-arms item layer, custom head
       layer, unhappy animation, leg walk animation, lighting, and wandering
       trader baby presentation remain unsupported
@@ -641,16 +644,18 @@ When an agent does any of the following, update this file in the same slice:
       `LayerDefinitions`' `MeshTransformer.scaling(0.9375F)`, and the official
       `textures/entity/witch/witch.png` texture reference from
       `WitchRenderer`, `ModelLayers.WITCH`, texture-backed base layer pass
-      emission, and official PNG atlas upload/bind/sample path;
-      `WitchItemLayer`, held-potion state, head rotation, leg walk animation,
-      and animated nose position/rotation remain unsupported
+      emission, official PNG atlas upload/bind/sample path, and the vanilla
+      `WitchModel.setupAnim` head-look yaw/pitch on the head part (colored and
+      textured); `WitchItemLayer`, held-potion state, leg walk animation, and
+      animated nose position/rotation remain unsupported
     - evoker, illusioner, pillager, and vindicator entities as renderer-owned
       vanilla 26.1 `IllagerModel.createBodyLayer()` geometry, including
       `LayerDefinitions`' shared `MeshTransformer.scaling(0.9375F)`, baked
       hat/body `CubeDeformation` bounds, official 64x64 texture references from
       their vanilla renderers, illusioner's renderer-enabled hat, idle crossed
       arms for evoker/illusioner/vindicator, and uncrossed base arms for
-      pillager; item-in-hand/custom-head layers, spell/crossbow/attacking/
+      pillager, and the vanilla `IllagerModel.setupAnim` head-look yaw/pitch on
+      the head part; item-in-hand/custom-head layers, spell/crossbow/attacking/
       celebrating/riding arm poses and animation, held item projection,
       illusioner clone offsets/invisible-body rendering, and renderer state
       extraction for dynamic arm visibility remain unsupported

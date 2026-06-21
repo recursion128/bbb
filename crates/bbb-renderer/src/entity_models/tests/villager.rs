@@ -489,6 +489,33 @@ fn villager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     assert_close3(trader_actual_max, trader_expected_max);
 }
 
+#[test]
+fn villager_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&villager_texture_images()).unwrap();
+
+    // Adult villager/wandering trader head is part 0: head look turns it.
+    let adult = EntityModelInstance::villager(142, [0.0, 64.0, 0.0], 0.0, false);
+    let adult_resting = entity_model_textured_mesh(&[adult], &atlas);
+    let adult_yawed = entity_model_textured_mesh(&[adult.with_head_look(45.0, 0.0)], &atlas);
+    let adult_pitched = entity_model_textured_mesh(&[adult.with_head_look(0.0, -20.0)], &atlas);
+    assert_eq!(adult_resting.vertices.len(), adult_yawed.vertices.len());
+    assert_ne!(adult_resting.vertices, adult_yawed.vertices);
+    assert_ne!(adult_yawed.vertices, adult_pitched.vertices);
+
+    let trader = EntityModelInstance::wandering_trader(143, [0.0, 64.0, 0.0], 0.0);
+    let trader_resting = entity_model_textured_mesh(&[trader], &atlas);
+    let trader_looking = entity_model_textured_mesh(&[trader.with_head_look(45.0, -20.0)], &atlas);
+    assert_ne!(trader_resting.vertices, trader_looking.vertices);
+
+    // Baby villager lists an empty arms container then legs first (head at index
+    // 3); head look turns the head and leaves the leading leg cube untouched.
+    let baby = EntityModelInstance::villager(144, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_resting = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_looking = entity_model_textured_mesh(&[baby.with_head_look(45.0, -20.0)], &atlas);
+    assert_ne!(baby_resting.vertices, baby_looking.vertices);
+    assert_eq!(baby_resting.vertices[0..24], baby_looking.vertices[0..24]);
+}
+
 fn villager_texture_images() -> Vec<EntityModelTextureImage> {
     villager_entity_texture_refs()
         .iter()

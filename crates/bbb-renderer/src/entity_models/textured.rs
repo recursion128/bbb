@@ -17,6 +17,7 @@ use super::{
         apply_polar_bear_standing_pose, cow_head_part_index, head_look_at_rest, head_look_pose,
         parched_head_part_index, pig_head_part_index, polar_bear_standing_part_roles,
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        villager_head_part_index,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -368,10 +369,14 @@ fn emit_witch_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let transform = villager_adult_model_root_transform(instance);
-    for pass in witch_textured_layer_passes() {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
-    }
+    emit_textured_passes_with_head_look(
+        meshes,
+        witch_textured_layer_passes(),
+        villager_head_part_index(false),
+        villager_adult_model_root_transform(instance),
+        instance,
+        atlas,
+    );
 }
 
 fn emit_slime_textured_model(
@@ -458,9 +463,14 @@ fn emit_villager_textured_model(
     } else {
         villager_adult_model_root_transform(instance)
     };
-    for pass in villager_textured_layer_passes(baby) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
-    }
+    emit_textured_passes_with_head_look(
+        meshes,
+        villager_textured_layer_passes(baby),
+        villager_head_part_index(baby),
+        transform,
+        instance,
+        atlas,
+    );
 }
 
 fn emit_wandering_trader_textured_model(
@@ -468,10 +478,14 @@ fn emit_wandering_trader_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let transform = villager_adult_model_root_transform(instance);
-    for pass in wandering_trader_textured_layer_passes() {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
-    }
+    emit_textured_passes_with_head_look(
+        meshes,
+        wandering_trader_textured_layer_passes(),
+        villager_head_part_index(false),
+        villager_adult_model_root_transform(instance),
+        instance,
+        atlas,
+    );
 }
 
 fn emit_player_textured_model(

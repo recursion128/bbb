@@ -42,6 +42,18 @@ pub(in crate::entity_models) const fn piglin_head_part_index(baby_layout: bool) 
     }
 }
 
+/// Head-part index for the `VillagerModel`/`IllagerModel`/`WitchModel` family.
+/// The adult villager, wandering trader, witch, and illager body layers list the
+/// head first; the baby villager layout lists the arms container and legs first,
+/// so the head is at index 3. (Witch and illagers have no baby layout.)
+pub(in crate::entity_models) const fn villager_head_part_index(baby: bool) -> usize {
+    if baby {
+        3
+    } else {
+        0
+    }
+}
+
 /// `SkeletonModel` head-part index. The skeleton, stray, wither-skeleton, and
 /// bogged body layers list the head first.
 pub(in crate::entity_models) const fn skeleton_head_part_index() -> usize {

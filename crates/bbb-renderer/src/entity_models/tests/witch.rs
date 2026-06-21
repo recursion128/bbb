@@ -245,6 +245,20 @@ fn witch_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     assert_close3(max, [0.46875003, 66.56483, 0.3839772]);
 }
 
+#[test]
+fn witch_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&witch_texture_images()).unwrap();
+    let base = EntityModelInstance::witch(67, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+
+    // Witch head is part 0; head look turns it without changing vertex count.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
 fn witch_texture_images() -> Vec<EntityModelTextureImage> {
     witch_entity_texture_refs()
         .iter()

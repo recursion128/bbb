@@ -40,6 +40,27 @@ fn head_part_indices_match_vanilla_body_layers() {
         BOGGED_PARTS[skeleton_head_part_index()].cubes,
         BOGGED_HEAD.as_slice()
     );
+
+    // Adult villager/wandering-trader/witch/illager list the head first; the
+    // baby villager layout lists arms/legs first, with the head at index 3.
+    assert_eq!(villager_head_part_index(false), 0);
+    assert_eq!(villager_head_part_index(true), 3);
+    assert_eq!(
+        ADULT_VILLAGER_PARTS[villager_head_part_index(false)].cubes,
+        ADULT_VILLAGER_HEAD.as_slice()
+    );
+    assert_eq!(
+        BABY_VILLAGER_PARTS[villager_head_part_index(true)].cubes,
+        BABY_VILLAGER_HEAD.as_slice()
+    );
+    assert_eq!(
+        WITCH_PARTS[villager_head_part_index(false)].cubes,
+        WITCH_HEAD.as_slice()
+    );
+    assert_eq!(
+        ILLAGER_SHARED_CROSSED_PARTS[villager_head_part_index(false)].cubes,
+        ILLAGER_HEAD.as_slice()
+    );
 }
 
 #[test]
@@ -259,4 +280,81 @@ fn wither_skeleton_colored_mesh_applies_head_look_with_scaled_transform() {
     assert_ne!(resting.vertices, looking.vertices);
     let n = resting.vertices.len();
     assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
+}
+
+#[test]
+fn villager_colored_mesh_applies_head_look_to_head_only() {
+    let base = EntityModelInstance::villager(730, [0.0, 64.0, 0.0], 0.0, false);
+    let resting = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+    // Adult villager head (with its nose child) is part 0, emitted first; the
+    // last part is a leg, which head look must leave untouched.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], yawed.vertices[n - 24..]);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
+#[test]
+fn baby_villager_colored_mesh_turns_head_part_not_legs() {
+    let base = EntityModelInstance::villager(731, [0.0, 64.0, 0.0], 0.0, true);
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    // Baby villager lists an (empty) arms container then legs first; the head is
+    // index 3. The first emitted cubes are a leg, which head look must not move.
+    assert_ne!(resting.vertices, looking.vertices);
+    assert_eq!(resting.vertices[0..24], looking.vertices[0..24]);
+}
+
+#[test]
+fn wandering_trader_colored_mesh_applies_head_look() {
+    let base = EntityModelInstance::wandering_trader(732, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    assert_eq!(resting.vertices.len(), looking.vertices.len());
+    assert_ne!(resting.vertices, looking.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
+}
+
+#[test]
+fn witch_colored_mesh_applies_head_look() {
+    let base = EntityModelInstance::witch(733, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    // Witch head (with nose and wart children) is part 0; the last part is a leg.
+    assert_eq!(resting.vertices.len(), looking.vertices.len());
+    assert_ne!(resting.vertices, looking.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
+}
+
+#[test]
+fn illager_colored_mesh_applies_head_look_across_families() {
+    for family in [
+        IllagerModelFamily::Evoker,
+        IllagerModelFamily::Illusioner,
+        IllagerModelFamily::Pillager,
+        IllagerModelFamily::Vindicator,
+    ] {
+        let base = EntityModelInstance::illager(734, [0.0, 64.0, 0.0], 0.0, family);
+        let resting = entity_model_mesh(&[base]);
+        let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+        // Illager head is part 0; head look turns it and leaves the trailing leg.
+        assert_eq!(resting.vertices.len(), looking.vertices.len());
+        assert_ne!(resting.vertices, looking.vertices, "{family:?} head turns");
+        let n = resting.vertices.len();
+        assert_eq!(
+            resting.vertices[n - 24..],
+            looking.vertices[n - 24..],
+            "{family:?} legs stay"
+        );
+    }
 }
