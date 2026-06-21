@@ -715,12 +715,22 @@ fn emit_player_textured_model(
     let transform = player_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
-    // All passes share one visibility-filtered part array, so the head look is
-    // applied once to the head part (index 0) before emitting every pass.
+    // All passes share one visibility-filtered part array, so the head look and
+    // the inherited `HumanoidModel` leg swing are applied once to the head and leg
+    // parts before emitting every pass (the pants children ride the leg parts).
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
     let mut visible_parts = player_visible_textured_model_parts(slim, parts);
     if !head_look_at_rest(head_yaw, head_pitch) {
         if let Some(head) = visible_parts.get_mut(player_head_part_index()) {
             head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+        }
+    }
+    if !limb_swing_at_rest(limb_swing_amount) {
+        for index in HUMANOID_LEG_PART_INDICES {
+            if let Some(leg) = visible_parts.get_mut(index) {
+                leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+            }
         }
     }
     for pass in player_textured_layer_passes(slim, parts) {

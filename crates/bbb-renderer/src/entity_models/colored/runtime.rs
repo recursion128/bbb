@@ -264,16 +264,22 @@ fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     } else {
         &PLAYER_WIDE_PARTS
     };
-    emit_model_parts(
-        mesh,
-        &colored_head_look_parts(
+    // `PlayerModel extends HumanoidModel`: its `setupAnim` only toggles part
+    // visibility before `super.setupAnim`, so the legs swing exactly as in the
+    // inherited `HumanoidModel.setupAnim` (the pants children ride the leg parts).
+    // The arm swing/poses, crouch, swim, and elytra `speedValue` are deferred.
+    let parts = humanoid_limb_swing_parts(
+        colored_head_look_parts(
             parts,
             player_head_part_index(),
             instance.render_state.head_yaw,
             instance.render_state.head_pitch,
         ),
-        transform,
+        HUMANOID_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, transform);
 }
 
 fn emit_humanoid_model(

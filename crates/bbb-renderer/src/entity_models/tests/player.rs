@@ -436,6 +436,90 @@ fn player_textured_mesh_applies_head_look() {
     }
 }
 
+#[test]
+fn player_swings_its_legs_when_walking() {
+    // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
+    // visibility before `super.setupAnim`, so a remote player inherits the
+    // `HumanoidModel` legs unchanged (legs at [4, 5], the right leg in phase). A
+    // standing player is inert; a walking one lifts its feet and splays its legs
+    // along Z, for both the wide and slim arm models. This is the colored path.
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(910, [0.0, 64.0, 0.0], 0.0, slim);
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "slim={slim}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "slim={slim}: walking differs"
+        );
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.1,
+            "slim={slim}: a walking player's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.1,
+            "slim={slim}: a walking player's legs should splay along Z"
+        );
+    }
+}
+
+#[test]
+fn player_textured_mesh_swings_legs_when_walking() {
+    // The real player render path (texture-backed) swings the inherited
+    // `HumanoidModel` legs (and the pants children that ride them) on the shared
+    // visibility-filtered part array. A standing player is byte-identical however
+    // far the swing position has advanced; a walking one lifts its feet. Checked
+    // with all model parts visible (pants present) and with the pants hidden.
+    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    let no_pants = PlayerModelPartVisibility::from_vanilla_mask(
+        PlayerModelPartVisibility::ALL_MASK
+            & !PlayerModelPartVisibility::LEFT_PANTS_MASK
+            & !PlayerModelPartVisibility::RIGHT_PANTS_MASK,
+    );
+    for slim in [false, true] {
+        for (label, base) in [
+            (
+                "all_parts",
+                EntityModelInstance::player(911, [0.0, 64.0, 0.0], 0.0, slim),
+            ),
+            (
+                "no_pants",
+                EntityModelInstance::player_with_parts(912, [0.0, 64.0, 0.0], 0.0, slim, no_pants),
+            ),
+        ] {
+            let resting = entity_model_textured_mesh(&[base], &atlas);
+            let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+            let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+            assert_eq!(
+                resting.vertices, still.vertices,
+                "slim={slim} {label}: a standing player is inert"
+            );
+            assert_eq!(
+                resting.vertices.len(),
+                walking.vertices.len(),
+                "slim={slim} {label}: leg swing keeps the vertex count"
+            );
+            assert_ne!(
+                resting.vertices, walking.vertices,
+                "slim={slim} {label}: a walking player differs"
+            );
+
+            let (rest_min, rest_max) = textured_mesh_extents(&resting);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.1,
+                "slim={slim} {label}: a walking player's feet should lift off the ground"
+            );
+        }
+    }
+}
+
 fn player_texture_images() -> Vec<EntityModelTextureImage> {
     player_entity_texture_refs()
         .iter()

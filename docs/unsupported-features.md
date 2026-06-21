@@ -283,9 +283,11 @@ When an agent does any of the following, update this file in the same slice:
       same `setupAnim`) and the piglin family (piglin, piglin brute, zombified piglin,
       adult and baby). The illager family (evoker, vindicator, illusioner, pillager)
       consumes them too through its own `IllagerModel.setupAnim` leg swing (a non-
-      `HumanoidModel` with an extra `0.5` amplitude factor). The remaining slices
-      consume them in the other model families' `setupAnim` (player, plus the
-      `HumanoidModel`/illager arm swing, birds, fish, etc.).
+      `HumanoidModel` with an extra `0.5` amplitude factor), and the player model
+      (`PlayerModel extends HumanoidModel`, remote players, colored and textured, wide
+      and slim, the pants children riding the leg parts). The remaining slices consume
+      them in the other model families' `setupAnim` (the `VillagerModel` family, plus
+      the `HumanoidModel`/illager arm swing, birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -448,7 +450,12 @@ When an agent does any of the following, update this file in the same slice:
     (`cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`): `IllagerModel` is not a
     `HumanoidModel` and adds an extra `0.5` amplitude factor, and its body layers list
     the legs at `[3, 4]` for the crossed-arms layouts (evoker/vindicator/illusioner) and
-    `[2, 3]` for the uncrossed pillager, resolved per family. Deferred: (1) the
+    `[2, 3]` for the uncrossed pillager, resolved per family. The player model
+    (`emit_player_model` colored and `emit_player_textured_model` — remote players, wide
+    and slim) consumes the `HumanoidModel` legs unchanged (`PlayerModel.setupAnim` only
+    toggles part visibility before `super.setupAnim`; the pants children ride the leg
+    parts and the visibility-filtered part array keeps the legs at `[4, 5]`). Deferred:
+    (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
     `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
@@ -457,10 +464,10 @@ When an agent does any of the following, update this file in the same slice:
     held-out arms, skeleton aiming, the `AbstractPiglinModel` ear sway and `PiglinModel`
     dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/attack/spellcast/
     bow/crossbow poses and riding sit pose, item/attack/crouch/swim/elytra poses, and the
-    always-on arm bob) are separate animations driven by states the client does not yet
-    track; (3) consuming the projected values in the other model families' `setupAnim`
-    (the `HumanoidModel` player model, the `VillagerModel` family, and birds, fish, etc.)
-    are the next slices.
+    always-on arm bob, and the player crouch/swim/elytra `speedValue` poses) are separate
+    animations driven by states the client does not yet track; (3) consuming the
+    projected values in the other model families' `setupAnim` (the `VillagerModel` family
+    and birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
