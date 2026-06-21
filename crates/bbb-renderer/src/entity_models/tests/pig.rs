@@ -481,6 +481,86 @@ fn pig_textured_mesh_applies_head_look() {
     assert_ne!(yawed.vertices, pitched.vertices);
 }
 
+#[test]
+fn pig_colored_mesh_swings_its_legs_when_walking() {
+    // PigModel extends QuadrupedModel without overriding setupAnim, so the pig legs
+    // swing with the same `cos(pos * 0.6662 [+ π]) * 1.4 * speed` rotation. A
+    // standing pig is byte-identical with or without a swing position, and a walking
+    // pig's feet lift (its lowest point rises). The colored path is the test render;
+    // pigs are texture-backed, but `entity_model_mesh` emits the colored mesh.
+    for baby in [false, true] {
+        let base =
+            EntityModelInstance::pig(510, [0.0, 64.0, 0.0], 0.0, PigModelVariant::Cold, baby);
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "baby={baby}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "baby={baby}: walking differs"
+        );
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        // The antiphase swing both lifts the feet (a shorter model) and splays the
+        // legs forward/back (a deeper footprint). Babies are scaled to half size with
+        // tiny legs, so the margin is kept small.
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "baby={baby}: walking pig's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "baby={baby}: walking pig's legs should splay along Z"
+        );
+    }
+}
+
+#[test]
+fn pig_textured_mesh_swings_its_legs_when_walking() {
+    // The real pig render path (textured) consumes the projected limb swing through
+    // the shared QuadrupedModel leg rotation: a standing pig is inert, a walking
+    // pig keeps its vertex count but lifts its feet, for every variant and the baby.
+    let (atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
+    for (variant, baby) in [
+        (PigModelVariant::Temperate, false),
+        (PigModelVariant::Warm, false),
+        (PigModelVariant::Cold, false),
+        (PigModelVariant::Temperate, true),
+    ] {
+        let base = EntityModelInstance::pig(511, [0.0, 64.0, 0.0], 0.0, variant, baby);
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{variant:?} baby={baby}: a standing pig is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{variant:?} baby={baby}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{variant:?} baby={baby}: a walking pig differs"
+        );
+
+        let (rest_min, rest_max) = textured_mesh_extents(&resting);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{variant:?} baby={baby}: a walking pig's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "{variant:?} baby={baby}: a walking pig's legs should splay along Z"
+        );
+    }
+}
+
 fn pig_texture_images() -> Vec<EntityModelTextureImage> {
     pig_entity_texture_refs()
         .iter()

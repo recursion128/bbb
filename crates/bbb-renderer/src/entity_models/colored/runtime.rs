@@ -576,11 +576,11 @@ fn skeleton_colored_head_look_parts(
     )
 }
 
-/// Vanilla `QuadrupedModel` leg part indices in the cow body layer: head and body
-/// occupy slots `0` and `1`, then the four legs. The cow variants order the legs
-/// differently (the adult layers list them hind-first, the baby layer front-first),
-/// so [`quadruped_limb_swing_parts`] resolves each leg's phase from its offset
-/// rather than its slot.
+/// Vanilla `QuadrupedModel` leg part indices in the cow and pig body layers: the
+/// head and body occupy slots `0` and `1` (in either order — the baby layers swap
+/// them), then the four legs. The variants order the legs differently (adult layers
+/// list them hind-first, baby layers front-first), so [`quadruped_limb_swing_parts`]
+/// resolves each leg's phase from its offset rather than its slot.
 pub(in crate::entity_models) const QUADRUPED_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
 
 fn emit_cow_model(
@@ -1070,16 +1070,19 @@ fn emit_pig_model(
     variant: PigModelVariant,
     baby: bool,
 ) {
-    emit_model_parts(
-        mesh,
-        &colored_head_look_parts(
-            pig_model_parts(variant, baby),
-            pig_head_part_index(baby),
-            instance.render_state.head_yaw,
-            instance.render_state.head_pitch,
-        ),
-        entity_model_root_transform(instance),
+    let parts = colored_head_look_parts(
+        pig_model_parts(variant, baby),
+        pig_head_part_index(baby),
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
     );
+    let parts = quadruped_limb_swing_parts(
+        parts,
+        QUADRUPED_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+    );
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

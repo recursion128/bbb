@@ -253,21 +253,22 @@ fn emit_pig_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
+    emit_quadruped_textured_passes(
         meshes,
         pig_textured_layer_passes(variant, baby),
         pig_head_part_index(baby),
+        QUADRUPED_LEG_PART_INDICES,
         entity_model_root_transform(instance),
         instance,
         atlas,
     );
 }
 
-/// `QuadrupedModel` leg part indices in the cow body layer (head/body occupy slots
-/// `0`/`1`). [`quadruped_leg_swing_pose`] resolves each leg's phase from its offset,
-/// so the differing leg order of the adult (hind-first) and baby (front-first)
-/// layers does not matter.
-const COW_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+/// `QuadrupedModel` leg part indices in the cow and pig body layers (the head and
+/// body occupy slots `0`/`1` in either order). [`quadruped_leg_swing_pose`] resolves
+/// each leg's phase from its offset, so the differing leg order of the adult
+/// (hind-first) and baby (front-first) layers does not matter.
+const QUADRUPED_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
 
 fn emit_cow_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
@@ -280,7 +281,7 @@ fn emit_cow_textured_model(
         meshes,
         cow_textured_layer_passes(variant, baby),
         cow_head_part_index(baby),
-        COW_LEG_PART_INDICES,
+        QUADRUPED_LEG_PART_INDICES,
         entity_model_root_transform(instance),
         instance,
         atlas,
