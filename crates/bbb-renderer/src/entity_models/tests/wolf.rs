@@ -803,6 +803,140 @@ fn tame_wolf_droops_its_tail_with_damage_textured() {
 }
 
 #[test]
+fn wolf_sitting_pose_matches_vanilla_set_sitting_pose() {
+    // Vanilla `WolfModel.setSittingPose` (ageScale 1.0 adult / 0.5 baby; rotations SET):
+    //   body:     y += 4*as,  z -= 2*as,  xRot = π/4  (baby: a further −π/2, → −π/4)
+    //   hindLeg:  y += 6.7*as, z -= 5*as, xRot = 3π/2
+    //   frontLeg: xRot = 5.811947, x += ±0.01*as (right +, left −), y += 1*as
+    //   tail:     y += 9*as,  z -= 2*as  (offset only; xRot/yRot come from the tail pose)
+    assert_eq!(WOLF_SIT_FRONT_LEG_X_ROT, 5.811947);
+    assert_eq!(
+        wolf_sitting_part_roles(false),
+        [
+            (1, WolfSitPart::Body),
+            (3, WolfSitPart::HindLeg),
+            (4, WolfSitPart::HindLeg),
+            (5, WolfSitPart::RightFrontLeg),
+            (6, WolfSitPart::LeftFrontLeg),
+            (7, WolfSitPart::Tail),
+        ]
+    );
+    assert_eq!(
+        wolf_sitting_part_roles(true),
+        [
+            (1, WolfSitPart::Body),
+            (2, WolfSitPart::HindLeg),
+            (3, WolfSitPart::HindLeg),
+            (4, WolfSitPart::RightFrontLeg),
+            (5, WolfSitPart::LeftFrontLeg),
+            (6, WolfSitPart::Tail),
+        ]
+    );
+
+    let base = PartPose {
+        offset: [1.0, 2.0, 3.0],
+        rotation: [0.1, 0.2, 0.3],
+    };
+
+    let mut body = base;
+    apply_wolf_sitting_pose(&mut body, WolfSitPart::Body, false);
+    assert_eq!(body.offset, [1.0, 6.0, 1.0]);
+    assert_eq!(body.rotation, [std::f32::consts::FRAC_PI_4, 0.2, 0.3]);
+
+    let mut baby_body = base;
+    apply_wolf_sitting_pose(&mut baby_body, WolfSitPart::Body, true);
+    assert_eq!(baby_body.offset, [1.0, 4.0, 2.0]);
+    assert!(
+        (baby_body.rotation[0] - (std::f32::consts::FRAC_PI_4 - std::f32::consts::FRAC_PI_2)).abs()
+            < 1e-6
+    );
+
+    let mut hind = base;
+    apply_wolf_sitting_pose(&mut hind, WolfSitPart::HindLeg, false);
+    assert_eq!(hind.offset, [1.0, 8.7, -2.0]);
+    assert!((hind.rotation[0] - std::f32::consts::PI * 1.5).abs() < 1e-6);
+
+    let mut right = base;
+    apply_wolf_sitting_pose(&mut right, WolfSitPart::RightFrontLeg, false);
+    assert!((right.offset[0] - 1.01).abs() < 1e-6);
+    assert_eq!(right.offset[1], 3.0);
+    assert_eq!(right.rotation[0], WOLF_SIT_FRONT_LEG_X_ROT);
+    let mut left = base;
+    apply_wolf_sitting_pose(&mut left, WolfSitPart::LeftFrontLeg, false);
+    assert!((left.offset[0] - 0.99).abs() < 1e-6);
+
+    // The baby front-leg x nudge scales by ageScale 0.5.
+    let mut baby_right = base;
+    apply_wolf_sitting_pose(&mut baby_right, WolfSitPart::RightFrontLeg, true);
+    assert!((baby_right.offset[0] - 1.005).abs() < 1e-6);
+
+    let mut tail = base;
+    apply_wolf_sitting_pose(&mut tail, WolfSitPart::Tail, false);
+    assert_eq!(tail.offset, [1.0, 11.0, 1.0]);
+    assert_eq!(
+        tail.rotation, base.rotation,
+        "the tail rotation is left to the tail pose"
+    );
+}
+
+#[test]
+fn wolf_sits_folds_legs_and_tilts_body() {
+    // Vanilla `WolfModel.setSittingPose` repositions the body, both hind legs, both front
+    // legs, and the tail when `isSitting`; the head still follows the look (unchanged here).
+    // The adult head subtree occupies vertices [0, 96) (the empty head part plus the
+    // four-cube real head); the baby head is [0, 72) (one head cube plus two ears).
+    // Colored path here; textured below.
+    for (baby, head_end) in [(false, 96), (true, 72)] {
+        let standing = EntityModelInstance::wolf(160, [0.0, 64.0, 0.0], 0.0, baby);
+        let sitting = standing.with_wolf_sitting(true);
+        let stand_mesh = entity_model_mesh(&[standing]);
+        let sit_mesh = entity_model_mesh(&[sitting]);
+        assert_eq!(
+            stand_mesh.vertices.len(),
+            sit_mesh.vertices.len(),
+            "baby={baby}"
+        );
+        assert_eq!(
+            stand_mesh.vertices[..head_end],
+            sit_mesh.vertices[..head_end],
+            "baby={baby}: the head is unchanged by sitting"
+        );
+        assert_ne!(
+            stand_mesh.vertices[head_end..],
+            sit_mesh.vertices[head_end..],
+            "baby={baby}: the body, legs, and tail fold when sitting"
+        );
+    }
+}
+
+#[test]
+fn wolf_textured_mesh_sits_folds_legs_and_tilts_body() {
+    // The texture-backed render path folds into the same sitting pose.
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    for (baby, head_end) in [(false, 96), (true, 72)] {
+        let standing = EntityModelInstance::wolf(161, [0.0, 64.0, 0.0], 0.0, baby);
+        let sitting = standing.with_wolf_sitting(true);
+        let stand_mesh = entity_model_textured_mesh(&[standing], &atlas);
+        let sit_mesh = entity_model_textured_mesh(&[sitting], &atlas);
+        assert_eq!(
+            stand_mesh.vertices.len(),
+            sit_mesh.vertices.len(),
+            "baby={baby}"
+        );
+        assert_eq!(
+            stand_mesh.vertices[..head_end],
+            sit_mesh.vertices[..head_end],
+            "baby={baby}: the head is unchanged by sitting"
+        );
+        assert_ne!(
+            stand_mesh.vertices[head_end..],
+            sit_mesh.vertices[head_end..],
+            "baby={baby}: the body, legs, and tail fold when sitting"
+        );
+    }
+}
+
+#[test]
 fn wolf_angry_tail_pose_matches_vanilla_get_tail_angle() {
     // Vanilla `WolfModel.setupAnim` for an angry wolf: `tail.yRot = 0` (no wag) and
     // `tail.xRot = getTailAngle() = 1.5393804` (the angry constant), overriding the layer's

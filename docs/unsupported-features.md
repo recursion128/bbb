@@ -848,10 +848,16 @@ When an agent does any of the following, update this file in the same slice:
       health droop `(0.55 - (40 - health) / 40 * 0.4) * π` from the synced health, or the
       `π/5` untamed default — which also overrides the baby layer's `−π/6` tail rest pose,
       so the baby tail rests like the adult; both render paths, driven from the synced
-      tame flag and `DATA_HEALTH_ID`); registry-driven wolf variants beyond the default/pale
-      texture set, armor layer, wet tint, sitting pose, head-shake/begging tilt pose, the
-      water-shake body roll, base-model invisibility/outline handling, lighting, overlay,
-      and remaining render-state extraction remain unsupported
+      tame flag and `DATA_HEALTH_ID`), and the `WolfModel.setSittingPose` sitting fold
+      (driven by the synced `TamableAnimal` `DATA_FLAGS_ID` sitting bit: the body tilts
+      `xRot = π/4` and lifts, the hind legs tuck `xRot = 3π/2`, the front legs splay
+      `xRot = 5.811947`, the tail lifts, all translation terms scaled by `ageScale`
+      1.0 adult / 0.5 baby — the baby tilts the body a further `−π/2` — replacing the leg
+      swing while the head still follows the look; both render paths); registry-driven wolf
+      variants beyond the default/pale texture set, armor layer, wet tint,
+      head-shake/begging tilt pose, the water-shake body roll, base-model
+      invisibility/outline handling, lighting, overlay, and remaining render-state
+      extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

@@ -15,18 +15,19 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, chicken_leg_part_indices, cow_head_part_index,
-        enderman_arm_swing_pose, enderman_leg_swing_pose, half_amplitude_leg_swing_pose,
-        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
-        head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
-        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, pig_head_part_index,
-        player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
-        quadruped_leg_swing_pose, ravager_head_child_index, ravager_leg_swing_pose,
-        ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
-        skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
-        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
-        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose, wolf_tail_part_index,
+        apply_polar_bear_standing_pose, apply_wolf_sitting_pose, chicken_leg_part_indices,
+        cow_head_part_index, enderman_arm_swing_pose, enderman_leg_swing_pose,
+        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
+        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
+        hoglin_leg_swing_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
+        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
+        parched_head_part_index, pig_head_part_index, player_head_part_index,
+        polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
+        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
+        spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
+        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
         wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
         HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
         SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
@@ -1143,17 +1144,16 @@ fn emit_wolf_textured_model(
     collar_color: Option<EntityDyeColor>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `WolfModel.setupAnim` (adult and baby) swings the four legs with the
-    // `QuadrupedModel` diagonal phase in its non-sitting branch, then applies the head
-    // look. An angry wolf holds its tail straight and raised (`tail.yRot = 0`,
-    // `tail.xRot = 1.5393804`); a non-angry one wags it `tail.yRot = cos(pos * 0.6662) *
-    // 1.4 * speed` and sets `tail.xRot = tailAngle` — the `π/5` rest droop for an untamed
-    // wolf or the tame/health droop `(0.55 - damageRatio * 0.4) * π` from `wolf_tail_angle`.
-    // `isSitting` is deferred AI state, so a standing wolf swings its legs. Every pass
-    // (base, collar) shares the body-layer part layout, so the poses apply per pass. The
-    // adult layer lists the legs at [3, 4, 5, 6] and the tail at 7 (head/body/mane at
-    // 0/1/2); the baby layer drops the mane, so the legs are at [2, 3, 4, 5] and the tail
-    // at 6. The water-shake body roll and the sitting pose are deferred.
+    // Vanilla `WolfModel.setupAnim` (adult and baby) sets `tail.yRot` (angry → 0, else the
+    // wag), then either folds into the sitting pose or swings the four legs with the
+    // `QuadrupedModel` diagonal phase, then applies the head look, then sets `tail.xRot =
+    // tailAngle` — the `π/5` rest droop for an untamed wolf or the tame/health droop `(0.55
+    // - damageRatio * 0.4) * π` from `wolf_tail_angle`. A sitting wolf (`isSitting`) tilts
+    // its body and tucks its legs (`setSittingPose`) instead of the leg swing; the head
+    // still follows the look. Every pass (base, collar) shares the body-layer part layout,
+    // so the poses apply per pass. The adult layer lists the legs at [3, 4, 5, 6] and the
+    // tail at 7 (head/body/mane at 0/1/2); the baby layer drops the mane, so the legs are at
+    // [2, 3, 4, 5] and the tail at 6. The water-shake body roll is deferred.
     let leg_indices: [usize; 4] = if baby { [2, 3, 4, 5] } else { [3, 4, 5, 6] };
     let tail_index = wolf_tail_part_index(baby);
     let head_index = head_first_part_index();
@@ -1163,14 +1163,16 @@ fn emit_wolf_textured_model(
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let tail_angle = instance.render_state.wolf_tail_angle;
+    let sitting = instance.render_state.wolf_sitting;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
     let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     for pass in wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color) {
-        // An angry wolf always re-poses its tail (the raise overrides the rest droop even
-        // when standing); a non-angry one re-poses only when the wag or the `tail_angle`
-        // droop moves the tail off its layer rest pose, so an untamed standing wolf can
-        // still take the borrow fast path.
+        // A sitting or angry wolf always re-poses (the sitting fold / tail raise override the
+        // layer rest even when standing); a standing non-angry one re-poses only when the wag
+        // or the `tail_angle` droop moves the tail off its layer rest pose, so an untamed
+        // standing wolf can still take the borrow fast path.
         let tail_moves = angry
+            || sitting
             || pass.parts.get(tail_index).is_some_and(|tail| {
                 wolf_tail_swing_pose(tail.pose, tail_angle, limb_swing, limb_swing_amount)
                     != tail.pose
@@ -1184,7 +1186,13 @@ fn emit_wolf_textured_model(
                     head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
                 }
             }
-            if !limbs_resting {
+            if sitting {
+                for (index, role) in wolf_sitting_part_roles(baby) {
+                    if let Some(part) = parts.get_mut(index) {
+                        apply_wolf_sitting_pose(&mut part.pose, role, baby);
+                    }
+                }
+            } else if !limbs_resting {
                 for index in leg_indices {
                     if let Some(leg) = parts.get_mut(index) {
                         leg.pose =
@@ -1193,6 +1201,8 @@ fn emit_wolf_textured_model(
                 }
             }
             if let Some(tail) = parts.get_mut(tail_index) {
+                // The sitting role already lifted the tail offset (if sitting); layer on the
+                // normal tail rotation, which preserves the offset.
                 tail.pose = if angry {
                     wolf_angry_tail_pose(tail.pose)
                 } else {

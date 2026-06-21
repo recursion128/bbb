@@ -208,6 +208,8 @@ const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
+/// `TamableAnimal` `DATA_FLAGS_ID` sitting bit (`isInSittingPose()` reads `& 1`).
+const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
@@ -358,6 +360,7 @@ fn entity_model_instance(
             &source.data_values,
             game_time,
         ))
+        .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -922,6 +925,15 @@ fn wolf_tail_angle(
     let health = entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, TAME_MAX_HEALTH).max(0.0);
     let damage_ratio = (TAME_MAX_HEALTH - health) / TAME_MAX_HEALTH;
     (0.55 - damage_ratio * 0.4) * std::f32::consts::PI
+}
+
+/// Vanilla `WolfRenderState.isSitting = Wolf.isInSittingPose()`: the `TamableAnimal`
+/// `DATA_FLAGS_ID` sitting bit. Only the wolf model renders a sitting pose, so non-wolf
+/// entities (and other tamables that are not yet modelled) report `false`.
+fn wolf_sitting(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
+        && (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_SITTING_FLAG)
+            != 0
 }
 
 fn donkey_model_kind(
@@ -3538,6 +3550,44 @@ mod tests {
         assert_eq!(
             wild_instances[0].render_state.wolf_tail_angle,
             std::f32::consts::PI / 5.0
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_wolf_sitting_flag_from_world() {
+        // Vanilla `WolfRenderState.isSitting = Wolf.isInSittingPose()` = `TamableAnimal`
+        // `DATA_FLAGS_ID` bit 1. A sitting (tame) wolf projects `wolf_sitting`; clearing the
+        // bit projects `false`.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            148,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 148,
+            values: vec![protocol_byte_data(
+                TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                TAMABLE_ANIMAL_TAME_FLAG | TAMABLE_ANIMAL_SITTING_FLAG,
+            )],
+        }));
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(
+            instances[0].render_state.wolf_sitting,
+            "a sitting wolf projects wolf_sitting"
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 148,
+            values: vec![protocol_byte_data(
+                TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                TAMABLE_ANIMAL_TAME_FLAG,
+            )],
+        }));
+        let standing = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(
+            !standing[0].render_state.wolf_sitting,
+            "a standing wolf does not project wolf_sitting"
         );
     }
 

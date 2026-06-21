@@ -495,6 +495,93 @@ pub(in crate::entity_models) const fn wolf_tail_part_index(baby: bool) -> usize 
     }
 }
 
+/// Which wolf part a `WolfModel.setSittingPose` delta applies to. A sitting wolf tilts its
+/// body, tucks the hind legs under it, splays the front legs forward (with a tiny opposite
+/// `x` nudge per side), and lifts the tail; the head still follows the look.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::entity_models) enum WolfSitPart {
+    Body,
+    HindLeg,
+    RightFrontLeg,
+    LeftFrontLeg,
+    Tail,
+}
+
+/// Maps each sitting-pose part to its index in the adult/baby wolf body layer. The adult
+/// layer lists head/body/mane at `0`/`1`/`2`, then `right_hind`/`left_hind`/`right_front`/
+/// `left_front` at `[3, 4, 5, 6]` and the tail at `7`; the baby layer drops the mane, so
+/// the legs are at `[2, 3, 4, 5]` and the tail at `6`.
+pub(in crate::entity_models) const fn wolf_sitting_part_roles(
+    baby: bool,
+) -> [(usize, WolfSitPart); 6] {
+    if baby {
+        [
+            (1, WolfSitPart::Body),
+            (2, WolfSitPart::HindLeg),
+            (3, WolfSitPart::HindLeg),
+            (4, WolfSitPart::RightFrontLeg),
+            (5, WolfSitPart::LeftFrontLeg),
+            (6, WolfSitPart::Tail),
+        ]
+    } else {
+        [
+            (1, WolfSitPart::Body),
+            (3, WolfSitPart::HindLeg),
+            (4, WolfSitPart::HindLeg),
+            (5, WolfSitPart::RightFrontLeg),
+            (6, WolfSitPart::LeftFrontLeg),
+            (7, WolfSitPart::Tail),
+        ]
+    }
+}
+
+/// Front-leg sitting `xRot` (`WolfModel.setSittingPose`, the literal `5.811947`, ≈ 333°).
+pub(in crate::entity_models) const WOLF_SIT_FRONT_LEG_X_ROT: f32 = 5.811947;
+
+/// Applies the vanilla `WolfModel.setSittingPose` delta to one wolf part pose. The
+/// translation terms scale by `ageScale` (`1.0` adult / `0.5` baby); the rotations are SET
+/// absolutely. The baby (`BabyWolfModel.setSittingPose`) tilts the body a further `−π/2`
+/// after `super.setSittingPose`. The [`WolfSitPart::Tail`] delta only lifts the tail
+/// offset — its `xRot`/`yRot` (`tailAngle`/wag) are applied by the normal tail pose, which
+/// preserves the offset.
+pub(in crate::entity_models) fn apply_wolf_sitting_pose(
+    pose: &mut PartPose,
+    part: WolfSitPart,
+    baby: bool,
+) {
+    let age_scale = if baby { 0.5 } else { 1.0 };
+    match part {
+        WolfSitPart::Body => {
+            pose.offset[1] += 4.0 * age_scale;
+            pose.offset[2] -= 2.0 * age_scale;
+            pose.rotation[0] = if baby {
+                std::f32::consts::FRAC_PI_4 - std::f32::consts::FRAC_PI_2
+            } else {
+                std::f32::consts::FRAC_PI_4
+            };
+        }
+        WolfSitPart::HindLeg => {
+            pose.offset[1] += 6.7 * age_scale;
+            pose.offset[2] -= 5.0 * age_scale;
+            pose.rotation[0] = std::f32::consts::PI * 1.5;
+        }
+        WolfSitPart::RightFrontLeg => {
+            pose.rotation[0] = WOLF_SIT_FRONT_LEG_X_ROT;
+            pose.offset[0] += 0.01 * age_scale;
+            pose.offset[1] += 1.0 * age_scale;
+        }
+        WolfSitPart::LeftFrontLeg => {
+            pose.rotation[0] = WOLF_SIT_FRONT_LEG_X_ROT;
+            pose.offset[0] -= 0.01 * age_scale;
+            pose.offset[1] += 1.0 * age_scale;
+        }
+        WolfSitPart::Tail => {
+            pose.offset[1] += 9.0 * age_scale;
+            pose.offset[2] -= 2.0 * age_scale;
+        }
+    }
+}
+
 /// Vanilla `RavagerModel.setupAnim` leg swing for a single leg part: `leg.xRot =
 /// cos(walkAnimationPos * 0.6662 [+ π]) * 0.4 * walkAnimationSpeed`. `RavagerModel`
 /// is a custom `EntityModel`, but the leg swing follows the `QuadrupedModel` phase

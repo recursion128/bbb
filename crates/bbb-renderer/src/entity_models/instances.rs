@@ -124,6 +124,10 @@ pub struct EntityRenderState {
     /// `π/5` rest droop, matching the wolf tail layer's base pose, so a non-wolf or
     /// wild wolf is unaffected.
     pub wolf_tail_angle: f32,
+    /// Vanilla `WolfRenderState.isSitting` (`Wolf.isInSittingPose()`): a sitting wolf
+    /// folds its legs and tilts its body (`WolfModel.setSittingPose`) instead of swinging
+    /// its legs. `false` for a standing wolf and every non-wolf entity.
+    pub wolf_sitting: bool,
 }
 
 impl EntityRenderState {
@@ -150,6 +154,7 @@ impl EntityRenderState {
             walk_animation_speed: 0.0,
             age_in_ticks: 0.0,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
+            wolf_sitting: false,
         }
     }
 
@@ -288,6 +293,11 @@ impl EntityModelInstance {
 
     pub fn with_wolf_tail_angle(mut self, wolf_tail_angle: f32) -> Self {
         self.render_state.wolf_tail_angle = wolf_tail_angle;
+        self
+    }
+
+    pub fn with_wolf_sitting(mut self, wolf_sitting: bool) -> Self {
+        self.render_state.wolf_sitting = wolf_sitting;
         self
     }
 
@@ -908,6 +918,7 @@ mod tests {
                 walk_animation_speed: 0.0,
                 age_in_ticks: 0.0,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
+                wolf_sitting: false,
             }
         );
     }

@@ -1078,36 +1078,79 @@ fn emit_wolf_model(
     } else {
         &ADULT_WOLF_PARTS
     };
-    // Vanilla `WolfModel.setupAnim` (shared by adult and baby) swings the four legs with
-    // the `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` in its
-    // non-sitting branch, then applies the head look. An angry wolf holds its tail straight
-    // and raised (`tail.yRot = 0`, `tail.xRot = 1.5393804`); a non-angry one wags it
-    // `tail.yRot = cos(pos * 0.6662) * 1.4 * speed` and sets `tail.xRot = tailAngle` —
-    // the `π/5` rest droop for an untamed wolf or the tame/health droop `(0.55 -
-    // damageRatio * 0.4) * π` projected into `wolf_tail_angle`. `isSitting` is deferred AI
-    // state, so a standing wolf takes the leg-swing branch. The water-shake body roll and
-    // the sitting pose are deferred.
+    // Vanilla `WolfModel.setupAnim` (shared by adult and baby) sets `tail.yRot` (angry → 0,
+    // else the wag), then either folds into the sitting pose or swings the four legs with
+    // the `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, then
+    // applies the head look, then sets `tail.xRot = tailAngle` — the `π/5` rest droop for an
+    // untamed wolf or the tame/health droop `(0.55 - damageRatio * 0.4) * π` projected into
+    // `wolf_tail_angle`. A sitting wolf (`isSitting`) tilts its body and tucks its legs
+    // (`setSittingPose`) instead of the leg swing; the head still follows the look. The
+    // water-shake body roll is deferred.
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let legs_and_head = quadruped_limb_swing_parts(
-        head_first_colored_head_look_parts(parts, instance),
-        wolf_leg_part_indices(baby),
-        limb_swing,
-        limb_swing_amount,
-    );
+    let tail_angle = instance.render_state.wolf_tail_angle;
     let tail_index = wolf_tail_part_index(baby);
-    let posed = if angry {
-        wolf_angry_tail_parts(legs_and_head, tail_index)
-    } else {
-        wolf_tail_wag_parts(
-            legs_and_head,
-            tail_index,
-            instance.render_state.wolf_tail_angle,
+    let head_looked = head_first_colored_head_look_parts(parts, instance);
+    let posed = if instance.render_state.wolf_sitting {
+        wolf_sitting_parts(
+            head_looked,
+            baby,
+            angry,
+            tail_angle,
             limb_swing,
             limb_swing_amount,
         )
+    } else {
+        let legs_and_head = quadruped_limb_swing_parts(
+            head_looked,
+            wolf_leg_part_indices(baby),
+            limb_swing,
+            limb_swing_amount,
+        );
+        if angry {
+            wolf_angry_tail_parts(legs_and_head, tail_index)
+        } else {
+            wolf_tail_wag_parts(
+                legs_and_head,
+                tail_index,
+                tail_angle,
+                limb_swing,
+                limb_swing_amount,
+            )
+        }
     };
     emit_model_parts(mesh, &posed, entity_model_root_transform(instance));
+}
+
+/// Folds a colored wolf layer into the vanilla `WolfModel.setSittingPose`: the body, hind
+/// legs, front legs, and tail are repositioned ([`apply_wolf_sitting_pose`]) instead of
+/// swinging the legs, and the tail still carries its normal `tailAngle`/wag rotation on top
+/// of the sitting offset lift.
+fn wolf_sitting_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    baby: bool,
+    angry: bool,
+    tail_angle: f32,
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    let mut owned = parts.into_owned();
+    for (index, role) in wolf_sitting_part_roles(baby) {
+        if let Some(part) = owned.get_mut(index) {
+            apply_wolf_sitting_pose(&mut part.pose, role, baby);
+        }
+    }
+    let tail_index = wolf_tail_part_index(baby);
+    if let Some(tail) = owned.get_mut(tail_index) {
+        // The sitting role already lifted the tail offset; layer on the normal tail
+        // rotation (both helpers preserve the offset).
+        tail.pose = if angry {
+            wolf_angry_tail_pose(tail.pose)
+        } else {
+            wolf_tail_swing_pose(tail.pose, tail_angle, limb_swing, limb_swing_amount)
+        };
+    }
+    Cow::Owned(owned)
 }
 
 /// Holds the wolf tail straight and raised for an angry wolf ([`wolf_angry_tail_pose`]).
