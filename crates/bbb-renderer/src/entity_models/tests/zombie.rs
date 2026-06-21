@@ -1,6 +1,102 @@
 use super::*;
 
 #[test]
+fn zombie_texture_refs_match_vanilla_renderers() {
+    assert_eq!(
+        EntityModelKind::Zombie { baby: false }.model_key(),
+        "zombie"
+    );
+    assert_eq!(
+        EntityModelKind::Zombie { baby: false }.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie/zombie.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::Zombie { baby: true }.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie/zombie_baby.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Husk,
+            baby: false,
+        }
+        .vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie/husk.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Husk,
+            baby: true,
+        }
+        .vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie/husk_baby.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Drowned,
+            baby: false,
+        }
+        .vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie/drowned.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Drowned,
+            baby: true,
+        }
+        .vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie/drowned_baby.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            baby: false,
+        }
+        .vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie_villager/zombie_villager.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            baby: true,
+        }
+        .vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/zombie_villager/zombie_villager_baby.png",
+            size: [64, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::Humanoid {
+            family: HumanoidModelFamily::Zombie,
+            baby: false,
+        }
+        .vanilla_texture_ref(),
+        None
+    );
+}
+
+#[test]
 fn zombie_adult_model_parts_match_vanilla_26_1_body_layer() {
     assert_eq!(
         ADULT_ZOMBIE_HAT[0],
