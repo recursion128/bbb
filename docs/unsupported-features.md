@@ -295,11 +295,12 @@ When an agent does any of the following, update this file in the same slice:
       clamped to `[-0.4, 0.4]`), and the iron golem (`IronGolemModel`, a triangle-wave
       gait swinging both legs and — its only walk-driven arm animation — the arms), and
       the ravager (`RavagerModel`, the `QuadrupedModel` diagonal phase at a shorter `0.4`
-      amplitude, legs `[2, 3, 4, 5]`), and the spider/cave spider (`SpiderModel`, the
-      eight legs each sweeping about yRot and stepping about zRot, legs `[3..=10]`). The
-      remaining slices consume them in the other model families' `setupAnim` (snow golem,
-      wolf, birds, fish, etc., plus the `HumanoidModel`/illager/villager arm and ear/nose
-      poses).
+      amplitude, legs `[2, 3, 4, 5]`), the spider/cave spider (`SpiderModel`, the
+      eight legs each sweeping about yRot and stepping about zRot, legs `[3..=10]`), and
+      the wolf (`WolfModel`, the non-sitting `QuadrupedModel` diagonal leg swing, legs
+      `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby). The remaining slices consume them in
+      the other model families' `setupAnim` (snow golem, birds, fish, etc., plus the
+      `HumanoidModel`/illager/villager arm and ear/nose poses).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -521,7 +522,17 @@ When an agent does any of the following, update this file in the same slice:
     middle-front/front (`spider_leg_swing_roles` maps body-layer indices `3..=10`). The
     cave spider shares the model, differing only by its smaller root transform. The swing
     accumulates onto the legs' resting splay and leaves `xRot` untouched; spiders have no
-    other walk-driven animation. Deferred:
+    other walk-driven animation. The wolf (`emit_wolf_model` colored and
+    `emit_wolf_textured_model` textured, adult and baby, every pass) reuses
+    `quadruped_leg_swing_pose`: `WolfModel` is a custom `EntityModel` whose `setupAnim`,
+    in its non-sitting branch, swings the four legs with the exact `QuadrupedModel`
+    diagonal phase (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, hind-right/front-left in
+    phase, resolved from `x * z < 0`); `wolf_leg_part_indices` lists the legs at
+    `[3, 4, 5, 6]` for the adult (head/body/mane at `0`/`1`/`2`) and `[2, 3, 4, 5]` for
+    the baby (no mane). `isSitting` is a deferred AI state, so a standing wolf always
+    takes the leg-swing branch. The tail wag (`tail.yRot = cos(pos * 0.6662) * 1.4 *
+    speed` when not angry), the `tail.xRot = tailAngle` tame/health/anger pose, the
+    `shakeOffWater` body roll, and the sitting pose are deferred. Deferred:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
@@ -539,7 +550,8 @@ When an agent does any of the following, update this file in the same slice:
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (snow golem, wolf, birds, fish, etc.) are the next slices.
+    (snow golem, birds, fish, etc.) are the next slices, plus the wolf tail wag and the
+    several deferred event/tail poses noted above.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -729,9 +741,12 @@ When an agent does any of the following, update this file in the same slice:
       tint projection, anger end-time projection against canonical client game
       time, vanilla shared-flags invisibility gating for the collar layer, and the
       vanilla `WolfModel.setupAnim` head-look yaw/pitch on the head part (colored
-      and textured, with the head/ear children rotating with the head); registry-
+      and textured, with the head/ear children rotating with the head) and the
+      vanilla `WolfModel.setupAnim` non-sitting leg walk swing (the `QuadrupedModel`
+      diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[3, 4, 5, 6]`
+      adult / `[2, 3, 4, 5]` baby, on both render paths and every pass); registry-
       driven wolf variants beyond the default/pale texture set, armor layer, wet
-      tint, sitting pose, head-shake/begging tilt pose, tail pose, walk animation,
+      tint, sitting pose, head-shake/begging tilt pose, tail wag/tail-angle pose,
       base-model invisibility/outline handling, lighting, overlay, and remaining
       render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer

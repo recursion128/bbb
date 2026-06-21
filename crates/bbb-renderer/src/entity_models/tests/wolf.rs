@@ -483,6 +483,104 @@ fn wolf_textured_meshes_apply_head_look() {
     }
 }
 
+#[test]
+fn wolf_swings_its_legs_when_walking() {
+    // Vanilla `WolfModel.setupAnim` (adult and baby) swings the four legs with the
+    // `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` in its
+    // non-sitting branch. A standing wolf is inert; a walking one splays its legs along
+    // Z. The adult (with its tall legs) also lifts its feet; the baby's short legs swing
+    // inside the head/body bounding box, so only the Z splay shows. The tail wag, the
+    // water-shake body roll, and the sitting pose are deferred. Colored path.
+    for (base, adult_size) in [
+        (
+            EntityModelInstance::wolf(148, [0.0, 64.0, 0.0], 0.0, false),
+            true,
+        ),
+        (
+            EntityModelInstance::wolf(149, [0.0, 64.0, 0.0], 0.0, true),
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(
+            rest.vertices, still.vertices,
+            "{:?} rest is inert",
+            base.kind
+        );
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "{:?} walking differs",
+            base.kind
+        );
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "{:?} legs should splay along Z",
+            base.kind
+        );
+        if adult_size {
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "an adult wolf's feet should lift off the ground"
+            );
+        }
+    }
+}
+
+#[test]
+fn wolf_textured_mesh_swings_its_legs_when_walking() {
+    // The real wolf render path (texture-backed) swings the same legs. A standing wolf is
+    // byte-identical however far the swing has advanced; a walking one differs, splays
+    // along Z, and (for the adult) lifts its feet, while keeping the vertex count.
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    for (base, adult_size) in [
+        (
+            EntityModelInstance::wolf(482, [0.0, 64.0, 0.0], 0.0, false),
+            true,
+        ),
+        (
+            EntityModelInstance::wolf(483, [0.0, 64.0, 0.0], 0.0, true),
+            false,
+        ),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(resting.vertices, still.vertices, "{:?} is inert", base.kind);
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{:?} leg swing keeps the vertex count",
+            base.kind
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{:?} walking differs",
+            base.kind
+        );
+
+        let (rest_min, rest_max) = textured_mesh_extents(&resting);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "{:?} legs should splay along Z",
+            base.kind
+        );
+        if adult_size {
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "an adult wolf's feet should lift off the ground (textured)"
+            );
+        }
+    }
+}
+
 fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
     wolf_entity_texture_refs()
         .iter()

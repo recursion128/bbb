@@ -977,10 +977,19 @@ fn emit_wolf_textured_model(
     collar_color: Option<EntityDyeColor>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
+    // Vanilla `WolfModel.setupAnim` (adult and baby) swings the four legs with the
+    // `QuadrupedModel` diagonal phase in its non-sitting branch, then applies the head
+    // look. `isSitting` is a deferred AI state, so a standing wolf swings its legs. Every
+    // pass (base, collar, etc.) shares the body-layer part layout, so the swing applies
+    // per pass. The adult layer lists the legs at [3, 4, 5, 6] (head/body/mane at
+    // 0/1/2), the baby layer at [2, 3, 4, 5] (no mane). The tail wag, water-shake body
+    // roll, and sitting pose are deferred.
+    let leg_indices: [usize; 4] = if baby { [2, 3, 4, 5] } else { [3, 4, 5, 6] };
+    emit_quadruped_textured_passes(
         meshes,
         wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color),
         head_first_part_index(),
+        leg_indices,
         entity_model_root_transform(instance),
         instance,
         atlas,

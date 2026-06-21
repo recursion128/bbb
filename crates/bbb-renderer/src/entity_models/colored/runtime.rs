@@ -923,11 +923,31 @@ fn emit_wolf_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, ba
     } else {
         &ADULT_WOLF_PARTS
     };
-    emit_model_parts(
-        mesh,
-        &head_first_colored_head_look_parts(parts, instance),
-        entity_model_root_transform(instance),
+    // Vanilla `WolfModel.setupAnim` (shared by adult and baby) swings the four legs with
+    // the `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` in its
+    // non-sitting branch, then applies the head look. `isSitting` is a deferred AI state,
+    // so a standing wolf takes the leg-swing branch. The tail wag, the water-shake body
+    // roll, and the sitting pose are deferred.
+    let posed = quadruped_limb_swing_parts(
+        head_first_colored_head_look_parts(parts, instance),
+        wolf_leg_part_indices(baby),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &posed, entity_model_root_transform(instance));
+}
+
+/// The four leg part indices in the wolf body layers. The adult layer lists the head,
+/// body, and mane (`upper_body`) at `0`/`1`/`2` then the legs at `[3, 4, 5, 6]`; the
+/// baby layer drops the mane, so the head and body sit at `0`/`1` and the legs at
+/// `[2, 3, 4, 5]`. [`quadruped_leg_swing_pose`] resolves each leg's phase from its
+/// offset, so only the slot positions differ.
+fn wolf_leg_part_indices(baby: bool) -> [usize; 4] {
+    if baby {
+        [2, 3, 4, 5]
+    } else {
+        [3, 4, 5, 6]
+    }
 }
 
 fn emit_goat_model(
