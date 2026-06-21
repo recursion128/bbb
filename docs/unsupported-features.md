@@ -572,13 +572,17 @@ When an agent does any of the following, update this file in the same slice:
     diagonal phase (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, hind-right/front-left in
     phase, resolved from `x * z < 0`); `wolf_leg_part_indices` lists the legs at
     `[3, 4, 5, 6]` for the adult (head/body/mane at `0`/`1`/`2`) and `[2, 3, 4, 5]` for
-    the baby (no mane). It also wags the tail with `wolf_tail_swing_pose`
+    the baby (no mane). The tail is the last part (index `7` adult, `6` baby —
+    `wolf_tail_part_index`). A non-angry wolf wags it with `wolf_tail_swing_pose`
     (`tail.yRot = cos(pos * 0.6662) * 1.4 * speed`, the same `QuadrupedModel` amplitude as
-    the legs with no phase offset) in its non-angry branch, the tail being the last part
-    (index `7` adult, `6` baby — `wolf_tail_part_index`), in both the colored and textured
-    paths. `isSitting`/`isAngry` are deferred AI states, so a standing wolf always takes
-    the leg-swing and tail-wag branches. The `tail.xRot = tailAngle` tame/health/anger
-    droop, the `shakeOffWater` body roll, and the sitting pose are deferred. Deferred:
+    the legs with no phase offset) and keeps the layer's `π/5` rest droop — exactly the
+    `getTailAngle()` an untamed wolf returns. An angry wolf instead holds the tail straight
+    and raised (`wolf_angry_tail_pose`: `tail.yRot = 0`, `tail.xRot = getTailAngle() =
+    1.5393804`, overriding the rest droop even when standing), driven by the `isAngry`
+    render state, in both the colored and textured paths. `isSitting` is a deferred AI state,
+    so a standing wolf always takes the leg-swing branch. The tame `tail.xRot = tailAngle`
+    health droop (it needs the wolf's health), the `shakeOffWater` body roll, and the sitting
+    pose are deferred. Deferred:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
@@ -811,12 +815,14 @@ When an agent does any of the following, update this file in the same slice:
       and textured, with the head/ear children rotating with the head) and the
       vanilla `WolfModel.setupAnim` non-sitting leg walk swing (the `QuadrupedModel`
       diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[3, 4, 5, 6]`
-      adult / `[2, 3, 4, 5]` baby, on both render paths and every pass) and the non-angry
+      adult / `[2, 3, 4, 5]` baby, on both render paths and every pass), the non-angry
       tail wag (`tail.yRot = cos(pos * 0.6662) * 1.4 * speed` on the last part, tail at
-      `7` adult / `6` baby, both render paths); registry-driven wolf variants beyond the
-      default/pale texture set, armor layer, wet tint, sitting pose, head-shake/begging
-      tilt pose, the `tail.xRot = tailAngle` tame/health/anger droop, base-model
-      invisibility/outline handling, lighting, overlay, and remaining render-state
+      `7` adult / `6` baby, both render paths), and the angry tail raise (`tail.yRot = 0`,
+      `tail.xRot = getTailAngle() = 1.5393804`, driven by `isAngry`, both render paths);
+      registry-driven wolf variants beyond the default/pale texture set, armor layer, wet
+      tint, sitting pose, head-shake/begging tilt pose, the tame `tail.xRot = tailAngle`
+      health droop, base-model invisibility/outline handling, lighting, overlay, and
+      remaining render-state
       extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,

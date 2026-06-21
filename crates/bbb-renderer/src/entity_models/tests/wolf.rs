@@ -690,3 +690,116 @@ fn wolf_textured_mesh_wags_its_tail_when_walking() {
         "the textured tail wags sideways when walking: {rest_tail_x} -> {walk_tail_x}"
     );
 }
+
+#[test]
+fn wolf_angry_tail_pose_matches_vanilla_get_tail_angle() {
+    // Vanilla `WolfModel.setupAnim` for an angry wolf: `tail.yRot = 0` (no wag) and
+    // `tail.xRot = getTailAngle() = 1.5393804` (the angry constant), overriding the layer's
+    // π/5 wild rest droop. The offset and zRot are preserved.
+    let base = ADULT_WOLF_PARTS[wolf_tail_part_index(false)].pose;
+    assert!(
+        (base.rotation[0] - 0.62831855).abs() < 1e-6,
+        "adult tail rests at the π/5 wild droop: {}",
+        base.rotation[0]
+    );
+    assert_eq!(WOLF_ANGRY_TAIL_X_ROT, 1.5393804);
+
+    let angry = wolf_angry_tail_pose(base);
+    assert!(
+        (angry.rotation[0] - 1.5393804).abs() < 1e-6,
+        "angry tail raises to 1.5393804: {}",
+        angry.rotation[0]
+    );
+    assert_eq!(angry.rotation[1], 0.0, "angry tail does not wag");
+    assert_eq!(angry.rotation[2], base.rotation[2], "zRot preserved");
+    assert_eq!(angry.offset, base.offset, "offset preserved");
+}
+
+#[test]
+fn angry_wolf_raises_and_holds_its_tail_still() {
+    // An angry wolf raises its tail (xRot 1.5393804, vs the π/5 wild rest droop) and holds
+    // it straight: it does not wag when walking (`tail.yRot = 0`), unlike the non-angry
+    // wolf, while the legs still swing. The colored adult layout lists head/body/mane at
+    // vertices [0, 144), the four legs at [144, 240), and the tail child cube at [240, 264).
+    let calm = EntityModelInstance::wolf(150, [0.0, 64.0, 0.0], 0.0, false);
+    let angry = EntityModelInstance::wolf_state(
+        151,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        true,
+        false,
+        None,
+    );
+    let tail = 240..264;
+
+    let calm_rest = entity_model_mesh(&[calm]);
+    let angry_rest = entity_model_mesh(&[angry]);
+    // The colored path tints both wolves with the same uniform colors, so only the raised
+    // tail differs at rest; head/body/mane/legs are byte-identical.
+    assert_eq!(
+        calm_rest.vertices[..240],
+        angry_rest.vertices[..240],
+        "only the tail differs between a calm and an angry standing wolf"
+    );
+    assert_ne!(
+        calm_rest.vertices[tail.clone()],
+        angry_rest.vertices[tail.clone()],
+        "the angry wolf raises its tail"
+    );
+
+    // Walking swings the legs but leaves the angry tail untouched (held straight, no wag).
+    let angry_walking = entity_model_mesh(&[angry.with_walk_animation(0.0, 1.0)]);
+    assert_eq!(
+        angry_rest.vertices[tail.clone()],
+        angry_walking.vertices[tail.clone()],
+        "the angry tail is held still when walking (no wag)"
+    );
+    assert_ne!(
+        angry_rest.vertices[144..240],
+        angry_walking.vertices[144..240],
+        "the angry wolf still swings its legs"
+    );
+}
+
+#[test]
+fn angry_wolf_textured_mesh_raises_and_holds_its_tail_still() {
+    // The texture-backed angry wolf runs the same tail branch: the tail is raised and held
+    // still (no wag) while the legs swing. Positions ignore the differing angry-texture UVs.
+    let tail_positions = |verts: &[EntityModelTexturedVertex]| -> Vec<[f32; 3]> {
+        verts[240..264].iter().map(|v| v.position).collect()
+    };
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    let calm = EntityModelInstance::wolf(150, [0.0, 64.0, 0.0], 0.0, false);
+    let angry = EntityModelInstance::wolf_state(
+        151,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        true,
+        false,
+        None,
+    );
+
+    let calm_rest = entity_model_textured_mesh(&[calm], &atlas);
+    let angry_rest = entity_model_textured_mesh(&[angry], &atlas);
+    assert_ne!(
+        tail_positions(&calm_rest.vertices),
+        tail_positions(&angry_rest.vertices),
+        "the angry wolf raises its textured tail"
+    );
+
+    let angry_walking = entity_model_textured_mesh(&[angry.with_walk_animation(0.0, 1.0)], &atlas);
+    assert_eq!(
+        angry_rest.vertices[240..264],
+        angry_walking.vertices[240..264],
+        "the angry textured tail is held still when walking (no wag)"
+    );
+    assert_ne!(
+        angry_rest.vertices[144..240],
+        angry_walking.vertices[144..240],
+        "the angry wolf still swings its legs in the textured path"
+    );
+}

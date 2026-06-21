@@ -384,11 +384,12 @@ pub(in crate::entity_models) fn enderman_arm_swing_pose(
 /// Vanilla `WolfModel.setupAnim` tail wag for the tail part. In its non-angry branch the
 /// wolf sets `tail.yRot = cos(walkAnimationPos * 0.6662) * 1.4 * walkAnimationSpeed` — the
 /// same `QuadrupedModel` swing amplitude as the legs, with no phase offset, so the tail
-/// sweeps side to side in step with the gait. `isAngry` is a deferred AI state (an angry
-/// wolf holds its tail straight, `yRot = 0`), so a default wolf wags while walking. The
-/// base tail pose carries the layer's resting `xRot` droop — vanilla then overwrites that
-/// with the deferred `tailAngle` (the tame/health/anger droop) — so the wag sets only the
-/// `yRot` axis and preserves the others.
+/// sweeps side to side in step with the gait. The caller takes this branch only for a
+/// non-angry wolf; an angry one holds its tail straight and raised
+/// ([`wolf_angry_tail_pose`]). The base tail pose carries the layer's resting `xRot` droop
+/// `π/5` — which is exactly the `tailAngle` vanilla writes for an untamed wolf, so a wild
+/// wolf needs no `xRot` override; the tame/health `tailAngle` droop is still deferred (it
+/// needs the wolf's health). The wag sets only the `yRot` axis and preserves the others.
 pub(in crate::entity_models) fn wolf_tail_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -398,6 +399,20 @@ pub(in crate::entity_models) fn wolf_tail_swing_pose(
     PartPose {
         offset: base.offset,
         rotation: [base.rotation[0], y_rot, base.rotation[2]],
+    }
+}
+
+/// Vanilla `WolfModel.setupAnim` angry tail: an angry wolf zeroes the wag (`tail.yRot = 0`)
+/// and `getTailAngle()` returns the constant `1.5393804` (≈ 88°), so `tail.xRot` is *set*
+/// to that raised angle — overriding the layer's `π/5` wild rest droop. The offset and
+/// `zRot` are preserved. Driven by the `isAngry` render state (which the client tracks); the
+/// tame/health droop and the sitting/water-shake poses remain deferred.
+pub(in crate::entity_models) const WOLF_ANGRY_TAIL_X_ROT: f32 = 1.5393804;
+
+pub(in crate::entity_models) fn wolf_angry_tail_pose(base: PartPose) -> PartPose {
+    PartPose {
+        offset: base.offset,
+        rotation: [WOLF_ANGRY_TAIL_X_ROT, 0.0, base.rotation[2]],
     }
 }
 
