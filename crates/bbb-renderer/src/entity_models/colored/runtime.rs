@@ -966,15 +966,22 @@ fn emit_illager_model(
     instance: EntityModelInstance,
     family: IllagerModelFamily,
 ) {
-    emit_model_parts(
-        mesh,
-        &villager_colored_head_look_parts(
+    // `IllagerModel.setupAnim` (the non-riding branch) swings the legs
+    // `cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5` after the head look. It is not a
+    // `HumanoidModel` (the extra `0.5` factor and the per-family part order differ),
+    // so it uses the dedicated `illager_leg_swing_pose` and its own leg indices. The
+    // arm swing/arm poses and the riding sit pose are deferred.
+    let parts = illager_limb_swing_parts(
+        villager_colored_head_look_parts(
             illager_model_parts(family),
             villager_head_part_index(false),
             instance,
         ),
-        villager_adult_model_root_transform(instance),
+        illager_leg_part_indices(family),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
 }
 
 fn illager_model_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
@@ -985,6 +992,43 @@ fn illager_model_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
         IllagerModelFamily::Illusioner => &ILLAGER_ILLUSIONER_PARTS,
         IllagerModelFamily::Pillager => &ILLAGER_SHARED_UNCROSSED_PARTS,
     }
+}
+
+/// The right/left leg part indices in each illager body layer. The crossed-arms
+/// layouts (evoker, vindicator, illusioner) carry one combined crossed-arm part at
+/// slot `2` and list the legs at `[3, 4]`; the uncrossed pillager layout lists the
+/// legs at `[2, 3]` before its two separate arms. [`illager_leg_swing_pose`]
+/// resolves each leg's phase from its offset, so only the slot positions differ.
+fn illager_leg_part_indices(family: IllagerModelFamily) -> [usize; 2] {
+    match family {
+        IllagerModelFamily::Pillager => [2, 3],
+        IllagerModelFamily::Evoker
+        | IllagerModelFamily::Vindicator
+        | IllagerModelFamily::Illusioner => [3, 4],
+    }
+}
+
+/// Applies the vanilla `IllagerModel.setupAnim` leg swing
+/// ([`illager_leg_swing_pose`]) to a colored illager layer's two leg parts at
+/// `leg_indices`. Borrows the static parts unchanged at rest
+/// (`walkAnimationSpeed == 0`). The arm swing/arm poses are left to the deferred
+/// illager arm animations.
+fn illager_limb_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    leg_indices: [usize; 2],
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in leg_indices {
+        if let Some(leg) = owned.get_mut(index) {
+            leg.pose = illager_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+        }
+    }
+    Cow::Owned(owned)
 }
 
 fn emit_quadruped_model(

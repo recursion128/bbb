@@ -281,9 +281,11 @@ When an agent does any of the following, update this file in the same slice:
       stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
       Stray/Bogged clothing overlay, since the overlay's layer `SkeletonModel` runs the
       same `setupAnim`) and the piglin family (piglin, piglin brute, zombified piglin,
-      adult and baby). The remaining slices consume them in the other model families'
-      `setupAnim` (the rest of the `HumanoidModel` families — villager, illager, player —
-      plus the `HumanoidModel` arm swing, birds, fish, etc.).
+      adult and baby). The illager family (evoker, vindicator, illusioner, pillager)
+      consumes them too through its own `IllagerModel.setupAnim` leg swing (a non-
+      `HumanoidModel` with an extra `0.5` amplitude factor). The remaining slices
+      consume them in the other model families' `setupAnim` (player, plus the
+      `HumanoidModel`/illager arm swing, birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -441,17 +443,24 @@ When an agent does any of the following, update this file in the same slice:
     family (`emit_piglin_model` — piglin, piglin brute, zombified piglin, adult and
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
     `setupAnim` runs `super.setupAnim` (the inherited legs) before swaying only the ears,
-    and `PiglinModel` overrides only the arms. Deferred: (1) the `Camel`/`Creaking`/
-    `Frog` `updateWalkAnimation` overrides use different distance→speed mappings (and
+    and `PiglinModel` overrides only the arms. The illager family (`emit_illager_model`
+    — evoker, vindicator, illusioner, pillager) uses a dedicated `illager_leg_swing_pose`
+    (`cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`): `IllagerModel` is not a
+    `HumanoidModel` and adds an extra `0.5` amplitude factor, and its body layers list
+    the legs at `[3, 4]` for the crossed-arms layouts (evoker/vindicator/illusioner) and
+    `[2, 3]` for the uncrossed pillager, resolved per family. Deferred: (1) the
+    `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
+    distance→speed mappings (and
     `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
     track), so their limb swing is left at rest rather than approximated; (2) the
-    `HumanoidModel` arm swing and the per-subclass arm/ear poses (the zombie held-out
-    arms, skeleton aiming, the `AbstractPiglinModel` ear sway and `PiglinModel`
-    dance/attack/crossbow/admire poses, item/attack/crouch/swim/elytra poses, and the
+    `HumanoidModel`/illager arm swing and the per-subclass arm/ear poses (the zombie
+    held-out arms, skeleton aiming, the `AbstractPiglinModel` ear sway and `PiglinModel`
+    dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/attack/spellcast/
+    bow/crossbow poses and riding sit pose, item/attack/crouch/swim/elytra poses, and the
     always-on arm bob) are separate animations driven by states the client does not yet
     track; (3) consuming the projected values in the other model families' `setupAnim`
-    (the rest of the `HumanoidModel` families — villager, illager, player — and birds,
-    fish, etc.) are the next slices.
+    (the `HumanoidModel` player model, the `VillagerModel` family, and birds, fish, etc.)
+    are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

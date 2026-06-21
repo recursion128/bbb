@@ -190,3 +190,97 @@ fn illager_texture_refs_match_vanilla_renderers() {
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
 }
+
+#[test]
+fn illager_leg_swing_pose_applies_vanilla_half_amplitude() {
+    // Vanilla IllagerModel.setupAnim (non-riding): rightLeg.xRot =
+    // cos(pos * 0.6662) * 1.4 * speed * 0.5 (in phase), leftLeg.xRot =
+    // cos(pos * 0.6662 + π) * 1.4 * speed * 0.5 (out of phase). The extra 0.5 factor
+    // (vs HumanoidModel's 1.4 * speed) is what makes the illager-specific pose. The
+    // illager body layers place the right leg at offset x = -2 and the left at x = +2.
+    let right = illager_leg_swing_pose(
+        PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        0.0,
+        1.0,
+    );
+    let left = illager_leg_swing_pose(
+        PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        0.0,
+        1.0,
+    );
+    assert!(
+        (right.rotation[0] - 0.7).abs() < 1e-6,
+        "right leg in phase at half amplitude: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (left.rotation[0] + 0.7).abs() < 1e-6,
+        "left leg out of phase at half amplitude: {}",
+        left.rotation[0]
+    );
+
+    // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5.
+    let phase = 1.5_f32 * 0.6662;
+    let right = illager_leg_swing_pose(
+        PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        1.5,
+        0.5,
+    );
+    let left = illager_leg_swing_pose(
+        PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        1.5,
+        0.5,
+    );
+    assert!((right.rotation[0] - phase.cos() * 1.4 * 0.5 * 0.5).abs() < 1e-6);
+    assert!(
+        (left.rotation[0] - (phase + std::f32::consts::PI).cos() * 1.4 * 0.5 * 0.5).abs() < 1e-6
+    );
+}
+
+#[test]
+fn illager_family_swings_its_legs_when_walking() {
+    // IllagerModel is not a HumanoidModel but its non-riding setupAnim swings the
+    // legs `cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`. A standing illager is inert;
+    // a walking one lifts its feet (a shorter model) and splays its legs along Z, for
+    // every family (the crossed-arms evoker/vindicator/illusioner lists legs at
+    // [3, 4], the uncrossed pillager at [2, 3]). The arm poses and the riding sit pose
+    // are deferred.
+    let families = [
+        ("evoker", IllagerModelFamily::Evoker),
+        ("vindicator", IllagerModelFamily::Vindicator),
+        ("illusioner", IllagerModelFamily::Illusioner),
+        ("pillager", IllagerModelFamily::Pillager),
+    ];
+    for (name, family) in families {
+        let base = EntityModelInstance::illager(200, [0.0, 64.0, 0.0], 0.0, family);
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{name}: a walking illager's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "{name}: a walking illager's legs should splay along Z"
+        );
+    }
+}

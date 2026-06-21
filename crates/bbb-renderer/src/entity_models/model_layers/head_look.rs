@@ -212,6 +212,36 @@ pub(in crate::entity_models) fn humanoid_leg_swing_pose(
     }
 }
 
+/// Vanilla `IllagerModel.setupAnim` leg swing for a single leg part (the
+/// non-riding branch): `leg.xRot = cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 *
+/// walkAnimationSpeed * 0.5`. `IllagerModel` is not a `HumanoidModel` and applies
+/// an extra `0.5` amplitude factor that `HumanoidModel` does not, so it gets its
+/// own pose helper rather than reusing [`humanoid_leg_swing_pose`]. The phase rule
+/// is the same: the right leg (part offset `x < 0`) is in phase and the left leg a
+/// half-cycle out of phase, both legs sitting at `z = 0`. The base leg pose carries
+/// no `xRot`, so it is set (not accumulated). The riding sit pose (fixed
+/// `-1.4137167` with leg yaw/roll splay) is a separate deferred pose.
+pub(in crate::entity_models) fn illager_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let phase = walk_animation_pos * 0.6662;
+    let angle = if base.offset[0] < 0.0 {
+        phase
+    } else {
+        phase + std::f32::consts::PI
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            angle.cos() * 1.4 * walk_animation_speed * 0.5,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw
