@@ -274,6 +274,32 @@ pub(in crate::entity_models) fn hoglin_leg_swing_pose(
     }
 }
 
+/// Vanilla `EndermanModel.setupAnim` leg swing for a single leg part. `EndermanModel
+/// extends HumanoidModel`, so `super.setupAnim` first sets `leg.xRot =
+/// cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`, then the enderman
+/// halves it (`*= 0.5`) and clamps it to `[-0.4, 0.4]`. The phase rule is the
+/// `HumanoidModel` one (the right leg, part offset `x < 0`, in phase; both legs at
+/// `z = 0`). The base leg pose carries no `xRot`, so it is set (not accumulated). The
+/// arm halve/clamp, the carried-block arm pose, and the creepy attack pose are
+/// separate deferred animations.
+pub(in crate::entity_models) fn enderman_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let phase = walk_animation_pos * 0.6662;
+    let angle = if base.offset[0] < 0.0 {
+        phase
+    } else {
+        phase + std::f32::consts::PI
+    };
+    let x_rot = (angle.cos() * 1.4 * walk_animation_speed * 0.5).clamp(-0.4, 0.4);
+    PartPose {
+        offset: base.offset,
+        rotation: [x_rot, base.rotation[1], base.rotation[2]],
+    }
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw

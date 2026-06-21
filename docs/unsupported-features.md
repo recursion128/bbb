@@ -290,8 +290,10 @@ When an agent does any of the following, update this file in the same slice:
       family (villager adult/baby, wandering trader, witch — `VillagerModel`/
       `WitchModel`, both also non-`HumanoidModel` with the same `0.5` factor), and the
       player model (`PlayerModel extends HumanoidModel`, remote players, colored and
-      textured, wide and slim, the pants children riding the leg parts). The remaining
-      slices consume them in the other model families' `setupAnim` (birds, fish, etc.,
+      textured, wide and slim, the pants children riding the leg parts), and the
+      enderman (`EndermanModel extends HumanoidModel`, the inherited swing halved and
+      clamped to `[-0.4, 0.4]`). The remaining slices consume them in the other model
+      families' `setupAnim` (iron/snow golem, ravager, spider, wolf, birds, fish, etc.,
       plus the `HumanoidModel`/illager/villager arm and ear/nose poses).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
@@ -481,7 +483,12 @@ When an agent does any of the following, update this file in the same slice:
     (`emit_player_model` colored and `emit_player_textured_model` — remote players, wide
     and slim) consumes the `HumanoidModel` legs unchanged (`PlayerModel.setupAnim` only
     toggles part visibility before `super.setupAnim`; the pants children ride the leg
-    parts and the visibility-filtered part array keeps the legs at `[4, 5]`). Deferred:
+    parts and the visibility-filtered part array keeps the legs at `[4, 5]`). The
+    enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
+    uses a dedicated `enderman_leg_swing_pose`: `EndermanModel extends HumanoidModel`,
+    so `super.setupAnim` sets the inherited swing, then the enderman halves it
+    (`*= 0.5`) and clamps it to `[-0.4, 0.4]` (legs at `[4, 5]`); its arm halve/clamp,
+    carried-block arm pose, and creepy attack pose are deferred. Deferred:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
@@ -492,12 +499,13 @@ When an agent does any of the following, update this file in the same slice:
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
-    tilt, the `HoglinModel` ear sway and headbutt head tilt,
+    tilt, the `HoglinModel` ear sway and headbutt head tilt, the `EndermanModel` arm
+    halve/clamp, carried-block arm pose, and creepy attack pose,
     item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (birds, fish, etc.) are the next slices.
+    (iron/snow golem, ravager, spider, wolf, birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

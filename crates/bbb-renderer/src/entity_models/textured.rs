@@ -15,15 +15,15 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, cow_head_part_index, half_amplitude_leg_swing_pose,
-        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
-        head_yaw_at_rest, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_leg_swing_pose,
-        limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
-        ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
-        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
-        RAVAGER_TEXTURED_PARTS,
+        apply_polar_bear_standing_pose, cow_head_part_index, enderman_leg_swing_pose,
+        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
+        head_look_yaw_pose, head_yaw_at_rest, hoglin_head_part_index, hoglin_leg_swing_pose,
+        humanoid_leg_swing_pose, limb_swing_at_rest, parched_head_part_index, pig_head_part_index,
+        player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
+        quadruped_leg_swing_pose, ravager_head_child_index, ravager_neck_part_index,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
+        RAVAGER_TEXTURED_NECK_CHILDREN, RAVAGER_TEXTURED_PARTS,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -512,14 +512,37 @@ fn emit_enderman_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
-        meshes,
-        enderman_textured_layer_passes(),
-        head_first_part_index(),
-        entity_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    // Vanilla `EndermanModel extends HumanoidModel`: full head look, then the
+    // inherited leg swing halved and clamped to `[-0.4, 0.4]` (`enderman_leg_swing_pose`,
+    // legs at [4, 5]). The arm halve/clamp, carried-block, and creepy poses defer.
+    let head_index = head_first_part_index();
+    let transform = entity_model_root_transform(instance);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in enderman_textured_layer_passes() {
+        if head_resting && legs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+                }
+            }
+            if !legs_resting {
+                for index in HUMANOID_LEG_PART_INDICES {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose = enderman_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
 }
 
 fn emit_iron_golem_textured_model(

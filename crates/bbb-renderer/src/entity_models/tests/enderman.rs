@@ -288,6 +288,99 @@ fn enderman_textured_mesh_applies_head_look() {
     assert_ne!(yawed.vertices, pitched.vertices);
 }
 
+#[test]
+fn enderman_leg_swing_pose_halves_and_clamps_the_humanoid_swing() {
+    // Vanilla EndermanModel.setupAnim: super.setupAnim sets leg.xRot =
+    // cos(pos * 0.6662 [+ π]) * 1.4 * speed, then the enderman halves it (*= 0.5) and
+    // clamps it to [-0.4, 0.4]. ENDERMAN_PARTS lists the right leg at index 4 (x = -2,
+    // in phase) and the left at index 5 (x = +2, out of phase).
+    // At pos = 0, speed = 1: raw = cos(0) * 1.4 * 0.5 = 0.7, clamped to 0.4.
+    let right = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 0.0, 1.0);
+    let left = enderman_leg_swing_pose(ENDERMAN_PARTS[5].pose, 0.0, 1.0);
+    assert!(
+        (right.rotation[0] - 0.4).abs() < 1e-6,
+        "right leg clamps to +0.4: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (left.rotation[0] + 0.4).abs() < 1e-6,
+        "left leg clamps to -0.4: {}",
+        left.rotation[0]
+    );
+
+    // A low speed stays inside the clamp window, showing the bare halving:
+    // cos(0) * 1.4 * 0.3 * 0.5 = 0.21.
+    let right_slow = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 0.0, 0.3);
+    assert!(
+        (right_slow.rotation[0] - 1.4 * 0.3 * 0.5).abs() < 1e-6,
+        "unclamped half amplitude: {}",
+        right_slow.rotation[0]
+    );
+    // A general (pos, speed) within the window: cos(pos * 0.6662) * 1.4 * speed * 0.5.
+    let phase = 2.0_f32 * 0.6662;
+    let right_general = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 2.0, 0.3);
+    assert!((right_general.rotation[0] - phase.cos() * 1.4 * 0.3 * 0.5).abs() < 1e-6);
+}
+
+#[test]
+fn enderman_swings_its_legs_when_walking() {
+    // `EndermanModel extends HumanoidModel`; its legs swing the inherited swing,
+    // halved and clamped. A standing enderman is inert; a walking one lifts its feet
+    // and splays its legs along Z. The arm halve/clamp, carried-block, and creepy
+    // poses are deferred. Colored path here, textured below.
+    let base = EntityModelInstance::enderman(260, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+    assert_eq!(rest.vertices, still.vertices, "rest is inert");
+
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_ne!(rest.vertices, walking.vertices, "walking differs");
+
+    let (rest_min, rest_max) = mesh_extents(&rest);
+    let (walk_min, walk_max) = mesh_extents(&walking);
+    assert!(
+        (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+        "a walking enderman's feet should lift off the ground"
+    );
+    assert!(
+        (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+        "a walking enderman's legs should splay along Z"
+    );
+}
+
+#[test]
+fn enderman_textured_mesh_swings_legs_when_walking() {
+    // The real enderman render path (texture-backed) swings the same halved/clamped
+    // legs. A standing enderman is byte-identical however far the swing has advanced;
+    // a walking one lifts its feet.
+    let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
+    let base = EntityModelInstance::enderman(261, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+    assert_eq!(
+        resting.vertices, still.vertices,
+        "a standing enderman is inert"
+    );
+    assert_eq!(
+        resting.vertices.len(),
+        walking.vertices.len(),
+        "leg swing keeps the vertex count"
+    );
+    assert_ne!(
+        resting.vertices, walking.vertices,
+        "a walking enderman differs"
+    );
+
+    let (rest_min, rest_max) = textured_mesh_extents(&resting);
+    let (walk_min, walk_max) = textured_mesh_extents(&walking);
+    assert!(
+        (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+        "a walking enderman's feet should lift off the ground"
+    );
+}
+
 fn enderman_texture_images() -> Vec<EntityModelTextureImage> {
     enderman_entity_texture_refs()
         .iter()

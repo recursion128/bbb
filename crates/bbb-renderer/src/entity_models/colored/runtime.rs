@@ -1309,11 +1309,36 @@ fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
 }
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &head_first_colored_head_look_parts(&ENDERMAN_PARTS, instance),
-        entity_model_root_transform(instance),
+    // Vanilla `EndermanModel extends HumanoidModel`: `setupAnim` runs `super.setupAnim`
+    // (the inherited leg swing) then halves and clamps the legs to `[-0.4, 0.4]`
+    // (`enderman_leg_swing_pose`). Legs are at [4, 5]. The arm halve/clamp, the
+    // carried-block arm pose, and the creepy attack pose are deferred.
+    let parts = enderman_limb_swing_parts(
+        head_first_colored_head_look_parts(&ENDERMAN_PARTS, instance),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+}
+
+/// Applies the vanilla `EndermanModel.setupAnim` leg swing
+/// ([`enderman_leg_swing_pose`]: the inherited `HumanoidModel` swing, halved and
+/// clamped to `[-0.4, 0.4]`) to a colored enderman layer's two leg parts at
+/// `[4, 5]`. Borrows the static parts unchanged at rest (`walkAnimationSpeed == 0`).
+fn enderman_limb_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in HUMANOID_LEG_PART_INDICES {
+        owned[index].pose =
+            enderman_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
+    }
+    Cow::Owned(owned)
 }
 
 fn emit_iron_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
