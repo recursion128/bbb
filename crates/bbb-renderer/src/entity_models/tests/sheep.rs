@@ -1046,6 +1046,85 @@ fn sheep_textured_mesh_applies_eating_head_pose_to_all_layers() {
 }
 
 #[test]
+fn sheep_textured_mesh_swings_legs_when_walking() {
+    // Vanilla SheepModel.setupAnim runs super.setupAnim (the QuadrupedModel leg
+    // swing) before the eat-grass head pose, so a walking sheep swings its legs in
+    // every layer (base, wool, undercoat) while the head — at rest here — is
+    // untouched.
+    let (atlas, _) = build_entity_model_texture_atlas(&sheep_texture_images()).unwrap();
+    let base = EntityModelInstance::sheep_wool(
+        403,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
+    );
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+    assert_eq!(
+        resting.vertices, still.vertices,
+        "a standing sheep is inert"
+    );
+    assert_eq!(resting.vertices.len(), walking.vertices.len());
+    // Base, wool, and undercoat each contribute 144 vertices; the head cube is the
+    // first 24, the body and legs the remaining 120.
+    for pass_start in [0usize, 144, 288] {
+        let head = pass_start..pass_start + 24;
+        let body_and_legs = pass_start + 24..pass_start + 144;
+        assert_eq!(
+            resting.vertices[head.clone()],
+            walking.vertices[head],
+            "head is unaffected by the leg swing in pass at {pass_start}"
+        );
+        assert_ne!(
+            resting.vertices[body_and_legs.clone()],
+            walking.vertices[body_and_legs],
+            "legs swing in pass at {pass_start}"
+        );
+    }
+}
+
+#[test]
+fn sheep_colored_mesh_swings_legs_when_walking() {
+    // The colored sheep render (base + wool layers) swings its legs from the same
+    // limb-swing projection: a standing sheep is inert, a walking sheep lifts its
+    // feet (a shorter model) and splays its legs forward/back (a deeper footprint).
+    for baby in [false, true] {
+        let base = EntityModelInstance::sheep_wool(
+            404,
+            [0.0, 64.0, 0.0],
+            0.0,
+            baby,
+            false,
+            SheepWoolColor::Red,
+        );
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "baby={baby}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "baby={baby}: walking differs"
+        );
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "baby={baby}: a walking sheep's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            "baby={baby}: a walking sheep's legs should splay along Z"
+        );
+    }
+}
+
+#[test]
 fn sheep_colored_mesh_applies_eating_head_pose() {
     let resting = entity_model_mesh(&[EntityModelInstance::sheep_wool(
         402,

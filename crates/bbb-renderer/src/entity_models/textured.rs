@@ -700,13 +700,29 @@ fn emit_sheep_textured_model(
     let head_pitch = instance.render_state.head_pitch;
     let head_index = sheep_head_part_index(baby);
     let head_resting = sheep_head_at_rest(head_eat, head_yaw, head_pitch);
+    // Vanilla `SheepModel.setupAnim` runs `super.setupAnim` (the `QuadrupedModel` leg
+    // swing) before its eat-grass head pose, so every sheep layer (body and wool)
+    // swings its legs.
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
     for pass in sheep_textured_layer_passes(baby, sheared, wool_color, invisible, jeb, age_ticks) {
-        if head_resting {
+        if head_resting && legs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {
             let mut parts = pass.parts.to_vec();
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = sheep_head_pose(head.pose, baby, head_eat, head_yaw, head_pitch);
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = sheep_head_pose(head.pose, baby, head_eat, head_yaw, head_pitch);
+                }
+            }
+            if !legs_resting {
+                for index in QUADRUPED_LEG_PART_INDICES {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose =
+                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
             }
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
         }

@@ -678,21 +678,31 @@ fn emit_sheep_model(
     let head_eat = instance.render_state.head_eat;
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    // Vanilla `SheepModel.setupAnim` runs `super.setupAnim` (the `QuadrupedModel`
+    // head look + leg swing) before its eat-grass head pose, so every sheep layer
+    // (body and wool) swings its legs. `sheep_colored_head_parts` poses the head;
+    // the leg swing is layered on top for each part set.
+    let posed = |parts: &'static [ModelPartDesc]| {
+        quadruped_limb_swing_parts(
+            sheep_colored_head_parts(parts, baby, head_eat, head_yaw, head_pitch),
+            QUADRUPED_LEG_PART_INDICES,
+            limb_swing,
+            limb_swing_amount,
+        )
+    };
     let base_parts: &[ModelPartDesc] = if baby {
         &BABY_SHEEP_PARTS
     } else {
         &ADULT_SHEEP_PARTS
     };
-    emit_model_parts(
-        mesh,
-        &sheep_colored_head_parts(base_parts, baby, head_eat, head_yaw, head_pitch),
-        transform,
-    );
+    emit_model_parts(mesh, &posed(base_parts), transform);
     let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
     if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
         emit_model_parts_with_color(
             mesh,
-            &sheep_colored_head_parts(&ADULT_SHEEP_PARTS, baby, head_eat, head_yaw, head_pitch),
+            &posed(&ADULT_SHEEP_PARTS),
             transform,
             wool_layer_color,
         );
@@ -703,12 +713,7 @@ fn emit_sheep_model(
         } else {
             &ADULT_SHEEP_WOOL_PARTS
         };
-        emit_model_parts_with_color(
-            mesh,
-            &sheep_colored_head_parts(wool_parts, baby, head_eat, head_yaw, head_pitch),
-            transform,
-            wool_layer_color,
-        );
+        emit_model_parts_with_color(mesh, &posed(wool_parts), transform, wool_layer_color);
     }
 }
 

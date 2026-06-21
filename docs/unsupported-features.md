@@ -275,9 +275,9 @@ When an agent does any of the following, update this file in the same slice:
       through `EntityModelSourceState.walk_animation_position`/`_speed` to the
       renderer `EntityRenderState.walk_animation_pos`/`_speed`, and the
       `QuadrupedModel` leg sway consumes them in the generic quadruped path and the
-      dedicated `CowModel` and `PigModel` paths (both the colored and textured
-      renders, all variants and the baby layers). The remaining slices consume them
-      in the other model families' `setupAnim` (the `SheepModel` static-part path, the
+      dedicated `CowModel`, `PigModel`, and `SheepModel` paths (both the colored and
+      textured renders, all variants, wool layers, and the baby layers). The remaining
+      slices consume them in the other model families' `setupAnim` (the
       `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
@@ -417,17 +417,18 @@ When an agent does any of the following, update this file in the same slice:
     hind-left/front-right pair a half-cycle out of phase with the hind-right/front-left
     pair (resolved from each leg part's `x * z < 0` offset, so the differing leg
     order of the adult and baby layers does not matter). It is consumed by the generic
-    `emit_quadruped_model` path and the dedicated `CowModel` and `PigModel` paths (both
-    the colored and textured renders, every variant and the baby layers; `PigModel`
-    extends `QuadrupedModel` without overriding `setupAnim`), so a walking quadruped's
-    legs swing (`0.0` for a standing entity, every non-living entity, and the deferred
-    overrides below). Deferred: (1) the `Camel`/`Creaking`/`Frog` `updateWalkAnimation`
-    overrides use different distance→speed mappings (and `Camel`/`Frog` gate on
-    pose/jump/dash animation states the client does not yet track), so their limb swing
-    is left at rest rather than approximated; (2) consuming the projected values in the
-    other model families' `setupAnim` (the `SheepModel` static-part path,
-    the `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.) are the next
-    slices.
+    `emit_quadruped_model` path and the dedicated `CowModel`, `PigModel`, and
+    `SheepModel` paths (both the colored and textured renders, every variant, the wool
+    layers, and the baby layers; `PigModel`/`SheepModel` extend `QuadrupedModel`, with
+    `SheepModel.setupAnim` running `super.setupAnim` — the leg swing — before its
+    eat-grass head pose), so a walking quadruped's legs swing (`0.0` for a standing
+    entity, every non-living entity, and the deferred overrides below). Deferred:
+    (1) the `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
+    distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash animation
+    states the client does not yet track), so their limb swing is left at rest rather
+    than approximated; (2) consuming the projected values in the other model families'
+    `setupAnim` (the `HumanoidModel`/biped arm-and-leg swing, birds, fish, etc.) are
+    the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
