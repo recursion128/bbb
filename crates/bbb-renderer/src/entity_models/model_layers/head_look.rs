@@ -300,6 +300,58 @@ pub(in crate::entity_models) fn enderman_leg_swing_pose(
     }
 }
 
+/// Vanilla `Mth.triangleWave(index, period)`: a triangle wave in `[-1, 1]`,
+/// `(|index % period - period/2| - period/4) / (period/4)`.
+fn triangle_wave(index: f32, period: f32) -> f32 {
+    ((index % period - period * 0.5).abs() - period * 0.25) / (period * 0.25)
+}
+
+/// The four swinging limb parts of the iron golem, for [`iron_golem_walk_pose`].
+pub(in crate::entity_models) enum IronGolemWalkPart {
+    RightArm,
+    LeftArm,
+    RightLeg,
+    LeftLeg,
+}
+
+/// Vanilla `IronGolemModel.setupAnim` walking swing for one limb part, driven by
+/// `Mth.triangleWave(walkAnimationPos, 13)`. Legs: `xRot = ±1.5 * triangleWave *
+/// speed`. Arms (the default branch, when not attacking and not offering a flower):
+/// `xRot = (-0.2 ± 1.5 * triangleWave) * speed`. The base pose carries no `xRot`, so
+/// it is set (not accumulated). The attack swing and the offer-flower arm pose are
+/// separate deferred event animations driven by server-authoritative timers.
+pub(in crate::entity_models) fn iron_golem_walk_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+    part: IronGolemWalkPart,
+) -> PartPose {
+    let wave = triangle_wave(walk_animation_pos, 13.0);
+    let x_rot = match part {
+        IronGolemWalkPart::RightLeg => -1.5 * wave * walk_animation_speed,
+        IronGolemWalkPart::LeftLeg => 1.5 * wave * walk_animation_speed,
+        IronGolemWalkPart::RightArm => (-0.2 + 1.5 * wave) * walk_animation_speed,
+        IronGolemWalkPart::LeftArm => (-0.2 - 1.5 * wave) * walk_animation_speed,
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [x_rot, base.rotation[1], base.rotation[2]],
+    }
+}
+
+/// The iron golem body-layer part indices paired with their walk roles: the head and
+/// body occupy `0`/`1`, then the right/left arm and right/left leg. The arms sit at
+/// part offset `x = 0`, so the role is fixed by slot rather than offset sign.
+pub(in crate::entity_models) const fn iron_golem_walk_part_roles() -> [(usize, IronGolemWalkPart); 4]
+{
+    [
+        (2, IronGolemWalkPart::RightArm),
+        (3, IronGolemWalkPart::LeftArm),
+        (4, IronGolemWalkPart::RightLeg),
+        (5, IronGolemWalkPart::LeftLeg),
+    ]
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw

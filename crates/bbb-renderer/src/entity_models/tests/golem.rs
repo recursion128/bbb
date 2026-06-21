@@ -383,6 +383,130 @@ fn golem_textured_meshes_apply_head_look() {
     }
 }
 
+#[test]
+fn iron_golem_walk_pose_matches_vanilla_triangle_wave() {
+    // Vanilla IronGolemModel.setupAnim drives the limbs by Mth.triangleWave(pos, 13).
+    // At pos = 0: triangleWave = (|0 - 6.5| - 3.25) / 3.25 = 1.0. With speed = 1:
+    // rightLeg = -1.5, leftLeg = 1.5, rightArm = (-0.2 + 1.5) = 1.3, leftArm =
+    // (-0.2 - 1.5) = -1.7.
+    let right_leg = iron_golem_walk_pose(
+        IRON_GOLEM_PARTS[4].pose,
+        0.0,
+        1.0,
+        IronGolemWalkPart::RightLeg,
+    );
+    let left_leg = iron_golem_walk_pose(
+        IRON_GOLEM_PARTS[5].pose,
+        0.0,
+        1.0,
+        IronGolemWalkPart::LeftLeg,
+    );
+    let right_arm = iron_golem_walk_pose(
+        IRON_GOLEM_PARTS[2].pose,
+        0.0,
+        1.0,
+        IronGolemWalkPart::RightArm,
+    );
+    let left_arm = iron_golem_walk_pose(
+        IRON_GOLEM_PARTS[3].pose,
+        0.0,
+        1.0,
+        IronGolemWalkPart::LeftArm,
+    );
+    assert!(
+        (right_leg.rotation[0] + 1.5).abs() < 1e-6,
+        "{}",
+        right_leg.rotation[0]
+    );
+    assert!(
+        (left_leg.rotation[0] - 1.5).abs() < 1e-6,
+        "{}",
+        left_leg.rotation[0]
+    );
+    assert!(
+        (right_arm.rotation[0] - 1.3).abs() < 1e-6,
+        "{}",
+        right_arm.rotation[0]
+    );
+    assert!(
+        (left_arm.rotation[0] + 1.7).abs() < 1e-6,
+        "{}",
+        left_arm.rotation[0]
+    );
+
+    // At pos = 6.5: triangleWave = (|6.5 - 6.5| - 3.25) / 3.25 = -1.0, scaled by speed.
+    let right_leg = iron_golem_walk_pose(
+        IRON_GOLEM_PARTS[4].pose,
+        6.5,
+        0.5,
+        IronGolemWalkPart::RightLeg,
+    );
+    assert!(
+        (right_leg.rotation[0] - (-1.5 * -1.0 * 0.5)).abs() < 1e-6,
+        "{}",
+        right_leg.rotation[0]
+    );
+}
+
+#[test]
+fn iron_golem_swings_its_limbs_when_walking() {
+    // `IronGolemModel.setupAnim` swings the legs and (default branch) the arms by
+    // `Mth.triangleWave(pos, 13) * speed`. A standing golem is inert; a walking one
+    // moves its arms and legs and lifts its feet. The attack swing and offer-flower
+    // arm pose are deferred. Colored path here, textured below.
+    let base = EntityModelInstance::iron_golem(270, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+    assert_eq!(rest.vertices, still.vertices, "rest is inert");
+
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_ne!(rest.vertices, walking.vertices, "walking differs");
+
+    let (rest_min, rest_max) = mesh_extents(&rest);
+    let (walk_min, walk_max) = mesh_extents(&walking);
+    assert!(
+        (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+        "a walking iron golem's feet should lift off the ground"
+    );
+    assert!(
+        (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+        "a walking iron golem's limbs should splay along Z"
+    );
+}
+
+#[test]
+fn iron_golem_textured_mesh_swings_its_limbs_when_walking() {
+    // The real iron golem render path (texture-backed) swings the same limbs. A
+    // standing golem is byte-identical however far the swing has advanced; a walking
+    // one lifts its feet.
+    let (atlas, _) = build_entity_model_texture_atlas(&golem_texture_images()).unwrap();
+    let base = EntityModelInstance::iron_golem(271, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+    assert_eq!(
+        resting.vertices, still.vertices,
+        "a standing iron golem is inert"
+    );
+    assert_eq!(
+        resting.vertices.len(),
+        walking.vertices.len(),
+        "limb swing keeps the vertex count"
+    );
+    assert_ne!(
+        resting.vertices, walking.vertices,
+        "a walking iron golem differs"
+    );
+
+    let (rest_min, rest_max) = textured_mesh_extents(&resting);
+    let (walk_min, walk_max) = textured_mesh_extents(&walking);
+    assert!(
+        (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+        "a walking iron golem's feet should lift off the ground"
+    );
+}
+
 fn golem_texture_images() -> Vec<EntityModelTextureImage> {
     golem_entity_texture_refs()
         .iter()

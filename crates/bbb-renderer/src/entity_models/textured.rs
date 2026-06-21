@@ -18,12 +18,13 @@ use super::{
         apply_polar_bear_standing_pose, cow_head_part_index, enderman_leg_swing_pose,
         half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
         head_look_yaw_pose, head_yaw_at_rest, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_leg_swing_pose, limb_swing_at_rest, parched_head_part_index, pig_head_part_index,
-        player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
-        quadruped_leg_swing_pose, ravager_head_child_index, ravager_neck_part_index,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
-        RAVAGER_TEXTURED_NECK_CHILDREN, RAVAGER_TEXTURED_PARTS,
+        humanoid_leg_swing_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
+        limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
+        polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
+        ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
+        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
+        RAVAGER_TEXTURED_PARTS,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -550,14 +551,39 @@ fn emit_iron_golem_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
-        meshes,
-        iron_golem_textured_layer_passes(),
-        head_first_part_index(),
-        entity_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    // Vanilla `IronGolemModel.setupAnim`: full head look, then the legs swing
+    // `±1.5 * triangleWave(pos, 13) * speed` and (default branch) the arms
+    // `(-0.2 ± 1.5 * triangleWave(pos, 13)) * speed` (`iron_golem_walk_pose`). The
+    // attack swing and offer-flower arm pose are deferred.
+    let head_index = head_first_part_index();
+    let transform = entity_model_root_transform(instance);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in iron_golem_textured_layer_passes() {
+        if head_resting && limbs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+                }
+            }
+            if !limbs_resting {
+                for (index, part) in iron_golem_walk_part_roles() {
+                    if let Some(limb) = parts.get_mut(index) {
+                        limb.pose =
+                            iron_golem_walk_pose(limb.pose, limb_swing, limb_swing_amount, part);
+                    }
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
 }
 
 fn emit_snow_golem_textured_model(

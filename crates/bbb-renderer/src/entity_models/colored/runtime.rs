@@ -1342,11 +1342,35 @@ fn enderman_limb_swing_parts(
 }
 
 fn emit_iron_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &head_first_colored_head_look_parts(&IRON_GOLEM_PARTS, instance),
-        entity_model_root_transform(instance),
+    // Vanilla `IronGolemModel.setupAnim` swings the legs `±1.5 * triangleWave(pos, 13)
+    // * speed` and, in the default (non-attack, non-flower) branch, the arms
+    // `(-0.2 ± 1.5 * triangleWave(pos, 13)) * speed`, after the full head look. The
+    // attack swing and the offer-flower arm pose are deferred event animations.
+    let parts = iron_golem_walk_parts(
+        head_first_colored_head_look_parts(&IRON_GOLEM_PARTS, instance),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+}
+
+/// Applies the vanilla `IronGolemModel.setupAnim` walking limb swing
+/// ([`iron_golem_walk_pose`]) to a colored iron golem layer's arm and leg parts.
+/// Borrows the static parts unchanged at rest (`walkAnimationSpeed == 0`).
+fn iron_golem_walk_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for (index, part) in iron_golem_walk_part_roles() {
+        owned[index].pose =
+            iron_golem_walk_pose(owned[index].pose, limb_swing, limb_swing_amount, part);
+    }
+    Cow::Owned(owned)
 }
 
 fn emit_snow_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

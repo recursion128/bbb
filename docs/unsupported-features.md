@@ -292,9 +292,11 @@ When an agent does any of the following, update this file in the same slice:
       player model (`PlayerModel extends HumanoidModel`, remote players, colored and
       textured, wide and slim, the pants children riding the leg parts), and the
       enderman (`EndermanModel extends HumanoidModel`, the inherited swing halved and
-      clamped to `[-0.4, 0.4]`). The remaining slices consume them in the other model
-      families' `setupAnim` (iron/snow golem, ravager, spider, wolf, birds, fish, etc.,
-      plus the `HumanoidModel`/illager/villager arm and ear/nose poses).
+      clamped to `[-0.4, 0.4]`), and the iron golem (`IronGolemModel`, a triangle-wave
+      gait swinging both legs and — its only walk-driven arm animation — the arms). The
+      remaining slices consume them in the other model families' `setupAnim` (snow
+      golem, ravager, spider, wolf, birds, fish, etc., plus the `HumanoidModel`/illager/
+      villager arm and ear/nose poses).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -488,7 +490,16 @@ When an agent does any of the following, update this file in the same slice:
     uses a dedicated `enderman_leg_swing_pose`: `EndermanModel extends HumanoidModel`,
     so `super.setupAnim` sets the inherited swing, then the enderman halves it
     (`*= 0.5`) and clamps it to `[-0.4, 0.4]` (legs at `[4, 5]`); its arm halve/clamp,
-    carried-block arm pose, and creepy attack pose are deferred. Deferred:
+    carried-block arm pose, and creepy attack pose are deferred. The iron golem
+    (`emit_iron_golem_model` colored and `emit_iron_golem_textured_model` textured) uses
+    `iron_golem_walk_pose`: `IronGolemModel` is a custom `EntityModel` whose
+    `setupAnim` swings both the legs (`±1.5 * Mth.triangleWave(pos, 13) * speed`) and —
+    in its default non-attack/non-flower branch — the arms (`(-0.2 ± 1.5 *
+    triangleWave(pos, 13)) * speed`), a triangle-wave gait rather than a cosine one; the
+    arms sit at part offset `x = 0`, so the right/left role is fixed by slot (arms
+    `[2, 3]`, legs `[4, 5]`). This is the first model whose **arm** swing is a pure
+    walk-driven animation (so it is implemented); the attack swing and the offer-flower
+    arm pose are deferred event animations. Deferred:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
@@ -500,12 +511,13 @@ When an agent does any of the following, update this file in the same slice:
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
     tilt, the `HoglinModel` ear sway and headbutt head tilt, the `EndermanModel` arm
-    halve/clamp, carried-block arm pose, and creepy attack pose,
+    halve/clamp, carried-block arm pose, and creepy attack pose, the `IronGolemModel`
+    attack swing and offer-flower arm pose,
     item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (iron/snow golem, ravager, spider, wolf, birds, fish, etc.) are the next slices.
+    (snow golem, ravager, spider, wolf, birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
