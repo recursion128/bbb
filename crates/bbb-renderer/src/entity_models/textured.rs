@@ -15,9 +15,9 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, cow_head_part_index, head_first_part_index,
-        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_head_part_index, humanoid_leg_swing_pose, limb_swing_at_rest,
+        apply_polar_bear_standing_pose, cow_head_part_index, half_amplitude_leg_swing_pose,
+        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
+        head_yaw_at_rest, hoglin_head_part_index, humanoid_leg_swing_pose, limb_swing_at_rest,
         parched_head_part_index, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
@@ -383,6 +383,61 @@ fn emit_humanoid_textured_passes(
     }
 }
 
+/// Right/left leg part indices in the adult villager / witch / wandering-trader
+/// textured layers: the combined `arms` part is at slot `2`, then the legs at
+/// `[3, 4]`.
+const VILLAGER_ADULT_LEG_PART_INDICES: [usize; 2] = [3, 4];
+
+/// Right/left leg part indices in the baby villager textured layer, which reorders
+/// the parts and lists the legs at `[1, 2]`.
+const VILLAGER_BABY_LEG_PART_INDICES: [usize; 2] = [1, 2];
+
+/// Emits an `IllagerModel`/`VillagerModel`/`WitchModel` family entity's textured
+/// layer passes, applying the vanilla head look ([`head_look_pose`]) to the head
+/// part at `head_index` and the half-amplitude leg swing
+/// ([`half_amplitude_leg_swing_pose`]) to the two leg parts at `leg_indices`. The
+/// static parts are reused unchanged while both the head is level/aligned and the
+/// legs are at rest. The combined `arms` part, the witch nose bob, and the villager
+/// unhappy head shake are deferred.
+#[allow(clippy::too_many_arguments)]
+fn emit_villager_family_textured_passes(
+    meshes: &mut EntityModelTexturedMeshes,
+    passes: Vec<EntityModelLayerPass>,
+    head_index: usize,
+    leg_indices: [usize; 2],
+    transform: Mat4,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in passes {
+        if head_resting && legs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+                }
+            }
+            if !legs_resting {
+                for index in leg_indices {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose =
+                            half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
+}
+
 /// Emits textured layer passes, applying the vanilla `QuadrupedModel`/
 /// `HumanoidModel.setupAnim` head look to each pass's head part at `head_index`.
 /// The static parts are reused unchanged while the head is level and aligned
@@ -525,10 +580,11 @@ fn emit_witch_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
+    emit_villager_family_textured_passes(
         meshes,
         witch_textured_layer_passes(),
         villager_head_part_index(false),
+        VILLAGER_ADULT_LEG_PART_INDICES,
         villager_adult_model_root_transform(instance),
         instance,
         atlas,
@@ -680,10 +736,16 @@ fn emit_villager_textured_model(
     } else {
         villager_adult_model_root_transform(instance)
     };
-    emit_textured_passes_with_head_look(
+    let leg_indices = if baby {
+        VILLAGER_BABY_LEG_PART_INDICES
+    } else {
+        VILLAGER_ADULT_LEG_PART_INDICES
+    };
+    emit_villager_family_textured_passes(
         meshes,
         villager_textured_layer_passes(baby),
         villager_head_part_index(baby),
+        leg_indices,
         transform,
         instance,
         atlas,
@@ -695,10 +757,11 @@ fn emit_wandering_trader_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
+    emit_villager_family_textured_passes(
         meshes,
         wandering_trader_textured_layer_passes(),
         villager_head_part_index(false),
+        VILLAGER_ADULT_LEG_PART_INDICES,
         villager_adult_model_root_transform(instance),
         instance,
         atlas,

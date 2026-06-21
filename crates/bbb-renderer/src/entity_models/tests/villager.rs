@@ -516,6 +516,110 @@ fn villager_textured_mesh_applies_head_look() {
     assert_eq!(baby_resting.vertices[0..24], baby_looking.vertices[0..24]);
 }
 
+#[test]
+fn villager_family_swings_its_legs_when_walking() {
+    // `VillagerModel.setupAnim` swings the legs `cos(pos * 0.6662 [+ π]) * 1.4 *
+    // speed * 0.5` (half the `HumanoidModel` amplitude). A standing villager is inert
+    // and a walking one differs, for the adult and baby layers and the wandering
+    // trader (which reuses the adult layer). The adult-size legs (12 tall) also lift
+    // the feet and splay along Z; the baby's short 3-px legs swing too but the motion
+    // stays inside the larger head/body bounding box, so only the adult-size models
+    // assert the extent change. The combined `arms` part and unhappy head shake defer.
+    let instances: [(&str, EntityModelInstance, bool); 3] = [
+        (
+            "villager_adult",
+            EntityModelInstance::villager(300, [0.0, 64.0, 0.0], 0.0, false),
+            true,
+        ),
+        (
+            "villager_baby",
+            EntityModelInstance::villager(301, [0.0, 64.0, 0.0], 0.0, true),
+            false,
+        ),
+        (
+            "wandering_trader",
+            EntityModelInstance::wandering_trader(302, [0.0, 64.0, 0.0], 0.0),
+            true,
+        ),
+    ];
+    for (name, base, adult_size) in instances {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+
+        if adult_size {
+            let (rest_min, rest_max) = mesh_extents(&rest);
+            let (walk_min, walk_max) = mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "{name}: a walking villager's feet should lift off the ground"
+            );
+            assert!(
+                (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+                "{name}: a walking villager's legs should splay along Z"
+            );
+        }
+    }
+}
+
+#[test]
+fn villager_family_textured_mesh_swings_legs_when_walking() {
+    // The real villager render path (texture-backed) swings the same half-amplitude
+    // legs. A standing villager is byte-identical however far the swing position has
+    // advanced; a walking one differs, for the adult/baby layers and trader. The
+    // adult-size models also lift their feet (the baby's short legs stay inside the
+    // head/body box, as in the colored test).
+    let (atlas, _) = build_entity_model_texture_atlas(&villager_texture_images()).unwrap();
+    let instances: [(&str, EntityModelInstance, bool); 3] = [
+        (
+            "villager_adult",
+            EntityModelInstance::villager(303, [0.0, 64.0, 0.0], 0.0, false),
+            true,
+        ),
+        (
+            "villager_baby",
+            EntityModelInstance::villager(304, [0.0, 64.0, 0.0], 0.0, true),
+            false,
+        ),
+        (
+            "wandering_trader",
+            EntityModelInstance::wandering_trader(305, [0.0, 64.0, 0.0], 0.0),
+            true,
+        ),
+    ];
+    for (name, base, adult_size) in instances {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{name}: a standing villager is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{name}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{name}: a walking villager differs"
+        );
+
+        if adult_size {
+            let (rest_min, rest_max) = textured_mesh_extents(&resting);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "{name}: a walking villager's feet should lift off the ground"
+            );
+        }
+    }
+}
+
 fn villager_texture_images() -> Vec<EntityModelTextureImage> {
     villager_entity_texture_refs()
         .iter()

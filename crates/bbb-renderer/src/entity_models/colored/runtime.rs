@@ -796,23 +796,45 @@ fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
             villager_adult_model_root_transform(instance),
         )
     };
-    emit_model_parts(
-        mesh,
-        &villager_colored_head_look_parts(parts, villager_head_part_index(baby), instance),
-        transform,
+    // `VillagerModel.setupAnim` swings the legs `cos(pos * 0.6662 [+ π]) * 1.4 *
+    // speed * 0.5` (half the `HumanoidModel` amplitude, no riding branch) after the
+    // head look. The combined `arms` part and the unhappy head shake are deferred.
+    let parts = half_amplitude_limb_swing_parts(
+        villager_colored_head_look_parts(parts, villager_head_part_index(baby), instance),
+        villager_leg_part_indices(baby),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, transform);
+}
+
+/// The right/left leg part indices in the villager body layers. The adult layer
+/// lists the combined `arms` part at slot `2` then the legs at `[3, 4]`; the baby
+/// layer reorders the parts and lists the legs at `[1, 2]`.
+/// [`half_amplitude_leg_swing_pose`] resolves each leg's phase from its offset, so
+/// only the slot positions differ.
+fn villager_leg_part_indices(baby: bool) -> [usize; 2] {
+    if baby {
+        [1, 2]
+    } else {
+        [3, 4]
+    }
 }
 
 fn emit_wandering_trader_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &villager_colored_head_look_parts(
+    // The wandering trader uses the adult `VillagerModel` layer, so its legs swing
+    // the same half-amplitude swing (legs at `[3, 4]`).
+    let parts = half_amplitude_limb_swing_parts(
+        villager_colored_head_look_parts(
             &ADULT_VILLAGER_PARTS,
             villager_head_part_index(false),
             instance,
         ),
-        villager_adult_model_root_transform(instance),
+        villager_leg_part_indices(false),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
 }
 
 /// Applies the vanilla `VillagerModel`/`IllagerModel`/`WitchModel.setupAnim` head
@@ -960,11 +982,16 @@ fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
 }
 
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &villager_colored_head_look_parts(&WITCH_PARTS, villager_head_part_index(false), instance),
-        villager_adult_model_root_transform(instance),
+    // `WitchModel.setupAnim` swings the legs `cos(pos * 0.6662 [+ π]) * 1.4 * speed *
+    // 0.5` (half amplitude, legs at `[3, 4]`) after the head look. The nose bob/hold
+    // pose and the combined `arms` part are deferred.
+    let parts = half_amplitude_limb_swing_parts(
+        villager_colored_head_look_parts(&WITCH_PARTS, villager_head_part_index(false), instance),
+        villager_leg_part_indices(false),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
 }
 
 fn emit_illager_model(
@@ -975,9 +1002,9 @@ fn emit_illager_model(
     // `IllagerModel.setupAnim` (the non-riding branch) swings the legs
     // `cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5` after the head look. It is not a
     // `HumanoidModel` (the extra `0.5` factor and the per-family part order differ),
-    // so it uses the dedicated `illager_leg_swing_pose` and its own leg indices. The
+    // so it uses the dedicated `half_amplitude_leg_swing_pose` and its own leg indices. The
     // arm swing/arm poses and the riding sit pose are deferred.
-    let parts = illager_limb_swing_parts(
+    let parts = half_amplitude_limb_swing_parts(
         villager_colored_head_look_parts(
             illager_model_parts(family),
             villager_head_part_index(false),
@@ -1003,7 +1030,7 @@ fn illager_model_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
 /// The right/left leg part indices in each illager body layer. The crossed-arms
 /// layouts (evoker, vindicator, illusioner) carry one combined crossed-arm part at
 /// slot `2` and list the legs at `[3, 4]`; the uncrossed pillager layout lists the
-/// legs at `[2, 3]` before its two separate arms. [`illager_leg_swing_pose`]
+/// legs at `[2, 3]` before its two separate arms. [`half_amplitude_leg_swing_pose`]
 /// resolves each leg's phase from its offset, so only the slot positions differ.
 fn illager_leg_part_indices(family: IllagerModelFamily) -> [usize; 2] {
     match family {
@@ -1014,12 +1041,12 @@ fn illager_leg_part_indices(family: IllagerModelFamily) -> [usize; 2] {
     }
 }
 
-/// Applies the vanilla `IllagerModel.setupAnim` leg swing
-/// ([`illager_leg_swing_pose`]) to a colored illager layer's two leg parts at
+/// Applies the vanilla half-amplitude leg swing ([`half_amplitude_leg_swing_pose`])
+/// to a colored `IllagerModel`/`VillagerModel`/`WitchModel` layer's two leg parts at
 /// `leg_indices`. Borrows the static parts unchanged at rest
-/// (`walkAnimationSpeed == 0`). The arm swing/arm poses are left to the deferred
-/// illager arm animations.
-fn illager_limb_swing_parts(
+/// (`walkAnimationSpeed == 0`). The arm/nose poses and the illager riding sit pose
+/// are left to the deferred animations.
+fn half_amplitude_limb_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     leg_indices: [usize; 2],
     limb_swing: f32,
@@ -1031,7 +1058,7 @@ fn illager_limb_swing_parts(
     let mut owned = parts.into_owned();
     for index in leg_indices {
         if let Some(leg) = owned.get_mut(index) {
-            leg.pose = illager_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+            leg.pose = half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
         }
     }
     Cow::Owned(owned)

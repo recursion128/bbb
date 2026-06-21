@@ -192,13 +192,13 @@ fn illager_texture_refs_match_vanilla_renderers() {
 }
 
 #[test]
-fn illager_leg_swing_pose_applies_vanilla_half_amplitude() {
+fn half_amplitude_leg_swing_pose_applies_vanilla_half_amplitude() {
     // Vanilla IllagerModel.setupAnim (non-riding): rightLeg.xRot =
     // cos(pos * 0.6662) * 1.4 * speed * 0.5 (in phase), leftLeg.xRot =
     // cos(pos * 0.6662 + π) * 1.4 * speed * 0.5 (out of phase). The extra 0.5 factor
     // (vs HumanoidModel's 1.4 * speed) is what makes the illager-specific pose. The
     // illager body layers place the right leg at offset x = -2 and the left at x = +2.
-    let right = illager_leg_swing_pose(
+    let right = half_amplitude_leg_swing_pose(
         PartPose {
             offset: [-2.0, 12.0, 0.0],
             rotation: [0.0, 0.0, 0.0],
@@ -206,7 +206,7 @@ fn illager_leg_swing_pose_applies_vanilla_half_amplitude() {
         0.0,
         1.0,
     );
-    let left = illager_leg_swing_pose(
+    let left = half_amplitude_leg_swing_pose(
         PartPose {
             offset: [2.0, 12.0, 0.0],
             rotation: [0.0, 0.0, 0.0],
@@ -227,7 +227,7 @@ fn illager_leg_swing_pose_applies_vanilla_half_amplitude() {
 
     // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5.
     let phase = 1.5_f32 * 0.6662;
-    let right = illager_leg_swing_pose(
+    let right = half_amplitude_leg_swing_pose(
         PartPose {
             offset: [-2.0, 12.0, 0.0],
             rotation: [0.0, 0.0, 0.0],
@@ -235,7 +235,7 @@ fn illager_leg_swing_pose_applies_vanilla_half_amplitude() {
         1.5,
         0.5,
     );
-    let left = illager_leg_swing_pose(
+    let left = half_amplitude_leg_swing_pose(
         PartPose {
             offset: [2.0, 12.0, 0.0],
             rotation: [0.0, 0.0, 0.0],
