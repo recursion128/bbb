@@ -893,9 +893,20 @@ fn emit_goat_model(
         )
     };
     let transform = entity_model_root_transform(instance);
+    // Vanilla `GoatModel extends QuadrupedModel`: `setupAnim` runs `super.setupAnim`
+    // (the `QuadrupedModel` leg swing) before its horn visibility and ramming head
+    // override, so the four legs swing. Pre-pose the legs (the swing touches only the
+    // leg parts, leaving the head for `emit_goat_parts` to look at). The ramming head
+    // tilt is a deferred event animation.
+    let posed = quadruped_limb_swing_parts(
+        Cow::Borrowed(parts),
+        goat_leg_part_indices(baby),
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+    );
     emit_goat_parts(
         mesh,
-        parts,
+        &posed,
         transform,
         head_index,
         left_horn_child_index,
@@ -905,6 +916,18 @@ fn emit_goat_model(
         instance.render_state.head_yaw,
         instance.render_state.head_pitch,
     );
+}
+
+/// The four leg part indices in the goat body layers. The adult layer lists the
+/// head and body at `0`/`1` then the legs at `[2, 3, 4, 5]`; the baby layer lists
+/// the legs first at `[0, 1, 2, 3]` (head at `5`). [`quadruped_leg_swing_pose`]
+/// resolves each leg's phase from its offset, so only the slot positions differ.
+fn goat_leg_part_indices(baby: bool) -> [usize; 4] {
+    if baby {
+        [0, 1, 2, 3]
+    } else {
+        [2, 3, 4, 5]
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -275,8 +275,9 @@ When an agent does any of the following, update this file in the same slice:
       through `EntityModelSourceState.walk_animation_position`/`_speed` to the
       renderer `EntityRenderState.walk_animation_pos`/`_speed`, the `QuadrupedModel`
       leg sway consumes them in the generic quadruped path and the dedicated
-      `CowModel`, `PigModel`, and `SheepModel` paths (all variants, wool layers, baby
-      layers), and the `HumanoidModel` leg sway consumes them in the zombie family
+      `CowModel`, `PigModel`, `SheepModel`, and `GoatModel` paths (all variants, wool
+      layers, baby layers, the goat's per-baby leg order and horn-visibility layer),
+      and the `HumanoidModel` leg sway consumes them in the zombie family
       (zombie, husk, drowned, zombie villager) and the skeleton family (skeleton,
       stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
       Stray/Bogged clothing overlay, since the overlay's layer `SkeletonModel` runs the
@@ -428,11 +429,13 @@ When an agent does any of the following, update this file in the same slice:
     hind-left/front-right pair a half-cycle out of phase with the hind-right/front-left
     pair (resolved from each leg part's `x * z < 0` offset, so the differing leg
     order of the adult and baby layers does not matter). It is consumed by the generic
-    `emit_quadruped_model` path and the dedicated `CowModel`, `PigModel`, and
-    `SheepModel` paths (both the colored and textured renders, every variant, the wool
-    layers, and the baby layers; `PigModel`/`SheepModel` extend `QuadrupedModel`, with
-    `SheepModel.setupAnim` running `super.setupAnim` — the leg swing — before its
-    eat-grass head pose), so a walking quadruped's legs swing (`0.0` for a standing
+    `emit_quadruped_model` path and the dedicated `CowModel`, `PigModel`, `SheepModel`,
+    and `GoatModel` paths (both the colored and textured renders, every variant, the
+    wool layers, and the baby layers; `PigModel`/`SheepModel`/`GoatModel` extend
+    `QuadrupedModel`, with `SheepModel.setupAnim` running `super.setupAnim` — the leg
+    swing — before its eat-grass head pose, and `GoatModel.setupAnim` running it before
+    its horn visibility and ramming head tilt, the legs at `[2, 3, 4, 5]` adult /
+    `[0, 1, 2, 3]` baby), so a walking quadruped's legs swing (`0.0` for a standing
     entity, every non-living entity, and the deferred overrides below). The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
@@ -473,9 +476,10 @@ When an agent does any of the following, update this file in the same slice:
     zombie held-out arms, skeleton aiming, the `AbstractPiglinModel` ear sway and
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
-    head shake and the `WitchModel` nose bob/hold pose, item/attack/crouch/swim/elytra
-    poses, and the always-on arm bob, and the player crouch/swim/elytra `speedValue`
-    poses) are separate animations driven by states the client does not yet track;
+    head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
+    tilt, item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
+    player crouch/swim/elytra `speedValue` poses) are separate animations driven by
+    states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
     (birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.

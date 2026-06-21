@@ -889,12 +889,24 @@ fn emit_goat_textured_model(
     };
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
-    // All passes share one visibility-filtered part array (like the player), so
-    // the head look is applied once to the head part before emitting every pass.
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    // All passes share one visibility-filtered part array (like the player), so the
+    // head look and the `QuadrupedModel` leg swing are applied once to the head and
+    // four leg parts before emitting every pass. The adult layer lists the legs at
+    // [2, 3, 4, 5], the baby layer at [0, 1, 2, 3].
+    let leg_indices: [usize; 4] = if baby { [0, 1, 2, 3] } else { [2, 3, 4, 5] };
     let mut visible_parts = goat_visible_textured_model_parts(baby, left_horn, right_horn);
     if !head_look_at_rest(head_yaw, head_pitch) {
         if let Some(head) = visible_parts.get_mut(head_index) {
             head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+        }
+    }
+    if !limb_swing_at_rest(limb_swing_amount) {
+        for index in leg_indices {
+            if let Some(leg) = visible_parts.get_mut(index) {
+                leg.pose = quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+            }
         }
     }
     for pass in goat_textured_layer_passes(baby) {

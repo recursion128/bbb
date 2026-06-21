@@ -452,6 +452,96 @@ fn goat_textured_meshes_apply_head_look() {
     }
 }
 
+#[test]
+fn goat_swings_its_legs_when_walking() {
+    // Vanilla `GoatModel extends QuadrupedModel`: `setupAnim` runs `super.setupAnim`
+    // (the diagonal `QuadrupedModel` leg swing) before the horn visibility and the
+    // ramming head tilt, so the four legs swing. A standing goat is inert; a walking
+    // adult lifts its feet and splays its legs along Z; the baby's short legs swing
+    // too but the motion stays inside its bounding box, so only the adult asserts the
+    // extent change. The ramming head tilt is deferred. Colored path.
+    for (name, base, adult_size) in [
+        (
+            "goat_adult",
+            EntityModelInstance::goat(450, [0.0, 64.0, 0.0], 0.0, false, true, true),
+            true,
+        ),
+        (
+            "goat_baby",
+            EntityModelInstance::goat(451, [0.0, 64.0, 0.0], 0.0, true, true, true),
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+
+        if adult_size {
+            let (rest_min, rest_max) = mesh_extents(&rest);
+            let (walk_min, walk_max) = mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "{name}: a walking goat's feet should lift off the ground"
+            );
+            assert!(
+                (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+                "{name}: a walking goat's legs should splay along Z"
+            );
+        }
+    }
+}
+
+#[test]
+fn goat_textured_mesh_swings_legs_when_walking() {
+    // The real goat render path (texture-backed) swings the same `QuadrupedModel`
+    // legs on the shared visibility-filtered part array. A standing goat is
+    // byte-identical however far the swing position has advanced; a walking adult
+    // lifts its feet.
+    let (atlas, _) = build_entity_model_texture_atlas(&goat_texture_images()).unwrap();
+    for (name, base, adult_size) in [
+        (
+            "goat_adult",
+            EntityModelInstance::goat(452, [0.0, 64.0, 0.0], 0.0, false, true, true),
+            true,
+        ),
+        (
+            "goat_baby",
+            EntityModelInstance::goat(453, [0.0, 64.0, 0.0], 0.0, true, true, true),
+            false,
+        ),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{name}: a standing goat is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{name}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{name}: a walking goat differs"
+        );
+
+        if adult_size {
+            let (rest_min, rest_max) = textured_mesh_extents(&resting);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            assert!(
+                (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+                "{name}: a walking goat's feet should lift off the ground"
+            );
+        }
+    }
+}
+
 fn goat_texture_images() -> Vec<EntityModelTextureImage> {
     goat_entity_texture_refs()
         .iter()
