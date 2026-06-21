@@ -120,6 +120,19 @@ fn head_part_indices_match_vanilla_body_layers() {
         BABY_HOGLIN_PARTS[hoglin_head_part_index(true)].cubes,
         BABY_HOGLIN_HEAD.as_slice()
     );
+
+    // The ravager nests its head inside the neck: neck is part 0, the head is the
+    // neck's first (only) child.
+    assert_eq!(ravager_neck_part_index(), 0);
+    assert_eq!(ravager_head_child_index(), 0);
+    assert_eq!(
+        RAVAGER_PARTS[ravager_neck_part_index()].cubes,
+        RAVAGER_NECK.as_slice()
+    );
+    assert_eq!(
+        RAVAGER_NECK_CHILDREN[ravager_head_child_index()].cubes,
+        RAVAGER_HEAD.as_slice()
+    );
 }
 
 #[test]
@@ -553,6 +566,29 @@ fn standing_polar_bear_colored_mesh_composes_head_look_with_rear() {
         standing_looking.vertices[0..96],
         flat_looking.vertices[0..96]
     );
+}
+
+#[test]
+fn ravager_colored_mesh_turns_nested_head_not_neck_or_body() {
+    // Emit order: neck cube (verts 0..24), head cubes + horn/mouth children
+    // (24..144), then body and legs (144..). Head look rotates the nested head
+    // subtree only, leaving the neck cube and the body/legs untouched.
+    let base = EntityModelInstance::ravager(780, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    // The neck cube (the head's parent) stays put.
+    assert_eq!(resting.vertices[0..24], yawed.vertices[0..24]);
+    assert_eq!(resting.vertices[0..24], pitched.vertices[0..24]);
+    // The head + horns + mouth turn.
+    assert_ne!(resting.vertices[24..144], yawed.vertices[24..144]);
+    assert_ne!(resting.vertices[24..144], pitched.vertices[24..144]);
+    assert_ne!(yawed.vertices[24..144], pitched.vertices[24..144]);
+    // Body and legs stay put.
+    assert_eq!(resting.vertices[144..], yawed.vertices[144..]);
+    assert_eq!(resting.vertices[144..], pitched.vertices[144..]);
 }
 
 #[test]

@@ -236,6 +236,24 @@ fn ravager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     assert_close3(actual_max, expected_max);
 }
 
+#[test]
+fn ravager_textured_mesh_turns_nested_head_not_neck_or_body() {
+    let (atlas, _) = build_entity_model_texture_atlas(&ravager_texture_images()).unwrap();
+    let base = EntityModelInstance::ravager(110, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let yawed = entity_model_textured_mesh(&[base.with_head_look(50.0, 0.0)], &atlas);
+    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+
+    // Emit order matches the colored path: neck cube (verts 0..24), head + horn/
+    // mouth children (24..144), then body and legs (144..). The vanilla look turns
+    // the nested head only; the neck cube and the body/legs stay put.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_eq!(resting.vertices[0..24], yawed.vertices[0..24]);
+    assert_ne!(resting.vertices[24..144], yawed.vertices[24..144]);
+    assert_ne!(yawed.vertices[24..144], pitched.vertices[24..144]);
+    assert_eq!(resting.vertices[144..], yawed.vertices[144..]);
+}
+
 fn ravager_texture_images() -> Vec<EntityModelTextureImage> {
     ravager_entity_texture_refs()
         .iter()

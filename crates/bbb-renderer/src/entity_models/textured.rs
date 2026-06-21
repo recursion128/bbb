@@ -8,8 +8,9 @@ use super::{
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{
-        emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
-        EntityModelTexturedMesh, TexturedModelPartDesc,
+        emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
+        fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh,
+        TexturedModelPartDesc,
     },
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
@@ -18,8 +19,10 @@ use super::{
         head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
         hoglin_head_part_index, parched_head_part_index, pig_head_part_index,
         player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
+        ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
+        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
+        RAVAGER_TEXTURED_PARTS,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -512,8 +515,54 @@ fn emit_ravager_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
     for pass in ravager_textured_layer_passes() {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        if head_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            continue;
+        }
+        // Vanilla nests the ravager head inside the neck (`neck.getChild("head")`).
+        // The neck's children list is static, so emit the neck subtree by hand,
+        // applying the look to the head child (its horn/mouth children inherit it).
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        let mesh = meshes.mesh_mut(pass.render_type);
+        let neck = &RAVAGER_TEXTURED_PARTS[ravager_neck_part_index()];
+        let neck_transform = transform * part_pose_transform(neck.pose);
+        for cube in neck.cubes {
+            emit_textured_model_cube(
+                mesh,
+                neck_transform,
+                *cube,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
+        let head = RAVAGER_TEXTURED_NECK_CHILDREN[ravager_head_child_index()];
+        let looked_head = TexturedModelPartDesc {
+            pose: head_look_pose(head.pose, head_yaw, head_pitch),
+            ..head
+        };
+        emit_textured_model_parts(
+            mesh,
+            &[looked_head],
+            neck_transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+        emit_textured_model_parts(
+            mesh,
+            &RAVAGER_TEXTURED_PARTS[ravager_neck_part_index() + 1..],
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
     }
 }
 

@@ -479,7 +479,33 @@ fn emit_hoglin_model(
 }
 
 fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(mesh, &RAVAGER_PARTS, entity_model_root_transform(instance));
+    let transform = entity_model_root_transform(instance);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    if head_look_at_rest(head_yaw, head_pitch) {
+        emit_model_parts(mesh, &RAVAGER_PARTS, transform);
+        return;
+    }
+    // Vanilla `RavagerModel.setupAnim` sets `head.xRot`/`head.yRot` from the look,
+    // but the head is `neck.getChild("head")`. The neck's children list is static
+    // (can't be swapped for an owned copy), so emit the neck subtree by hand: the
+    // neck cubes, then the head child carrying the look (its horn/mouth children
+    // inherit the rotation as in vanilla), keeping the original emit order.
+    let neck = &RAVAGER_PARTS[ravager_neck_part_index()];
+    let neck_transform = transform * part_pose_transform(neck.pose);
+    for cube in neck.cubes {
+        emit_model_cube(mesh, neck_transform, *cube);
+    }
+    let head = RAVAGER_NECK_CHILDREN[ravager_head_child_index()];
+    let looked_head = ModelPartDesc {
+        pose: head_look_pose(head.pose, head_yaw, head_pitch),
+        ..head
+    };
+    emit_model_parts(mesh, &[looked_head], neck_transform);
+    // The remaining body and leg parts are unaffected by the head look.
+    for part in &RAVAGER_PARTS[ravager_neck_part_index() + 1..] {
+        emit_model_part(mesh, part, transform);
+    }
 }
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

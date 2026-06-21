@@ -101,6 +101,18 @@ pub(in crate::entity_models) const fn hoglin_head_part_index(baby: bool) -> usiz
     }
 }
 
+/// `RavagerModel` neck-part index. The ravager body layer lists the neck first;
+/// vanilla nests the head inside the neck (`neck.getChild("head")`).
+pub(in crate::entity_models) const fn ravager_neck_part_index() -> usize {
+    0
+}
+
+/// Index of the head within the ravager neck's children. The neck has a single
+/// child, the head, which in turn parents the horns and mouth.
+pub(in crate::entity_models) const fn ravager_head_child_index() -> usize {
+    0
+}
+
 /// True when a head has no look turn (head aligned with the body and level), so
 /// callers can borrow the static parts unchanged instead of cloning to apply
 /// [`head_look_pose`].

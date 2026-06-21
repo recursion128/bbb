@@ -324,11 +324,12 @@ When an agent does any of the following, update this file in the same slice:
     delta, matching vanilla's `super.setupAnim` then `head.xRot += standScale * π *
     0.15` order; the hoglin/zoglin (colored+textured) apply the vanilla yaw-only
     look (`head.yRot = yRot * π/180`) while keeping `head.xRot` at the fixed
-    headbutt-rest tilt `HOGLIN_HEAD_X_ROT`. The remaining head-look gaps are the
-    ravager's neck-nested head (head is a child of the `neck` part, needs nested
-    rotation), the fall-flying/swimming `head.xRot` overrides (currently untracked,
-    default upright), and the placeholder raw-cuboid `Humanoid` fallback path (not
-    yet a vanilla-faithful part-list model).
+    headbutt-rest tilt `HOGLIN_HEAD_X_ROT`; and the ravager (colored+textured),
+    whose head is `neck.getChild("head")` — the neck subtree is emitted by hand so
+    the nested head carries the look while its horn/mouth children inherit it. The
+    remaining head-look gaps are the fall-flying/swimming `head.xRot` overrides
+    (currently untracked, default upright) and the placeholder raw-cuboid
+    `Humanoid` fallback path (not yet a vanilla-faithful part-list model).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -548,10 +549,13 @@ When an agent does any of the following, update this file in the same slice:
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official
       `textures/entity/illager/ravager.png` texture reference, and
-      `ModelLayers.RAVAGER`, texture-backed base layer pass emission, and
-      official PNG atlas upload/bind/sample path; attack neck motion, stunned
-      neck/mouth animation, roar mouth animation, head rotation, leg walk
-      animation, and lighting remain unsupported
+      `ModelLayers.RAVAGER`, texture-backed base layer pass emission,
+      official PNG atlas upload/bind/sample path, and the vanilla
+      `RavagerModel.setupAnim` head look (`head.xRot/yRot = xRot/yRot * π/180`) on
+      the neck-nested head part — the neck subtree is emitted by hand so the head
+      carries the look while its horn/mouth children inherit it (colored and
+      textured); attack neck motion, stunned neck/mouth animation, roar mouth
+      animation, leg walk animation, and lighting remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
