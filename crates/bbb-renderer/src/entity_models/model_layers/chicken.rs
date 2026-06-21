@@ -280,6 +280,19 @@ pub(in crate::entity_models) const BABY_CHICKEN_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
+/// The two leg part indices in the chicken body layers. The adult and cold layers
+/// list head and body at `0`/`1` then the legs at `[2, 3]`; the baby layer has no head
+/// (its beak is baked into the body cube), so the body is at `0` and the legs at
+/// `[1, 2]`. [`super::humanoid_leg_swing_pose`] resolves each leg's phase from its `x`
+/// sign, so only the slot positions differ.
+pub(in crate::entity_models) fn chicken_leg_part_indices(baby: bool) -> [usize; 2] {
+    if baby {
+        [1, 2]
+    } else {
+        [2, 3]
+    }
+}
+
 pub(in crate::entity_models) const MODEL_LAYER_CHICKEN: &str = "minecraft:chicken#main";
 pub(in crate::entity_models) const MODEL_LAYER_CHICKEN_BABY: &str = "minecraft:chicken_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_COLD_CHICKEN: &str = "minecraft:cold_chicken#main";

@@ -298,8 +298,10 @@ When an agent does any of the following, update this file in the same slice:
       amplitude, legs `[2, 3, 4, 5]`), the spider/cave spider (`SpiderModel`, the
       eight legs each sweeping about yRot and stepping about zRot, legs `[3..=10]`), and
       the wolf (`WolfModel`, the non-sitting `QuadrupedModel` diagonal leg swing, legs
-      `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby). The remaining slices consume them in
-      the other model families' `setupAnim` (birds, fish, etc., plus the
+      `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby), and the chicken (`ChickenModel`, the
+      two-leg `HumanoidModel` phase, legs `[2, 3]` adult/cold / `[1, 2]` headless baby).
+      The remaining slices consume them in the other model families' `setupAnim` (fish,
+      other birds, etc., plus the
       `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
       walk-driven swing (its `setupAnim` is the head-yaw twist/orbit, now implemented).
     - deferred slots to add with their own slices, each carrying real vanilla
@@ -551,9 +553,10 @@ When an agent does any of the following, update this file in the same slice:
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (birds, fish, etc.) are the next slices, plus the wolf tail wag and the several
-    deferred event/tail poses noted above. (The snow golem has no walk-driven swing; its
-    `setupAnim` head-yaw upper-body twist and arm orbit are implemented.)
+    (fish, other birds, etc.) are the next slices, plus the wolf tail wag, the chicken
+    wing flap (untracked `flap`/`flapSpeed`), and the several deferred event/tail poses
+    noted above. (The snow golem has no walk-driven swing; its `setupAnim` head-yaw
+    upper-body twist and arm orbit are implemented.)
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -687,10 +690,14 @@ When an agent does any of the following, update this file in the same slice:
       registry order, official adult/baby variant texture references, and
       vanilla fallback to temperate when no variant metadata is present,
       texture-backed base layer pass emission, adult/baby/cold model-layer
-      selection, and official PNG atlas upload/bind/sample path; head yaw/pitch,
-      leg walk animation, wing flap animation, variant sound metadata,
-      custom/datapack chicken variant asset decoding, and lighting remain
-      unsupported
+      selection, and official PNG atlas upload/bind/sample path, and the vanilla
+      `ChickenModel.setupAnim` two-leg walk swing (the `HumanoidModel` phase
+      `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[2, 3]` adult/cold and
+      `[1, 2]` on the headless baby layer, on both render paths and every variant
+      pass); the chicken has no head look in vanilla (`ChickenModel` never animates
+      the head). The wing flap animation (driven by the untracked client-side
+      `flap`/`flapSpeed` state), variant sound metadata, custom/datapack chicken
+      variant asset decoding, and lighting remain unsupported
     - pig entities as renderer-owned vanilla 26.1
       `PigModel`, `ColdPigModel`, and `BabyPigModel` body-layer geometry from
       `PigModel`, `ColdPigModel`, `BabyPigModel`, `PigRenderer`,

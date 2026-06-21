@@ -46,11 +46,17 @@ fn entity_model_mesh_with_options(
         match instance.kind {
             EntityModelKind::Chicken { variant, baby } => {
                 if !skip_texture_backed_entities {
-                    emit_model_parts(
-                        &mut mesh,
-                        chicken_model_parts(variant, baby),
-                        entity_model_root_transform(*instance),
+                    // Vanilla `ChickenModel.setupAnim` swings the two legs with the
+                    // `HumanoidModel` phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` (right
+                    // leg in phase, left leg out). The chicken has no head look. The wing
+                    // flap is driven by the untracked `flap`/`flapSpeed` state (deferred).
+                    let parts = humanoid_limb_swing_parts(
+                        Cow::Borrowed(chicken_model_parts(variant, baby)),
+                        chicken_leg_part_indices(baby),
+                        instance.render_state.walk_animation_pos,
+                        instance.render_state.walk_animation_speed,
                     );
+                    emit_model_parts(&mut mesh, &parts, entity_model_root_transform(*instance));
                 }
             }
             EntityModelKind::Pig { variant, baby } => {

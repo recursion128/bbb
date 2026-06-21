@@ -15,11 +15,12 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, cow_head_part_index, enderman_leg_swing_pose,
-        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
-        head_look_yaw_pose, head_yaw_at_rest, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_leg_swing_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
-        limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
+        apply_polar_bear_standing_pose, chicken_leg_part_indices, cow_head_part_index,
+        enderman_leg_swing_pose, half_amplitude_leg_swing_pose, head_first_part_index,
+        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
+        hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_leg_swing_pose,
+        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
+        parched_head_part_index, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
@@ -245,9 +246,27 @@ fn emit_chicken_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // Vanilla `ChickenModel.setupAnim` swings the two legs with the `HumanoidModel`
+    // phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` (right leg in phase, left out). The
+    // chicken has no head look; its wing flap is driven by the untracked `flap`/
+    // `flapSpeed` state (deferred). Every pass shares the body-layer part layout.
     let transform = entity_model_root_transform(instance);
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let leg_indices = chicken_leg_part_indices(baby);
     for pass in chicken_textured_layer_passes(variant, baby) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        if legs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            for index in leg_indices {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
     }
 }
 

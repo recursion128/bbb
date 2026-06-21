@@ -437,6 +437,119 @@ fn chicken_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     assert_eq!(mesh.vertices[432].tint, [1.0, 1.0, 1.0, 1.0]);
 }
 
+#[test]
+fn chicken_swings_its_legs_when_walking() {
+    // Vanilla `ChickenModel.setupAnim` swings the two legs with the `HumanoidModel` phase
+    // `cos(pos * 0.6662 [+ π]) * 1.4 * speed`. A standing chicken is inert; a walking one
+    // lifts its feet off the ground (the adult, cold, and headless-baby layers all show
+    // it). The chicken has no head look; the wing flap is deferred. Colored path.
+    for base in [
+        EntityModelInstance::chicken(26, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::chicken_variant(
+            28,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ChickenModelVariant::Cold,
+            false,
+        ),
+        EntityModelInstance::chicken(27, [0.0, 64.0, 0.0], 0.0, true),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(
+            rest.vertices, still.vertices,
+            "{:?} rest is inert",
+            base.kind
+        );
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices, walking.vertices,
+            "{:?} walking differs",
+            base.kind
+        );
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{:?} feet should lift off the ground",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn chicken_textured_mesh_swings_its_legs_when_walking() {
+    // The real (texture-backed) chicken render path swings the same legs. A standing
+    // chicken is byte-identical however far the swing has advanced; a walking one lifts
+    // its feet while keeping the vertex count.
+    let (atlas, _) = build_entity_model_texture_atlas(&chicken_texture_images()).unwrap();
+    for base in [
+        EntityModelInstance::chicken(426, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::chicken_variant(
+            428,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ChickenModelVariant::Cold,
+            false,
+        ),
+        EntityModelInstance::chicken(427, [0.0, 64.0, 0.0], 0.0, true),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(resting.vertices, still.vertices, "{:?} is inert", base.kind);
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{:?} leg swing keeps the vertex count",
+            base.kind
+        );
+        let (rest_min, rest_max) = textured_mesh_extents(&resting);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{:?} feet should lift off the ground (textured)",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn chicken_leg_swing_matches_vanilla_humanoid_phase() {
+    // Vanilla ChickenModel.setupAnim: rightLeg.xRot = cos(pos*0.6662)*1.4*speed,
+    // leftLeg.xRot = cos(pos*0.6662+π)*1.4*speed — the HumanoidModel phase. The adult and
+    // cold layers list the legs at [2, 3]; the headless baby layer at [1, 2]. The right
+    // leg (offset x < 0) is in phase, the left leg (x > 0) out of phase. Only xRot moves.
+    let pos = 1.3_f32;
+    let speed = 0.7_f32;
+    let phase = pos * 0.6662;
+    for (parts, baby) in [
+        (ADULT_CHICKEN_PARTS.as_slice(), false),
+        (COLD_CHICKEN_PARTS.as_slice(), false),
+        (BABY_CHICKEN_PARTS.as_slice(), true),
+    ] {
+        for index in chicken_leg_part_indices(baby) {
+            let base = parts[index].pose;
+            let posed = humanoid_leg_swing_pose(base, pos, speed);
+            let expected = if base.offset[0] < 0.0 {
+                phase.cos() * 1.4 * speed
+            } else {
+                (phase + std::f32::consts::PI).cos() * 1.4 * speed
+            };
+            assert!(
+                (posed.rotation[0] - expected).abs() < 1e-6,
+                "leg {index} xRot"
+            );
+            assert_eq!(posed.offset, base.offset, "leg {index} offset");
+            assert_eq!(posed.rotation[1], base.rotation[1], "leg {index} yRot");
+            assert_eq!(posed.rotation[2], base.rotation[2], "leg {index} zRot");
+        }
+    }
+}
+
 fn chicken_texture_images() -> Vec<EntityModelTextureImage> {
     chicken_entity_texture_refs()
         .iter()
