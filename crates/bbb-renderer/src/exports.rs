@@ -12,7 +12,7 @@ pub use crate::entity_models::{
     EntityModelInstance, EntityModelKind, EntityModelTextureImage, EntityModelTextureRef,
     EntityRenderState, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily,
     LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-    QuadrupedModelFamily, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    QuadrupedModelFamily, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose,
     UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
 };

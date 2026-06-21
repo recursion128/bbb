@@ -6,6 +6,23 @@ use super::SheepHeadEatPose;
 /// the entity scene projects sampled block+sky light.
 pub const ENTITY_FULL_BRIGHT_LIGHT_COORDS: u32 = 15_728_880;
 
+/// Vanilla sleeping pose (`LivingEntityRenderer.setupRotations`/`submit` when
+/// `state.hasPose(Pose.SLEEPING)`): the entity lies down in a bed. The renderer
+/// skips the usual `180 - bodyRot` body yaw and instead applies `Ry(yaw_angle) *
+/// Rz(getFlipDegrees) * Ry(270)`, plus a world-space bed head-offset translate
+/// before the entity scale.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SleepingPose {
+    /// Vanilla `setupRotations` sleeping `angle` (degrees): the bed-direction
+    /// rotation `sleepDirectionToRotation(bedOrientation)`, or the (shaken) body
+    /// yaw when the entity is not in a bed.
+    pub yaw_angle: f32,
+    /// Vanilla `submit` bed head-offset translate `[-stepX * headOffset, -stepZ *
+    /// headOffset]` in world units, where `headOffset = eyeHeight(STANDING) - 0.1`.
+    /// `[0, 0]` when the entity is not in a bed.
+    pub bed_offset: [f32; 2],
+}
+
 /// Per-frame projection of the vanilla `LivingEntityRenderState` (and its
 /// `EntityRenderState` base) fields that the renderer entity pass consumes.
 ///
@@ -75,6 +92,12 @@ pub struct EntityRenderState {
     /// `None` for every entity that is not upside down (death and the riptide spin
     /// both take precedence over this branch).
     pub upside_down_height: Option<f32>,
+    /// Vanilla `LivingEntityRenderState.hasPose(Pose.SLEEPING)`: when sleeping in a
+    /// bed, the renderer skips the `180 - bodyRot` yaw and lays the model down via
+    /// [`SleepingPose`]. `None` for every entity that is not sleeping. Death and
+    /// the riptide spin take precedence over this branch; this branch takes
+    /// precedence over the upside-down flip.
+    pub sleeping: Option<SleepingPose>,
 }
 
 impl EntityRenderState {
@@ -95,6 +118,7 @@ impl EntityRenderState {
             white_overlay_progress: 0.0,
             auto_spin_age_ticks: None,
             upside_down_height: None,
+            sleeping: None,
         }
     }
 
@@ -194,6 +218,14 @@ impl EntityModelInstance {
     /// `LivingEntityRenderer.setupRotations` upside-down branch.
     pub fn with_upside_down_height(mut self, upside_down_height: Option<f32>) -> Self {
         self.render_state.upside_down_height = upside_down_height;
+        self
+    }
+
+    /// Sets the sleeping-in-bed projection (vanilla
+    /// `LivingEntityRenderState.hasPose(Pose.SLEEPING)`). Drives the
+    /// `LivingEntityRenderer.setupRotations`/`submit` sleeping branch.
+    pub fn with_sleeping(mut self, sleeping: Option<SleepingPose>) -> Self {
+        self.render_state.sleeping = sleeping;
         self
     }
 
@@ -808,6 +840,7 @@ mod tests {
                 white_overlay_progress: 0.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
+                sleeping: None,
             }
         );
     }

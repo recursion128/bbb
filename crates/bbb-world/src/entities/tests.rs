@@ -2,7 +2,8 @@ use super::*;
 
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
-    AttributeSnapshot as ProtocolAttributeSnapshot, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+    AttributeSnapshot as ProtocolAttributeSnapshot, BlockPos as ProtocolBlockPos,
+    BlockUpdate as ProtocolBlockUpdate, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
     DamageEvent as ProtocolDamageEvent, DataComponentPatchSummary,
     EntityAnimation as ProtocolEntityAnimation, EntityDataEnumSerializer,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
@@ -1179,6 +1180,154 @@ fn entity_model_sources_project_dinnerbone_upside_down() {
     ));
     assert!(set_custom_name(&mut store, 82, Some("Dinnerbone")));
     assert!(!source(&store, 82).is_upside_down);
+}
+
+#[test]
+fn sleeping_bed_yaw_and_offset_matches_vanilla() {
+    let eye = 2.0_f32;
+    let ho = eye - 0.1;
+    let bed = |facing: &str| {
+        let mut props = std::collections::BTreeMap::new();
+        props.insert("facing".to_string(), facing.to_string());
+        super::sleeping_bed_yaw_and_offset("minecraft:white_bed", &props, eye)
+    };
+    // Vanilla LivingEntityRenderer.sleepDirectionToRotation + Direction.getStepX/Z;
+    // the head-offset translate is [-stepX * (eye - 0.1), -stepZ * (eye - 0.1)].
+    assert_eq!(bed("south"), Some((90.0, [0.0, -ho])));
+    assert_eq!(bed("west"), Some((0.0, [ho, 0.0])));
+    assert_eq!(bed("north"), Some((270.0, [0.0, ho])));
+    assert_eq!(bed("east"), Some((180.0, [-ho, 0.0])));
+
+    // A non-bed block, or a bed without a facing, never resolves.
+    let mut props = std::collections::BTreeMap::new();
+    props.insert("facing".to_string(), "north".to_string());
+    assert_eq!(
+        super::sleeping_bed_yaw_and_offset("minecraft:stone", &props, eye),
+        None
+    );
+    assert_eq!(
+        super::sleeping_bed_yaw_and_offset(
+            "minecraft:white_bed",
+            &std::collections::BTreeMap::new(),
+            eye,
+        ),
+        None
+    );
+}
+
+#[test]
+fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const POSE_STANDING: i32 = 0;
+    const POSE_SLEEPING: i32 = 2;
+
+    let source = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+    let set_pose = |store: &mut WorldStore, id: i32, pose: i32| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_pose_data(
+                super::dimensions::ENTITY_DATA_POSE_ID,
+                pose,
+            )],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        90,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // An awake (standing) entity is not sleeping.
+    assert!(!source(&store, 90).is_sleeping);
+
+    // Vanilla Pose.SLEEPING marks the entity sleeping; with no bed resolved the bed
+    // yaw/offset stay at the no-bed fallback (the renderer uses the body yaw).
+    assert!(set_pose(&mut store, 90, POSE_SLEEPING));
+    let asleep = source(&store, 90);
+    assert!(asleep.is_sleeping);
+    assert_eq!(asleep.sleeping_bed_yaw, None);
+    assert_eq!(asleep.sleeping_bed_offset, [0.0, 0.0]);
+
+    // Standing again clears it.
+    assert!(set_pose(&mut store, 90, POSE_STANDING));
+    assert!(!source(&store, 90).is_sleeping);
+
+    // A non-living entity (boat) with a SLEEPING pose never sleeps: only
+    // LivingEntityRenderer lays entities down.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        91,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(set_pose(&mut store, 91, POSE_SLEEPING));
+    assert!(!source(&store, 91).is_sleeping);
+}
+
+#[test]
+fn entity_model_sources_resolve_sleeping_bed_orientation() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const POSE_SLEEPING: i32 = 2;
+    const SLEEPING_POS_DATA_ID: u8 = 14;
+    const OPTIONAL_BLOCK_POS_SERIALIZER_ID: i32 = 11;
+
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+
+    // Place a north-facing bed and point the entity's sleeping position at it.
+    let mut bed_props = std::collections::BTreeMap::new();
+    bed_props.insert("facing".to_string(), "north".to_string());
+    bed_props.insert("occupied".to_string(), "false".to_string());
+    bed_props.insert("part".to_string(), "foot".to_string());
+    let bed_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:white_bed", &bed_props)
+        .expect("vanilla 26.1 north white_bed state exists")
+        .id;
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 2, y: 1, z: 2 },
+        block_state_id: bed_id,
+    }));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 92,
+        values: vec![
+            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_SLEEPING),
+            ProtocolEntityDataValue {
+                data_id: SLEEPING_POS_DATA_ID,
+                serializer_id: OPTIONAL_BLOCK_POS_SERIALIZER_ID,
+                value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
+                    x: 2,
+                    y: 1,
+                    z: 2,
+                })),
+            },
+        ],
+    }));
+
+    let source = store
+        .entity_model_sources_at_partial_tick(0.0)
+        .into_iter()
+        .find(|source| source.entity_id == 92)
+        .unwrap();
+    assert!(source.is_sleeping);
+    // Vanilla BedBlock.getBedOrientation reads FACING; sleepDirectionToRotation(NORTH) = 270.
+    assert_eq!(source.sleeping_bed_yaw, Some(270.0));
+    // headOffset = standingEyeHeight - 0.1 > 0; the NORTH step (0, -1) lifts the
+    // offset to [0, +headOffset].
+    assert!(source.sleeping_bed_offset[0].abs() < 1e-6);
+    assert!(source.sleeping_bed_offset[1] > 0.0);
 }
 
 #[test]
@@ -4737,6 +4886,39 @@ fn living_entity_flags_data(flags: i8) -> ProtocolEntityDataValue {
         data_id: 8,
         serializer_id: 0,
         value: EntityDataValueKind::Byte(flags),
+    }
+}
+
+/// A single decoded chunk of air at (0, 0), used to back block lookups (e.g. the
+/// sleeping bed orientation) in entity-source tests.
+fn empty_test_chunk() -> crate::ChunkColumn {
+    crate::ChunkColumn {
+        pos: crate::ChunkPos { x: 0, z: 0 },
+        state: crate::ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: vec![crate::ChunkSection {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: single_value_container(crate::PaletteDomain::BlockStates, 4096, 0),
+            biomes: single_value_container(crate::PaletteDomain::Biomes, 64, 0),
+        }],
+        block_entities: Vec::new(),
+        light: crate::LightData::default(),
+    }
+}
+
+fn single_value_container(
+    domain: crate::PaletteDomain,
+    entry_count: usize,
+    global_id: i32,
+) -> crate::PalettedContainerData {
+    crate::PalettedContainerData {
+        domain,
+        bits_per_entry: 0,
+        palette_kind: crate::PaletteKind::SingleValue,
+        palette_global_ids: vec![global_id],
+        packed_data: Vec::new(),
+        entry_count,
     }
 }
 

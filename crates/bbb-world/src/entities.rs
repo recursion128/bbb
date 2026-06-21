@@ -333,6 +333,22 @@ pub struct EntityModelSourceState {
     /// of `LivingEntityRenderer.setupRotations` to lift the model before flipping.
     #[serde(default)]
     pub bounding_box_height: f32,
+    /// Vanilla `LivingEntityRenderState.hasPose(Pose.SLEEPING)`: the entity is
+    /// lying down in a bed, which `LivingEntityRenderer.setupRotations` lays on its
+    /// side. `false` for non-living entities and any entity that is not sleeping.
+    #[serde(default)]
+    pub is_sleeping: bool,
+    /// Vanilla `setupRotations` sleeping `angle` from the resolved bed orientation
+    /// (`sleepDirectionToRotation(BedBlock.getBedOrientation(...))`, degrees).
+    /// `None` when the entity is sleeping but its sleeping position is not a bed, in
+    /// which case the renderer falls back to the body yaw.
+    #[serde(default)]
+    pub sleeping_bed_yaw: Option<f32>,
+    /// Vanilla `submit` bed head-offset translate `[-stepX * headOffset, -stepZ *
+    /// headOffset]` in world units (`headOffset = eyeHeight(STANDING) - 0.1`). `[0,
+    /// 0]` when the entity is not sleeping in a bed.
+    #[serde(default)]
+    pub sleeping_bed_offset: [f32; 2],
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
     #[serde(default)]
@@ -586,9 +602,29 @@ impl WorldStore {
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))
                     .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+                if source.is_sleeping {
+                    if let Some((yaw, offset)) = self.resolve_sleeping_bed(target.entity_id) {
+                        source.sleeping_bed_yaw = Some(yaw);
+                        source.sleeping_bed_offset = offset;
+                    }
+                }
                 Some(source)
             })
             .collect()
+    }
+
+    /// Resolves the vanilla `LivingEntityRenderer` sleeping bed orientation and head
+    /// offset for an entity sleeping in a bed: `BedBlock.getBedOrientation` looks up
+    /// the bed block at the synced sleeping position and reads its `FACING`. Returns
+    /// the `sleepDirectionToRotation` yaw (degrees) and the world-space bed offset,
+    /// or `None` when the sleeping position is not a bed (the renderer then falls
+    /// back to the body yaw with no offset).
+    fn resolve_sleeping_bed(&self, entity_id: i32) -> Option<(f32, [f32; 2])> {
+        let bed_pos = self.entities.sleeping_pos(entity_id)?;
+        let probe = self.probe_block(bed_pos)?;
+        let block_name = probe.block_name.as_deref()?;
+        let standing_eye_height = self.entities.standing_eye_height(entity_id)?;
+        sleeping_bed_yaw_and_offset(block_name, &probe.block_properties, standing_eye_height)
     }
 
     pub fn entity_transforms(&self) -> Vec<EntityTransformState> {
@@ -623,6 +659,46 @@ impl WorldStore {
 
     pub(crate) fn update_entity_count(&mut self) {
         self.counters.entities_tracked = self.entities.len();
+    }
+}
+
+/// Vanilla `BedBlock.getBedOrientation` + `LivingEntityRenderer.sleepDirectionToRotation`
+/// + the `submit` bed head offset: given the bed block at the entity's sleeping
+/// position and the entity's standing eye height, returns the sleeping yaw (degrees)
+/// and the world-space head-offset translate `[-stepX * headOffset, -stepZ *
+/// headOffset]` (`headOffset = eyeHeight - 0.1`). `None` when the block is not a bed.
+fn sleeping_bed_yaw_and_offset(
+    block_name: &str,
+    properties: &BTreeMap<String, String>,
+    standing_eye_height: f32,
+) -> Option<(f32, [f32; 2])> {
+    if !is_bed_block_name(block_name) {
+        return None;
+    }
+    let (yaw, step_x, step_z) = sleep_direction_rotation_and_step(properties.get("facing")?)?;
+    let head_offset = standing_eye_height - 0.1;
+    Some((yaw, [-step_x * head_offset, -step_z * head_offset]))
+}
+
+/// Vanilla bed blocks are the `<color>_bed` family that `BedBlock.getBedOrientation`
+/// matches with `instanceof BedBlock`.
+fn is_bed_block_name(block_name: &str) -> bool {
+    block_name
+        .rsplit(':')
+        .next()
+        .is_some_and(|path| path.ends_with("_bed"))
+}
+
+/// Vanilla `LivingEntityRenderer.sleepDirectionToRotation` (the sleeping yaw, in
+/// degrees) paired with `Direction.getStepX`/`getStepZ` for the horizontal bed
+/// `FACING`. `None` for a non-horizontal facing value.
+fn sleep_direction_rotation_and_step(facing: &str) -> Option<(f32, f32, f32)> {
+    match facing {
+        "south" => Some((90.0, 0.0, 1.0)),
+        "west" => Some((0.0, -1.0, 0.0)),
+        "north" => Some((270.0, 0.0, -1.0)),
+        "east" => Some((180.0, 1.0, 0.0)),
+        _ => None,
     }
 }
 

@@ -17,7 +17,8 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
+    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, ENTITY_DATA_POSE_ID,
+    VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -44,6 +45,10 @@ const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 /// Vanilla `LivingEntityRenderer.isUpsideDownName`: the custom names that flip a
 /// living entity upside down.
 const VANILLA_UPSIDE_DOWN_NAMES: [&str; 2] = ["Dinnerbone", "Grumm"];
+
+/// Vanilla `LivingEntity.SLEEPING_POS_ID` data id (14): the optional bed position
+/// the entity is sleeping in (`getSleepingPos`).
+const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 
 pub(crate) struct EntityStore {
     ecs: World,
@@ -157,6 +162,49 @@ impl EntityStore {
                 EntityDataValueKind::OptionalComponent(component) => component.clone(),
                 _ => None,
             })
+    }
+
+    /// Vanilla `LivingEntity.getSleepingPos`: the synced bed position the entity is
+    /// sleeping in (`SLEEPING_POS_ID`), or `None` when it is not in a bed.
+    pub(crate) fn sleeping_pos(&self, id: i32) -> Option<crate::BlockPos> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        metadata
+            .data_values
+            .iter()
+            .find(|value| value.data_id == VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::OptionalBlockPos(Some(pos)) => Some(crate::BlockPos {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                }),
+                _ => None,
+            })
+    }
+
+    /// Vanilla `Entity.getEyeHeight(Pose.STANDING)` used by the sleeping bed
+    /// head-offset translate: the eye height resolved with the synced pose stripped
+    /// so the dimensions fall back to standing rather than `SLEEPING_DIMENSIONS`.
+    pub(crate) fn standing_eye_height(&self, id: i32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        let standing_data: Vec<_> = metadata
+            .data_values
+            .iter()
+            .filter(|value| value.data_id != ENTITY_DATA_POSE_ID)
+            .cloned()
+            .collect();
+        vanilla_eye_height_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &standing_data,
+            &attributes.attributes,
+            Some(client_animations.animations),
+        )
     }
 
     fn metadata_bool(&self, id: i32, data_id: u8, default: bool) -> Option<bool> {
@@ -356,6 +404,12 @@ impl EntityStore {
             .pick_bounds(id)
             .map(|bounds| bounds.max[1] - bounds.min[1])
             .unwrap_or(0.0);
+        // Vanilla `LivingEntityRenderState.hasPose(Pose.SLEEPING)`: only living
+        // entities lie down. The bed orientation/offset are resolved spatially by
+        // the WorldStore aggregation (which owns the block data); the per-entity
+        // source defaults to the no-bed fallback.
+        let is_sleeping = vanilla_living_entity_type(identity.entity_type_id)
+            && entity_data_pose(&metadata.data_values) == VANILLA_POSE_SLEEPING_ID;
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
@@ -368,6 +422,9 @@ impl EntityStore {
             is_auto_spin_attack,
             is_upside_down,
             bounding_box_height,
+            is_sleeping,
+            sleeping_bed_yaw: None,
+            sleeping_bed_offset: [0.0, 0.0],
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             polar_bear_stand_scale: client_animations
                 .animations

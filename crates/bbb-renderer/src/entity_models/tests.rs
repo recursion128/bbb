@@ -23,6 +23,7 @@ mod polar_bear;
 mod ravager;
 mod sheep;
 mod skeleton;
+mod sleeping;
 mod slime;
 mod spider;
 mod upside_down;

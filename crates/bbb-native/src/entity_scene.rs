@@ -4,7 +4,7 @@ use bbb_renderer::{
     DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
     PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SelectionBox,
-    SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose,
     UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
@@ -322,6 +322,12 @@ fn entity_model_instance(
         .then_some(source.age_ticks as f32 + entity_partial_tick);
     // Vanilla setupRotations lifts the upside-down model by its bounding box height.
     let upside_down_height = source.is_upside_down.then_some(source.bounding_box_height);
+    // Vanilla setupRotations sleeping branch: the bed yaw (or the body yaw when not
+    // in a bed) plus the bed head-offset translate.
+    let sleeping = source.is_sleeping.then_some(SleepingPose {
+        yaw_angle: source.sleeping_bed_yaw.unwrap_or(body_rot),
+        bed_offset: source.sleeping_bed_offset,
+    });
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -341,6 +347,7 @@ fn entity_model_instance(
         .with_death_time(source.death_time)
         .with_auto_spin_age_ticks(auto_spin_age_ticks)
         .with_upside_down_height(upside_down_height)
+        .with_sleeping(sleeping)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1757,6 +1764,54 @@ mod tests {
             )],
         }));
         assert_eq!(render_state(&world, 89).upside_down_height, None);
+    }
+
+    #[test]
+    fn entity_model_instances_project_sleeping_pose() {
+        const ENTITY_DATA_POSE_ID: u8 = 6;
+        const POSE_SLEEPING: i32 = 2;
+        const POSE_SERIALIZER_ID: i32 = 20;
+
+        let mut world = WorldStore::new();
+        // A sheep facing body yaw 45 with no bed resolved (no chunk loaded).
+        world.apply_add_entity(protocol_add_entity_with_rotation(
+            93,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+            45.0,
+            0.0,
+            45.0,
+        ));
+
+        let sleeping = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .sleeping
+        };
+
+        // An awake entity is not laid down.
+        assert_eq!(sleeping(&world, 93), None);
+
+        // Vanilla Pose.SLEEPING with no resolvable bed falls back to the body yaw and
+        // no head offset (setupRotations `angle = bodyRot`).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 93,
+            values: vec![EntityDataValue {
+                data_id: ENTITY_DATA_POSE_ID,
+                serializer_id: POSE_SERIALIZER_ID,
+                value: EntityDataValueKind::Pose(POSE_SLEEPING),
+            }],
+        }));
+        assert_eq!(
+            sleeping(&world, 93),
+            Some(SleepingPose {
+                yaw_angle: 45.0,
+                bed_offset: [0.0, 0.0],
+            })
+        );
     }
 
     #[test]

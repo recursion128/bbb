@@ -264,9 +264,10 @@ When an agent does any of the following, update this file in the same slice:
       pose, the polar-bear standing-rear scale, `deathTime` (the death tip-over
       counter), `isAutoSpinAttack` (the riptide spin, carried as the lerped
       `auto_spin_age_ticks`), `isUpsideDown`/`boundingBoxHeight` (the Dinnerbone/Grumm
-      flip, carried as `upside_down_height`), `lightCoords` (block+sky packed light),
-      `hasRedOverlay` (hurt/death red `OverlayTexture` flash), and
-      `whiteOverlayProgress` (creeper swelling white flash)
+      flip, carried as `upside_down_height`), `hasPose(SLEEPING)` (the sleeping-in-bed
+      pose, carried as `sleeping` with the resolved bed yaw and head offset),
+      `lightCoords` (block+sky packed light), `hasRedOverlay` (hurt/death red
+      `OverlayTexture` flash), and `whiteOverlayProgress` (creeper swelling white flash)
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `walkAnimationPos`/
       `walkAnimationSpeed` limb-swing, `ageScale`, unified `isInvisible`, and
@@ -348,6 +349,24 @@ When an agent does any of the following, update this file in the same slice:
     upside-down path (`AvatarRenderer.isPlayerUpsideDown`) keys off the GameProfile
     name and the shown cape model part rather than the custom name, which needs the
     player-info list, so the player type is excluded and that path stays deferred.
+  - The sleeping-in-bed pose is implemented end to end. World side: a living entity
+    (`vanilla_living_entity_type` gate) whose synced `Pose` (`DATA_POSE`, id `6`) is
+    `SLEEPING` is marked `is_sleeping` in `EntityModelSourceState`. The bed
+    orientation is resolved spatially by the `WorldStore` aggregation (which owns the
+    block data, mirroring the packed-light sampling): `LivingEntity.getSleepingPos`
+    (`SLEEPING_POS_ID`, id `14`) is looked up against the block world, and a bed
+    block's `FACING` (`BedBlock.getBedOrientation`) yields the
+    `sleepDirectionToRotation` yaw and the `submit` bed head-offset translate
+    `[-stepX * (eyeHeight(STANDING) - 0.1), -stepZ * ...]` (the standing eye height
+    is computed with the synced pose stripped so it does not collapse to
+    `SLEEPING_DIMENSIONS`); a sleeping position that is not a bed leaves the yaw/offset
+    at the no-bed fallback. Native side projects a `SleepingPose { yaw_angle, bed_offset }`
+    (`yaw_angle` falling back to the body yaw when there is no bed). Renderer side:
+    `entity_setup_rotations_transform` skips the `180 - bodyRot` yaw while sleeping
+    and the shared `entity_post_yaw_transform` adds the else-if branch (after death and
+    the riptide spin, before the upside-down flip) `Ry(yaw_angle) * Rz(getFlipDegrees)
+    * Ry(270)`, with the bed offset applied as a pre-scale world-space translate, so
+    every colored and textured living model lies down in its bed.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

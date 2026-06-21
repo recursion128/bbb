@@ -19,8 +19,8 @@ pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;
 
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
-        * entity_post_yaw_transform(instance)
+        * entity_pre_scale_translation(instance)
+        * entity_setup_rotations_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
@@ -30,11 +30,39 @@ fn living_entity_model_root_transform_with_renderer_transform(
     renderer_transform: Mat4,
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
-        * entity_post_yaw_transform(instance)
+        * entity_pre_scale_translation(instance)
+        * entity_setup_rotations_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
+/// Vanilla `LivingEntityRenderer.submit` bed head-offset translate, applied before
+/// the entity scale (so it is in world units): `translate(-stepX * headOffset, 0,
+/// -stepZ * headOffset)` while sleeping in a bed. Identity otherwise. Our post-`T(pos)`
+/// frame is the pre-scale world-unit frame, matching vanilla's pre-`scale(entityScale)`
+/// translate.
+fn entity_pre_scale_translation(instance: EntityModelInstance) -> Mat4 {
+    match instance.render_state.sleeping {
+        Some(sleeping) => Mat4::from_translation(Vec3::new(
+            sleeping.bed_offset[0],
+            0.0,
+            sleeping.bed_offset[1],
+        )),
+        None => Mat4::IDENTITY,
+    }
+}
+
+/// Vanilla `LivingEntityRenderer.setupRotations` body-yaw stage: the `180 - bodyRot`
+/// yaw is skipped while sleeping (`if (!hasPose(SLEEPING))`), then the else-if chain
+/// (death/auto-spin/sleeping/upside-down) runs in [`entity_post_yaw_transform`].
+fn entity_setup_rotations_transform(instance: EntityModelInstance) -> Mat4 {
+    let initial_yaw = if instance.render_state.sleeping.is_some() {
+        Mat4::IDENTITY
+    } else {
+        Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+    };
+    initial_yaw * entity_post_yaw_transform(instance)
 }
 
 /// Vanilla `LivingEntityRenderer.setupRotations` else-if chain, inserted right
@@ -56,6 +84,13 @@ fn entity_post_yaw_transform(instance: EntityModelInstance) -> Mat4 {
     if let Some(age_ticks) = instance.render_state.auto_spin_age_ticks {
         return Mat4::from_rotation_x((-90.0 - instance.render_state.head_pitch).to_radians())
             * Mat4::from_rotation_y((age_ticks * -75.0).to_radians());
+    }
+    // Vanilla sleeping in bed: Ry(angle) then Rz(getFlipDegrees) then Ry(270), laying
+    // the model on its side along the bed direction.
+    if let Some(sleeping) = instance.render_state.sleeping {
+        return Mat4::from_rotation_y(sleeping.yaw_angle.to_radians())
+            * Mat4::from_rotation_z(entity_flip_degrees(instance.kind).to_radians())
+            * Mat4::from_rotation_y(270.0_f32.to_radians());
     }
     // Vanilla Dinnerbone/Grumm upside-down: translate up by the bounding box height
     // (plus 0.1) then flip 180 about Z. The vanilla `(bbHeight + 0.1) / entityScale`
