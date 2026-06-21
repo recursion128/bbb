@@ -87,6 +87,10 @@ pub(crate) const VANILLA_ENTITY_TYPE_WITHER_SKULL_ID: i32 = 147;
 pub(crate) const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
 pub(crate) const VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID: i32 = 152;
 pub(crate) const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+
+/// Vanilla `LivingEntityRenderer.isUpsideDownName`: the custom/profile names that
+/// flip a living entity upside down (the Dinnerbone/Grumm easter egg).
+pub(crate) const VANILLA_UPSIDE_DOWN_NAMES: [&str; 2] = ["Dinnerbone", "Grumm"];
 pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
 pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
@@ -619,9 +623,27 @@ impl WorldStore {
                         source.sleeping_bed_offset = offset;
                     }
                 }
+                if !source.is_upside_down && self.resolve_player_upside_down(target.entity_id) {
+                    source.is_upside_down = true;
+                }
                 Some(source)
             })
             .collect()
+    }
+
+    /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player
+    /// whose `CAPE` model part is shown and whose GameProfile name (from the
+    /// player-info list) is `Dinnerbone`/`Grumm`. The non-player living path is
+    /// handled in `EntityStore::model_source` from the custom name instead.
+    fn resolve_player_upside_down(&self, entity_id: i32) -> bool {
+        let Some((profile_id, cape_shown)) = self.entities.avatar_upside_down_inputs(entity_id)
+        else {
+            return false;
+        };
+        cape_shown
+            && self.player_info_entry(profile_id).is_some_and(|entry| {
+                VANILLA_UPSIDE_DOWN_NAMES.contains(&entry.profile.name.as_str())
+            })
     }
 
     /// Resolves the vanilla `LivingEntityRenderer` sleeping bed orientation and head

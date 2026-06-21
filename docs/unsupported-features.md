@@ -334,12 +334,20 @@ When an agent does any of the following, update this file in the same slice:
     about the post-yaw origin, so (like the death flip) they commute with the
     trailing uniform model scale and tip/spin every colored and textured living
     model; the death flip takes precedence over the spin, matching vanilla.
-  - The Dinnerbone/Grumm upside-down easter egg is implemented end to end. World
-    side: a living entity (`vanilla_living_entity_type` gate, player type excluded)
-    whose synced `DATA_CUSTOM_NAME` (id `2`) is `Dinnerbone`/`Grumm`
-    (`LivingEntityRenderer.isUpsideDownName`) is marked `isUpsideDown` in
-    `EntityModelSourceState`, which also carries the `EntityRenderState.boundingBoxHeight`
-    (`Entity.getBbHeight`, from the pick-bounds AABB). Native side negates the net
+  - The Dinnerbone/Grumm upside-down easter egg is implemented end to end, for both
+    the non-player and player render paths. World side: a non-player living entity
+    (`vanilla_living_entity_type` gate) whose synced `DATA_CUSTOM_NAME` (id `2`) is
+    `Dinnerbone`/`Grumm` (`LivingEntityRenderer.isUpsideDownName`) is marked
+    `isUpsideDown` in `EntityModelSourceState`, which also carries the
+    `EntityRenderState.boundingBoxHeight` (`Entity.getBbHeight`, from the pick-bounds
+    AABB). The player path (`AvatarRenderer.isEntityUpsideDown` →
+    `isPlayerUpsideDown`) instead requires the cape model part to be shown
+    (`DATA_PLAYER_MODE_CUSTOMISATION`, id `16`, `PlayerModelPart.CAPE` bit `0x01`) and
+    the entity's `GameProfile` name — looked up from the player-info list by the
+    entity UUID, not the custom name — to be `Dinnerbone`/`Grumm`. This spatial
+    resolution lives in the `WorldStore` aggregation (`resolve_player_upside_down`,
+    mirroring the packed-light / sleeping-bed lookups, since it needs the player-info
+    list), and sets `isUpsideDown` on the player source. Native side negates the net
     head yaw and pitch while upside down (`extractRenderState`) and projects
     `upside_down_height = Some(boundingBoxHeight)`. Renderer side: the shared
     `entity_post_yaw_transform` adds the vanilla `setupRotations` else-if branch
@@ -347,10 +355,7 @@ When an agent does any of the following, update this file in the same slice:
     `Axis.ZP.rotationDegrees(180)`. The vanilla `(bbHeight + 0.1) / entityScale`
     divisor cancels the leading `scale(entityScale)`; our post-yaw frame is already
     in world units (the model scale is applied innermost), so the height is used as
-    is, flipping every colored and textured living model. Remaining gap: the player
-    upside-down path (`AvatarRenderer.isPlayerUpsideDown`) keys off the GameProfile
-    name and the shown cape model part rather than the custom name, which needs the
-    player-info list, so the player type is excluded and that path stays deferred.
+    is, flipping every colored and textured living model (player included).
   - The sleeping-in-bed pose is implemented end to end. World side: a living entity
     (`vanilla_living_entity_type` gate) whose synced `Pose` (`DATA_POSE`, id `6`) is
     `SLEEPING` is marked `is_sleeping` in `EntityModelSourceState`. The bed

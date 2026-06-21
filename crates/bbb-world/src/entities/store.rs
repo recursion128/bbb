@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, fmt};
 use bbb_protocol::packets::AttributeSnapshot as ProtocolAttributeSnapshot;
 use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use uuid::Uuid;
 
 use bbb_protocol::packets::EntityDataValueKind;
 
@@ -13,7 +14,7 @@ use super::{
     EntityTransformState, EntityTransientEvents, ItemEntityStackState,
     VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
@@ -42,13 +43,17 @@ const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
 const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 
-/// Vanilla `LivingEntityRenderer.isUpsideDownName`: the custom names that flip a
-/// living entity upside down.
-const VANILLA_UPSIDE_DOWN_NAMES: [&str; 2] = ["Dinnerbone", "Grumm"];
-
 /// Vanilla `LivingEntity.SLEEPING_POS_ID` data id (14): the optional bed position
 /// the entity is sleeping in (`getSleepingPos`).
 const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
+
+/// Vanilla `Avatar.DATA_PLAYER_MODE_CUSTOMISATION` data id (16): the byte of shown
+/// player model parts, read by the player upside-down check for the cape part.
+const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
+
+/// Vanilla `PlayerModelPart.CAPE` mask (`1 << 0`): the cape-shown bit that gates
+/// `AvatarRenderer.isEntityUpsideDown` to `isPlayerUpsideDown`.
+const VANILLA_AVATAR_CAPE_PART_MASK: i8 = 0x01;
 
 pub(crate) struct EntityStore {
     ecs: World,
@@ -181,6 +186,24 @@ impl EntityStore {
                 }),
                 _ => None,
             })
+    }
+
+    /// Vanilla `AvatarRenderer.isEntityUpsideDown` inputs for a player entity: its
+    /// profile UUID (to resolve the GameProfile name from the player-info list) and
+    /// whether the `CAPE` model part is shown (`DATA_PLAYER_MODE_CUSTOMISATION & 1`).
+    /// `None` for non-player entities, which never use the avatar upside-down path.
+    pub(crate) fn avatar_upside_down_inputs(&self, id: i32) -> Option<(Uuid, bool)> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return None;
+        }
+        let cape_shown = self
+            .metadata_byte(id, VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID, 0)
+            .unwrap_or(0)
+            & VANILLA_AVATAR_CAPE_PART_MASK
+            != 0;
+        Some((identity.uuid, cape_shown))
     }
 
     /// Vanilla `Entity.getEyeHeight(Pose.STANDING)` used by the sleeping bed

@@ -1173,13 +1173,127 @@ fn entity_model_sources_project_dinnerbone_upside_down() {
     assert!(!source(&store, 81).is_upside_down);
 
     // The player path keys off the GameProfile name + cape part (AvatarRenderer),
-    // not the custom name, so a player entity is excluded here and stays deferred.
+    // not the custom name, so a player with only a "Dinnerbone" custom name (no
+    // player-info profile, no shown cape) stays upright. The profile-driven player
+    // flip is covered by `entity_model_sources_project_player_upside_down`.
     store.apply_add_entity(protocol_add_entity_with_type(
         82,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
     ));
     assert!(set_custom_name(&mut store, 82, Some("Dinnerbone")));
     assert!(!source(&store, 82).is_upside_down);
+}
+
+#[test]
+fn entity_model_sources_project_player_upside_down() {
+    // Vanilla AvatarRenderer.isEntityUpsideDown: a Player is flipped only when its
+    // cape model part is shown (DATA_PLAYER_MODE_CUSTOMISATION id 16, CAPE bit 0x01)
+    // AND its GameProfile name (from the player-info list, not the custom name) is
+    // "Dinnerbone"/"Grumm".
+    const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
+    const VANILLA_AVATAR_CAPE_PART_MASK: i8 = 0x01;
+
+    let upside_down = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .is_upside_down
+    };
+    let set_customization = |store: &mut WorldStore, id: i32, mask: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(mask),
+            }],
+        })
+    };
+    let add_player = |store: &mut WorldStore, id: i32, uuid: Uuid| {
+        let mut add = protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_PLAYER_ID);
+        add.uuid = uuid;
+        store.apply_add_entity(add);
+    };
+    let add_profile = |store: &mut WorldStore, uuid: Uuid, name: &str| {
+        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![ProtocolPlayerInfoAction::AddPlayer],
+            entries: vec![ProtocolPlayerInfoEntry {
+                profile_id: uuid,
+                profile: Some(ProtocolGameProfile {
+                    uuid,
+                    name: name.to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: ProtocolGameType::Survival,
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        });
+    };
+
+    let mut store = WorldStore::new();
+    add_player(&mut store, 90, default_entity_uuid());
+
+    // A shown cape but no player-info profile yet: the GameProfile name is unknown,
+    // so the player stays upright.
+    assert!(set_customization(
+        &mut store,
+        90,
+        VANILLA_AVATAR_CAPE_PART_MASK
+    ));
+    assert!(!upside_down(&store, 90));
+
+    // Dinnerbone profile + shown cape: flipped.
+    add_profile(&mut store, default_entity_uuid(), "Dinnerbone");
+    assert!(upside_down(&store, 90));
+
+    // Hiding the cape (CAPE bit clear) suppresses the flip even for Dinnerbone.
+    assert!(set_customization(&mut store, 90, 0));
+    assert!(!upside_down(&store, 90));
+
+    // Other customization bits without the cape bit also do not flip.
+    assert!(set_customization(
+        &mut store,
+        90,
+        !VANILLA_AVATAR_CAPE_PART_MASK
+    ));
+    assert!(!upside_down(&store, 90));
+
+    // Showing the cape again restores the flip.
+    assert!(set_customization(
+        &mut store,
+        90,
+        VANILLA_AVATAR_CAPE_PART_MASK
+    ));
+    assert!(upside_down(&store, 90));
+
+    // A cape-showing player whose profile name is not Dinnerbone/Grumm is upright.
+    let steve_uuid = Uuid::from_u128(0xAAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA);
+    add_player(&mut store, 91, steve_uuid);
+    add_profile(&mut store, steve_uuid, "Steve");
+    assert!(set_customization(
+        &mut store,
+        91,
+        VANILLA_AVATAR_CAPE_PART_MASK
+    ));
+    assert!(!upside_down(&store, 91));
+
+    // The other easter-egg name, "Grumm", flips too (cape shown).
+    let grumm_uuid = Uuid::from_u128(0xBBBB_BBBB_BBBB_BBBB_BBBB_BBBB_BBBB_BBBB);
+    add_player(&mut store, 92, grumm_uuid);
+    add_profile(&mut store, grumm_uuid, "Grumm");
+    assert!(set_customization(
+        &mut store,
+        92,
+        VANILLA_AVATAR_CAPE_PART_MASK
+    ));
+    assert!(upside_down(&store, 92));
 }
 
 #[test]
