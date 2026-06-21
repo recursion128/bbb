@@ -1,5 +1,6 @@
 use glam::{Mat4, Vec3};
 
+use super::super::catalog::EntityModelKind;
 use super::super::geometry::{part_pose_transform, PartPose};
 use super::super::instances::EntityModelInstance;
 
@@ -19,6 +20,7 @@ pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+        * entity_death_flip_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
@@ -29,9 +31,44 @@ fn living_entity_model_root_transform_with_renderer_transform(
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+        * entity_death_flip_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
+/// Vanilla `LivingEntityRenderer.setupRotations` death tip-over: when
+/// `state.deathTime > 0`, rotate the model about the Z axis by `fall *
+/// getFlipDegrees()`. Inserted right after the `180 - bodyRot` yaw and before the
+/// `(-1, -1, 1)` flip, matching the vanilla pose-stack order. Identity while the
+/// entity is alive (`death_time == 0`).
+fn entity_death_flip_transform(instance: EntityModelInstance) -> Mat4 {
+    let death_time = instance.render_state.death_time;
+    if death_time <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    Mat4::from_rotation_z(
+        (death_fall_factor(death_time) * entity_flip_degrees(instance.kind)).to_radians(),
+    )
+}
+
+/// Vanilla `LivingEntityRenderer.setupRotations` fall factor: `fall =
+/// (deathTime - 1) / 20 * 1.6`, then `fall = sqrt(fall)`, clamped to `1.0`. The
+/// vanilla `state.deathTime` is always `>= 1` when the entity is dying (it is the
+/// integer `entity.deathTime >= 1` plus a partial tick), so the radicand is never
+/// negative in practice; the `max(0.0)` only guards out-of-range inputs.
+pub(in crate::entity_models) fn death_fall_factor(death_time: f32) -> f32 {
+    (((death_time - 1.0) / 20.0 * 1.6).max(0.0)).sqrt().min(1.0)
+}
+
+/// Vanilla `LivingEntityRenderer.getFlipDegrees`: the death tip-over angle. The
+/// base living renderer flips `90` degrees (onto its side); `SpiderRenderer`
+/// (and the cave spider that extends it) flip `180` degrees (onto its back).
+pub(in crate::entity_models) fn entity_flip_degrees(kind: EntityModelKind) -> f32 {
+    match kind {
+        EntityModelKind::Spider | EntityModelKind::CaveSpider => 180.0,
+        _ => 90.0,
+    }
 }
 
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {

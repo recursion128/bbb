@@ -14,7 +14,10 @@ use colored::{
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
 };
 #[cfg(test)]
-use colored::{chicken_model_parts, cow_model_parts, entity_model_mesh, pig_model_parts};
+use colored::{
+    chicken_model_parts, cow_model_parts, death_fall_factor, entity_flip_degrees,
+    entity_model_mesh, pig_model_parts,
+};
 use geometry::*;
 #[cfg(test)]
 use glam::Vec3;

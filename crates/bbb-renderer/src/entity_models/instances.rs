@@ -40,6 +40,12 @@ pub struct EntityRenderState {
     /// (`PolarBear.getStandingAnimationScale`, `0.0..=1.0`). `0.0` for every
     /// other entity and for a polar bear on all fours.
     pub polar_bear_stand_scale: f32,
+    /// Vanilla `LivingEntityRenderState.deathTime` (`entity.deathTime > 0 ?
+    /// entity.deathTime + partialTick : 0`): the lerped death-animation counter
+    /// that tips a dying living entity over in `LivingEntityRenderer.setupRotations`
+    /// (`Axis.ZP.rotationDegrees(sqrt(min((deathTime-1)/20*1.6, 1)) *
+    /// getFlipDegrees())`). `0.0` for every entity that is alive.
+    pub death_time: f32,
     /// Vanilla `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block,
     /// sky)`): the packed block+sky light sampled at the entity's light-probe
     /// block position. Defaults to [`ENTITY_FULL_BRIGHT_LIGHT_COORDS`]; the
@@ -66,6 +72,7 @@ impl EntityRenderState {
             head_pitch: 0.0,
             head_eat: SheepHeadEatPose::NONE,
             polar_bear_stand_scale: 0.0,
+            death_time: 0.0,
             light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
             has_red_overlay: false,
             white_overlay_progress: 0.0,
@@ -129,6 +136,14 @@ impl EntityModelInstance {
 
     pub fn with_polar_bear_stand_scale(mut self, polar_bear_stand_scale: f32) -> Self {
         self.render_state.polar_bear_stand_scale = polar_bear_stand_scale;
+        self
+    }
+
+    /// Sets the death-animation counter (vanilla `LivingEntityRenderState.deathTime`,
+    /// the lerped `entity.deathTime + partialTick`). Drives the
+    /// `LivingEntityRenderer.setupRotations` tip-over flip for a dying entity.
+    pub fn with_death_time(mut self, death_time: f32) -> Self {
+        self.render_state.death_time = death_time;
         self
     }
 
@@ -752,6 +767,7 @@ mod tests {
                 head_pitch: 0.0,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,
+                death_time: 0.0,
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
                 has_red_overlay: false,
                 white_overlay_progress: 0.0,

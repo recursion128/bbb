@@ -264,10 +264,14 @@ When an agent does any of the following, update this file in the same slice:
       scale, `lightCoords` (block+sky packed light), `hasRedOverlay` (hurt red
       `OverlayTexture` flash), and `whiteOverlayProgress` (creeper swelling white
       flash)
+    - now consumed renderer-side, pending only their world projection: `deathTime`
+      (the `setupRotations` death tip-over flip is implemented and tested; the
+      world death counter that drives it is the remaining slice)
     - deferred slots to add with their own slices, each carrying real vanilla
-      semantics and tests rather than tint fallbacks: the freezing white overlay
-      and the `deathTime` overlay term, `walkAnimationPos`/`walkAnimationSpeed`
-      limb-swing, `ageScale`, unified `isInvisible`, and `outlineColor` glow
+      semantics and tests rather than tint fallbacks: the death-counter `deathTime`
+      projection (and its `hasRedOverlay` term), `walkAnimationPos`/
+      `walkAnimationSpeed` limb-swing, `ageScale`, unified `isInvisible`, the
+      `isFullyFrozen` body shake, and `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -293,9 +297,26 @@ When an agent does any of the following, update this file in the same slice:
     it through `CreeperRenderer.getWhiteOverlayProgress`
     (`(int)(s*10) % 2 == 0 ? 0 : clamp(s, 0.5, 1.0)`) into the render-state
     `whiteOverlayProgress`, and the overlay coords' `u` column
-    (`(int)(progress * 15)`) drives the shader white flash. Remaining overlay
-    gaps: the `deathTime > 0` red term and the freezing (`isFullyFrozen`) white
-    overlay producer.
+    (`(int)(progress * 15)`) drives the shader white flash. The creeper is the only
+    vanilla `getWhiteOverlayProgress` producer (the base renderer returns `0`):
+    there is no freezing white overlay — `isFullyFrozen` drives the
+    `setupRotations` body shake, not the overlay. Remaining overlay gap: the
+    `deathTime > 0` red term, i.e. the world death-counter projection that would
+    also set `hasRedOverlay` while dying (the death tip-over rotation it shares is
+    already implemented renderer-side, below).
+  - The death tip-over is implemented renderer-side as a real
+    `LivingEntityRenderer.setupRotations` transform, not a placeholder: a dying
+    entity's `EntityRenderState.death_time` (vanilla `state.deathTime`) rotates the
+    model about the Z axis by `death_fall_factor(deathTime) * getFlipDegrees()`,
+    where `death_fall_factor = min(sqrt(max((deathTime - 1) / 20 * 1.6, 0)), 1)`
+    and `getFlipDegrees` is `90` for the base living renderer and `180` for the
+    spider/cave spider (`SpiderRenderer`). The flip is inserted right after the
+    `180 - bodyRot` yaw and before the `(-1, -1, 1)` flip in both shared living
+    root transforms, so every colored and textured living model tips over, and is
+    identity while alive. Remaining gap: the world-side death counter (vanilla
+    `LivingEntity.deathTime`, incremented while `isDeadOrDying` and capped at `20`)
+    that would project `death_time` and set the dying red overlay — to be wired in
+    its own slice mirroring the existing hurt-animation client tracking.
   - The head-look projection is implemented as a reusable render-state field: the
     canonical `Entity.yHeadRot`/`getXRot` flow through `EntityModelSourceState`,
     the native scene derives `LivingEntityRenderState.yRot` =

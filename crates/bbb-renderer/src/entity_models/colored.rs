@@ -15,3 +15,5 @@ pub(super) use transforms::{
     slime_model_root_transform, villager_adult_model_root_transform,
     wither_skeleton_model_root_transform,
 };
+#[cfg(test)]
+pub(super) use transforms::{death_fall_factor, entity_flip_degrees};

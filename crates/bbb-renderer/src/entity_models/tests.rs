@@ -6,6 +6,7 @@ mod camel;
 mod chicken;
 mod cow;
 mod creeper;
+mod death;
 mod enderman;
 mod equine;
 mod goat;
