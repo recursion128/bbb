@@ -304,8 +304,11 @@ fn entity_model_instance(
     // body shake (freezing or a per-renderer conversion) is then folded into the
     // projected body_rot so the whole model jitters while the head turn relative to
     // the body is unchanged.
-    let net_head_yaw = wrap_degrees(source.y_head_rot - source.y_rot);
-    let head_pitch = source.x_rot;
+    // Vanilla LivingEntityRenderer.extractRenderState negates the net head yaw and
+    // pitch while the entity is upside down (Dinnerbone/Grumm).
+    let head_sign = if source.is_upside_down { -1.0 } else { 1.0 };
+    let net_head_yaw = wrap_degrees(source.y_head_rot - source.y_rot) * head_sign;
+    let head_pitch = source.x_rot * head_sign;
     let is_shaking = entity_shaking(
         source.entity_type_id,
         &source.data_values,
@@ -317,6 +320,8 @@ fn entity_model_instance(
     let auto_spin_age_ticks = source
         .is_auto_spin_attack
         .then_some(source.age_ticks as f32 + entity_partial_tick);
+    // Vanilla setupRotations lifts the upside-down model by its bounding box height.
+    let upside_down_height = source.is_upside_down.then_some(source.bounding_box_height);
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -335,6 +340,7 @@ fn entity_model_instance(
         .with_has_red_overlay(source.has_red_overlay)
         .with_death_time(source.death_time)
         .with_auto_spin_age_ticks(auto_spin_age_ticks)
+        .with_upside_down_height(upside_down_height)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1672,6 +1678,85 @@ mod tests {
             )],
         }));
         assert_eq!(auto_spin(&world, 87, 0.5), None);
+    }
+
+    #[test]
+    fn entity_model_instances_project_upside_down_dinnerbone() {
+        let mut world = WorldStore::new();
+        // A sheep with a head turn (body 30, head 100, pitch -20): net head yaw 70,
+        // head pitch -20 while upright.
+        world.apply_add_entity(protocol_add_entity_with_rotation(
+            88,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+            30.0,
+            -20.0,
+            100.0,
+        ));
+        // A non-living entity (boat) is never flipped by LivingEntityRenderer.
+        world.apply_add_entity(protocol_add_entity(
+            89,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let render_state = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+        };
+
+        // A normally-named living entity is upright; its head look is unnegated.
+        let upright = render_state(&world, 88);
+        assert_eq!(upright.upside_down_height, None);
+        assert_eq!(upright.head_yaw, 70.0);
+        assert_eq!(upright.head_pitch, -20.0);
+
+        // Vanilla LivingEntityRenderer.isUpsideDownName: the "Dinnerbone" name tag
+        // flips the model; extractRenderState then negates the head yaw and pitch.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 88,
+            values: vec![protocol_optional_component_data(
+                ENTITY_CUSTOM_NAME_DATA_ID,
+                Some("Dinnerbone"),
+            )],
+        }));
+        let flipped = render_state(&world, 88);
+        assert!(flipped
+            .upside_down_height
+            .is_some_and(|height| height > 0.0));
+        assert_eq!(flipped.head_yaw, -70.0);
+        assert_eq!(flipped.head_pitch, 20.0);
+
+        // "Grumm" flips too; an unrelated name does not.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 88,
+            values: vec![protocol_optional_component_data(
+                ENTITY_CUSTOM_NAME_DATA_ID,
+                Some("Grumm"),
+            )],
+        }));
+        assert!(render_state(&world, 88).upside_down_height.is_some());
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 88,
+            values: vec![protocol_optional_component_data(
+                ENTITY_CUSTOM_NAME_DATA_ID,
+                Some("Steve"),
+            )],
+        }));
+        assert_eq!(render_state(&world, 88).upside_down_height, None);
+
+        // A non-living entity named Dinnerbone is still never flipped.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 89,
+            values: vec![protocol_optional_component_data(
+                ENTITY_CUSTOM_NAME_DATA_ID,
+                Some("Dinnerbone"),
+            )],
+        }));
+        assert_eq!(render_state(&world, 89).upside_down_height, None);
     }
 
     #[test]

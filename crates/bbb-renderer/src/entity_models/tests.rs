@@ -25,6 +25,7 @@ mod sheep;
 mod skeleton;
 mod slime;
 mod spider;
+mod upside_down;
 mod villager;
 mod witch;
 mod wolf;

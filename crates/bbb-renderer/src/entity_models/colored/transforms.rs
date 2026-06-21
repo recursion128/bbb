@@ -39,10 +39,11 @@ fn living_entity_model_root_transform_with_renderer_transform(
 
 /// Vanilla `LivingEntityRenderer.setupRotations` else-if chain, inserted right
 /// after the `180 - bodyRot` yaw and before the `(-1, -1, 1)` flip. The death
-/// tip-over takes precedence over the riptide auto-spin (mirroring vanilla's
-/// `if deathTime > 0 ... else if isAutoSpinAttack ...`). Identity for a living,
-/// non-spinning entity. (Sleeping and Dinnerbone/Grumm upside-down are not yet
-/// projected and fall through to identity.)
+/// tip-over takes precedence over the riptide auto-spin, which takes precedence
+/// over the Dinnerbone/Grumm upside-down flip (mirroring vanilla's `if deathTime >
+/// 0 ... else if isAutoSpinAttack ... else if hasPose(SLEEPING) ... else if
+/// isUpsideDown ...`). Identity for a living, upright, non-spinning entity.
+/// (Sleeping is not yet projected and falls through.)
 fn entity_post_yaw_transform(instance: EntityModelInstance) -> Mat4 {
     let death_time = instance.render_state.death_time;
     if death_time > 0.0 {
@@ -55,6 +56,14 @@ fn entity_post_yaw_transform(instance: EntityModelInstance) -> Mat4 {
     if let Some(age_ticks) = instance.render_state.auto_spin_age_ticks {
         return Mat4::from_rotation_x((-90.0 - instance.render_state.head_pitch).to_radians())
             * Mat4::from_rotation_y((age_ticks * -75.0).to_radians());
+    }
+    // Vanilla Dinnerbone/Grumm upside-down: translate up by the bounding box height
+    // (plus 0.1) then flip 180 about Z. The vanilla `(bbHeight + 0.1) / entityScale`
+    // cancels the leading `scale(entityScale)`; our post-yaw frame is already in
+    // world units (the model scale is applied innermost), so the height is used as is.
+    if let Some(height) = instance.render_state.upside_down_height {
+        return Mat4::from_translation(Vec3::new(0.0, height + 0.1, 0.0))
+            * Mat4::from_rotation_z(180.0_f32.to_radians());
     }
     Mat4::IDENTITY
 }

@@ -263,9 +263,10 @@ When an agent does any of the following, update this file in the same slice:
       `yRot`/`xRot` (net head-look yaw and head pitch), the sheep eat-grass head
       pose, the polar-bear standing-rear scale, `deathTime` (the death tip-over
       counter), `isAutoSpinAttack` (the riptide spin, carried as the lerped
-      `auto_spin_age_ticks`), `lightCoords` (block+sky packed light), `hasRedOverlay`
-      (hurt/death red `OverlayTexture` flash), and `whiteOverlayProgress` (creeper
-      swelling white flash)
+      `auto_spin_age_ticks`), `isUpsideDown`/`boundingBoxHeight` (the Dinnerbone/Grumm
+      flip, carried as `upside_down_height`), `lightCoords` (block+sky packed light),
+      `hasRedOverlay` (hurt/death red `OverlayTexture` flash), and
+      `whiteOverlayProgress` (creeper swelling white flash)
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `walkAnimationPos`/
       `walkAnimationSpeed` limb-swing, `ageScale`, unified `isInvisible`, and
@@ -330,6 +331,23 @@ When an agent does any of the following, update this file in the same slice:
     about the post-yaw origin, so (like the death flip) they commute with the
     trailing uniform model scale and tip/spin every colored and textured living
     model; the death flip takes precedence over the spin, matching vanilla.
+  - The Dinnerbone/Grumm upside-down easter egg is implemented end to end. World
+    side: a living entity (`vanilla_living_entity_type` gate, player type excluded)
+    whose synced `DATA_CUSTOM_NAME` (id `2`) is `Dinnerbone`/`Grumm`
+    (`LivingEntityRenderer.isUpsideDownName`) is marked `isUpsideDown` in
+    `EntityModelSourceState`, which also carries the `EntityRenderState.boundingBoxHeight`
+    (`Entity.getBbHeight`, from the pick-bounds AABB). Native side negates the net
+    head yaw and pitch while upside down (`extractRenderState`) and projects
+    `upside_down_height = Some(boundingBoxHeight)`. Renderer side: the shared
+    `entity_post_yaw_transform` adds the vanilla `setupRotations` else-if branch
+    after death and the riptide spin — `translate(0, bbHeight + 0.1, 0)` then
+    `Axis.ZP.rotationDegrees(180)`. The vanilla `(bbHeight + 0.1) / entityScale`
+    divisor cancels the leading `scale(entityScale)`; our post-yaw frame is already
+    in world units (the model scale is applied innermost), so the height is used as
+    is, flipping every colored and textured living model. Remaining gap: the player
+    upside-down path (`AvatarRenderer.isPlayerUpsideDown`) keys off the GameProfile
+    name and the shown cape model part rather than the custom name, which needs the
+    player-info list, so the player type is excluded and that path stays deferred.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

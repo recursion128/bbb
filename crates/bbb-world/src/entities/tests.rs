@@ -1117,6 +1117,71 @@ fn entity_model_sources_project_auto_spin_attack_flag() {
 }
 
 #[test]
+fn entity_model_sources_project_dinnerbone_upside_down() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
+    const OPTIONAL_COMPONENT_SERIALIZER_ID: i32 = 6;
+
+    let source = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+    let set_custom_name = |store: &mut WorldStore, id: i32, name: Option<&str>| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
+                serializer_id: OPTIONAL_COMPONENT_SERIALIZER_ID,
+                value: EntityDataValueKind::OptionalComponent(name.map(str::to_string)),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // A normally-named living entity is upright but still carries a real bb height.
+    assert!(!source(&store, 80).is_upside_down);
+    assert!(source(&store, 80).bounding_box_height > 0.0);
+
+    // Vanilla LivingEntityRenderer.isUpsideDownName: "Dinnerbone" and "Grumm" flip.
+    assert!(set_custom_name(&mut store, 80, Some("Dinnerbone")));
+    assert!(source(&store, 80).is_upside_down);
+    assert!(set_custom_name(&mut store, 80, Some("Grumm")));
+    assert!(source(&store, 80).is_upside_down);
+    // Any other name (or clearing it) leaves the entity upright.
+    assert!(set_custom_name(&mut store, 80, Some("Dinnerbon")));
+    assert!(!source(&store, 80).is_upside_down);
+    assert!(set_custom_name(&mut store, 80, None));
+    assert!(!source(&store, 80).is_upside_down);
+
+    // A non-living entity (boat) named Dinnerbone is never flipped: only
+    // LivingEntityRenderer reads the easter egg.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(set_custom_name(&mut store, 81, Some("Dinnerbone")));
+    assert!(!source(&store, 81).is_upside_down);
+
+    // The player path keys off the GameProfile name + cape part (AvatarRenderer),
+    // not the custom name, so a player entity is excluded here and stays deferred.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(set_custom_name(&mut store, 82, Some("Dinnerbone")));
+    assert!(!source(&store, 82).is_upside_down);
+}
+
+#[test]
 fn death_animation_gates_on_living_entity_health() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;

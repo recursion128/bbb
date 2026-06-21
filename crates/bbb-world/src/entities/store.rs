@@ -13,7 +13,7 @@ use super::{
     EntityTransformState, EntityTransientEvents, ItemEntityStackState,
     VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
@@ -36,6 +36,14 @@ const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
 /// `DATA_LIVING_ENTITY_FLAGS` bit set while a riptide trident spin is active
 /// (`LivingEntity.isAutoSpinAttack`).
 const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
+
+/// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
+/// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
+const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
+
+/// Vanilla `LivingEntityRenderer.isUpsideDownName`: the custom names that flip a
+/// living entity upside down.
+const VANILLA_UPSIDE_DOWN_NAMES: [&str; 2] = ["Dinnerbone", "Grumm"];
 
 pub(crate) struct EntityStore {
     ecs: World,
@@ -136,6 +144,19 @@ impl EntityStore {
                 })
                 .unwrap_or(default),
         )
+    }
+
+    fn metadata_optional_component(&self, id: i32, data_id: u8) -> Option<String> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        metadata
+            .data_values
+            .iter()
+            .find(|value| value.data_id == data_id)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::OptionalComponent(component) => component.clone(),
+                _ => None,
+            })
     }
 
     fn metadata_bool(&self, id: i32, data_id: u8, default: bool) -> Option<bool> {
@@ -319,6 +340,22 @@ impl EntityStore {
                 .unwrap_or(0)
                 & LIVING_ENTITY_FLAG_SPIN_ATTACK
                 != 0;
+        // Vanilla `LivingEntityRenderer.isEntityUpsideDown`: a non-player living
+        // entity whose custom name is `Dinnerbone`/`Grumm`. The player variant
+        // (`AvatarRenderer.isPlayerUpsideDown`) keys off the GameProfile name and
+        // the cape model part instead, which need the player-info list, so the
+        // player type is excluded here and that path stays deferred.
+        let is_upside_down = vanilla_living_entity_type(identity.entity_type_id)
+            && identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
+            && self
+                .metadata_optional_component(id, VANILLA_ENTITY_CUSTOM_NAME_DATA_ID)
+                .is_some_and(|name| VANILLA_UPSIDE_DOWN_NAMES.contains(&name.as_str()));
+        // Vanilla `EntityRenderState.boundingBoxHeight` (`Entity.getBbHeight`): the
+        // pick-bounds AABB height, used to lift the upside-down model before flipping.
+        let bounding_box_height = self
+            .pick_bounds(id)
+            .map(|bounds| bounds.max[1] - bounds.min[1])
+            .unwrap_or(0.0);
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
@@ -329,6 +366,8 @@ impl EntityStore {
             age_ticks: client_animations.animations.age_ticks,
             is_fully_frozen,
             is_auto_spin_attack,
+            is_upside_down,
+            bounding_box_height,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             polar_bear_stand_scale: client_animations
                 .animations

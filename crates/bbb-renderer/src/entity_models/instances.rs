@@ -66,6 +66,15 @@ pub struct EntityRenderState {
     /// `Axis.YP.rotationDegrees(ageInTicks * -75)`. `None` for every entity that is
     /// not spinning (the death tip-over takes precedence over this branch).
     pub auto_spin_age_ticks: Option<f32>,
+    /// Vanilla `LivingEntityRenderState.isUpsideDown` Dinnerbone/Grumm flip: when
+    /// the entity is upside down, `Some(boundingBoxHeight)` drives the
+    /// `LivingEntityRenderer.setupRotations` branch `translate(0, (bbHeight + 0.1) /
+    /// entityScale, 0)` then `Axis.ZP.rotationDegrees(180)`. Carried as the world
+    /// `boundingBoxHeight` because the post-yaw frame is already in world units (the
+    /// model scale is applied innermost), so the `/ entityScale` is unnecessary.
+    /// `None` for every entity that is not upside down (death and the riptide spin
+    /// both take precedence over this branch).
+    pub upside_down_height: Option<f32>,
 }
 
 impl EntityRenderState {
@@ -85,6 +94,7 @@ impl EntityRenderState {
             has_red_overlay: false,
             white_overlay_progress: 0.0,
             auto_spin_age_ticks: None,
+            upside_down_height: None,
         }
     }
 
@@ -176,6 +186,14 @@ impl EntityModelInstance {
     /// Drives the `LivingEntityRenderer.setupRotations` trident-spin branch.
     pub fn with_auto_spin_age_ticks(mut self, auto_spin_age_ticks: Option<f32>) -> Self {
         self.render_state.auto_spin_age_ticks = auto_spin_age_ticks;
+        self
+    }
+
+    /// Sets the Dinnerbone/Grumm upside-down projection (vanilla
+    /// `LivingEntityRenderState.isUpsideDown` plus `boundingBoxHeight`). Drives the
+    /// `LivingEntityRenderer.setupRotations` upside-down branch.
+    pub fn with_upside_down_height(mut self, upside_down_height: Option<f32>) -> Self {
+        self.render_state.upside_down_height = upside_down_height;
         self
     }
 
@@ -789,6 +807,7 @@ mod tests {
                 has_red_overlay: false,
                 white_overlay_progress: 0.0,
                 auto_spin_age_ticks: None,
+                upside_down_height: None,
             }
         );
     }

@@ -321,6 +321,18 @@ pub struct EntityModelSourceState {
     /// entities and any living entity that is not spinning.
     #[serde(default)]
     pub is_auto_spin_attack: bool,
+    /// Vanilla `LivingEntityRenderState.isUpsideDown`
+    /// (`LivingEntityRenderer.isEntityUpsideDown`): a living entity (other than a
+    /// player) whose custom name is the `Dinnerbone`/`Grumm` easter egg, which the
+    /// renderer flips upside down in `LivingEntityRenderer.setupRotations`. `false`
+    /// for non-living entities and any entity that is not named so.
+    #[serde(default)]
+    pub is_upside_down: bool,
+    /// Vanilla `EntityRenderState.boundingBoxHeight` (`Entity.getBbHeight`): the
+    /// entity's current AABB height in world units, used by the upside-down branch
+    /// of `LivingEntityRenderer.setupRotations` to lift the model before flipping.
+    #[serde(default)]
+    pub bounding_box_height: f32,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
     #[serde(default)]
