@@ -660,19 +660,26 @@ fn emit_goat_parts(
 }
 
 fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    emit_model_parts(
-        mesh,
-        if baby {
-            &BABY_POLAR_BEAR_PARTS
-        } else {
-            &ADULT_POLAR_BEAR_PARTS
-        },
-        if baby {
-            entity_model_root_transform(instance)
-        } else {
-            polar_bear_model_root_transform(instance)
-        },
-    );
+    let transform = if baby {
+        entity_model_root_transform(instance)
+    } else {
+        polar_bear_model_root_transform(instance)
+    };
+    let static_parts: &[ModelPartDesc] = if baby {
+        &BABY_POLAR_BEAR_PARTS
+    } else {
+        &ADULT_POLAR_BEAR_PARTS
+    };
+    let stand_scale = instance.polar_bear_stand_scale;
+    if stand_scale == 0.0 {
+        emit_model_parts(mesh, static_parts, transform);
+    } else {
+        let mut parts = static_parts.to_vec();
+        for (index, part) in polar_bear_standing_part_roles(baby) {
+            apply_polar_bear_standing_pose(&mut parts[index].pose, part, baby, stand_scale);
+        }
+        emit_model_parts(mesh, &parts, transform);
+    }
 }
 
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

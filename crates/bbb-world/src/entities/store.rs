@@ -270,6 +270,7 @@ impl EntityStore {
         &self,
         id: i32,
         position: super::EntityVec3,
+        partial_ticks: f32,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -283,6 +284,9 @@ impl EntityStore {
             y_rot: transform.y_rot,
             age_ticks: client_animations.animations.age_ticks,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
+            polar_bear_stand_scale: client_animations
+                .animations
+                .polar_bear_stand_scale(partial_ticks),
             data_values: metadata.data_values.clone(),
         })
     }

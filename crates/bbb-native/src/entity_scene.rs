@@ -299,7 +299,8 @@ fn entity_model_instance(
             ],
             source.y_rot,
         )
-        .with_head_eat(head_eat),
+        .with_head_eat(head_eat)
+        .with_polar_bear_stand_scale(source.polar_bear_stand_scale),
     )
 }
 
@@ -1289,6 +1290,41 @@ mod tests {
         world.advance_entity_client_animations(20);
         let mid = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
         assert_eq!(mid[0].head_eat, SheepHeadEatPose::from_eat_tick(20, 0.0));
+    }
+
+    #[test]
+    fn entity_model_instances_project_polar_bear_standing_scale() {
+        const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            80,
+            VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            81,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        // A polar bear on all fours and any other entity carry a zero scale.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(resting[0].polar_bear_stand_scale, 0.0);
+        assert_eq!(resting[1].polar_bear_stand_scale, 0.0);
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 80,
+            values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+        }));
+        world.advance_entity_client_animations(1);
+
+        // Vanilla PolarBearRenderer.extractRenderState reads
+        // getStandingAnimationScale(partialTick); after one tick that is
+        // lerp(0.5, 0, 1) / 6.
+        let standing = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
+        assert_eq!(standing[0].polar_bear_stand_scale, 0.5 / 6.0);
+        assert_eq!(standing[1].polar_bear_stand_scale, 0.0);
     }
 
     #[test]

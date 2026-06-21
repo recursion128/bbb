@@ -2980,6 +2980,49 @@ fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
 }
 
 #[test]
+fn polar_bear_standing_projects_render_stand_scale() {
+    const POLAR_BEAR_TYPE_ID: i32 = 104;
+    const CHICKEN_TYPE_ID: i32 = 26;
+    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(80, POLAR_BEAR_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(81, CHICKEN_TYPE_ID));
+
+    let stand_scale = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .polar_bear_stand_scale
+    };
+
+    // A polar bear on all fours has no standing animation state.
+    assert_eq!(stand_scale(&store, 80, 1.0), 0.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+    }));
+
+    // After one client tick clientSideStandAnimationO=0, clientSideStandAnimation=1,
+    // so getStandingAnimationScale(a) = lerp(a, 0, 1) / 6 = a / 6.
+    store.advance_entity_client_animations(1);
+    assert_eq!(stand_scale(&store, 80, 0.0), 0.0);
+    assert_eq!(stand_scale(&store, 80, 0.5), 0.5 / 6.0);
+    assert_eq!(stand_scale(&store, 80, 1.0), 1.0 / 6.0);
+
+    // Once fully reared (prev == current == 6) the scale saturates at 1.0.
+    store.advance_entity_client_animations(10);
+    assert_eq!(stand_scale(&store, 80, 0.0), 1.0);
+    assert_eq!(stand_scale(&store, 80, 1.0), 1.0);
+
+    // A non-polar-bear never carries a standing scale.
+    assert_eq!(stand_scale(&store, 81, 1.0), 0.0);
+}
+
+#[test]
 fn advancing_entity_client_animations_in_batches_matches_single_ticks() {
     const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
     const POLAR_BEAR_TYPE_ID: i32 = 104;

@@ -10,7 +10,10 @@ use super::{
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
-    model_layers::{sheep_eaten_head_pose, sheep_head_part_index},
+    model_layers::{
+        apply_polar_bear_standing_pose, polar_bear_standing_part_roles, sheep_eaten_head_pose,
+        sheep_head_part_index,
+    },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
 };
@@ -354,8 +357,17 @@ fn emit_polar_bear_textured_model(
     } else {
         polar_bear_model_root_transform(instance)
     };
+    let stand_scale = instance.polar_bear_stand_scale;
     for pass in polar_bear_textured_layer_passes(baby) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        if stand_scale == 0.0 {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            for (index, part) in polar_bear_standing_part_roles(baby) {
+                apply_polar_bear_standing_pose(&mut parts[index].pose, part, baby, stand_scale);
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
     }
 }
 

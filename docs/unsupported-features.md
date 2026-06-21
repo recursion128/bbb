@@ -445,8 +445,11 @@ When an agent does any of the following, update this file in the same slice:
       `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /
       `POLAR_BEAR_BABY`, adult `MeshTransformer.scaling(1.2F)`, and official
       adult/baby texture references, texture-backed base layer pass emission,
-      and official PNG atlas upload/bind/sample path; standing animation from
-      `standScale`, walk/head animation, and lighting remain unsupported
+      official PNG atlas upload/bind/sample path, and the vanilla
+      `PolarBearModel.setupAnim` standing-rear head/body/front-leg pose driven by
+      the canonical `clientSideStandAnimation` countdown projected through
+      `PolarBear.getStandingAnimationScale` and the renderer partial tick; walk
+      animation, head rotation, and lighting remain unsupported
     - hoglin and zoglin entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `HoglinModel`, `BabyHoglinModel`,
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,

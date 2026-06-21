@@ -87,6 +87,13 @@ impl PolarBearStandingAnimationState {
         1.0 + self.dimensions_ticks / POLAR_BEAR_STAND_ANIMATION_TICKS
     }
 
+    /// Vanilla `PolarBear.getStandingAnimationScale`: `lerp(partialTick,
+    /// clientSideStandAnimationO, clientSideStandAnimation) / 6.0`.
+    fn standing_animation_scale(self, partial_tick: f32) -> f32 {
+        let ticks = self.previous_ticks + partial_tick * (self.current_ticks - self.previous_ticks);
+        ticks / POLAR_BEAR_STAND_ANIMATION_TICKS
+    }
+
     fn set_target(&mut self, target_standing: bool) {
         self.target_standing = target_standing;
     }
@@ -196,6 +203,14 @@ impl EntityClientAnimationState {
     /// projection. Returns `0` when the sheep is not currently eating.
     pub fn sheep_eat_animation_tick(&self) -> i32 {
         self.sheep_eat.map_or(0, |state| state.eat_animation_tick)
+    }
+
+    /// Vanilla `PolarBear.getStandingAnimationScale(partialTick)` projected for
+    /// the renderer `PolarBearModel.setupAnim` standing pose. Returns `0.0` when
+    /// the entity is not a rearing polar bear.
+    pub fn polar_bear_stand_scale(&self, partial_tick: f32) -> f32 {
+        self.polar_bear_standing
+            .map_or(0.0, |state| state.standing_animation_scale(partial_tick))
     }
 
     pub(crate) fn advance_client_tick(&mut self, entity_type_id: i32, transform: EntityTransform) {

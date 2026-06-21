@@ -440,3 +440,69 @@ pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_PARTS: [TexturedMode
         children: &[],
     },
 ];
+
+/// Which polar bear model part a standing-pose delta applies to. Vanilla
+/// `PolarBearModel.setupAnim` rears the bear by moving the head, body, and both
+/// front legs; the hind legs stay put.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::entity_models) enum PolarBearStandPart {
+    Head,
+    Body,
+    FrontLeg,
+}
+
+/// Maps each standing-pose part to its index in the adult/baby body layer. The
+/// adult layer (`PolarBearModel.createBodyLayer`) lists the head first then the
+/// body; the baby layer (`BabyPolarBearModel.createBodyLayer`) lists the body
+/// first then the head. Both front legs are indices 4 and 5.
+pub(in crate::entity_models) const fn polar_bear_standing_part_roles(
+    baby: bool,
+) -> [(usize, PolarBearStandPart); 4] {
+    if baby {
+        [
+            (1, PolarBearStandPart::Head),
+            (0, PolarBearStandPart::Body),
+            (4, PolarBearStandPart::FrontLeg),
+            (5, PolarBearStandPart::FrontLeg),
+        ]
+    } else {
+        [
+            (0, PolarBearStandPart::Head),
+            (1, PolarBearStandPart::Body),
+            (4, PolarBearStandPart::FrontLeg),
+            (5, PolarBearStandPart::FrontLeg),
+        ]
+    }
+}
+
+/// Applies the vanilla `PolarBearModel.setupAnim` standing delta to one part
+/// pose. `stand_scale` is `PolarBear.getStandingAnimationScale`; vanilla squares
+/// it into `standScale`. `bodyAgeScale` (`state.ageScale`, 1.0 adult / 0.5 baby)
+/// scales only the body and front-leg translation terms. Both front legs share
+/// the same base y/z, so applying the delta to each matches vanilla's
+/// `leftFrontLeg.y = rightFrontLeg.y` / `leftFrontLeg.z = rightFrontLeg.z`.
+pub(in crate::entity_models) fn apply_polar_bear_standing_pose(
+    pose: &mut PartPose,
+    part: PolarBearStandPart,
+    baby: bool,
+    stand_scale: f32,
+) {
+    let scale = stand_scale * stand_scale;
+    let body_age_scale = if baby { 0.5 } else { 1.0 };
+    match part {
+        PolarBearStandPart::Body => {
+            pose.rotation[0] -= scale * std::f32::consts::PI * 0.35;
+            pose.offset[1] += scale * body_age_scale * 2.0;
+        }
+        PolarBearStandPart::FrontLeg => {
+            pose.offset[1] -= scale * body_age_scale * 20.0;
+            pose.offset[2] += scale * body_age_scale * 4.0;
+            pose.rotation[0] -= scale * std::f32::consts::PI * 0.45;
+        }
+        PolarBearStandPart::Head => {
+            pose.offset[1] -= scale * 24.0;
+            pose.offset[2] += scale * 13.0;
+            pose.rotation[0] += scale * std::f32::consts::PI * 0.15;
+        }
+    }
+}

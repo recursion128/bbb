@@ -297,6 +297,135 @@ fn polar_bear_textured_mesh_uses_vanilla_uvs_tints_and_scale() {
     assert_close3(baby_textured_max, baby_colored_max);
 }
 
+#[test]
+fn polar_bear_standing_part_roles_match_vanilla_layer_order() {
+    // Adult layer lists head first then body; baby layer lists body first.
+    assert_eq!(
+        polar_bear_standing_part_roles(false),
+        [
+            (0, PolarBearStandPart::Head),
+            (1, PolarBearStandPart::Body),
+            (4, PolarBearStandPart::FrontLeg),
+            (5, PolarBearStandPart::FrontLeg),
+        ]
+    );
+    assert_eq!(
+        polar_bear_standing_part_roles(true),
+        [
+            (1, PolarBearStandPart::Head),
+            (0, PolarBearStandPart::Body),
+            (4, PolarBearStandPart::FrontLeg),
+            (5, PolarBearStandPart::FrontLeg),
+        ]
+    );
+}
+
+#[test]
+fn apply_polar_bear_standing_pose_matches_vanilla_setup_anim() {
+    let pi = std::f32::consts::PI;
+
+    // Adult (ageScale 1.0) at standScale 1.0 (squared = 1.0).
+    let mut head = ADULT_POLAR_BEAR_PARTS[0].pose;
+    apply_polar_bear_standing_pose(&mut head, PolarBearStandPart::Head, false, 1.0);
+    assert_eq!(head.offset, [0.0, 10.0 - 24.0, -16.0 + 13.0]);
+    assert!((head.rotation[0] - pi * 0.15).abs() < 1e-6);
+    assert_eq!([head.rotation[1], head.rotation[2]], [0.0, 0.0]);
+
+    let mut body = ADULT_POLAR_BEAR_PARTS[1].pose;
+    apply_polar_bear_standing_pose(&mut body, PolarBearStandPart::Body, false, 1.0);
+    assert_eq!(body.offset, [-2.0, 9.0 + 2.0, 12.0]);
+    assert!((body.rotation[0] - (std::f32::consts::FRAC_PI_2 - pi * 0.35)).abs() < 1e-6);
+
+    let mut front_leg = ADULT_POLAR_BEAR_PARTS[4].pose;
+    apply_polar_bear_standing_pose(&mut front_leg, PolarBearStandPart::FrontLeg, false, 1.0);
+    assert_eq!(front_leg.offset, [-3.5, 14.0 - 20.0, -8.0 + 4.0]);
+    assert!((front_leg.rotation[0] - (-pi * 0.45)).abs() < 1e-6);
+
+    // standScale is squared: 0.5 -> 0.25 of the full delta.
+    let mut quarter_head = ADULT_POLAR_BEAR_PARTS[0].pose;
+    apply_polar_bear_standing_pose(&mut quarter_head, PolarBearStandPart::Head, false, 0.5);
+    assert_eq!(quarter_head.offset[1], 10.0 - 0.25 * 24.0);
+
+    // Baby (ageScale 0.5) scales only the body/front-leg translation terms.
+    let mut baby_body = BABY_POLAR_BEAR_PARTS[0].pose;
+    apply_polar_bear_standing_pose(&mut baby_body, PolarBearStandPart::Body, true, 1.0);
+    assert_eq!(baby_body.offset[1], 17.5 + 0.5 * 2.0);
+
+    let mut baby_front_leg = BABY_POLAR_BEAR_PARTS[4].pose;
+    apply_polar_bear_standing_pose(&mut baby_front_leg, PolarBearStandPart::FrontLeg, true, 1.0);
+    assert_eq!(baby_front_leg.offset[1], 21.5 - 0.5 * 20.0);
+    assert_eq!(baby_front_leg.offset[2], -4.5 + 0.5 * 4.0);
+
+    // The head translation does not use ageScale, so the baby head moves the
+    // same absolute amount as the adult head.
+    let mut baby_head = BABY_POLAR_BEAR_PARTS[1].pose;
+    apply_polar_bear_standing_pose(&mut baby_head, PolarBearStandPart::Head, true, 1.0);
+    assert_eq!(baby_head.offset, [0.0, 18.625 - 24.0, -5.75 + 13.0]);
+}
+
+#[test]
+fn polar_bear_standing_mesh_rears_head_body_and_front_legs() {
+    let resting = entity_model_mesh(&[EntityModelInstance::polar_bear(
+        220,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    let standing = entity_model_mesh(&[EntityModelInstance::polar_bear_standing(
+        220,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        1.0,
+    )]);
+    assert_eq!(resting.vertices.len(), 240);
+    assert_eq!(standing.vertices.len(), 240);
+    // Adult layout: head 0..96, body 96..144, hind legs 144..192, front legs 192..240.
+    assert_eq!(resting.vertices[144..192], standing.vertices[144..192]);
+    assert_ne!(resting.vertices[0..96], standing.vertices[0..96]);
+    assert_ne!(resting.vertices[96..144], standing.vertices[96..144]);
+    assert_ne!(resting.vertices[192..216], standing.vertices[192..216]);
+    assert_ne!(resting.vertices[216..240], standing.vertices[216..240]);
+
+    // standScale 0.0 is a no-op identical to the resting mesh.
+    let neutral = entity_model_mesh(&[EntityModelInstance::polar_bear_standing(
+        220,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        0.0,
+    )]);
+    assert_eq!(resting.vertices, neutral.vertices);
+
+    // Baby layout: body 0..24, head 24..120, hind legs 120..168, front legs 168..216.
+    let baby_resting = entity_model_mesh(&[EntityModelInstance::polar_bear(
+        221,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+    )]);
+    let baby_standing = entity_model_mesh(&[EntityModelInstance::polar_bear_standing(
+        221,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        1.0,
+    )]);
+    assert_eq!(
+        baby_resting.vertices[120..168],
+        baby_standing.vertices[120..168]
+    );
+    assert_ne!(baby_resting.vertices[0..24], baby_standing.vertices[0..24]);
+    assert_ne!(
+        baby_resting.vertices[24..120],
+        baby_standing.vertices[24..120]
+    );
+    assert_ne!(
+        baby_resting.vertices[168..216],
+        baby_standing.vertices[168..216]
+    );
+}
+
 fn polar_bear_texture_images() -> Vec<EntityModelTextureImage> {
     polar_bear_entity_texture_refs()
         .iter()

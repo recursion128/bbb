@@ -302,6 +302,8 @@ pub struct EntityModelSourceState {
     pub age_ticks: u32,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
+    #[serde(default)]
+    pub polar_bear_stand_scale: f32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 
@@ -515,7 +517,7 @@ impl WorldStore {
             .into_iter()
             .filter_map(|target| {
                 self.entities
-                    .model_source(target.entity_id, target.position)
+                    .model_source(target.entity_id, target.position, partial_ticks)
             })
             .collect()
     }

@@ -10,6 +10,9 @@ pub struct EntityModelInstance {
     /// Per-frame sheep eat-grass head pose. [`SheepHeadEatPose::NONE`] for every
     /// other entity and for a sheep that is not currently eating.
     pub head_eat: SheepHeadEatPose,
+    /// Per-frame polar bear standing-rear scale (`PolarBear.getStandingAnimationScale`,
+    /// `0.0..=1.0`). `0.0` for every other entity and for a polar bear on all fours.
+    pub polar_bear_stand_scale: f32,
 }
 
 impl EntityModelInstance {
@@ -20,11 +23,17 @@ impl EntityModelInstance {
             position,
             y_rot,
             head_eat: SheepHeadEatPose::NONE,
+            polar_bear_stand_scale: 0.0,
         }
     }
 
     pub fn with_head_eat(mut self, head_eat: SheepHeadEatPose) -> Self {
         self.head_eat = head_eat;
+        self
+    }
+
+    pub fn with_polar_bear_stand_scale(mut self, polar_bear_stand_scale: f32) -> Self {
+        self.polar_bear_stand_scale = polar_bear_stand_scale;
         self
     }
 
@@ -458,6 +467,17 @@ impl EntityModelInstance {
             position,
             y_rot,
         )
+    }
+
+    #[cfg(test)]
+    pub fn polar_bear_standing(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        stand_scale: f32,
+    ) -> Self {
+        Self::polar_bear(entity_id, position, y_rot, baby).with_polar_bear_stand_scale(stand_scale)
     }
 
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
