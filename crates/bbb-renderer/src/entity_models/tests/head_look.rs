@@ -72,6 +72,30 @@ fn head_part_indices_match_vanilla_body_layers() {
         PLAYER_SLIM_PARTS[player_head_part_index()].cubes,
         PLAYER_HEAD.as_slice()
     );
+
+    // Standalone head-first models (creeper, spider, enderman, iron/snow golem)
+    // all list the head as part 0.
+    assert_eq!(head_first_part_index(), 0);
+    assert_eq!(
+        CREEPER_PARTS[head_first_part_index()].cubes,
+        CREEPER_HEAD.as_slice()
+    );
+    assert_eq!(
+        SPIDER_PARTS[head_first_part_index()].cubes,
+        SPIDER_HEAD.as_slice()
+    );
+    assert_eq!(
+        ENDERMAN_PARTS[head_first_part_index()].cubes,
+        ENDERMAN_HEAD.as_slice()
+    );
+    assert_eq!(
+        IRON_GOLEM_PARTS[head_first_part_index()].cubes,
+        IRON_GOLEM_HEAD.as_slice()
+    );
+    assert_eq!(
+        SNOW_GOLEM_PARTS[head_first_part_index()].cubes,
+        SNOW_GOLEM_HEAD.as_slice()
+    );
 }
 
 #[test]
@@ -344,6 +368,44 @@ fn witch_colored_mesh_applies_head_look() {
     assert_ne!(resting.vertices, looking.vertices);
     let n = resting.vertices.len();
     assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
+}
+
+#[test]
+fn standalone_head_first_colored_meshes_apply_head_look() {
+    let cases = [
+        EntityModelInstance::new(750, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::spider(751, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::cave_spider(752, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::enderman(753, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::iron_golem(754, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::snow_golem(755, [0.0, 64.0, 0.0], 0.0),
+    ];
+    for base in cases {
+        let resting = entity_model_mesh(&[base]);
+        let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+        let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+        // The head is part 0 (emitted first); the last emitted part is a limb,
+        // which head look must leave untouched.
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(
+            resting.vertices, yawed.vertices,
+            "{:?} head turns",
+            base.kind
+        );
+        let n = resting.vertices.len();
+        assert_eq!(
+            resting.vertices[n - 24..],
+            yawed.vertices[n - 24..],
+            "{:?} last part stays",
+            base.kind
+        );
+        assert_ne!(
+            yawed.vertices, pitched.vertices,
+            "{:?} yaw != pitch",
+            base.kind
+        );
+    }
 }
 
 #[test]

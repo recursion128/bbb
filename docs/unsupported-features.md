@@ -315,10 +315,13 @@ When an agent does any of the following, update this file in the same slice:
     (villager and wandering trader colored+textured, witch colored+textured,
     illagers colored) — the baby villager's index-3 head included. Remaining
     head-look work: now applied to every part-list humanoid and quadruped,
-    including the wide/slim player model (colored and textured). The remaining
-    head-look gaps are the fall-flying/swimming `head.xRot` overrides (currently
-    untracked, default upright), and the placeholder raw-cuboid `Humanoid`
-    fallback path (which is not yet a vanilla-faithful part-list model).
+    including the wide/slim player model, and the standalone head-first models
+    (creeper, spider/cave spider, enderman, iron golem, snow golem) — all colored
+    and textured. The remaining head-look gaps are the other head-bearing models
+    (goat, wolf, polar bear, hoglin, ravager, etc.), the fall-flying/swimming
+    `head.xRot` overrides (currently untracked, default upright), and the
+    placeholder raw-cuboid `Humanoid` fallback path (not yet a vanilla-faithful
+    part-list model).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -595,9 +598,10 @@ When an agent does any of the following, update this file in the same slice:
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,
       `ModelLayers.CREEPER` selection, texture-backed base layer pass emission,
-      and official PNG atlas upload/bind/sample path; powered armor layer,
-      swelling scale, white overlay flash, head/walk animation, and lighting
-      remain unsupported
+      official PNG atlas upload/bind/sample path, and the vanilla
+      `CreeperModel.setupAnim` head-look yaw/pitch on the head part (colored and
+      textured); powered armor layer, swelling model scale, walk animation, and
+      lighting remain unsupported
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with
       `ModelLayers.SPIDER`, the official
@@ -611,8 +615,10 @@ When an agent does any of the following, update this file in the same slice:
       official PNG atlas upload/bind/sample path; both spider and cave spider
       include the vanilla `SpiderEyesLayer` `spider_eyes.png` texture-backed
       eyes pass using the parent spider model parts, submit order `1`, and a
-      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path;
-      head/walk animation, death flip, and lighting remain unsupported
+      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
+      vanilla `SpiderModel.setupAnim` head-look yaw/pitch on the head part
+      (colored and textured, both spider and cave spider); walk animation, death
+      flip, and lighting remain unsupported
     - enderman entities as renderer-owned vanilla 26.1
       `EndermanModel.createBodyLayer()` geometry, including its
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,
@@ -621,26 +627,31 @@ When an agent does any of the following, update this file in the same slice:
       `EndermanRenderer`, texture-backed base layer pass emission, and the
       vanilla `EnderEyesLayer` `enderman_eyes.png` texture-backed eyes pass
       using the parent Enderman model parts, submit order `1`, and a
-      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path;
-      carried-block layer, carried-block arm pose, creepy head offset, creepy
-      render jitter, humanoid walk/head animation, and lighting remain
-      unsupported
+      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
+      vanilla `HumanoidModel.setupAnim` head-look yaw/pitch on the head part
+      (colored and textured); carried-block layer, carried-block arm pose, creepy
+      head offset, creepy render jitter, humanoid walk animation, and lighting
+      remain unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official
       `textures/entity/iron_golem/iron_golem.png` texture reference from
       `IronGolemRenderer`, texture-backed base layer pass emission, and
-      official PNG atlas upload/bind/sample path; crackiness overlay textures,
-      flower block layer, attack arm pose, offer-flower arm pose, head rotation,
-      leg walk animation, and renderer body-wobble rotation remain unsupported
+      official PNG atlas upload/bind/sample path, and the vanilla
+      `IronGolemModel.setupAnim` head-look yaw/pitch on the head part (colored and
+      textured); crackiness overlay textures, flower block layer, attack arm
+      pose, offer-flower arm pose, leg walk animation, and renderer body-wobble
+      rotation remain unsupported
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the
       official `textures/entity/snow_golem/snow_golem.png` texture reference
       from `SnowGolemRenderer`, texture-backed base layer pass emission, and
-      official PNG atlas upload/bind/sample path; carved pumpkin head block
-      layer, pumpkin/no pumpkin state projection, head rotation, upper-body yaw,
-      and arm repositioning animation remain unsupported
+      official PNG atlas upload/bind/sample path, and the vanilla
+      `SnowGolemModel.setupAnim` head-look yaw/pitch on the head part (colored and
+      textured); carved pumpkin head block layer, pumpkin/no pumpkin state
+      projection, upper-body yaw, and arm repositioning animation remain
+      unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested

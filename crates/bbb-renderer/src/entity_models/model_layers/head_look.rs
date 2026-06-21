@@ -61,6 +61,13 @@ pub(in crate::entity_models) const fn player_head_part_index() -> usize {
     0
 }
 
+/// Head-part index for standalone single-head body layers whose mesh lists the
+/// head first: creeper, spider/cave spider, enderman, iron golem, and snow
+/// golem. Each of these models applies the plain `setupAnim` head look.
+pub(in crate::entity_models) const fn head_first_part_index() -> usize {
+    0
+}
+
 /// `SkeletonModel` head-part index. The skeleton, stray, wither-skeleton, and
 /// bogged body layers list the head first.
 pub(in crate::entity_models) const fn skeleton_head_part_index() -> usize {

@@ -184,6 +184,18 @@ fn creeper_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     assert_close3(max, [0.25, 65.626, 0.375]);
 }
 
+#[test]
+fn creeper_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
+    let base = EntityModelInstance::new(199, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
 fn creeper_texture_images() -> Vec<EntityModelTextureImage> {
     creeper_entity_texture_refs()
         .iter()

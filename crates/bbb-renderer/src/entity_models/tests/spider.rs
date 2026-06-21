@@ -377,6 +377,22 @@ fn spider_textured_mesh_uses_vanilla_uvs_tints_and_cave_scale() {
 }
 
 #[test]
+fn spider_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&spider_texture_images()).unwrap();
+    for base in [
+        EntityModelInstance::spider(914, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::cave_spider(915, [0.0, 64.0, 0.0], 0.0),
+    ] {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
+        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+    }
+}
+
+#[test]
 fn spider_eyes_textured_mesh_uses_parent_model_geometry_and_eyes_render_type() {
     let (atlas, _) = build_entity_model_texture_atlas(&spider_texture_images()).unwrap();
 

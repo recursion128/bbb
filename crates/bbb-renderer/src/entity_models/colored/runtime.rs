@@ -952,29 +952,41 @@ fn emit_pig_model(
 }
 
 fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(mesh, &CREEPER_PARTS, entity_model_root_transform(instance));
+    emit_model_parts(
+        mesh,
+        &head_first_colored_head_look_parts(&CREEPER_PARTS, instance),
+        entity_model_root_transform(instance),
+    );
 }
 
 fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(mesh, &SPIDER_PARTS, entity_model_root_transform(instance));
+    emit_model_parts(
+        mesh,
+        &head_first_colored_head_look_parts(&SPIDER_PARTS, instance),
+        entity_model_root_transform(instance),
+    );
 }
 
 fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
-        &SPIDER_PARTS,
+        &head_first_colored_head_look_parts(&SPIDER_PARTS, instance),
         cave_spider_model_root_transform(instance),
     );
 }
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(mesh, &ENDERMAN_PARTS, entity_model_root_transform(instance));
+    emit_model_parts(
+        mesh,
+        &head_first_colored_head_look_parts(&ENDERMAN_PARTS, instance),
+        entity_model_root_transform(instance),
+    );
 }
 
 fn emit_iron_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
-        &IRON_GOLEM_PARTS,
+        &head_first_colored_head_look_parts(&IRON_GOLEM_PARTS, instance),
         entity_model_root_transform(instance),
     );
 }
@@ -982,9 +994,24 @@ fn emit_iron_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
 fn emit_snow_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
-        &SNOW_GOLEM_PARTS,
+        &head_first_colored_head_look_parts(&SNOW_GOLEM_PARTS, instance),
         entity_model_root_transform(instance),
     );
+}
+
+/// Applies the vanilla `setupAnim` head look to a standalone head-first colored
+/// model's head part (index 0): creeper, spider/cave spider, enderman, iron
+/// golem, snow golem.
+fn head_first_colored_head_look_parts(
+    parts: &[ModelPartDesc],
+    instance: EntityModelInstance,
+) -> Cow<'_, [ModelPartDesc]> {
+    colored_head_look_parts(
+        parts,
+        head_first_part_index(),
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    )
 }
 
 fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
