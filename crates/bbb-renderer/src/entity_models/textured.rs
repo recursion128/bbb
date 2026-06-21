@@ -18,9 +18,9 @@ use super::{
         apply_polar_bear_standing_pose, chicken_leg_part_indices, cow_head_part_index,
         enderman_leg_swing_pose, half_amplitude_leg_swing_pose, head_first_part_index,
         head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_leg_swing_pose,
-        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
-        parched_head_part_index, pig_head_part_index, player_head_part_index,
+        hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_swing_pose,
+        humanoid_leg_swing_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
+        limb_swing_at_rest, parched_head_part_index, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
@@ -361,6 +361,9 @@ fn emit_quadruped_textured_passes(
 /// then the right and left legs. [`humanoid_leg_swing_pose`] resolves each leg's
 /// phase from its offset, so the parched layer's head/body swap does not matter.
 const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
+
+/// `HumanoidModel` arm part indices (head/body at `0`/`1`, arms at `[2, 3]`).
+const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
 
 /// Emits a humanoid's textured layer passes, applying the vanilla
 /// `HumanoidModel.setupAnim` head look ([`head_look_pose`]) to the head part at
@@ -919,6 +922,14 @@ fn emit_player_textured_model(
         for index in HUMANOID_LEG_PART_INDICES {
             if let Some(leg) = visible_parts.get_mut(index) {
                 leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+            }
+        }
+        // `PlayerModel` inherits the `HumanoidModel` arm swing (its `setupAnim` only
+        // toggles visibility), so the arms counter-swing too; the sleeve children ride
+        // the arm parts. Held-item/attack/crouch/swim arm poses and the idle bob defer.
+        for index in HUMANOID_ARM_PART_INDICES {
+            if let Some(arm) = visible_parts.get_mut(index) {
+                arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
             }
         }
     }

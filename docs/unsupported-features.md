@@ -290,7 +290,9 @@ When an agent does any of the following, update this file in the same slice:
       family (villager adult/baby, wandering trader, witch — `VillagerModel`/
       `WitchModel`, both also non-`HumanoidModel` with the same `0.5` factor), and the
       player model (`PlayerModel extends HumanoidModel`, remote players, colored and
-      textured, wide and slim, the pants children riding the leg parts), and the
+      textured, wide and slim, the pants children riding the leg parts — and, uniquely so
+      far, the inherited `HumanoidModel` **arm** counter-swing at `[2, 3]` with its
+      sleeve children, since `PlayerModel` does not override the arms), and the
       enderman (`EndermanModel extends HumanoidModel`, the inherited swing halved and
       clamped to `[-0.4, 0.4]`), and the iron golem (`IronGolemModel`, a triangle-wave
       gait swinging both legs and — its only walk-driven arm animation — the arms), and
@@ -545,8 +547,11 @@ When an agent does any of the following, update this file in the same slice:
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
     `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
-    track), so their limb swing is left at rest rather than approximated; (2) the
-    `HumanoidModel`/illager arm swing and the per-subclass arm/ear/nose poses (the
+    track), so their limb swing is left at rest rather than approximated; (2) the base
+    `HumanoidModel.setupAnim` arm swing is implemented for the player
+    (`humanoid_arm_swing_pose`, arms at `[2, 3]`, the counter-swing
+    `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`); the per-subclass arm/ear/nose poses
+    that override it stay deferred (the
     zombie held-out arms, skeleton aiming, the `AbstractPiglinModel` ear sway and
     `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel` arm swing/
     attack/spellcast/bow/crossbow poses and riding sit pose, the `VillagerModel` unhappy
@@ -664,14 +669,19 @@ When an agent does any of the following, update this file in the same slice:
       `AvatarRenderer` `0.9375F` render scale, texture-backed base layer pass
       emission, `ModelLayers.PLAYER` / `PLAYER_SLIM` selection, official
       wide/slim Steve PNG atlas upload/bind/sample path, and the vanilla
-      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part (colored and
-      textured, applied once to the shared visibility-filtered part array); true
+      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part plus the
+      inherited `HumanoidModel.setupAnim` walk swing — the legs at `[4, 5]`
+      (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, pants children riding them) and the
+      arms at `[2, 3]` (the counter-swing `cos(pos * 0.6662 [+ π]) * 2.0 * speed *
+      0.5`, sleeve children riding them) — all applied once to the shared
+      visibility-filtered part array (colored and textured); true
       `RenderTypes.entityTranslucent` alpha blending, UUID/default-skin
       selection, live skin downloads, automatic slim-vs-wide model selection
       from `PlayerSkin`, capes, ears, armor/equipment, held items,
       elytra/wings, shoulder parrots,
       arrows/stingers, spectator visibility, crouch/flying offsets, name
-      display, arm poses, and walk animation remain unsupported
+      display, the held-item/attack/crouch/swim arm poses, the `ageInTicks` idle
+      arm bob, and the elytra `speedValue` poses remain unsupported
       (metadata-driven `DATA_PLAYER_MODE_CUSTOMISATION` projection now controls
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer

@@ -212,6 +212,36 @@ pub(in crate::entity_models) fn humanoid_leg_swing_pose(
     }
 }
 
+/// Vanilla `HumanoidModel.setupAnim` walking arm swing for a single arm part: sets
+/// `arm.xRot = cos(walkAnimationPos * 0.6662 [+ π]) * 2.0 * walkAnimationSpeed * 0.5`
+/// (amplitude `1.0`, shorter than the `1.4` leg swing). The right arm (part offset
+/// `x < 0`) is the half-cycle out of phase (`cos(... + π)`) and the left arm in phase —
+/// the opposite phasing to the same-side leg, the natural walking counter-swing. The
+/// base arm pose carries no `xRot`, so it is set (not accumulated). Vanilla also divides
+/// by `state.speedValue` (`1.0` except in the deferred crouch/swim/elytra poses) and
+/// layers the `ageInTicks` idle bob and the held-item/attack/crouch/swim arm poses on
+/// top — all deferred because the client does not yet track that state.
+pub(in crate::entity_models) fn humanoid_arm_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let phase = walk_animation_pos * 0.6662;
+    let angle = if base.offset[0] < 0.0 {
+        phase + std::f32::consts::PI
+    } else {
+        phase
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            angle.cos() * 2.0 * walk_animation_speed * 0.5,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla half-amplitude leg swing for a single leg part: `leg.xRot =
 /// cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed * 0.5`. The
 /// `EntityModel` bipeds that are not `HumanoidModel` — `IllagerModel` (non-riding

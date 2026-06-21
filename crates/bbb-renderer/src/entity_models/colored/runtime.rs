@@ -271,19 +271,29 @@ fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
         &PLAYER_WIDE_PARTS
     };
     // `PlayerModel extends HumanoidModel`: its `setupAnim` only toggles part
-    // visibility before `super.setupAnim`, so the legs swing exactly as in the
-    // inherited `HumanoidModel.setupAnim` (the pants children ride the leg parts).
-    // The arm swing/poses, crouch, swim, and elytra `speedValue` are deferred.
+    // visibility before `super.setupAnim`, so the legs and arms swing exactly as in the
+    // inherited `HumanoidModel.setupAnim` (the pants/sleeve children ride the limb
+    // parts). The held-item/attack arm poses, crouch, swim, the idle bob, and the
+    // elytra `speedValue` are deferred.
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let parts = colored_head_look_parts(
+        parts,
+        player_head_part_index(),
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    );
     let parts = humanoid_limb_swing_parts(
-        colored_head_look_parts(
-            parts,
-            player_head_part_index(),
-            instance.render_state.head_yaw,
-            instance.render_state.head_pitch,
-        ),
+        parts,
         HUMANOID_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
+        limb_swing,
+        limb_swing_amount,
+    );
+    let parts = humanoid_arm_swing_parts(
+        parts,
+        HUMANOID_ARM_PART_INDICES,
+        limb_swing,
+        limb_swing_amount,
     );
     emit_model_parts(mesh, &parts, transform);
 }
@@ -741,6 +751,33 @@ pub(in crate::entity_models) fn humanoid_limb_swing_parts(
     for index in leg_indices {
         if let Some(leg) = owned.get_mut(index) {
             leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+        }
+    }
+    Cow::Owned(owned)
+}
+
+/// Vanilla `HumanoidModel` arm part indices: the head and body occupy `0`/`1`, then
+/// the right and left arms at `[2, 3]` (every humanoid layer, adult or baby).
+pub(in crate::entity_models) const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
+
+/// Applies the vanilla `HumanoidModel.setupAnim` arm swing ([`humanoid_arm_swing_pose`])
+/// to a colored layer's two arm parts at `arm_indices`. Borrows the static parts
+/// unchanged at rest (`walkAnimationSpeed == 0`). Only callers whose subclass does not
+/// override the arms (e.g. the player) use this; the zombie/skeleton/piglin arm poses
+/// stay deferred.
+pub(in crate::entity_models) fn humanoid_arm_swing_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    arm_indices: [usize; 2],
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    for index in arm_indices {
+        if let Some(arm) = owned.get_mut(index) {
+            arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
         }
     }
     Cow::Owned(owned)

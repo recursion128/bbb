@@ -520,6 +520,98 @@ fn player_textured_mesh_swings_legs_when_walking() {
     }
 }
 
+#[test]
+fn player_swings_its_arms_when_walking() {
+    // `PlayerModel` inherits the `HumanoidModel` arm swing unchanged. With all overlays
+    // visible the colored mesh emits head+body (verts 0..96), the two arms with their
+    // sleeves (96..192), then the two legs with their pants (192..288). A standing player
+    // is inert; a walking one moves the arms (and legs) while the head and body stay put
+    // (no head look here). The held-item/attack arm poses and the idle bob are deferred.
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(920, [0.0, 64.0, 0.0], 0.0, slim);
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_eq!(rest.vertices.len(), 288, "slim={slim}");
+        assert_eq!(rest.vertices.len(), walking.vertices.len(), "slim={slim}");
+        assert_eq!(
+            rest.vertices[0..96],
+            walking.vertices[0..96],
+            "slim={slim}: head and body stay put while walking"
+        );
+        assert_ne!(
+            rest.vertices[96..192],
+            walking.vertices[96..192],
+            "slim={slim}: the arms swing"
+        );
+    }
+}
+
+#[test]
+fn player_textured_mesh_swings_its_arms_when_walking() {
+    // The real (texture-backed) player render path swings the arms on the same shared
+    // visibility-filtered part array as the legs; the sleeve children ride the arm parts.
+    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(921, [0.0, 64.0, 0.0], 0.0, slim);
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "slim={slim}: inert when standing"
+        );
+        assert_eq!(resting.vertices.len(), 288, "slim={slim}");
+        assert_eq!(
+            resting.vertices[0..96],
+            walking.vertices[0..96],
+            "slim={slim}: head and body stay put"
+        );
+        assert_ne!(
+            resting.vertices[96..192],
+            walking.vertices[96..192],
+            "slim={slim}: the arms swing"
+        );
+    }
+}
+
+#[test]
+fn humanoid_arm_swing_pose_matches_vanilla_formula() {
+    // Vanilla HumanoidModel.setupAnim: rightArm.xRot = cos(pos*0.6662 + π)*2.0*speed*0.5,
+    // leftArm.xRot = cos(pos*0.6662)*2.0*speed*0.5 (amplitude 1.0). The right arm
+    // (offset x < 0) is the out-of-phase one, opposite the same-side leg. Only xRot
+    // moves. PLAYER_WIDE_PARTS lists right_arm at [2] (x = -5) and left_arm at [3]
+    // (x = 5).
+    let pos = 1.3_f32;
+    let speed = 0.7_f32;
+    let phase = pos * 0.6662;
+    let right = humanoid_arm_swing_pose(PLAYER_WIDE_PARTS[2].pose, pos, speed);
+    let left = humanoid_arm_swing_pose(PLAYER_WIDE_PARTS[3].pose, pos, speed);
+    assert!(
+        (right.rotation[0] - (phase + std::f32::consts::PI).cos() * 2.0 * speed * 0.5).abs() < 1e-6,
+        "right arm out of phase"
+    );
+    assert!(
+        (left.rotation[0] - phase.cos() * 2.0 * speed * 0.5).abs() < 1e-6,
+        "left arm in phase"
+    );
+    // The arm swing is the opposite phase to the same-side leg (right arm uses +π, the
+    // right leg uses none) and a shorter amplitude (1.0 vs 1.4).
+    let right_leg = humanoid_leg_swing_pose(PLAYER_WIDE_PARTS[4].pose, pos, speed);
+    assert!(
+        (right.rotation[0] + right_leg.rotation[0] / 1.4).abs() < 1e-6,
+        "right arm is the negated, scaled right-leg swing"
+    );
+    // Only xRot changes.
+    assert_eq!(right.offset, PLAYER_WIDE_PARTS[2].pose.offset);
+    assert_eq!(right.rotation[1], PLAYER_WIDE_PARTS[2].pose.rotation[1]);
+    assert_eq!(right.rotation[2], PLAYER_WIDE_PARTS[2].pose.rotation[2]);
+    // At rest (speed 0) the arms hold their body-layer pose.
+    assert_eq!(
+        humanoid_arm_swing_pose(PLAYER_WIDE_PARTS[2].pose, pos, 0.0),
+        PLAYER_WIDE_PARTS[2].pose
+    );
+}
+
 fn player_texture_images() -> Vec<EntityModelTextureImage> {
     player_entity_texture_refs()
         .iter()
