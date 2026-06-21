@@ -300,6 +300,8 @@ pub struct EntityModelSourceState {
     pub y_rot: f32,
     #[serde(default)]
     pub age_ticks: u32,
+    #[serde(default)]
+    pub sheep_eat_animation_tick: i32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 

@@ -4,8 +4,8 @@ use bbb_renderer::{
     DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
     PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SelectionBox,
-    SelectionOutline, SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -283,16 +283,40 @@ fn entity_model_instance(
         cow_variants,
         pig_variants,
     );
-    Some(EntityModelInstance::new(
-        source.entity_id,
-        kind,
-        [
-            source.position.x as f32,
-            source.position.y as f32,
-            source.position.z as f32,
-        ],
-        source.y_rot,
-    ))
+    let head_eat = sheep_head_eat_pose(
+        source.entity_type_id,
+        source.sheep_eat_animation_tick,
+        entity_partial_tick,
+    );
+    Some(
+        EntityModelInstance::new(
+            source.entity_id,
+            kind,
+            [
+                source.position.x as f32,
+                source.position.y as f32,
+                source.position.z as f32,
+            ],
+            source.y_rot,
+        )
+        .with_head_eat(head_eat),
+    )
+}
+
+/// Projects the canonical sheep `eatAnimationTick` into the renderer head-eat
+/// pose. Vanilla `SheepRenderer.extractRenderState` calls
+/// `Sheep.getHeadEatPositionScale`/`getHeadEatAngleScale` with the partial tick;
+/// every non-sheep entity resolves to [`SheepHeadEatPose::NONE`].
+fn sheep_head_eat_pose(
+    entity_type_id: i32,
+    sheep_eat_animation_tick: i32,
+    partial_tick: f32,
+) -> SheepHeadEatPose {
+    if entity_type_id == VANILLA_ENTITY_TYPE_SHEEP_ID {
+        SheepHeadEatPose::from_eat_tick(sheep_eat_animation_tick, partial_tick)
+    } else {
+        SheepHeadEatPose::NONE
+    }
 }
 
 fn entity_model_kind(
@@ -1111,8 +1135,8 @@ fn entity_data_rotations(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, CommonPlayerSpawnInfo, EntityDataValue, PlayLogin, PlayTime, SetCamera,
-        SetEntityData, Vec3d,
+        AddEntity, CommonPlayerSpawnInfo, EntityDataValue, EntityEvent, PlayLogin, PlayTime,
+        SetCamera, SetEntityData, Vec3d,
     };
     use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
     use uuid::Uuid;
@@ -1229,6 +1253,42 @@ mod tests {
                 EntityModelInstance::new(85, EntityModelKind::Minecart, [5.0, 64.0, -2.0], 0.0),
             ]
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_sheep_eat_grass_head_pose() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            70,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            71,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        // At rest both entities resolve to the resting head pose.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        assert_eq!(resting[0].head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(resting[1].head_eat, SheepHeadEatPose::NONE);
+
+        // Vanilla SheepRenderer.extractRenderState projects the eat animation
+        // through the partial tick; the chicken stays at rest.
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 70,
+            event_id: 10,
+        }));
+        let eating = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
+        assert_eq!(eating[0].head_eat, SheepHeadEatPose::from_eat_tick(40, 0.5));
+        assert_ne!(eating[0].head_eat, SheepHeadEatPose::NONE);
+        assert_eq!(eating[1].head_eat, SheepHeadEatPose::NONE);
+
+        // The pose follows the canonical countdown as it decrements.
+        world.advance_entity_client_animations(20);
+        let mid = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        assert_eq!(mid[0].head_eat, SheepHeadEatPose::from_eat_tick(20, 0.0));
     }
 
     #[test]

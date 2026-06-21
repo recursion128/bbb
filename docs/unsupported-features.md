@@ -262,12 +262,16 @@ When an agent does any of the following, update this file in the same slice:
       age ticks, and renderer partial tick
     - vanilla shared-flags invisibility gating for the non-glowing wool and
       undercoat layer passes
+    - eat-grass head animation from entity event `10`, projected from the
+      canonical `Sheep.eatAnimationTick` countdown and renderer partial tick
+      into the base, wool, and undercoat head part pose
   - Finish remaining sheep presentation parity:
     - extend the texture-backed sheep path with vanilla entity lighting and
       overlay
     - implement invisible glowing outline wool rendering
     - implement base-model invisibility/outline handling
-    - apply eating head position/angle animation from entity event `10`
+    - project the head-look pitch that vanilla folds into the non-eating
+      `getHeadEatAngleScale` branch (the resting head xRot stays `0.0`)
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set
     - add armor, wet tint, sitting/head/tail/shake/walk pose, base-model
@@ -367,11 +371,15 @@ When an agent does any of the following, update this file in the same slice:
       official base/wool/undercoat texture references, texture-backed base,
       wool, and undercoat layer passes, metadata-driven sheared state, and dye
       color projection, custom-name `jeb_` color cycling from entity metadata
-      and renderer age ticks, and vanilla shared-flags invisibility gating for
-      non-glowing wool and undercoat layer passes; eating head animation,
-      invisible glowing outline wool rendering, base-model invisibility/outline
-      handling, lighting, overlay, and remaining render-state extraction remain
-      unsupported
+      and renderer age ticks, vanilla shared-flags invisibility gating for
+      non-glowing wool and undercoat layer passes, and the vanilla
+      `SheepModel`/`SheepFurModel.setupAnim` eat-grass head pose (`head.y +=
+      headEatPositionScale * 9.0 * ageScale`, `head.xRot = headEatAngleScale`)
+      projected from entity event `10` and the canonical `eatAnimationTick`
+      countdown into the base, wool, and undercoat head part; invisible glowing
+      outline wool rendering, base-model invisibility/outline handling, the
+      non-eating head-look pitch fallback, lighting, overlay, and remaining
+      render-state extraction remain unsupported
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -607,8 +615,8 @@ When an agent does any of the following, update this file in the same slice:
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
-    variant asset presentation, pig saddle presentation, sheep `jeb_`/eating
-    presentation,
+    variant asset presentation, pig saddle presentation, sheep
+    head-look-pitch presentation,
     wolf variant/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,

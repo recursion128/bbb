@@ -35,6 +35,9 @@ impl WorldStore {
             self.counters.entity_events_ignored += 1;
             return false;
         };
+        let _ = self
+            .entities
+            .apply_client_animation_entity_event(packet.entity_id, packet.event_id);
         self.counters.entity_events_applied += 1;
         true
     }

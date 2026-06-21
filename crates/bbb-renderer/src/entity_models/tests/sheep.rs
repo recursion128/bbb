@@ -846,6 +846,216 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }
 
+#[test]
+fn sheep_head_eat_position_scale_matches_vanilla_curve() {
+    // Vanilla Sheep.getHeadEatPositionScale(partialTick): ramp up over ticks
+    // 40..36, plateau at 1.0 over 36..4, ramp down over 4..0.
+    let cases: [((i32, f32), f32); 12] = [
+        ((0, 0.0), 0.0),
+        ((0, 0.5), 0.0),
+        ((1, 0.0), 0.25),
+        ((3, 0.0), 0.75),
+        ((3, 0.5), 0.625),
+        ((4, 0.0), 1.0),
+        ((20, 0.5), 1.0),
+        ((36, 0.0), 1.0),
+        ((37, 0.0), 0.75),
+        ((39, 0.0), 0.25),
+        ((40, 0.0), 0.0),
+        ((40, 0.5), 0.125),
+    ];
+    for ((tick, partial), expected) in cases {
+        assert_eq!(
+            SheepHeadEatPose::from_eat_tick(tick, partial).position_scale,
+            expected,
+            "position scale tick={tick} partial={partial}"
+        );
+    }
+}
+
+#[test]
+fn sheep_head_eat_angle_scale_matches_vanilla_curve() {
+    // Vanilla Sheep.getHeadEatAngleScale(partialTick).
+    let plateau = std::f32::consts::PI / 5.0;
+    // Not eating: vanilla folds in the head-look pitch, which is not yet
+    // projected, so the resting angle is 0.0.
+    assert_eq!(SheepHeadEatPose::from_eat_tick(0, 0.0).angle_scale, 0.0);
+    // The ramp-in/ramp-out and short ticks hold the constant plateau angle.
+    for tick in [1, 2, 3, 4, 37, 38, 39, 40] {
+        assert_eq!(
+            SheepHeadEatPose::from_eat_tick(tick, 0.0).angle_scale,
+            plateau,
+            "plateau angle tick={tick}"
+        );
+    }
+    // Ticks 5..=36 oscillate around the plateau with amplitude 0.21991149.
+    for tick in 5..=36 {
+        let angle = SheepHeadEatPose::from_eat_tick(tick, 0.0).angle_scale;
+        assert!(
+            (angle - plateau).abs() <= 0.21991149 + 1e-6,
+            "amplitude tick={tick}"
+        );
+    }
+    // Spot value pinned to the vanilla constants 0.21991149 and 28.7.
+    let scale = (20.0_f32 - 4.0 - 0.0) / 32.0;
+    let expected = plateau + 0.21991149 * (scale * 28.7).sin();
+    assert!((SheepHeadEatPose::from_eat_tick(20, 0.0).angle_scale - expected).abs() < 1e-6);
+}
+
+#[test]
+fn sheep_eaten_head_pose_matches_vanilla_setup_anim() {
+    // Vanilla SheepModel/SheepFurModel.setupAnim:
+    //   head.y += headEatPositionScale * 9.0 * ageScale
+    //   head.xRot = headEatAngleScale
+    assert_eq!(sheep_head_part_index(false), 0);
+    assert_eq!(sheep_head_part_index(true), 1);
+
+    let adult_head = ADULT_SHEEP_PARTS[sheep_head_part_index(false)].pose;
+    let adult_eaten = sheep_eaten_head_pose(
+        adult_head,
+        false,
+        SheepHeadEatPose {
+            position_scale: 1.0,
+            angle_scale: 0.5,
+        },
+    );
+    // Adult ageScale = 1.0, so the head drops by the full 9.0 model units.
+    assert_eq!(
+        adult_eaten.offset,
+        [
+            adult_head.offset[0],
+            adult_head.offset[1] + 9.0,
+            adult_head.offset[2]
+        ]
+    );
+    assert_eq!(
+        adult_eaten.rotation,
+        [0.5, adult_head.rotation[1], adult_head.rotation[2]]
+    );
+
+    // BabySheepModel extends SheepModel; LivingEntity.getAgeScale = 0.5 for a
+    // baby, so the head drops by 9.0 * 0.5 = 4.5.
+    let baby_head = BABY_SHEEP_PARTS[sheep_head_part_index(true)].pose;
+    let baby_eaten = sheep_eaten_head_pose(
+        baby_head,
+        true,
+        SheepHeadEatPose {
+            position_scale: 1.0,
+            angle_scale: 0.3,
+        },
+    );
+    assert_eq!(
+        baby_eaten.offset,
+        [
+            baby_head.offset[0],
+            baby_head.offset[1] + 4.5,
+            baby_head.offset[2]
+        ]
+    );
+    assert_eq!(
+        baby_eaten.rotation,
+        [0.3, baby_head.rotation[1], baby_head.rotation[2]]
+    );
+
+    // The resting pose leaves the head part untouched.
+    assert!(SheepHeadEatPose::NONE.is_resting());
+    assert_eq!(
+        sheep_eaten_head_pose(adult_head, false, SheepHeadEatPose::NONE),
+        adult_head
+    );
+}
+
+#[test]
+fn sheep_textured_mesh_applies_eating_head_pose_to_all_layers() {
+    let (atlas, _) = build_entity_model_texture_atlas(&sheep_texture_images()).unwrap();
+    let resting = entity_model_textured_mesh(
+        &[EntityModelInstance::sheep_wool(
+            401,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            SheepWoolColor::Red,
+        )],
+        &atlas,
+    );
+    // Tick 20: full head dip (positionScale 1.0) plus the plateau oscillation.
+    let eating = entity_model_textured_mesh(
+        &[EntityModelInstance::sheep_eating(
+            401,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            SheepWoolColor::Red,
+            20,
+            0.0,
+        )],
+        &atlas,
+    );
+
+    // Base, wool, and undercoat each contribute 144 vertices; the head cube is
+    // the first 24 vertices of each pass.
+    assert_eq!(resting.vertices.len(), 432);
+    assert_eq!(eating.vertices.len(), 432);
+    for pass_start in [0usize, 144, 288] {
+        let head = pass_start..pass_start + 24;
+        let body_and_legs = pass_start + 24..pass_start + 144;
+        assert_ne!(
+            resting.vertices[head.clone()],
+            eating.vertices[head.clone()],
+            "head animates in pass at {pass_start}"
+        );
+        assert_eq!(
+            resting.vertices[body_and_legs.clone()],
+            eating.vertices[body_and_legs],
+            "body and legs stay put in pass at {pass_start}"
+        );
+        // The root transform flips Y, so a larger model head.y dips the head down.
+        assert!(
+            average_textured_y(&eating.vertices[head.clone()])
+                < average_textured_y(&resting.vertices[head]),
+            "head dips downward in pass at {pass_start}"
+        );
+    }
+}
+
+#[test]
+fn sheep_colored_mesh_applies_eating_head_pose() {
+    let resting = entity_model_mesh(&[EntityModelInstance::sheep_wool(
+        402,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
+    )]);
+    let eating = entity_model_mesh(&[EntityModelInstance::sheep_eating(
+        402,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
+        20,
+        0.0,
+    )]);
+
+    assert_eq!(resting.vertices.len(), eating.vertices.len());
+    assert_ne!(resting.vertices, eating.vertices);
+    // The base body pass is emitted first; its head cube is the first 24 vertices.
+    assert_ne!(resting.vertices[0..24], eating.vertices[0..24]);
+    assert_eq!(resting.vertices[24..144], eating.vertices[24..144]);
+}
+
+fn average_textured_y(vertices: &[EntityModelTexturedVertex]) -> f32 {
+    vertices
+        .iter()
+        .map(|vertex| vertex.position[1])
+        .sum::<f32>()
+        / vertices.len() as f32
+}
+
 fn sheep_texture_images() -> Vec<EntityModelTextureImage> {
     sheep_entity_texture_refs()
         .iter()

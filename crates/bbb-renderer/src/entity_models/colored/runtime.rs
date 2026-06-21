@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use glam::{Mat4, Vec3};
 
 use super::super::catalog::{sheep_wool_render_color, *};
@@ -498,31 +500,57 @@ fn emit_sheep_model(
     age_ticks: f32,
 ) {
     let transform = entity_model_root_transform(instance);
+    let head_eat = instance.head_eat;
+    let base_parts: &[ModelPartDesc] = if baby {
+        &BABY_SHEEP_PARTS
+    } else {
+        &ADULT_SHEEP_PARTS
+    };
     emit_model_parts(
         mesh,
-        if baby {
-            &BABY_SHEEP_PARTS
-        } else {
-            &ADULT_SHEEP_PARTS
-        },
+        &sheep_colored_head_eat_parts(base_parts, baby, head_eat),
         transform,
     );
     let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
     if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
-        emit_model_parts_with_color(mesh, &ADULT_SHEEP_PARTS, transform, wool_layer_color);
-    }
-    if !invisible && !sheared {
         emit_model_parts_with_color(
             mesh,
-            if baby {
-                &BABY_SHEEP_PARTS
-            } else {
-                &ADULT_SHEEP_WOOL_PARTS
-            },
+            &sheep_colored_head_eat_parts(&ADULT_SHEEP_PARTS, baby, head_eat),
             transform,
             wool_layer_color,
         );
     }
+    if !invisible && !sheared {
+        let wool_parts: &[ModelPartDesc] = if baby {
+            &BABY_SHEEP_PARTS
+        } else {
+            &ADULT_SHEEP_WOOL_PARTS
+        };
+        emit_model_parts_with_color(
+            mesh,
+            &sheep_colored_head_eat_parts(wool_parts, baby, head_eat),
+            transform,
+            wool_layer_color,
+        );
+    }
+}
+
+/// Applies the vanilla sheep eat-grass head pose to a colored body/wool layer's
+/// head part, borrowing the static parts unchanged while the sheep is at rest.
+fn sheep_colored_head_eat_parts(
+    parts: &[ModelPartDesc],
+    baby: bool,
+    head_eat: SheepHeadEatPose,
+) -> Cow<'_, [ModelPartDesc]> {
+    if head_eat.is_resting() {
+        return Cow::Borrowed(parts);
+    }
+    let head_index = sheep_head_part_index(baby);
+    let mut parts = parts.to_vec();
+    if let Some(head) = parts.get_mut(head_index) {
+        head.pose = sheep_eaten_head_pose(head.pose, baby, head_eat);
+    }
+    Cow::Owned(parts)
 }
 
 fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {

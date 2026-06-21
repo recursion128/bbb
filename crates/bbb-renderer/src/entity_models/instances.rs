@@ -1,4 +1,5 @@
 use super::catalog::*;
+use super::SheepHeadEatPose;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EntityModelInstance {
@@ -6,6 +7,9 @@ pub struct EntityModelInstance {
     pub kind: EntityModelKind,
     pub position: [f32; 3],
     pub y_rot: f32,
+    /// Per-frame sheep eat-grass head pose. [`SheepHeadEatPose::NONE`] for every
+    /// other entity and for a sheep that is not currently eating.
+    pub head_eat: SheepHeadEatPose,
 }
 
 impl EntityModelInstance {
@@ -15,7 +19,13 @@ impl EntityModelInstance {
             kind,
             position,
             y_rot,
+            head_eat: SheepHeadEatPose::NONE,
         }
+    }
+
+    pub fn with_head_eat(mut self, head_eat: SheepHeadEatPose) -> Self {
+        self.head_eat = head_eat;
+        self
     }
 
     pub fn chicken(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
@@ -285,6 +295,22 @@ impl EntityModelInstance {
             },
             position,
             y_rot,
+        )
+    }
+
+    #[cfg(test)]
+    pub fn sheep_eating(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        sheared: bool,
+        wool_color: SheepWoolColor,
+        eat_animation_tick: i32,
+        partial_tick: f32,
+    ) -> Self {
+        Self::sheep_wool(entity_id, position, y_rot, baby, sheared, wool_color).with_head_eat(
+            SheepHeadEatPose::from_eat_tick(eat_animation_tick, partial_tick),
         )
     }
 

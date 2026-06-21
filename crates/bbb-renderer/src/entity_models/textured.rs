@@ -9,9 +9,10 @@ use super::{
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
     instances::EntityModelInstance,
-    magma_cube_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    slime_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform,
+    magma_cube_model_root_transform,
+    model_layers::{sheep_eaten_head_pose, sheep_head_part_index},
+    player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform,
 };
 use glam::Mat4;
 
@@ -441,8 +442,18 @@ fn emit_sheep_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
+    let head_eat = instance.head_eat;
+    let head_index = sheep_head_part_index(baby);
     for pass in sheep_textured_layer_passes(baby, sheared, wool_color, invisible, jeb, age_ticks) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        if head_eat.is_resting() {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = sheep_eaten_head_pose(head.pose, baby, head_eat);
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
     }
 }
 

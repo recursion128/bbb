@@ -213,6 +213,103 @@ pub(in crate::entity_models) const BABY_SHEEP_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+/// Vanilla `SheepRenderState.headEatPositionScale` / `headEatAngleScale`, the
+/// per-frame eat-grass head animation projected from `Sheep.eatAnimationTick`.
+/// `SheepModel`/`SheepFurModel.setupAnim` consume these to lower and tilt the
+/// head part of the base, wool, and undercoat passes.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SheepHeadEatPose {
+    pub position_scale: f32,
+    pub angle_scale: f32,
+}
+
+impl SheepHeadEatPose {
+    /// Resting head pose used when the sheep is not eating grass.
+    pub const NONE: Self = Self {
+        position_scale: 0.0,
+        angle_scale: 0.0,
+    };
+
+    /// Vanilla `Sheep.getHeadEatPositionScale`/`getHeadEatAngleScale` projected
+    /// from the canonical `eatAnimationTick` and the renderer partial tick.
+    pub fn from_eat_tick(eat_animation_tick: i32, partial_tick: f32) -> Self {
+        Self {
+            position_scale: sheep_head_eat_position_scale(eat_animation_tick, partial_tick),
+            angle_scale: sheep_head_eat_angle_scale(eat_animation_tick, partial_tick),
+        }
+    }
+
+    pub(in crate::entity_models) fn is_resting(self) -> bool {
+        self == Self::NONE
+    }
+}
+
+/// Vanilla `Sheep.getHeadEatAngleScale` plateau angle: `(float)(Math.PI / 5)`.
+const SHEEP_HEAD_EAT_PLATEAU_ANGLE: f32 = std::f32::consts::PI / 5.0;
+
+/// Vanilla `Sheep.getHeadEatPositionScale(partialTick)`.
+fn sheep_head_eat_position_scale(eat_animation_tick: i32, partial_tick: f32) -> f32 {
+    if eat_animation_tick <= 0 {
+        0.0
+    } else if (4..=36).contains(&eat_animation_tick) {
+        1.0
+    } else if eat_animation_tick < 4 {
+        (eat_animation_tick as f32 - partial_tick) / 4.0
+    } else {
+        -(eat_animation_tick as f32 - 40.0 - partial_tick) / 4.0
+    }
+}
+
+/// Vanilla `Sheep.getHeadEatAngleScale(partialTick)`. The non-eating branch
+/// folds in the entity look pitch (`getXRot(a) * PI/180`); head-look pitch
+/// tracking is not yet projected, so the resting angle is `0.0`, matching
+/// vanilla for a sheep with no pitch.
+fn sheep_head_eat_angle_scale(eat_animation_tick: i32, partial_tick: f32) -> f32 {
+    if eat_animation_tick > 4 && eat_animation_tick <= 36 {
+        let scale = (eat_animation_tick as f32 - 4.0 - partial_tick) / 32.0;
+        SHEEP_HEAD_EAT_PLATEAU_ANGLE + 0.21991149 * (scale * 28.7).sin()
+    } else if eat_animation_tick > 0 {
+        SHEEP_HEAD_EAT_PLATEAU_ANGLE
+    } else {
+        0.0
+    }
+}
+
+/// Vanilla sheep models name the head part `head`. The adult body/fur layers
+/// list it first; the baby body/fur layers list the body first, so the head is
+/// second.
+pub(in crate::entity_models) const fn sheep_head_part_index(baby: bool) -> usize {
+    if baby {
+        1
+    } else {
+        0
+    }
+}
+
+/// Vanilla `SheepModel`/`SheepFurModel.setupAnim`: `head.y += headEatPositionScale
+/// * 9.0 * ageScale` and `head.xRot = headEatAngleScale`. `BabySheepModel extends
+/// SheepModel`, so the baby head animates with `ageScale = 0.5`
+/// (`LivingEntity.getAgeScale`).
+pub(in crate::entity_models) fn sheep_eaten_head_pose(
+    head_pose: PartPose,
+    baby: bool,
+    head_eat: SheepHeadEatPose,
+) -> PartPose {
+    let age_scale = if baby { 0.5 } else { 1.0 };
+    PartPose {
+        offset: [
+            head_pose.offset[0],
+            head_pose.offset[1] + head_eat.position_scale * 9.0 * age_scale,
+            head_pose.offset[2],
+        ],
+        rotation: [
+            head_eat.angle_scale,
+            head_pose.rotation[1],
+            head_pose.rotation[2],
+        ],
+    }
+}
+
 pub(in crate::entity_models) const MODEL_LAYER_SHEEP: &str = "minecraft:sheep#main";
 pub(in crate::entity_models) const MODEL_LAYER_SHEEP_BABY: &str = "minecraft:sheep_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_SHEEP_WOOL: &str = "minecraft:sheep#wool";

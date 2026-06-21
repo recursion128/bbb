@@ -92,6 +92,7 @@ pub(super) use piglin::*;
 pub(super) use player::*;
 pub(super) use polar_bear::*;
 pub(super) use ravager::*;
+pub use sheep::SheepHeadEatPose;
 pub(super) use sheep::*;
 pub(super) use skeleton::*;
 pub(super) use skeleton_clothing::*;

@@ -3900,6 +3900,64 @@ fn tracks_entity_transient_events() {
 }
 
 #[test]
+fn sheep_eat_grass_event_drives_client_animation_tick() {
+    const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_SHEEP_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let eat_tick = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .sheep_eat_animation_tick
+    };
+
+    // Vanilla Sheep.handleEntityEvent: event 10 resets eatAnimationTick to 40.
+    assert_eq!(eat_tick(&store, 70), 0);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 70,
+        event_id: 10,
+    }));
+    assert_eq!(eat_tick(&store, 70), 40);
+
+    // Vanilla Sheep.aiStep decrements eatAnimationTick once per client tick.
+    store.advance_entity_client_animations(1);
+    assert_eq!(eat_tick(&store, 70), 39);
+    store.advance_entity_client_animations(38);
+    assert_eq!(eat_tick(&store, 70), 1);
+    store.advance_entity_client_animations(1);
+    assert_eq!(eat_tick(&store, 70), 0);
+    // It clamps at 0 and does not run negative.
+    store.advance_entity_client_animations(5);
+    assert_eq!(eat_tick(&store, 70), 0);
+
+    // Only event 10 starts the animation; other sheep events do not.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 70,
+        event_id: 6,
+    }));
+    assert_eq!(eat_tick(&store, 70), 0);
+
+    // Event 10 on a non-sheep entity never starts the sheep eat animation.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 71,
+        event_id: 10,
+    }));
+    assert_eq!(eat_tick(&store, 71), 0);
+}
+
+#[test]
 fn probes_entity_status_from_world_store() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity(123));
