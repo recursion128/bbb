@@ -466,7 +466,11 @@ fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 }
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(mesh, &SKELETON_PARTS, entity_model_root_transform(instance));
+    emit_model_parts(
+        mesh,
+        &skeleton_colored_head_look_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
+        entity_model_root_transform(instance),
+    );
 }
 
 fn emit_skeleton_variant_model(
@@ -475,28 +479,58 @@ fn emit_skeleton_variant_model(
     family: SkeletonModelFamily,
 ) {
     match family {
-        SkeletonModelFamily::Stray => {
-            emit_model_parts(mesh, &SKELETON_PARTS, entity_model_root_transform(instance));
-        }
-        SkeletonModelFamily::Parched => {
-            emit_model_parts(mesh, &PARCHED_PARTS, entity_model_root_transform(instance));
-        }
-        SkeletonModelFamily::Bogged { sheared } => emit_model_parts(
+        SkeletonModelFamily::Stray => emit_model_parts(
             mesh,
-            if sheared {
+            &skeleton_colored_head_look_parts(
+                &SKELETON_PARTS,
+                skeleton_head_part_index(),
+                instance,
+            ),
+            entity_model_root_transform(instance),
+        ),
+        SkeletonModelFamily::Parched => emit_model_parts(
+            mesh,
+            &skeleton_colored_head_look_parts(&PARCHED_PARTS, parched_head_part_index(), instance),
+            entity_model_root_transform(instance),
+        ),
+        SkeletonModelFamily::Bogged { sheared } => {
+            let parts: &[ModelPartDesc] = if sheared {
                 &BOGGED_SHEARED_PARTS
             } else {
                 &BOGGED_PARTS
-            },
-            entity_model_root_transform(instance),
-        ),
+            };
+            emit_model_parts(
+                mesh,
+                &skeleton_colored_head_look_parts(parts, skeleton_head_part_index(), instance),
+                entity_model_root_transform(instance),
+            )
+        }
         SkeletonModelFamily::WitherSkeleton => emit_model_parts_with_color(
             mesh,
-            &SKELETON_PARTS,
+            &skeleton_colored_head_look_parts(
+                &SKELETON_PARTS,
+                skeleton_head_part_index(),
+                instance,
+            ),
             wither_skeleton_model_root_transform(instance),
             WITHER_SKELETON_DARK,
         ),
     }
+}
+
+/// Applies the vanilla `HumanoidModel.setupAnim` head look to a skeleton-family
+/// layer's head part at `head_index`.
+fn skeleton_colored_head_look_parts(
+    parts: &[ModelPartDesc],
+    head_index: usize,
+    instance: EntityModelInstance,
+) -> Cow<'_, [ModelPartDesc]> {
+    colored_head_look_parts(
+        parts,
+        head_index,
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    )
 }
 
 fn emit_cow_model(

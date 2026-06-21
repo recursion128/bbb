@@ -29,6 +29,18 @@ pub(in crate::entity_models) const fn zombie_head_part_index(baby: bool) -> usiz
     }
 }
 
+/// `SkeletonModel` head-part index. The skeleton, stray, wither-skeleton, and
+/// bogged body layers list the head first.
+pub(in crate::entity_models) const fn skeleton_head_part_index() -> usize {
+    0
+}
+
+/// Parched-skeleton head-part index. The parched body layer lists the body
+/// first, so the head is second.
+pub(in crate::entity_models) const fn parched_head_part_index() -> usize {
+    1
+}
+
 /// True when a head has no look turn (head aligned with the body and level), so
 /// callers can borrow the static parts unchanged instead of cloning to apply
 /// [`head_look_pose`].

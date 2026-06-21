@@ -689,6 +689,37 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(sheared_bogged_max, [0.51250005, 66.04475, 0.29375]);
 }
 
+#[test]
+fn skeleton_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
+
+    // Skeleton head is part 0: head look turns it without changing vertex count.
+    let base = EntityModelInstance::skeleton(714, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    assert_ne!(yawed.vertices, pitched.vertices);
+
+    // Parched lists the body first (head at index 1); head look turns the head
+    // and leaves the leading body cube untouched.
+    let parched = EntityModelInstance::skeleton_variant(
+        715,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::Parched,
+    );
+    let parched_resting = entity_model_textured_mesh(&[parched], &atlas);
+    let parched_looking =
+        entity_model_textured_mesh(&[parched.with_head_look(45.0, -20.0)], &atlas);
+    assert_ne!(parched_resting.vertices, parched_looking.vertices);
+    assert_eq!(
+        parched_resting.vertices[0..24],
+        parched_looking.vertices[0..24]
+    );
+}
+
 fn skeleton_texture_images() -> Vec<EntityModelTextureImage> {
     skeleton_entity_texture_refs()
         .iter()

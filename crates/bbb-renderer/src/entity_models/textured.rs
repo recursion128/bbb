@@ -15,8 +15,8 @@ use super::{
     magma_cube_model_root_transform,
     model_layers::{
         apply_polar_bear_standing_pose, cow_head_part_index, head_look_at_rest, head_look_pose,
-        pig_head_part_index, polar_bear_standing_part_roles, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose,
+        parched_head_part_index, pig_head_part_index, polar_bear_standing_part_roles,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -247,10 +247,11 @@ fn emit_pig_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_quadruped_textured_with_head_look(
+    emit_textured_passes_with_head_look(
         meshes,
         pig_textured_layer_passes(variant, baby),
         pig_head_part_index(baby),
+        entity_model_root_transform(instance),
         instance,
         atlas,
     );
@@ -263,27 +264,29 @@ fn emit_cow_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_quadruped_textured_with_head_look(
+    emit_textured_passes_with_head_look(
         meshes,
         cow_textured_layer_passes(variant, baby),
         cow_head_part_index(baby),
+        entity_model_root_transform(instance),
         instance,
         atlas,
     );
 }
 
-/// Emits a plain textured quadruped (pig/cow), applying the vanilla
-/// `QuadrupedModel.setupAnim` head look to each layer pass's head part. The
-/// static parts are reused unchanged while the head is level and aligned with
-/// the body.
-fn emit_quadruped_textured_with_head_look(
+/// Emits textured layer passes, applying the vanilla `QuadrupedModel`/
+/// `HumanoidModel.setupAnim` head look to each pass's head part at `head_index`.
+/// The static parts are reused unchanged while the head is level and aligned
+/// with the body. `transform` is taken explicitly so callers with a non-default
+/// model root transform (e.g. the wither skeleton scale) stay correct.
+fn emit_textured_passes_with_head_look(
     meshes: &mut EntityModelTexturedMeshes,
     passes: Vec<EntityModelLayerPass>,
     head_index: usize,
+    transform: Mat4,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let transform = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
@@ -569,9 +572,19 @@ fn emit_skeleton_textured_model(
     } else {
         entity_model_root_transform(instance)
     };
-    for pass in skeleton_textured_layer_passes(family) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
-    }
+    let head_index = if matches!(family, Some(SkeletonModelFamily::Parched)) {
+        parched_head_part_index()
+    } else {
+        skeleton_head_part_index()
+    };
+    emit_textured_passes_with_head_look(
+        meshes,
+        skeleton_textured_layer_passes(family),
+        head_index,
+        transform,
+        instance,
+        atlas,
+    );
 }
 
 fn emit_textured_layer_pass(

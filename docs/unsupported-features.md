@@ -307,12 +307,14 @@ When an agent does any of the following, update this file in the same slice:
     both colored and textured paths, and the sheep, which additionally overrides
     `head.xRot = headEatAngleScale` (its non-eating branch is exactly the look
     pitch `getXRot * π/180`, `Sheep.getHeadEatAngleScale`) composing with the
-    eat-grass dip; and the `HumanoidModel` zombie family (zombie, husk, drowned,
-    zombie villager) in the colored path. Remaining head-look work: apply the same
-    projection to the other humanoid families' head parts (skeleton, player,
-    villager, illager, piglin, etc.; each model names its own head part, so this
-    is a per-family grind), and the fall-flying/swimming `head.xRot` overrides
-    (currently untracked, default upright).
+    eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned,
+    zombie villager) in the colored path; and the skeleton family (skeleton,
+    stray, parched, wither skeleton, bogged) in both the colored and textured
+    paths. Remaining head-look work: apply the same projection to the other
+    humanoid families' head parts (player, villager, illager, piglin, etc.; each
+    model names its own head part, so this is a per-family grind), and the
+    fall-flying/swimming `head.xRot` overrides (currently untracked, default
+    upright).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -574,9 +576,12 @@ When an agent does any of the following, update this file in the same slice:
       references, texture-backed base layer pass emission, stray
       `SkeletonClothingLayer` `stray_overlay.png` pass through
       `ModelLayers.STRAY_OUTER_LAYER`, bogged `SkeletonClothingLayer`
-      `bogged_overlay.png` pass through `ModelLayers.BOGGED_OUTER_LAYER`, and
-      official PNG atlas upload/bind/sample path; skeleton-family armor, held
-      bows/items, attack/head/walk animation, and lighting remain unsupported
+      `bogged_overlay.png` pass through `ModelLayers.BOGGED_OUTER_LAYER`,
+      official PNG atlas upload/bind/sample path, and the vanilla
+      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part (colored and
+      textured, including the parched body-first part order and the wither
+      scaled transform); skeleton-family armor, held bows/items, attack/walk
+      animation, and lighting remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,

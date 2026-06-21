@@ -12,6 +12,24 @@ fn head_part_indices_match_vanilla_body_layers() {
     assert_eq!(pig_head_part_index(true), 1);
     assert_eq!(zombie_head_part_index(false), 0);
     assert_eq!(zombie_head_part_index(true), 1);
+
+    // Skeleton/stray/wither/bogged list the head first; parched lists the body
+    // first (head second). Tie the indices to the actual head parts so the
+    // surprising parched ordering can't silently regress.
+    assert_eq!(skeleton_head_part_index(), 0);
+    assert_eq!(parched_head_part_index(), 1);
+    assert_eq!(
+        SKELETON_PARTS[skeleton_head_part_index()].cubes,
+        SKELETON_HEAD.as_slice()
+    );
+    assert_eq!(
+        PARCHED_PARTS[parched_head_part_index()].cubes,
+        PARCHED_HEAD.as_slice()
+    );
+    assert_eq!(
+        BOGGED_PARTS[skeleton_head_part_index()].cubes,
+        BOGGED_HEAD.as_slice()
+    );
 }
 
 #[test]
@@ -127,6 +145,58 @@ fn zombie_villager_variant_colored_mesh_applies_head_look() {
 
     // The variant emitter routes through the same head-look helper; the last
     // part (a leg) stays put while the head turns.
+    assert_eq!(resting.vertices.len(), looking.vertices.len());
+    assert_ne!(resting.vertices, looking.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], looking.vertices[n - 24..]);
+}
+
+#[test]
+fn skeleton_colored_mesh_applies_head_look_to_head_only() {
+    let base = EntityModelInstance::skeleton(710, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(50.0, 0.0)]);
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -20.0)]);
+
+    // Skeleton head (with its hat children) is part 0, emitted first; the last
+    // part is a leg, which head look must leave untouched.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    let n = resting.vertices.len();
+    assert_eq!(resting.vertices[n - 24..], yawed.vertices[n - 24..]);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
+#[test]
+fn parched_skeleton_colored_mesh_turns_head_part_not_body() {
+    let base = EntityModelInstance::skeleton_variant(
+        711,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::Parched,
+    );
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    // Parched lists the body first (index 0); the head is index 1. Head look
+    // must leave the leading body cube untouched.
+    assert_ne!(resting.vertices, looking.vertices);
+    assert_eq!(resting.vertices[0..24], looking.vertices[0..24]);
+}
+
+#[test]
+fn wither_skeleton_colored_mesh_applies_head_look_with_scaled_transform() {
+    let base = EntityModelInstance::skeleton_variant(
+        713,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::WitherSkeleton,
+    );
+    let resting = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(50.0, -20.0)]);
+
+    // Wither skeleton uses the scaled model root transform; head look still
+    // turns the head (part 0) and leaves the trailing leg untouched.
     assert_eq!(resting.vertices.len(), looking.vertices.len());
     assert_ne!(resting.vertices, looking.vertices);
     let n = resting.vertices.len();
