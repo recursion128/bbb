@@ -4,11 +4,17 @@ use super::{EntityModelTextureRef, EntityModelUvRect};
 
 const MODEL_UNIT_SCALE: f32 = 1.0 / 16.0;
 
+/// Per-vertex lightmap input `[block, sky]` (each `0.0..=1.0`) written by the
+/// cube emitters and overwritten per entity by the scene light fill. Defaults to
+/// fully lit so any vertex the fill misses renders bright rather than black.
+pub(super) const ENTITY_VERTEX_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct EntityModelVertex {
     pub(super) position: [f32; 3],
     pub(super) color: [f32; 4],
+    pub(super) light: [f32; 2],
 }
 
 #[repr(C)]
@@ -17,6 +23,7 @@ pub(super) struct EntityModelTexturedVertex {
     pub(super) position: [f32; 3],
     pub(super) uv: [f32; 2],
     pub(super) tint: [f32; 4],
+    pub(super) light: [f32; 2],
 }
 
 pub(super) struct EntityModelMesh {
@@ -91,6 +98,27 @@ pub(super) const PART_POSE_ZERO: PartPose = PartPose {
     offset: [0.0, 0.0, 0.0],
     rotation: [0.0, 0.0, 0.0],
 };
+
+/// Overwrites the lightmap input on every colored vertex appended since
+/// `start`, applying one entity's sampled `[block, sky]` light to all of its
+/// emitted geometry. Mirrors vanilla sampling a single light-probe position per
+/// entity and baking that into the model's vertex light coords.
+pub(super) fn fill_entity_model_light(mesh: &mut EntityModelMesh, start: usize, light: [f32; 2]) {
+    for vertex in &mut mesh.vertices[start..] {
+        vertex.light = light;
+    }
+}
+
+/// Textured/eyes/translucent counterpart of [`fill_entity_model_light`].
+pub(super) fn fill_entity_textured_light(
+    mesh: &mut EntityModelTexturedMesh,
+    start: usize,
+    light: [f32; 2],
+) {
+    for vertex in &mut mesh.vertices[start..] {
+        vertex.light = light;
+    }
+}
 
 pub(super) fn emit_model_parts(
     mesh: &mut EntityModelMesh,
@@ -390,6 +418,7 @@ fn emit_textured_model_polygon(
             position: position.to_array(),
             uv: atlas_uv(uv, texture, uv_rect),
             tint,
+            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
@@ -417,6 +446,7 @@ fn emit_model_face(mesh: &mut EntityModelMesh, corners: [Vec3; 4], color: [f32; 
         .extend(corners.map(|position| EntityModelVertex {
             position: position.to_array(),
             color,
+            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);

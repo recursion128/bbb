@@ -42,6 +42,7 @@ fn entity_model_mesh_with_options(
 ) -> EntityModelMesh {
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
+        let light_start = mesh.vertices.len();
         match instance.kind {
             EntityModelKind::Chicken { variant, baby } => {
                 if !skip_texture_backed_entities {
@@ -230,6 +231,7 @@ fn entity_model_mesh_with_options(
                 emit_placeholder_bounds_model(&mut mesh, *instance, bounds)
             }
         }
+        fill_entity_model_light(&mut mesh, light_start, instance.render_state.shader_light());
     }
     mesh
 }

@@ -1,6 +1,11 @@
 use super::catalog::*;
 use super::SheepHeadEatPose;
 
+/// Vanilla `LightCoordsUtil.FULL_BRIGHT` (`block 15 | sky 15`): the
+/// `EntityRenderState`/`LivingEntityRenderState.lightCoords` default used until
+/// the entity scene projects sampled block+sky light.
+pub const ENTITY_FULL_BRIGHT_LIGHT_COORDS: u32 = 15_728_880;
+
 /// Per-frame projection of the vanilla `LivingEntityRenderState` (and its
 /// `EntityRenderState` base) fields that the renderer entity pass consumes.
 ///
@@ -26,18 +31,34 @@ pub struct EntityRenderState {
     /// (`PolarBear.getStandingAnimationScale`, `0.0..=1.0`). `0.0` for every
     /// other entity and for a polar bear on all fours.
     pub polar_bear_stand_scale: f32,
+    /// Vanilla `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block,
+    /// sky)`): the packed block+sky light sampled at the entity's light-probe
+    /// block position. Defaults to [`ENTITY_FULL_BRIGHT_LIGHT_COORDS`]; the
+    /// entity scene projects the sampled value with the on-fire override.
+    pub light_coords: u32,
 }
 
 impl EntityRenderState {
     /// Builds the resting render state for an entity facing `body_rot` degrees:
-    /// no eat-grass head pose and an all-fours polar bear stance. Per-frame
-    /// animation poses are layered on by the entity scene projection.
+    /// no eat-grass head pose, an all-fours polar bear stance, and full-bright
+    /// light. Per-frame animation poses and sampled light are layered on by the
+    /// entity scene projection.
     fn resting(body_rot: f32) -> Self {
         Self {
             body_rot,
             head_eat: SheepHeadEatPose::NONE,
             polar_bear_stand_scale: 0.0,
+            light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
         }
+    }
+
+    /// Projects the packed light coords into the renderer per-vertex lightmap
+    /// input `[block, sky]`, each normalized to `0.0..=1.0`, mirroring the
+    /// terrain mesh's `[block/15, sky/15]` shader light.
+    pub(in crate::entity_models) fn shader_light(&self) -> [f32; 2] {
+        let block = (self.light_coords >> 4) & 0xF;
+        let sky = (self.light_coords >> 20) & 0xF;
+        [block as f32 / 15.0, sky as f32 / 15.0]
     }
 }
 
@@ -68,6 +89,11 @@ impl EntityModelInstance {
 
     pub fn with_polar_bear_stand_scale(mut self, polar_bear_stand_scale: f32) -> Self {
         self.render_state.polar_bear_stand_scale = polar_bear_stand_scale;
+        self
+    }
+
+    pub fn with_light_coords(mut self, light_coords: u32) -> Self {
+        self.render_state.light_coords = light_coords;
         self
     }
 
@@ -674,8 +700,23 @@ mod tests {
                 body_rot: 123.0,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,
+                light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
             }
         );
+    }
+
+    #[test]
+    fn shader_light_normalizes_packed_block_and_sky() {
+        // Full bright packs block 15, sky 15 -> [1.0, 1.0].
+        let bright = EntityModelInstance::sheep(1, [0.0, 0.0, 0.0], 0.0, false);
+        assert_eq!(bright.render_state.shader_light(), [1.0, 1.0]);
+
+        // pack(block 7, sky 0) = 7 << 4 = 112; pack(block 0, sky 15) = 15 << 20.
+        let block_only = bright.with_light_coords(7 << 4);
+        assert_eq!(block_only.render_state.shader_light(), [7.0 / 15.0, 0.0]);
+        let sky_only =
+            EntityModelInstance::sheep(2, [0.0, 0.0, 0.0], 0.0, false).with_light_coords(15 << 20);
+        assert_eq!(sky_only.render_state.shader_light(), [0.0, 1.0]);
     }
 
     #[test]

@@ -148,8 +148,24 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("discard"));
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2]
     );
+}
+
+#[test]
+fn entity_textured_shader_applies_packed_light_lightmap() {
+    // Mirrors the terrain lightmap: max(block, sky * 0.95) scaled into
+    // 0.16..=1.0 and multiplied into the texel rgb (alpha untouched).
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("0.16 + light_level * 0.84"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("texel.rgb * shade"));
+}
+
+#[test]
+fn entity_colored_shader_applies_packed_light_lightmap() {
+    assert!(ENTITY_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
+    assert!(ENTITY_MODEL_SHADER.contains("0.16 + light_level * 0.84"));
+    assert!(ENTITY_MODEL_SHADER.contains("input.color.rgb * shade"));
 }
 
 #[test]
@@ -159,8 +175,10 @@ fn entity_eyes_shader_samples_bound_texture_without_alpha_cutout() {
     assert!(!ENTITY_MODEL_EYES_SHADER.contains("discard"));
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2]
     );
+    // Eyes stay emissive: the lightmap shade must not dim them.
+    assert!(!ENTITY_MODEL_EYES_SHADER.contains("light_level"));
 }
 
 #[test]
@@ -679,6 +697,29 @@ fn sanitize_entity_model_instances_drops_non_finite_instances() {
 }
 
 #[test]
+fn entity_mesh_fills_per_instance_packed_light() {
+    // pack(block 10, sky 0) -> shader light [10/15, 0].
+    let dim = EntityModelInstance::placeholder(1, [0.0, 0.0, 0.0], 0.0, "dim", 1.0, 1.0, 1.0)
+        .with_light_coords(10 << 4);
+    // pack(block 0, sky 15) -> shader light [0, 1].
+    let lit = EntityModelInstance::placeholder(2, [4.0, 0.0, 0.0], 0.0, "lit", 1.0, 1.0, 1.0)
+        .with_light_coords(15 << 20);
+
+    let mesh = entity_model_mesh(&[dim, lit]);
+    assert!(!mesh.vertices.is_empty());
+    // Every vertex carries one of the two per-instance lights, and both appear:
+    // the post-pass assigned each entity's geometry its own sampled light.
+    let dim_light = [10.0 / 15.0, 0.0];
+    let lit_light = [0.0, 1.0];
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == dim_light || vertex.light == lit_light));
+    assert!(mesh.vertices.iter().any(|vertex| vertex.light == dim_light));
+    assert!(mesh.vertices.iter().any(|vertex| vertex.light == lit_light));
+}
+
+#[test]
 fn entity_model_vertex_layout_matches_shader_inputs() {
     let layout = entity_model_vertex_layout();
 
@@ -686,9 +727,10 @@ fn entity_model_vertex_layout_matches_shader_inputs() {
         layout.array_stride,
         std::mem::size_of::<EntityModelVertex>() as wgpu::BufferAddress
     );
-    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES.len(), 2);
+    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES.len(), 3);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[0].shader_location, 0);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[1].shader_location, 1);
+    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[2].shader_location, 2);
 }
 
 fn mesh_extents(mesh: &EntityModelMesh) -> ([f32; 3], [f32; 3]) {

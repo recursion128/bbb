@@ -253,20 +253,29 @@ When an agent does any of the following, update this file in the same slice:
       families, and placeholder bounds
     - equipment
     - skin
-    - lighting
     - animation
     - culling
     - ordering
   - Grow the renderer `EntityRenderState` projection as the single landing spot
     for vanilla `LivingEntityRenderState`/`EntityRenderState` per-frame fields,
     instead of adding ad hoc per-entity fields to `EntityModelInstance`:
-    - now projected: `bodyRot` (body yaw), the sheep eat-grass head pose, and the
-      polar-bear standing-rear scale
+    - now projected: `bodyRot` (body yaw), the sheep eat-grass head pose, the
+      polar-bear standing-rear scale, and `lightCoords` (block+sky packed light)
     - deferred slots to add with their own slices, each carrying real vanilla
-      semantics and tests rather than tint fallbacks: block+sky `lightCoords`,
-      hurt/white `OverlayTexture` and creeper charge, `walkAnimationPos`/
-      `walkAnimationSpeed` limb-swing, head `yRot`/`xRot` look, `ageScale`,
-      unified `isInvisible`, and `outlineColor` glow
+      semantics and tests rather than tint fallbacks: hurt/white `OverlayTexture`
+      and creeper charge, `walkAnimationPos`/`walkAnimationSpeed` limb-swing,
+      head `yRot`/`xRot` look, `ageScale`, unified `isInvisible`, and
+      `outlineColor` glow
+  - Entity packed-light shading is implemented end to end and no longer flat:
+    `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
+    entity's floored light-probe block position (vanilla
+    `EntityRenderer.getPackedLightCoords`), the native scene packs it into
+    `EntityRenderState.lightCoords` with the on-fire block-light override, and
+    the colored and textured entity shaders apply the same per-vertex lightmap as
+    terrain (`max(block, sky * 0.95)` scaled into `0.16..=1.0`); the eyes pass
+    stays emissive. Remaining lighting gaps: smooth/AO entity light, the colored
+    block-light tint and gamma curve of the real vanilla `LightTexture`, and
+    directional `Lighting.setupLevel` diffuse shading.
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -276,8 +285,8 @@ When an agent does any of the following, update this file in the same slice:
       canonical `Sheep.eatAnimationTick` countdown and renderer partial tick
       into the base, wool, and undercoat head part pose
   - Finish remaining sheep presentation parity:
-    - extend the texture-backed sheep path with vanilla entity lighting and
-      overlay
+    - extend the texture-backed sheep path with the vanilla hurt/white overlay
+      (packed block+sky lighting is now applied to every textured entity pass)
     - implement invisible glowing outline wool rendering
     - implement base-model invisibility/outline handling
     - project the head-look pitch that vanilla folds into the non-eating
@@ -285,8 +294,8 @@ When an agent does any of the following, update this file in the same slice:
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set
     - add armor, wet tint, sitting/head/tail/shake/walk pose, base-model
-      invisibility/outline handling, lighting, overlay, and remaining
-      render-state extraction parity
+      invisibility/outline handling, overlay, and remaining render-state
+      extraction parity (packed block+sky lighting is now applied)
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing

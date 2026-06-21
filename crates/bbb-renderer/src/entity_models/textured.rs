@@ -7,7 +7,10 @@ use super::{
         SkeletonModelFamily,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
-    geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
+    geometry::{
+        emit_textured_model_parts, fill_entity_textured_light, EntityModelTexturedMesh,
+        TexturedModelPartDesc,
+    },
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
@@ -77,6 +80,9 @@ pub(super) fn entity_model_textured_meshes(
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new();
     for instance in instances {
+        let cutout_start = meshes.cutout.vertices.len();
+        let translucent_start = meshes.translucent.vertices.len();
+        let eyes_start = meshes.eyes.vertices.len();
         match instance.kind {
             EntityModelKind::Chicken { variant, baby } => {
                 emit_chicken_textured_model(&mut meshes, *instance, variant, baby, atlas);
@@ -195,6 +201,10 @@ pub(super) fn entity_model_textured_meshes(
             }
             _ => {}
         }
+        let light = instance.render_state.shader_light();
+        fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
+        fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
+        fill_entity_textured_light(&mut meshes.eyes, eyes_start, light);
     }
     meshes
 }

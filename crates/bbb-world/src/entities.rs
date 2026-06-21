@@ -10,7 +10,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::WorldStore;
+use crate::{BlockPos, TerrainLight, WorldStore};
 
 mod animations;
 mod components;
@@ -304,7 +304,23 @@ pub struct EntityModelSourceState {
     pub sheep_eat_animation_tick: i32,
     #[serde(default)]
     pub polar_bear_stand_scale: f32,
+    /// Stored block+sky light at the entity's light-probe block position,
+    /// sampled like vanilla `EntityRenderer.getPackedLightCoords`. The renderer
+    /// projection packs this (with the on-fire override) into the entity
+    /// render-state light coords.
+    #[serde(default = "entity_model_source_full_bright_light")]
+    pub light: TerrainLight,
     pub data_values: Vec<ProtocolEntityDataValue>,
+}
+
+/// Vanilla `EntityRenderer` light-probe full-bright fallback
+/// (`LightCoordsUtil.FULL_BRIGHT` = block 15, sky 15), used when an entity's
+/// chunk light is unavailable so it renders bright rather than dark, matching
+/// the `EntityRenderState.lightCoords` default.
+pub(crate) const ENTITY_LIGHT_PROBE_FULL_BRIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
+
+fn entity_model_source_full_bright_light() -> TerrainLight {
+    ENTITY_LIGHT_PROBE_FULL_BRIGHT
 }
 
 impl EntityTransformState {
@@ -516,8 +532,13 @@ impl WorldStore {
         self.entity_pick_targets_at_partial_tick(partial_ticks)
             .into_iter()
             .filter_map(|target| {
-                self.entities
-                    .model_source(target.entity_id, target.position, partial_ticks)
+                let mut source =
+                    self.entities
+                        .model_source(target.entity_id, target.position, partial_ticks)?;
+                source.light = self
+                    .sample_block_light(entity_light_block_pos(target.position))
+                    .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+                Some(source)
             })
             .collect()
     }
@@ -554,6 +575,17 @@ impl WorldStore {
 
     pub(crate) fn update_entity_count(&mut self) {
         self.counters.entities_tracked = self.entities.len();
+    }
+}
+
+/// Vanilla `BlockPos.containing(entity.getLightProbePosition(partialTick))`:
+/// the light-probe position defaults to the entity's interpolated feet
+/// position, floored per axis.
+fn entity_light_block_pos(position: EntityVec3) -> BlockPos {
+    BlockPos {
+        x: position.x.floor() as i32,
+        y: position.y.floor() as i32,
+        z: position.z.floor() as i32,
     }
 }
 

@@ -170,6 +170,7 @@ const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+const ENTITY_SHARED_FLAG_ON_FIRE: i8 = 0x01;
 const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 0x20;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
@@ -288,6 +289,7 @@ fn entity_model_instance(
         source.sheep_eat_animation_tick,
         entity_partial_tick,
     );
+    let light_coords = entity_light_coords(&source.data_values, source.light);
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -300,8 +302,29 @@ fn entity_model_instance(
             source.y_rot,
         )
         .with_head_eat(head_eat)
-        .with_polar_bear_stand_scale(source.polar_bear_stand_scale),
+        .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
+        .with_light_coords(light_coords),
     )
+}
+
+/// Packs the entity's sampled block+sky light into vanilla
+/// `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block, sky)`). Mirrors
+/// `EntityRenderer.getBlockLightLevel`, which forces block light to `15` while
+/// the entity is on fire (shared-flags bit `0x01`); sky light is unchanged.
+fn entity_light_coords(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    light: bbb_world::TerrainLight,
+) -> u32 {
+    let on_fire = (entity_data_byte(data_values, ENTITY_SHARED_FLAGS_DATA_ID, 0)
+        & ENTITY_SHARED_FLAG_ON_FIRE)
+        != 0;
+    let block = if on_fire {
+        15
+    } else {
+        u32::from(light.block.min(15))
+    };
+    let sky = u32::from(light.sky.min(15));
+    block << 4 | sky << 20
 }
 
 /// Projects the canonical sheep `eatAnimationTick` into the renderer head-eat
@@ -1331,6 +1354,53 @@ mod tests {
         let standing = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
         assert_eq!(standing[0].render_state.polar_bear_stand_scale, 0.5 / 6.0);
         assert_eq!(standing[1].render_state.polar_bear_stand_scale, 0.0);
+    }
+
+    #[test]
+    fn entity_light_coords_packs_vanilla_block_and_sky_with_on_fire_override() {
+        use bbb_world::TerrainLight;
+
+        // Daylight surface (block 0, sky 15) -> LightCoordsUtil.pack(0, 15).
+        assert_eq!(
+            entity_light_coords(&[], TerrainLight { sky: 15, block: 0 }),
+            15 << 20
+        );
+        // Full-bright fallback (block 15, sky 15) -> LightCoordsUtil.FULL_BRIGHT.
+        assert_eq!(
+            entity_light_coords(&[], TerrainLight { sky: 15, block: 15 }),
+            15_728_880
+        );
+        // Torch-lit cave (block 14, sky 0) -> pack(14, 0).
+        assert_eq!(
+            entity_light_coords(&[], TerrainLight { sky: 0, block: 14 }),
+            14 << 4
+        );
+        // EntityRenderer.getBlockLightLevel forces block light to 15 on fire,
+        // leaving sky light untouched.
+        let on_fire = vec![protocol_byte_data(
+            ENTITY_SHARED_FLAGS_DATA_ID,
+            ENTITY_SHARED_FLAG_ON_FIRE,
+        )];
+        assert_eq!(
+            entity_light_coords(&on_fire, TerrainLight { sky: 4, block: 0 }),
+            (15 << 4) | (4 << 20)
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_full_bright_light_without_chunk_data() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            90,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(
+            instances[0].render_state.light_coords,
+            bbb_renderer::ENTITY_FULL_BRIGHT_LIGHT_COORDS
+        );
     }
 
     #[test]

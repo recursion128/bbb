@@ -21,8 +21,9 @@ use glam::Vec3;
 #[cfg(test)]
 use gpu::{
     build_entity_model_texture_atlas, entity_model_vertex_layout, rgba_offset,
-    sanitize_entity_model_instances, ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_TEXTURED_SHADER,
-    ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES, ENTITY_MODEL_VERTEX_ATTRIBUTES,
+    sanitize_entity_model_instances, ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_SHADER,
+    ENTITY_MODEL_TEXTURED_SHADER, ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
+    ENTITY_MODEL_VERTEX_ATTRIBUTES,
 };
 pub(crate) use gpu::{
     create_entity_model_eyes_pipeline, create_entity_model_pipeline,

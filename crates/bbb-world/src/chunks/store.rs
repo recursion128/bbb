@@ -14,8 +14,8 @@ use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::{classify_terrain_material, terrain_fluid_state},
     BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkProbeSummaryState,
-    ChunkViewState, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot, WorldDecodeError,
-    WorldStore,
+    ChunkViewState, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot, TerrainLight,
+    WorldDecodeError, WorldStore,
 };
 
 use super::{
@@ -332,6 +332,30 @@ impl WorldStore {
             biome_id: biome_value.map(|value| value.global_id),
             biome_palette_kind: section.biomes.palette_kind,
         })
+    }
+
+    /// Samples the stored block+sky light at a world block position, mirroring
+    /// vanilla `LevelReader.getBrightness(LightLayer, BlockPos)` (the raw stored
+    /// nibble per layer). Returns `None` for out-of-world heights and unloaded
+    /// chunks so callers can apply a context-appropriate fallback.
+    pub fn sample_block_light(&self, pos: BlockPos) -> Option<TerrainLight> {
+        if !self.dimension.contains_y(pos.y) {
+            return None;
+        }
+        let chunk_pos = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let column = self.probe_chunk(chunk_pos)?;
+        let local_x = pos.x.rem_euclid(16) as usize;
+        let local_z = pos.z.rem_euclid(16) as usize;
+        Some(sample_terrain_light(
+            &column.light,
+            self.dimension,
+            local_x,
+            pos.y,
+            local_z,
+        ))
     }
 
     pub fn extract_terrain_chunk(&self, pos: ChunkPos) -> Option<TerrainChunkSnapshot> {

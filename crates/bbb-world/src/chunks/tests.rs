@@ -194,6 +194,57 @@ fn applies_light_update_to_existing_chunk_sections() {
 }
 
 #[test]
+fn samples_block_light_at_world_position_and_reports_unloaded() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let index = section_block_index(2, 1, 3);
+    let mut sky = vec![0; LIGHT_ARRAY_BYTES];
+    let mut block = vec![0; LIGHT_ARRAY_BYTES];
+    set_light_nibble(&mut sky, index, 4);
+    set_light_nibble(&mut block, index, 13);
+    store
+        .apply_light_update(ProtocolLightUpdate {
+            chunk_x: 2,
+            chunk_z: -3,
+            light_data: light_update_data(&[0b10], &[0b10], &[], &[], vec![sky], vec![block]),
+        })
+        .unwrap();
+
+    // Chunk (2, -3) local (2, 1, 3) maps to world block (34, 1, -45).
+    assert_eq!(
+        store.sample_block_light(BlockPos {
+            x: 34,
+            y: 1,
+            z: -45,
+        }),
+        Some(TerrainLight { sky: 4, block: 13 })
+    );
+    // Unloaded chunk and out-of-world height report no data so callers can apply
+    // the entity full-bright fallback.
+    assert_eq!(
+        store.sample_block_light(BlockPos {
+            x: 9999,
+            y: 1,
+            z: 9999,
+        }),
+        None
+    );
+    assert_eq!(
+        store.sample_block_light(BlockPos {
+            x: 34,
+            y: 999,
+            z: -45,
+        }),
+        None
+    );
+}
+
+#[test]
 fn light_update_for_missing_chunk_is_counted_but_not_applied() {
     let mut store = WorldStore::new();
 

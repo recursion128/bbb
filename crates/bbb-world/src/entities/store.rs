@@ -287,6 +287,9 @@ impl EntityStore {
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),
+            // Spatial light is sampled by the WorldStore aggregation, which owns
+            // the chunk light data; the per-entity source defaults to full bright.
+            light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
             data_values: metadata.data_values.clone(),
         })
     }
