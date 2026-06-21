@@ -311,6 +311,7 @@ fn entity_model_instance(
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
         .with_has_red_overlay(source.has_red_overlay)
+        .with_death_time(source.death_time)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1439,6 +1440,35 @@ mod tests {
         let standing = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
         assert_eq!(standing[0].render_state.polar_bear_stand_scale, 0.5 / 6.0);
         assert_eq!(standing[1].render_state.polar_bear_stand_scale, 0.0);
+    }
+
+    #[test]
+    fn entity_model_instances_project_death_animation_time() {
+        const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            82,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        // A living entity at rest carries deathTime 0 and no red overlay.
+        let alive = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        assert_eq!(alive[0].render_state.death_time, 0.0);
+        assert!(!alive[0].render_state.has_red_overlay);
+
+        // Vanilla isDeadOrDying(): health <= 0 starts the death counter; tickDeath
+        // increments it each client tick, projected (plus the partial tick) as
+        // LivingEntityRenderState.deathTime and driving the red overlay.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 82,
+            values: vec![protocol_float_data(VANILLA_ENTITY_HEALTH_DATA_ID, 0.0)],
+        }));
+        world.advance_entity_client_animations(2);
+        let dying = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+        assert_eq!(dying[0].render_state.death_time, 2.25);
+        assert!(dying[0].render_state.has_red_overlay);
     }
 
     #[test]
@@ -3436,6 +3466,14 @@ mod tests {
             data_id,
             serializer_id: 2,
             value: EntityDataValueKind::Long(value),
+        }
+    }
+
+    fn protocol_float_data(data_id: u8, value: f32) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 3,
+            value: EntityDataValueKind::Float(value),
         }
     }
 

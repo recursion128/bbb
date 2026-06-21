@@ -949,6 +949,97 @@ fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
 }
 
 #[test]
+fn entity_model_sources_project_death_animation_counter() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
+    const FLOAT_SERIALIZER_ID: i32 = 3;
+
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 60)
+            .unwrap()
+    };
+    let set_health = |store: &mut WorldStore, health: f32| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 60,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
+                serializer_id: FLOAT_SERIALIZER_ID,
+                value: EntityDataValueKind::Float(health),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        60,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // A healthy living entity is not dying.
+    assert!(set_health(&mut store, 4.0));
+    store.advance_entity_client_animations(3);
+    assert_eq!(source(&store, 0.0).death_time, 0.0);
+    assert!(!source(&store, 0.0).has_red_overlay);
+
+    // Vanilla isDeadOrDying(): health <= 0 begins the death animation. Before the
+    // first tickDeath, deathTime is 0, so the model is upright and not yet red.
+    assert!(set_health(&mut store, 0.0));
+    assert_eq!(source(&store, 0.0).death_time, 0.0);
+    assert!(!source(&store, 0.0).has_red_overlay);
+
+    // tickDeath increments deathTime each client tick; the projected value lerps
+    // by the partial tick (entity.deathTime + partialTick) and drives the red
+    // overlay (hasRedOverlay = deathTime > 0).
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 0.0).death_time, 1.0);
+    assert_eq!(source(&store, 0.5).death_time, 1.5);
+    assert!(source(&store, 0.0).has_red_overlay);
+
+    store.advance_entity_client_animations(10);
+    assert_eq!(source(&store, 0.0).death_time, 11.0);
+
+    // The counter caps at 20 (vanilla removes the entity at deathTime >= 20).
+    store.advance_entity_client_animations(20);
+    assert_eq!(source(&store, 0.0).death_time, 20.0);
+    store.advance_entity_client_animations(5);
+    assert_eq!(source(&store, 0.0).death_time, 20.0);
+
+    // Restoring health clears the death animation (the model stands back up).
+    assert!(set_health(&mut store, 6.0));
+    assert_eq!(source(&store, 0.0).death_time, 0.0);
+    assert!(!source(&store, 0.0).has_red_overlay);
+}
+
+#[test]
+fn death_animation_gates_on_living_entity_health() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
+    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
+    const FLOAT_SERIALIZER_ID: i32 = 3;
+
+    let zero_health = vec![ProtocolEntityDataValue {
+        data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
+        serializer_id: FLOAT_SERIALIZER_ID,
+        value: EntityDataValueKind::Float(0.0),
+    }];
+
+    // A non-living entity (item) is not a LivingEntity, so a stray float at the
+    // health id never starts the death animation.
+    let mut item = EntityClientAnimationState::default();
+    item.sync_targets_from_metadata(VANILLA_ENTITY_TYPE_ITEM_ID, &zero_health);
+    assert!(item.death.is_none());
+
+    // A living entity at zero health begins it (deathTime 0 until the first tick).
+    let mut chicken = EntityClientAnimationState::default();
+    chicken.sync_targets_from_metadata(VANILLA_ENTITY_TYPE_CHICKEN_ID, &zero_health);
+    assert!(chicken.death.is_some());
+    assert_eq!(chicken.death_time(0.0), 0.0);
+    assert!(!chicken.has_red_overlay());
+}
+
+#[test]
 fn entity_model_sources_project_creeper_swelling_fuse() {
     const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
     const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;

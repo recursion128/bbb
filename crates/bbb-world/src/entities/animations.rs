@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+use super::dimensions::vanilla_living_entity_type;
 use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -29,6 +30,14 @@ const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
 /// Vanilla `LivingEntity.hurtDuration`: the hurt animation (and red damage
 /// overlay) runs for 10 client ticks after a hurt animation or damage event.
 const HURT_ANIMATION_DURATION: i32 = 10;
+/// Vanilla `LivingEntity.DATA_HEALTH_ID` synced metadata id: `Entity` defines
+/// ids `0..=7`, then `LivingEntity` adds the flags byte (8) and the health float
+/// (9). `LivingEntity.isDeadOrDying` is `getHealth() <= 0`.
+const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
+/// Vanilla `LivingEntity.tickDeath` removes the entity at `deathTime >= 20`, and
+/// the death tip-over flip is fully clamped by then, so the client counter is
+/// capped here to stay bounded when no server removal arrives.
+const DEATH_ANIMATION_MAX_TICKS: i32 = 20;
 /// Vanilla `Sheep.EAT_ANIMATION_TICKS`: the eat-grass animation runs for 40
 /// client ticks after entity event `10`.
 const SHEEP_EAT_ANIMATION_TICKS: i32 = 40;
@@ -50,6 +59,8 @@ pub struct EntityClientAnimationState {
     pub sheep_eat: Option<SheepEatAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub death: Option<DeathAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creeper_swell: Option<CreeperSwellAnimationState>,
 }
@@ -76,6 +87,17 @@ pub struct CreeperSwellAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HurtAnimationState {
     pub hurt_time: i32,
+}
+
+/// Canonical client-side death animation counter, mirroring vanilla
+/// `LivingEntity.deathTime`. It begins when the synced health (`DATA_HEALTH_ID`)
+/// reaches `<= 0` (`LivingEntity.isDeadOrDying`) and increments each client tick
+/// (`LivingEntity.tickDeath`). While it is positive the renderer tips the entity
+/// over (`LivingEntityRenderer.setupRotations`) and projects the red damage
+/// overlay (`hasRedOverlay`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeathAnimationState {
+    pub death_time: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -212,6 +234,20 @@ impl EntityClientAnimationState {
         entity_type_id: i32,
         data_values: &[EntityDataValue],
     ) {
+        // Vanilla `LivingEntity.isDeadOrDying()` (`getHealth() <= 0`): a living
+        // entity whose synced health has reached zero begins the death animation;
+        // restoring health clears it. Only living entities carry the health float,
+        // so the per-type model animations below are unaffected.
+        if vanilla_living_entity_type(entity_type_id) {
+            if let Some(health) = entity_data_float(data_values, VANILLA_ENTITY_HEALTH_DATA_ID) {
+                if health <= 0.0 {
+                    self.death
+                        .get_or_insert(DeathAnimationState { death_time: 0 });
+                } else {
+                    self.death = None;
+                }
+            }
+        }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
                 let target_standing =
@@ -300,10 +336,24 @@ impl EntityClientAnimationState {
     }
 
     /// Vanilla `LivingEntityRenderer.extractRenderState`:
-    /// `hasRedOverlay = hurtTime > 0`. The `deathTime > 0` term is deferred with
-    /// the death animation.
+    /// `hasRedOverlay = hurtTime > 0 || deathTime > 0`.
     pub fn has_red_overlay(&self) -> bool {
         self.hurt.is_some_and(|state| state.hurt_time > 0)
+            || self.death.is_some_and(|state| state.death_time > 0)
+    }
+
+    /// Vanilla `LivingEntityRenderState.deathTime`: `entity.deathTime > 0 ?
+    /// entity.deathTime + partialTick : 0`, projected for the renderer death
+    /// tip-over (`LivingEntityRenderer.setupRotations`). Returns `0.0` for a
+    /// living entity that is not dying.
+    pub fn death_time(&self, partial_tick: f32) -> f32 {
+        self.death.map_or(0.0, |state| {
+            if state.death_time > 0 {
+                state.death_time as f32 + partial_tick
+            } else {
+                0.0
+            }
+        })
     }
 
     /// Vanilla `PolarBear.getStandingAnimationScale(partialTick)` projected for
@@ -323,6 +373,12 @@ impl EntityClientAnimationState {
             if hurt.hurt_time == 0 {
                 self.hurt = None;
             }
+        }
+        // Vanilla `LivingEntity.tickDeath`: `deathTime++` each tick while dying.
+        // The death state is only present for a dying living entity (set from the
+        // synced health), so this also runs outside the per-type match.
+        if let Some(death) = self.death.as_mut() {
+            death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
         }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_CREEPER_ID => {
@@ -401,6 +457,16 @@ fn entity_data_byte(data_values: &[EntityDataValue], data_id: u8, default: i8) -
             _ => None,
         })
         .unwrap_or(default)
+}
+
+fn entity_data_float(data_values: &[EntityDataValue], data_id: u8) -> Option<f32> {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Float(value) => Some(*value),
+            _ => None,
+        })
 }
 
 fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {

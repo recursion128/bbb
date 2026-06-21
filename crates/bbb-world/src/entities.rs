@@ -318,10 +318,16 @@ pub struct EntityModelSourceState {
     /// render-state light coords.
     #[serde(default = "entity_model_source_full_bright_light")]
     pub light: TerrainLight,
-    /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0`): drives
-    /// the red damage overlay pass.
+    /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0 ||
+    /// deathTime > 0`): drives the red damage overlay pass.
     #[serde(default)]
     pub has_red_overlay: bool,
+    /// Vanilla `LivingEntityRenderState.deathTime` (`LivingEntity.deathTime`
+    /// lerped): the death-animation counter that tips a dying living entity over
+    /// in `LivingEntityRenderer.setupRotations`. `0.0` for every living entity
+    /// that is alive (and every non-living entity).
+    #[serde(default)]
+    pub death_time: f32,
     /// Vanilla `CreeperRenderState.swelling` (`Creeper.getSwelling`): the lerped
     /// fuse progress that drives the renderer white swelling overlay. `0.0` for
     /// every non-creeper entity and for a creeper at rest.

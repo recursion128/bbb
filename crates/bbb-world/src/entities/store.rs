@@ -293,6 +293,7 @@ impl EntityStore {
             // the chunk light data; the per-entity source defaults to full bright.
             light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
             has_red_overlay: client_animations.animations.has_red_overlay(),
+            death_time: client_animations.animations.death_time(partial_ticks),
             creeper_swelling: client_animations.animations.creeper_swelling(partial_ticks),
             data_values: metadata.data_values.clone(),
         })
