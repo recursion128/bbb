@@ -155,6 +155,7 @@ mod tests {
                 "textures/entity/enderman/enderman_eyes.png",
                 "textures/entity/iron_golem/iron_golem.png",
                 "textures/entity/snow_golem/snow_golem.png",
+                "textures/entity/witch/witch.png",
                 "textures/entity/slime/slime.png",
                 "textures/entity/slime/magmacube.png",
                 "textures/entity/boat/acacia.png",

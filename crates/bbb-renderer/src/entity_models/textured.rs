@@ -25,8 +25,8 @@ pub(super) use layers::{
     polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
     spider_textured_layer_passes, villager_textured_layer_passes,
-    wandering_trader_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerPass,
-    EntityModelLayerRenderType,
+    wandering_trader_textured_layer_passes, witch_textured_layer_passes,
+    wolf_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
@@ -100,6 +100,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::SnowGolem => {
                 emit_snow_golem_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Witch => {
+                emit_witch_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Slime { size } => {
                 emit_slime_textured_model(&mut meshes, *instance, size, atlas);
@@ -296,6 +299,17 @@ fn emit_snow_golem_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in snow_golem_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_witch_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = villager_adult_model_root_transform(instance);
+    for pass in witch_textured_layer_passes() {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }

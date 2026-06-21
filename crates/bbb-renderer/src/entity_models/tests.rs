@@ -63,6 +63,9 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let ravager = EntityModelInstance::ravager(320, [32.0, 64.0, 0.0], 0.0);
     let villager = EntityModelInstance::villager(321, [34.0, 64.0, 0.0], 0.0, false);
     let wandering_trader = EntityModelInstance::wandering_trader(322, [36.0, 64.0, 0.0], 0.0);
+    let iron_golem = EntityModelInstance::iron_golem(323, [38.0, 64.0, 0.0], 0.0);
+    let snow_golem = EntityModelInstance::snow_golem(324, [40.0, 64.0, 0.0], 0.0);
+    let witch = EntityModelInstance::witch(325, [42.0, 64.0, 0.0], 0.0);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -84,6 +87,9 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         ravager,
         villager,
         wandering_trader,
+        iron_golem,
+        snow_golem,
+        witch,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -127,6 +133,12 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_villager_geometry_guard.vertices.is_empty());
     let legacy_wandering_trader_geometry_guard = entity_model_mesh(&[wandering_trader]);
     assert!(!legacy_wandering_trader_geometry_guard.vertices.is_empty());
+    let legacy_iron_golem_geometry_guard = entity_model_mesh(&[iron_golem]);
+    assert!(!legacy_iron_golem_geometry_guard.vertices.is_empty());
+    let legacy_snow_golem_geometry_guard = entity_model_mesh(&[snow_golem]);
+    assert!(!legacy_snow_golem_geometry_guard.vertices.is_empty());
+    let legacy_witch_geometry_guard = entity_model_mesh(&[witch]);
+    assert!(!legacy_witch_geometry_guard.vertices.is_empty());
 }
 
 #[test]
