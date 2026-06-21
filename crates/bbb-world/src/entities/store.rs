@@ -18,8 +18,8 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, vanilla_render_scale,
-    ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_is_baby, vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
+    vanilla_render_scale, ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -468,6 +468,12 @@ impl EntityStore {
             has_red_overlay: client_animations.animations.has_red_overlay(),
             death_time: client_animations.animations.death_time(partial_ticks),
             creeper_swelling: client_animations.animations.creeper_swelling(partial_ticks),
+            walk_animation_position: client_animations
+                .animations
+                .walk_animation_position(partial_ticks),
+            walk_animation_speed: client_animations
+                .animations
+                .walk_animation_speed(partial_ticks),
             data_values: metadata.data_values.clone(),
         })
     }
@@ -779,14 +785,24 @@ impl EntityStore {
 
     pub(crate) fn advance_client_animations(&mut self, ticks: u32) {
         for _ in 0..ticks {
-            for (_, (identity, transform, animations)) in self.ecs.query_mut::<(
+            for (_, (identity, transform, mount, metadata, animations)) in self.ecs.query_mut::<(
                 &EntityIdentity,
                 &EntityTransform,
+                &EntityMount,
+                &EntityMetadata,
                 &mut EntityClientAnimations,
             )>() {
-                animations
-                    .animations
-                    .advance_client_tick(identity.entity_type_id, *transform);
+                // Vanilla `LivingEntity.calculateEntityAnimation` gates the limb
+                // swing on `!isPassenger()` and scales the position by `3` for a
+                // baby (`updateWalkAnimation`).
+                let is_passenger = mount.vehicle_id.is_some();
+                let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
+                animations.animations.advance_client_tick(
+                    identity.entity_type_id,
+                    *transform,
+                    is_passenger,
+                    is_baby,
+                );
             }
         }
     }

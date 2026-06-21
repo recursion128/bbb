@@ -1575,6 +1575,303 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
 }
 
 #[test]
+fn entity_model_sources_project_walk_animation_limb_swing() {
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+
+    // partial tick 1.0 → WalkAnimationState.position/speed return the current
+    // (un-lerped) accumulator values.
+    let walk = |store: &WorldStore, partial: f32| -> (f32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 60)
+            .unwrap();
+        (source.walk_animation_position, source.walk_animation_speed)
+    };
+    let sync_position = |store: &mut WorldStore, x: f64, z: f64| {
+        assert!(
+            store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                id: 60,
+                position: ProtocolVec3d { x, y: 64.0, z },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            })
+        );
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        60,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    // Establish a known baseline feet position, then take the first tick: it only
+    // records the position (vanilla `xo == getX()`), so the swing stays at rest.
+    sync_position(&mut store, 0.0, 0.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(walk(&store, 1.0), (0.0, 0.0));
+
+    // Move 0.5 blocks along X, then tick: vanilla distance = 0.5, targetSpeed =
+    // min(0.5 * 4, 1) = 1.0, speed = 0 + (1 - 0) * 0.4 = 0.4, position = 0 + 0.4.
+    sync_position(&mut store, 0.5, 0.0);
+    store.advance_entity_client_animations(1);
+    let (pos1, speed1) = walk(&store, 1.0);
+    assert!(
+        (speed1 - 0.4).abs() < 1e-5,
+        "speed after one step: {speed1}"
+    );
+    assert!((pos1 - 0.4).abs() < 1e-5, "position after one step: {pos1}");
+
+    // Move another 0.5 along X and tick: targetSpeed = 1.0 again, speed = 0.4 + (1
+    // - 0.4) * 0.4 = 0.64, position = 0.4 + 0.64 = 1.04.
+    sync_position(&mut store, 1.0, 0.0);
+    store.advance_entity_client_animations(1);
+    let (pos2, speed2) = walk(&store, 1.0);
+    assert!(
+        (speed2 - 0.64).abs() < 1e-5,
+        "speed after two steps: {speed2}"
+    );
+    assert!(
+        (pos2 - 1.04).abs() < 1e-5,
+        "position after two steps: {pos2}"
+    );
+
+    // Vanilla `WalkAnimationState.position/speed(partialTicks)` lerp the projection:
+    // speed(0.5) = lerp(0.5, 0.4, 0.64) = 0.52; position(0.5) = 1.04 - 0.64 * 0.5.
+    let (pos_mid, speed_mid) = walk(&store, 0.5);
+    assert!(
+        (speed_mid - 0.52).abs() < 1e-5,
+        "mid-tick speed: {speed_mid}"
+    );
+    assert!(
+        (pos_mid - 0.72).abs() < 1e-5,
+        "mid-tick position: {pos_mid}"
+    );
+
+    // Standing still (no position change) for a tick: distance = 0, targetSpeed =
+    // 0, speed = 0.64 + (0 - 0.64) * 0.4 = 0.384; the position keeps integrating.
+    store.advance_entity_client_animations(1);
+    let (pos3, speed3) = walk(&store, 1.0);
+    assert!(
+        (speed3 - 0.384).abs() < 1e-5,
+        "speed decays toward zero: {speed3}"
+    );
+    assert!(
+        (pos3 - (1.04 + 0.384)).abs() < 1e-5,
+        "position keeps integrating: {pos3}"
+    );
+}
+
+#[test]
+fn entity_model_sources_walk_animation_scales_position_for_babies() {
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
+    const BOOLEAN_SERIALIZER_ID: i32 = 8;
+
+    let walk = |store: &WorldStore| -> (f32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 61)
+            .unwrap();
+        (source.walk_animation_position, source.walk_animation_speed)
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        61,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    // Vanilla `updateWalkAnimation` passes `isBaby() ? 3.0F : 1.0F` as the position
+    // scale, so a baby's limb-swing position is tripled (the speed is unscaled).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 61,
+        values: vec![ProtocolEntityDataValue {
+            data_id: AGEABLE_MOB_BABY_DATA_ID,
+            serializer_id: BOOLEAN_SERIALIZER_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 61,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 64.0,
+                z: 0.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
+    store.advance_entity_client_animations(1);
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 61,
+            position: ProtocolVec3d {
+                x: 0.5,
+                y: 64.0,
+                z: 0.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
+    store.advance_entity_client_animations(1);
+    let (position, speed) = walk(&store);
+    // speed = 0.4 (unscaled); position = 0.4 * 3 = 1.2.
+    assert!(
+        (speed - 0.4).abs() < 1e-5,
+        "baby speed is unscaled: {speed}"
+    );
+    assert!(
+        (position - 1.2).abs() < 1e-5,
+        "baby position is tripled: {position}"
+    );
+}
+
+#[test]
+fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const VANILLA_ENTITY_TYPE_BOAT_ID: i32 = 89;
+    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
+    const FLOAT_SERIALIZER_ID: i32 = 3;
+
+    let walk = |store: &WorldStore, id: i32| -> (f32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (source.walk_animation_position, source.walk_animation_speed)
+    };
+    let move_one_step = |store: &mut WorldStore, id: i32, x0: f64, x1: f64| {
+        for x in [x0, x1] {
+            assert!(
+                store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                    id,
+                    position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+                    delta_movement: ProtocolVec3d {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                    },
+                    y_rot: 0.0,
+                    x_rot: 0.0,
+                    on_ground: true,
+                })
+            );
+            store.advance_entity_client_animations(1);
+        }
+    };
+
+    // A cow riding a boat is a passenger: vanilla `calculateEntityAnimation` calls
+    // `walkAnimation.stop()` so its limb swing stays at rest however it is moved.
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 70,
+        passenger_ids: vec![71],
+    }));
+    move_one_step(&mut store, 71, 0.0, 0.5);
+    assert_eq!(walk(&store, 71), (0.0, 0.0));
+
+    // A dead cow (`isAlive()` false once health <= 0) also stops its limb swing.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 72,
+        values: vec![ProtocolEntityDataValue {
+            data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
+            serializer_id: FLOAT_SERIALIZER_ID,
+            value: EntityDataValueKind::Float(0.0),
+        }],
+    }));
+    move_one_step(&mut store, 72, 0.0, 0.5);
+    assert_eq!(walk(&store, 72), (0.0, 0.0));
+}
+
+#[test]
+fn entity_model_sources_defer_walk_animation_for_overridden_entities() {
+    // Camel/Creaking/Frog override `updateWalkAnimation` with mappings the client
+    // does not yet model, so their limb swing stays deferred (zero) while an
+    // ordinary cow with the base mapping animates from the same movement.
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
+
+    let walk_position = |store: &WorldStore, id: i32| -> f32 {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .walk_animation_position
+    };
+    let move_one_step = |store: &mut WorldStore, id: i32| {
+        for x in [0.0, 0.5] {
+            assert!(
+                store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                    id,
+                    position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+                    delta_movement: ProtocolVec3d {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                    },
+                    y_rot: 0.0,
+                    x_rot: 0.0,
+                    on_ground: true,
+                })
+            );
+            store.advance_entity_client_animations(1);
+        }
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    move_one_step(&mut store, 80);
+    move_one_step(&mut store, 81);
+    assert!(
+        walk_position(&store, 80) > 0.0,
+        "the cow's limb swing animates"
+    );
+    assert_eq!(walk_position(&store, 81), 0.0, "the camel stays deferred");
+}
+
+#[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
 

@@ -452,11 +452,13 @@ fn sniffer_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState
     }
 }
 
-fn baby_pick_bounds(
-    entity_type_id: i32,
-    data_values: &[EntityDataValue],
-) -> Option<EntityPickBoundsState> {
-    let baby = match entity_type_id {
+/// Vanilla `Mob.isBaby` (`AgeableMob.DATA_BABY_ID`, `Zombie.DATA_BABY_ID`,
+/// `AbstractPiglin.DATA_BABY_ID`): reads the synced baby flag at the per-family
+/// metadata id. Zombies/piglins keep the flag at their own ids; every other
+/// ageable mob uses the shared `AgeableMob` id. Non-ageable entities are never
+/// babies.
+pub(crate) fn vanilla_is_baby(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    match entity_type_id {
         VANILLA_ENTITY_TYPE_DROWNED_ID
         | VANILLA_ENTITY_TYPE_HUSK_ID
         | VANILLA_ENTITY_TYPE_ZOMBIE_ID
@@ -501,8 +503,14 @@ fn baby_pick_bounds(
             entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
         }
         _ => false,
-    };
-    if !baby {
+    }
+}
+
+fn baby_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    if !vanilla_is_baby(entity_type_id, data_values) {
         return None;
     }
 

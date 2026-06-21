@@ -269,11 +269,16 @@ When an agent does any of the following, update this file in the same slice:
       (the `SCALE`-attribute uniform model scale), `lightCoords` (block+sky packed
       light), `hasRedOverlay` (hurt/death red `OverlayTexture` flash), and
       `whiteOverlayProgress` (creeper swelling white flash)
+    - `walkAnimationPos`/`walkAnimationSpeed` limb-swing: the client-side
+      `WalkAnimationState` accumulator is implemented and tracked per living entity
+      (see the dedicated bullet below), and its lerped `position`/`speed` are
+      projected onto `EntityModelSourceState.walk_animation_position`/`_speed`. The
+      remaining slices carry those values into the renderer `EntityRenderState` and
+      consume them in each model's `setupAnim` (the actual leg/arm sway).
     - deferred slots to add with their own slices, each carrying real vanilla
-      semantics and tests rather than tint fallbacks: `walkAnimationPos`/
-      `walkAnimationSpeed` limb-swing, `ageScale` (the baby `0.5` proportions applied
-      in model `setupAnim`, distinct from the now-projected `SCALE`-attribute
-      `scale`), unified `isInvisible`, and `outlineColor` glow
+      semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
+      proportions applied in model `setupAnim`, distinct from the now-projected
+      `SCALE`-attribute `scale`), unified `isInvisible`, and `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -387,6 +392,27 @@ When an agent does any of the following, update this file in the same slice:
     (`(bbHeight + 0.1) / entityScale`) so the world-space lift stays `bbHeight + 0.1`.
     The baby `ageScale` (the `0.5` head/body proportions applied in model `setupAnim`)
     is a separate value and stays deferred.
+  - The `WalkAnimationState` limb-swing accumulator is implemented and tracked client
+    side (the renderer/`setupAnim` consumption is a later slice). World side: each
+    client tick `EntityStore::advance_client_animations` runs vanilla
+    `LivingEntity.calculateEntityAnimation` for every living entity — it measures the
+    per-tick feet travel (`Mth.length` of the position delta, including the vertical
+    component only for `FlyingAnimal` Bee/Parrot, like
+    `calculateEntityAnimation(this instanceof FlyingAnimal)`), then feeds the base
+    `updateWalkAnimation` mapping (`targetSpeed = min(distance * 4, 1)`, `factor =
+    0.4`, `positionScale = isBaby ? 3 : 1`) into the per-entity `WalkAnimationState`
+    (`speedOld/speed/position/positionScale`). A passenger or a dead entity
+    (`!isAlive`, mirrored by the client death-animation state) stops the swing
+    (`walkAnimation.stop()`), matching vanilla. The lerped `position(partialTick)` /
+    `speed(partialTick)` are projected onto
+    `EntityModelSourceState.walk_animation_position` / `walk_animation_speed` (`0.0`
+    for a standing entity, every non-living entity, and the deferred overrides
+    below). Deferred: the `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides
+    use different distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash
+    animation states the client does not yet track), so their limb swing is left at
+    rest rather than approximated; carrying the values into the renderer
+    `EntityRenderState` and consuming them in each model's `setupAnim` (the actual
+    leg/arm sway) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

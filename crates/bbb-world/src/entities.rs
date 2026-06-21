@@ -383,6 +383,19 @@ pub struct EntityModelSourceState {
     /// every non-creeper entity and for a creeper at rest.
     #[serde(default)]
     pub creeper_swelling: f32,
+    /// Vanilla `LivingEntityRenderState.walkAnimationPos`
+    /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
+    /// that sways the model's legs/arms. `0.0` for a standing entity, every
+    /// non-living entity, and the entities whose `updateWalkAnimation` override is
+    /// deferred.
+    #[serde(default)]
+    pub walk_animation_position: f32,
+    /// Vanilla `LivingEntityRenderState.walkAnimationSpeed`
+    /// (`WalkAnimationState.speed(partialTick)`): the lerped limb-swing speed
+    /// amplitude that scales the leg/arm sway. `0.0` for a standing entity and
+    /// every non-living entity.
+    #[serde(default)]
+    pub walk_animation_speed: f32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 

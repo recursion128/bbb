@@ -8,12 +8,25 @@ use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
-use super::EntityTransform;
+use super::{EntityTransform, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
 const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
+/// Vanilla `FlyingAnimal` implementors (`Bee`, `Parrot`): their
+/// `LivingEntity.calculateEntityAnimation` measures the full 3-D travel distance
+/// (`calculateEntityAnimation(this instanceof FlyingAnimal)`), so the limb-swing
+/// distance includes the vertical component.
+const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
+const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
+/// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`)
+/// replaces the base distance→speed mapping. `Camel`/`Frog` additionally gate on
+/// pose/jump/dash animation states the client does not yet track, so their limb
+/// swing is deferred rather than approximated with the base mapping.
+const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
+const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
+const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
@@ -63,6 +76,8 @@ pub struct EntityClientAnimationState {
     pub death: Option<DeathAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creeper_swell: Option<CreeperSwellAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub walk_animation: Option<WalkAnimationState>,
 }
 
 /// Canonical client-side creeper fuse animation, mirroring vanilla
@@ -121,6 +136,132 @@ pub struct ShulkerPeekAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SheepEatAnimationState {
     pub eat_animation_tick: i32,
+}
+
+/// Canonical client-side limb-swing accumulator, mirroring vanilla
+/// `WalkAnimationState` (`net.minecraft.world.entity.WalkAnimationState`). Each
+/// client tick `LivingEntity.calculateEntityAnimation` measures the entity's
+/// per-tick travel and feeds it to `update`, which low-passes the speed and
+/// integrates the swing position; the living-entity models read the lerped
+/// `position`/`speed` to sway legs and arms. Tracked for every living entity
+/// whose `updateWalkAnimation` is the base mapping.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WalkAnimationState {
+    /// Vanilla `WalkAnimationState.speedOld`.
+    pub speed_old: f32,
+    /// Vanilla `WalkAnimationState.speed`.
+    pub speed: f32,
+    /// Vanilla `WalkAnimationState.position`.
+    pub position: f32,
+    /// Vanilla `WalkAnimationState.positionScale` (`1.0`, or `3.0` for a baby).
+    pub position_scale: f32,
+    /// The entity feet position recorded at the previous client tick, used to
+    /// measure the per-tick travel distance (vanilla `Entity.xo/yo/zo`). `None`
+    /// until the first tick, when vanilla's `xo == getX()` makes the travel zero.
+    #[serde(default)]
+    pub previous_feet_position: Option<EntityVec3>,
+}
+
+impl Default for WalkAnimationState {
+    fn default() -> Self {
+        // Vanilla `WalkAnimationState` initialises `positionScale = 1.0F`; every
+        // other field defaults to `0`.
+        Self {
+            speed_old: 0.0,
+            speed: 0.0,
+            position: 0.0,
+            position_scale: 1.0,
+            previous_feet_position: None,
+        }
+    }
+}
+
+impl WalkAnimationState {
+    /// Vanilla `WalkAnimationState.update`: `speedOld = speed; speed += (target -
+    /// speed) * factor; position += speed; positionScale = positionScale`.
+    fn update(&mut self, target_speed: f32, factor: f32, position_scale: f32) {
+        self.speed_old = self.speed;
+        self.speed += (target_speed - self.speed) * factor;
+        self.position += self.speed;
+        self.position_scale = position_scale;
+    }
+
+    /// Vanilla `WalkAnimationState.stop`: zeroes the speed and position (it leaves
+    /// `positionScale` untouched, matching vanilla).
+    fn stop(&mut self) {
+        self.speed_old = 0.0;
+        self.speed = 0.0;
+        self.position = 0.0;
+    }
+
+    /// Advances one client tick from the entity's current feet position, mirroring
+    /// vanilla `LivingEntity.calculateEntityAnimation` → `updateWalkAnimation` (the
+    /// base mapping `targetSpeed = min(distance * 4, 1)`, `factor = 0.4`). `use_y`
+    /// is `entity instanceof FlyingAnimal` (the `Mth.length` distance includes the
+    /// vertical travel only for flying animals).
+    fn advance_client_tick(
+        &mut self,
+        feet_position: EntityVec3,
+        use_y: bool,
+        is_passenger: bool,
+        is_alive: bool,
+        is_baby: bool,
+    ) {
+        let distance = match self.previous_feet_position {
+            Some(previous) => {
+                let dx = feet_position.x - previous.x;
+                let dy = if use_y {
+                    feet_position.y - previous.y
+                } else {
+                    0.0
+                };
+                let dz = feet_position.z - previous.z;
+                (dx * dx + dy * dy + dz * dz).sqrt() as f32
+            }
+            None => 0.0,
+        };
+        self.previous_feet_position = Some(feet_position);
+        // Vanilla `LivingEntity.calculateEntityAnimation`: only an alive, non-riding
+        // entity animates; otherwise the swing is stopped.
+        if is_passenger || !is_alive {
+            self.stop();
+            return;
+        }
+        let target_speed = (distance * 4.0).min(1.0);
+        self.update(target_speed, 0.4, if is_baby { 3.0 } else { 1.0 });
+    }
+
+    /// Vanilla `WalkAnimationState.position(partialTicks)`: `(position - speed * (1
+    /// - partialTicks)) * positionScale`.
+    fn position(&self, partial_ticks: f32) -> f32 {
+        (self.position - self.speed * (1.0 - partial_ticks)) * self.position_scale
+    }
+
+    /// Vanilla `WalkAnimationState.speed(partialTicks)`: `min(lerp(partialTicks,
+    /// speedOld, speed), 1)`.
+    fn speed(&self, partial_ticks: f32) -> f32 {
+        (self.speed_old + (self.speed - self.speed_old) * partial_ticks).min(1.0)
+    }
+}
+
+/// Vanilla `FlyingAnimal` test used by `calculateEntityAnimation` to decide
+/// whether the limb-swing travel distance includes the vertical component.
+fn is_flying_animal(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_BEE_ID | VANILLA_ENTITY_TYPE_PARROT_ID
+    )
+}
+
+/// Whether an entity's `updateWalkAnimation` override is not yet modelled, so its
+/// limb swing is deferred rather than driven with the base distance→speed mapping.
+fn walk_animation_override_is_deferred(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_CAMEL_ID
+            | VANILLA_ENTITY_TYPE_CREAKING_ID
+            | VANILLA_ENTITY_TYPE_FROG_ID
+    )
 }
 
 impl Default for PolarBearStandingAnimationState {
@@ -364,7 +505,30 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.standing_animation_scale(partial_tick))
     }
 
-    pub(crate) fn advance_client_tick(&mut self, entity_type_id: i32, transform: EntityTransform) {
+    /// Vanilla `LivingEntityRenderState.walkAnimationPos`
+    /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
+    /// that sways the model's legs/arms. Returns `0.0` for an entity that has not
+    /// been ticked as a walking living entity.
+    pub fn walk_animation_position(&self, partial_tick: f32) -> f32 {
+        self.walk_animation
+            .map_or(0.0, |walk| walk.position(partial_tick))
+    }
+
+    /// Vanilla `LivingEntityRenderState.walkAnimationSpeed`
+    /// (`WalkAnimationState.speed(partialTick)`): the lerped limb-swing speed
+    /// amplitude. Returns `0.0` for an entity that is not walking.
+    pub fn walk_animation_speed(&self, partial_tick: f32) -> f32 {
+        self.walk_animation
+            .map_or(0.0, |walk| walk.speed(partial_tick))
+    }
+
+    pub(crate) fn advance_client_tick(
+        &mut self,
+        entity_type_id: i32,
+        transform: EntityTransform,
+        is_passenger: bool,
+        is_baby: bool,
+    ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
         // to every living entity, so it runs outside the per-type match.
@@ -412,6 +576,21 @@ impl EntityClientAnimationState {
                 .get_or_insert_with(EnderDragonAnimationState::default)
                 .advance_client_tick(transform),
             _ => {}
+        }
+        // Vanilla `LivingEntity.calculateEntityAnimation` runs every client tick
+        // (`aiStep`, or `RemotePlayer.tick`) for every living entity, feeding the
+        // per-tick travel to the limb-swing accumulator. Entities whose
+        // `updateWalkAnimation` override is not yet modelled are left deferred.
+        if vanilla_living_entity_type(entity_type_id)
+            && !walk_animation_override_is_deferred(entity_type_id)
+        {
+            // Vanilla `isAlive() = getHealth() > 0`: the client death animation
+            // state is present exactly while the entity is dead/dying.
+            let is_alive = self.death.is_none();
+            let use_y = is_flying_animal(entity_type_id);
+            self.walk_animation
+                .get_or_insert_with(WalkAnimationState::default)
+                .advance_client_tick(transform.position, use_y, is_passenger, is_alive, is_baby);
         }
     }
 }
