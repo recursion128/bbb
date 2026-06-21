@@ -468,19 +468,23 @@ fn emit_piglin_model(
         &ADULT_PIGLIN_PARTS
     };
     // `AbstractPiglinModel extends HumanoidModel`: its `setupAnim` runs
-    // `super.setupAnim` (the inherited leg and arm swing) before swaying only the ears.
+    // `super.setupAnim` (the inherited leg and arm swing) before flapping the ears.
     // `PiglinModel` (adult/baby piglin and the brute, which reuses `AdultPiglinModel`)
     // overrides the arms only in its dance/attack/crossbow/admire poses (deferred), so
     // the default arms keep the `HumanoidModel.setupAnim` counter-swing. The zombified
     // piglin instead overwrites the arms with `AnimationUtils.animateZombieArms` (the
-    // held-out zombie pose, deferred), so its arms stay at rest. The ear sway and the
-    // overriding arm poses need `ageInTicks`/arm-pose state the client lacks.
+    // held-out zombie pose, deferred), so its arms stay at rest. Every subclass, however,
+    // runs `super.setupAnim`, so the ears always flap (`piglin_ear_flap_pose`): the ears
+    // are nested children of the head, so the head subtree is hand-emitted with the flapped
+    // ears (the dance/attack/crossbow/admire arm poses stay deferred).
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let head_index = piglin_head_part_index(baby_layout);
     let parts = humanoid_limb_swing_parts(
         colored_head_look_parts(
             parts,
-            piglin_head_part_index(baby_layout),
+            head_index,
             instance.render_state.head_yaw,
             instance.render_state.head_pitch,
         ),
@@ -498,12 +502,61 @@ fn emit_piglin_model(
             limb_swing_amount,
         )
     };
-    emit_model_parts_with_color(
-        mesh,
-        &parts,
-        entity_model_root_transform(instance),
-        piglin_model_color(family),
-    );
+    let transform = entity_model_root_transform(instance);
+    let color = piglin_model_color(family);
+    let (left_ear, right_ear) = piglin_ear_child_indices(baby_layout);
+    let default_ear_angle = piglin_default_ear_angle(baby_layout);
+    for (index, part) in parts.iter().enumerate() {
+        if index == head_index {
+            // The ears are `&'static` head children, so emit the head cubes then the
+            // children with the flapped ear poses (the ravager/hoglin pattern).
+            let head_transform = transform * part_pose_transform(part.pose);
+            for cube in part.cubes {
+                emit_model_cube_with_color(mesh, head_transform, *cube, color);
+            }
+            let mut head_children = part.children.to_vec();
+            head_children[left_ear].pose = piglin_ear_flap_pose(
+                head_children[left_ear].pose,
+                true,
+                default_ear_angle,
+                age_in_ticks,
+                limb_swing,
+                limb_swing_amount,
+            );
+            head_children[right_ear].pose = piglin_ear_flap_pose(
+                head_children[right_ear].pose,
+                false,
+                default_ear_angle,
+                age_in_ticks,
+                limb_swing,
+                limb_swing_amount,
+            );
+            emit_model_parts_with_color(mesh, &head_children, head_transform, color);
+        } else {
+            emit_model_part_with_color(mesh, part, transform, color);
+        }
+    }
+}
+
+/// Ear child indices `(left, right)` under the piglin head part. The adult/brute layout
+/// lists the two ears directly at `[0, 1]`; the baby layout (baby piglin / baby zombified
+/// piglin) lists the hat at `0` and the ear holders at `[1, 2]`.
+fn piglin_ear_child_indices(baby_layout: bool) -> (usize, usize) {
+    if baby_layout {
+        (1, 2)
+    } else {
+        (0, 1)
+    }
+}
+
+/// `AbstractPiglinModel.getDefaultEarAngleInDegrees()` (in radians): `5°` for the baby
+/// layout, `30°` for the adult/brute layout.
+fn piglin_default_ear_angle(baby_layout: bool) -> f32 {
+    if baby_layout {
+        PIGLIN_BABY_EAR_ANGLE
+    } else {
+        PIGLIN_ADULT_EAR_ANGLE
+    }
 }
 
 fn emit_hoglin_model(

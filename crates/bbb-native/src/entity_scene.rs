@@ -350,6 +350,7 @@ fn entity_model_instance(
         .with_sleeping(sleeping)
         .with_scale(source.scale)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
+        .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1383,11 +1384,14 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![
-                EntityModelInstance::chicken(26, [1.0, 64.0, -2.0], 0.0, false),
-                EntityModelInstance::chicken(27, [3.0, 64.0, -2.0], 0.0, true),
-                EntityModelInstance::new(85, EntityModelKind::Minecart, [5.0, 64.0, -2.0], 0.0),
-            ]
+            aged(
+                vec![
+                    EntityModelInstance::chicken(26, [1.0, 64.0, -2.0], 0.0, false),
+                    EntityModelInstance::chicken(27, [3.0, 64.0, -2.0], 0.0, true),
+                    EntityModelInstance::new(85, EntityModelKind::Minecart, [5.0, 64.0, -2.0], 0.0,),
+                ],
+                1.0,
+            )
         );
     }
 
@@ -2093,22 +2097,25 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![
-                EntityModelInstance::chicken_variant(
-                    26,
-                    [1.0, 64.0, -2.0],
-                    0.0,
-                    ChickenModelVariant::Cold,
-                    false
-                ),
-                EntityModelInstance::chicken_variant(
-                    27,
-                    [3.0, 64.0, -2.0],
-                    0.0,
-                    ChickenModelVariant::Warm,
-                    true
-                ),
-            ]
+            aged(
+                vec![
+                    EntityModelInstance::chicken_variant(
+                        26,
+                        [1.0, 64.0, -2.0],
+                        0.0,
+                        ChickenModelVariant::Cold,
+                        false
+                    ),
+                    EntityModelInstance::chicken_variant(
+                        27,
+                        [3.0, 64.0, -2.0],
+                        0.0,
+                        ChickenModelVariant::Warm,
+                        true
+                    ),
+                ],
+                1.0,
+            )
         );
     }
 
@@ -2195,22 +2202,25 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![
-                EntityModelInstance::cow_variant(
-                    30,
-                    [1.0, 64.0, -2.0],
-                    0.0,
-                    CowModelVariant::Cold,
-                    false
-                ),
-                EntityModelInstance::cow_variant(
-                    31,
-                    [3.0, 64.0, -2.0],
-                    0.0,
-                    CowModelVariant::Warm,
-                    true
-                ),
-            ]
+            aged(
+                vec![
+                    EntityModelInstance::cow_variant(
+                        30,
+                        [1.0, 64.0, -2.0],
+                        0.0,
+                        CowModelVariant::Cold,
+                        false
+                    ),
+                    EntityModelInstance::cow_variant(
+                        31,
+                        [3.0, 64.0, -2.0],
+                        0.0,
+                        CowModelVariant::Warm,
+                        true
+                    ),
+                ],
+                1.0,
+            )
         );
     }
 
@@ -2297,10 +2307,25 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![
-                EntityModelInstance::pig(100, [1.0, 64.0, -2.0], 0.0, PigModelVariant::Cold, false),
-                EntityModelInstance::pig(101, [3.0, 64.0, -2.0], 0.0, PigModelVariant::Warm, true),
-            ]
+            aged(
+                vec![
+                    EntityModelInstance::pig(
+                        100,
+                        [1.0, 64.0, -2.0],
+                        0.0,
+                        PigModelVariant::Cold,
+                        false,
+                    ),
+                    EntityModelInstance::pig(
+                        101,
+                        [3.0, 64.0, -2.0],
+                        0.0,
+                        PigModelVariant::Warm,
+                        true,
+                    ),
+                ],
+                1.0,
+            )
         );
     }
 
@@ -2333,15 +2358,18 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![EntityModelInstance::armor_stand(
-                5,
-                [1.0, 64.0, -2.0],
-                0.0,
-                true,
-                true,
-                false,
-                pose,
-            )]
+            aged(
+                vec![EntityModelInstance::armor_stand(
+                    5,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    true,
+                    true,
+                    false,
+                    pose,
+                )],
+                1.0,
+            )
         );
     }
 
@@ -2375,24 +2403,27 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![
-                EntityModelInstance::player_with_parts(
-                    1550,
-                    [1.0, 64.0, -2.0],
-                    0.0,
-                    false,
-                    player_parts,
-                ),
-                EntityModelInstance::player_with_parts(
-                    830,
-                    [3.0, 64.0, -2.0],
-                    0.0,
-                    false,
-                    PlayerModelPartVisibility::from_vanilla_mask(
-                        PlayerModelPartVisibility::ALL_MASK,
+            aged(
+                vec![
+                    EntityModelInstance::player_with_parts(
+                        1550,
+                        [1.0, 64.0, -2.0],
+                        0.0,
+                        false,
+                        player_parts,
                     ),
-                ),
-            ]
+                    EntityModelInstance::player_with_parts(
+                        830,
+                        [3.0, 64.0, -2.0],
+                        0.0,
+                        false,
+                        PlayerModelPartVisibility::from_vanilla_mask(
+                            PlayerModelPartVisibility::ALL_MASK,
+                        ),
+                    ),
+                ],
+                1.0,
+            )
         );
     }
 
@@ -2422,10 +2453,36 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![
-                EntityModelInstance::slime(117, [1.0, 64.0, -2.0], 0.0, 4),
-                EntityModelInstance::magma_cube(80, [3.0, 64.0, -2.0], 0.0, 3),
-            ]
+            aged(
+                vec![
+                    EntityModelInstance::slime(117, [1.0, 64.0, -2.0], 0.0, 4),
+                    EntityModelInstance::magma_cube(80, [3.0, 64.0, -2.0], 0.0, 3),
+                ],
+                1.0,
+            )
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_age_in_ticks_from_world_age_and_partial_tick() {
+        // Vanilla `EntityRenderState.ageInTicks = entity.tickCount + partialTick`: the world
+        // tracks the per-entity client-animation age and the scene lerps it with the partial
+        // tick. After 7 client ticks at partial 0.25 the projected age is 7.25.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            70,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.advance_entity_client_animations(7);
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+
+        assert_eq!(instances.len(), 1);
+        assert!(
+            (instances[0].render_state.age_in_ticks - 7.25).abs() < 1e-6,
+            "{}",
+            instances[0].render_state.age_in_ticks
         );
     }
 
@@ -2898,17 +2955,20 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![EntityModelInstance::sheep_render_state(
-                111,
-                [1.0, 64.0, -2.0],
-                0.0,
-                false,
-                true,
-                SheepWoolColor::Red,
-                false,
-                false,
+            aged(
+                vec![EntityModelInstance::sheep_render_state(
+                    111,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    true,
+                    SheepWoolColor::Red,
+                    false,
+                    false,
+                    1.0,
+                )],
                 1.0,
-            )]
+            )
         );
     }
 
@@ -2933,17 +2993,20 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![EntityModelInstance::sheep_render_state(
-                112,
-                [1.0, 64.0, -2.0],
-                0.0,
-                false,
-                false,
-                SheepWoolColor::White,
-                false,
-                true,
+            aged(
+                vec![EntityModelInstance::sheep_render_state(
+                    112,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    false,
+                    SheepWoolColor::White,
+                    false,
+                    true,
+                    12.5,
+                )],
                 12.5,
-            )]
+            )
         );
     }
 
@@ -2967,17 +3030,20 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![EntityModelInstance::sheep_render_state(
-                113,
-                [1.0, 64.0, -2.0],
-                0.0,
-                false,
-                false,
-                SheepWoolColor::Red,
-                true,
-                false,
+            aged(
+                vec![EntityModelInstance::sheep_render_state(
+                    113,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    false,
+                    SheepWoolColor::Red,
+                    true,
+                    false,
+                    0.25,
+                )],
                 0.25,
-            )]
+            )
         );
     }
 
@@ -3293,16 +3359,19 @@ mod tests {
 
         assert_eq!(
             angry_instances,
-            vec![EntityModelInstance::wolf_state(
-                148,
-                [1.0, 64.0, -2.0],
-                0.0,
-                false,
-                false,
-                true,
-                false,
-                None,
-            )]
+            aged(
+                vec![EntityModelInstance::wolf_state(
+                    148,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    false,
+                    true,
+                    false,
+                    None,
+                )],
+                1.0,
+            )
         );
 
         world.apply_world_time(PlayTime {
@@ -3314,16 +3383,19 @@ mod tests {
 
         assert_eq!(
             calm_instances,
-            vec![EntityModelInstance::wolf_state(
-                148,
-                [1.0, 64.0, -2.0],
-                0.0,
-                false,
-                false,
-                false,
-                false,
-                None,
-            )]
+            aged(
+                vec![EntityModelInstance::wolf_state(
+                    148,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    false,
+                    false,
+                    false,
+                    None,
+                )],
+                1.0,
+            )
         );
     }
 
@@ -3348,16 +3420,19 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![EntityModelInstance::wolf_state(
-                148,
-                [1.0, 64.0, -2.0],
-                0.0,
-                false,
-                true,
-                false,
-                true,
-                Some(EntityDyeColor::Blue),
-            )]
+            aged(
+                vec![EntityModelInstance::wolf_state(
+                    148,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    true,
+                    false,
+                    true,
+                    Some(EntityDyeColor::Blue),
+                )],
+                1.0,
+            )
         );
     }
 
@@ -3800,17 +3875,32 @@ mod tests {
 
         assert_eq!(
             instances,
-            vec![EntityModelInstance::chicken(
-                12,
-                [2.0, 64.0, 0.0],
-                0.0,
-                false
-            )]
+            aged(
+                vec![EntityModelInstance::chicken(
+                    12,
+                    [2.0, 64.0, 0.0],
+                    0.0,
+                    false
+                )],
+                1.0,
+            )
         );
     }
 
     fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
         protocol_add_entity_with_rotation(id, entity_type_id, position, 0.0, 0.0, 0.0)
+    }
+
+    /// Stamps the projected `ageInTicks` (= entity `age_ticks` + partial tick) onto every
+    /// expected instance, so model-selection assertions need not repeat it per instance.
+    fn aged(
+        mut instances: Vec<EntityModelInstance>,
+        age_in_ticks: f32,
+    ) -> Vec<EntityModelInstance> {
+        for instance in &mut instances {
+            instance.render_state.age_in_ticks = age_in_ticks;
+        }
+        instances
     }
 
     fn protocol_add_entity_with_rotation(

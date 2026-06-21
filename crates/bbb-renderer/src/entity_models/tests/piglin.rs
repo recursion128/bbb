@@ -206,9 +206,13 @@ fn piglin_meshes_use_vanilla_body_layer_geometry() {
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(PIGLIN_SKIN, 0.78)));
+    // Vanilla runs `setupAnim` every frame, so the ears always carry the flap baseline
+    // (`±default ∓ cos(freq) * 0.08`, here `freq = 0` at rest). On the small baby body the
+    // flapped ear holders reach slightly past the body half-width, widening the X extent
+    // from the un-flapped layer box; the larger adult body still encloses its ears.
     let (baby_piglin_min, baby_piglin_max) = mesh_extents(&baby_piglin);
-    assert_close3(baby_piglin_min, [-0.45814878, 64.001, -0.21875003]);
-    assert_close3(baby_piglin_max, [0.45814878, 64.9385, 0.28125]);
+    assert_close3(baby_piglin_min, [-0.4962139, 64.001, -0.21875003]);
+    assert_close3(baby_piglin_max, [0.4962139, 64.9385, 0.28125]);
 
     let brute = entity_model_mesh(&[EntityModelInstance::piglin(
         102,
@@ -441,14 +445,21 @@ fn piglin_family_swings_its_legs_when_walking() {
     ];
     for (name, base) in instances {
         let rest = entity_model_mesh(&[base]);
+        // A standing piglin keeps its legs at rest at speed 0 regardless of `pos`. (Its ears
+        // always flap — see `piglin_family_flaps_its_ears` — so the full mesh is not
+        // byte-identical at speed 0; the ear flap is a `zRot` sway that never touches the Z
+        // extent, so the legs' Z splay isolates the gait.)
         let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
-        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
-
         let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
         assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
 
         let (rest_min, rest_max) = mesh_extents(&rest);
+        let (still_min, still_max) = mesh_extents(&still);
         let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            ((still_max[2] - still_min[2]) - (rest_max[2] - rest_min[2])).abs() < 1e-4,
+            "{name}: a standing piglin keeps its legs unsplayed at speed 0"
+        );
         assert!(
             (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
             "{name}: a walking piglin's feet should lift off the ground"
@@ -456,6 +467,137 @@ fn piglin_family_swings_its_legs_when_walking() {
         assert!(
             (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
             "{name}: a walking piglin's legs should splay along Z"
+        );
+    }
+}
+
+#[test]
+fn piglin_ear_flap_pose_matches_vanilla_formula() {
+    // Vanilla `AbstractPiglinModel.setupAnim`:
+    //   freq = ageInTicks * 0.1 + pos * 0.5;  amp = 0.08 + speed * 0.4;
+    //   leftEar.zRot  = -default - cos(freq * 1.2) * amp;
+    //   rightEar.zRot =  default + cos(freq)       * amp.
+    // The default ear angle is 30° (adult) or 5° (baby), in radians.
+    assert!((PIGLIN_ADULT_EAR_ANGLE - std::f32::consts::FRAC_PI_6).abs() < 1e-6);
+    assert!((PIGLIN_BABY_EAR_ANGLE - 5.0 * std::f32::consts::PI / 180.0).abs() < 1e-9);
+
+    let default = PIGLIN_ADULT_EAR_ANGLE;
+    let left_base = PartPose {
+        offset: [4.5, -6.0, 0.0],
+        rotation: [0.0, 0.0, -default],
+    };
+    let right_base = PartPose {
+        offset: [-4.5, -6.0, 0.0],
+        rotation: [0.0, 0.0, default],
+    };
+
+    // Standing (age 0, pos 0, speed 0): freq 0, amp 0.08, so the ears carry the ±0.08
+    // baseline flap on top of the default angle.
+    let left = piglin_ear_flap_pose(left_base, true, default, 0.0, 0.0, 0.0);
+    assert!(
+        (left.rotation[2] - (-default - 0.08)).abs() < 1e-6,
+        "{}",
+        left.rotation[2]
+    );
+    let right = piglin_ear_flap_pose(right_base, false, default, 0.0, 0.0, 0.0);
+    assert!(
+        (right.rotation[2] - (default + 0.08)).abs() < 1e-6,
+        "{}",
+        right.rotation[2]
+    );
+
+    // A general (age, pos, speed) reproduces the formula, including the left ear's ×1.2
+    // frequency and the speed-scaled amplitude.
+    let (age, pos, speed) = (40.0_f32, 1.5_f32, 0.6_f32);
+    let freq = age * 0.1 + pos * 0.5;
+    let amp = 0.08 + speed * 0.4;
+    let left = piglin_ear_flap_pose(left_base, true, default, age, pos, speed);
+    assert!((left.rotation[2] - (-default - (freq * 1.2).cos() * amp)).abs() < 1e-6);
+    let right = piglin_ear_flap_pose(right_base, false, default, age, pos, speed);
+    assert!((right.rotation[2] - (default + freq.cos() * amp)).abs() < 1e-6);
+
+    // The offset and the untouched xRot/yRot are preserved.
+    assert_eq!(left.offset, left_base.offset);
+    assert_eq!(left.rotation[0], left_base.rotation[0]);
+    assert_eq!(left.rotation[1], left_base.rotation[1]);
+
+    // The baby ear uses the 5° default angle.
+    let baby_left = piglin_ear_flap_pose(left_base, true, PIGLIN_BABY_EAR_ANGLE, 0.0, 0.0, 0.0);
+    assert!((baby_left.rotation[2] - (-PIGLIN_BABY_EAR_ANGLE - 0.08)).abs() < 1e-6);
+}
+
+#[test]
+fn piglin_family_flaps_its_ears() {
+    // Vanilla runs `AbstractPiglinModel.setupAnim` every frame (every subclass calls
+    // `super.setupAnim`), so the ears flap continuously — driven by `ageInTicks` even when
+    // the piglin stands still. Advancing `ageInTicks` re-poses only the ears, so the mesh
+    // changes while the (age-independent) legs hold still. Covers every family and the baby
+    // layout, in the colored render path (piglins have no textured path).
+    for (name, base) in [
+        (
+            "piglin",
+            EntityModelInstance::piglin(
+                201,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::Piglin,
+                false,
+            ),
+        ),
+        (
+            "baby_piglin",
+            EntityModelInstance::piglin(
+                202,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::Piglin,
+                true,
+            ),
+        ),
+        (
+            "brute",
+            EntityModelInstance::piglin(
+                203,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::PiglinBrute,
+                false,
+            ),
+        ),
+        (
+            "zombified",
+            EntityModelInstance::piglin(
+                204,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::ZombifiedPiglin,
+                false,
+            ),
+        ),
+        (
+            "baby_zombified",
+            EntityModelInstance::piglin(
+                205,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PiglinModelFamily::ZombifiedPiglin,
+                true,
+            ),
+        ),
+    ] {
+        let early = entity_model_mesh(&[base]);
+        let later = entity_model_mesh(&[base.with_age_in_ticks(31.4)]);
+        assert_eq!(early.vertices.len(), later.vertices.len(), "{name}");
+        assert_ne!(
+            early.vertices, later.vertices,
+            "{name}: the ears flap as ageInTicks advances"
+        );
+        // The legs carry no age term, so the final leg cube is byte-identical.
+        let leg_tail = early.vertices.len() - 24;
+        assert_eq!(
+            early.vertices[leg_tail..],
+            later.vertices[leg_tail..],
+            "{name}: the legs do not depend on ageInTicks"
         );
     }
 }

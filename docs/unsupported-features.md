@@ -603,8 +603,8 @@ When an agent does any of the following, update this file in the same slice:
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms, the skeleton melee swing (`isAggressive && !isHoldingBow`) and bow-aiming
     `ArmPose`, the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
-    `AbstractPiglinModel` ear sway and
-    `PiglinModel` dance/attack/crossbow/admire poses, the `IllagerModel`
+    `PiglinModel` dance/attack/crossbow/admire poses (the `AbstractPiglinModel` ear flap is
+    implemented for every piglin/zombified-piglin subclass — see below), the `IllagerModel`
     attack/spellcast/bow/crossbow/celebrate arm-pose overrides and riding sit pose (the
     default walk arm swing is implemented for the pillager), the `VillagerModel` unhappy
     head shake and the `WitchModel` nose bob/hold pose, the `GoatModel` ramming head
@@ -618,7 +618,16 @@ When an agent does any of the following, update this file in the same slice:
     (fish, other birds, etc.) are the next slices, plus the chicken wing flap (untracked
     `flap`/`flapSpeed`) and the several deferred event/tail poses noted above. (The snow
     golem has no walk-driven swing; its `setupAnim` head-yaw upper-body twist and arm orbit
-    are implemented.)
+    are implemented.) The `EntityRenderState.ageInTicks` (= entity `tickCount + partialTick`)
+    is now projected for every entity (`with_age_in_ticks`, from the world's per-entity
+    client-animation age), driving the continuous `AbstractPiglinModel.setupAnim` ear flap
+    (`piglin_ear_flap_pose`, shared by every piglin/zombified-piglin subclass via
+    `super.setupAnim`): `freq = ageInTicks * 0.1 + pos * 0.5`, `amp = 0.08 + speed * 0.4`,
+    `leftEar.zRot = -default - cos(freq * 1.2) * amp`, `rightEar.zRot = default +
+    cos(freq) * amp`, with `default` the `getDefaultEarAngleInDegrees()` of `30°` (adult/
+    brute) or `5°` (baby). The ears are `&'static` head children, so the head subtree is
+    hand-emitted with the flapped ears (colored path; piglins have no textured path); because
+    the `±0.08` baseline and `ageInTicks` advance every frame, the ears never sit still.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`

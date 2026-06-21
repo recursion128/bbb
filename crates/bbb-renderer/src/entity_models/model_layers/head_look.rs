@@ -271,6 +271,43 @@ pub(in crate::entity_models) fn humanoid_arm_swing_pose(
     }
 }
 
+/// `AbstractPiglinModel.ADULT_EAR_ANGLE_IN_DEGREES`/`BABY_EAR_ANGLE_IN_DEGREES` in radians
+/// (`getDefaultEarAngleInDegrees() * π/180`): `30°` for the adult piglin/brute/zombified
+/// piglin, `5°` for the babies.
+pub(in crate::entity_models) const PIGLIN_ADULT_EAR_ANGLE: f32 =
+    30.0 * std::f32::consts::PI / 180.0;
+pub(in crate::entity_models) const PIGLIN_BABY_EAR_ANGLE: f32 = 5.0 * std::f32::consts::PI / 180.0;
+
+/// Vanilla `AbstractPiglinModel.setupAnim` ear flap (shared by every piglin/zombified
+/// piglin subclass via `super.setupAnim`). The ears sway continuously about `zRot` from a
+/// frequency `ageInTicks * 0.1 + walkAnimationPos * 0.5` and an amplitude `0.08 +
+/// walkAnimationSpeed * 0.4`, *set* absolutely onto the per-model default ear angle
+/// (`default_ear_angle`, [`PIGLIN_ADULT_EAR_ANGLE`]/[`PIGLIN_BABY_EAR_ANGLE`]):
+/// `leftEar.zRot = -default - cos(freq * 1.2) * amp`, `rightEar.zRot = default + cos(freq)
+/// * amp` — note the left ear's `× 1.2` frequency. The `±0.08` baseline already differs
+/// from the layer rest and `ageInTicks` advances every frame, so the ears never sit still;
+/// `offset` and `xRot`/`yRot` are preserved.
+pub(in crate::entity_models) fn piglin_ear_flap_pose(
+    base: PartPose,
+    left: bool,
+    default_ear_angle: f32,
+    age_in_ticks: f32,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let frequency = age_in_ticks * 0.1 + walk_animation_pos * 0.5;
+    let amplitude = 0.08 + walk_animation_speed * 0.4;
+    let z_rot = if left {
+        -default_ear_angle - (frequency * 1.2).cos() * amplitude
+    } else {
+        default_ear_angle + frequency.cos() * amplitude
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [base.rotation[0], base.rotation[1], z_rot],
+    }
+}
+
 /// Vanilla half-amplitude leg swing for a single leg part: `leg.xRot =
 /// cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed * 0.5`. The
 /// `EntityModel` bipeds that are not `HumanoidModel` — `IllagerModel` (non-riding

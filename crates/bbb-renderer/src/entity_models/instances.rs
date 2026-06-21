@@ -113,6 +113,10 @@ pub struct EntityRenderState {
     /// (`0.0..=1.0`) that scales the sway in `setupAnim`. `0.0` for a standing
     /// entity, leaving the model in its rest pose.
     pub walk_animation_speed: f32,
+    /// Vanilla `EntityRenderState.ageInTicks` (`entity.tickCount + partialTick`): the
+    /// lerped per-frame age that drives continuous idle animations (e.g. the
+    /// `AbstractPiglinModel` ear flap). `0.0` until the entity scene projects it.
+    pub age_in_ticks: f32,
 }
 
 impl EntityRenderState {
@@ -137,6 +141,7 @@ impl EntityRenderState {
             scale: 1.0,
             walk_animation_pos: 0.0,
             walk_animation_speed: 0.0,
+            age_in_ticks: 0.0,
         }
     }
 
@@ -265,6 +270,11 @@ impl EntityModelInstance {
     ) -> Self {
         self.render_state.walk_animation_pos = walk_animation_pos;
         self.render_state.walk_animation_speed = walk_animation_speed;
+        self
+    }
+
+    pub fn with_age_in_ticks(mut self, age_in_ticks: f32) -> Self {
+        self.render_state.age_in_ticks = age_in_ticks;
         self
     }
 
@@ -883,6 +893,7 @@ mod tests {
                 scale: 1.0,
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,
+                age_in_ticks: 0.0,
             }
         );
     }
