@@ -278,6 +278,14 @@ pub(in crate::entity_models) const SNOW_GOLEM_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
+/// Vanilla `SnowGolemModel.createBodyLayer` part order: head, left arm, right arm,
+/// upper body (middle snow ball), lower body. `SnowGolemModel.setupAnim` looks the
+/// head and twists/orbits the upper body and arms.
+pub(in crate::entity_models) const SNOW_GOLEM_HEAD_PART_INDEX: usize = 0;
+pub(in crate::entity_models) const SNOW_GOLEM_LEFT_ARM_PART_INDEX: usize = 1;
+pub(in crate::entity_models) const SNOW_GOLEM_RIGHT_ARM_PART_INDEX: usize = 2;
+pub(in crate::entity_models) const SNOW_GOLEM_UPPER_BODY_PART_INDEX: usize = 3;
+
 pub(in crate::entity_models) const MODEL_LAYER_SNOW_GOLEM: &str = "minecraft:snow_golem#main";
 
 pub(in crate::entity_models) const SNOW_GOLEM_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =

@@ -299,8 +299,9 @@ When an agent does any of the following, update this file in the same slice:
       eight legs each sweeping about yRot and stepping about zRot, legs `[3..=10]`), and
       the wolf (`WolfModel`, the non-sitting `QuadrupedModel` diagonal leg swing, legs
       `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby). The remaining slices consume them in
-      the other model families' `setupAnim` (snow golem, birds, fish, etc., plus the
-      `HumanoidModel`/illager/villager arm and ear/nose poses).
+      the other model families' `setupAnim` (birds, fish, etc., plus the
+      `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
+      walk-driven swing (its `setupAnim` is the head-yaw twist/orbit, now implemented).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -550,8 +551,9 @@ When an agent does any of the following, update this file in the same slice:
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (snow golem, birds, fish, etc.) are the next slices, plus the wolf tail wag and the
-    several deferred event/tail poses noted above.
+    (birds, fish, etc.) are the next slices, plus the wolf tail wag and the several
+    deferred event/tail poses noted above. (The snow golem has no walk-driven swing; its
+    `setupAnim` head-yaw upper-body twist and arm orbit are implemented.)
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -959,10 +961,12 @@ When an agent does any of the following, update this file in the same slice:
       official `textures/entity/snow_golem/snow_golem.png` texture reference
       from `SnowGolemRenderer`, texture-backed base layer pass emission, and
       official PNG atlas upload/bind/sample path, and the vanilla
-      `SnowGolemModel.setupAnim` head-look yaw/pitch on the head part (colored and
-      textured); carved pumpkin head block layer, pumpkin/no pumpkin state
-      projection, upper-body yaw, and arm repositioning animation remain
-      unsupported
+      `SnowGolemModel.setupAnim` head-look yaw/pitch on the head part plus the
+      upper-body quarter-yaw twist (`upperBody.yRot = headYaw * 0.25`) and the two
+      stick arms orbiting that twist (`arm.yRot = upperBodyYRot [+ π]`, with `x`/`z`
+      recomputed from cos/sin so the arms ride the body and collapse to `z = 0` when
+      facing forward), on both render paths (colored and textured); carved pumpkin
+      head block layer and pumpkin/no-pumpkin state projection remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested

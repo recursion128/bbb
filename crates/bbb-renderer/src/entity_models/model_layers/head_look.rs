@@ -429,6 +429,53 @@ pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(usize, f32, f32); 
     ]
 }
 
+/// Vanilla `SnowGolemModel.setupAnim` upper-body twist: the middle snow ball turns a
+/// quarter of the head yaw, `upperBody.yRot = headYaw * π/180 * 0.25`. The base upper
+/// body carries no rotation, so the twist is set (not accumulated); `xRot`/`zRot` and
+/// the offset are preserved. The returned value is also the arm orbit angle for
+/// [`snow_golem_arm_pose`].
+pub(in crate::entity_models) fn snow_golem_upper_body_yrot(head_yaw_deg: f32) -> f32 {
+    head_yaw_deg.to_radians() * 0.25
+}
+
+/// Applies the [`snow_golem_upper_body_yrot`] twist to the upper-body part pose.
+pub(in crate::entity_models) fn snow_golem_upper_body_pose(
+    base: PartPose,
+    upper_body_yrot: f32,
+) -> PartPose {
+    PartPose {
+        offset: base.offset,
+        rotation: [base.rotation[0], upper_body_yrot, base.rotation[2]],
+    }
+}
+
+/// Vanilla `SnowGolemModel.setupAnim` arm orbit. The two stick arms ride the twisting
+/// upper body: `leftArm.yRot = upperBodyYRot`, `leftArm.x = cos(upperBodyYRot) * 5`,
+/// `leftArm.z = -sin(upperBodyYRot) * 5`; the right arm adds `π` to the yaw and negates
+/// both `x` and `z`. The arm `y` offset and the drooping `zRot` (`±1.0` from the body
+/// layer) are preserved; the base `x`/`z` offsets are overwritten by the orbit even at
+/// rest (so a forward-facing snow golem still pulls its arms to `z = 0`).
+pub(in crate::entity_models) fn snow_golem_arm_pose(
+    base: PartPose,
+    upper_body_yrot: f32,
+    right: bool,
+) -> PartPose {
+    let (sin, cos) = upper_body_yrot.sin_cos();
+    let (x, z, y_rot) = if right {
+        (
+            -cos * 5.0,
+            sin * 5.0,
+            upper_body_yrot + std::f32::consts::PI,
+        )
+    } else {
+        (cos * 5.0, -sin * 5.0, upper_body_yrot)
+    };
+    PartPose {
+        offset: [x, base.offset[1], z],
+        rotation: [base.rotation[0], y_rot, base.rotation[2]],
+    }
+}
+
 /// Vanilla head look shared by `QuadrupedModel.setupAnim` and
 /// `HumanoidModel.setupAnim`: `head.xRot = xRot * π/180` and `head.yRot = yRot *
 /// π/180`, where `xRot` is the head pitch and `yRot` is the net head yaw

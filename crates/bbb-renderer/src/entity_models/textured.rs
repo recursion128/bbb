@@ -23,8 +23,11 @@ use super::{
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
         spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
         ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
+        SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -439,35 +442,6 @@ fn emit_villager_family_textured_passes(
     }
 }
 
-/// Emits textured layer passes, applying the vanilla `QuadrupedModel`/
-/// `HumanoidModel.setupAnim` head look to each pass's head part at `head_index`.
-/// The static parts are reused unchanged while the head is level and aligned
-/// with the body. `transform` is taken explicitly so callers with a non-default
-/// model root transform (e.g. the wither skeleton scale) stay correct.
-fn emit_textured_passes_with_head_look(
-    meshes: &mut EntityModelTexturedMeshes,
-    passes: Vec<EntityModelLayerPass>,
-    head_index: usize,
-    transform: Mat4,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    for pass in passes {
-        if head_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-        }
-    }
-}
-
 fn emit_creeper_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -620,14 +594,33 @@ fn emit_snow_golem_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
-        meshes,
-        snow_golem_textured_layer_passes(),
-        head_first_part_index(),
-        entity_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    // Vanilla `SnowGolemModel.setupAnim`: head look, upper-body quarter-yaw twist, and
+    // the two stick arms orbiting that twist (yRot + recomputed x/z). The arm orbit
+    // overwrites the body-layer x/z even at rest, so the parts are always rebuilt.
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let upper_body_yrot = snow_golem_upper_body_yrot(head_yaw);
+    let transform = entity_model_root_transform(instance);
+    for pass in snow_golem_textured_layer_passes() {
+        let mut parts = pass.parts.to_vec();
+        parts[SNOW_GOLEM_HEAD_PART_INDEX].pose =
+            head_look_pose(parts[SNOW_GOLEM_HEAD_PART_INDEX].pose, head_yaw, head_pitch);
+        parts[SNOW_GOLEM_UPPER_BODY_PART_INDEX].pose = snow_golem_upper_body_pose(
+            parts[SNOW_GOLEM_UPPER_BODY_PART_INDEX].pose,
+            upper_body_yrot,
+        );
+        parts[SNOW_GOLEM_LEFT_ARM_PART_INDEX].pose = snow_golem_arm_pose(
+            parts[SNOW_GOLEM_LEFT_ARM_PART_INDEX].pose,
+            upper_body_yrot,
+            false,
+        );
+        parts[SNOW_GOLEM_RIGHT_ARM_PART_INDEX].pose = snow_golem_arm_pose(
+            parts[SNOW_GOLEM_RIGHT_ARM_PART_INDEX].pose,
+            upper_body_yrot,
+            true,
+        );
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
 }
 
 fn emit_witch_textured_model(

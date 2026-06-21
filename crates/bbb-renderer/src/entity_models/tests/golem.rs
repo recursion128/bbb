@@ -368,6 +368,111 @@ fn golem_textured_meshes_use_vanilla_uvs_tints_and_body_layer_bounds() {
 }
 
 #[test]
+fn snow_golem_twists_upper_body_and_orbits_arms_with_head_yaw() {
+    // Vanilla SnowGolemModel.setupAnim twists the middle snow ball by a quarter of the
+    // head yaw and orbits the two stick arms around that twist. Turning the head changes
+    // the head (verts 0..24), the arms (24..72), and the upper body (72..96) but leaves
+    // the lower body (96..120) fixed. The colored mesh emits the five parts in body-layer
+    // order, one cube each.
+    let base = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(60.0, 0.0)]);
+    assert_eq!(rest.vertices.len(), 120);
+    assert_eq!(rest.vertices.len(), yawed.vertices.len());
+
+    assert_ne!(rest.vertices[0..24], yawed.vertices[0..24], "head turns");
+    assert_ne!(rest.vertices[24..72], yawed.vertices[24..72], "arms orbit");
+    assert_ne!(
+        rest.vertices[72..96],
+        yawed.vertices[72..96],
+        "upper body twists"
+    );
+    assert_eq!(
+        rest.vertices[96..120],
+        yawed.vertices[96..120],
+        "lower body stays put"
+    );
+
+    // A pure pitch (no yaw) twists neither the body nor the arms: only the head pitches.
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -25.0)]);
+    assert_ne!(
+        rest.vertices[0..24],
+        pitched.vertices[0..24],
+        "head pitches"
+    );
+    assert_eq!(
+        rest.vertices[24..96],
+        pitched.vertices[24..96],
+        "no yaw means no body twist or arm orbit"
+    );
+}
+
+#[test]
+fn snow_golem_textured_mesh_twists_upper_body_and_orbits_arms() {
+    // The real (texture-backed) snow golem render path applies the same twist and orbit.
+    let (atlas, _) = build_entity_model_texture_atlas(&golem_texture_images()).unwrap();
+    let base = EntityModelInstance::snow_golem(123, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_textured_mesh(&[base], &atlas);
+    let yawed = entity_model_textured_mesh(&[base.with_head_look(60.0, 0.0)], &atlas);
+    assert_eq!(rest.vertices.len(), 120);
+    assert_eq!(rest.vertices.len(), yawed.vertices.len());
+    assert_ne!(rest.vertices[24..72], yawed.vertices[24..72], "arms orbit");
+    assert_ne!(
+        rest.vertices[72..96],
+        yawed.vertices[72..96],
+        "upper body twists"
+    );
+    assert_eq!(
+        rest.vertices[96..120],
+        yawed.vertices[96..120],
+        "lower body stays put"
+    );
+}
+
+#[test]
+fn snow_golem_arm_pose_matches_vanilla_orbit_formula() {
+    // Vanilla SnowGolemModel.setupAnim: upperBody.yRot = headYaw * π/180 * 0.25; then
+    //   leftArm.yRot = upperBodyYRot;  leftArm.x = cos(upperBodyYRot)*5;  leftArm.z =
+    //     -sin(upperBodyYRot)*5;
+    //   rightArm.yRot = upperBodyYRot + π;  rightArm.x = -cos*5;  rightArm.z = sin*5.
+    // The arm y offset and the drooping zRot (±1.0) are preserved; x/z are overwritten
+    // even at rest, so a forward-facing snow golem pulls both arms to z = 0.
+    let left_base = SNOW_GOLEM_PARTS[SNOW_GOLEM_LEFT_ARM_PART_INDEX].pose;
+    let right_base = SNOW_GOLEM_PARTS[SNOW_GOLEM_RIGHT_ARM_PART_INDEX].pose;
+
+    // Rest (yaw 0): the orbit collapses the arms to z = 0 but keeps their droop.
+    assert!((snow_golem_upper_body_yrot(0.0)).abs() < 1e-6);
+    let left_rest = snow_golem_arm_pose(left_base, 0.0, false);
+    let right_rest = snow_golem_arm_pose(right_base, 0.0, true);
+    assert_close3(left_rest.offset, [5.0, 6.0, 0.0]);
+    assert_close3(right_rest.offset, [-5.0, 6.0, 0.0]);
+    assert_eq!(left_rest.rotation[1], 0.0);
+    assert!((right_rest.rotation[1] - std::f32::consts::PI).abs() < 1e-6);
+    assert_eq!(left_rest.rotation[2], left_base.rotation[2]); // 1.0 droop preserved
+    assert_eq!(right_rest.rotation[2], right_base.rotation[2]); // -1.0 droop preserved
+
+    // A general head yaw: upper body twists by a quarter, arms orbit by cos/sin.
+    let head_yaw_deg = 80.0_f32;
+    let upper = snow_golem_upper_body_yrot(head_yaw_deg);
+    assert!((upper - head_yaw_deg.to_radians() * 0.25).abs() < 1e-6);
+    let (sin, cos) = upper.sin_cos();
+    let left = snow_golem_arm_pose(left_base, upper, false);
+    let right = snow_golem_arm_pose(right_base, upper, true);
+    assert_close3(left.offset, [cos * 5.0, 6.0, -sin * 5.0]);
+    assert!((left.rotation[1] - upper).abs() < 1e-6);
+    assert_close3(right.offset, [-cos * 5.0, 6.0, sin * 5.0]);
+    assert!((right.rotation[1] - (upper + std::f32::consts::PI)).abs() < 1e-6);
+
+    // The upper-body twist sets only yRot; offset, xRot, zRot are preserved.
+    let upper_base = SNOW_GOLEM_PARTS[SNOW_GOLEM_UPPER_BODY_PART_INDEX].pose;
+    let twisted = snow_golem_upper_body_pose(upper_base, upper);
+    assert_eq!(twisted.offset, upper_base.offset);
+    assert_eq!(twisted.rotation[0], upper_base.rotation[0]);
+    assert!((twisted.rotation[1] - upper).abs() < 1e-6);
+    assert_eq!(twisted.rotation[2], upper_base.rotation[2]);
+}
+
+#[test]
 fn golem_textured_meshes_apply_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&golem_texture_images()).unwrap();
     for base in [
