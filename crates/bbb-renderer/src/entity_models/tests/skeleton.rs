@@ -720,6 +720,216 @@ fn skeleton_textured_mesh_applies_head_look() {
     );
 }
 
+#[test]
+fn humanoid_limb_swing_parts_assign_vanilla_skeleton_leg_phases_by_side() {
+    use std::borrow::Cow;
+
+    // SkeletonModel extends HumanoidModel, so the legs swing via the inherited
+    // HumanoidModel.setupAnim: rightLeg.xRot = cos(pos * 0.6662) * 1.4 * speed (in
+    // phase), leftLeg.xRot = cos(pos * 0.6662 + π) * 1.4 * speed (out of phase).
+    // SKELETON_PARTS lists rightLeg (offset x = -2) at index 4 and leftLeg (x = +2)
+    // at index 5. With pos = 0, speed = 1: rightLeg = 1.4, leftLeg = -1.4.
+    let posed = humanoid_limb_swing_parts(
+        Cow::Borrowed(&SKELETON_PARTS),
+        HUMANOID_LEG_PART_INDICES,
+        0.0,
+        1.0,
+    );
+    assert!(
+        (posed[4].pose.rotation[0] - 1.4).abs() < 1e-5,
+        "right leg in phase: {}",
+        posed[4].pose.rotation[0]
+    );
+    assert!(
+        (posed[5].pose.rotation[0] + 1.4).abs() < 1e-5,
+        "left leg out of phase: {}",
+        posed[5].pose.rotation[0]
+    );
+    // The arms (indices 2, 3) are left to the SkeletonModel aiming pose, untouched.
+    assert_eq!(posed[2].pose.rotation, SKELETON_PARTS[2].pose.rotation);
+    assert_eq!(posed[3].pose.rotation, SKELETON_PARTS[3].pose.rotation);
+
+    // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 1.4 * speed,
+    // including the 0.6662 frequency factor.
+    let posed = humanoid_limb_swing_parts(
+        Cow::Borrowed(&SKELETON_PARTS),
+        HUMANOID_LEG_PART_INDICES,
+        1.5,
+        0.5,
+    );
+    let phase = 1.5_f32 * 0.6662;
+    assert!((posed[4].pose.rotation[0] - phase.cos() * 1.4 * 0.5).abs() < 1e-5);
+    assert!(
+        (posed[5].pose.rotation[0] - (phase + std::f32::consts::PI).cos() * 1.4 * 0.5).abs() < 1e-5
+    );
+}
+
+#[test]
+fn skeleton_family_swings_its_legs_when_walking() {
+    // SkeletonModel extends HumanoidModel and inherits its leg swing unchanged
+    // (only the arms are overridden, when aiming, which is deferred). A standing
+    // skeleton is inert; a walking one lifts its feet (a shorter model) and splays
+    // its legs forward/back (a deeper footprint), for every family variant. This
+    // exercises the colored path (the texture-backed render is checked separately).
+    let instances: [(&str, EntityModelInstance); 6] = [
+        (
+            "skeleton",
+            EntityModelInstance::skeleton(70, [0.0, 64.0, 0.0], 0.0),
+        ),
+        (
+            "stray",
+            EntityModelInstance::skeleton_variant(
+                71,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Stray,
+            ),
+        ),
+        (
+            "wither_skeleton",
+            EntityModelInstance::skeleton_variant(
+                72,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::WitherSkeleton,
+            ),
+        ),
+        (
+            "parched",
+            EntityModelInstance::skeleton_variant(
+                73,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Parched,
+            ),
+        ),
+        (
+            "bogged",
+            EntityModelInstance::skeleton_variant(
+                74,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Bogged { sheared: false },
+            ),
+        ),
+        (
+            "bogged_sheared",
+            EntityModelInstance::skeleton_variant(
+                75,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Bogged { sheared: true },
+            ),
+        ),
+    ];
+    for (name, base) in instances {
+        let rest = entity_model_mesh(&[base]);
+        let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+        assert_eq!(rest.vertices, still.vertices, "{name}: rest is inert");
+
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(rest.vertices, walking.vertices, "{name}: walking differs");
+
+        let (rest_min, rest_max) = mesh_extents(&rest);
+        let (walk_min, walk_max) = mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.1,
+            "{name}: a walking skeleton's feet should lift off the ground"
+        );
+        assert!(
+            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.1,
+            "{name}: a walking skeleton's legs should splay along Z"
+        );
+    }
+}
+
+#[test]
+fn skeleton_textured_mesh_swings_legs_when_walking() {
+    // The real skeleton render path (texture-backed) consumes the projected limb
+    // swing via the inherited HumanoidModel.setupAnim leg rotation, on both the
+    // body layer and the Stray/Bogged clothing overlay (its layer SkeletonModel
+    // runs the same setupAnim). A standing skeleton is byte-identical however far
+    // the swing position has advanced; a walking one lifts its feet.
+    let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
+    let instances: [(&str, EntityModelInstance); 6] = [
+        (
+            "skeleton",
+            EntityModelInstance::skeleton(80, [0.0, 64.0, 0.0], 0.0),
+        ),
+        (
+            "stray",
+            EntityModelInstance::skeleton_variant(
+                81,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Stray,
+            ),
+        ),
+        (
+            "wither_skeleton",
+            EntityModelInstance::skeleton_variant(
+                82,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::WitherSkeleton,
+            ),
+        ),
+        (
+            "parched",
+            EntityModelInstance::skeleton_variant(
+                83,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Parched,
+            ),
+        ),
+        (
+            "bogged",
+            EntityModelInstance::skeleton_variant(
+                84,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Bogged { sheared: false },
+            ),
+        ),
+        (
+            "bogged_sheared",
+            EntityModelInstance::skeleton_variant(
+                85,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Bogged { sheared: true },
+            ),
+        ),
+    ];
+    for (name, base) in instances {
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{name}: a standing skeleton is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{name}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{name}: a walking skeleton differs"
+        );
+
+        let (rest_min, rest_max) = textured_mesh_extents(&resting);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.1,
+            "{name}: a walking skeleton's feet should lift off the ground"
+        );
+    }
+}
+
 fn skeleton_texture_images() -> Vec<EntityModelTextureImage> {
     skeleton_entity_texture_refs()
         .iter()

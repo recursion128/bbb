@@ -17,12 +17,13 @@ use super::{
     model_layers::{
         apply_polar_bear_standing_pose, cow_head_part_index, head_first_part_index,
         head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_head_part_index, limb_swing_at_rest, parched_head_part_index, pig_head_part_index,
-        player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
-        quadruped_leg_swing_pose, ravager_head_child_index, ravager_neck_part_index,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        villager_head_part_index, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
-        RAVAGER_TEXTURED_NECK_CHILDREN, RAVAGER_TEXTURED_PARTS,
+        hoglin_head_part_index, humanoid_leg_swing_pose, limb_swing_at_rest,
+        parched_head_part_index, pig_head_part_index, player_head_part_index,
+        polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
+        ravager_head_child_index, ravager_neck_part_index, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, villager_head_part_index,
+        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
+        RAVAGER_TEXTURED_PARTS,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -324,6 +325,56 @@ fn emit_quadruped_textured_passes(
                     if let Some(leg) = parts.get_mut(index) {
                         leg.pose =
                             quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
+}
+
+/// `HumanoidModel` leg part indices in the skeleton-family body and clothing
+/// layers: the head, body, and two arms occupy the lower slots (in either order),
+/// then the right and left legs. [`humanoid_leg_swing_pose`] resolves each leg's
+/// phase from its offset, so the parched layer's head/body swap does not matter.
+const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
+
+/// Emits a humanoid's textured layer passes, applying the vanilla
+/// `HumanoidModel.setupAnim` head look ([`head_look_pose`]) to the head part at
+/// `head_index` and the leg swing ([`humanoid_leg_swing_pose`]) to the two leg
+/// parts at `leg_indices`. The static parts are reused unchanged while both the
+/// head is level/aligned and the legs are at rest. The arms are left to each
+/// subclass override (e.g. the skeleton aiming pose), which is deferred.
+#[allow(clippy::too_many_arguments)]
+fn emit_humanoid_textured_passes(
+    meshes: &mut EntityModelTexturedMeshes,
+    passes: Vec<EntityModelLayerPass>,
+    head_index: usize,
+    leg_indices: [usize; 2],
+    transform: Mat4,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in passes {
+        if head_resting && legs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+                }
+            }
+            if !legs_resting {
+                for index in leg_indices {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
                     }
                 }
             }
@@ -800,10 +851,11 @@ fn emit_skeleton_textured_model(
     } else {
         skeleton_head_part_index()
     };
-    emit_textured_passes_with_head_look(
+    emit_humanoid_textured_passes(
         meshes,
         skeleton_textured_layer_passes(family),
         head_index,
+        HUMANOID_LEG_PART_INDICES,
         transform,
         instance,
         atlas,

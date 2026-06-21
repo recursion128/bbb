@@ -514,7 +514,7 @@ fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
-        &skeleton_colored_head_look_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
+        &skeleton_colored_posed_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
         entity_model_root_transform(instance),
     );
 }
@@ -527,16 +527,12 @@ fn emit_skeleton_variant_model(
     match family {
         SkeletonModelFamily::Stray => emit_model_parts(
             mesh,
-            &skeleton_colored_head_look_parts(
-                &SKELETON_PARTS,
-                skeleton_head_part_index(),
-                instance,
-            ),
+            &skeleton_colored_posed_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
             entity_model_root_transform(instance),
         ),
         SkeletonModelFamily::Parched => emit_model_parts(
             mesh,
-            &skeleton_colored_head_look_parts(&PARCHED_PARTS, parched_head_part_index(), instance),
+            &skeleton_colored_posed_parts(&PARCHED_PARTS, parched_head_part_index(), instance),
             entity_model_root_transform(instance),
         ),
         SkeletonModelFamily::Bogged { sheared } => {
@@ -547,35 +543,38 @@ fn emit_skeleton_variant_model(
             };
             emit_model_parts(
                 mesh,
-                &skeleton_colored_head_look_parts(parts, skeleton_head_part_index(), instance),
+                &skeleton_colored_posed_parts(parts, skeleton_head_part_index(), instance),
                 entity_model_root_transform(instance),
             )
         }
         SkeletonModelFamily::WitherSkeleton => emit_model_parts_with_color(
             mesh,
-            &skeleton_colored_head_look_parts(
-                &SKELETON_PARTS,
-                skeleton_head_part_index(),
-                instance,
-            ),
+            &skeleton_colored_posed_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
             wither_skeleton_model_root_transform(instance),
             WITHER_SKELETON_DARK,
         ),
     }
 }
 
-/// Applies the vanilla `HumanoidModel.setupAnim` head look to a skeleton-family
-/// layer's head part at `head_index`.
-fn skeleton_colored_head_look_parts(
+/// Applies the vanilla `HumanoidModel.setupAnim` head look and leg swing to a
+/// skeleton-family layer. `SkeletonModel extends HumanoidModel` and overrides
+/// only the arms (when aiming, deferred), so the legs swing exactly as in the
+/// inherited `HumanoidModel.setupAnim`.
+fn skeleton_colored_posed_parts(
     parts: &[ModelPartDesc],
     head_index: usize,
     instance: EntityModelInstance,
 ) -> Cow<'_, [ModelPartDesc]> {
-    colored_head_look_parts(
-        parts,
-        head_index,
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
+    humanoid_limb_swing_parts(
+        colored_head_look_parts(
+            parts,
+            head_index,
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        ),
+        HUMANOID_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     )
 }
 

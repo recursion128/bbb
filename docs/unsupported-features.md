@@ -277,10 +277,12 @@ When an agent does any of the following, update this file in the same slice:
       leg sway consumes them in the generic quadruped path and the dedicated
       `CowModel`, `PigModel`, and `SheepModel` paths (all variants, wool layers, baby
       layers), and the `HumanoidModel` leg sway consumes them in the zombie family
-      (zombie, husk, drowned, zombie villager). The remaining slices consume them in
-      the other model families' `setupAnim` (the rest of the `HumanoidModel` families —
-      skeleton, piglin, villager, illager, player — plus the `HumanoidModel` arm swing,
-      birds, fish, etc.).
+      (zombie, husk, drowned, zombie villager) and the skeleton family (skeleton,
+      stray, parched, wither skeleton, bogged sheared/unsheared — body layer and the
+      Stray/Bogged clothing overlay, since the overlay's layer `SkeletonModel` runs the
+      same `setupAnim`). The remaining slices consume them in the other model families'
+      `setupAnim` (the rest of the `HumanoidModel` families — piglin, villager, illager,
+      player — plus the `HumanoidModel` arm swing, birds, fish, etc.).
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -428,16 +430,21 @@ When an agent does any of the following, update this file in the same slice:
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
     consumed by the zombie family (`emit_zombie_model`/`emit_zombie_variant_model` —
-    zombie, husk, drowned, zombie villager, adult and baby), which inherit the
-    `HumanoidModel` legs unchanged. Deferred: (1) the `Camel`/`Creaking`/`Frog`
-    `updateWalkAnimation` overrides use different distance→speed mappings (and
-    `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
-    track), so their limb swing is left at rest rather than approximated; (2) the
-    `HumanoidModel` arm swing and the per-subclass arm poses (the zombie held-out arms,
-    skeleton aiming, item/attack/crouch/swim/elytra poses, and the always-on arm bob)
-    are separate animations driven by states the client does not yet track; (3)
-    consuming the projected values in the other model families' `setupAnim` (the rest
-    of the `HumanoidModel` families — skeleton, piglin, villager, illager, player — and
+    zombie, husk, drowned, zombie villager, adult and baby) and the skeleton family
+    (`emit_skeleton_model`/`emit_skeleton_variant_model` colored and
+    `emit_skeleton_textured_model` → `emit_humanoid_textured_passes` — skeleton, stray,
+    parched, wither skeleton, bogged sheared/unsheared; the Stray/Bogged clothing
+    overlay swings too, since its layer `SkeletonModel` runs the same `setupAnim`).
+    Both families inherit the `HumanoidModel` legs unchanged (`SkeletonModel`/
+    `AbstractZombieModel extends HumanoidModel`, overriding only the arms). Deferred:
+    (1) the `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
+    distance→speed mappings (and `Camel`/`Frog` gate on pose/jump/dash animation states
+    the client does not yet track), so their limb swing is left at rest rather than
+    approximated; (2) the `HumanoidModel` arm swing and the per-subclass arm poses (the
+    zombie held-out arms, skeleton aiming, item/attack/crouch/swim/elytra poses, and the
+    always-on arm bob) are separate animations driven by states the client does not yet
+    track; (3) consuming the projected values in the other model families' `setupAnim`
+    (the rest of the `HumanoidModel` families — piglin, villager, illager, player — and
     birds, fish, etc.) are the next slices.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
@@ -772,10 +779,13 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.STRAY_OUTER_LAYER`, bogged `SkeletonClothingLayer`
       `bogged_overlay.png` pass through `ModelLayers.BOGGED_OUTER_LAYER`,
       official PNG atlas upload/bind/sample path, and the vanilla
-      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part (colored and
-      textured, including the parched body-first part order and the wither
-      scaled transform); skeleton-family armor, held bows/items, attack/walk
-      animation, and lighting remain unsupported
+      `HumanoidModel.setupAnim` head-look yaw/pitch on the head part and the
+      inherited `HumanoidModel` leg swing on the two leg parts (colored and
+      textured, including the parched body-first part order, the wither scaled
+      transform, and the Stray/Bogged clothing overlay whose layer
+      `SkeletonModel` runs the same `setupAnim`); skeleton-family armor, held
+      bows/items, `SkeletonModel` arm aiming/attack animation, and lighting remain
+      unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,
