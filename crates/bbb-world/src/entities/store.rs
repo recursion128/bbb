@@ -17,12 +17,16 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_pick_bounds_for_entity_data,
+    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
+
+/// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
+/// at which `isFullyFrozen()` becomes true and the body starts shaking.
+const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 
 pub(crate) struct EntityStore {
     ecs: World,
@@ -277,6 +281,10 @@ impl EntityStore {
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
+        // (`getTicksFrozen() >= 140`), and only living entities shake.
+        let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
+            && self.ticks_frozen(id).unwrap_or(0) >= VANILLA_TICKS_REQUIRED_TO_FREEZE;
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
@@ -285,6 +293,7 @@ impl EntityStore {
             x_rot: transform.x_rot,
             y_head_rot: transform.y_head_rot,
             age_ticks: client_animations.animations.age_ticks,
+            is_fully_frozen,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             polar_bear_stand_scale: client_animations
                 .animations

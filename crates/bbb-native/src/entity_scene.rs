@@ -293,8 +293,13 @@ fn entity_model_instance(
     // Vanilla LivingEntityRenderer.extractRenderState:
     //   state.yRot = Mth.wrapDegrees(headRot - bodyRot)  (net head-look yaw)
     //   state.xRot = entity.getXRot(partialTicks)         (head-look pitch)
+    // The net head yaw is taken against the unshaken body yaw; the freezing body
+    // shake is then folded into the projected body_rot so the whole model jitters
+    // while the head turn relative to the body is unchanged.
     let net_head_yaw = wrap_degrees(source.y_head_rot - source.y_rot);
     let head_pitch = source.x_rot;
+    let body_rot =
+        source.y_rot + entity_freeze_shake_degrees(source.age_ticks, source.is_fully_frozen);
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -304,7 +309,7 @@ fn entity_model_instance(
                 source.position.y as f32,
                 source.position.z as f32,
             ],
-            source.y_rot,
+            body_rot,
         )
         .with_head_eat(head_eat)
         .with_head_look(net_head_yaw, head_pitch)
@@ -314,6 +319,17 @@ fn entity_model_instance(
         .with_death_time(source.death_time)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
+}
+
+/// Vanilla `LivingEntityRenderer.setupRotations` freezing body shake, folded into
+/// the projected body yaw: `cos(Mth.floor(ageInTicks) * 3.25) * π * 0.4` degrees
+/// while the entity is fully frozen (`isShaking`), otherwise `0`. `age_ticks` is
+/// the integer tick count, so it already equals `Mth.floor(ageInTicks)`.
+fn entity_freeze_shake_degrees(age_ticks: u32, is_fully_frozen: bool) -> f32 {
+    if !is_fully_frozen {
+        return 0.0;
+    }
+    (age_ticks as f32 * 3.25).cos() * std::f32::consts::PI * 0.4
 }
 
 /// Vanilla `Mth.wrapDegrees`: wraps an angle in degrees to `-180.0..=180.0`.
@@ -1469,6 +1485,36 @@ mod tests {
         let dying = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
         assert_eq!(dying[0].render_state.death_time, 2.25);
         assert!(dying[0].render_state.has_red_overlay);
+    }
+
+    #[test]
+    fn entity_model_instances_fold_freeze_shake_into_body_rot() {
+        const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            83,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        // A living entity that is not frozen solid has an unshaken body yaw.
+        let warm = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        assert_eq!(warm[0].render_state.body_rot, 0.0);
+
+        // Vanilla Entity.isFullyFrozen(): ticksFrozen >= 140. setupRotations then
+        // adds cos(floor(ageInTicks) * 3.25) * π * 0.4 to the body yaw; the shake
+        // uses the floored (integer) tick count, so it does not lerp with partial.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 83,
+            values: vec![protocol_int_data(VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 140)],
+        }));
+        world.advance_entity_client_animations(2);
+        let frozen = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+        let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
+        assert!((frozen[0].render_state.body_rot - expected_shake).abs() < 1e-6);
+        // The head turn relative to the body is unchanged by the shake.
+        assert_eq!(frozen[0].render_state.head_yaw, 0.0);
     }
 
     #[test]

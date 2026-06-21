@@ -259,15 +259,16 @@ When an agent does any of the following, update this file in the same slice:
   - Grow the renderer `EntityRenderState` projection as the single landing spot
     for vanilla `LivingEntityRenderState`/`EntityRenderState` per-frame fields,
     instead of adding ad hoc per-entity fields to `EntityModelInstance`:
-    - now projected: `bodyRot` (body yaw), `yRot`/`xRot` (net head-look yaw and
-      head pitch), the sheep eat-grass head pose, the polar-bear standing-rear
-      scale, `deathTime` (the death tip-over counter), `lightCoords` (block+sky
-      packed light), `hasRedOverlay` (hurt/death red `OverlayTexture` flash), and
-      `whiteOverlayProgress` (creeper swelling white flash)
+    - now projected: `bodyRot` (body yaw, with the freezing shake folded in),
+      `yRot`/`xRot` (net head-look yaw and head pitch), the sheep eat-grass head
+      pose, the polar-bear standing-rear scale, `deathTime` (the death tip-over
+      counter), `lightCoords` (block+sky packed light), `hasRedOverlay` (hurt/death
+      red `OverlayTexture` flash), and `whiteOverlayProgress` (creeper swelling
+      white flash)
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `walkAnimationPos`/
-      `walkAnimationSpeed` limb-swing, `ageScale`, unified `isInvisible`, the
-      `isFullyFrozen` body shake, and `outlineColor` glow
+      `walkAnimationSpeed` limb-swing, `ageScale`, unified `isInvisible`, and
+      `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -314,6 +315,20 @@ When an agent does any of the following, update this file in the same slice:
     `180 - bodyRot` yaw and before the `(-1, -1, 1)` flip in both shared living
     root transforms, so every colored and textured living model tips over, and is
     identity while alive.
+  - The freezing body shake is implemented end to end. World side: a living entity
+    (`vanilla_living_entity_type` gate) whose synced `ticksFrozen`
+    (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()` = `140` is
+    marked `isFullyFrozen` in `EntityModelSourceState`. The native scene folds the
+    vanilla `LivingEntityRenderer.setupRotations` shake `cos(floor(ageInTicks) *
+    3.25) * π * 0.4` (degrees) into the projected `body_rot`, computed against the
+    already-projected integer `ageInTicks` (= `Mth.floor(ageInTicks)`, so it does
+    not lerp with the partial tick). The net head-look yaw is taken against the
+    unshaken body yaw, so the whole model jitters while the head turn relative to
+    the body is unchanged. Remaining gap: the per-renderer `isShaking` overrides
+    that OR in conversion/cold states (`AbstractZombieRenderer`/
+    `ZombieVillagerRenderer`/`PiglinRenderer`/`HoglinRenderer` converting,
+    `StriderRenderer` cold, `AbstractSkeletonRenderer` converting) — additional
+    shake producers layered on the base `isFullyFrozen`.
   - The head-look projection is implemented as a reusable render-state field: the
     canonical `Entity.yHeadRot`/`getXRot` flow through `EntityModelSourceState`,
     the native scene derives `LivingEntityRenderState.yRot` =

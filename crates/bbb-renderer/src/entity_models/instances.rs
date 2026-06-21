@@ -20,7 +20,8 @@ pub const ENTITY_FULL_BRIGHT_LIGHT_COORDS: u32 = 15_728_880;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EntityRenderState {
     /// Vanilla `LivingEntityRenderState.bodyRot`: the interpolated body yaw, in
-    /// degrees, that orients the model root transform.
+    /// degrees, that orients the model root transform. The entity scene folds the
+    /// `LivingEntityRenderer.setupRotations` freezing body shake into this value.
     pub body_rot: f32,
     /// Vanilla `LivingEntityRenderState.yRot`: the net head yaw in degrees
     /// (`Mth.wrapDegrees(headRot - bodyRot)`), i.e. the head turn relative to the

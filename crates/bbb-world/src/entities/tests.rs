@@ -1013,6 +1013,56 @@ fn entity_model_sources_project_death_animation_counter() {
 }
 
 #[test]
+fn entity_model_sources_project_full_freeze_for_living_entities() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+    const INT_SERIALIZER_ID: i32 = 1;
+
+    let fully_frozen = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .is_fully_frozen
+    };
+    let set_ticks_frozen = |store: &mut WorldStore, id: i32, ticks: i32| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+                serializer_id: INT_SERIALIZER_ID,
+                value: EntityDataValueKind::Int(ticks),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(!fully_frozen(&store, 70));
+
+    // Vanilla Entity.isFullyFrozen(): ticksFrozen >= getTicksRequiredToFreeze()
+    // (140). One tick below the threshold is not yet fully frozen.
+    assert!(set_ticks_frozen(&mut store, 70, 139));
+    assert!(!fully_frozen(&store, 70));
+    assert!(set_ticks_frozen(&mut store, 70, 140));
+    assert!(fully_frozen(&store, 70));
+
+    // A non-living entity (boat) never counts as fully frozen even past the
+    // threshold: only LivingEntityRenderer shakes.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(set_ticks_frozen(&mut store, 71, 200));
+    assert!(!fully_frozen(&store, 71));
+}
+
+#[test]
 fn death_animation_gates_on_living_entity_health() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;

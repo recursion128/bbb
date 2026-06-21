@@ -308,6 +308,12 @@ pub struct EntityModelSourceState {
     pub y_head_rot: f32,
     #[serde(default)]
     pub age_ticks: u32,
+    /// Vanilla `LivingEntityRenderState.isFullyFrozen` (`Entity.isFullyFrozen`,
+    /// `ticksFrozen >= 140`): a living entity frozen solid in powder snow, whose
+    /// body the renderer shakes (`LivingEntityRenderer.isShaking`). `false` for
+    /// non-living entities and any entity that is not frozen solid.
+    #[serde(default)]
+    pub is_fully_frozen: bool,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
     #[serde(default)]
