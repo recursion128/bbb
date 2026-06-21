@@ -842,13 +842,16 @@ When an agent does any of the following, update this file in the same slice:
       diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[3, 4, 5, 6]`
       adult / `[2, 3, 4, 5]` baby, on both render paths and every pass), the non-angry
       tail wag (`tail.yRot = cos(pos * 0.6662) * 1.4 * speed` on the last part, tail at
-      `7` adult / `6` baby, both render paths), and the angry tail raise (`tail.yRot = 0`,
-      `tail.xRot = getTailAngle() = 1.5393804`, driven by `isAngry`, both render paths);
-      registry-driven wolf variants beyond the default/pale texture set, armor layer, wet
-      tint, sitting pose, head-shake/begging tilt pose, the tame `tail.xRot = tailAngle`
-      health droop, base-model invisibility/outline handling, lighting, overlay, and
-      remaining render-state
-      extraction remain unsupported
+      `7` adult / `6` baby, both render paths), and the full `tail.xRot = getTailAngle()`
+      droop (`WolfModel.setupAnim` unconditionally sets the tail `xRot` to the projected
+      `wolf_tail_angle = Wolf.getTailAngle()`: the angry constant `1.5393804`, the tame
+      health droop `(0.55 - (40 - health) / 40 * 0.4) * π` from the synced health, or the
+      `π/5` untamed default — which also overrides the baby layer's `−π/6` tail rest pose,
+      so the baby tail rests like the adult; both render paths, driven from the synced
+      tame flag and `DATA_HEALTH_ID`); registry-driven wolf variants beyond the default/pale
+      texture set, armor layer, wet tint, sitting pose, head-shake/begging tilt pose, the
+      water-shake body roll, base-model invisibility/outline handling, lighting, overlay,
+      and remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

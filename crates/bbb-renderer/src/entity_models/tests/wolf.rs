@@ -227,7 +227,11 @@ fn wolf_meshes_use_vanilla_body_layer_geometry() {
     assert_eq!(baby.vertices.len(), 240);
     assert_eq!(baby.indices.len(), 360);
     let (baby_min, baby_max) = mesh_extents(&baby);
-    assert_close3(baby_min, [-0.1884375, 63.995087, -0.28114623]);
+    // The baby tail rests at the `tailAngle` π/5 (the wild `getTailAngle()`), which
+    // `WolfModel.setupAnim` writes over the baby layer's −π/6 base pose every frame (vanilla
+    // never displays the un-posed layer rest), so the tail points back rather than up: the
+    // feet (y 64.001) are the lowest point and the tail reaches further back in −Z.
+    assert_close3(baby_min, [-0.1884375, 64.001, -0.44576454]);
     assert_close3(baby_max, [0.18968754, 64.6885, 0.5625]);
 }
 
@@ -489,16 +493,29 @@ fn wolf_swings_its_legs_when_walking() {
     // `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` in its
     // non-sitting branch. A standing wolf is inert; a walking one splays its legs along
     // Z. The adult (with its tall legs) also lifts its feet; the baby's short legs swing
-    // inside the head/body bounding box, so only the Z splay shows. The tail wag, the
-    // water-shake body roll, and the sitting pose are deferred. Colored path.
-    for (base, adult_size) in [
+    // inside the head/body bounding box, so only the Z splay shows. The Z splay is
+    // measured over the leg vertex region so the tail's resting `tailAngle` droop (which
+    // for the baby overrides the layer pose) does not mask the gait. The water-shake body
+    // roll and the sitting pose are deferred. Colored path.
+    let z_extent = |verts: &[EntityModelVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    for (base, adult_size, legs) in [
         (
             EntityModelInstance::wolf(148, [0.0, 64.0, 0.0], 0.0, false),
             true,
+            144..240,
         ),
         (
             EntityModelInstance::wolf(149, [0.0, 64.0, 0.0], 0.0, true),
             false,
+            120..216,
         ),
     ] {
         let rest = entity_model_mesh(&[base]);
@@ -516,14 +533,15 @@ fn wolf_swings_its_legs_when_walking() {
             base.kind
         );
 
-        let (rest_min, rest_max) = mesh_extents(&rest);
-        let (walk_min, walk_max) = mesh_extents(&walking);
         assert!(
-            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            z_extent(&walking.vertices[legs.clone()])
+                > z_extent(&rest.vertices[legs.clone()]) + 0.02,
             "{:?} legs should splay along Z",
             base.kind
         );
         if adult_size {
+            let (rest_min, rest_max) = mesh_extents(&rest);
+            let (walk_min, walk_max) = mesh_extents(&walking);
             assert!(
                 (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
                 "an adult wolf's feet should lift off the ground"
@@ -536,16 +554,28 @@ fn wolf_swings_its_legs_when_walking() {
 fn wolf_textured_mesh_swings_its_legs_when_walking() {
     // The real wolf render path (texture-backed) swings the same legs. A standing wolf is
     // byte-identical however far the swing has advanced; a walking one differs, splays
-    // along Z, and (for the adult) lifts its feet, while keeping the vertex count.
+    // along Z (measured over the leg region so the resting tail droop does not mask it),
+    // and (for the adult) lifts its feet, while keeping the vertex count.
+    let z_extent = |verts: &[EntityModelTexturedVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
-    for (base, adult_size) in [
+    for (base, adult_size, legs) in [
         (
             EntityModelInstance::wolf(482, [0.0, 64.0, 0.0], 0.0, false),
             true,
+            144..240,
         ),
         (
             EntityModelInstance::wolf(483, [0.0, 64.0, 0.0], 0.0, true),
             false,
+            120..216,
         ),
     ] {
         let resting = entity_model_textured_mesh(&[base], &atlas);
@@ -565,14 +595,15 @@ fn wolf_textured_mesh_swings_its_legs_when_walking() {
             base.kind
         );
 
-        let (rest_min, rest_max) = textured_mesh_extents(&resting);
-        let (walk_min, walk_max) = textured_mesh_extents(&walking);
         assert!(
-            (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+            z_extent(&walking.vertices[legs.clone()])
+                > z_extent(&resting.vertices[legs.clone()]) + 0.02,
             "{:?} legs should splay along Z",
             base.kind
         );
         if adult_size {
+            let (rest_min, rest_max) = textured_mesh_extents(&resting);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking);
             assert!(
                 (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
                 "an adult wolf's feet should lift off the ground (textured)"
@@ -595,34 +626,53 @@ fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
 #[test]
 fn wolf_tail_swing_pose_wags_with_the_quadruped_amplitude() {
     // Vanilla WolfModel.setupAnim (non-angry branch): tail.yRot = cos(pos * 0.6662) *
-    // 1.4 * speed (the same QuadrupedModel amplitude as the legs, no phase offset). The
-    // base tail pose carries the layer's resting xRot droop (0.62831855 for the adult);
-    // the wag sets only yRot and preserves the other axes (vanilla overwrites xRot with
-    // the deferred tailAngle).
+    // 1.4 * speed (the same QuadrupedModel amplitude as the legs, no phase offset), then
+    // tail.xRot = state.tailAngle. The base tail pose carries the layer's resting xRot
+    // droop (0.62831855 = π/5, the untamed tailAngle); the wag sets yRot and xRot and
+    // preserves the offset and zRot.
     let base = ADULT_WOLF_PARTS[7].pose;
+    let wild = std::f32::consts::PI / 5.0;
     assert!(
-        (base.rotation[0] - 0.62831855).abs() < 1e-6,
+        (base.rotation[0] - wild).abs() < 1e-6,
         "adult tail rests with the layer xRot droop: {}",
         base.rotation[0]
     );
-    let tail = wolf_tail_swing_pose(base, 0.0, 1.0);
+    let tail = wolf_tail_swing_pose(base, wild, 0.0, 1.0);
     assert!(
         (tail.rotation[1] - 1.4).abs() < 1e-6,
         "tail wags to cos(0) * 1.4 * 1 = 1.4: {}",
         tail.rotation[1]
     );
-    assert_eq!(tail.rotation[0], base.rotation[0], "xRot droop preserved");
+    assert_eq!(
+        tail.rotation[0], wild,
+        "untamed tailAngle sets the π/5 droop"
+    );
     assert_eq!(tail.rotation[2], base.rotation[2], "zRot preserved");
     assert_eq!(tail.offset, base.offset, "offset preserved");
 
     // A general (pos, speed) reproduces cos(pos * 0.6662) * 1.4 * speed.
     let phase = 2.0_f32 * 0.6662;
-    let tail = wolf_tail_swing_pose(base, 2.0, 0.5);
+    let tail = wolf_tail_swing_pose(base, wild, 2.0, 0.5);
     assert!((tail.rotation[1] - phase.cos() * 1.4 * 0.5).abs() < 1e-6);
 
-    // At rest (speed = 0) the wag is zero, so the tail keeps its resting pose.
-    let tail = wolf_tail_swing_pose(base, 3.0, 0.0);
+    // At rest, an untamed wolf (tailAngle = π/5 = the layer xRot) is byte-identical to the
+    // base pose, so the colored/textured borrow fast paths still apply.
+    let tail = wolf_tail_swing_pose(base, wild, 3.0, 0.0);
     assert_eq!(tail.rotation[1], 0.0);
+    assert_eq!(
+        tail, base,
+        "untamed wolf at rest matches the layer pose exactly"
+    );
+
+    // A tame wolf's health droop SETS a different xRot even when standing still.
+    let droop = (0.55 - 0.8 * 0.4) * std::f32::consts::PI; // damageRatio 0.8 (health 8/40)
+    let tail = wolf_tail_swing_pose(base, droop, 0.0, 0.0);
+    assert_eq!(tail.rotation[0], droop, "tame tailAngle droop sets xRot");
+    assert_eq!(tail.rotation[1], 0.0, "no wag at rest");
+    assert_ne!(
+        tail, base,
+        "a drooping tame tail differs from the layer rest pose"
+    );
 }
 
 #[test]
@@ -688,6 +738,67 @@ fn wolf_textured_mesh_wags_its_tail_when_walking() {
     assert!(
         walk_tail_x > rest_tail_x + 0.1,
         "the textured tail wags sideways when walking: {rest_tail_x} -> {walk_tail_x}"
+    );
+}
+
+#[test]
+fn tame_wolf_droops_its_tail_with_damage() {
+    // Vanilla `Wolf.getTailAngle()` for a tame wolf: `(0.55 - damageRatio * 0.4) * π`,
+    // `damageRatio = (maxHealth - health) / maxHealth` (tame maxHealth = 40). The renderer
+    // SETS the non-angry tail `xRot` to this projected `wolf_tail_angle`, so a healthy tame
+    // wolf raises its tail off the π/5 wild rest droop and a damaged one bends it further
+    // again, while the rest of the body is unchanged. Colored path here; textured below.
+    // The colored adult layout lists head/body/mane/legs at [0, 240) and the tail at
+    // [240, 264).
+    let wild = EntityModelInstance::wolf(150, [0.0, 64.0, 0.0], 0.0, false);
+    let full = 0.55 * std::f32::consts::PI; // health 40/40 → damageRatio 0
+    let hurt = (0.55 - 0.8 * 0.4) * std::f32::consts::PI; // health 8/40 → damageRatio 0.8
+    let wild_mesh = entity_model_mesh(&[wild]);
+    let healthy_mesh = entity_model_mesh(&[wild.with_wolf_tail_angle(full)]);
+    let damaged_mesh = entity_model_mesh(&[wild.with_wolf_tail_angle(hurt)]);
+    let tail = 240..264;
+    assert_eq!(
+        wild_mesh.vertices[..240],
+        damaged_mesh.vertices[..240],
+        "only the tail bends with the tail angle"
+    );
+    assert_ne!(
+        wild_mesh.vertices[tail.clone()],
+        healthy_mesh.vertices[tail.clone()],
+        "a healthy tame wolf's tail differs from the π/5 wild rest droop"
+    );
+    assert_ne!(
+        healthy_mesh.vertices[tail.clone()],
+        damaged_mesh.vertices[tail.clone()],
+        "the tail bends further as health drops"
+    );
+}
+
+#[test]
+fn tame_wolf_droops_its_tail_with_damage_textured() {
+    // The texture-backed base layer SETS the same `wolf_tail_angle` droop on the tail.
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    let wild = EntityModelInstance::wolf(151, [0.0, 64.0, 0.0], 0.0, false);
+    let full = 0.55 * std::f32::consts::PI;
+    let hurt = (0.55 - 0.8 * 0.4) * std::f32::consts::PI;
+    let wild_mesh = entity_model_textured_mesh(&[wild], &atlas);
+    let healthy_mesh = entity_model_textured_mesh(&[wild.with_wolf_tail_angle(full)], &atlas);
+    let damaged_mesh = entity_model_textured_mesh(&[wild.with_wolf_tail_angle(hurt)], &atlas);
+    let tail = 240..264;
+    assert_eq!(
+        wild_mesh.vertices[..240],
+        damaged_mesh.vertices[..240],
+        "only the tail bends with the tail angle"
+    );
+    assert_ne!(
+        wild_mesh.vertices[tail.clone()],
+        healthy_mesh.vertices[tail.clone()],
+        "a healthy tame wolf's tail differs from the π/5 wild rest droop"
+    );
+    assert_ne!(
+        healthy_mesh.vertices[tail.clone()],
+        damaged_mesh.vertices[tail.clone()],
+        "the tail bends further as health drops"
     );
 }
 

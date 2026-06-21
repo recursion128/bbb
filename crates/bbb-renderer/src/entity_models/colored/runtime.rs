@@ -1082,10 +1082,11 @@ fn emit_wolf_model(
     // the `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` in its
     // non-sitting branch, then applies the head look. An angry wolf holds its tail straight
     // and raised (`tail.yRot = 0`, `tail.xRot = 1.5393804`); a non-angry one wags it
-    // `tail.yRot = cos(pos * 0.6662) * 1.4 * speed` and keeps the layer's `π/5` rest droop
-    // (the untamed `tailAngle`). `isSitting` is deferred AI state, so a standing wolf takes
-    // the leg-swing branch. The tame/health `tailAngle` droop, the water-shake body roll,
-    // and the sitting pose are deferred.
+    // `tail.yRot = cos(pos * 0.6662) * 1.4 * speed` and sets `tail.xRot = tailAngle` —
+    // the `π/5` rest droop for an untamed wolf or the tame/health droop `(0.55 -
+    // damageRatio * 0.4) * π` projected into `wolf_tail_angle`. `isSitting` is deferred AI
+    // state, so a standing wolf takes the leg-swing branch. The water-shake body roll and
+    // the sitting pose are deferred.
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let legs_and_head = quadruped_limb_swing_parts(
@@ -1098,7 +1099,13 @@ fn emit_wolf_model(
     let posed = if angry {
         wolf_angry_tail_parts(legs_and_head, tail_index)
     } else {
-        wolf_tail_wag_parts(legs_and_head, tail_index, limb_swing, limb_swing_amount)
+        wolf_tail_wag_parts(
+            legs_and_head,
+            tail_index,
+            instance.render_state.wolf_tail_angle,
+            limb_swing,
+            limb_swing_amount,
+        )
     };
     emit_model_parts(mesh, &posed, entity_model_root_transform(instance));
 }
@@ -1118,21 +1125,25 @@ fn wolf_angry_tail_parts(
 }
 
 /// Applies the vanilla `WolfModel.setupAnim` tail wag ([`wolf_tail_swing_pose`]) to a
-/// colored wolf layer's tail part. Borrows the static parts unchanged at rest
-/// (`walkAnimationSpeed == 0`).
+/// colored wolf layer's tail part. Borrows the static parts unchanged when the resulting
+/// pose is byte-identical to the layer rest — a standing (`walkAnimationSpeed == 0`) wolf
+/// whose `tail_angle` equals the layer's `π/5` rest droop (i.e. an untamed wolf).
 fn wolf_tail_wag_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     tail_index: usize,
+    tail_angle: f32,
     limb_swing: f32,
     limb_swing_amount: f32,
 ) -> Cow<'_, [ModelPartDesc]> {
-    if limb_swing_at_rest(limb_swing_amount) {
+    let Some(base) = parts.get(tail_index) else {
+        return parts;
+    };
+    let posed = wolf_tail_swing_pose(base.pose, tail_angle, limb_swing, limb_swing_amount);
+    if posed == base.pose {
         return parts;
     }
     let mut owned = parts.into_owned();
-    if let Some(tail) = owned.get_mut(tail_index) {
-        tail.pose = wolf_tail_swing_pose(tail.pose, limb_swing, limb_swing_amount);
-    }
+    owned[tail_index].pose = posed;
     Cow::Owned(owned)
 }
 

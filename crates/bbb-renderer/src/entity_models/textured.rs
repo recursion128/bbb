@@ -1147,13 +1147,13 @@ fn emit_wolf_textured_model(
     // `QuadrupedModel` diagonal phase in its non-sitting branch, then applies the head
     // look. An angry wolf holds its tail straight and raised (`tail.yRot = 0`,
     // `tail.xRot = 1.5393804`); a non-angry one wags it `tail.yRot = cos(pos * 0.6662) *
-    // 1.4 * speed` and keeps the layer's `π/5` rest droop (the untamed `tailAngle`).
+    // 1.4 * speed` and sets `tail.xRot = tailAngle` — the `π/5` rest droop for an untamed
+    // wolf or the tame/health droop `(0.55 - damageRatio * 0.4) * π` from `wolf_tail_angle`.
     // `isSitting` is deferred AI state, so a standing wolf swings its legs. Every pass
     // (base, collar) shares the body-layer part layout, so the poses apply per pass. The
     // adult layer lists the legs at [3, 4, 5, 6] and the tail at 7 (head/body/mane at
     // 0/1/2); the baby layer drops the mane, so the legs are at [2, 3, 4, 5] and the tail
-    // at 6. The tame/health `tailAngle` droop, the water-shake body roll, and the sitting
-    // pose are deferred.
+    // at 6. The water-shake body roll and the sitting pose are deferred.
     let leg_indices: [usize; 4] = if baby { [2, 3, 4, 5] } else { [3, 4, 5, 6] };
     let tail_index = wolf_tail_part_index(baby);
     let head_index = head_first_part_index();
@@ -1162,12 +1162,20 @@ fn emit_wolf_textured_model(
     let head_pitch = instance.render_state.head_pitch;
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let tail_angle = instance.render_state.wolf_tail_angle;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
     let limbs_resting = limb_swing_at_rest(limb_swing_amount);
-    // An angry wolf always re-poses its tail (the raise overrides the layer rest droop even
-    // when standing), so it cannot take the borrow fast path.
     for pass in wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color) {
-        if head_resting && limbs_resting && !angry {
+        // An angry wolf always re-poses its tail (the raise overrides the rest droop even
+        // when standing); a non-angry one re-poses only when the wag or the `tail_angle`
+        // droop moves the tail off its layer rest pose, so an untamed standing wolf can
+        // still take the borrow fast path.
+        let tail_moves = angry
+            || pass.parts.get(tail_index).is_some_and(|tail| {
+                wolf_tail_swing_pose(tail.pose, tail_angle, limb_swing, limb_swing_amount)
+                    != tail.pose
+            });
+        if head_resting && limbs_resting && !tail_moves {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {
             let mut parts = pass.parts.to_vec();
@@ -1187,10 +1195,8 @@ fn emit_wolf_textured_model(
             if let Some(tail) = parts.get_mut(tail_index) {
                 tail.pose = if angry {
                     wolf_angry_tail_pose(tail.pose)
-                } else if !limbs_resting {
-                    wolf_tail_swing_pose(tail.pose, limb_swing, limb_swing_amount)
                 } else {
-                    tail.pose
+                    wolf_tail_swing_pose(tail.pose, tail_angle, limb_swing, limb_swing_amount)
                 };
             }
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);

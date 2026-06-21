@@ -452,19 +452,21 @@ pub(in crate::entity_models) fn enderman_arm_swing_pose(
 /// same `QuadrupedModel` swing amplitude as the legs, with no phase offset, so the tail
 /// sweeps side to side in step with the gait. The caller takes this branch only for a
 /// non-angry wolf; an angry one holds its tail straight and raised
-/// ([`wolf_angry_tail_pose`]). The base tail pose carries the layer's resting `xRot` droop
-/// `π/5` — which is exactly the `tailAngle` vanilla writes for an untamed wolf, so a wild
-/// wolf needs no `xRot` override; the tame/health `tailAngle` droop is still deferred (it
-/// needs the wolf's health). The wag sets only the `yRot` axis and preserves the others.
+/// ([`wolf_angry_tail_pose`]). Vanilla then unconditionally sets `tail.xRot =
+/// state.tailAngle` (`Wolf.getTailAngle()`), so the wag *sets* `xRot` to `tail_angle`: the
+/// `π/5` default for an untamed wolf (matching the layer's rest droop, leaving a wild wolf
+/// unchanged) or the tame/health droop `(0.55 - damageRatio * 0.4) * π`. Only `xRot`/`yRot`
+/// are written; the offset and `zRot` are preserved.
 pub(in crate::entity_models) fn wolf_tail_swing_pose(
     base: PartPose,
+    tail_angle: f32,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
 ) -> PartPose {
     let y_rot = (walk_animation_pos * 0.6662).cos() * 1.4 * walk_animation_speed;
     PartPose {
         offset: base.offset,
-        rotation: [base.rotation[0], y_rot, base.rotation[2]],
+        rotation: [tail_angle, y_rot, base.rotation[2]],
     }
 }
 
