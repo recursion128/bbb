@@ -472,10 +472,14 @@ fn emit_creeper_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_textured_passes_with_head_look(
+    // Vanilla `CreeperModel.setupAnim` leg swing is the standard `QuadrupedModel`
+    // formula (legs at [2, 3, 4, 5]), so reuse the quadruped textured pass emitter
+    // (full head look + leg swing). The swelling scale and powered layer are deferred.
+    emit_quadruped_textured_passes(
         meshes,
         creeper_textured_layer_passes(),
         head_first_part_index(),
+        QUADRUPED_LEG_PART_INDICES,
         entity_model_root_transform(instance),
         instance,
         atlas,

@@ -1279,11 +1279,17 @@ fn emit_pig_model(
 }
 
 fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &head_first_colored_head_look_parts(&CREEPER_PARTS, instance),
-        entity_model_root_transform(instance),
+    // Vanilla `CreeperModel` is a custom `EntityModel`, but its `setupAnim` leg swing
+    // is exactly the `QuadrupedModel` formula (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`,
+    // hind-right/front-left in phase), so the shared quadruped swing applies. Legs are
+    // at [2, 3, 4, 5]. The swelling scale and powered charge layer are deferred.
+    let parts = quadruped_limb_swing_parts(
+        head_first_colored_head_look_parts(&CREEPER_PARTS, instance),
+        QUADRUPED_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
     );
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

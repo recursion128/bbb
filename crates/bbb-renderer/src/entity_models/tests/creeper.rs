@@ -196,6 +196,66 @@ fn creeper_textured_mesh_applies_head_look() {
     assert_ne!(yawed.vertices, pitched.vertices);
 }
 
+#[test]
+fn creeper_swings_its_legs_when_walking() {
+    // Vanilla `CreeperModel` is a custom `EntityModel` whose `setupAnim` leg swing is
+    // exactly the `QuadrupedModel` formula (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`,
+    // hind-right/front-left in phase, legs at [2, 3, 4, 5]). A standing creeper is
+    // inert; a walking one lifts its feet and splays its legs along Z. The swelling
+    // scale and powered charge layer are deferred. Colored path here, textured below.
+    let base = EntityModelInstance::new(250, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
+    assert_eq!(rest.vertices, still.vertices, "rest is inert");
+
+    let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    assert_ne!(rest.vertices, walking.vertices, "walking differs");
+
+    let (rest_min, rest_max) = mesh_extents(&rest);
+    let (walk_min, walk_max) = mesh_extents(&walking);
+    assert!(
+        (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+        "a walking creeper's feet should lift off the ground"
+    );
+    assert!(
+        (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
+        "a walking creeper's legs should splay along Z"
+    );
+}
+
+#[test]
+fn creeper_textured_mesh_swings_legs_when_walking() {
+    // The real creeper render path (texture-backed) swings the same `QuadrupedModel`
+    // legs. A standing creeper is byte-identical however far the swing has advanced;
+    // a walking one lifts its feet.
+    let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
+    let base = EntityModelInstance::new(251, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+    assert_eq!(
+        resting.vertices, still.vertices,
+        "a standing creeper is inert"
+    );
+    assert_eq!(
+        resting.vertices.len(),
+        walking.vertices.len(),
+        "leg swing keeps the vertex count"
+    );
+    assert_ne!(
+        resting.vertices, walking.vertices,
+        "a walking creeper differs"
+    );
+
+    let (rest_min, rest_max) = textured_mesh_extents(&resting);
+    let (walk_min, walk_max) = textured_mesh_extents(&walking);
+    assert!(
+        (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+        "a walking creeper's feet should lift off the ground"
+    );
+}
+
 fn creeper_texture_images() -> Vec<EntityModelTextureImage> {
     creeper_entity_texture_refs()
         .iter()

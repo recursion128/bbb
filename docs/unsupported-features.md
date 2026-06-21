@@ -447,7 +447,11 @@ When an agent does any of the following, update this file in the same slice:
     `EntityModel` (not a `QuadrupedModel`) whose four legs swing `cos(pos [+ π]) * 1.2 *
     speed` — amplitude `1.2`, no `0.6662` factor, and the right-front/left-hind pair in
     phase (resolved from `x * z > 0`, the opposite sign of the `QuadrupedModel` rule),
-    legs at `[2, 3, 4, 5]`; its ear sway and headbutt head tilt are deferred. The
+    legs at `[2, 3, 4, 5]`; its ear sway and headbutt head tilt are deferred. The creeper
+    (`emit_creeper_model` colored and `emit_creeper_textured_model` textured) is a custom
+    `EntityModel` too, but its `setupAnim` leg swing is exactly the `QuadrupedModel`
+    formula (legs at `[2, 3, 4, 5]`), so it reuses the shared quadruped swing; its
+    swelling scale and powered charge layer are deferred. The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
     consumed by the zombie family (`emit_zombie_model`/`emit_zombie_variant_model` —
@@ -841,9 +845,9 @@ When an agent does any of the following, update this file in the same slice:
       official `textures/entity/creeper/creeper.png` texture reference,
       `ModelLayers.CREEPER` selection, texture-backed base layer pass emission,
       official PNG atlas upload/bind/sample path, and the vanilla
-      `CreeperModel.setupAnim` head-look yaw/pitch on the head part (colored and
-      textured); powered armor layer, swelling model scale, walk animation, and
-      lighting remain unsupported
+      `CreeperModel.setupAnim` head-look yaw/pitch on the head part and the
+      `QuadrupedModel`-formula four-leg walk swing (colored and textured); powered
+      armor layer, swelling model scale, and lighting remain unsupported
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with
       `ModelLayers.SPIDER`, the official
