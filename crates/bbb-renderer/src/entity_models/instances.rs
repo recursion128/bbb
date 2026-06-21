@@ -258,7 +258,7 @@ impl EntityModelInstance {
         wool_color: SheepWoolColor,
     ) -> Self {
         Self::sheep_render_state(
-            entity_id, position, y_rot, baby, sheared, wool_color, false, 0.0,
+            entity_id, position, y_rot, baby, sheared, wool_color, false, false, 0.0,
         )
     }
 
@@ -269,6 +269,7 @@ impl EntityModelInstance {
         baby: bool,
         sheared: bool,
         wool_color: SheepWoolColor,
+        invisible: bool,
         jeb: bool,
         age_ticks: f32,
     ) -> Self {
@@ -278,6 +279,7 @@ impl EntityModelInstance {
                 baby,
                 sheared,
                 wool_color,
+                invisible,
                 jeb,
                 age_ticks,
             },

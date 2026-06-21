@@ -260,9 +260,13 @@ When an agent does any of the following, update this file in the same slice:
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
+    - vanilla shared-flags invisibility gating for the non-glowing wool and
+      undercoat layer passes
   - Finish remaining sheep presentation parity:
-    - extend the texture-backed sheep path with vanilla entity lighting,
-      overlay, and render-state extraction parity
+    - extend the texture-backed sheep path with vanilla entity lighting and
+      overlay
+    - implement invisible glowing outline wool rendering
+    - implement base-model invisibility/outline handling
     - apply eating head position/angle animation from entity event `10`
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set
@@ -362,8 +366,12 @@ When an agent does any of the following, update this file in the same slice:
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
       official base/wool/undercoat texture references, texture-backed base,
       wool, and undercoat layer passes, metadata-driven sheared state, and dye
-      color projection; `jeb_` color cycling, eating head animation, lighting,
-      overlay, and full render-state extraction remain unsupported
+      color projection, custom-name `jeb_` color cycling from entity metadata
+      and renderer age ticks, and vanilla shared-flags invisibility gating for
+      non-glowing wool and undercoat layer passes; eating head animation,
+      invisible glowing outline wool rendering, base-model invisibility/outline
+      handling, lighting, overlay, and remaining render-state extraction remain
+      unsupported
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby

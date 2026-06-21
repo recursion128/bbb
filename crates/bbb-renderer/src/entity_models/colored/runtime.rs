@@ -122,12 +122,13 @@ fn entity_model_mesh_with_options(
                 baby,
                 sheared,
                 wool_color,
+                invisible,
                 jeb,
                 age_ticks,
             } => {
                 if !skip_texture_backed_entities {
                     emit_sheep_model(
-                        &mut mesh, *instance, baby, sheared, wool_color, jeb, age_ticks,
+                        &mut mesh, *instance, baby, sheared, wool_color, invisible, jeb, age_ticks,
                     );
                 }
             }
@@ -492,6 +493,7 @@ fn emit_sheep_model(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
+    invisible: bool,
     jeb: bool,
     age_ticks: f32,
 ) {
@@ -506,10 +508,10 @@ fn emit_sheep_model(
         transform,
     );
     let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
-    if !baby && (jeb || wool_color != SheepWoolColor::White) {
+    if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
         emit_model_parts_with_color(mesh, &ADULT_SHEEP_PARTS, transform, wool_layer_color);
     }
-    if !sheared {
+    if !invisible && !sheared {
         emit_model_parts_with_color(
             mesh,
             if baby {

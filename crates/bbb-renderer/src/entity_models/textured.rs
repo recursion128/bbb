@@ -132,6 +132,7 @@ pub(super) fn entity_model_textured_meshes(
                 baby,
                 sheared,
                 wool_color,
+                invisible,
                 jeb,
                 age_ticks,
             } => {
@@ -141,6 +142,7 @@ pub(super) fn entity_model_textured_meshes(
                     baby,
                     sheared,
                     wool_color,
+                    invisible,
                     jeb,
                     age_ticks,
                     atlas,
@@ -433,12 +435,13 @@ fn emit_sheep_textured_model(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
+    invisible: bool,
     jeb: bool,
     age_ticks: f32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
-    for pass in sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks) {
+    for pass in sheep_textured_layer_passes(baby, sheared, wool_color, invisible, jeb, age_ticks) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }

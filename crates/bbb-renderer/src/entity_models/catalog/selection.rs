@@ -452,6 +452,7 @@ impl EntityModelKind {
             Self::Sheep {
                 baby: false,
                 sheared: false,
+                invisible: false,
                 jeb: false,
                 wool_color: SheepWoolColor::White,
                 ..
@@ -459,11 +460,13 @@ impl EntityModelKind {
             Self::Sheep {
                 baby: false,
                 sheared: false,
+                invisible: false,
                 ..
             } => &SHEEP_COLORED_WOOL_LAYER_TEXTURE_REFS,
             Self::Sheep {
                 baby: false,
                 sheared: true,
+                invisible: false,
                 jeb: false,
                 wool_color: SheepWoolColor::White,
                 ..
@@ -471,11 +474,13 @@ impl EntityModelKind {
             Self::Sheep {
                 baby: false,
                 sheared: true,
+                invisible: false,
                 ..
             } => &SHEEP_UNDERCOAT_LAYER_TEXTURE_REFS,
             Self::Sheep {
                 baby: true,
                 sheared: false,
+                invisible: false,
                 ..
             } => &BABY_SHEEP_WOOL_LAYER_TEXTURE_REFS,
             Self::Sheep {

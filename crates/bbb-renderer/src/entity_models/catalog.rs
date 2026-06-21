@@ -65,6 +65,7 @@ pub enum EntityModelKind {
         baby: bool,
         sheared: bool,
         wool_color: SheepWoolColor,
+        invisible: bool,
         jeb: bool,
         age_ticks: f32,
     },

@@ -672,6 +672,7 @@ fn sheep_model_kind(
         baby: ageable_baby(values),
         sheared: wool & SHEEP_WOOL_SHEARED_FLAG != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
+        invisible: entity_invisible(values),
         jeb: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
             .is_some_and(|name| name == "jeb_"),
         age_ticks,
@@ -1934,6 +1935,7 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
+                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -1947,6 +1949,7 @@ mod tests {
                 baby: true,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
+                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -1971,6 +1974,7 @@ mod tests {
                 baby: false,
                 sheared: true,
                 wool_color: SheepWoolColor::Red,
+                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -1987,6 +1991,7 @@ mod tests {
                 baby: true,
                 sheared: false,
                 wool_color: SheepWoolColor::Black,
+                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -2003,6 +2008,24 @@ mod tests {
                 baby: false,
                 sheared: true,
                 wool_color: SheepWoolColor::Lime,
+                invisible: false,
+                jeb: false,
+                age_ticks: 0.0,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+                &[
+                    protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
+                    protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
+                ]
+            ),
+            EntityModelKind::Sheep {
+                baby: false,
+                sheared: false,
+                wool_color: SheepWoolColor::Red,
+                invisible: true,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -2028,6 +2051,7 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
+                invisible: false,
                 jeb: true,
                 age_ticks: 12.5,
             }
@@ -2049,6 +2073,7 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
+                invisible: false,
                 jeb: false,
                 age_ticks: 25.0,
             }
@@ -2070,6 +2095,7 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
+                invisible: false,
                 jeb: false,
                 age_ticks: 25.0,
             }
@@ -2104,6 +2130,7 @@ mod tests {
                 true,
                 SheepWoolColor::Red,
                 false,
+                false,
                 1.0,
             )]
         );
@@ -2137,8 +2164,43 @@ mod tests {
                 false,
                 false,
                 SheepWoolColor::White,
+                false,
                 true,
                 12.5,
+            )]
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_sheep_invisible_shared_flag_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            113,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 113,
+            values: vec![
+                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
+                protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
+            ],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+
+        assert_eq!(
+            instances,
+            vec![EntityModelInstance::sheep_render_state(
+                113,
+                [1.0, 64.0, -2.0],
+                0.0,
+                false,
+                false,
+                SheepWoolColor::Red,
+                true,
+                false,
+                0.25,
             )]
         );
     }

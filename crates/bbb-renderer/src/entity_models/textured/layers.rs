@@ -444,6 +444,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
+    invisible: bool,
     jeb: bool,
     age_ticks: f32,
 ) -> Vec<EntityModelLayerPass> {
@@ -472,7 +473,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
         collector_order: 0,
         submit_sequence: 0,
     });
-    if !baby && (jeb || wool_color != SheepWoolColor::White) {
+    if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SheepWoolUndercoat,
             render_type: EntityModelLayerRenderType::Cutout,
@@ -485,7 +486,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
             submit_sequence: 1,
         });
     }
-    if !sheared {
+    if !invisible && !sheared {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SheepWool,
             render_type: EntityModelLayerRenderType::Cutout,
