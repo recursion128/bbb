@@ -26,8 +26,8 @@ use super::{
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
         snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
         spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
-        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
-        SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
+        RAVAGER_TEXTURED_NECK_CHILDREN, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
         SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
@@ -1014,22 +1014,48 @@ fn emit_wolf_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     // Vanilla `WolfModel.setupAnim` (adult and baby) swings the four legs with the
-    // `QuadrupedModel` diagonal phase in its non-sitting branch, then applies the head
-    // look. `isSitting` is a deferred AI state, so a standing wolf swings its legs. Every
-    // pass (base, collar, etc.) shares the body-layer part layout, so the swing applies
-    // per pass. The adult layer lists the legs at [3, 4, 5, 6] (head/body/mane at
-    // 0/1/2), the baby layer at [2, 3, 4, 5] (no mane). The tail wag, water-shake body
-    // roll, and sitting pose are deferred.
+    // `QuadrupedModel` diagonal phase in its non-sitting branch, wags the tail
+    // `tail.yRot = cos(pos * 0.6662) * 1.4 * speed` in its non-angry branch, then applies
+    // the head look. `isSitting`/`isAngry` are deferred AI states, so a standing wolf
+    // swings its legs and wags its tail. Every pass (base, collar) shares the body-layer
+    // part layout, so the poses apply per pass. The adult layer lists the legs at
+    // [3, 4, 5, 6] and the tail at 7 (head/body/mane at 0/1/2); the baby layer drops the
+    // mane, so the legs are at [2, 3, 4, 5] and the tail at 6. The `tailAngle` droop,
+    // water-shake body roll, and sitting pose are deferred.
     let leg_indices: [usize; 4] = if baby { [2, 3, 4, 5] } else { [3, 4, 5, 6] };
-    emit_quadruped_textured_passes(
-        meshes,
-        wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color),
-        head_first_part_index(),
-        leg_indices,
-        entity_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    let tail_index = wolf_tail_part_index(baby);
+    let head_index = head_first_part_index();
+    let transform = entity_model_root_transform(instance);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    for pass in wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color) {
+        if head_resting && limbs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            if !head_resting {
+                if let Some(head) = parts.get_mut(head_index) {
+                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+                }
+            }
+            if !limbs_resting {
+                for index in leg_indices {
+                    if let Some(leg) = parts.get_mut(index) {
+                        leg.pose =
+                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                    }
+                }
+                if let Some(tail) = parts.get_mut(tail_index) {
+                    tail.pose = wolf_tail_swing_pose(tail.pose, limb_swing, limb_swing_amount);
+                }
+            }
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
 }
 
 fn emit_goat_textured_model(

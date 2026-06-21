@@ -993,16 +993,43 @@ fn emit_wolf_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, ba
     };
     // Vanilla `WolfModel.setupAnim` (shared by adult and baby) swings the four legs with
     // the `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` in its
-    // non-sitting branch, then applies the head look. `isSitting` is a deferred AI state,
-    // so a standing wolf takes the leg-swing branch. The tail wag, the water-shake body
-    // roll, and the sitting pose are deferred.
-    let posed = quadruped_limb_swing_parts(
-        head_first_colored_head_look_parts(parts, instance),
-        wolf_leg_part_indices(baby),
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
+    // non-sitting branch, wags the tail `tail.yRot = cos(pos * 0.6662) * 1.4 * speed` in
+    // its non-angry branch, then applies the head look. `isSitting`/`isAngry` are deferred
+    // AI states, so a standing wolf takes the leg-swing/tail-wag branches. The
+    // `tailAngle` droop, the water-shake body roll, and the sitting pose are deferred.
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let posed = wolf_tail_wag_parts(
+        quadruped_limb_swing_parts(
+            head_first_colored_head_look_parts(parts, instance),
+            wolf_leg_part_indices(baby),
+            limb_swing,
+            limb_swing_amount,
+        ),
+        wolf_tail_part_index(baby),
+        limb_swing,
+        limb_swing_amount,
     );
     emit_model_parts(mesh, &posed, entity_model_root_transform(instance));
+}
+
+/// Applies the vanilla `WolfModel.setupAnim` tail wag ([`wolf_tail_swing_pose`]) to a
+/// colored wolf layer's tail part. Borrows the static parts unchanged at rest
+/// (`walkAnimationSpeed == 0`).
+fn wolf_tail_wag_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    tail_index: usize,
+    limb_swing: f32,
+    limb_swing_amount: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    if limb_swing_at_rest(limb_swing_amount) {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    if let Some(tail) = owned.get_mut(tail_index) {
+        tail.pose = wolf_tail_swing_pose(tail.pose, limb_swing, limb_swing_amount);
+    }
+    Cow::Owned(owned)
 }
 
 /// The four leg part indices in the wolf body layers. The adult layer lists the head,

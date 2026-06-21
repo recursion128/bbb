@@ -302,7 +302,8 @@ When an agent does any of the following, update this file in the same slice:
       amplitude, legs `[2, 3, 4, 5]`), the spider/cave spider (`SpiderModel`, the
       eight legs each sweeping about yRot and stepping about zRot, legs `[3..=10]`), and
       the wolf (`WolfModel`, the non-sitting `QuadrupedModel` diagonal leg swing, legs
-      `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby), the chicken (`ChickenModel`, the
+      `[3, 4, 5, 6]` adult / `[2, 3, 4, 5]` baby, plus the non-angry tail wag at the last
+      part — `tail.yRot = cos(pos * 0.6662) * 1.4 * speed`), the chicken (`ChickenModel`, the
       two-leg `HumanoidModel` phase, legs `[2, 3]` adult/cold / `[1, 2]` headless baby),
       and the llama/trader llama (`LlamaModel`, the `QuadrupedModel` diagonal phase, legs
       `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored
@@ -553,10 +554,13 @@ When an agent does any of the following, update this file in the same slice:
     diagonal phase (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, hind-right/front-left in
     phase, resolved from `x * z < 0`); `wolf_leg_part_indices` lists the legs at
     `[3, 4, 5, 6]` for the adult (head/body/mane at `0`/`1`/`2`) and `[2, 3, 4, 5]` for
-    the baby (no mane). `isSitting` is a deferred AI state, so a standing wolf always
-    takes the leg-swing branch. The tail wag (`tail.yRot = cos(pos * 0.6662) * 1.4 *
-    speed` when not angry), the `tail.xRot = tailAngle` tame/health/anger pose, the
-    `shakeOffWater` body roll, and the sitting pose are deferred. Deferred:
+    the baby (no mane). It also wags the tail with `wolf_tail_swing_pose`
+    (`tail.yRot = cos(pos * 0.6662) * 1.4 * speed`, the same `QuadrupedModel` amplitude as
+    the legs with no phase offset) in its non-angry branch, the tail being the last part
+    (index `7` adult, `6` baby — `wolf_tail_part_index`), in both the colored and textured
+    paths. `isSitting`/`isAngry` are deferred AI states, so a standing wolf always takes
+    the leg-swing and tail-wag branches. The `tail.xRot = tailAngle` tame/health/anger
+    droop, the `shakeOffWater` body roll, and the sitting pose are deferred. Deferred:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
@@ -584,10 +588,10 @@ When an agent does any of the following, update this file in the same slice:
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (fish, other birds, etc.) are the next slices, plus the wolf tail wag, the chicken
-    wing flap (untracked `flap`/`flapSpeed`), and the several deferred event/tail poses
-    noted above. (The snow golem has no walk-driven swing; its `setupAnim` head-yaw
-    upper-body twist and arm orbit are implemented.)
+    (fish, other birds, etc.) are the next slices, plus the chicken wing flap (untracked
+    `flap`/`flapSpeed`) and the several deferred event/tail poses noted above. (The snow
+    golem has no walk-driven swing; its `setupAnim` head-yaw upper-body twist and arm orbit
+    are implemented.)
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -789,11 +793,13 @@ When an agent does any of the following, update this file in the same slice:
       and textured, with the head/ear children rotating with the head) and the
       vanilla `WolfModel.setupAnim` non-sitting leg walk swing (the `QuadrupedModel`
       diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[3, 4, 5, 6]`
-      adult / `[2, 3, 4, 5]` baby, on both render paths and every pass); registry-
-      driven wolf variants beyond the default/pale texture set, armor layer, wet
-      tint, sitting pose, head-shake/begging tilt pose, tail wag/tail-angle pose,
-      base-model invisibility/outline handling, lighting, overlay, and remaining
-      render-state extraction remain unsupported
+      adult / `[2, 3, 4, 5]` baby, on both render paths and every pass) and the non-angry
+      tail wag (`tail.yRot = cos(pos * 0.6662) * 1.4 * speed` on the last part, tail at
+      `7` adult / `6` baby, both render paths); registry-driven wolf variants beyond the
+      default/pale texture set, armor layer, wet tint, sitting pose, head-shake/begging
+      tilt pose, the `tail.xRot = tailAngle` tame/health/anger droop, base-model
+      invisibility/outline handling, lighting, overlay, and remaining render-state
+      extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

@@ -352,6 +352,37 @@ pub(in crate::entity_models) fn enderman_arm_swing_pose(
     }
 }
 
+/// Vanilla `WolfModel.setupAnim` tail wag for the tail part. In its non-angry branch the
+/// wolf sets `tail.yRot = cos(walkAnimationPos * 0.6662) * 1.4 * walkAnimationSpeed` — the
+/// same `QuadrupedModel` swing amplitude as the legs, with no phase offset, so the tail
+/// sweeps side to side in step with the gait. `isAngry` is a deferred AI state (an angry
+/// wolf holds its tail straight, `yRot = 0`), so a default wolf wags while walking. The
+/// base tail pose carries the layer's resting `xRot` droop — vanilla then overwrites that
+/// with the deferred `tailAngle` (the tame/health/anger droop) — so the wag sets only the
+/// `yRot` axis and preserves the others.
+pub(in crate::entity_models) fn wolf_tail_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let y_rot = (walk_animation_pos * 0.6662).cos() * 1.4 * walk_animation_speed;
+    PartPose {
+        offset: base.offset,
+        rotation: [base.rotation[0], y_rot, base.rotation[2]],
+    }
+}
+
+/// Tail part index in the wolf body layers. The adult layer lists head/body/mane at
+/// `0`/`1`/`2`, the four legs at `[3, 4, 5, 6]`, and the tail last at `7`; the baby layer
+/// drops the mane, so the tail is at `6`.
+pub(in crate::entity_models) const fn wolf_tail_part_index(baby: bool) -> usize {
+    if baby {
+        6
+    } else {
+        7
+    }
+}
+
 /// Vanilla `RavagerModel.setupAnim` leg swing for a single leg part: `leg.xRot =
 /// cos(walkAnimationPos * 0.6662 [+ π]) * 0.4 * walkAnimationSpeed`. `RavagerModel`
 /// is a custom `EntityModel`, but the leg swing follows the `QuadrupedModel` phase

@@ -591,3 +591,102 @@ fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
         })
         .collect()
 }
+
+#[test]
+fn wolf_tail_swing_pose_wags_with_the_quadruped_amplitude() {
+    // Vanilla WolfModel.setupAnim (non-angry branch): tail.yRot = cos(pos * 0.6662) *
+    // 1.4 * speed (the same QuadrupedModel amplitude as the legs, no phase offset). The
+    // base tail pose carries the layer's resting xRot droop (0.62831855 for the adult);
+    // the wag sets only yRot and preserves the other axes (vanilla overwrites xRot with
+    // the deferred tailAngle).
+    let base = ADULT_WOLF_PARTS[7].pose;
+    assert!(
+        (base.rotation[0] - 0.62831855).abs() < 1e-6,
+        "adult tail rests with the layer xRot droop: {}",
+        base.rotation[0]
+    );
+    let tail = wolf_tail_swing_pose(base, 0.0, 1.0);
+    assert!(
+        (tail.rotation[1] - 1.4).abs() < 1e-6,
+        "tail wags to cos(0) * 1.4 * 1 = 1.4: {}",
+        tail.rotation[1]
+    );
+    assert_eq!(tail.rotation[0], base.rotation[0], "xRot droop preserved");
+    assert_eq!(tail.rotation[2], base.rotation[2], "zRot preserved");
+    assert_eq!(tail.offset, base.offset, "offset preserved");
+
+    // A general (pos, speed) reproduces cos(pos * 0.6662) * 1.4 * speed.
+    let phase = 2.0_f32 * 0.6662;
+    let tail = wolf_tail_swing_pose(base, 2.0, 0.5);
+    assert!((tail.rotation[1] - phase.cos() * 1.4 * 0.5).abs() < 1e-6);
+
+    // At rest (speed = 0) the wag is zero, so the tail keeps its resting pose.
+    let tail = wolf_tail_swing_pose(base, 3.0, 0.0);
+    assert_eq!(tail.rotation[1], 0.0);
+}
+
+#[test]
+fn wolf_wags_its_tail_when_walking() {
+    // The non-angry wolf wags its tail side to side (a yRot sweep) in step with the gait.
+    // In the colored body layer the parts emit the head subtree and body/mane in the
+    // leading blocks, then the four legs, then the tail child cube last: for the adult
+    // (264 verts) the tail occupies vertices [240, 264) and the legs [144, 240); the baby
+    // (240 verts) lists the tail at [216, 240) and the legs [120, 216). A yRot wag sweeps
+    // the tail sideways, deepening the tail region's X footprint.
+    let x_extent = |verts: &[EntityModelVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[0]);
+            hi = hi.max(vertex.position[0]);
+        }
+        hi - lo
+    };
+    for (baby, tail) in [(false, 240..264), (true, 216..240)] {
+        let base = EntityModelInstance::wolf(150, [0.0, 64.0, 0.0], 0.0, baby);
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_ne!(
+            rest.vertices[tail.clone()],
+            walking.vertices[tail.clone()],
+            "baby={baby}: the tail wags when walking"
+        );
+        let rest_tail_x = x_extent(&rest.vertices[tail.clone()]);
+        let walk_tail_x = x_extent(&walking.vertices[tail.clone()]);
+        assert!(
+            walk_tail_x > rest_tail_x + 0.1,
+            "baby={baby}: a yRot tail wag deepens the tail X footprint: {rest_tail_x} -> {walk_tail_x}"
+        );
+    }
+}
+
+#[test]
+fn wolf_textured_mesh_wags_its_tail_when_walking() {
+    // The texture-backed wolf base layer runs the same tail wag, emitting the parts in the
+    // same order, so the adult tail occupies textured vertices [240, 264). A standing wolf
+    // is byte-identical; a walking one wags its tail sideways.
+    let x_extent = |verts: &[EntityModelTexturedVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[0]);
+            hi = hi.max(vertex.position[0]);
+        }
+        hi - lo
+    };
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    let base = EntityModelInstance::wolf(151, [0.0, 64.0, 0.0], 0.0, false);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    assert_ne!(
+        resting.vertices[240..264],
+        walking.vertices[240..264],
+        "the tail wags when walking"
+    );
+    let rest_tail_x = x_extent(&resting.vertices[240..264]);
+    let walk_tail_x = x_extent(&walking.vertices[240..264]);
+    assert!(
+        walk_tail_x > rest_tail_x + 0.1,
+        "the textured tail wags sideways when walking: {rest_tail_x} -> {walk_tail_x}"
+    );
+}
