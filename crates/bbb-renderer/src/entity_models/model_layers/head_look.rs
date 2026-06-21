@@ -549,9 +549,9 @@ pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(usize, f32, f32); 
 /// hind-left `-0.5`, hind-right `+0.5`: the front legs have `z < 0` and the left legs
 /// `x > 0`, so the sign is `+` when `(x > 0) == (z < 0)`. The base leg pose carries no
 /// `xRot`, so it is set (not accumulated). In water vanilla scales the frequency by
-/// `0.2`; that and the standing/eating/feeding poses and the tail walk offsets are
-/// deferred (they depend on state the client does not yet track). The head look/bob is
-/// applied separately by [`equine_head_look_pose`].
+/// `0.2`; that and the standing/eating/feeding poses are deferred (they depend on state
+/// the client does not yet track). The head look/bob is applied separately by
+/// [`equine_head_look_pose`] and the tail walk lift by [`equine_tail_swing_pose`].
 pub(in crate::entity_models) fn equine_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -583,7 +583,8 @@ pub(in crate::entity_models) fn equine_leg_swing_pose(
 /// xRot is exactly that `π/6` tilt, so at a level head and no fast gait the pose equals
 /// the rest pose. `HorseModel`/`BabyHorseModel` and the adult `DonkeyModel`/mule take this
 /// unchanged; the baby donkey/mule (which forces `xRot = -30°`), the ridden/stand/eat/feed
-/// poses, the in-water gait, and the tail animation are deferred.
+/// poses, and the in-water gait are deferred. The tail walk lift is applied by
+/// [`equine_tail_swing_pose`]; only its `ageInTicks`-driven `yRot` wag stays deferred.
 pub(in crate::entity_models) fn equine_head_look_pose(
     base: PartPose,
     head_yaw_deg: f32,
@@ -601,6 +602,36 @@ pub(in crate::entity_models) fn equine_head_look_pose(
         rotation: [
             std::f32::consts::FRAC_PI_6 + head_rot_x,
             clamped_yaw.to_radians(),
+            base.rotation[2],
+        ],
+    }
+}
+
+/// Vanilla `AbstractEquineModel.setupAnim` tail walk animation (the default branch). The
+/// tail's `xRot` is *set* to `getTailXRotOffset() + π/6 + walkAnimationSpeed * 0.75`, so a
+/// running equine lifts its tail. The per-model `getTailXRotOffset` (`0` for the adult
+/// horse/donkey/mule, `−π/2` for the baby horse) also overrides the baby layer's wider
+/// rest angle: vanilla runs `setupAnim` every frame, so a standing baby horse renders its
+/// tail at `−π/2 + π/6 = −1.0472`, not the layer's `−0.7418`. The tail base also
+/// translates `y += walkAnimationSpeed * ageScale` and `z += walkAnimationSpeed * 2 *
+/// ageScale`, where `ageScale` is `getAgeScale()` (`1.0` for adults, `0.5` for babies).
+/// The `tail.yRot` wag (`cos(ageInTicks * 0.7)` under `animateTail`) needs `ageInTicks` the
+/// client does not track and is deferred, so `yRot`/`zRot` are preserved here.
+pub(in crate::entity_models) fn equine_tail_swing_pose(
+    base: PartPose,
+    tail_x_rot_offset: f32,
+    walk_animation_speed: f32,
+    age_scale: f32,
+) -> PartPose {
+    PartPose {
+        offset: [
+            base.offset[0],
+            base.offset[1] + walk_animation_speed * age_scale,
+            base.offset[2] + walk_animation_speed * 2.0 * age_scale,
+        ],
+        rotation: [
+            tail_x_rot_offset + std::f32::consts::FRAC_PI_6 + walk_animation_speed * 0.75,
+            base.rotation[1],
             base.rotation[2],
         ],
     }

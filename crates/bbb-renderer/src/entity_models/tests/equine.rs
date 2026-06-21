@@ -190,9 +190,13 @@ fn horse_meshes_use_vanilla_body_layer_geometry() {
     assert_eq!(baby.opaque_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
     assert_eq!(baby.indices.len(), 360);
+    // Vanilla runs `setupAnim` every frame, so a standing baby horse's tail sits at the
+    // overridden `getTailXRotOffset() + π/6 = −π/2 + π/6 = −1.0472`, not the layer's
+    // `−0.7418`. The steeper tail tucks the tail box in (less reach back, less reach down),
+    // shifting the back/forward extents from the un-posed layer box.
     let (baby_min, baby_max) = mesh_extents(&baby);
-    assert_close3(baby_min, [-0.25000003, 64.001, -0.8233875]);
-    assert_close3(baby_max, [0.25000003, 65.60652, 1.0918784]);
+    assert_close3(baby_min, [-0.25000003, 64.001, -0.7374399]);
+    assert_close3(baby_max, [0.25000003, 65.636024, 1.0663916]);
 }
 
 #[test]
@@ -602,10 +606,10 @@ fn undead_horse_texture_refs_match_vanilla_renderer() {
 #[test]
 fn equine_swings_its_legs_when_walking() {
     // Vanilla `AbstractEquineModel.setupAnim` swings the four legs with the equine gait
-    // (front amplitude 0.8, hind 0.5) and applies the head look/bob to the neck. A
-    // standing equine with a level head is inert; a walking one differs. The tail walk
-    // offsets are deferred. Covers horse (adult + the re-parented baby layout), donkey/mule
-    // (adult + with-chest), and the undead horses.
+    // (front amplitude 0.8, hind 0.5), applies the head look/bob to the neck, and lifts the
+    // tail with the gait. A standing equine with a level head is inert (the adult tail rest
+    // equals the layer pose); a walking one differs. Covers horse (adult + the re-parented
+    // baby layout), donkey/mule (adult + with-chest), and the undead horses.
     for base in [
         EntityModelInstance::horse(150, [0.0, 64.0, 0.0], 0.0, false),
         EntityModelInstance::horse(151, [0.0, 64.0, 0.0], 0.0, true),
@@ -773,13 +777,19 @@ fn adult_horse_turns_and_bobs_its_neck() {
         "legs stay put when standing"
     );
 
-    // Walking with a level head: the neck still bobs (speed 1 > 0.2), and the legs swing,
-    // while the body stays put.
+    // Walking with a level head: the body cube stays put (block 0 = vertices [0, 24)), but
+    // the tail lifts with the gait (`tail.xRot += speed * 0.75`, block 1 = vertices
+    // [24, 48)), the neck bobs (speed 1 > 0.2), and the legs swing.
     let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
     assert_eq!(
-        rest.vertices[0..48],
-        walking.vertices[0..48],
-        "body/tail stay put when walking"
+        rest.vertices[0..24],
+        walking.vertices[0..24],
+        "the body cube stays put when walking"
+    );
+    assert_ne!(
+        rest.vertices[24..48],
+        walking.vertices[24..48],
+        "the tail lifts when walking"
     );
     assert_ne!(
         rest.vertices[48..192],
@@ -845,10 +855,155 @@ fn equine_head_look_pose_clamps_yaw_and_tilts_pitch() {
 }
 
 #[test]
+fn equine_tail_swing_pose_matches_vanilla_formula() {
+    use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
+
+    // Vanilla `AbstractEquineModel.setupAnim` tail animation (default branch):
+    //   tail.xRot = getTailXRotOffset() + π/6 + speed * 0.75
+    //   tail.y   += speed * ageScale
+    //   tail.z   += speed * 2 * ageScale
+    // The adult horse tail rest pose carries the layer's π/6 xRot and offset [0, -5, 2].
+    let base = ADULT_HORSE_BODY_CHILDREN[0].pose;
+    assert_eq!(base.offset, [0.0, -5.0, 2.0]);
+    assert!((base.rotation[0] - FRAC_PI_6).abs() < 1e-6);
+
+    // Adult (offset 0, ageScale 1), standing: the pose equals the layer rest pose exactly.
+    let rest = equine_tail_swing_pose(base, 0.0, 0.0, 1.0);
+    assert_eq!(rest, base);
+
+    // Adult, walking (speed 1): the tail lifts (+0.75 xRot) and shifts back/up.
+    let walking = equine_tail_swing_pose(base, 0.0, 1.0, 1.0);
+    assert!((walking.rotation[0] - (FRAC_PI_6 + 0.75)).abs() < 1e-6);
+    assert!((walking.offset[1] - (-5.0 + 1.0)).abs() < 1e-6);
+    assert!((walking.offset[2] - (2.0 + 2.0)).abs() < 1e-6);
+    assert_eq!(walking.offset[0], base.offset[0]);
+    assert_eq!(walking.rotation[1], base.rotation[1]);
+    assert_eq!(walking.rotation[2], base.rotation[2]);
+
+    // A general (offset, speed, ageScale) sample.
+    let speed = 0.4_f32;
+    let sample = equine_tail_swing_pose(base, -FRAC_PI_2, speed, 0.5);
+    assert!((sample.rotation[0] - (-FRAC_PI_2 + FRAC_PI_6 + speed * 0.75)).abs() < 1e-6);
+    assert!((sample.offset[1] - (-5.0 + speed * 0.5)).abs() < 1e-6);
+    assert!((sample.offset[2] - (2.0 + speed * 2.0 * 0.5)).abs() < 1e-6);
+
+    // Baby horse: getTailXRotOffset = −π/2 overrides the layer's −0.7418 rest angle even
+    // when standing, and ageScale = 0.5 halves the walk translation.
+    let baby_base = BABY_HORSE_BODY_CHILDREN[0].pose;
+    assert!((baby_base.rotation[0] - (-0.7418)).abs() < 1e-4);
+    let baby_rest = equine_tail_swing_pose(baby_base, -FRAC_PI_2, 0.0, 0.5);
+    assert!(
+        (baby_rest.rotation[0] - (-FRAC_PI_2 + FRAC_PI_6)).abs() < 1e-6,
+        "baby tail rest overridden to −π/2 + π/6: {}",
+        baby_rest.rotation[0]
+    );
+    assert_ne!(
+        baby_rest.rotation[0], baby_base.rotation[0],
+        "the override differs from the baked layer rest angle"
+    );
+    let baby_walking = equine_tail_swing_pose(baby_base, -FRAC_PI_2, 1.0, 0.5);
+    assert!((baby_walking.rotation[0] - (-FRAC_PI_2 + FRAC_PI_6 + 0.75)).abs() < 1e-6);
+    assert!((baby_walking.offset[1] - (baby_base.offset[1] + 0.5)).abs() < 1e-6);
+    assert!((baby_walking.offset[2] - (baby_base.offset[2] + 1.0)).abs() < 1e-6);
+}
+
+#[test]
+fn adult_equine_swings_its_tail_when_walking() {
+    // Every adult equine layer lists the body cube first (block 0 = vertices [0, 24)) and
+    // its tail child next (block 1 = vertices [24, 48)). A walking adult equine lifts the
+    // tail (`tail.xRot += speed * 0.75`, plus a back/up shift) while the body cube stays
+    // put. Covers the colored horse path and the uniform-color donkey/mule and undead-horse
+    // paths (all share `emit_equine_posed`).
+    for base in [
+        EntityModelInstance::horse(150, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::donkey(
+            36,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        ),
+        EntityModelInstance::donkey(
+            87,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            false,
+            false,
+        ),
+        EntityModelInstance::undead_horse(
+            116,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_eq!(
+            rest.vertices.len(),
+            walking.vertices.len(),
+            "{:?}",
+            base.kind
+        );
+        assert_eq!(
+            rest.vertices[0..24],
+            walking.vertices[0..24],
+            "{:?} the body cube stays put",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices[24..48],
+            walking.vertices[24..48],
+            "{:?} the tail lifts with the gait",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn baby_horse_swings_and_overrides_its_tail() {
+    // `BabyHorseModel` inherits `AbstractEquineModel.setupAnim`, which both lifts the tail
+    // with the gait and overrides its rest angle (`getTailXRotOffset() + π/6 = −1.0472`,
+    // vs the layer's baked `−0.7418`). The baby body cube is block 0 ([0, 24)); the tail is
+    // block 1 ([24, 48)). A walking baby horse lifts the tail while its body cube stays put;
+    // the overridden standing rest angle is checked by `horse_meshes_use_vanilla_body_layer_geometry`
+    // and `equine_tail_swing_pose_matches_vanilla_formula`. Covers the baby skeleton horse too.
+    for base in [
+        EntityModelInstance::horse(151, [0.0, 64.0, 0.0], 0.0, true),
+        EntityModelInstance::undead_horse(
+            152,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            true,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+        assert_eq!(
+            rest.vertices[0..24],
+            walking.vertices[0..24],
+            "{:?} the baby body cube stays put",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices[24..48],
+            walking.vertices[24..48],
+            "{:?} the baby tail lifts when walking",
+            base.kind
+        );
+    }
+}
+
+#[test]
 fn baby_donkey_leg_swing_is_deferred() {
     // The baby donkey/mule layer re-parents its legs under the body
-    // (`BabyDonkeyModel.createBabyLayer`), unlike the top-level adult layout, so the
-    // equine leg swing is deferred for it: a walking baby donkey is unchanged for now.
+    // (`BabyDonkeyModel.createBabyLayer`) and overrides `setupAnim` (forcing `xRot = -30°`),
+    // unlike the top-level adult layout, so its leg swing, head look, and tail lift are all
+    // deferred: a walking baby donkey is unchanged for now.
     for base in [
         EntityModelInstance::donkey(
             36,

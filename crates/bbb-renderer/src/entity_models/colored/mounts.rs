@@ -4,13 +4,14 @@ use super::super::catalog::{
 use glam::Mat4;
 
 use super::super::geometry::{
-    emit_model_parts, emit_model_parts_with_color, EntityModelMesh, ModelPartDesc,
+    emit_model_cube, emit_model_cube_with_color, emit_model_parts, emit_model_parts_with_color,
+    part_pose_transform, EntityModelMesh, ModelPartDesc,
 };
 use super::super::instances::EntityModelInstance;
 use super::super::model_layers::{
-    equine_head_look_pose, equine_leg_swing_pose, head_look_at_rest, head_look_pose,
-    limb_swing_at_rest, quadruped_leg_swing_pose, ADULT_CAMEL_PARTS, ADULT_DONKEY_PARTS,
-    ADULT_DONKEY_PARTS_WITH_CHEST, ADULT_HORSE_PARTS, ADULT_LLAMA_PARTS,
+    equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
+    head_look_pose, limb_swing_at_rest, quadruped_leg_swing_pose, ADULT_CAMEL_PARTS,
+    ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST, ADULT_HORSE_PARTS, ADULT_LLAMA_PARTS,
     ADULT_LLAMA_PARTS_WITH_CHEST, BABY_CAMEL_PARTS, BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
     BABY_LLAMA_PARTS,
 };
@@ -32,6 +33,24 @@ const BABY_HORSE_LEG_PART_INDICES: [usize; 4] = [1, 2, 3, 4];
 /// `head_parts` (neck) index in the baby horse body layer: `BabyHorseModel.createBabyLayer`
 /// lists the body and four legs first, so the neck/head is last at `5`.
 const BABY_HORSE_HEAD_PART_INDEX: usize = 5;
+
+/// The body part index in every equine body layer (adult/baby horse, donkey/mule with or
+/// without chest): the body is always listed first.
+const EQUINE_BODY_PART_INDEX: usize = 0;
+
+/// The tail's child index under the body part in every equine layout: the tail is the
+/// body's first child (chests, when present, follow it).
+const EQUINE_TAIL_CHILD_INDEX: usize = 0;
+
+/// `AbstractEquineModel.getTailXRotOffset()` for the adult horse/donkey/mule (`0`) and the
+/// baby horse (`−π/2`). The baby donkey/mule (`−π/4`) is handled on its deferred path.
+const ADULT_EQUINE_TAIL_X_ROT_OFFSET: f32 = 0.0;
+const BABY_HORSE_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_2;
+
+/// `LivingEntity.getAgeScale()`: `1.0` for adults, `0.5` for babies. The equine tail's
+/// walk translation scales by this.
+const ADULT_AGE_SCALE: f32 = 1.0;
+const BABY_AGE_SCALE: f32 = 0.5;
 use super::selection::{
     camel_model_color, donkey_model_color, donkey_model_scale, llama_model_color,
     undead_horse_model_color,
@@ -42,15 +61,21 @@ use super::transforms::{
 
 /// Emits an equine body layer, applying the vanilla `AbstractEquineModel.setupAnim`
 /// default-branch poses: the walking leg swing ([`equine_leg_swing_pose`]) on the four
-/// parts at `leg_indices` and the head look/bob ([`equine_head_look_pose`]) on the
-/// `head_parts` (neck) at `head_parts_index`. `color` picks the uniform-color path
-/// (donkey/mule/undead horse) or the per-cube colored path (horse). The static parts are
-/// reused unchanged only when both the gait and the head look are at rest.
+/// parts at `leg_indices`, the head look/bob ([`equine_head_look_pose`]) on the
+/// `head_parts` (neck) at `head_parts_index`, and the tail walk lift
+/// ([`equine_tail_swing_pose`], with `tail_x_rot_offset` = `getTailXRotOffset()` and
+/// `age_scale` = `getAgeScale()`) on the body's tail child. `color` picks the uniform-color
+/// path (donkey/mule/undead horse) or the per-cube colored path (horse). The static parts
+/// are reused unchanged only when the gait, head look, and tail are all at rest; otherwise
+/// the body subtree is hand-emitted so the `&'static` tail child can be re-posed.
+#[allow(clippy::too_many_arguments)]
 fn emit_equine_posed(
     mesh: &mut EntityModelMesh,
     parts: &[ModelPartDesc],
     leg_indices: [usize; 4],
     head_parts_index: usize,
+    tail_x_rot_offset: f32,
+    age_scale: f32,
     transform: Mat4,
     color: Option<[f32; 4]>,
     instance: EntityModelInstance,
@@ -60,31 +85,65 @@ fn emit_equine_posed(
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    let posed_storage;
-    let parts_to_emit: &[ModelPartDesc] = if legs_resting && head_look_at_rest(head_yaw, head_pitch)
-    {
-        parts
-    } else {
-        let mut posed = parts.to_vec();
-        if !legs_resting {
-            for index in leg_indices {
-                posed[index].pose =
-                    equine_leg_swing_pose(posed[index].pose, limb_swing, limb_swing_amount);
-            }
+
+    // The tail is the body's first child. Vanilla `setupAnim` rewrites its pose every
+    // frame; for a baby horse the rest angle is even overridden, so the tail must be
+    // re-posed whenever the result differs from the static pose.
+    let tail_rest = parts[EQUINE_BODY_PART_INDEX].children[EQUINE_TAIL_CHILD_INDEX].pose;
+    let posed_tail =
+        equine_tail_swing_pose(tail_rest, tail_x_rot_offset, limb_swing_amount, age_scale);
+    let tail_resting = posed_tail == tail_rest;
+
+    if legs_resting && head_look_at_rest(head_yaw, head_pitch) && tail_resting {
+        match color {
+            Some(color) => emit_model_parts_with_color(mesh, parts, transform, color),
+            None => emit_model_parts(mesh, parts, transform),
         }
-        posed[head_parts_index].pose = equine_head_look_pose(
-            posed[head_parts_index].pose,
-            head_yaw,
-            head_pitch,
-            limb_swing,
-            limb_swing_amount,
-        );
-        posed_storage = posed;
-        &posed_storage
-    };
+        return;
+    }
+
+    let mut posed = parts.to_vec();
+    if !legs_resting {
+        for index in leg_indices {
+            posed[index].pose =
+                equine_leg_swing_pose(posed[index].pose, limb_swing, limb_swing_amount);
+        }
+    }
+    posed[head_parts_index].pose = equine_head_look_pose(
+        posed[head_parts_index].pose,
+        head_yaw,
+        head_pitch,
+        limb_swing,
+        limb_swing_amount,
+    );
+
+    // Hand-emit the body subtree so the tail (a `&'static` child) can take the swung pose:
+    // the body's own cubes at the body transform, then its children with the tail re-posed.
+    // The remaining parts (neck + legs) keep their depth-first order via the `[1..]` slice.
+    let body = &posed[EQUINE_BODY_PART_INDEX];
+    let body_transform = transform * part_pose_transform(body.pose);
+    let mut body_children = body.children.to_vec();
+    body_children[EQUINE_TAIL_CHILD_INDEX].pose = posed_tail;
     match color {
-        Some(color) => emit_model_parts_with_color(mesh, parts_to_emit, transform, color),
-        None => emit_model_parts(mesh, parts_to_emit, transform),
+        Some(color) => {
+            for &cube in body.cubes {
+                emit_model_cube_with_color(mesh, body_transform, cube, color);
+            }
+            emit_model_parts_with_color(mesh, &body_children, body_transform, color);
+            emit_model_parts_with_color(
+                mesh,
+                &posed[EQUINE_BODY_PART_INDEX + 1..],
+                transform,
+                color,
+            );
+        }
+        None => {
+            for &cube in body.cubes {
+                emit_model_cube(mesh, body_transform, cube);
+            }
+            emit_model_parts(mesh, &body_children, body_transform);
+            emit_model_parts(mesh, &posed[EQUINE_BODY_PART_INDEX + 1..], transform);
+        }
     }
 }
 
@@ -94,9 +153,10 @@ pub(super) fn emit_horse_model(
     baby: bool,
 ) {
     // Vanilla `HorseModel extends AbstractEquineModel`: the four legs swing with the
-    // equine gait (front amplitude 0.8, hind 0.5) and the neck (`head_parts`) takes the
-    // head look/bob (yaw clamped to ±20°, pitch onto the π/6 tilt, plus a walk bob). The
-    // ridden/eat/stand poses and the tail animation are deferred.
+    // equine gait (front amplitude 0.8, hind 0.5), the neck (`head_parts`) takes the head
+    // look/bob (yaw clamped to ±20°, pitch onto the π/6 tilt, plus a walk bob), and the
+    // tail lifts with the gait (baby horse `getTailXRotOffset = −π/2`, `ageScale = 0.5`).
+    // The ridden/eat/stand poses and the tail's `ageInTicks` yRot wag are deferred.
     emit_equine_posed(
         mesh,
         if baby {
@@ -113,6 +173,16 @@ pub(super) fn emit_horse_model(
             BABY_HORSE_HEAD_PART_INDEX
         } else {
             ADULT_EQUINE_HEAD_PART_INDEX
+        },
+        if baby {
+            BABY_HORSE_TAIL_X_ROT_OFFSET
+        } else {
+            ADULT_EQUINE_TAIL_X_ROT_OFFSET
+        },
+        if baby {
+            BABY_AGE_SCALE
+        } else {
+            ADULT_AGE_SCALE
         },
         if baby {
             entity_model_root_transform(instance)
@@ -145,10 +215,11 @@ pub(super) fn emit_donkey_model(
     };
     let color = donkey_model_color(family);
     // The adult donkey/mule uses the clean `AbstractEquineModel.setupAnim` (it only adds
-    // chest visibility), so it takes the equine leg swing (legs at [2, 3, 4, 5]) and the
-    // head look/bob (neck at 1). The baby donkey/mule overrides `setupAnim` (forcing
-    // `xRot = -30°`) and re-parents its legs under the body
-    // (`BabyDonkeyModel.createBabyLayer`), so its leg swing and head look are deferred.
+    // chest visibility), so it takes the equine leg swing (legs at [2, 3, 4, 5]), the head
+    // look/bob (neck at 1), and the tail walk lift. The baby donkey/mule overrides
+    // `setupAnim` (forcing `xRot = -30°`) and re-parents its legs under the body
+    // (`BabyDonkeyModel.createBabyLayer`), so its leg swing, head look, and tail are
+    // deferred.
     if baby {
         emit_model_parts_with_color(mesh, parts, transform, color);
     } else {
@@ -157,6 +228,8 @@ pub(super) fn emit_donkey_model(
             parts,
             ADULT_EQUINE_LEG_PART_INDICES,
             ADULT_EQUINE_HEAD_PART_INDEX,
+            ADULT_EQUINE_TAIL_X_ROT_OFFSET,
+            ADULT_AGE_SCALE,
             transform,
             Some(color),
             instance,
@@ -171,7 +244,7 @@ pub(super) fn emit_undead_horse_model(
     baby: bool,
 ) {
     // Skeleton and zombie horses reuse `HorseModel`, so they take the same equine leg
-    // swing and head look/bob; only the tint differs.
+    // swing, head look/bob, and tail walk lift; only the tint differs.
     emit_equine_posed(
         mesh,
         if baby {
@@ -188,6 +261,16 @@ pub(super) fn emit_undead_horse_model(
             BABY_HORSE_HEAD_PART_INDEX
         } else {
             ADULT_EQUINE_HEAD_PART_INDEX
+        },
+        if baby {
+            BABY_HORSE_TAIL_X_ROT_OFFSET
+        } else {
+            ADULT_EQUINE_TAIL_X_ROT_OFFSET
+        },
+        if baby {
+            BABY_AGE_SCALE
+        } else {
+            ADULT_AGE_SCALE
         },
         entity_model_root_transform(instance),
         Some(undead_horse_model_color(family)),
