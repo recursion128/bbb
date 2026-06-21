@@ -290,6 +290,11 @@ fn entity_model_instance(
         entity_partial_tick,
     );
     let light_coords = entity_light_coords(&source.data_values, source.light);
+    // Vanilla LivingEntityRenderer.extractRenderState:
+    //   state.yRot = Mth.wrapDegrees(headRot - bodyRot)  (net head-look yaw)
+    //   state.xRot = entity.getXRot(partialTicks)         (head-look pitch)
+    let net_head_yaw = wrap_degrees(source.y_head_rot - source.y_rot);
+    let head_pitch = source.x_rot;
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -302,11 +307,24 @@ fn entity_model_instance(
             source.y_rot,
         )
         .with_head_eat(head_eat)
+        .with_head_look(net_head_yaw, head_pitch)
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
         .with_has_red_overlay(source.has_red_overlay)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
+}
+
+/// Vanilla `Mth.wrapDegrees`: wraps an angle in degrees to `-180.0..=180.0`.
+fn wrap_degrees(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }
 
 /// Vanilla `CreeperRenderer.getWhiteOverlayProgress`: with `step` =
@@ -1333,6 +1351,59 @@ mod tests {
             mid[0].render_state.head_eat,
             SheepHeadEatPose::from_eat_tick(20, 0.0)
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_head_look_from_world() {
+        let mut world = WorldStore::new();
+        // Body yaw 30, head yaw 100, pitch -20: net head yaw =
+        // wrapDegrees(100 - 30) = 70, head pitch = -20.
+        world.apply_add_entity(protocol_add_entity_with_rotation(
+            70,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+            30.0,
+            -20.0,
+            100.0,
+        ));
+        // Head aligned with body and level: no look turn.
+        world.apply_add_entity(protocol_add_entity_with_rotation(
+            71,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [3.0, 64.0, -2.0],
+            45.0,
+            0.0,
+            45.0,
+        ));
+        // Body yaw 10, head yaw 200: diff 190 wraps to -170 (shortest turn).
+        world.apply_add_entity(protocol_add_entity_with_rotation(
+            72,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [5.0, 64.0, -2.0],
+            10.0,
+            5.0,
+            200.0,
+        ));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let find = |id: i32| {
+            instances
+                .iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap_or_else(|| panic!("missing entity {id}"))
+        };
+
+        let sheep = find(70).render_state;
+        assert_eq!(sheep.head_yaw, 70.0);
+        assert_eq!(sheep.head_pitch, -20.0);
+
+        let chicken = find(71).render_state;
+        assert_eq!(chicken.head_yaw, 0.0);
+        assert_eq!(chicken.head_pitch, 0.0);
+
+        let wrapped = find(72).render_state;
+        assert_eq!(wrapped.head_yaw, -170.0);
+        assert_eq!(wrapped.head_pitch, 5.0);
     }
 
     #[test]
@@ -3283,6 +3354,17 @@ mod tests {
     }
 
     fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
+        protocol_add_entity_with_rotation(id, entity_type_id, position, 0.0, 0.0, 0.0)
+    }
+
+    fn protocol_add_entity_with_rotation(
+        id: i32,
+        entity_type_id: i32,
+        position: [f64; 3],
+        y_rot: f32,
+        x_rot: f32,
+        y_head_rot: f32,
+    ) -> AddEntity {
         AddEntity {
             id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678 + id as u128),
@@ -3293,9 +3375,9 @@ mod tests {
                 z: position[2],
             },
             delta_movement: Vec3d::default(),
-            x_rot: 0.0,
-            y_rot: 0.0,
-            y_head_rot: 0.0,
+            x_rot,
+            y_rot,
+            y_head_rot,
             data: 0,
         }
     }

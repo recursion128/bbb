@@ -14,8 +14,8 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, polar_bear_standing_part_roles, sheep_eaten_head_pose,
-        sheep_head_part_index,
+        apply_polar_bear_standing_pose, polar_bear_standing_part_roles, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
@@ -469,14 +469,17 @@ fn emit_sheep_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     let head_eat = instance.render_state.head_eat;
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
     let head_index = sheep_head_part_index(baby);
+    let head_resting = sheep_head_at_rest(head_eat, head_yaw, head_pitch);
     for pass in sheep_textured_layer_passes(baby, sheared, wool_color, invisible, jeb, age_ticks) {
-        if head_eat.is_resting() {
+        if head_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {
             let mut parts = pass.parts.to_vec();
             if let Some(head) = parts.get_mut(head_index) {
-                head.pose = sheep_eaten_head_pose(head.pose, baby, head_eat);
+                head.pose = sheep_head_pose(head.pose, baby, head_eat, head_yaw, head_pitch);
             }
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
         }

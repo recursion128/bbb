@@ -298,6 +298,14 @@ pub struct EntityModelSourceState {
     pub entity_type_id: i32,
     pub position: EntityVec3,
     pub y_rot: f32,
+    /// Canonical entity head pitch (`Entity.getXRot`), applied as the model head
+    /// `xRot` look.
+    #[serde(default)]
+    pub x_rot: f32,
+    /// Canonical entity head yaw (`Entity.yHeadRot`). The renderer projection
+    /// derives the net head-look yaw `Mth.wrapDegrees(y_head_rot - y_rot)`.
+    #[serde(default)]
+    pub y_head_rot: f32,
     #[serde(default)]
     pub age_ticks: u32,
     #[serde(default)]

@@ -508,6 +508,8 @@ fn emit_sheep_model(
 ) {
     let transform = entity_model_root_transform(instance);
     let head_eat = instance.render_state.head_eat;
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
     let base_parts: &[ModelPartDesc] = if baby {
         &BABY_SHEEP_PARTS
     } else {
@@ -515,14 +517,14 @@ fn emit_sheep_model(
     };
     emit_model_parts(
         mesh,
-        &sheep_colored_head_eat_parts(base_parts, baby, head_eat),
+        &sheep_colored_head_parts(base_parts, baby, head_eat, head_yaw, head_pitch),
         transform,
     );
     let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
     if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
         emit_model_parts_with_color(
             mesh,
-            &sheep_colored_head_eat_parts(&ADULT_SHEEP_PARTS, baby, head_eat),
+            &sheep_colored_head_parts(&ADULT_SHEEP_PARTS, baby, head_eat, head_yaw, head_pitch),
             transform,
             wool_layer_color,
         );
@@ -535,27 +537,30 @@ fn emit_sheep_model(
         };
         emit_model_parts_with_color(
             mesh,
-            &sheep_colored_head_eat_parts(wool_parts, baby, head_eat),
+            &sheep_colored_head_parts(wool_parts, baby, head_eat, head_yaw, head_pitch),
             transform,
             wool_layer_color,
         );
     }
 }
 
-/// Applies the vanilla sheep eat-grass head pose to a colored body/wool layer's
-/// head part, borrowing the static parts unchanged while the sheep is at rest.
-fn sheep_colored_head_eat_parts(
+/// Applies the vanilla sheep head pose (eat-grass animation plus head look) to a
+/// colored body/wool layer's head part, borrowing the static parts unchanged
+/// while the head is fully at rest.
+fn sheep_colored_head_parts(
     parts: &[ModelPartDesc],
     baby: bool,
     head_eat: SheepHeadEatPose,
+    head_yaw: f32,
+    head_pitch: f32,
 ) -> Cow<'_, [ModelPartDesc]> {
-    if head_eat.is_resting() {
+    if sheep_head_at_rest(head_eat, head_yaw, head_pitch) {
         return Cow::Borrowed(parts);
     }
     let head_index = sheep_head_part_index(baby);
     let mut parts = parts.to_vec();
     if let Some(head) = parts.get_mut(head_index) {
-        head.pose = sheep_eaten_head_pose(head.pose, baby, head_eat);
+        head.pose = sheep_head_pose(head.pose, baby, head_eat, head_yaw, head_pitch);
     }
     Cow::Owned(parts)
 }

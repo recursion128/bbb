@@ -903,23 +903,27 @@ fn sheep_head_eat_angle_scale_matches_vanilla_curve() {
 }
 
 #[test]
-fn sheep_eaten_head_pose_matches_vanilla_setup_anim() {
-    // Vanilla SheepModel/SheepFurModel.setupAnim:
-    //   head.y += headEatPositionScale * 9.0 * ageScale
-    //   head.xRot = headEatAngleScale
+fn sheep_head_pose_matches_vanilla_setup_anim() {
+    // Vanilla QuadrupedModel.setupAnim then SheepModel/SheepFurModel.setupAnim:
+    //   head.xRot = xRot * PI/180; head.yRot = yRot * PI/180   (super)
+    //   head.y += headEatPositionScale * 9.0 * ageScale         (sheep)
+    //   head.xRot = headEatAngleScale                           (sheep, overrides pitch)
     assert_eq!(sheep_head_part_index(false), 0);
     assert_eq!(sheep_head_part_index(true), 1);
 
     let adult_head = ADULT_SHEEP_PARTS[sheep_head_part_index(false)].pose;
-    let adult_eaten = sheep_eaten_head_pose(
+    // Eating overrides head.xRot with the eat angle; head.yRot stays at the look
+    // yaw (0 here). ageScale = 1.0, so the head drops the full 9.0 model units.
+    let adult_eaten = sheep_head_pose(
         adult_head,
         false,
         SheepHeadEatPose {
             position_scale: 1.0,
             angle_scale: 0.5,
         },
+        0.0,
+        0.0,
     );
-    // Adult ageScale = 1.0, so the head drops by the full 9.0 model units.
     assert_eq!(
         adult_eaten.offset,
         [
@@ -928,21 +932,20 @@ fn sheep_eaten_head_pose_matches_vanilla_setup_anim() {
             adult_head.offset[2]
         ]
     );
-    assert_eq!(
-        adult_eaten.rotation,
-        [0.5, adult_head.rotation[1], adult_head.rotation[2]]
-    );
+    assert_eq!(adult_eaten.rotation, [0.5, 0.0, adult_head.rotation[2]]);
 
     // BabySheepModel extends SheepModel; LivingEntity.getAgeScale = 0.5 for a
     // baby, so the head drops by 9.0 * 0.5 = 4.5.
     let baby_head = BABY_SHEEP_PARTS[sheep_head_part_index(true)].pose;
-    let baby_eaten = sheep_eaten_head_pose(
+    let baby_eaten = sheep_head_pose(
         baby_head,
         true,
         SheepHeadEatPose {
             position_scale: 1.0,
             angle_scale: 0.3,
         },
+        0.0,
+        0.0,
     );
     assert_eq!(
         baby_eaten.offset,
@@ -952,15 +955,37 @@ fn sheep_eaten_head_pose_matches_vanilla_setup_anim() {
             baby_head.offset[2]
         ]
     );
-    assert_eq!(
-        baby_eaten.rotation,
-        [0.3, baby_head.rotation[1], baby_head.rotation[2]]
-    );
+    assert_eq!(baby_eaten.rotation, [0.3, 0.0, baby_head.rotation[2]]);
 
-    // The resting pose leaves the head part untouched.
-    assert!(SheepHeadEatPose::NONE.is_resting());
+    // Not eating with a head-look turn: head.yRot = yRot*PI/180 (QuadrupedModel
+    // super) and head.xRot = getXRot*PI/180 (Sheep.getHeadEatAngleScale's
+    // non-eating branch). No vertical dip while at rest.
+    let looking = sheep_head_pose(adult_head, false, SheepHeadEatPose::NONE, 40.0, -18.0);
+    assert_eq!(looking.offset, adult_head.offset);
+    assert!((looking.rotation[0] - (-18.0_f32).to_radians()).abs() < 1e-6);
+    assert!((looking.rotation[1] - 40.0_f32.to_radians()).abs() < 1e-6);
+    assert_eq!(looking.rotation[2], adult_head.rotation[2]);
+
+    // Eating wins the pitch (eat angle), but the look yaw still applies.
+    let eating_and_looking = sheep_head_pose(
+        adult_head,
+        false,
+        SheepHeadEatPose {
+            position_scale: 1.0,
+            angle_scale: 0.5,
+        },
+        40.0,
+        -18.0,
+    );
+    assert_eq!(eating_and_looking.rotation[0], 0.5);
+    assert!((eating_and_looking.rotation[1] - 40.0_f32.to_radians()).abs() < 1e-6);
+
+    // Fully at rest (no eat, no look) leaves the head part untouched.
+    assert!(sheep_head_at_rest(SheepHeadEatPose::NONE, 0.0, 0.0));
+    assert!(!sheep_head_at_rest(SheepHeadEatPose::NONE, 1.0, 0.0));
+    assert!(!sheep_head_at_rest(SheepHeadEatPose::NONE, 0.0, 1.0));
     assert_eq!(
-        sheep_eaten_head_pose(adult_head, false, SheepHeadEatPose::NONE),
+        sheep_head_pose(adult_head, false, SheepHeadEatPose::NONE, 0.0, 0.0),
         adult_head
     );
 }
@@ -1046,6 +1071,30 @@ fn sheep_colored_mesh_applies_eating_head_pose() {
     // The base body pass is emitted first; its head cube is the first 24 vertices.
     assert_ne!(resting.vertices[0..24], eating.vertices[0..24]);
     assert_eq!(resting.vertices[24..144], eating.vertices[24..144]);
+}
+
+#[test]
+fn sheep_colored_mesh_applies_head_look_to_head_only() {
+    let base = EntityModelInstance::sheep_wool(
+        403,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
+    );
+    let resting = entity_model_mesh(&[base]);
+    let yawed = entity_model_mesh(&[base.with_head_look(60.0, 0.0)]);
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -30.0)]);
+
+    // Head look turns the head cube (first 24 vertices) and leaves the body and
+    // legs untouched.
+    assert_ne!(resting.vertices[0..24], yawed.vertices[0..24]);
+    assert_eq!(resting.vertices[24..144], yawed.vertices[24..144]);
+    assert_ne!(resting.vertices[0..24], pitched.vertices[0..24]);
+    assert_eq!(resting.vertices[24..144], pitched.vertices[24..144]);
+    // Yaw and pitch are distinct head rotations.
+    assert_ne!(yawed.vertices[0..24], pitched.vertices[0..24]);
 }
 
 fn average_textured_y(vertices: &[EntityModelTexturedVertex]) -> f32 {

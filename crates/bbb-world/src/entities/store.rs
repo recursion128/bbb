@@ -282,6 +282,8 @@ impl EntityStore {
             entity_type_id: identity.entity_type_id,
             position,
             y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            y_head_rot: transform.y_head_rot,
             age_ticks: client_animations.animations.age_ticks,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             polar_bear_stand_scale: client_animations

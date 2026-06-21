@@ -20,9 +20,18 @@ pub const ENTITY_FULL_BRIGHT_LIGHT_COORDS: u32 = 15_728_880;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EntityRenderState {
     /// Vanilla `LivingEntityRenderState.bodyRot`: the interpolated body yaw, in
-    /// degrees, that orients the model root transform. Head yaw/pitch
-    /// (`yRot`/`xRot`) are a separate look projection added by a later slice.
+    /// degrees, that orients the model root transform.
     pub body_rot: f32,
+    /// Vanilla `LivingEntityRenderState.yRot`: the net head yaw in degrees
+    /// (`Mth.wrapDegrees(headRot - bodyRot)`), i.e. the head turn relative to the
+    /// body that models apply as `head.yRot = yRot * π/180`. `0.0` when the head
+    /// is aligned with the body. The entity scene projects it from the canonical
+    /// head/body yaw.
+    pub head_yaw: f32,
+    /// Vanilla `LivingEntityRenderState.xRot`: the head pitch in degrees
+    /// (`entity.getXRot`), applied as `head.xRot = xRot * π/180`. `0.0` when the
+    /// head is level.
+    pub head_pitch: f32,
     /// Per-frame sheep eat-grass head pose (`Sheep.getHeadEatPositionScale` /
     /// `getHeadEatAngleScale`). [`SheepHeadEatPose::NONE`] for every non-sheep
     /// entity and for a sheep that is not currently eating.
@@ -47,12 +56,14 @@ pub struct EntityRenderState {
 
 impl EntityRenderState {
     /// Builds the resting render state for an entity facing `body_rot` degrees:
-    /// no eat-grass head pose, an all-fours polar bear stance, and full-bright
-    /// light. Per-frame animation poses and sampled light are layered on by the
-    /// entity scene projection.
+    /// head aligned with the body (no look), no eat-grass head pose, an all-fours
+    /// polar bear stance, and full-bright light. Per-frame animation poses and
+    /// sampled light are layered on by the entity scene projection.
     fn resting(body_rot: f32) -> Self {
         Self {
             body_rot,
+            head_yaw: 0.0,
+            head_pitch: 0.0,
             head_eat: SheepHeadEatPose::NONE,
             polar_bear_stand_scale: 0.0,
             light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
@@ -103,6 +114,16 @@ impl EntityModelInstance {
 
     pub fn with_head_eat(mut self, head_eat: SheepHeadEatPose) -> Self {
         self.render_state.head_eat = head_eat;
+        self
+    }
+
+    /// Sets the head-look projection (vanilla `LivingEntityRenderState.yRot` /
+    /// `.xRot`, both in degrees): the net head yaw relative to the body and the
+    /// head pitch. Consumed by model families with a head part (currently the
+    /// sheep `QuadrupedModel`).
+    pub fn with_head_look(mut self, head_yaw: f32, head_pitch: f32) -> Self {
+        self.render_state.head_yaw = head_yaw;
+        self.render_state.head_pitch = head_pitch;
         self
     }
 
@@ -727,6 +748,8 @@ mod tests {
             instance.render_state,
             EntityRenderState {
                 body_rot: 123.0,
+                head_yaw: 0.0,
+                head_pitch: 0.0,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
@@ -772,6 +795,8 @@ mod tests {
     fn builders_set_only_their_render_state_field() {
         let base = EntityModelInstance::sheep(1, [0.0, 0.0, 0.0], 45.0, false);
         assert_eq!(base.render_state.body_rot, 45.0);
+        assert_eq!(base.render_state.head_yaw, 0.0);
+        assert_eq!(base.render_state.head_pitch, 0.0);
         assert_eq!(base.render_state.head_eat, SheepHeadEatPose::NONE);
         assert_eq!(base.render_state.polar_bear_stand_scale, 0.0);
 
@@ -782,6 +807,16 @@ mod tests {
             SheepHeadEatPose::from_eat_tick(40, 0.5)
         );
         assert_eq!(eating.render_state.polar_bear_stand_scale, 0.0);
+        // The eat builder leaves the head-look projection untouched.
+        assert_eq!(eating.render_state.head_yaw, 0.0);
+        assert_eq!(eating.render_state.head_pitch, 0.0);
+
+        let looking = base.with_head_look(30.0, -12.5);
+        assert_eq!(looking.render_state.head_yaw, 30.0);
+        assert_eq!(looking.render_state.head_pitch, -12.5);
+        // The look builder leaves body rotation and the eat pose untouched.
+        assert_eq!(looking.render_state.body_rot, 45.0);
+        assert_eq!(looking.render_state.head_eat, SheepHeadEatPose::NONE);
 
         let bear = EntityModelInstance::polar_bear(2, [0.0, 0.0, 0.0], 0.0, false)
             .with_polar_bear_stand_scale(0.5);

@@ -259,15 +259,15 @@ When an agent does any of the following, update this file in the same slice:
   - Grow the renderer `EntityRenderState` projection as the single landing spot
     for vanilla `LivingEntityRenderState`/`EntityRenderState` per-frame fields,
     instead of adding ad hoc per-entity fields to `EntityModelInstance`:
-    - now projected: `bodyRot` (body yaw), the sheep eat-grass head pose, the
-      polar-bear standing-rear scale, `lightCoords` (block+sky packed light),
-      `hasRedOverlay` (hurt red `OverlayTexture` flash), and
-      `whiteOverlayProgress` (creeper swelling white flash)
+    - now projected: `bodyRot` (body yaw), `yRot`/`xRot` (net head-look yaw and
+      head pitch), the sheep eat-grass head pose, the polar-bear standing-rear
+      scale, `lightCoords` (block+sky packed light), `hasRedOverlay` (hurt red
+      `OverlayTexture` flash), and `whiteOverlayProgress` (creeper swelling white
+      flash)
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: the freezing white overlay
       and the `deathTime` overlay term, `walkAnimationPos`/`walkAnimationSpeed`
-      limb-swing, head `yRot`/`xRot` look, `ageScale`, unified `isInvisible`, and
-      `outlineColor` glow
+      limb-swing, `ageScale`, unified `isInvisible`, and `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -296,6 +296,18 @@ When an agent does any of the following, update this file in the same slice:
     (`(int)(progress * 15)`) drives the shader white flash. Remaining overlay
     gaps: the `deathTime > 0` red term and the freezing (`isFullyFrozen`) white
     overlay producer.
+  - The head-look projection is implemented as a reusable render-state field: the
+    canonical `Entity.yHeadRot`/`getXRot` flow through `EntityModelSourceState`,
+    the native scene derives `LivingEntityRenderState.yRot` =
+    `Mth.wrapDegrees(yHeadRot - bodyRot)` (net head yaw) and `xRot` (head pitch),
+    and `EntityRenderState.head_yaw`/`head_pitch` carry them in degrees. The sheep
+    `QuadrupedModel` is the first consumer: its head part applies
+    `head.yRot = yRot * π/180` (`QuadrupedModel.setupAnim`) and
+    `head.xRot = headEatAngleScale`, whose non-eating branch is exactly the look
+    pitch `getXRot * π/180` (`Sheep.getHeadEatAngleScale`), composing with the
+    eat-grass dip. Remaining head-look work: apply the same projection to the
+    other model families' head parts (each model names its own head part, so this
+    is a per-family grind).
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick
@@ -310,8 +322,6 @@ When an agent does any of the following, update this file in the same slice:
       textured entity pass)
     - implement invisible glowing outline wool rendering
     - implement base-model invisibility/outline handling
-    - project the head-look pitch that vanilla folds into the non-eating
-      `getHeadEatAngleScale` branch (the resting head xRot stays `0.0`)
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set
     - add armor, wet tint, sitting/head/tail/shake/walk pose, base-model

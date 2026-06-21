@@ -260,10 +260,12 @@ fn sheep_head_eat_position_scale(eat_animation_tick: i32, partial_tick: f32) -> 
     }
 }
 
-/// Vanilla `Sheep.getHeadEatAngleScale(partialTick)`. The non-eating branch
-/// folds in the entity look pitch (`getXRot(a) * PI/180`); head-look pitch
-/// tracking is not yet projected, so the resting angle is `0.0`, matching
-/// vanilla for a sheep with no pitch.
+/// Vanilla `Sheep.getHeadEatAngleScale(partialTick)`, restricted to the eating
+/// branches (`eatAnimationTick > 0`). The non-eating branch of the vanilla
+/// method folds in the entity look pitch (`getXRot(a) * PI/180`); that pitch is
+/// projected separately as [`EntityRenderState::head_pitch`] and applied by
+/// [`sheep_head_pose`], so a resting (non-eating) sheep returns `0.0` here and
+/// the head pitch comes from the look projection instead.
 fn sheep_head_eat_angle_scale(eat_animation_tick: i32, partial_tick: f32) -> f32 {
     if eat_animation_tick > 4 && eat_animation_tick <= 36 {
         let scale = (eat_animation_tick as f32 - 4.0 - partial_tick) / 32.0;
@@ -286,27 +288,52 @@ pub(in crate::entity_models) const fn sheep_head_part_index(baby: bool) -> usize
     }
 }
 
-/// Vanilla `SheepModel`/`SheepFurModel.setupAnim`: `head.y += headEatPositionScale
-/// * 9.0 * ageScale` and `head.xRot = headEatAngleScale`. `BabySheepModel extends
-/// SheepModel`, so the baby head animates with `ageScale = 0.5`
-/// (`LivingEntity.getAgeScale`).
-pub(in crate::entity_models) fn sheep_eaten_head_pose(
+/// Returns `true` when the sheep head is fully at rest — not eating and with no
+/// head-look turn — so callers can borrow the static parts unchanged instead of
+/// cloning to apply [`sheep_head_pose`].
+pub(in crate::entity_models) fn sheep_head_at_rest(
+    head_eat: SheepHeadEatPose,
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
+) -> bool {
+    head_eat.is_resting() && head_yaw_deg == 0.0 && head_pitch_deg == 0.0
+}
+
+/// Vanilla sheep head pose, composing `QuadrupedModel.setupAnim` (head look) with
+/// the `SheepModel`/`SheepFurModel.setupAnim` overrides:
+///
+/// - `QuadrupedModel.setupAnim`: `head.xRot = xRot * π/180`, `head.yRot = yRot *
+///   π/180` (`yRot` is the net head yaw `wrapDegrees(headRot - bodyRot)`).
+/// - `SheepModel.setupAnim` (after super): `head.y += headEatPositionScale * 9.0
+///   * ageScale` and `head.xRot = headEatAngleScale`, which *overrides* the pitch
+///   set by the super call. Vanilla `Sheep.getHeadEatAngleScale` returns the look
+///   pitch (`getXRot * π/180`) while not eating, so the head pitch is the look
+///   pitch at rest and the eat curve while eating.
+///
+/// `BabySheepModel extends SheepModel`, so the baby head animates with `ageScale
+/// = 0.5` (`LivingEntity.getAgeScale`). The base head pose has no rotation, so
+/// the yaw/pitch are set (not accumulated), matching the vanilla `setupAnim`
+/// assignments.
+pub(in crate::entity_models) fn sheep_head_pose(
     head_pose: PartPose,
     baby: bool,
     head_eat: SheepHeadEatPose,
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
 ) -> PartPose {
     let age_scale = if baby { 0.5 } else { 1.0 };
+    let x_rot = if head_eat.is_resting() {
+        head_pitch_deg.to_radians()
+    } else {
+        head_eat.angle_scale
+    };
     PartPose {
         offset: [
             head_pose.offset[0],
             head_pose.offset[1] + head_eat.position_scale * 9.0 * age_scale,
             head_pose.offset[2],
         ],
-        rotation: [
-            head_eat.angle_scale,
-            head_pose.rotation[1],
-            head_pose.rotation[2],
-        ],
+        rotation: [x_rot, head_yaw_deg.to_radians(), head_pose.rotation[2]],
     }
 }
 
