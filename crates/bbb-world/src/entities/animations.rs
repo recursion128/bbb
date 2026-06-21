@@ -9,11 +9,20 @@ use super::dragon::{
 };
 use super::EntityTransform;
 
+const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
 const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
 const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
+/// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
+/// `DATA_IS_IGNITED`; the client advances `swell` toward `maxSwell` while the
+/// effective direction is positive.
+const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+const CREEPER_IGNITED_DATA_ID: u8 = 18;
+/// Vanilla `Creeper.DEFAULT_MAX_SWELL`. `getSwelling` divides the lerped swell
+/// by `maxSwell - 2`.
+const CREEPER_MAX_SWELL: i32 = 30;
 const SHULKER_PEEK_DATA_ID: u8 = 17;
 const SHULKER_PEEK_PER_TICK: f32 = 0.05;
 const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
@@ -41,6 +50,22 @@ pub struct EntityClientAnimationState {
     pub sheep_eat: Option<SheepEatAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creeper_swell: Option<CreeperSwellAnimationState>,
+}
+
+/// Canonical client-side creeper fuse animation, mirroring vanilla
+/// `Creeper.swell`/`oldSwell`. The synced `DATA_SWELL_DIR` (forced to `1` while
+/// ignited) advances `current_swell` toward `maxSwell` each client tick;
+/// `getSwelling` lerps it for the renderer white swelling overlay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CreeperSwellAnimationState {
+    /// Effective fuse direction (`DATA_SWELL_DIR`, or `1` while ignited).
+    pub swell_dir: i32,
+    /// Vanilla `Creeper.oldSwell`.
+    pub previous_swell: i32,
+    /// Vanilla `Creeper.swell`.
+    pub current_swell: i32,
 }
 
 /// Canonical client-side hurt animation countdown, mirroring vanilla
@@ -135,6 +160,32 @@ impl SheepEatAnimationState {
     }
 }
 
+impl CreeperSwellAnimationState {
+    fn set_swell_dir(&mut self, swell_dir: i32) {
+        self.swell_dir = swell_dir;
+    }
+
+    /// Vanilla `Creeper.tick`: `oldSwell = swell; swell += swellDir`, clamped to
+    /// `0..=maxSwell`.
+    fn advance_client_tick(&mut self) {
+        self.previous_swell = self.current_swell;
+        self.current_swell = (self.current_swell + self.swell_dir).clamp(0, CREEPER_MAX_SWELL);
+    }
+
+    /// Whether the fuse has fully settled at rest so the state can be dropped.
+    fn is_settled(&self) -> bool {
+        self.swell_dir <= 0 && self.current_swell == 0 && self.previous_swell == 0
+    }
+
+    /// Vanilla `Creeper.getSwelling`: `lerp(partialTick, oldSwell, swell) /
+    /// (maxSwell - 2)`.
+    fn swelling(self, partial_tick: f32) -> f32 {
+        let lerped = self.previous_swell as f32
+            + partial_tick * (self.current_swell - self.previous_swell) as f32;
+        lerped / (CREEPER_MAX_SWELL as f32 - 2.0)
+    }
+}
+
 impl ShulkerPeekAnimationState {
     fn set_target(&mut self, target_peek_amount: f32) {
         self.target_peek_amount = target_peek_amount;
@@ -171,6 +222,18 @@ impl EntityClientAnimationState {
                     self.polar_bear_standing = Some(PolarBearStandingAnimationState {
                         target_standing,
                         ..PolarBearStandingAnimationState::default()
+                    });
+                }
+            }
+            VANILLA_ENTITY_TYPE_CREEPER_ID => {
+                let swell_dir = creeper_effective_swell_dir(data_values);
+                if let Some(swell) = self.creeper_swell.as_mut() {
+                    swell.set_swell_dir(swell_dir);
+                } else if swell_dir > 0 {
+                    self.creeper_swell = Some(CreeperSwellAnimationState {
+                        swell_dir,
+                        previous_swell: 0,
+                        current_swell: 0,
                     });
                 }
             }
@@ -220,6 +283,13 @@ impl EntityClientAnimationState {
         self.sheep_eat.map_or(0, |state| state.eat_animation_tick)
     }
 
+    /// Vanilla `Creeper.getSwelling(partialTick)`, exposed for the renderer white
+    /// swelling overlay. Returns `0.0` when the entity is not a priming creeper.
+    pub fn creeper_swelling(&self, partial_tick: f32) -> f32 {
+        self.creeper_swell
+            .map_or(0.0, |state| state.swelling(partial_tick))
+    }
+
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
     /// mirroring vanilla `LivingEntity.animateHurt` / `handleDamageEvent` setting
     /// `hurtTime = hurtDuration`.
@@ -255,6 +325,14 @@ impl EntityClientAnimationState {
             }
         }
         match entity_type_id {
+            VANILLA_ENTITY_TYPE_CREEPER_ID => {
+                if let Some(swell) = self.creeper_swell.as_mut() {
+                    swell.advance_client_tick();
+                    if swell.is_settled() {
+                        self.creeper_swell = None;
+                    }
+                }
+            }
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
                 if let Some(standing) = self.polar_bear_standing.as_mut() {
                     standing.advance_client_tick();
@@ -301,6 +379,17 @@ fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool)
 
 fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
     f32::from(entity_data_byte(data_values, SHULKER_PEEK_DATA_ID, 0).clamp(0, 100)) * 0.01
+}
+
+/// Vanilla `Creeper.tick`: the fuse advances by `getSwellDir()`, but an ignited
+/// creeper forces the direction to `1`. Mirrors that effective direction from
+/// the synced `DATA_SWELL_DIR` (default `-1`) and `DATA_IS_IGNITED`.
+fn creeper_effective_swell_dir(data_values: &[EntityDataValue]) -> i32 {
+    if entity_data_bool(data_values, CREEPER_IGNITED_DATA_ID, false) {
+        1
+    } else {
+        entity_data_int(data_values, CREEPER_SWELL_DIR_DATA_ID, -1)
+    }
 }
 
 fn entity_data_byte(data_values: &[EntityDataValue], data_id: u8, default: i8) -> i8 {

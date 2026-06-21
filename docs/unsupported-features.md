@@ -260,13 +260,14 @@ When an agent does any of the following, update this file in the same slice:
     for vanilla `LivingEntityRenderState`/`EntityRenderState` per-frame fields,
     instead of adding ad hoc per-entity fields to `EntityModelInstance`:
     - now projected: `bodyRot` (body yaw), the sheep eat-grass head pose, the
-      polar-bear standing-rear scale, `lightCoords` (block+sky packed light), and
-      `hasRedOverlay` (hurt red `OverlayTexture` flash)
+      polar-bear standing-rear scale, `lightCoords` (block+sky packed light),
+      `hasRedOverlay` (hurt red `OverlayTexture` flash), and
+      `whiteOverlayProgress` (creeper swelling white flash)
     - deferred slots to add with their own slices, each carrying real vanilla
-      semantics and tests rather than tint fallbacks: white `OverlayTexture`
-      progress (creeper charge / freezing) and the `deathTime` overlay term,
-      `walkAnimationPos`/`walkAnimationSpeed` limb-swing, head `yRot`/`xRot`
-      look, `ageScale`, unified `isInvisible`, and `outlineColor` glow
+      semantics and tests rather than tint fallbacks: the freezing white overlay
+      and the `deathTime` overlay term, `walkAnimationPos`/`walkAnimationSpeed`
+      limb-swing, head `yRot`/`xRot` look, `ageScale`, unified `isInvisible`, and
+      `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -284,8 +285,17 @@ When an agent does any of the following, update this file in the same slice:
     entity shaders reproduce vanilla `OverlayTexture` per-vertex (the red row
     `y < 8` mixes toward red at alpha `179/255`, the white rows mix toward white at
     alpha `1 - u/15 * 0.75`) applied before the lightmap; the eyes pass is
-    unaffected. Remaining overlay gaps: the `deathTime > 0` term and the white
-    overlay producers (creeper charge, freezing) that drive the `u` channel.
+    unaffected.
+  - The creeper swelling white overlay is implemented end to end: the client
+    tracks `Creeper.swell`/`oldSwell` from the synced `DATA_SWELL_DIR` (forced to
+    `1` while `DATA_IS_IGNITED`), advancing it toward `maxSwell` = 30 each tick;
+    `Creeper.getSwelling` is projected as `creeper_swelling`, the native scene maps
+    it through `CreeperRenderer.getWhiteOverlayProgress`
+    (`(int)(s*10) % 2 == 0 ? 0 : clamp(s, 0.5, 1.0)`) into the render-state
+    `whiteOverlayProgress`, and the overlay coords' `u` column
+    (`(int)(progress * 15)`) drives the shader white flash. Remaining overlay
+    gaps: the `deathTime > 0` red term and the freezing (`isFullyFrozen`) white
+    overlay producer.
   - Keep covered sheep behavior derived from canonical renderer inputs:
     - custom-name `jeb_` color cycling from entity metadata, per-entity client
       age ticks, and renderer partial tick

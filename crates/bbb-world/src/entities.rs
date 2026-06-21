@@ -314,6 +314,11 @@ pub struct EntityModelSourceState {
     /// the red damage overlay pass.
     #[serde(default)]
     pub has_red_overlay: bool,
+    /// Vanilla `CreeperRenderState.swelling` (`Creeper.getSwelling`): the lerped
+    /// fuse progress that drives the renderer white swelling overlay. `0.0` for
+    /// every non-creeper entity and for a creeper at rest.
+    #[serde(default)]
+    pub creeper_swelling: f32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 

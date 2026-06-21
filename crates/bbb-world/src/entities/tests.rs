@@ -949,6 +949,57 @@ fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
 }
 
 #[test]
+fn entity_model_sources_project_creeper_swelling_fuse() {
+    const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
+    const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+
+    // Read at partial tick 1.0 so getSwelling returns the current swell.
+    let swelling = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 50)
+            .unwrap()
+            .creeper_swelling
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        50,
+        VANILLA_ENTITY_TYPE_CREEPER_ID,
+    ));
+    // Default swell direction is -1 (resting): the fuse stays at zero.
+    assert_eq!(swelling(&store), 0.0);
+    store.advance_entity_client_animations(5);
+    assert_eq!(swelling(&store), 0.0);
+
+    // A positive swell direction advances the fuse one step per client tick;
+    // getSwelling divides the lerped swell by maxSwell - 2 = 28.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 50,
+        values: vec![ProtocolEntityDataValue {
+            data_id: CREEPER_SWELL_DIR_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(1),
+        }],
+    }));
+    store.advance_entity_client_animations(3);
+    assert_eq!(swelling(&store), 3.0 / 28.0);
+
+    // Flipping the direction back to -1 drains the fuse toward zero again.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 50,
+        values: vec![ProtocolEntityDataValue {
+            data_id: CREEPER_SWELL_DIR_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(-1),
+        }],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(swelling(&store), 2.0 / 28.0);
+}
+
+#[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
 

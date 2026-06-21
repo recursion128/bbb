@@ -39,6 +39,10 @@ pub struct EntityRenderState {
     /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0`): selects
     /// the red row of `OverlayTexture` so the entity flashes red when hurt.
     pub has_red_overlay: bool,
+    /// Vanilla `CreeperRenderer.getWhiteOverlayProgress` (`0.0..=1.0`): selects
+    /// the white-flash column of `OverlayTexture` so a priming creeper flashes
+    /// white. `0.0` for every entity that is not flashing white.
+    pub white_overlay_progress: f32,
 }
 
 impl EntityRenderState {
@@ -53,6 +57,7 @@ impl EntityRenderState {
             polar_bear_stand_scale: 0.0,
             light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
             has_red_overlay: false,
+            white_overlay_progress: 0.0,
         }
     }
 
@@ -67,11 +72,12 @@ impl EntityRenderState {
 
     /// Projects the entity overlay into the renderer per-vertex overlay coords
     /// `[u, v]` (vanilla `OverlayTexture.pack` channels). `u` is the white-flash
-    /// column (`NO_WHITE_U` = `0` until creeper charge / freezing land), `v` is
-    /// `RED_OVERLAY_V` (`3`) when hurt and `WHITE_OVERLAY_V` (`10`, no overlay)
-    /// otherwise.
+    /// column `OverlayTexture.u(whiteOverlayProgress)` = `(int)(progress * 15)`,
+    /// `v` is `RED_OVERLAY_V` (`3`) when hurt and `WHITE_OVERLAY_V` (`10`, no red
+    /// overlay) otherwise.
     pub(in crate::entity_models) fn overlay_coords(&self) -> [f32; 2] {
-        [0.0, if self.has_red_overlay { 3.0 } else { 10.0 }]
+        let u = (self.white_overlay_progress.clamp(0.0, 1.0) * 15.0).floor();
+        [u, if self.has_red_overlay { 3.0 } else { 10.0 }]
     }
 }
 
@@ -112,6 +118,11 @@ impl EntityModelInstance {
 
     pub fn with_has_red_overlay(mut self, has_red_overlay: bool) -> Self {
         self.render_state.has_red_overlay = has_red_overlay;
+        self
+    }
+
+    pub fn with_white_overlay_progress(mut self, white_overlay_progress: f32) -> Self {
+        self.render_state.white_overlay_progress = white_overlay_progress;
         self
     }
 
@@ -720,6 +731,7 @@ mod tests {
                 polar_bear_stand_scale: 0.0,
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
                 has_red_overlay: false,
+                white_overlay_progress: 0.0,
             }
         );
     }
@@ -733,6 +745,13 @@ mod tests {
         let hurt = calm.with_has_red_overlay(true);
         // NO_WHITE_U = 0, RED_OVERLAY_V = 3.
         assert_eq!(hurt.render_state.overlay_coords(), [0.0, 3.0]);
+
+        // White swelling overlay drives the u column: u = (int)(progress * 15).
+        let swelling = calm.with_white_overlay_progress(0.8);
+        assert_eq!(swelling.render_state.overlay_coords(), [12.0, 10.0]);
+        // Red overlay still wins the v row when both are active.
+        let both = swelling.with_has_red_overlay(true);
+        assert_eq!(both.render_state.overlay_coords(), [12.0, 3.0]);
     }
 
     #[test]

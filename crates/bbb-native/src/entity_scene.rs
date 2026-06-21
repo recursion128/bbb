@@ -304,8 +304,21 @@ fn entity_model_instance(
         .with_head_eat(head_eat)
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
-        .with_has_red_overlay(source.has_red_overlay),
+        .with_has_red_overlay(source.has_red_overlay)
+        .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
+}
+
+/// Vanilla `CreeperRenderer.getWhiteOverlayProgress`: with `step` =
+/// `Creeper.getSwelling`, returns `0.0` while `(int)(step * 10) % 2 == 0` and
+/// `clamp(step, 0.5, 1.0)` otherwise, so the creeper strobes white as the fuse
+/// nears detonation.
+fn creeper_white_overlay_progress(swelling: f32) -> f32 {
+    if (swelling * 10.0) as i32 % 2 == 0 {
+        0.0
+    } else {
+        swelling.clamp(0.5, 1.0)
+    }
 }
 
 /// Packs the entity's sampled block+sky light into vanilla
@@ -1421,6 +1434,50 @@ mod tests {
         );
         let hurt = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
         assert!(hurt[0].render_state.has_red_overlay);
+    }
+
+    #[test]
+    fn creeper_white_overlay_progress_matches_vanilla_strobe() {
+        // (int)(step * 10) even -> 0.0, odd -> clamp(step, 0.5, 1.0).
+        assert_eq!(creeper_white_overlay_progress(0.0), 0.0);
+        assert_eq!(creeper_white_overlay_progress(0.15), 0.5); // bucket 1 (odd), clamped up
+        assert_eq!(creeper_white_overlay_progress(0.55), 0.55); // bucket 5 (odd)
+        assert_eq!(creeper_white_overlay_progress(0.6), 0.0); // bucket 6 (even)
+    }
+
+    #[test]
+    fn entity_model_instances_project_creeper_white_overlay_from_world() {
+        const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
+        const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            92,
+            VANILLA_ENTITY_TYPE_CREEPER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(resting[0].render_state.white_overlay_progress, 0.0);
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 92,
+            values: vec![EntityDataValue {
+                data_id: CREEPER_SWELL_DIR_DATA_ID,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(1),
+            }],
+        }));
+        world.advance_entity_client_animations(5);
+
+        // swell = 5, getSwelling(1.0) = 5/28; the strobe lands in an odd bucket
+        // so the projected progress is the clamped swelling (>= 0.5).
+        let swelling = 5.0 / 28.0;
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(
+            instances[0].render_state.white_overlay_progress,
+            creeper_white_overlay_progress(swelling)
+        );
+        assert!(instances[0].render_state.white_overlay_progress >= 0.5);
     }
 
     #[test]
