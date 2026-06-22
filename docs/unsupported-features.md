@@ -1288,22 +1288,25 @@ When an agent does any of the following, update this file in the same slice:
       sin(phase) * π * 0.2 * |i - 2|`, `phase = ageInTicks * 0.9 + i * 0.15 * π`,
       with the overlay layers copying segments 2/4/1, driven by the projected
       `ageInTicks`, on both render paths). Lighting and overlay remain unsupported
-    - vex entities (colored render path) are wired end to end: the native entity scene
+    - vex entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `138` to the real `VexModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `VexModel.createBodyLayer()`
       geometry: the `(0, -2.5, 0)` model root carrying the 5³ head and the body (a plain
       `texOffs(0, 10)` 3×4×2 box plus a `texOffs(0, 16)` 3×5×2 box inset by
-      `CubeDeformation(-0.2)`), with the two arms (2×4×2 inset by `CubeDeformation(-0.1)`)
-      and the two zero-thickness `0×5×8` wings parented under the body so the body tilt
-      carries them; the non-charging `VexModel.setupAnim` idle pose (head look `yRot`/`xRot`,
-      arms at `±(π/5 + cos(ageInTicks · 5.5°) · 0.1)` z-roll, body tilt `π/20`, and the wing
-      flap `leftWing.yRot = 1.0995574 + cos(ageInTicks · 45.836624°) · 16.2°` mirrored on the
-      right wing with both wings pitched/rolled `0.47123888`), driven by the projected head
-      yaw/pitch and `age_in_ticks`, under the standard `LivingEntityRenderer.setupRotations`.
-      The texture-backed render path (the `textures/entity/illager/vex.png` reference is
-      registered) and the charging pose (`isCharging` texture swap, `vex_charging.png`, the
-      charging arm poses and held items) and the constant full-bright `getBlockLightLevel`
-      glow, lighting, and overlay remain unsupported
+      `CubeDeformation(-0.2)`), with the two arms (`texOffs(23, 0)`/`texOffs(23, 6)`, 2×4×2
+      inset by `CubeDeformation(-0.1)`) and the two zero-thickness `0×5×8` wings
+      (`texOffs(16, 14)`, the left wing's UV mirrored) parented under the body so the body
+      tilt carries them; the non-charging `VexModel.setupAnim` idle pose (head look
+      `yRot`/`xRot`, arms at `±(π/5 + cos(ageInTicks · 5.5°) · 0.1)` z-roll, body tilt
+      `π/20`, and the wing flap `leftWing.yRot = 1.0995574 + cos(ageInTicks · 45.836624°) ·
+      16.2°` mirrored on the right wing with both wings pitched/rolled `0.47123888`), driven
+      by the projected head yaw/pitch and `age_in_ticks`, under the standard
+      `LivingEntityRenderer.setupRotations`. The textured base layer draws the
+      `textures/entity/illager/vex.png` atlas reference into the translucent mesh
+      (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
+      hierarchy as the colored path. The charging pose (`isCharging` texture swap to
+      `vex_charging.png`, the charging arm poses and held items) and the constant full-bright
+      `getBlockLightLevel` (→ 15) glow, lighting, and overlay remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

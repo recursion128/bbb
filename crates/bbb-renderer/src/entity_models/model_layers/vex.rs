@@ -1,4 +1,4 @@
-use super::{ModelCubeDesc, PartPose, VEX_GREY};
+use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, VEX_GREY};
 
 // Vanilla 26.1 `VexModel.createBodyLayer` (atlas 32×32). The model root is the `root` part
 // at `(0, -2.5, 0)`; `head` and `body` hang under it, and the arms and wings are children
@@ -101,3 +101,69 @@ pub(in crate::entity_models) fn vex_moving_arm_z_bob(age_in_ticks: f32) -> f32 {
 pub(in crate::entity_models) fn vex_left_wing_y_rot(age_in_ticks: f32) -> f32 {
     1.099_557_4 + (age_in_ticks * 45.836_624_f32.to_radians()).cos() * 16.2_f32.to_radians()
 }
+
+// Textured counterparts of the vex cubes (atlas 32×32). `CubeDeformation` inflates the
+// geometry (min/size) but the `uv_size` keeps the BASE box, exactly as vanilla bakes it.
+pub(in crate::entity_models) const VEX_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.5, -5.0, -2.5],
+        size: [5.0, 5.0, 5.0],
+        uv_size: [5.0, 5.0, 5.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const VEX_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.5, 0.0, -1.0],
+        size: [3.0, 4.0, 2.0],
+        uv_size: [3.0, 4.0, 2.0],
+        tex: [0.0, 10.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        // `CubeDeformation(-0.2)`: geometry inset, but uv_size keeps the 3×5×2 base box.
+        min: [-1.3, 1.2, -0.8],
+        size: [2.6, 4.6, 1.6],
+        uv_size: [3.0, 5.0, 2.0],
+        tex: [0.0, 16.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const VEX_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.15, -0.4, -0.9],
+        size: [1.8, 3.8, 1.8],
+        uv_size: [2.0, 4.0, 2.0],
+        tex: [23.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const VEX_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-0.65, -0.4, -0.9],
+        size: [1.8, 3.8, 1.8],
+        uv_size: [2.0, 4.0, 2.0],
+        tex: [23.0, 6.0],
+        mirror: false,
+    }];
+
+// Both wings share `texOffs(16, 14)`; the left wing's UV is mirrored.
+pub(in crate::entity_models) const VEX_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, 0.0],
+        size: [0.0, 5.0, 8.0],
+        uv_size: [0.0, 5.0, 8.0],
+        tex: [16.0, 14.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const VEX_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, 0.0],
+        size: [0.0, 5.0, 8.0],
+        uv_size: [0.0, 5.0, 8.0],
+        tex: [16.0, 14.0],
+        mirror: false,
+    }];

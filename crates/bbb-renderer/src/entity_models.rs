@@ -54,9 +54,9 @@ pub use model_layers::{
     polar_bear_entity_texture_refs, pufferfish_entity_texture_refs, ravager_entity_texture_refs,
     salmon_entity_texture_refs, sheep_entity_texture_refs, silverfish_entity_texture_refs,
     skeleton_entity_texture_refs, slime_entity_texture_refs, spider_entity_texture_refs,
-    squid_entity_texture_refs, tropical_fish_entity_texture_refs, villager_entity_texture_refs,
-    witch_entity_texture_refs, wolf_entity_texture_refs, zombie_entity_texture_refs,
-    zombie_villager_entity_texture_refs, SheepHeadEatPose,
+    squid_entity_texture_refs, tropical_fish_entity_texture_refs, vex_entity_texture_refs,
+    villager_entity_texture_refs, witch_entity_texture_refs, wolf_entity_texture_refs,
+    zombie_entity_texture_refs, zombie_villager_entity_texture_refs, SheepHeadEatPose,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;

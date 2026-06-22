@@ -109,3 +109,75 @@ fn vex_texture_ref_matches_vanilla_renderer() {
         })
     );
 }
+
+#[test]
+fn vex_textured_cubes_match_vanilla_body_layer_uvs() {
+    // The textured cubes mirror the colored geometry. `CubeDeformation` inflates the box but
+    // the `uv_size` keeps the BASE box, exactly as vanilla bakes it.
+    assert_eq!(VEX_TEXTURED_HEAD[0].min, [-2.5, -5.0, -2.5]);
+    assert_eq!(VEX_TEXTURED_HEAD[0].size, [5.0, 5.0, 5.0]);
+    assert_eq!(VEX_TEXTURED_HEAD[0].uv_size, [5.0, 5.0, 5.0]);
+    assert_eq!(VEX_TEXTURED_HEAD[0].tex, [0.0, 0.0]);
+
+    // Body box 0 is `texOffs(0, 10)` 3×4×2; box 1 is `texOffs(0, 16)` with the 3×5×2 base box
+    // inset by `CubeDeformation(-0.2)`.
+    assert_eq!(VEX_TEXTURED_BODY[0].tex, [0.0, 10.0]);
+    assert_eq!(VEX_TEXTURED_BODY[0].uv_size, [3.0, 4.0, 2.0]);
+    assert_eq!(VEX_TEXTURED_BODY[1].tex, [0.0, 16.0]);
+    assert_eq!(VEX_TEXTURED_BODY[1].size, [2.6, 4.6, 1.6]);
+    assert_eq!(VEX_TEXTURED_BODY[1].uv_size, [3.0, 5.0, 2.0]);
+
+    // Arms: `texOffs(23, 0)` / `texOffs(23, 6)`, 2×4×2 base box inset by `CubeDeformation(-0.1)`.
+    assert_eq!(VEX_TEXTURED_RIGHT_ARM[0].tex, [23.0, 0.0]);
+    assert_eq!(VEX_TEXTURED_RIGHT_ARM[0].uv_size, [2.0, 4.0, 2.0]);
+    assert_eq!(VEX_TEXTURED_LEFT_ARM[0].tex, [23.0, 6.0]);
+    assert_eq!(VEX_TEXTURED_LEFT_ARM[0].uv_size, [2.0, 4.0, 2.0]);
+
+    // Both wings share `texOffs(16, 14)`; only the left wing's UV is mirrored.
+    assert_eq!(VEX_TEXTURED_LEFT_WING[0].tex, [16.0, 14.0]);
+    assert!(VEX_TEXTURED_LEFT_WING[0].mirror);
+    assert_eq!(VEX_TEXTURED_RIGHT_WING[0].tex, [16.0, 14.0]);
+    assert!(!VEX_TEXTURED_RIGHT_WING[0].mirror);
+}
+
+#[test]
+fn vex_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&vex_texture_images()).unwrap();
+    // Vex renders into the translucent mesh (`RenderTypes::entityTranslucent`). Seven cubes →
+    // 42 faces / 168 vertices, with nothing on the cutout or eyes passes.
+    let base = EntityModelInstance::vex(950, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.translucent.cutout_faces, 42);
+    assert_eq!(meshes.translucent.vertices.len(), 168);
+    assert_eq!(meshes.translucent.indices.len(), 252);
+    assert!(meshes
+        .translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // The head re-poses with the projected look yaw/pitch.
+    let looking = entity_model_textured_meshes(&[base.with_head_look(40.0, -25.0)], &atlas);
+    assert_eq!(
+        meshes.translucent.vertices.len(),
+        looking.translucent.vertices.len()
+    );
+    assert_ne!(meshes.translucent.vertices, looking.translucent.vertices);
+
+    // The wings flap and the arms bob as the age advances.
+    let flapping = entity_model_textured_meshes(&[base.with_age_in_ticks(7.0)], &atlas);
+    assert_ne!(meshes.translucent.vertices, flapping.translucent.vertices);
+}
+
+fn vex_texture_images() -> Vec<EntityModelTextureImage> {
+    vex_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

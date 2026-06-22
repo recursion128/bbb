@@ -224,6 +224,7 @@ mod tests {
                 "textures/entity/fish/salmon.png",
                 "textures/entity/fish/tropical_a.png",
                 "textures/entity/fish/tropical_b.png",
+                "textures/entity/illager/vex.png",
             ]
         );
         for image in images {

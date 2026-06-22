@@ -127,7 +127,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::Vex => {
-                emit_vex_model(&mut mesh, *instance);
+                if !skip_texture_backed_entities {
+                    emit_vex_model(&mut mesh, *instance);
+                }
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
