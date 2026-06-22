@@ -325,6 +325,20 @@ pub struct EntityModelSourceState {
     /// every other entity (which has no mob-flags byte or does not use those arms).
     #[serde(default)]
     pub is_aggressive: bool,
+    /// Vanilla `EndermanRenderState.carriedBlock` non-empty (`Enderman.getCarriedBlock`
+    /// present, the synced `DATA_CARRY_STATE`): the enderman is holding a block, which
+    /// `EndermanModel.setupAnim` poses both arms forward to carry (`xRot = -0.5`, `zRot =
+    /// ±0.05`). Projected only for the enderman ([`vanilla_is_enderman`](crate::entities::dimensions));
+    /// `false` for every other entity.
+    #[serde(default)]
+    pub enderman_carrying: bool,
+    /// Vanilla `EndermanRenderState.isCreepy` (`Enderman.isCreepy`, the synced
+    /// `DATA_CREEPY`): the enderman is in its aggressive staring state, which
+    /// `EndermanModel.setupAnim` shows by dropping the head `y -= 5` and raising the hat
+    /// `y += 5` (the open-mouth screech pose). Projected only for the enderman; `false`
+    /// for every other entity.
+    #[serde(default)]
+    pub enderman_creepy: bool,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin

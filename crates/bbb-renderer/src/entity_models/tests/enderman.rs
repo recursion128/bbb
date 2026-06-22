@@ -507,6 +507,183 @@ fn enderman_textured_mesh_swings_arms_when_walking() {
     );
 }
 
+#[test]
+fn enderman_carried_arm_pose_matches_vanilla_setup_anim() {
+    // Vanilla EndermanModel.setupAnim carried-block branch *sets* both arms to xRot = -0.5
+    // (overriding the swing and its clamp) with zRot = +0.05 on the right arm (part offset
+    // x < 0) and -0.05 on the left; yRot and the bind offset are preserved. ENDERMAN_PARTS
+    // lists the right arm at index 2 (x = -5) and the left at index 3 (x = +5).
+    let right = enderman_carried_arm_pose(ENDERMAN_PARTS[2].pose);
+    let left = enderman_carried_arm_pose(ENDERMAN_PARTS[3].pose);
+    assert_eq!(right.offset, ENDERMAN_PARTS[2].pose.offset);
+    assert_eq!(left.offset, ENDERMAN_PARTS[3].pose.offset);
+    assert_eq!(right.rotation, [-0.5, 0.0, 0.05]);
+    assert_eq!(left.rotation, [-0.5, 0.0, -0.05]);
+}
+
+#[test]
+fn enderman_creepy_hat_child_raises_to_match_head_drop() {
+    // Vanilla EndermanModel.setupAnim isCreepy branch raises the hat child y += 5 while the
+    // emit drops the head y -= 5, so the outer head layer keeps its world position as the
+    // inner head opens downward. The creepy hat child differs from the rest hat only by the
+    // +5 y offset and is otherwise the same cube (colored and textured).
+    assert_eq!(
+        ENDERMAN_HEAD_CHILDREN_CREEPY[0].pose.offset,
+        [0.0, 5.0, 0.0]
+    );
+    assert_eq!(
+        ENDERMAN_HEAD_CHILDREN_CREEPY[0].pose.rotation,
+        [0.0, 0.0, 0.0]
+    );
+    assert_eq!(
+        ENDERMAN_HEAD_CHILDREN_CREEPY[0].cubes,
+        ENDERMAN_HEAD_CHILDREN[0].cubes
+    );
+    assert_eq!(
+        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY[0].pose.offset,
+        [0.0, 5.0, 0.0]
+    );
+    assert_eq!(
+        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY[0].cubes,
+        ENDERMAN_TEXTURED_HEAD_CHILDREN[0].cubes
+    );
+}
+
+#[test]
+fn enderman_holds_its_arms_out_when_carrying_a_block() {
+    // Carrying a block sets both arms to xRot = -0.5 (held out front), overriding the swing
+    // and leaving the head, body and legs untouched. The colored parts emit head(0)+hat(1)+
+    // body(2) as vertices [0, 72), then the arms [72, 120) and legs [120, 168). Colored path
+    // here, textured below.
+    let z_extent = |verts: &[EntityModelVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    let base = EntityModelInstance::enderman(264, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let carrying = entity_model_mesh(&[base.with_enderman_carrying(true)]);
+    assert_eq!(
+        rest.vertices[0..72],
+        carrying.vertices[0..72],
+        "the head and body do not move to carry a block"
+    );
+    assert_eq!(
+        rest.vertices[120..168],
+        carrying.vertices[120..168],
+        "the legs do not move to carry a block"
+    );
+    assert_ne!(
+        rest.vertices[72..120],
+        carrying.vertices[72..120],
+        "both arms swing out to carry the block"
+    );
+    let rest_arm_z = z_extent(&rest.vertices[72..120]);
+    let carry_arm_z = z_extent(&carrying.vertices[72..120]);
+    assert!(
+        carry_arm_z > rest_arm_z + 0.3,
+        "the held-out arms reach forward along Z: {rest_arm_z} -> {carry_arm_z}"
+    );
+}
+
+#[test]
+fn enderman_textured_mesh_holds_its_arms_out_when_carrying() {
+    let z_extent = |verts: &[EntityModelTexturedVertex]| -> f32 {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for vertex in verts {
+            lo = lo.min(vertex.position[2]);
+            hi = hi.max(vertex.position[2]);
+        }
+        hi - lo
+    };
+    let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
+    let base = EntityModelInstance::enderman(265, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let carrying = entity_model_textured_mesh(&[base.with_enderman_carrying(true)], &atlas);
+    assert_eq!(
+        resting.vertices[0..72],
+        carrying.vertices[0..72],
+        "the head and body stay put"
+    );
+    assert_ne!(
+        resting.vertices[72..120],
+        carrying.vertices[72..120],
+        "the textured arms are held out to carry the block"
+    );
+    let rest_arm_z = z_extent(&resting.vertices[72..120]);
+    let carry_arm_z = z_extent(&carrying.vertices[72..120]);
+    assert!(
+        carry_arm_z > rest_arm_z + 0.3,
+        "the held-out arms reach forward along Z: {rest_arm_z} -> {carry_arm_z}"
+    );
+}
+
+#[test]
+fn enderman_drops_its_head_when_creepy() {
+    // The creepy stare drops the inner head y -= 5 while the hat child rises y += 5, so the
+    // hat holds its world position while the head opens downward. Only the head cube moves;
+    // the hat, body, arms and legs are byte-identical. The colored head occupies vertices
+    // [0, 24), the hat [24, 48). Colored path here, textured below.
+    let y_centroid = |verts: &[EntityModelVertex]| -> f32 {
+        verts.iter().map(|vertex| vertex.position[1]).sum::<f32>() / verts.len() as f32
+    };
+    let base = EntityModelInstance::enderman(266, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let creepy = entity_model_mesh(&[base.with_enderman_creepy(true)]);
+    assert_ne!(
+        rest.vertices[0..24],
+        creepy.vertices[0..24],
+        "the inner head drops"
+    );
+    assert_eq!(
+        rest.vertices[24..48],
+        creepy.vertices[24..48],
+        "the hat holds its world position (the +5 raise cancels the head's -5 drop)"
+    );
+    assert_eq!(
+        rest.vertices[48..168],
+        creepy.vertices[48..168],
+        "the body, arms and legs do not move"
+    );
+    // 5 model pixels at the 1/16 entity-model scale = 0.3125 world units; the (-1, -1, 1)
+    // flip lifts the dropped inner head in world Y.
+    let shift = y_centroid(&creepy.vertices[0..24]) - y_centroid(&rest.vertices[0..24]);
+    assert!(
+        (shift.abs() - 0.3125).abs() < 1.0e-3,
+        "the inner head shifts 5px (0.3125 world) in Y: {shift}"
+    );
+}
+
+#[test]
+fn enderman_textured_mesh_drops_its_head_when_creepy() {
+    // The texture-backed enderman runs the same creepy head/hat shift. Only the inner head
+    // moves; the hat stays put and the rest of the body is byte-identical.
+    let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
+    let base = EntityModelInstance::enderman(267, [0.0, 64.0, 0.0], 0.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let creepy = entity_model_textured_mesh(&[base.with_enderman_creepy(true)], &atlas);
+    assert_ne!(
+        resting.vertices[0..24],
+        creepy.vertices[0..24],
+        "the inner head drops"
+    );
+    assert_eq!(
+        resting.vertices[24..48],
+        creepy.vertices[24..48],
+        "the hat holds its world position"
+    );
+    assert_eq!(
+        resting.vertices[48..168],
+        creepy.vertices[48..168],
+        "the body, arms and legs do not move"
+    );
+}
+
 fn enderman_texture_images() -> Vec<EntityModelTextureImage> {
     enderman_entity_texture_refs()
         .iter()

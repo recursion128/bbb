@@ -1317,6 +1317,78 @@ fn entity_model_sources_project_aggressive_for_zombie_model_family() {
 }
 
 #[test]
+fn entity_model_sources_project_enderman_carrying_and_creepy() {
+    const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
+    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
+    // Vanilla Enderman accessors: DATA_CARRY_STATE (16, OPTIONAL_BLOCK_STATE serializer 15),
+    // DATA_CREEPY (17, BOOLEAN serializer 8).
+    const CARRY_STATE_DATA_ID: u8 = 16;
+    const CREEPY_DATA_ID: u8 = 17;
+    const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
+    const BOOLEAN_SERIALIZER_ID: i32 = 8;
+
+    let source = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+    let set_carry_and_creepy =
+        |store: &mut WorldStore, id: i32, block: Option<i32>, creepy: bool| {
+            store.apply_set_entity_data(ProtocolSetEntityData {
+                id,
+                values: vec![
+                    ProtocolEntityDataValue {
+                        data_id: CARRY_STATE_DATA_ID,
+                        serializer_id: OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+                        value: EntityDataValueKind::OptionalBlockState(block),
+                    },
+                    ProtocolEntityDataValue {
+                        data_id: CREEPY_DATA_ID,
+                        serializer_id: BOOLEAN_SERIALIZER_ID,
+                        value: EntityDataValueKind::Boolean(creepy),
+                    },
+                ],
+            })
+        };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        90,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+    ));
+    // A freshly spawned enderman carries nothing and is not creepy.
+    let calm = source(&store, 90);
+    assert!(!calm.enderman_carrying);
+    assert!(!calm.enderman_creepy);
+
+    // A present carried block (non-zero state id → `Some`) poses the arms; `isCreepy` true
+    // drops the head.
+    assert!(set_carry_and_creepy(&mut store, 90, Some(10), true));
+    let primed = source(&store, 90);
+    assert!(primed.enderman_carrying);
+    assert!(primed.enderman_creepy);
+
+    // Dropping the block (empty optional) and clearing creepy returns to rest.
+    assert!(set_carry_and_creepy(&mut store, 90, None, false));
+    let rest = source(&store, 90);
+    assert!(!rest.enderman_carrying);
+    assert!(!rest.enderman_creepy);
+
+    // A zombie does not define the enderman accessors, so even if the same data ids arrive
+    // the projection is gated out and both flags stay false.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        91,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    assert!(set_carry_and_creepy(&mut store, 91, Some(10), true));
+    let zombie = source(&store, 91);
+    assert!(!zombie.enderman_carrying);
+    assert!(!zombie.enderman_creepy);
+}
+
+#[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

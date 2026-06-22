@@ -3184,13 +3184,25 @@ fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     // Vanilla `EndermanModel extends HumanoidModel`: `setupAnim` runs `super.setupAnim`
     // (the inherited arm and leg swing) then halves and clamps both the arms and the
     // legs to `[-0.4, 0.4]` (`enderman_arm_swing_pose`/`enderman_leg_swing_pose`). Arms
-    // are at [2, 3], legs at [4, 5]. The carried-block arm pose and the creepy attack
-    // pose are deferred.
-    let parts = enderman_limb_swing_parts(
+    // are at [2, 3], legs at [4, 5]. Carrying a block then *overrides* both arms
+    // (`enderman_carried_arm_pose`, held out front), and the creepy stare drops the head
+    // `y -= 5` while raising its hat child `y += 5` (`ENDERMAN_HEAD_CHILDREN_CREEPY`).
+    let mut parts = enderman_limb_swing_parts(
         head_first_colored_head_look_parts(&ENDERMAN_PARTS, instance),
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
-    );
+    )
+    .into_owned();
+    if instance.render_state.enderman_carrying {
+        for index in HUMANOID_ARM_PART_INDICES {
+            parts[index].pose = enderman_carried_arm_pose(parts[index].pose);
+        }
+    }
+    if instance.render_state.enderman_creepy {
+        let head = &mut parts[head_first_part_index()];
+        head.pose.offset[1] -= 5.0;
+        head.children = &ENDERMAN_HEAD_CHILDREN_CREEPY;
+    }
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 

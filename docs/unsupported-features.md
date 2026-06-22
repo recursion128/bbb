@@ -268,8 +268,11 @@ When an agent does any of the following, update this file in the same slice:
       pose, carried as `sleeping` with the resolved bed yaw and head offset), `scale`
       (the `SCALE`-attribute uniform model scale), `lightCoords` (block+sky packed
       light), `hasRedOverlay` (hurt/death red `OverlayTexture` flash),
-      `whiteOverlayProgress` (creeper swelling white flash), and `isAggressive`
-      (`Mob.isAggressive`, the zombie-model family's held-out-arm raise)
+      `whiteOverlayProgress` (creeper swelling white flash), `isAggressive`
+      (`Mob.isAggressive`, the zombie-model family's held-out-arm raise), and the
+      enderman `carriedBlock`-non-empty / `isCreepy` flags (carried as
+      `enderman_carrying`/`enderman_creepy`, driving the held-out arm pose and the
+      creepy head/hat shift)
     - `walkAnimationPos`/`walkAnimationSpeed` limb-swing: the client-side
       `WalkAnimationState` accumulator is implemented and tracked per living entity
       (see the dedicated bullet below), its lerped `position`/`speed` are projected
@@ -545,9 +548,13 @@ When an agent does any of the following, update this file in the same slice:
     then the enderman halves both (`*= 0.5`) and clamps them to `[-0.4, 0.4]` (arms at
     `[2, 3]`, legs at `[4, 5]`); the arm swing reuses the base
     [`humanoid_arm_swing_pose`] (the right arm — part offset `x < 0` — the half-cycle out
-    of phase, counter to the same-side leg) before the halve/clamp. Its carried-block arm
-    pose (`xRot = -0.5`, `zRot = ±0.05`) and creepy attack head/hat shift are deferred.
-    The iron golem
+    of phase, counter to the same-side leg) before the halve/clamp. Carrying a block then
+    *overrides* both arms (`enderman_carried_arm_pose`: `xRot = -0.5`, `zRot = ±0.05`, held
+    out front), and the creepy stare drops the head `y -= 5` while raising its hat child
+    `y += 5` (`ENDERMAN_HEAD_CHILDREN_CREEPY`, so the outer head layer keeps its world
+    position as the inner head opens downward) — both gated on the projected
+    `enderman_carrying`/`enderman_creepy`. Only the held block's own block-model render and
+    the creepy render jitter stay deferred. The iron golem
     (`emit_iron_golem_model` colored and `emit_iron_golem_textured_model` textured) uses
     `iron_golem_walk_pose`: `IronGolemModel` is a custom `EntityModel` whose
     `setupAnim` swings both the legs (`±1.5 * Mth.triangleWave(pos, 13) * speed`) and —
@@ -626,8 +633,9 @@ When an agent does any of the following, update this file in the same slice:
     default walk arm swing is implemented for the pillager), the `VillagerModel` unhappy
     head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
     implemented — see below), the `GoatModel` ramming head
-    tilt, the `HoglinModel` headbutt head tilt, the `EndermanModel`
-    carried-block arm pose and creepy attack pose, the `IronGolemModel`
+    tilt, the `HoglinModel` headbutt head tilt (the `EndermanModel`
+    carried-block arm pose and creepy head/hat shift are implemented — see the
+    enderman note above), the `IronGolemModel`
     attack swing and offer-flower arm pose,
     item/attack/crouch/swim/elytra poses, and the
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
@@ -1164,9 +1172,12 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
       vanilla `HumanoidModel.setupAnim` head-look yaw/pitch on the head part and
       the enderman walk animation — the inherited arm and leg swing halved and
-      clamped to `[-0.4, 0.4]` (arms `[2, 3]`, legs `[4, 5]`) — (colored and
-      textured); the carried-block layer, carried-block arm pose, creepy head
-      offset, creepy render jitter, and lighting remain unsupported
+      clamped to `[-0.4, 0.4]` (arms `[2, 3]`, legs `[4, 5]`) — plus the
+      carried-block arm pose (`enderman_carried_arm_pose`, both arms out front when
+      the projected `enderman_carrying` is set) and the creepy head/hat shift
+      (head `y -= 5` / hat `y += 5` when `enderman_creepy` is set) (colored and
+      textured); the held block's own block-model render, the creepy render
+      jitter, and lighting remain unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official
@@ -1911,8 +1922,9 @@ When an agent does any of the following, update this file in the same slice:
     presentation, skeleton armor, held-item, and animation presentation,
     creeper swelling/powered overlays,
     spider walk-animation presentation (the 180-degree death flip is implemented),
-    enderman carried-block/creepy
-    presentation, iron golem crackiness/flower/animation presentation, and
+    enderman held-block block-model render and creepy render jitter (the
+    carried-block arm pose and creepy head/hat shift are implemented),
+    iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity

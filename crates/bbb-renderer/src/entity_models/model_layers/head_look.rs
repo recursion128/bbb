@@ -483,9 +483,9 @@ pub(in crate::entity_models) fn enderman_leg_swing_pose(
 /// 0.6662 [+ π]) * 2.0 * walkAnimationSpeed * 0.5`, the right arm — part offset `x < 0`
 /// — out of phase), then the enderman halves it (`*= 0.5`) and clamps it to
 /// `[-0.4, 0.4]` exactly as it does the legs. The base arm pose carries no `xRot`, so
-/// it is set (not accumulated). The carried-block arm pose (`xRot = -0.5`, `zRot =
-/// ±0.05`) and the creepy attack head/hat shift are separate deferred animations gated
-/// on state the client does not yet track.
+/// it is set (not accumulated). When the enderman is carrying a block this swing is
+/// overridden entirely by [`enderman_carried_arm_pose`], and the creepy head/hat shift
+/// rides the head part separately.
 pub(in crate::entity_models) fn enderman_arm_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -496,6 +496,18 @@ pub(in crate::entity_models) fn enderman_arm_swing_pose(
     PartPose {
         offset: base.offset,
         rotation: [x_rot, base.rotation[1], base.rotation[2]],
+    }
+}
+
+/// Vanilla `EndermanModel.setupAnim` carried-block arm pose: when `!carriedBlock.isEmpty()`
+/// both arms are *set* (overriding the swing and its clamp) to hold the block out front —
+/// `xRot = -0.5` on both, and `zRot = +0.05` on the right arm (part offset `x < 0`) /
+/// `-0.05` on the left so they cradle inward. `yRot` and the bind offset are preserved.
+pub(in crate::entity_models) fn enderman_carried_arm_pose(base: PartPose) -> PartPose {
+    let z_rot = if base.offset[0] < 0.0 { 0.05 } else { -0.05 };
+    PartPose {
+        offset: base.offset,
+        rotation: [-0.5, base.rotation[1], z_rot],
     }
 }
 

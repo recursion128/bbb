@@ -376,6 +376,8 @@ fn entity_model_instance(
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_is_aggressive(source.is_aggressive)
+        .with_enderman_carrying(source.enderman_carrying)
+        .with_enderman_creepy(source.enderman_creepy)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
@@ -1894,6 +1896,52 @@ mod tests {
             )],
         }));
         assert!(aggressive(&world, 90));
+    }
+
+    #[test]
+    fn entity_model_instances_project_enderman_carrying_and_creepy() {
+        // Vanilla Enderman accessors: DATA_CARRY_STATE (16, OPTIONAL_BLOCK_STATE serializer
+        // 15), DATA_CREEPY (17, BOOLEAN serializer 8).
+        const CARRY_STATE_DATA_ID: u8 = 16;
+        const CREEPY_DATA_ID: u8 = 17;
+        const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            94,
+            VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let state = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+        };
+
+        // A freshly spawned enderman carries nothing and is not creepy.
+        let calm = state(&world, 94);
+        assert!(!calm.enderman_carrying);
+        assert!(!calm.enderman_creepy);
+
+        // A present carried block (`DATA_CARRY_STATE` set) and `DATA_CREEPY` project through
+        // to the held-out arm pose and the creepy head/hat shift.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 94,
+            values: vec![
+                EntityDataValue {
+                    data_id: CARRY_STATE_DATA_ID,
+                    serializer_id: OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+                    value: EntityDataValueKind::OptionalBlockState(Some(10)),
+                },
+                protocol_bool_data(CREEPY_DATA_ID, true),
+            ],
+        }));
+        let primed = state(&world, 94);
+        assert!(primed.enderman_carrying);
+        assert!(primed.enderman_creepy);
     }
 
     #[test]

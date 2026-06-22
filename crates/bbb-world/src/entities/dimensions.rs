@@ -20,6 +20,7 @@ const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 const VANILLA_ENTITY_TYPE_DOLPHIN_ID: i32 = 35;
 const VANILLA_ENTITY_TYPE_DONKEY_ID: i32 = 36;
 const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
+const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 const VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID: i32 = 58;
 const VANILLA_ENTITY_TYPE_GIANT_ID: i32 = 59;
@@ -713,6 +714,15 @@ pub(crate) fn vanilla_zombie_model_family(entity_type_id: i32) -> bool {
             | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
             | VANILLA_ENTITY_TYPE_GIANT_ID
     )
+}
+
+/// Whether the entity is rendered with the vanilla `EndermanModel`. Its `setupAnim`
+/// poses the arms forward to hold a block (`!carriedBlock.isEmpty()`) and drops the
+/// head/raises the hat when staring at a player (`isCreepy`), so the carried-block and
+/// creepy projections are gated to this one type — the synced `DATA_CARRY_STATE` /
+/// `DATA_CREEPY` accessors only exist on the enderman.
+pub(crate) fn vanilla_is_enderman(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_ENDERMAN_ID
 }
 
 fn scales_with_living_scale_attribute(

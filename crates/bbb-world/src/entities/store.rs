@@ -18,9 +18,9 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_is_baby, vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
-    vanilla_render_scale, vanilla_zombie_model_family, ENTITY_DATA_POSE_ID,
-    VANILLA_POSE_SLEEPING_ID,
+    vanilla_is_baby, vanilla_is_enderman, vanilla_living_entity_type,
+    vanilla_pick_bounds_for_entity_data, vanilla_render_scale, vanilla_zombie_model_family,
+    ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -47,6 +47,14 @@ const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 /// Vanilla `Mob.MOB_FLAG_AGGRESSIVE` (4): the `DATA_MOB_FLAGS_ID` bit set while a mob is
 /// in its aggressive AI state (`Mob.isAggressive`).
 const MOB_FLAG_AGGRESSIVE: i8 = 4;
+
+/// Vanilla `Enderman.DATA_CARRY_STATE` data id (16): the optional carried `BlockState`.
+/// The enderman is the first `Monster` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
+const VANILLA_ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
+
+/// Vanilla `Enderman.DATA_CREEPY` data id (17): the boolean staring/aggressive flag,
+/// defined right after `DATA_CARRY_STATE` (16).
+const VANILLA_ENDERMAN_CREEPY_DATA_ID: u8 = 17;
 
 /// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
@@ -271,6 +279,25 @@ impl EntityStore {
         )
     }
 
+    /// Whether the `OPTIONAL_BLOCK_STATE` accessor at `data_id` carries a present block
+    /// (the protocol decodes id `0` to `None`), mirroring vanilla `Optional::isPresent`.
+    /// `false` when absent or never synced.
+    fn metadata_optional_block_state_present(&self, id: i32, data_id: u8) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::OptionalBlockState(state) => Some(state.is_some()),
+                    _ => None,
+                })
+                .unwrap_or(false),
+        )
+    }
+
     pub(crate) fn pose(&self, id: i32) -> Option<i32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
@@ -422,6 +449,19 @@ impl EntityStore {
                 .unwrap_or(0)
                 & MOB_FLAG_AGGRESSIVE
                 != 0;
+        // Vanilla `EndermanModel.setupAnim`: a carried block (`!carriedBlock.isEmpty()`,
+        // the synced `DATA_CARRY_STATE`) poses both arms forward, and `isCreepy` (the
+        // synced `DATA_CREEPY`) drops the head / raises the hat. Only the enderman defines
+        // these accessors, so the projections are gated to it and default off otherwise.
+        let is_enderman = vanilla_is_enderman(identity.entity_type_id);
+        let enderman_carrying = is_enderman
+            && self
+                .metadata_optional_block_state_present(id, VANILLA_ENDERMAN_CARRY_STATE_DATA_ID)
+                .unwrap_or(false);
+        let enderman_creepy = is_enderman
+            && self
+                .metadata_bool(id, VANILLA_ENDERMAN_CREEPY_DATA_ID, false)
+                .unwrap_or(false);
         // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
@@ -471,6 +511,8 @@ impl EntityStore {
             age_ticks: client_animations.animations.age_ticks,
             is_fully_frozen,
             is_aggressive,
+            enderman_carrying,
+            enderman_creepy,
             is_auto_spin_attack,
             is_upside_down,
             bounding_box_height,

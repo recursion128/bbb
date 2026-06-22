@@ -126,6 +126,14 @@ pub struct EntityRenderState {
     /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs
     /// `-π / 2.25` calm). `false` for every calm or non-zombie-family entity.
     pub is_aggressive: bool,
+    /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
+    /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
+    /// ±0.05`). `false` for every other entity.
+    pub enderman_carrying: bool,
+    /// Vanilla `EndermanRenderState.isCreepy`: the enderman is staring at a player, so
+    /// `EndermanModel.setupAnim` drops the head (`y -= 5`) and raises the hat (`y += 5`)
+    /// into the open-mouth screech pose. `false` for every other entity.
+    pub enderman_creepy: bool,
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -194,6 +202,8 @@ impl EntityRenderState {
             walk_animation_speed: 0.0,
             age_in_ticks: 0.0,
             is_aggressive: false,
+            enderman_carrying: false,
+            enderman_creepy: false,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
             squid_tentacle_angle: 0.0,
@@ -345,6 +355,16 @@ impl EntityModelInstance {
 
     pub fn with_is_aggressive(mut self, is_aggressive: bool) -> Self {
         self.render_state.is_aggressive = is_aggressive;
+        self
+    }
+
+    pub fn with_enderman_carrying(mut self, enderman_carrying: bool) -> Self {
+        self.render_state.enderman_carrying = enderman_carrying;
+        self
+    }
+
+    pub fn with_enderman_creepy(mut self, enderman_creepy: bool) -> Self {
+        self.render_state.enderman_creepy = enderman_creepy;
         self
     }
 
@@ -1216,6 +1236,8 @@ mod tests {
                 walk_animation_speed: 0.0,
                 age_in_ticks: 0.0,
                 is_aggressive: false,
+                enderman_carrying: false,
+                enderman_creepy: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 squid_tentacle_angle: 0.0,

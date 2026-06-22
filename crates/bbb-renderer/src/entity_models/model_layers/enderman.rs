@@ -41,6 +41,20 @@ pub(in crate::entity_models) const ENDERMAN_HEAD_CHILDREN: [ModelPartDesc; 1] = 
     children: &[],
 }];
 
+/// Vanilla `EndermanModel.setupAnim` `isCreepy` branch: the head is dropped `y -= 5` while
+/// the hat (this child) is raised `y += 5`, so the outer head layer keeps its world
+/// position as the inner head opens downward into the screech pose. Swapped in for
+/// [`ENDERMAN_HEAD_CHILDREN`] when the enderman is creepy.
+pub(in crate::entity_models) const ENDERMAN_HEAD_CHILDREN_CREEPY: [ModelPartDesc; 1] =
+    [ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 5.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ENDERMAN_HAT,
+        children: &[],
+    }];
+
 // Vanilla 26.1 EndermanModel.createBodyLayer().
 pub(in crate::entity_models) const ENDERMAN_PARTS: [ModelPartDesc; 6] = [
     ModelPartDesc {
@@ -117,6 +131,18 @@ pub(in crate::entity_models) const ENDERMAN_TEXTURED_HEAD_CHILDREN: [TexturedMod
         cubes: &ENDERMAN_TEXTURED_HAT,
         children: &[],
     }];
+
+/// Vanilla `EndermanModel.setupAnim` `isCreepy` hat raise (`y += 5`), the textured
+/// counterpart to [`ENDERMAN_HEAD_CHILDREN_CREEPY`].
+pub(in crate::entity_models) const ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY: [TexturedModelPartDesc;
+    1] = [TexturedModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, 5.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &ENDERMAN_TEXTURED_HAT,
+    children: &[],
+}];
 
 pub(in crate::entity_models) const ENDERMAN_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
     [TexturedModelCubeDesc {
