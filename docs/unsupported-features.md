@@ -1634,6 +1634,23 @@ When an agent does any of the following, update this file in the same slice:
       the limb swing match the zombie (the giant extracts the same `ZombieRenderState`). The
       `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie texture-backed path are deferred (this is a
       colored-first slice; the giant reuses the zombie body tints)
+    - end crystal entities as renderer-owned vanilla 26.1 `EndCrystalModel.createBodyLayer()` geometry on
+      the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `45` to the new
+      `EntityModelKind::EndCrystal`, replacing the former placeholder bounds box. The static rest-pose
+      hierarchy is emitted directly (atlas 64×32): the 12×4×12 base slab at the model origin plus the nested
+      glass stack at `offset(0, 24, 0)` — the unscaled 8×8×8 `outer_glass`, the `inner_glass` at
+      `PartPose.ZERO.withScale(0.875)` (a centred 7×7×7 box), and the core `cube` at the cumulative
+      `0.875 · 0.765625 = 0.669921875` scale (a centred 5.359375³ box) — four cubes. Because the three glass
+      boxes share the `(0, 24, 0)` centre and the rest pose has no rotation, the per-part `withScale` is
+      baked into the centred cube dimensions (a scaled centred cube is a smaller centred cube), exactly
+      reproducing the static pose. `EndCrystalRenderer` is a plain `EntityRenderer` (not a
+      `LivingEntityRenderer`, so no body-yaw / setup-rotations flip), applying only `scale(2.0)` +
+      `translate(0, -0.5, 0)`; this is captured by the dedicated `end_crystal_model_root_transform`. Every
+      `EndCrystalModel.setupAnim` motion is deferred — the `outer_glass`/`inner_glass`/`cube` diagonal spin
+      (`Axis.YP.rotationDegrees(ageInTicks · 3) · ...`), the `EndCrystalRenderer.getY` vertical bob, the
+      `base.visible = showsBottom` toggle (the base is emitted at its default-visible rest), and the
+      `submitCrystalBeams` beam to the dragon. The texture-backed path is deferred, so the colored debug path
+      renders the magenta glass, the bright core, and the dark base with three tints
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

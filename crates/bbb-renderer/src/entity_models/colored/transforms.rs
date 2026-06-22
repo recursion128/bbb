@@ -129,6 +129,19 @@ pub(in crate::entity_models) fn entity_flip_degrees(kind: EntityModelKind) -> f3
     }
 }
 
+/// Vanilla `EndCrystalRenderer.submit`: a plain `EntityRenderer` (not `LivingEntityRenderer`), so
+/// there is no body-yaw / `setupRotations` flip. The model is authored right-side-up (the base at
+/// model-y `0..4`, the glass orbiting at model-y `24`), and the renderer applies only
+/// `poseStack.scale(2.0)` then `poseStack.translate(0, -0.5, 0)` before submitting the model. The
+/// procedural spin and the `getY` vertical bob are deferred, so this is the static transform.
+pub(in crate::entity_models) fn end_crystal_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_scale(Vec3::splat(2.0))
+        * Mat4::from_translation(Vec3::new(0.0, -0.5, 0.0))
+}
+
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))

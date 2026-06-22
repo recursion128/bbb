@@ -18,11 +18,12 @@ use super::selection::{
 };
 use super::transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,
-    entity_model_root_transform, ghast_model_root_transform, happy_ghast_model_root_transform,
-    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
-    phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, salmon_model_root_transform, scaled_model_root_transform,
-    slime_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
+    end_crystal_model_root_transform, entity_model_root_transform, ghast_model_root_transform,
+    happy_ghast_model_root_transform, magma_cube_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
+    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
+    salmon_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
+    squid_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
     HUSK_SCALE,
 };
@@ -216,6 +217,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Giant => {
                 // Colored-only so far (no texture-backed giant yet), so this arm always emits.
                 emit_giant_model(&mut mesh, *instance);
+            }
+            EntityModelKind::EndCrystal => {
+                // Colored-only so far (no texture-backed end crystal yet), so this arm always emits.
+                emit_end_crystal_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -1474,6 +1479,15 @@ fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         &parts,
         mesh_transformer_scaled_model_root_transform(instance, GIANT_SCALE),
     );
+}
+
+fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `EndCrystalModel` is the base slab plus the concentric glass/core stack (the per-part
+    // `withScale` baked into the cube dimensions). The diagonal spin, the vertical bob, and the
+    // `showsBottom` toggle are deferred, so the bind-pose part tree is emitted at the static
+    // `EndCrystalRenderer` transform (`scale(2.0)` + `translate(0, -0.5, 0)`, no living flip).
+    let root = end_crystal_model_root_transform(instance);
+    emit_model_parts(mesh, &END_CRYSTAL_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

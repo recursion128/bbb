@@ -711,7 +711,7 @@ fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => EntityModelKind::Guardian { elder: true },
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => placeholder("todo_end_crystal_bounds", 2.0, 2.0, 2.0),
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => EntityModelKind::EndCrystal,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => {
             placeholder("todo_evoker_fangs_bounds", 0.5, 0.8, 0.5)
         }
@@ -3940,6 +3940,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_GIANT_ID, &[]),
             EntityModelKind::Giant
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_end_crystal_to_real_model() {
+        // The end crystal was a placeholder bounds box; it now resolves to the real `EndCrystalModel`
+        // at its rest pose. The diagonal spin, the vertical bob, the `showsBottom` base toggle, and
+        // the beam to the dragon are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, &[]),
+            EntityModelKind::EndCrystal
         );
     }
 

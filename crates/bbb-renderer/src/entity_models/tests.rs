@@ -18,6 +18,7 @@ mod creaking;
 mod creeper;
 mod death;
 mod dolphin;
+mod end_crystal;
 mod enderman;
 mod endermite;
 mod equine;

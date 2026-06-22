@@ -147,6 +147,10 @@ pub enum EntityModelKind {
     /// The head look and limb swing match the zombie; the armor / item-in-hand layers and the
     /// zombie texture are deferred.
     Giant,
+    /// `EndCrystalModel` at its `createBodyLayer` rest pose (the base slab plus the nested glass /
+    /// core boxes, scaled 2× by `EndCrystalRenderer`). The diagonal spin, the vertical bob, the
+    /// `showsBottom` base toggle, and the beam to the dragon are deferred.
+    EndCrystal,
     Phantom {
         size: i32,
     },

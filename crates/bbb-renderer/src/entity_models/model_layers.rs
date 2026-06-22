@@ -73,6 +73,9 @@ pub(super) const SHULKER_SHELL: [f32; 4] = [0.55, 0.45, 0.58, 1.0];
 pub(super) const SHULKER_HEAD: [f32; 4] = [0.82, 0.74, 0.42, 1.0];
 pub(super) const WITHER_BODY: [f32; 4] = [0.22, 0.22, 0.24, 1.0];
 pub(super) const WITHER_HEAD: [f32; 4] = [0.32, 0.32, 0.34, 1.0];
+pub(super) const END_CRYSTAL_GLASS: [f32; 4] = [0.72, 0.45, 0.80, 1.0];
+pub(super) const END_CRYSTAL_CORE: [f32; 4] = [0.95, 0.55, 0.90, 1.0];
+pub(super) const END_CRYSTAL_BASE: [f32; 4] = [0.32, 0.30, 0.36, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -133,6 +136,7 @@ mod cow;
 mod creaking;
 mod creeper;
 mod dolphin;
+mod end_crystal;
 mod enderman;
 mod endermite;
 mod equine;
@@ -194,6 +198,7 @@ pub(super) use cow::*;
 pub(super) use creaking::*;
 pub(super) use creeper::*;
 pub(super) use dolphin::*;
+pub(super) use end_crystal::*;
 pub(super) use enderman::*;
 pub(super) use endermite::*;
 pub(super) use equine::*;

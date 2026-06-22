@@ -92,6 +92,7 @@ impl EntityModelKind {
             Self::Shulker => "shulker",
             Self::Wither => "wither",
             Self::Giant => "giant",
+            Self::EndCrystal => "end_crystal",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",
