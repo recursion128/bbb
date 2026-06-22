@@ -471,6 +471,12 @@ impl EntityStore {
             // Vanilla `Entity.onGround()`: the last synced movement ground flag (default
             // `false` until a movement packet sets it).
             on_ground: transform.on_ground.unwrap_or(false),
+            // Vanilla `DolphinRenderState.isMoving` (`getDeltaMovement().horizontalDistanceSqr() >
+            // 1.0e-7`): projected from the synced velocity.
+            is_moving: {
+                let delta = transform.delta_movement;
+                delta.x * delta.x + delta.z * delta.z > 1.0e-7
+            },
             has_red_overlay: client_animations.animations.has_red_overlay(),
             death_time: client_animations.animations.death_time(partial_ticks),
             creeper_swelling: client_animations.animations.creeper_swelling(partial_ticks),

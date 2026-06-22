@@ -372,6 +372,7 @@ fn entity_model_instance(
         .with_scale(source.scale)
         .with_in_water(source.in_water)
         .with_on_ground(source.on_ground)
+        .with_is_moving(source.is_moving)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -702,7 +703,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
         VANILLA_ENTITY_TYPE_COD_ID => EntityModelKind::Cod,
         VANILLA_ENTITY_TYPE_CREAKING_ID => placeholder("todo_creaking_bounds", 0.9, 2.7, 0.9),
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID => placeholder("todo_dolphin_bounds", 0.9, 0.6, 0.9),
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID => EntityModelKind::Dolphin {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
             placeholder("todo_elder_guardian_bounds", 1.9975, 1.9975, 1.9975)
         }
@@ -2986,6 +2989,25 @@ mod tests {
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
             EntityModelKind::Bee { baby: true }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_dolphin_baby_from_data() {
+        // The dolphin was a placeholder render box; it now resolves to the real `DolphinModel`,
+        // keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default adult). Its swim body
+        // tilt / tail wave reads the projected `isMoving` (the synced velocity); the held-item
+        // carry layer is deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_DOLPHIN_ID, &[]),
+            EntityModelKind::Dolphin { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Dolphin { baby: true }
         );
     }
 

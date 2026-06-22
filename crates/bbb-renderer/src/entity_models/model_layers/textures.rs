@@ -258,6 +258,18 @@ pub(in crate::entity_models) const BREEZE_TEXTURE_REF: EntityModelTextureRef =
         size: [32, 32],
     };
 
+// Vanilla `DolphinRenderer` textures (adult and baby share the same 64×64 geometry).
+pub(in crate::entity_models) const DOLPHIN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/dolphin/dolphin.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const DOLPHIN_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/dolphin/dolphin_baby.png",
+        size: [64, 64],
+    };
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",

@@ -382,6 +382,12 @@ pub struct EntityModelSourceState {
     /// `false` (the vanilla `Entity.onGround` default) until a movement packet sets it.
     #[serde(default)]
     pub on_ground: bool,
+    /// Vanilla `DolphinRenderState.isMoving` (`Entity.getDeltaMovement().horizontalDistanceSqr() >
+    /// 1.0e-7`): whether the entity is moving horizontally, projected from the synced
+    /// `delta_movement`. Drives the `DolphinModel.setupAnim` swim body tilt / tail wave. `false`
+    /// for a stationary entity (and any entity whose velocity has not been synced).
+    #[serde(default)]
+    pub is_moving: bool,
     /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0 ||
     /// deathTime > 0`): drives the red damage overlay pass.
     #[serde(default)]

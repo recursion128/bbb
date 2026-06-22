@@ -162,6 +162,9 @@ fn entity_model_mesh_with_options(
                     emit_breeze_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Dolphin { baby } => {
+                emit_dolphin_model(&mut mesh, *instance, baby);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1201,6 +1204,75 @@ fn emit_breeze_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
     emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_1_POSE, &BREEZE_ROD);
     emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_2_POSE, &BREEZE_ROD);
     emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_3_POSE, &BREEZE_ROD);
+}
+
+/// The bind pose of the dolphin `body` part with the `DolphinModel.setupAnim` rotations applied:
+/// the body steers by the look pitch/yaw, and while moving it adds the swim tilt. Returns the
+/// animated body pose plus the tail and tail-fin pitches (which also depend on the move state).
+fn dolphin_body_pose(
+    instance: EntityModelInstance,
+    moving: bool,
+) -> (PartPose, [f32; 3], [f32; 3]) {
+    let age = instance.render_state.age_in_ticks;
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+    let wave = dolphin_wave(age);
+    let body_x_rot = head_pitch + if moving { -0.05 - 0.05 * wave } else { 0.0 };
+    let body_pose = PartPose {
+        offset: DOLPHIN_BODY_POSE.offset,
+        rotation: [body_x_rot, head_yaw, 0.0],
+    };
+    // Moving overrides the tail's bind pitch with the wave; the tail fin is `0` at rest.
+    let tail_rotation = [
+        if moving {
+            -0.1 * wave
+        } else {
+            DOLPHIN_TAIL_BIND_X_ROT
+        },
+        0.0,
+        0.0,
+    ];
+    let tail_fin_rotation = [if moving { -0.2 * wave } else { 0.0 }, 0.0, 0.0];
+    (body_pose, tail_rotation, tail_fin_rotation)
+}
+
+fn emit_dolphin_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    // Vanilla `DolphinModel.setupAnim` steers the `body` part by the look pitch/yaw and, while
+    // moving, adds the swim body tilt and the tail / tail-fin wave (`cos(ageInTicks · 0.3)`). The
+    // baby uses the `MeshTransformer.scaling(0.5)` body layer, composed innermost. The held-item
+    // carry layer is deferred entity-side state. Dolphin uses `LivingEntityRenderer.setupRotations`.
+    let moving = instance.render_state.is_moving;
+    let root = mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
+    let (body_pose, tail_rotation, tail_fin_rotation) = dolphin_body_pose(instance, moving);
+
+    // Body (root child) carries the fins, the tail chain, and the head chain.
+    let body_t = root * part_pose_transform(body_pose);
+    emit_model_cubes_at_pose(mesh, body_t, PART_POSE_ZERO, &DOLPHIN_BODY);
+    emit_model_cubes_at_pose(mesh, body_t, DOLPHIN_BACK_FIN_POSE, &DOLPHIN_BACK_FIN);
+    emit_model_cubes_at_pose(mesh, body_t, DOLPHIN_LEFT_FIN_POSE, &DOLPHIN_SIDE_FIN);
+    emit_model_cubes_at_pose(mesh, body_t, DOLPHIN_RIGHT_FIN_POSE, &DOLPHIN_SIDE_FIN);
+
+    // Tail (body child) carries the tail fin; both pitch with the swim wave while moving.
+    let tail_pose = PartPose {
+        offset: DOLPHIN_TAIL_POSE.offset,
+        rotation: tail_rotation,
+    };
+    let tail_t = body_t * part_pose_transform(tail_pose);
+    emit_model_cubes_at_pose(mesh, body_t, tail_pose, &DOLPHIN_TAIL);
+    emit_model_cubes_at_pose(
+        mesh,
+        tail_t,
+        PartPose {
+            offset: DOLPHIN_TAIL_FIN_POSE.offset,
+            rotation: tail_fin_rotation,
+        },
+        &DOLPHIN_TAIL_FIN,
+    );
+
+    // Head (body child) carries the nose.
+    let head_t = body_t * part_pose_transform(DOLPHIN_HEAD_POSE);
+    emit_model_cubes_at_pose(mesh, body_t, DOLPHIN_HEAD_POSE, &DOLPHIN_HEAD);
+    emit_model_cubes_at_pose(mesh, head_t, DOLPHIN_NOSE_POSE, &DOLPHIN_NOSE);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

@@ -87,6 +87,13 @@ pub enum EntityModelKind {
     /// translucent wind layer, the emissive eyes, and the shoot/slide/inhale/jump action animations
     /// are deferred entity-side state.
     Breeze,
+    /// Dolphin (`DolphinModel`, `DolphinRenderer`). The procedural `DolphinModel.setupAnim` steers
+    /// the body by the look pitch/yaw and, while moving (`isMoving`, the synced velocity), adds the
+    /// swim body tilt and tail/tail-fin wave. The baby uses the `MeshTransformer.scaling(0.5)` body
+    /// layer. The held-item carry layer is deferred entity-side state.
+    Dolphin {
+        baby: bool,
+    },
     Phantom {
         size: i32,
     },

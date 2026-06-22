@@ -998,6 +998,59 @@ fn entity_model_sources_project_on_ground_from_movement() {
 }
 
 #[test]
+fn entity_model_sources_project_is_moving_from_velocity() {
+    // Vanilla `DolphinRenderState.isMoving` (`getDeltaMovement().horizontalDistanceSqr() > 1e-7`):
+    // the scene projects the entity's synced velocity into the swim-animation gate.
+    const VANILLA_ENTITY_TYPE_DOLPHIN_ID: i32 = 35;
+
+    let is_moving = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 61)
+            .unwrap()
+            .is_moving
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        61,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+    ));
+    assert!(
+        !is_moving(&store),
+        "a freshly spawned entity defaults to not moving"
+    );
+
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 61,
+        delta_movement: ProtocolVec3d {
+            x: 0.1,
+            y: 0.5,
+            z: -0.1,
+        },
+    }));
+    assert!(
+        is_moving(&store),
+        "a horizontal velocity above 1e-7 projects is_moving"
+    );
+
+    // A purely vertical velocity (`horizontalDistanceSqr == 0`) is not moving.
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 61,
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.5,
+            z: 0.0,
+        },
+    }));
+    assert!(
+        !is_moving(&store),
+        "a purely vertical velocity is not horizontally moving"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 

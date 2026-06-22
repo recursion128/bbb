@@ -14,6 +14,7 @@ mod cod;
 mod cow;
 mod creeper;
 mod death;
+mod dolphin;
 mod enderman;
 mod endermite;
 mod equine;

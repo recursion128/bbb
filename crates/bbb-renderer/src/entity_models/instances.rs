@@ -154,6 +154,10 @@ pub struct EntityRenderState {
     /// vanilla `TurtleRenderer` `isOnLand = !isInWater && onGround` walk/swim leg branch.
     /// `false` (the Java default) for every entity until the entity scene projects it.
     pub on_ground: bool,
+    /// Vanilla `DolphinRenderState.isMoving` (`getDeltaMovement().horizontalDistanceSqr() >
+    /// 1e-7`): drives the `DolphinModel.setupAnim` swim body tilt / tail wave. `false` for a
+    /// stationary entity until the entity scene projects it.
+    pub is_moving: bool,
 }
 
 impl EntityRenderState {
@@ -186,6 +190,7 @@ impl EntityRenderState {
             squid_z_body_rot: 0.0,
             in_water: false,
             on_ground: false,
+            is_moving: false,
         }
     }
 
@@ -345,6 +350,11 @@ impl EntityModelInstance {
 
     pub fn with_on_ground(mut self, on_ground: bool) -> Self {
         self.render_state.on_ground = on_ground;
+        self
+    }
+
+    pub fn with_is_moving(mut self, is_moving: bool) -> Self {
+        self.render_state.is_moving = is_moving;
         self
     }
 
@@ -554,6 +564,15 @@ impl EntityModelInstance {
 
     pub fn breeze(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Breeze, position, y_rot)
+    }
+
+    pub fn dolphin(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Dolphin { baby },
+            position,
+            y_rot,
+        )
     }
 
     pub fn phantom(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
@@ -1082,6 +1101,7 @@ mod tests {
                 squid_z_body_rot: 0.0,
                 in_water: false,
                 on_ground: false,
+                is_moving: false,
             }
         );
     }
