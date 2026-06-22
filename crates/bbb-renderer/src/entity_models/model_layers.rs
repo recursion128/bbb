@@ -67,6 +67,8 @@ pub(super) const AXOLOTL_BODY: [f32; 4] = [0.93, 0.66, 0.78, 1.0];
 pub(super) const AXOLOTL_GILLS: [f32; 4] = [0.96, 0.45, 0.60, 1.0];
 pub(super) const TADPOLE_BODY: [f32; 4] = [0.24, 0.20, 0.18, 1.0];
 pub(super) const TADPOLE_TAIL: [f32; 4] = [0.34, 0.30, 0.28, 1.0];
+pub(super) const PARROT_BODY: [f32; 4] = [0.80, 0.20, 0.18, 1.0];
+pub(super) const PARROT_BEAK: [f32; 4] = [0.20, 0.20, 0.22, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -141,6 +143,7 @@ mod hoglin;
 mod illager;
 mod llama;
 mod minecart;
+mod parrot;
 mod phantom;
 mod pig;
 mod piglin;
@@ -199,6 +202,7 @@ pub(super) use hoglin::*;
 pub(super) use illager::*;
 pub(super) use llama::*;
 pub(super) use minecart::*;
+pub(super) use parrot::*;
 pub(super) use phantom::*;
 pub(super) use pig::*;
 pub(super) use piglin::*;

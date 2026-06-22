@@ -34,6 +34,7 @@ mod keyframe;
 mod limb_swing;
 mod llama;
 mod minecart;
+mod parrot;
 mod phantom;
 mod pig;
 mod piglin;

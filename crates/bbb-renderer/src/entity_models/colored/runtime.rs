@@ -200,6 +200,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed tadpole yet), so this arm always emits.
                 emit_tadpole_model(&mut mesh, *instance);
             }
+            EntityModelKind::Parrot => {
+                // Colored-only so far (no texture-backed parrot yet), so this arm always emits.
+                emit_parrot_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1409,6 +1413,16 @@ fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     // Tadpole uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &TADPOLE_PARTS, root);
+}
+
+fn emit_parrot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `ParrotModel` is seven static sibling parts (body, tail, wings, head with its beak /
+    // crest children, legs) at their baked rest poses. All of `ParrotModel.setupAnim` (the head
+    // look, the per-pose `prepare` offsets, the leg/tail walk swing, the wing flap, the flap bob,
+    // and the PARTY dance) is deferred, so the STANDING bind-pose part tree is emitted directly.
+    // Parrot uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &PARROT_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

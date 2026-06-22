@@ -131,6 +131,10 @@ pub enum EntityModelKind {
     /// `TadpoleModel` at its `createBodyLayer` rest pose. The tail yaw sway (`tail.yRot`) is
     /// deferred.
     Tadpole,
+    /// `ParrotModel` at its `createBodyLayer` STANDING rest pose. The head look, the per-pose
+    /// `prepare` offsets, the leg walk swing, the wing flap, the flap bob, the PARTY dance, and the
+    /// five color variants are deferred.
+    Parrot,
     Phantom {
         size: i32,
     },

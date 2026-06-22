@@ -773,7 +773,7 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_ominous_item_spawner_bounds", 0.25, 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
-        VANILLA_ENTITY_TYPE_PARROT_ID => placeholder("todo_parrot_bounds", 0.5, 0.9, 0.5),
+        VANILLA_ENTITY_TYPE_PARROT_ID => EntityModelKind::Parrot,
         VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {
             size: phantom_size(data_values),
         },
@@ -3895,6 +3895,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_TADPOLE_ID, &[]),
             EntityModelKind::Tadpole
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_parrot_to_real_model() {
+        // The parrot was a placeholder bounds box; it now resolves to the real `ParrotModel` at its
+        // STANDING rest pose. The head look, per-pose offsets, wing flap / dance animations, and the
+        // five color variants are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[]),
+            EntityModelKind::Parrot
         );
     }
 

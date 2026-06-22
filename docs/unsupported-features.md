@@ -1582,6 +1582,19 @@ When an agent does any of the following, update this file in the same slice:
       sin(0.3 * ageInTicks)`, amplitude `1.0` in water / `1.5` on land), is deferred. The texture-backed
       path remains unsupported (this is a colored-first slice; the colored debug path approximates the body
       with one dark tint and the tail fin with a lighter tint)
+    - parrot entities as renderer-owned vanilla 26.1 `ParrotModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `98` to the new
+      `EntityModelKind::Parrot`, replacing the former placeholder bounds box. The static STANDING rest-pose
+      hierarchy is emitted directly (atlas 32×32): seven sibling root parts — the 3×6×3 body (pitched
+      0.4937 rad), the 3×4×1 tail (pitched 1.015 rad), the two 1×5×3 wings (pitched -0.6981 rad and flipped
+      `yRot = -π`), the 2×3×2 head, and the two 1×2×1 legs (pitched -0.0299 rad) — with the head parenting
+      the 2×1×4 upper-head block, the two 1×2×1 beak halves, and the 0×5×4 crest feather (pitched -0.2214
+      rad) — eleven cubes. Every `ParrotModel.setupAnim` motion is deferred: the head look (`head.xRot/yRot`),
+      the per-pose `prepare` offsets (the FLYING leg pitch, the SITTING crouch), the leg/tail walk swing, the
+      wing flap (`zRot = ±(0.0873 + flapAngle)`), the body/tail/head flap bob, and the PARTY dance. The five
+      `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) live on the deferred
+      texture-backed path, so the colored debug path renders one body tint plus a beak tint. The
+      texture-backed path remains unsupported (this is a colored-first slice)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the
