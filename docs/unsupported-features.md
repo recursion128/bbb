@@ -1520,6 +1520,20 @@ When an agent does any of the following, update this file in the same slice:
       / scenting keyframe animations. The texture-backed path remains unsupported (this is a
       colored-first slice; the colored debug path approximates the body with one brown tint and the
       nose pad with a pink tint)
+    - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `142` to the
+      new `EntityModelKind::Warden`, replacing the former placeholder bounds box. The static rest-pose
+      hierarchy is emitted directly (atlas 128×128): the `bone` part at `offset(0, 24, 0)` parents the
+      body (the 18×21×11 torso) and the two 6×13×6 legs (differing only in X origin, ±5.9); the body
+      parents the two 9×21×0 ribcage planes, the head (16×16×10 skull) and the two mirrored 8×28×8
+      arms; the head parents the two 16×16×0 tendril planes — ten cubes. Every `WardenModel.setupAnim`
+      animation is deferred: the head look (`head.xRot/yRot`), the walk (`animateWalk`), the idle-pose
+      wobble (`animateIdlePose`), the tendril sway (`animateTendrils`), and the attack / sonic-boom /
+      digging / emerging / roar / sniff keyframe animations. The four emissive overlay layers
+      (`WardenEmissiveLayer` for the tendrils, heart, bioluminescent spots, and pulsating spots, each
+      keyed off the danger/heartbeat/anger animation state) are deferred. The texture-backed path
+      remains unsupported (this is a colored-first slice; the colored debug path approximates the body
+      with one dark-teal tint and the tendrils with a brighter cyan tint)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

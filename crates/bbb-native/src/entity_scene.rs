@@ -818,7 +818,7 @@ fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex,
-        VANILLA_ENTITY_TYPE_WARDEN_ID => placeholder("todo_warden_bounds", 0.9, 2.9, 0.9),
+        VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => {
             placeholder("todo_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
         }
@@ -3828,6 +3828,18 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SNIFFER_ID, &[]),
             EntityModelKind::Sniffer
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_warden_to_real_model() {
+        // The warden was a placeholder bounds box; it now resolves to the real `WardenModel` at its
+        // rest pose. The head look, walk, idle wobble, tendril sway, and the attack / sonic-boom /
+        // digging / emerge / roar / sniff keyframe animations — plus the four emissive overlay
+        // layers — are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WARDEN_ID, &[]),
+            EntityModelKind::Warden
         );
     }
 

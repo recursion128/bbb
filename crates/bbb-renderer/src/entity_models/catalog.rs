@@ -110,6 +110,10 @@ pub enum EntityModelKind {
     /// `SnifferModel` at its `createBodyLayer` rest pose. The head look, search/walk, and the
     /// dig / long-sniff / stand-up / happy / scenting keyframe animations are deferred.
     Sniffer,
+    /// `WardenModel` at its `createBodyLayer` rest pose. The head look, walk, idle wobble,
+    /// tendril sway, the attack / sonic-boom / digging / emerge / roar / sniff keyframe
+    /// animations, and the four emissive overlay layers are deferred.
+    Warden,
     Phantom {
         size: i32,
     },

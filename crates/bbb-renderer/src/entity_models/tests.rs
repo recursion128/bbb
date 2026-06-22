@@ -55,6 +55,7 @@ mod turtle;
 mod upside_down;
 mod vex;
 mod villager;
+mod warden;
 mod witch;
 mod wolf;
 mod zombie;

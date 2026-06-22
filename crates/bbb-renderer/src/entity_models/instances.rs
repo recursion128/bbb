@@ -604,6 +604,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Sniffer, position, y_rot)
     }
 
+    pub fn warden(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Warden, position, y_rot)
+    }
+
     pub fn phantom(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
         Self::new(
             entity_id,

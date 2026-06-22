@@ -184,6 +184,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed sniffer yet), so this arm always emits.
                 emit_sniffer_model(&mut mesh, *instance);
             }
+            EntityModelKind::Warden => {
+                // Colored-only so far (no texture-backed warden yet), so this arm always emits.
+                emit_warden_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1345,6 +1349,15 @@ fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     // directly. Sniffer uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &SNIFFER_PARTS, root);
+}
+
+fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `WardenModel` is a static nested hierarchy at rest (`bone` → body/legs, body →
+    // ribcages/head/arms, head → tendrils). All of `WardenModel.setupAnim` (head look, walk,
+    // idle wobble, tendril sway, and the action keyframe animations) is deferred, so the
+    // bind-pose part tree is emitted directly. Warden uses `LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &WARDEN_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

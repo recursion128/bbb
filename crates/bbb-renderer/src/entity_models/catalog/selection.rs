@@ -82,6 +82,7 @@ impl EntityModelKind {
             Self::Frog => "frog",
             Self::Creaking => "creaking",
             Self::Sniffer => "sniffer",
+            Self::Warden => "warden",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",
