@@ -235,6 +235,37 @@ fn tropical_fish_shape_from_vanilla_base_id() {
 }
 
 #[test]
+fn tropical_fish_shape_from_vanilla_packed_variant() {
+    // `TropicalFish.getPattern(packed).base()`: pattern id is the low 16 bits, packed as
+    // `base.id | index << 8`. The default variant `0` (KOB/white/white) is the small body.
+    assert_eq!(
+        TropicalFishModelShape::from_vanilla_packed_variant(0),
+        TropicalFishModelShape::Small
+    );
+    // FLOPPER = LARGE base (id 1), index 0 → packed pattern `0x0001`. With color bytes set
+    // (base/pattern color in the high bytes) the shape decode ignores them.
+    assert_eq!(
+        TropicalFishModelShape::from_vanilla_packed_variant(0x0405_0001),
+        TropicalFishModelShape::Large
+    );
+    // CLAYFISH = LARGE base, index 5 → `0x0501`; BETTY index 4 → `0x0401`.
+    assert_eq!(
+        TropicalFishModelShape::from_vanilla_packed_variant(0x0501),
+        TropicalFishModelShape::Large
+    );
+    // SPOTTY = SMALL base, index 5 → `0x0500` stays small.
+    assert_eq!(
+        TropicalFishModelShape::from_vanilla_packed_variant(0x0500),
+        TropicalFishModelShape::Small
+    );
+    // An out-of-range index (6) is not a valid pattern, so `byId` falls back to KOB (small).
+    assert_eq!(
+        TropicalFishModelShape::from_vanilla_packed_variant(0x0601),
+        TropicalFishModelShape::Small
+    );
+}
+
+#[test]
 fn tropical_fish_texture_ref_matches_vanilla_renderer() {
     // `TropicalFishRenderer` keys the small body on `tropical_a` and the large on
     // `tropical_b`; the model layers are `ModelLayers.TROPICAL_FISH_{SMALL,LARGE}`.

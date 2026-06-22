@@ -5,7 +5,8 @@ use bbb_renderer::{
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
     PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SalmonModelSize,
     SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    SleepingPose, TropicalFishModelShape, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -207,6 +208,11 @@ const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 // variant is index 17. Defaults to 1 (`Salmon.Variant.MEDIUM`).
 const SALMON_VARIANT_DATA_ID: u8 = 17;
 const SALMON_DEFAULT_VARIANT: i32 = 1;
+// Tropical fish (`TropicalFish.DATA_ID_TYPE_VARIANT`): AbstractFish defines FROM_BUCKET at
+// index 16 (AbstractSchoolingFish adds no synced data), so the packed variant is index 17.
+// Defaults to 0 (`DEFAULT_VARIANT` = KOB/white/white, whose pattern bits are 0 → small body).
+const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
+const TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 const LLAMA_VARIANT_DATA_ID: u8 = 21;
 const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
@@ -799,9 +805,9 @@ fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_TNT_ID => placeholder("todo_tnt_bounds", 0.98, 0.98, 0.98),
         VANILLA_ENTITY_TYPE_TRIDENT_ID => placeholder("todo_trident_bounds", 0.5, 0.5, 0.5),
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
-            placeholder("todo_tropical_fish_bounds", 0.5, 0.4, 0.5)
-        }
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
+            shape: tropical_fish_shape(data_values),
+        },
         VANILLA_ENTITY_TYPE_TURTLE_ID => placeholder("todo_turtle_bounds", 1.2, 0.4, 1.2),
         VANILLA_ENTITY_TYPE_VEX_ID => placeholder("todo_vex_bounds", 0.4, 0.8, 0.4),
         VANILLA_ENTITY_TYPE_WARDEN_ID => placeholder("todo_warden_bounds", 0.9, 2.9, 0.9),
@@ -1079,6 +1085,16 @@ fn salmon_model_size(values: &[bbb_protocol::packets::EntityDataValue]) -> Salmo
         values,
         SALMON_VARIANT_DATA_ID,
         SALMON_DEFAULT_VARIANT,
+    ))
+}
+
+fn tropical_fish_shape(
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> TropicalFishModelShape {
+    TropicalFishModelShape::from_vanilla_packed_variant(entity_data_int(
+        values,
+        TROPICAL_FISH_VARIANT_DATA_ID,
+        TROPICAL_FISH_DEFAULT_VARIANT,
     ))
 }
 
@@ -2962,6 +2978,43 @@ mod tests {
             ),
             EntityModelKind::Salmon {
                 size: SalmonModelSize::Large,
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_tropical_fish_shape_from_packed_variant() {
+        // The tropical fish was a placeholder render box; it now resolves to the real model
+        // and decodes the body shape from the synced packed variant (`DATA_ID_TYPE_VARIANT`,
+        // index 17). The default 0 (KOB/white/white) is the small body; a LARGE-base pattern
+        // selects the flopper body.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, &[]),
+            EntityModelKind::TropicalFish {
+                shape: TropicalFishModelShape::Small,
+            }
+        );
+        // FLOPPER (LARGE base, index 0) with arbitrary base/pattern color bytes → large body.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+                &[protocol_int_data(
+                    TROPICAL_FISH_VARIANT_DATA_ID,
+                    0x0405_0001
+                )]
+            ),
+            EntityModelKind::TropicalFish {
+                shape: TropicalFishModelShape::Large,
+            }
+        );
+        // SPOTTY (SMALL base, index 5 → 0x0500) stays the small body.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+                &[protocol_int_data(TROPICAL_FISH_VARIANT_DATA_ID, 0x0500)]
+            ),
+            EntityModelKind::TropicalFish {
+                shape: TropicalFishModelShape::Small,
             }
         );
     }

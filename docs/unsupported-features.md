@@ -1379,7 +1379,12 @@ When an agent does any of the following, update this file in the same slice:
       keys, the right fin keeping its negative `texOffs(-4, 0)` U origin), and the official
       PNG atlas upload/bind/sample path (colored and textured). Lighting and overlay
       remain unsupported
-    - tropical fish entities as renderer-owned vanilla 26.1
+    - tropical fish entities are wired end to end: the native entity scene
+      (`entity_scene.rs`) projects vanilla type id `136` to the real tropical fish model,
+      decoding the body shape from the synced packed variant (`DATA_ID_TYPE_VARIANT`,
+      index 17): `TropicalFish.getPattern(packed & 0xFFFF).base()` selects the kob-style
+      small or flopper-style large body (the default packed `0` = KOB/white/white is the
+      small body), replacing the former placeholder box. Renderer-owned vanilla 26.1
       `TropicalFishSmallModel`/`TropicalFishLargeModel.createBodyLayer(CubeDeformation.NONE)`
       geometry: the kob-style small body (five-part body / tail / two side fins
       (`yRot ±π/4`) / top fin) and the flopper-style large body (the same plus a sixth
@@ -1390,15 +1395,15 @@ When an agent does any of the following, update this file in the same slice:
       tail), and the full `TropicalFishRenderer.setupRotations` (the standard body yaw plus
       the swim wiggle `Axis.YP.rotationDegrees(4.3 · sin(0.6 · ageInTicks))` and the
       out-of-water flop `translate(0.2, 0.1, 0.0)` + `Axis.ZP.rotationDegrees(90)`), both
-      reading the `in_water` render-state flag; the official
+      reading the projected `in_water` render-state flag and `age_in_ticks`; the official
       `textures/entity/fish/tropical_a.png` (small) / `tropical_b.png` (large) base
       texture references, per-shape texture-backed base-layer pass emission
       (`ModelLayers.TROPICAL_FISH_{SMALL,LARGE}` keys, the tail/top fins keeping their
       negative `texOffs` V origins), and the official PNG atlas upload/bind/sample path
       (colored and textured). The twelve `TropicalFishPatternLayer` pattern overlays
       (`TROPICAL_FISH_{SMALL,LARGE}_PATTERN` layers, inflated by `FISH_PATTERN_DEFORMATION`),
-      the per-entity base/pattern color tints (`getModelTint`/`patternColor`), and the
-      entity-side `isInWater`/`ageInTicks`/`pattern` projection, lighting, and overlay
+      and the per-entity base/pattern color tints (`getModelTint`/`patternColor`,
+      decoded from the high bytes of the packed variant), with their lighting and overlay,
       remain unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor

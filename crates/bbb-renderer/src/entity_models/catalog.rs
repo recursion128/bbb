@@ -399,6 +399,24 @@ impl TropicalFishModelShape {
             _ => Self::Small,
         }
     }
+
+    /// Vanilla `TropicalFish.getPattern(packedVariant).base()`: the body shape is decoded
+    /// from the synced packed variant. `Pattern.byId(packed & 0xFFFF)` is a sparse lookup
+    /// over the twelve patterns (each packed as `base.id | index << 8`, base `0`/`1`, index
+    /// `0..=5`) defaulting to `KOB` (small) for any unrecognized id. So the shape is `Large`
+    /// only when the low pattern byte is `1` (a `LARGE` base) and the index byte is in
+    /// range; every other packed value — including the default `0` (`KOB`/white/white) —
+    /// resolves to the small body.
+    pub fn from_vanilla_packed_variant(packed_variant: i32) -> Self {
+        let pattern_id = packed_variant & 0xFFFF;
+        let base_id = pattern_id & 0xFF;
+        let index = (pattern_id >> 8) & 0xFF;
+        if base_id == 1 && index <= 5 {
+            Self::Large
+        } else {
+            Self::Small
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
