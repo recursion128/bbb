@@ -691,7 +691,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => EntityModelKind::Armadillo {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_AXOLOTL_ID => placeholder("todo_axolotl_bounds", 0.75, 0.42, 0.75),
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityModelKind::Axolotl {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
         VANILLA_ENTITY_TYPE_BEE_ID => EntityModelKind::Bee {
             baby: ageable_baby(data_values),
@@ -3862,6 +3864,26 @@ mod tests {
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
             EntityModelKind::Armadillo { baby: true }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_axolotl_baby_from_data() {
+        // The axolotl was a placeholder bounds box; it now resolves to the real `AdultAxolotlModel`
+        // / `BabyAxolotlModel`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default
+        // adult), as in the vanilla `AgeableMobRenderer`. The body yaw, the procedural / keyframe
+        // swim-walk-idle animations, the play-dead pose, the mirror-leg copy, and the five color
+        // variants are deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_AXOLOTL_ID, &[]),
+            EntityModelKind::Axolotl { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Axolotl { baby: true }
         );
     }
 

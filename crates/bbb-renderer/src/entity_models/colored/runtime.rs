@@ -192,6 +192,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed armadillo yet), so this arm always emits.
                 emit_armadillo_model(&mut mesh, *instance, baby);
             }
+            EntityModelKind::Axolotl { baby } => {
+                // Colored-only so far (no texture-backed axolotl yet), so this arm always emits.
+                emit_axolotl_model(&mut mesh, *instance, baby);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1376,6 +1380,21 @@ fn emit_armadillo_model(mesh: &mut EntityModelMesh, instance: EntityModelInstanc
         &BABY_ARMADILLO_PARTS
     } else {
         &ADULT_ARMADILLO_PARTS
+    };
+    emit_model_parts(mesh, parts, root);
+}
+
+fn emit_axolotl_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    // Vanilla `AdultAxolotlModel`/`BabyAxolotlModel` are static nested hierarchies at rest. All of
+    // the adult procedural sways, the baby keyframe animations, the play-dead pose, and the
+    // mirror-leg copy are deferred, so the bind-pose part tree is emitted directly. The baby flag
+    // (synced `AgeableMob.DATA_BABY_ID`) selects the baby body layer, as in the vanilla
+    // `AgeableMobRenderer`. Axolotl uses `AgeableMobRenderer`/`LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    let parts: &[ModelPartDesc] = if baby {
+        &BABY_AXOLOTL_PARTS
+    } else {
+        &ADULT_AXOLOTL_PARTS
     };
     emit_model_parts(mesh, parts, root);
 }

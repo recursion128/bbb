@@ -121,6 +121,13 @@ pub enum EntityModelKind {
     Armadillo {
         baby: bool,
     },
+    /// `AdultAxolotlModel` / `BabyAxolotlModel` at their `createBodyLayer` rest pose (`baby`
+    /// selects the baby body layer). The body yaw, the swimming / water-hovering / ground-crawling
+    /// / lay-still procedural sways and baby keyframe animations, the play-dead pose, the
+    /// mirror-leg copy, and the five color variants are deferred.
+    Axolotl {
+        baby: bool,
+    },
     Phantom {
         size: i32,
     },

@@ -63,6 +63,8 @@ pub(super) const WARDEN_BODY: [f32; 4] = [0.13, 0.22, 0.26, 1.0];
 pub(super) const WARDEN_TENDRIL: [f32; 4] = [0.20, 0.62, 0.66, 1.0];
 pub(super) const ARMADILLO_SHELL: [f32; 4] = [0.42, 0.31, 0.25, 1.0];
 pub(super) const ARMADILLO_SKIN: [f32; 4] = [0.66, 0.55, 0.50, 1.0];
+pub(super) const AXOLOTL_BODY: [f32; 4] = [0.93, 0.66, 0.78, 1.0];
+pub(super) const AXOLOTL_GILLS: [f32; 4] = [0.96, 0.45, 0.60, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -110,6 +112,7 @@ pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 mod allay;
 mod armadillo;
 mod armor_stand;
+mod axolotl;
 mod bat;
 mod bee;
 mod blaze;
@@ -166,6 +169,7 @@ mod zombie;
 pub(super) use allay::*;
 pub(super) use armadillo::*;
 pub(super) use armor_stand::*;
+pub(super) use axolotl::*;
 pub(super) use bat::*;
 pub(super) use bee::*;
 pub(super) use blaze::*;

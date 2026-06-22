@@ -1553,6 +1553,26 @@ When an agent does any of the following, update this file in the same slice:
       state, so the non-hiding rest pose is emitted. The texture-backed path remains unsupported (this is a
       colored-first slice; the colored debug path approximates the armored body/legs with one brown tint and
       the soft head/ears/tail with a tan tint)
+    - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /
+      `BabyAxolotlModel.createBodyLayer()` geometry on the colored path: the native entity scene
+      (`entity_scene.rs`) projects vanilla type id `7` to the new `EntityModelKind::Axolotl { baby }`,
+      replacing the former placeholder bounds box. The synced `AgeableMob.DATA_BABY_ID` flag (entity-data
+      index 16, defaulting to adult) selects the baby body layer, matching the vanilla
+      `AgeableMobRenderer` two-model dispatch (the `0.5F` constructor argument is the shadow radius, not a
+      scale, so the baby uses its own 32×32 geometry rather than a scaled adult). Both static rest-pose
+      hierarchies are emitted directly: the adult (atlas 64×64) body (an 8×4×10 trunk plus a 0×5×9 dorsal
+      fin) parents the head (an 8×5×5 skull, `CubeDeformation(0.001)` fudge baked into the colored cubes
+      exactly like the other deformed cubes) which parents the three gill planes (8×3×0 top, two 3×7×0
+      side frills), the four 3×5×0 leg planes (right/left legs at the -2/-1 origins), and the 0×5×12 tail
+      fin — eleven cubes; the baby (atlas 32×32) wraps the body under a `root` bone at (0, 24, 0), with a
+      4×2×6 trunk, four 3×0×1 horizontal leg planes (the right hind leg a doubly-rotated pivot/cube pair),
+      a 0×3×8 tail, a 6×3×4 head, and the three gill planes — eleven cubes. Every `setupAnim` animation is
+      deferred: the body yaw, the adult swimming / water-hovering / ground-crawling / lay-still procedural
+      sways, the baby swim / walk / idle keyframe animations, the play-dead pose, and the mirror-leg copy.
+      The five `Axolotl.Variant` color variants (lucy / wild / gold / cyan / blue, each with adult and baby
+      textures) live on the deferred texture-backed path, so the colored debug path renders the lucy (pink)
+      body with one body tint and one gill tint. The texture-backed path remains unsupported (this is a
+      colored-first slice)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

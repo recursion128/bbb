@@ -4,6 +4,7 @@ mod allay;
 mod armadillo;
 mod armor_stand;
 mod auto_spin;
+mod axolotl;
 mod bat;
 mod bee;
 mod blaze;
