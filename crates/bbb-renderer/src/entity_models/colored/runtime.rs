@@ -23,7 +23,8 @@ use super::transforms::{
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, scaled_model_root_transform,
     slime_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
+    HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -211,6 +212,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Wither => {
                 // Colored-only so far (no texture-backed wither yet), so this arm always emits.
                 emit_wither_model(&mut mesh, *instance);
+            }
+            EntityModelKind::Giant => {
+                // Colored-only so far (no texture-backed giant yet), so this arm always emits.
+                emit_giant_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -1449,6 +1454,26 @@ fn emit_wither_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
     // emitted directly. Wither uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &WITHER_PARTS, root);
+}
+
+fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `GiantZombieModel` is the standard `HumanoidModel` (zombie) mesh, baked through
+    // `humanoidBodyLayer.apply(MeshTransformer.scaling(6.0))` — i.e. the adult zombie body layer
+    // scaled 6×, exactly the husk's `MeshTransformer` pattern but with the giant's 6.0 factor and no
+    // baby variant. The head look and limb swing match the zombie (the giant extracts the same
+    // `ZombieRenderState`); the `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie texture
+    // are deferred.
+    let parts = humanoid_limb_swing_parts(
+        zombie_colored_head_look_parts(&ADULT_ZOMBIE_PARTS, instance, false),
+        HUMANOID_LEG_PART_INDICES,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+    );
+    emit_model_parts(
+        mesh,
+        &parts,
+        mesh_transformer_scaled_model_root_transform(instance, GIANT_SCALE),
+    );
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

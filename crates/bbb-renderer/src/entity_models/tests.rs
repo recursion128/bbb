@@ -23,6 +23,7 @@ mod endermite;
 mod equine;
 mod frog;
 mod ghast;
+mod giant;
 mod goat;
 mod golem;
 mod guardian;

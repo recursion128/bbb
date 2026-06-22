@@ -143,6 +143,10 @@ pub enum EntityModelKind {
     /// breathing sway, the center/side head look, and the `WITHER_ARMOR` invulnerable-shimmer
     /// overlay layer are deferred.
     Wither,
+    /// `GiantZombieModel` — the standard humanoid (zombie) body layer `MeshTransformer`-scaled 6×.
+    /// The head look and limb swing match the zombie; the armor / item-in-hand layers and the
+    /// zombie texture are deferred.
+    Giant,
     Phantom {
         size: i32,
     },

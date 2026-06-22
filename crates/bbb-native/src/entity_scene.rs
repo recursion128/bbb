@@ -739,7 +739,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_FROG_ID => EntityModelKind::Frog,
         VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
-        VANILLA_ENTITY_TYPE_GIANT_ID => placeholder("todo_giant_bounds", 3.6, 12.0, 3.6),
+        VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
         VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => {
             placeholder("todo_glow_item_frame_bounds", 0.75, 0.75, 0.0625)
         }
@@ -3928,6 +3928,18 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WITHER_ID, &[]),
             EntityModelKind::Wither
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_giant_to_real_model() {
+        // The giant was a placeholder bounds box; it now resolves to the real `GiantZombieModel`
+        // (the humanoid zombie body layer scaled 6×). The head look and limb swing read the
+        // projected look angles and walk animation; the armor / item-in-hand layers and the zombie
+        // texture are deferred. The giant is never a baby, so no baby flag is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_GIANT_ID, &[]),
+            EntityModelKind::Giant
         );
     }
 

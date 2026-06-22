@@ -1623,6 +1623,17 @@ When an agent does any of the following, update this file in the same slice:
       tracking. The `WITHER_ARMOR` invulnerable-shimmer overlay layer (the same mesh re-rendered with
       `INNER_ARMOR_DEFORMATION`) and the texture-backed path are deferred, so the colored debug path renders
       a dark body tint plus a lighter head tint (this is a colored-first slice)
+    - giant entities as renderer-owned vanilla 26.1 `GiantZombieModel` geometry on the colored path: the
+      native entity scene (`entity_scene.rs`) projects vanilla type id `59` to the new
+      `EntityModelKind::Giant`, replacing the former placeholder bounds box. `GiantZombieModel` is the
+      standard humanoid (zombie) body layer baked through `humanoidBodyLayer.apply(MeshTransformer.scaling(
+      6.0))` (`LayerDefinitions` registers `ModelLayers.GIANT` this way; `EntityRenderers` registers the
+      `GiantMobRenderer` with scale `6.0`), so the giant reuses the adult zombie body parts emitted through
+      the shared `mesh_transformer_scaled_model_root_transform` at the 6.0 factor — exactly the husk's
+      `MeshTransformer` pattern but with the giant's larger factor and no baby variant. The head look and
+      the limb swing match the zombie (the giant extracts the same `ZombieRenderState`). The
+      `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie texture-backed path are deferred (this is a
+      colored-first slice; the giant reuses the zombie body tints)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the
