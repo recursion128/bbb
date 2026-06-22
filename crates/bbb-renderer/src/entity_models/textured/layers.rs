@@ -34,6 +34,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     GhastBase,
     HappyGhastBase,
     MinecartBase,
+    ZombieBase,
     BlazeBase,
     EndermiteBase,
     SilverfishBase,
@@ -342,6 +343,35 @@ pub(in crate::entity_models) fn minecart_textured_layer_passes() -> Vec<EntityMo
         model_layer: MODEL_LAYER_MINECART,
         texture: MINECART_TEXTURE_REF,
         parts: &MINECART_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn zombie_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = if baby {
+        (
+            MODEL_LAYER_ZOMBIE_BABY,
+            ZOMBIE_BABY_TEXTURE_REF,
+            &BABY_ZOMBIE_TEXTURED_PARTS,
+        )
+    } else {
+        (
+            MODEL_LAYER_ZOMBIE,
+            ZOMBIE_TEXTURE_REF,
+            &ADULT_ZOMBIE_TEXTURED_PARTS,
+        )
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ZombieBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer,
+        texture,
+        parts,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

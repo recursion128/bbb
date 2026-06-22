@@ -602,3 +602,113 @@ fn zombie_family_swings_its_legs_when_walking() {
         );
     }
 }
+
+#[test]
+fn zombie_textured_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_ZOMBIE, "minecraft:zombie#main");
+    assert_eq!(MODEL_LAYER_ZOMBIE_BABY, "minecraft:zombie_baby#main");
+
+    // Adult: vanilla HumanoidModel.createMesh UVs (texture 64x64). The deformed hat keeps the
+    // base 8x8x8 box as its uv_size; the left arm/leg mirror the right's texOffs.
+    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS.len(), 6);
+    let head = &ADULT_ZOMBIE_TEXTURED_PARTS[0];
+    assert_eq!(head.cubes[0].tex, [0.0, 0.0]);
+    assert_eq!(head.cubes[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(head.children[0].cubes[0].tex, [32.0, 0.0]);
+    assert_eq!(head.children[0].cubes[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(head.children[0].cubes[0].size, [9.0, 9.0, 9.0]);
+    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[1].cubes[0].tex, [16.0, 16.0]);
+    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[2].cubes[0].tex, [40.0, 16.0]);
+    assert!(!ADULT_ZOMBIE_TEXTURED_PARTS[2].cubes[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[3].cubes[0].tex, [40.0, 16.0]);
+    assert!(ADULT_ZOMBIE_TEXTURED_PARTS[3].cubes[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[4].cubes[0].tex, [0.0, 16.0]);
+    assert!(!ADULT_ZOMBIE_TEXTURED_PARTS[4].cubes[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[5].cubes[0].tex, [0.0, 16.0]);
+    assert!(ADULT_ZOMBIE_TEXTURED_PARTS[5].cubes[0].mirror);
+
+    // Baby: vanilla BabyZombieModel.createBodyLayer UVs. Each limb has its own texOffs (no
+    // mirroring); the head carries the base cube plus the 0.25 deformation overlay.
+    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS.len(), 6);
+    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[0].cubes[0].tex, [16.0, 16.0]);
+    let baby_head = &BABY_ZOMBIE_TEXTURED_PARTS[1];
+    assert_eq!(baby_head.cubes[0].tex, [3.0, 3.0]);
+    assert_eq!(baby_head.cubes[0].uv_size, [6.0, 6.0, 6.0]);
+    assert_eq!(baby_head.cubes[1].tex, [35.0, 3.0]);
+    assert_eq!(baby_head.cubes[1].uv_size, [6.0, 6.0, 6.0]);
+    assert_eq!(baby_head.cubes[1].size, [6.5, 6.5, 6.5]);
+    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[2].cubes[0].tex, [36.0, 16.0]);
+    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[3].cubes[0].tex, [28.0, 16.0]);
+    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[4].cubes[0].tex, [8.0, 16.0]);
+    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[5].cubes[0].tex, [0.0, 16.0]);
+    for part in &BABY_ZOMBIE_TEXTURED_PARTS {
+        for cube in part.cubes {
+            assert!(!cube.mirror, "baby zombie cubes are never mirrored");
+        }
+    }
+}
+
+#[test]
+fn zombie_textured_layer_passes_match_vanilla_renderer() {
+    for (baby, model_layer, texture) in [
+        (false, "minecraft:zombie#main", ZOMBIE_TEXTURE_REF),
+        (true, "minecraft:zombie_baby#main", ZOMBIE_BABY_TEXTURE_REF),
+    ] {
+        let passes = zombie_textured_layer_passes(baby);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::ZombieBase);
+        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[0].model_layer, model_layer);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+    }
+    assert!(entity_model_texture_refs().contains(&ZOMBIE_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&ZOMBIE_BABY_TEXTURE_REF));
+    assert_eq!(
+        zombie_entity_texture_refs(),
+        &[ZOMBIE_TEXTURE_REF, ZOMBIE_BABY_TEXTURE_REF]
+    );
+}
+
+#[test]
+fn zombie_textured_mesh_matches_colored_geometry_and_legs_swing() {
+    let (atlas, _) = build_entity_model_texture_atlas(&zombie_texture_images()).unwrap();
+    for baby in [false, true] {
+        let instances = [EntityModelInstance::zombie(55, [0.0, 64.0, 0.0], 0.0, baby)];
+        let colored = entity_model_mesh(&instances);
+        let textured = entity_model_textured_mesh(&instances, &atlas);
+        // The textured zombie shares the colored geometry exactly: same cube count and bounds.
+        assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
+        assert_eq!(textured.vertices.len(), colored.vertices.len());
+        assert!(textured
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        let (cmin, cmax) = mesh_extents(&colored);
+        let (tmin, tmax) = textured_mesh_extents(&textured);
+        assert_close3(tmin, cmin);
+        assert_close3(tmax, cmax);
+
+        // Vanilla runs the leg swing every frame; advancing the walk animation re-poses the
+        // legs (the held-out arms stay deferred, like the colored path).
+        let walking = [instances[0]
+            .with_walk_animation(2.0, 1.0)
+            .with_age_in_ticks(8.0)];
+        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        assert_ne!(
+            textured.vertices, textured_walk.vertices,
+            "legs swing (baby={baby})"
+        );
+    }
+}
+
+fn zombie_texture_images() -> Vec<EntityModelTextureImage> {
+    zombie_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

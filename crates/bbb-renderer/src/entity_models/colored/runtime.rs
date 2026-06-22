@@ -135,7 +135,11 @@ fn entity_model_mesh_with_options(
                     emit_pufferfish_model(&mut mesh, *instance, puff_state);
                 }
             }
-            EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
+            EntityModelKind::Zombie { baby } => {
+                if !skip_texture_backed_entities {
+                    emit_zombie_model(&mut mesh, *instance, baby);
+                }
+            }
             EntityModelKind::ZombieVariant { family, baby } => {
                 emit_zombie_variant_model(&mut mesh, *instance, family, baby)
             }

@@ -66,8 +66,8 @@ pub(super) use layers::{
     sheep_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
     slime_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    witch_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerPass,
-    EntityModelLayerRenderType,
+    witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
+    EntityModelLayerPass, EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
@@ -178,6 +178,9 @@ pub(super) fn entity_model_textured_meshes(
                     pose,
                     atlas,
                 );
+            }
+            EntityModelKind::Zombie { baby } => {
+                emit_zombie_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Blaze => {
                 emit_blaze_textured_model(&mut meshes, *instance, atlas);
@@ -944,6 +947,47 @@ fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
         rotation[1].to_radians(),
         rotation[2].to_radians(),
     ]
+}
+
+fn emit_zombie_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Mirrors the colored `emit_zombie_model`: vanilla `HumanoidModel.setupAnim` runs the head
+    // look and the leg swing, but `ZombieModel` overrides the arms with the held-out
+    // `animateZombieArms` pose, so bbb leaves the visible arms static (that arms-out pose is
+    // deferred). Only the head and legs animate. The baby layer's head is part 1 (the body is
+    // part 0); the adult head is part 0.
+    let head_index = if baby { 1 } else { 0 };
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    let transform = entity_model_root_transform(instance);
+    for pass in zombie_textured_layer_passes(baby) {
+        if head_resting && limbs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            continue;
+        }
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+        }
+        if !limbs_resting {
+            for index in HUMANOID_LEG_PART_INDICES {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
 }
 
 fn emit_blaze_textured_model(

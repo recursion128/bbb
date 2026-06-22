@@ -995,7 +995,16 @@ When an agent does any of the following, update this file in the same slice:
       trader baby presentation remain unsupported
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
-      with official default texture references recorded; husk entities use the
+      with a texture-backed cutout render path: the adult layer emits the vanilla
+      `HumanoidModel.createMesh` UVs over `textures/entity/zombie/zombie.png` (the
+      `texOffs(32, 0)` hat keeps its base 8x8x8 box as the UV source, and the left
+      arm/leg mirror the right's `texOffs`), the baby layer emits the
+      `BabyZombieModel.createBodyLayer` UVs over
+      `textures/entity/zombie/zombie_baby.png` (each limb has its own `texOffs`,
+      no mirroring), with official PNG atlas upload/bind/sample and the head-look /
+      leg-swing animation on both render paths (the held-out `animateZombieArms`
+      arm pose stays deferred, so the visible arms hold still as in the colored
+      path); husk entities use the
       vanilla 26.1 adult `LayerDefinitions` `MeshTransformer.scaling(1.0625F)`
       body layer, `HuskRenderer`'s official adult/baby texture references, and
       the shared baby zombie body layer for baby husks; drowned entities use
