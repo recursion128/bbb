@@ -733,7 +733,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
             placeholder("todo_fishing_bobber_bounds", 0.25, 0.25, 0.25)
         }
-        VANILLA_ENTITY_TYPE_FROG_ID => placeholder("todo_frog_bounds", 0.5, 0.5, 0.5),
+        VANILLA_ENTITY_TYPE_FROG_ID => EntityModelKind::Frog,
         VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => placeholder("todo_giant_bounds", 3.6, 12.0, 3.6),
@@ -3059,6 +3059,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, &[]),
             EntityModelKind::Guardian { elder: true }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_frog_to_real_model() {
+        // The frog was a placeholder render box; it now resolves to the real `FrogModel` at its
+        // rest pose. The keyframe animations (jump/croak/tongue/swim/walk/idle) and the three
+        // texture variants are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_FROG_ID, &[]),
+            EntityModelKind::Frog
         );
     }
 

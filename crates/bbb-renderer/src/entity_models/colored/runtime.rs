@@ -172,6 +172,10 @@ fn entity_model_mesh_with_options(
                 // emitted rather than gated behind `skip_texture_backed_entities`.
                 emit_guardian_model(&mut mesh, *instance, elder);
             }
+            EntityModelKind::Frog => {
+                // Colored-only so far (no texture-backed frog yet), so this arm is always emitted.
+                emit_frog_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1307,6 +1311,14 @@ fn emit_guardian_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     let tail1_t = head_t * part_pose_transform(GUARDIAN_TAIL1_POSE);
     emit_model_cubes_at_pose(mesh, head_t, GUARDIAN_TAIL1_POSE, &GUARDIAN_TAIL1);
     emit_model_cubes_at_pose(mesh, tail1_t, GUARDIAN_TAIL2_POSE, &GUARDIAN_TAIL2);
+}
+
+fn emit_frog_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `FrogModel` is a static nested hierarchy at rest (`root` → body/legs, body → head
+    // /tongue/arms). All of `FrogModel.setupAnim`'s keyframe animations are deferred, so the
+    // bind-pose part tree is emitted directly. Frogs use `LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &FROG_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

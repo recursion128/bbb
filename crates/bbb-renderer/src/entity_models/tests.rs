@@ -18,6 +18,7 @@ mod dolphin;
 mod enderman;
 mod endermite;
 mod equine;
+mod frog;
 mod ghast;
 mod goat;
 mod golem;

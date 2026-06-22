@@ -1477,6 +1477,21 @@ When an agent does any of the following, update this file in the same slice:
       (`textures/entity/guardian/guardian.png`) and its lighting/overlay also remain unsupported
       (this is a colored-first slice; the colored debug path approximates the body with a single
       teal tint and the eye with a pink tint)
+    - frog entities as renderer-owned vanilla 26.1 `FrogModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `55` to
+      the new `EntityModelKind::Frog`, replacing the former placeholder box. The static
+      rest-pose hierarchy is emitted directly (atlas 48×48): the `root` part at `offset(0, 24, 0)`
+      parents `body` (the 7×3×9 box + 7×0×9 underside plane) and the two legs; `body` parents the
+      head (7×0×9 plane + 7×3×9 box) with its `eyes` pivot and two 3×2×3 eyes, the tongue, and the
+      two 2×3×3 arms, each carrying an 8×0×8 webbed hand; each leg carries an 8×0×8 foot — fifteen
+      visible cubes (the `croaking_body` is hidden at rest, so it is omitted). The frog is the
+      first keyframe-animated entity rendered at its `createBodyLayer` rest pose: every
+      `FrogModel.setupAnim` animation — the jump, croak (and the `croaking_body` it reveals),
+      tongue, swim/walk (`applyWalk`), and idle-in-water keyframe animations — is deferred
+      entity-side state. The texture-backed path and the three frog texture variants
+      (temperate/warm/cold, `FrogVariant`) also remain unsupported (this is a colored-first slice;
+      the colored debug path approximates the body with one orange-tan tint and the eyes with a
+      gold tint)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

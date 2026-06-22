@@ -101,6 +101,9 @@ pub enum EntityModelKind {
     Guardian {
         elder: bool,
     },
+    /// `FrogModel` at its `createBodyLayer` rest pose. The keyframe animations (jump, croak,
+    /// tongue, swim/walk, idle-in-water) and the three texture variants are deferred.
+    Frog,
     Phantom {
         size: i32,
     },
