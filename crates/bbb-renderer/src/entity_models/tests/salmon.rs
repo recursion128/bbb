@@ -263,3 +263,92 @@ fn salmon_texture_ref_matches_vanilla_renderer() {
         })
     );
 }
+
+#[test]
+fn salmon_textured_layer_passes_match_vanilla_renderer() {
+    // `SalmonRenderer` renders a single cutout base layer; only the bound model layer
+    // differs per size (`ModelLayers.SALMON` / `SALMON_SMALL` / `SALMON_LARGE`).
+    for (size, layer) in [
+        (SalmonModelSize::Small, "minecraft:salmon_small#main"),
+        (SalmonModelSize::Medium, "minecraft:salmon#main"),
+        (SalmonModelSize::Large, "minecraft:salmon_large#main"),
+    ] {
+        let passes = salmon_textured_layer_passes(size);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::SalmonBase);
+        assert_eq!(passes[0].model_layer, layer);
+        assert_eq!(passes[0].texture, SALMON_TEXTURE_REF);
+        assert_eq!(passes[0].parts, SALMON_TEXTURED_PARTS.as_slice());
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    }
+
+    // The textured parts mirror the colored poses, including the nested fin children, so
+    // the `setupAnim` body-back sway re-poses the same subtree in both paths.
+    for (colored, textured) in SALMON_PARTS.iter().zip(SALMON_TEXTURED_PARTS.iter()) {
+        assert_eq!(colored.pose, textured.pose);
+    }
+    assert_eq!(
+        SALMON_TEXTURED_PARTS[SALMON_BODY_BACK_PART_INDEX]
+            .children
+            .len(),
+        2
+    );
+    assert_eq!(
+        SALMON_TEXTURED_PARTS[SALMON_BODY_BACK_PART_INDEX].children[0].pose,
+        SALMON_BODY_BACK_CHILDREN[0].pose
+    );
+    assert_eq!(
+        SALMON_TEXTURED_PARTS[0].children[0].pose,
+        SALMON_BODY_FRONT_CHILDREN[0].pose
+    );
+    // No cube mirrors and `uv_size` equals the geometry size (`CubeDeformation.NONE`); the
+    // right fin keeps its negative `texOffs(-4, 0)` U origin.
+    assert!(!SALMON_TEXTURED_BODY_FRONT[0].mirror);
+    assert_eq!(
+        SALMON_TEXTURED_BODY_FRONT[0].uv_size,
+        SALMON_TEXTURED_BODY_FRONT[0].size
+    );
+    assert_eq!(SALMON_TEXTURED_RIGHT_FIN[0].tex, [-4.0, 0.0]);
+    assert_eq!(SALMON_TEXTURED_BODY_BACK[0].tex, [0.0, 13.0]);
+}
+
+#[test]
+fn salmon_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&salmon_texture_images()).unwrap();
+    // Eight cubes → 192 textured vertices on the cutout pass.
+    let base = EntityModelInstance::salmon(720, [0.0, 64.0, 0.0], 0.0, SalmonModelSize::Medium)
+        .with_in_water(true);
+    let still = entity_model_textured_mesh(&[base], &atlas);
+    assert_eq!(still.vertices.len(), 192);
+
+    // The back-body sway / body wiggle reorient the mesh as the age advances.
+    let swimming = entity_model_textured_mesh(&[base.with_age_in_ticks(7.0)], &atlas);
+    assert_eq!(still.vertices.len(), swimming.vertices.len());
+    assert_ne!(still.vertices, swimming.vertices);
+
+    // A beached salmon flops onto its side.
+    let beached = entity_model_textured_mesh(&[base.with_in_water(false)], &atlas);
+    assert_ne!(still.vertices, beached.vertices);
+
+    // The size variants scale the textured mesh exactly like the colored path.
+    let small = entity_model_textured_mesh(
+        &[
+            EntityModelInstance::salmon(721, [0.0, 64.0, 0.0], 0.0, SalmonModelSize::Small)
+                .with_in_water(true),
+        ],
+        &atlas,
+    );
+    assert_eq!(small.vertices.len(), still.vertices.len());
+    assert_ne!(small.vertices, still.vertices, "the small salmon is scaled");
+}
+
+fn salmon_texture_images() -> Vec<EntityModelTextureImage> {
+    salmon_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

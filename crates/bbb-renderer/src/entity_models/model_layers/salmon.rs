@@ -1,4 +1,8 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, SALMON_RED};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    SALMON_RED,
+};
+use crate::entity_models::catalog::SalmonModelSize;
 
 // Vanilla 26.1 `SalmonModel.createBodyLayer` (atlas 32×32). The body is split into a
 // front and back segment (the back sways), each carrying a flat top fin; the back also
@@ -146,3 +150,147 @@ pub(in crate::entity_models) fn salmon_body_back_yrot(age_in_ticks: f32, in_wate
     let (amplitude, angle) = salmon_swim_multipliers(in_water);
     -amplitude * 0.25 * (angle * 0.6 * age_in_ticks).sin()
 }
+
+// Vanilla 26.1 `ModelLayers.SALMON` / `SALMON_SMALL` / `SALMON_LARGE` (`SalmonRenderer`).
+// The geometry is shared; the size layers only differ by a `MeshTransformer.scaling`
+// factor, which the renderer folds into the root transform.
+pub(in crate::entity_models) const MODEL_LAYER_SALMON: &str = "minecraft:salmon#main";
+pub(in crate::entity_models) const MODEL_LAYER_SALMON_SMALL: &str = "minecraft:salmon_small#main";
+pub(in crate::entity_models) const MODEL_LAYER_SALMON_LARGE: &str = "minecraft:salmon_large#main";
+
+/// Vanilla `SalmonRenderer` selects the small / medium / large `SalmonModel` layer by
+/// `Salmon.Variant`; the medium layer is the unscaled `ModelLayers.SALMON`.
+pub(in crate::entity_models) fn salmon_model_layer(size: SalmonModelSize) -> &'static str {
+    match size {
+        SalmonModelSize::Small => MODEL_LAYER_SALMON_SMALL,
+        SalmonModelSize::Medium => MODEL_LAYER_SALMON,
+        SalmonModelSize::Large => MODEL_LAYER_SALMON_LARGE,
+    }
+}
+
+// Textured counterparts of the salmon cubes (atlas 32×32). `CubeDeformation.NONE`, so each
+// `uv_size` equals the geometry size, and no cube mirrors. The UV origins mirror vanilla
+// `SalmonModel.createBodyLayer`'s `texOffs` (the right fin keeps its negative
+// `texOffs(-4, 0)` U origin).
+pub(in crate::entity_models) const SALMON_TEXTURED_BODY_FRONT: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -2.5, 0.0],
+        size: [3.0, 5.0, 8.0],
+        uv_size: [3.0, 5.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_BODY_BACK: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -2.5, 0.0],
+        size: [3.0, 5.0, 8.0],
+        uv_size: [3.0, 5.0, 8.0],
+        tex: [0.0, 13.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.0, -3.0],
+        size: [2.0, 4.0, 3.0],
+        uv_size: [2.0, 4.0, 3.0],
+        tex: [22.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_BACK_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, -2.5, 0.0],
+        size: [0.0, 5.0, 6.0],
+        uv_size: [0.0, 5.0, 6.0],
+        tex: [20.0, 10.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_TOP_FRONT_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, 0.0],
+        size: [0.0, 2.0, 3.0],
+        uv_size: [0.0, 2.0, 3.0],
+        tex: [2.0, 1.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_TOP_BACK_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, 0.0],
+        size: [0.0, 2.0, 4.0],
+        uv_size: [0.0, 2.0, 4.0],
+        tex: [0.0, 2.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_RIGHT_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, 0.0],
+        size: [2.0, 0.0, 2.0],
+        uv_size: [2.0, 0.0, 2.0],
+        tex: [-4.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_LEFT_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, 0.0],
+        size: [2.0, 0.0, 2.0],
+        uv_size: [2.0, 0.0, 2.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_BODY_FRONT_CHILDREN: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: SALMON_BODY_FRONT_CHILDREN[0].pose,
+        cubes: &SALMON_TEXTURED_TOP_FRONT_FIN,
+        children: &[],
+    }];
+
+pub(in crate::entity_models) const SALMON_TEXTURED_BODY_BACK_CHILDREN: [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: SALMON_BODY_BACK_CHILDREN[0].pose,
+        cubes: &SALMON_TEXTURED_BACK_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: SALMON_BODY_BACK_CHILDREN[1].pose,
+        cubes: &SALMON_TEXTURED_TOP_BACK_FIN,
+        children: &[],
+    },
+];
+
+/// Textured salmon parts mirroring [`SALMON_PARTS`]: body front (top fin child), body
+/// back (tail fin + rear top fin children, swayed by `setupAnim`), head, right fin, left
+/// fin. The body back is index [`SALMON_BODY_BACK_PART_INDEX`].
+pub(in crate::entity_models) const SALMON_TEXTURED_PARTS: [TexturedModelPartDesc; 5] = [
+    TexturedModelPartDesc {
+        pose: SALMON_PARTS[0].pose,
+        cubes: &SALMON_TEXTURED_BODY_FRONT,
+        children: &SALMON_TEXTURED_BODY_FRONT_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: SALMON_PARTS[1].pose,
+        cubes: &SALMON_TEXTURED_BODY_BACK,
+        children: &SALMON_TEXTURED_BODY_BACK_CHILDREN,
+    },
+    TexturedModelPartDesc {
+        pose: SALMON_PARTS[2].pose,
+        cubes: &SALMON_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: SALMON_PARTS[3].pose,
+        cubes: &SALMON_TEXTURED_RIGHT_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: SALMON_PARTS[4].pose,
+        cubes: &SALMON_TEXTURED_LEFT_FIN,
+        children: &[],
+    },
+];

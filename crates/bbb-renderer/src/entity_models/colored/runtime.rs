@@ -293,7 +293,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::Salmon { size } => {
-                emit_salmon_model(&mut mesh, *instance, size);
+                if !skip_texture_backed_entities {
+                    emit_salmon_model(&mut mesh, *instance, size);
+                }
             }
             EntityModelKind::Illager { family } => {
                 if !skip_texture_backed_entities {

@@ -4,8 +4,8 @@ use super::super::{
         llama_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
         wolf_texture_ref, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
         EntityDyeColor, EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
-        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
-        SkeletonModelFamily,
+        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize,
+        SheepWoolColor, SkeletonModelFamily,
     },
     geometry::TexturedModelPartDesc,
     model_layers::*,
@@ -17,6 +17,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CamelBase,
     ChickenBase,
     CodBase,
+    SalmonBase,
     CowBase,
     CreeperBase,
     EndermanBase,
@@ -162,6 +163,22 @@ pub(in crate::entity_models) fn cod_textured_layer_passes() -> Vec<EntityModelLa
         model_layer: MODEL_LAYER_COD,
         texture: COD_TEXTURE_REF,
         parts: &COD_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn salmon_textured_layer_passes(
+    size: SalmonModelSize,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::SalmonBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: salmon_model_layer(size),
+        texture: SALMON_TEXTURE_REF,
+        parts: &SALMON_TEXTURED_PARTS,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
