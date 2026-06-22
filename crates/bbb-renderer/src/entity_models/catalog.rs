@@ -94,6 +94,13 @@ pub enum EntityModelKind {
     Dolphin {
         baby: bool,
     },
+    /// `GuardianModel` (`elder = false`) or the same mesh scaled 2.35× by
+    /// `GuardianModel.ELDER_GUARDIAN_SCALE` (`elder = true`). The procedural spike pulse /
+    /// withdrawal, eye tracking, tail sway, and attack beam are deferred (rendered at the
+    /// `createBodyLayer` rest pose).
+    Guardian {
+        elder: bool,
+    },
     Phantom {
         size: i32,
     },

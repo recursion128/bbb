@@ -1456,6 +1456,27 @@ When an agent does any of the following, update this file in the same slice:
       same animated hierarchy as the colored path (which approximates the texture with a single
       representative grey). The held-item carry layer (`DolphinCarryingItemLayer`) remains
       unsupported
+    - guardian / elder guardian entities as renderer-owned vanilla 26.1
+      `GuardianModel.createBodyLayer()` geometry on the colored path: the native entity scene
+      (`entity_scene.rs`) projects vanilla type ids `63` (guardian) and `40` (elder guardian) to
+      the new `EntityModelKind::Guardian { elder }`, keyed purely off the entity type id (no
+      synced data), replacing the former placeholder boxes. The whole model hangs off one `head`
+      part (`PartPose.ZERO`, atlas 64×64): the body shell (the 12×12×16 box, two mirrored 2×12×12
+      side plates, the bottom/top 12×2×12 plates), the twelve spikes (a shared 2×9×2 box
+      instanced at `getSpike{X,Y,Z}(i, 0, 0)` with rotation `PI · SPIKE_{X,Y,Z}_ROT[i]` from the
+      verbatim `SPIKE_*` tables), the eye, and the nested three-segment tail. The elder guardian
+      is the same mesh scaled 2.35× by `GuardianModel.ELDER_GUARDIAN_SCALE`
+      (`MeshTransformer.scaling(2.35)`, composed at the root exactly like the squid/dolphin baby
+      scale). The procedural `GuardianModel.setupAnim` is deferred — the model renders at its
+      `createBodyLayer` rest pose — namely the head look (`head.yRot/xRot = state.yRot/xRot`), the
+      spike age pulse (`getSpikeOffset = 1 + cos(ageInTicks · 1.5 + i) · 0.01`) and the
+      `spikesAnimation` withdrawal (`(1 - spikesAnimation) · 0.55`), the eye target tracking
+      (`lookAtPosition`/`lookDirection`/`eyePosition`), the tail sway (`tailAnimation`), and the
+      `GuardianRenderer` attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
+      which read entity-side state not yet projected. The texture-backed path
+      (`textures/entity/guardian/guardian.png`) and its lighting/overlay also remain unsupported
+      (this is a colored-first slice; the colored debug path approximates the body with a single
+      teal tint and the eye with a pink tint)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

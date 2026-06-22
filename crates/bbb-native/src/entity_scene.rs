@@ -706,9 +706,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => EntityModelKind::Dolphin {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
-            placeholder("todo_elder_guardian_bounds", 1.9975, 1.9975, 1.9975)
-        }
+        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => EntityModelKind::Guardian { elder: true },
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => placeholder("todo_end_crystal_bounds", 2.0, 2.0, 2.0),
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => {
@@ -746,7 +744,7 @@ fn entity_model_kind_with_time_and_registries(
             glow: true,
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID => placeholder("todo_guardian_bounds", 0.85, 0.85, 0.85),
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
         VANILLA_ENTITY_TYPE_INTERACTION_ID => placeholder("todo_interaction_bounds", 1.0, 1.0, 1.0),
         VANILLA_ENTITY_TYPE_ITEM_ID => placeholder("todo_item_entity_bounds", 0.25, 0.25, 0.25),
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
@@ -3045,6 +3043,22 @@ mod tests {
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
             EntityModelKind::Dolphin { baby: true }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_guardian_and_elder_guardian_to_real_model() {
+        // Both guardians were placeholder render boxes; they now resolve to the real
+        // `GuardianModel`. The variant is keyed purely off the entity type id (the elder is the
+        // same mesh scaled 2.35×), with no synced data. The procedural spike pulse / withdrawal,
+        // eye tracking, tail sway, and attack beam are deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_GUARDIAN_ID, &[]),
+            EntityModelKind::Guardian { elder: false }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, &[]),
+            EntityModelKind::Guardian { elder: true }
         );
     }
 

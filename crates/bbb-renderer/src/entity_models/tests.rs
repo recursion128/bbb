@@ -21,6 +21,7 @@ mod equine;
 mod ghast;
 mod goat;
 mod golem;
+mod guardian;
 mod happy_ghast;
 mod head_look;
 mod hoglin;

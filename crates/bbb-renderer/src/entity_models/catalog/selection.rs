@@ -77,6 +77,8 @@ impl EntityModelKind {
             Self::Breeze => "breeze",
             Self::Dolphin { baby: false } => "dolphin",
             Self::Dolphin { baby: true } => "dolphin_baby",
+            Self::Guardian { elder: false } => "guardian",
+            Self::Guardian { elder: true } => "elder_guardian",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",

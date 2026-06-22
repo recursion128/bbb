@@ -167,6 +167,11 @@ fn entity_model_mesh_with_options(
                     emit_dolphin_model(&mut mesh, *instance, baby);
                 }
             }
+            EntityModelKind::Guardian { elder } => {
+                // Colored-only so far (no texture-backed guardian yet), so this arm is always
+                // emitted rather than gated behind `skip_texture_backed_entities`.
+                emit_guardian_model(&mut mesh, *instance, elder);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1280,6 +1285,28 @@ fn emit_dolphin_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance,
     let head_t = body_t * part_pose_transform(DOLPHIN_HEAD_POSE);
     emit_model_cubes_at_pose(mesh, body_t, DOLPHIN_HEAD_POSE, &DOLPHIN_HEAD);
     emit_model_cubes_at_pose(mesh, head_t, DOLPHIN_NOSE_POSE, &DOLPHIN_NOSE);
+}
+
+fn emit_guardian_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, elder: bool) {
+    // Vanilla `GuardianModel` hangs the whole model off one `head` part (`PartPose.ZERO`): the
+    // body shell, twelve spikes, the eye, and the nested three-segment tail. The elder guardian
+    // is the same mesh scaled 2.35× by `ELDER_GUARDIAN_SCALE` (a `MeshTransformer`, composed at
+    // the root). The `setupAnim` head look, spike age pulse + `spikesAnimation` withdrawal, eye
+    // tracking, tail sway, and attack beam are deferred, so the model renders at its rest pose.
+    let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
+    let head_t = mesh_transformer_scaled_model_root_transform(instance, scale);
+
+    emit_model_cubes_at_pose(mesh, head_t, PART_POSE_ZERO, &GUARDIAN_HEAD);
+    for i in 0..GUARDIAN_SPIKE_X.len() {
+        emit_model_cubes_at_pose(mesh, head_t, guardian_spike_bind_pose(i), &GUARDIAN_SPIKE);
+    }
+    emit_model_cubes_at_pose(mesh, head_t, GUARDIAN_EYE_POSE, &GUARDIAN_EYE_CUBE);
+
+    // Tail: tail0 (`PartPose.ZERO`) → tail1 → tail2.
+    emit_model_cubes_at_pose(mesh, head_t, PART_POSE_ZERO, &GUARDIAN_TAIL0);
+    let tail1_t = head_t * part_pose_transform(GUARDIAN_TAIL1_POSE);
+    emit_model_cubes_at_pose(mesh, head_t, GUARDIAN_TAIL1_POSE, &GUARDIAN_TAIL1);
+    emit_model_cubes_at_pose(mesh, tail1_t, GUARDIAN_TAIL2_POSE, &GUARDIAN_TAIL2);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
