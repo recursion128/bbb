@@ -532,7 +532,7 @@ fn piglin_family_flaps_its_ears() {
     // `super.setupAnim`), so the ears flap continuously — driven by `ageInTicks` even when
     // the piglin stands still. Advancing `ageInTicks` re-poses only the ears, so the mesh
     // changes while the (age-independent) legs hold still. Covers every family and the baby
-    // layout, in the colored render path (piglins have no textured path).
+    // layout, in the colored render path (the textured path's ear flap is covered separately).
     for (name, base) in [
         (
             "piglin",
@@ -600,4 +600,192 @@ fn piglin_family_flaps_its_ears() {
             "{name}: the legs do not depend on ageInTicks"
         );
     }
+}
+
+#[test]
+fn piglin_textured_parts_match_vanilla_body_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_PIGLIN, "minecraft:piglin#main");
+    assert_eq!(MODEL_LAYER_PIGLIN_BABY, "minecraft:piglin_baby#main");
+    assert_eq!(MODEL_LAYER_PIGLIN_BRUTE, "minecraft:piglin_brute#main");
+    assert_eq!(
+        MODEL_LAYER_ZOMBIFIED_PIGLIN,
+        "minecraft:zombified_piglin#main"
+    );
+    assert_eq!(
+        MODEL_LAYER_ZOMBIFIED_PIGLIN_BABY,
+        "minecraft:zombified_piglin_baby#main"
+    );
+
+    // Adult: `AbstractPiglinModel.addHead` head/snout/nostril UVs + ears, the `texOffs(16, 16)`
+    // body (no jacket), and the shared `PlayerModel` wide arm/sleeve/leg/pants UVs.
+    let adult = &ADULT_PIGLIN_TEXTURED_PARTS;
+    assert_eq!(adult.len(), 6);
+    assert_eq!(adult[0].cubes[0].tex, [0.0, 0.0]); // head
+    assert_eq!(adult[0].cubes[0].uv_size, [10.0, 8.0, 8.0]);
+    assert_eq!(adult[0].cubes[1].tex, [31.0, 1.0]); // snout
+    assert_eq!(adult[0].cubes[2].tex, [2.0, 4.0]); // nostril
+    assert_eq!(adult[0].cubes[3].tex, [2.0, 0.0]); // nostril
+    assert_eq!(adult[0].children[0].cubes[0].tex, [51.0, 6.0]); // left ear
+    assert_eq!(adult[0].children[1].cubes[0].tex, [39.0, 6.0]); // right ear
+    assert_eq!(adult[1].cubes[0].tex, [16.0, 16.0]); // body
+    assert!(adult[1].children.is_empty()); // the piglin clears the jacket
+    assert_eq!(adult[2].cubes[0].tex, [40.0, 16.0]); // right arm
+    assert_eq!(adult[2].children[0].cubes[0].tex, [40.0, 32.0]); // right sleeve
+    assert_eq!(adult[3].cubes[0].tex, [32.0, 48.0]); // left arm
+    assert_eq!(adult[3].children[0].cubes[0].tex, [48.0, 48.0]); // left sleeve
+    assert_eq!(adult[4].cubes[0].tex, [0.0, 16.0]); // right leg
+    assert_eq!(adult[4].children[0].cubes[0].tex, [0.0, 32.0]); // right pants
+    assert_eq!(adult[5].cubes[0].tex, [16.0, 48.0]); // left leg
+    assert_eq!(adult[5].children[0].cubes[0].tex, [0.0, 48.0]); // left pants
+
+    // Baby: `BabyPiglinModel.createBodyLayer`. Body part 0, head part 1 with the empty hat plus
+    // two ear holders whose nested ear cubes carry the UVs.
+    let baby = &BABY_PIGLIN_TEXTURED_PARTS;
+    assert_eq!(baby.len(), 6);
+    assert_eq!(baby[0].cubes[0].tex, [0.0, 13.0]); // body
+    let baby_head = &baby[1];
+    assert_eq!(baby_head.cubes[0].tex, [21.0, 30.0]); // snout
+    assert_eq!(baby_head.cubes[1].tex, [0.0, 0.0]); // head
+    assert_eq!(baby_head.children.len(), 3);
+    assert!(baby_head.children[0].cubes.is_empty()); // empty hat
+    assert_eq!(baby_head.children[1].children[0].cubes[0].tex, [0.0, 21.0]); // left ear
+    assert_eq!(baby_head.children[2].children[0].cubes[0].tex, [18.0, 13.0]); // right ear
+    assert_eq!(baby[2].cubes[0].tex, [28.0, 13.0]); // left arm
+    assert_eq!(baby[3].cubes[0].tex, [10.0, 30.0]); // right arm
+    assert_eq!(baby[4].cubes[0].tex, [22.0, 23.0]); // right leg
+    assert_eq!(baby[5].cubes[0].tex, [10.0, 23.0]); // left leg
+}
+
+#[test]
+fn piglin_textured_layer_passes_match_vanilla_renderer() {
+    let cases = [
+        (
+            PiglinModelFamily::Piglin,
+            false,
+            "minecraft:piglin#main",
+            PIGLIN_TEXTURE_REF,
+        ),
+        (
+            PiglinModelFamily::Piglin,
+            true,
+            "minecraft:piglin_baby#main",
+            PIGLIN_BABY_TEXTURE_REF,
+        ),
+        (
+            PiglinModelFamily::PiglinBrute,
+            false,
+            "minecraft:piglin_brute#main",
+            PIGLIN_BRUTE_TEXTURE_REF,
+        ),
+        (
+            PiglinModelFamily::ZombifiedPiglin,
+            false,
+            "minecraft:zombified_piglin#main",
+            ZOMBIFIED_PIGLIN_TEXTURE_REF,
+        ),
+        (
+            PiglinModelFamily::ZombifiedPiglin,
+            true,
+            "minecraft:zombified_piglin_baby#main",
+            ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF,
+        ),
+    ];
+    for (family, baby, model_layer, texture) in cases {
+        let baby_layout = baby && family != PiglinModelFamily::PiglinBrute;
+        let passes = piglin_textured_layer_passes(family, baby_layout);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::PiglinBase);
+        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[0].model_layer, model_layer);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+        assert!(entity_model_texture_refs().contains(&texture));
+        let expected_parts: &[_] = if baby_layout {
+            &BABY_PIGLIN_TEXTURED_PARTS
+        } else {
+            &ADULT_PIGLIN_TEXTURED_PARTS
+        };
+        assert_eq!(passes[0].parts, expected_parts);
+    }
+    // The brute is never baby: its baby flag still selects the adult layer + brute texture.
+    let brute_baby = piglin_textured_layer_passes(PiglinModelFamily::PiglinBrute, false);
+    assert_eq!(brute_baby[0].texture, PIGLIN_BRUTE_TEXTURE_REF);
+    assert_eq!(brute_baby[0].parts, &ADULT_PIGLIN_TEXTURED_PARTS);
+    assert_eq!(
+        piglin_entity_texture_refs(),
+        &[
+            PIGLIN_TEXTURE_REF,
+            PIGLIN_BABY_TEXTURE_REF,
+            PIGLIN_BRUTE_TEXTURE_REF,
+            ZOMBIFIED_PIGLIN_TEXTURE_REF,
+            ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF,
+        ]
+    );
+}
+
+#[test]
+fn piglin_textured_mesh_matches_colored_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&piglin_texture_images()).unwrap();
+    let cases = [
+        (PiglinModelFamily::Piglin, false),
+        (PiglinModelFamily::Piglin, true),
+        (PiglinModelFamily::PiglinBrute, false),
+        (PiglinModelFamily::ZombifiedPiglin, false),
+        (PiglinModelFamily::ZombifiedPiglin, true),
+    ];
+    for (family, baby) in cases {
+        let instances = [EntityModelInstance::piglin(
+            90,
+            [0.0, 64.0, 0.0],
+            0.0,
+            family,
+            baby,
+        )];
+        let colored = entity_model_mesh(&instances);
+        let textured = entity_model_textured_mesh(&instances, &atlas);
+        // The textured piglin shares the colored geometry exactly (same flapped ears at age 0).
+        assert_eq!(
+            textured.cutout_faces, colored.opaque_faces,
+            "{family:?} {baby}"
+        );
+        assert_eq!(
+            textured.vertices.len(),
+            colored.vertices.len(),
+            "{family:?}"
+        );
+        assert!(textured
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        let (cmin, cmax) = mesh_extents(&colored);
+        let (tmin, tmax) = textured_mesh_extents(&textured);
+        assert_close3(tmin, cmin);
+        assert_close3(tmax, cmax);
+
+        // The ears flap as ageInTicks advances on the textured path too.
+        let aged = [instances[0].with_age_in_ticks(31.4)];
+        let textured_aged = entity_model_textured_mesh(&aged, &atlas);
+        assert_ne!(textured.vertices, textured_aged.vertices, "{family:?} ears");
+    }
+
+    // Non-zombified piglins swing their arms when walking; the zombified piglin holds them out.
+    let piglin =
+        EntityModelInstance::piglin(90, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false);
+    let piglin_rest = entity_model_textured_mesh(&[piglin], &atlas);
+    let piglin_walk = entity_model_textured_mesh(&[piglin.with_walk_animation(0.0, 1.0)], &atlas);
+    assert_ne!(
+        piglin_rest.vertices, piglin_walk.vertices,
+        "the textured piglin swings its arms/legs when walking"
+    );
+}
+
+fn piglin_texture_images() -> Vec<EntityModelTextureImage> {
+    piglin_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
 }

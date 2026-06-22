@@ -131,6 +131,18 @@ pub(in crate::entity_models) const ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF: EntityMode
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const PIGLIN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
+    PIGLIN_TEXTURE_REF,
+    PIGLIN_BABY_TEXTURE_REF,
+    PIGLIN_BRUTE_TEXTURE_REF,
+    ZOMBIFIED_PIGLIN_TEXTURE_REF,
+    ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF,
+];
+
+pub fn piglin_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &PIGLIN_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const HOGLIN_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/hoglin/hoglin.png",
@@ -663,7 +675,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 105] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 110] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -745,6 +757,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     DROWNED_BABY_TEXTURE_REF,
     ZOMBIE_VILLAGER_TEXTURE_REF,
     ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
+    PIGLIN_TEXTURE_REF,
+    PIGLIN_BABY_TEXTURE_REF,
+    PIGLIN_BRUTE_TEXTURE_REF,
+    ZOMBIFIED_PIGLIN_TEXTURE_REF,
+    ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF,
     EVOKER_TEXTURE_REF,
     ILLUSIONER_TEXTURE_REF,
     PILLAGER_TEXTURE_REF,

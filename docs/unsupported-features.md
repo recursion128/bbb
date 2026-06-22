@@ -671,8 +671,8 @@ When an agent does any of the following, update this file in the same slice:
     eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned, zombie
     villager — all colored+textured); and the skeleton family (skeleton,
     stray, parched, wither skeleton, bogged) in both the colored and textured
-    paths; the piglin family (piglin, piglin brute, zombified piglin) in the
-    colored path; and the `VillagerModel`/`IllagerModel`/`WitchModel` family
+    paths; the piglin family (piglin, piglin brute, zombified piglin) in both the
+    colored and textured paths; and the `VillagerModel`/`IllagerModel`/`WitchModel` family
     (villager and wandering trader colored+textured, witch colored+textured,
     illagers colored+textured) — the baby villager's index-3 head included. Remaining
     head-look work: now applied to every part-list humanoid and quadruped,
@@ -1039,19 +1039,27 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/zombie_villager/zombie_villager_baby.png` (each limb has its
       own `texOffs`, no mirroring), with official PNG atlas upload/bind/sample and
       the head-look / leg-swing animation on both render paths (the held-out
-      `animateZombieArms` arms stay deferred); piglins and piglin brutes use vanilla 26.1
-      `AdultPiglinModel.createBodyLayer()` / `BabyPiglinModel.createBodyLayer()`
-      geometry with official piglin, baby piglin, and brute texture references;
-      zombified piglins use vanilla 26.1
-      `AdultZombifiedPiglinModel.createBodyLayer()` /
-      `BabyZombifiedPiglinModel.createBodyLayer()` geometry with official
-      adult/baby texture references; `DrownedOuterLayer`, drowned swim
+      `animateZombieArms` arms stay deferred); piglins, piglin brutes, and zombified
+      piglins share a texture-backed render path through `AbstractPiglinModel`: all
+      five families emit the shared vanilla 26.1 `AdultPiglinModel.createBodyLayer()`
+      / `BabyPiglinModel.createBodyLayer()` geometry
+      (`AdultZombifiedPiglinModel`/`BabyZombifiedPiglinModel` forward to those
+      layers, and the brute reuses the adult layer) — the `addHead` snout head + ears
+      (`texOffs(0, 0)` head, `texOffs(31, 1)` snout, `texOffs(2, 4)`/`texOffs(2, 0)`
+      nostrils, `texOffs(51, 6)`/`texOffs(39, 6)` ears), the `texOffs(16, 16)` body
+      (the `PlayerModel` jacket is cleared), and the shared `PlayerModel.createMesh`
+      wide arm/sleeve/leg/pants UVs — over each family's own
+      `textures/entity/piglin/{piglin,piglin_baby,piglin_brute,zombified_piglin,zombified_piglin_baby}.png`,
+      with official PNG atlas upload/bind/sample and the vanilla
+      `AbstractPiglinModel.setupAnim` head-look, leg swing, ear flap, and (for the
+      non-zombified families) arm counter-swing on both render paths (the zombified
+      piglin keeps its held-out `animateZombieArms` arms deferred);
+      `DrownedOuterLayer`, drowned swim
       rotation, trident throw arm pose, zombie villager type/profession/level
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
-      layers, held items, attack/walk/dance/crossbow/admiring/zombie-arm
-      animation remain unsupported, and GPU texture binding remains unsupported
-      for the still-colored members (the piglin family);
+      layers, held items, and attack/walk/dance/crossbow/admiring/zombie-arm
+      animation remain unsupported;
       the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch

@@ -147,7 +147,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::Piglin { family, baby } => {
-                emit_piglin_model(&mut mesh, *instance, family, baby)
+                if !skip_texture_backed_entities {
+                    emit_piglin_model(&mut mesh, *instance, family, baby)
+                }
             }
             EntityModelKind::Hoglin { family, baby } => {
                 if !skip_texture_backed_entities {

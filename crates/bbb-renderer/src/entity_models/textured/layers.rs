@@ -3,8 +3,8 @@ use super::super::{
         boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref,
         player_texture_ref, sheep_wool_render_color, wolf_texture_ref, BoatModelFamily,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        HoglinModelFamily, IllagerModelFamily, PigModelVariant, PlayerModelPartVisibility,
-        SheepWoolColor, SkeletonModelFamily,
+        HoglinModelFamily, IllagerModelFamily, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
     },
     geometry::TexturedModelPartDesc,
     model_layers::*,
@@ -38,6 +38,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     HuskBase,
     DrownedBase,
     ZombieVillagerBase,
+    PiglinBase,
     IllagerBase,
     BlazeBase,
     EndermiteBase,
@@ -470,6 +471,45 @@ pub(in crate::entity_models) fn zombie_villager_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieVillagerBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer,
+        texture,
+        parts,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn piglin_textured_layer_passes(
+    family: PiglinModelFamily,
+    baby_layout: bool,
+) -> Vec<EntityModelLayerPass> {
+    // All piglin families share `AbstractPiglinModel` geometry (`AdultZombifiedPiglinModel` /
+    // `BabyZombifiedPiglinModel` forward to the piglin layers, and the brute reuses the adult
+    // layer); only the model layer key and texture differ. `baby_layout` selects the baby parts
+    // (the brute is never baby). The body part keeps the snouted head + ears; the held-vs-swung
+    // arms are decided by the emitter.
+    let parts: &'static [TexturedModelPartDesc] = if baby_layout {
+        &BABY_PIGLIN_TEXTURED_PARTS
+    } else {
+        &ADULT_PIGLIN_TEXTURED_PARTS
+    };
+    let (model_layer, texture) = match (family, baby_layout) {
+        (PiglinModelFamily::Piglin, false) => (MODEL_LAYER_PIGLIN, PIGLIN_TEXTURE_REF),
+        (PiglinModelFamily::Piglin, true) => (MODEL_LAYER_PIGLIN_BABY, PIGLIN_BABY_TEXTURE_REF),
+        (PiglinModelFamily::PiglinBrute, _) => (MODEL_LAYER_PIGLIN_BRUTE, PIGLIN_BRUTE_TEXTURE_REF),
+        (PiglinModelFamily::ZombifiedPiglin, false) => {
+            (MODEL_LAYER_ZOMBIFIED_PIGLIN, ZOMBIFIED_PIGLIN_TEXTURE_REF)
+        }
+        (PiglinModelFamily::ZombifiedPiglin, true) => (
+            MODEL_LAYER_ZOMBIFIED_PIGLIN_BABY,
+            ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF,
+        ),
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::PiglinBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
