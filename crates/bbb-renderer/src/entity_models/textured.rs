@@ -12,25 +12,26 @@ use super::{
         fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh,
         TexturedModelPartDesc,
     },
+    ghast_model_root_transform,
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
         apply_polar_bear_standing_pose, apply_wolf_sitting_pose, chicken_leg_part_indices,
         cow_head_part_index, enderman_arm_swing_pose, enderman_leg_swing_pose,
-        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
-        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
-        hoglin_leg_swing_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
-        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
-        parched_head_part_index, pig_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
-        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
-        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX,
-        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
-        SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        ghast_tentacle_x_rot, half_amplitude_leg_swing_pose, head_first_part_index,
+        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
+        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
+        humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
+        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, pig_head_part_index,
+        player_head_part_index, polar_bear_head_part_index, polar_bear_standing_part_roles,
+        quadruped_leg_swing_pose, ravager_head_child_index, ravager_leg_swing_pose,
+        ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
+        skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
+        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
+        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
+        BABY_GOAT_HEAD_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
+        RAVAGER_TEXTURED_NECK_CHILDREN, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
         SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
@@ -42,8 +43,8 @@ mod layers;
 
 pub(super) use layers::{
     boat_textured_layer_passes, chicken_textured_layer_passes, cow_textured_layer_passes,
-    creeper_textured_layer_passes, enderman_textured_layer_passes, goat_textured_layer_passes,
-    hoglin_textured_layer_passes, iron_golem_textured_layer_passes,
+    creeper_textured_layer_passes, enderman_textured_layer_passes, ghast_textured_layer_passes,
+    goat_textured_layer_passes, hoglin_textured_layer_passes, iron_golem_textured_layer_passes,
     magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
     polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
@@ -135,6 +136,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::MagmaCube { size } => {
                 emit_magma_cube_textured_model(&mut meshes, *instance, size, atlas);
+            }
+            EntityModelKind::Ghast => {
+                emit_ghast_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::PolarBear { baby } => {
                 emit_polar_bear_textured_model(&mut meshes, *instance, baby, atlas);
@@ -767,6 +771,25 @@ fn emit_magma_cube_textured_model(
     let transform = magma_cube_model_root_transform(instance, size);
     for pass in magma_cube_textured_layer_passes() {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_ghast_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Vanilla `GhastModel.setupAnim` waves the nine tentacles by `ageInTicks`
+    // (`tentacle.xRot = 0.2 * sin(ageInTicks * 0.3 + i) + 0.4`, never at rest), so the
+    // tentacles are always re-posed. The body is part 0; tentacles `i` are parts 1..=9.
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let transform = ghast_model_root_transform(instance);
+    for pass in ghast_textured_layer_passes() {
+        let mut parts = pass.parts.to_vec();
+        for (tentacle, part) in parts.iter_mut().skip(1).enumerate() {
+            part.pose.rotation[0] = ghast_tentacle_x_rot(tentacle, age_in_ticks);
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 

@@ -53,6 +53,7 @@ mod cow;
 mod creeper;
 mod enderman;
 mod equine;
+mod ghast;
 mod goat;
 mod golem;
 mod head_look;
@@ -83,6 +84,7 @@ pub(super) use cow::*;
 pub(super) use creeper::*;
 pub(super) use enderman::*;
 pub(super) use equine::*;
+pub(super) use ghast::*;
 pub(super) use goat::*;
 pub(super) use golem::*;
 pub(super) use head_look::*;
@@ -104,11 +106,11 @@ pub(super) use textures::*;
 pub use textures::{
     boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
     creeper_entity_texture_refs, enderman_entity_texture_refs, entity_model_texture_refs,
-    goat_entity_texture_refs, hoglin_entity_texture_refs, pig_entity_texture_refs,
-    player_entity_texture_refs, polar_bear_entity_texture_refs, ravager_entity_texture_refs,
-    sheep_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
-    spider_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
-    wolf_entity_texture_refs,
+    ghast_entity_texture_refs, goat_entity_texture_refs, hoglin_entity_texture_refs,
+    pig_entity_texture_refs, player_entity_texture_refs, polar_bear_entity_texture_refs,
+    ravager_entity_texture_refs, sheep_entity_texture_refs, skeleton_entity_texture_refs,
+    slime_entity_texture_refs, spider_entity_texture_refs, villager_entity_texture_refs,
+    witch_entity_texture_refs, wolf_entity_texture_refs,
 };
 pub(super) use villager::*;
 pub(super) use witch::*;

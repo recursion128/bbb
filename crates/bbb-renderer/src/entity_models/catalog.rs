@@ -37,6 +37,7 @@ pub enum EntityModelKind {
     MagmaCube {
         size: i32,
     },
+    Ghast,
     Zombie {
         baby: bool,
     },

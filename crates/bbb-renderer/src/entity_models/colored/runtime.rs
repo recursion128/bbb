@@ -17,10 +17,10 @@ use super::selection::{
 };
 use super::transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, entity_model_root_transform,
-    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
-    player_model_root_transform, polar_bear_model_root_transform, scaled_model_root_transform,
-    slime_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    ghast_model_root_transform, magma_cube_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, player_model_root_transform,
+    polar_bear_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -93,6 +93,11 @@ fn entity_model_mesh_with_options(
             EntityModelKind::MagmaCube { size } => {
                 if !skip_texture_backed_entities {
                     emit_magma_cube_model(&mut mesh, *instance, size);
+                }
+            }
+            EntityModelKind::Ghast => {
+                if !skip_texture_backed_entities {
+                    emit_ghast_model(&mut mesh, *instance);
                 }
             }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
@@ -261,6 +266,18 @@ fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
         &MAGMA_CUBE_PARTS,
         magma_cube_model_root_transform(instance, size),
     );
+}
+
+fn emit_ghast_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `GhastModel.setupAnim` waves each of the nine tentacles by `ageInTicks`
+    // (`tentacle.xRot = 0.2 * sin(ageInTicks * 0.3 + i) + 0.4`, never at rest), so the
+    // tentacles are always re-posed. The body is part 0; tentacles `i` are parts 1..=9.
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let mut parts = GHAST_PARTS.to_vec();
+    for (tentacle, part) in parts.iter_mut().skip(1).enumerate() {
+        part.pose.rotation[0] = ghast_tentacle_x_rot(tentacle, age_in_ticks);
+    }
+    emit_model_parts(mesh, &parts, ghast_model_root_transform(instance));
 }
 
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {

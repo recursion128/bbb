@@ -712,7 +712,7 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_fishing_bobber_bounds", 0.25, 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_FROG_ID => placeholder("todo_frog_bounds", 0.5, 0.5, 0.5),
-        VANILLA_ENTITY_TYPE_GHAST_ID => placeholder("todo_ghast_bounds", 4.0, 4.0, 4.0),
+        VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => placeholder("todo_happy_ghast_bounds", 4.0, 4.0, 4.0),
         VANILLA_ENTITY_TYPE_GIANT_ID => placeholder("todo_giant_bounds", 3.6, 12.0, 3.6),
         VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => {
@@ -2806,6 +2806,15 @@ mod tests {
                 &[protocol_int_data(SLIME_SIZE_DATA_ID, 3)]
             ),
             EntityModelKind::MagmaCube { size: 3 }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_ghast() {
+        // The ghast was a placeholder render box; it now resolves to the real model.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_GHAST_ID, &[]),
+            EntityModelKind::Ghast
         );
     }
 

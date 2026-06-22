@@ -1161,6 +1161,19 @@ When an agent does any of the following, update this file in the same slice:
       squish offsets, full-bright block light, particle/audio coupling,
       lighting, overlay, crumbling, and full render-graph sorting parity remain
       unsupported
+    - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`
+      geometry: the 16x16x16 body at y 17.6 plus the nine tentacles at y 24.6,
+      whose lengths are the fixed-seed `RandomSource(1660L)` (`nextInt(7) + 8`,
+      reproduced via the Java legacy LCG → `[8, 13, 9, 11, 11, 10, 12, 9, 12]`) and
+      whose xz offsets come from the vanilla index formula, scaled 4.5x by the
+      `MeshTransformer.scaling(4.5F)` model-root transform; the official
+      `textures/entity/ghast/ghast.png` texture reference, texture-backed base
+      layer pass emission, official PNG atlas upload/bind/sample path, and the
+      vanilla `GhastModel.setupAnim` tentacle wave (`tentacle.xRot = 0.2 *
+      sin(ageInTicks * 0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on
+      both render paths). The `isCharging` shooting-texture variant
+      (`ghast_shooting.png`), the happy ghast (a distinct rideable model), lighting,
+      and overlay remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

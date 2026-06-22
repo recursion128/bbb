@@ -10,6 +10,7 @@ mod creeper;
 mod death;
 mod enderman;
 mod equine;
+mod ghast;
 mod goat;
 mod golem;
 mod head_look;
