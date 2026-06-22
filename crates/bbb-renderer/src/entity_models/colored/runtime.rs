@@ -1490,7 +1490,8 @@ fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `GiantZombieModel` is the standard `HumanoidModel` (zombie) mesh, baked through
     // `humanoidBodyLayer.apply(MeshTransformer.scaling(6.0))` — i.e. the adult zombie body layer
     // scaled 6×, exactly the husk's `MeshTransformer` pattern but with the giant's 6.0 factor and no
-    // baby variant. The head look and limb swing match the zombie (the giant extracts the same
+    // baby variant. The head look, limb swing, and held-out `animateZombieArms` arm pose match
+    // the zombie (`GiantZombieModel extends ZombieModel`, the giant extracts the same
     // `ZombieRenderState`); the `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie texture
     // are deferred.
     let parts = humanoid_limb_swing_parts(
@@ -1498,6 +1499,11 @@ fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         HUMANOID_LEG_PART_INDICES,
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
+    );
+    let parts = zombie_arm_held_out_parts(
+        parts,
+        HUMANOID_ARM_PART_INDICES,
+        instance.render_state.age_in_ticks,
     );
     emit_model_parts(
         mesh,
@@ -1810,6 +1816,11 @@ fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
     );
+    let parts = zombie_arm_held_out_parts(
+        parts,
+        HUMANOID_ARM_PART_INDICES,
+        instance.render_state.age_in_ticks,
+    );
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
@@ -1856,6 +1867,11 @@ fn emit_zombie_variant_model(
         HUMANOID_LEG_PART_INDICES,
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
+    );
+    let parts = zombie_arm_held_out_parts(
+        parts,
+        HUMANOID_ARM_PART_INDICES,
+        instance.render_state.age_in_ticks,
     );
     emit_model_parts_with_color(mesh, &parts, transform, color);
 }
@@ -2313,6 +2329,24 @@ pub(in crate::entity_models) fn humanoid_arm_swing_parts(
                 pose = humanoid_arm_swing_pose(pose, limb_swing, limb_swing_amount);
             }
             arm.pose = humanoid_arm_bob_pose(pose, age_in_ticks);
+        }
+    }
+    Cow::Owned(owned)
+}
+
+/// Applies the vanilla `ZombieModel.setupAnim` held-out arm pose
+/// ([`zombie_arm_held_out_pose`]) to a colored zombie-family layer's two arm parts at
+/// `arm_indices`, overriding the inherited walk arm swing. Always re-poses the arms (the
+/// idle bob folded into the pose advances every frame).
+pub(in crate::entity_models) fn zombie_arm_held_out_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    arm_indices: [usize; 2],
+    age_in_ticks: f32,
+) -> Cow<'_, [ModelPartDesc]> {
+    let mut owned = parts.into_owned();
+    for index in arm_indices {
+        if let Some(arm) = owned.get_mut(index) {
+            arm.pose = zombie_arm_held_out_pose(arm.pose, age_in_ticks);
         }
     }
     Cow::Owned(owned)

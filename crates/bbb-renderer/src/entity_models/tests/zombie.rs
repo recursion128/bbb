@@ -164,9 +164,66 @@ fn zombie_adult_model_mesh_uses_vanilla_body_layer_geometry() {
     assert_eq!(mesh.vertices.len(), 168);
     assert_eq!(mesh.indices.len(), 252);
 
+    // The held-out `animateZombieArms` pose swings the resting arms forward (xRot ≈ -80°)
+    // and splays them out (yRot ±0.1) plus the idle bob, so they reach to +Z (max Z grows
+    // from the ±0.28125 bind half-depth to 0.65274626) and widen X slightly. The legs/head
+    // still bound Y.
     let (min, max) = mesh_extents(&mesh);
-    assert_close3(min, [-0.5, 64.001, -0.28125]);
-    assert_close3(max, [0.5, 66.03225, 0.28125]);
+    assert_close3(min, [-0.5226382, 64.001, -0.28125]);
+    assert_close3(max, [0.5226382, 66.03225, 0.65274626]);
+}
+
+#[test]
+fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
+    // Vanilla AnimationUtils.animateZombieArms at attackTime = 0 (non-aggressive): both arms
+    // drop forward to xRot = -π/2.25, splay to yRot ∓0.1 (right arm -0.1, left +0.1), zero
+    // zRot, then take the idle bob. ADULT_ZOMBIE_PARTS lists rightArm (x = -5) at [2] and
+    // leftArm (x = +5) at [3].
+    let arm_drop = -std::f32::consts::PI / 2.25;
+    let right = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[2].pose, 0.0);
+    let left = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[3].pose, 0.0);
+    // At ageInTicks 0 the bob's xRot term is sin(0) * 0.05 = 0, so xRot is the bare arm drop.
+    assert!(
+        (right.rotation[0] - arm_drop).abs() < 1e-6,
+        "right arm drop: {}",
+        right.rotation[0]
+    );
+    assert!((left.rotation[0] - arm_drop).abs() < 1e-6, "left arm drop");
+    // The arms splay out (yRot is untouched by the bob): right -0.1, left +0.1.
+    assert!((right.rotation[1] - (-0.1)).abs() < 1e-6, "right arm splay");
+    assert!((left.rotation[1] - 0.1).abs() < 1e-6, "left arm splay");
+    // zRot starts at the held-out 0 and carries only the idle-bob baseline at age 0
+    // (right arm +0.1, left -0.1).
+    assert!((right.rotation[2] - 0.1).abs() < 1e-6, "right arm bob zRot");
+    assert!(
+        (left.rotation[2] - (-0.1)).abs() < 1e-6,
+        "left arm bob zRot"
+    );
+    // The pose is set absolutely (the deep arm drop overrides the inherited swing); the
+    // offset is preserved.
+    assert_eq!(right.offset, ADULT_ZOMBIE_PARTS[2].pose.offset);
+}
+
+#[test]
+fn zombie_arms_held_out_and_bob_with_age() {
+    // The zombie arms are held out forward (animateZombieArms), reaching well past the body's
+    // ~0.28 bind depth, and the folded-in idle bob moves them with ageInTicks even while the
+    // zombie stands still.
+    let base = EntityModelInstance::zombie(60, [0.0, 64.0, 0.0], 0.0, false);
+    let early = entity_model_mesh(&[base]);
+    let later = entity_model_mesh(&[base.with_age_in_ticks(27.3)]);
+    let max_z = early
+        .vertices
+        .iter()
+        .map(|vertex| vertex.position[2])
+        .fold(f32::MIN, f32::max);
+    assert!(max_z > 0.5, "the held-out arms reach forward: {max_z}");
+    // Standing, the only age-dependent motion is the arm idle bob, so the meshes differ.
+    assert_eq!(early.vertices.len(), later.vertices.len());
+    assert_ne!(
+        early.vertices, later.vertices,
+        "the held-out arms bob with ageInTicks"
+    );
 }
 
 #[test]
@@ -376,9 +433,11 @@ fn zombie_baby_model_mesh_uses_vanilla_body_layer_geometry() {
     assert_eq!(mesh.vertices.len(), 168);
     assert_eq!(mesh.indices.len(), 252);
 
+    // The baby zombie's held-out arms reach forward the same way (scaled down): max Z grows
+    // from 0.203125 to 0.29263186 and X widens slightly.
     let (min, max) = mesh_extents(&mesh);
-    assert_close3(min, [-0.25, 64.001, -0.203125]);
-    assert_close3(max, [0.25, 64.947876, 0.203125]);
+    assert_close3(min, [-0.25911528, 64.001, -0.203125]);
+    assert_close3(max, [0.25911525, 64.947876, 0.29263186]);
 }
 
 #[test]
@@ -410,9 +469,10 @@ fn zombie_variant_meshes_use_vanilla_body_layer_geometry() {
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(HUSK_TAN, 0.78)));
+    // The held-out arms reach forward on the husk too (max Z 0.29882815 -> 0.6935429).
     let (husk_min, husk_max) = mesh_extents(&husk);
-    assert_close3(husk_min, [-0.53125, 64.00106, -0.29882815]);
-    assert_close3(husk_max, [0.53125, 66.15926, 0.29882815]);
+    assert_close3(husk_min, [-0.5553031, 64.00106, -0.29882815]);
+    assert_close3(husk_max, [0.5553031, 66.15926, 0.6935429]);
 
     let baby_husk = entity_model_mesh(&[EntityModelInstance::zombie_variant(
         67,
@@ -467,9 +527,11 @@ fn zombie_variant_meshes_use_vanilla_body_layer_geometry() {
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(ZOMBIE_VILLAGER_ROBE, 0.78)));
+    // The zombie villager's held-out arms reach forward (max Z 0.5 -> 0.65274626); its robe
+    // still bounds min Z at -0.5.
     let (zombie_villager_min, zombie_villager_max) = mesh_extents(&zombie_villager);
-    assert_close3(zombie_villager_min, [-0.50000006, 64.001, -0.50000006]);
-    assert_close3(zombie_villager_max, [0.50000006, 66.15725, 0.50000006]);
+    assert_close3(zombie_villager_min, [-0.5226382, 64.001, -0.50000006]);
+    assert_close3(zombie_villager_max, [0.5226382, 66.15725, 0.65274626]);
 
     let baby_zombie_villager = entity_model_mesh(&[EntityModelInstance::zombie_variant(
         153,

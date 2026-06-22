@@ -45,9 +45,9 @@ use super::{
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
         turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
         witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        wolf_tail_swing_pose, zombie_arm_held_out_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE,
+        ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
+        ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
         BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
@@ -2356,30 +2356,29 @@ fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
     ]
 }
 
-fn emit_zombie_textured_model(
+/// Emits a zombie-family entity's textured layer passes, applying the vanilla
+/// `HumanoidModel.setupAnim` head look ([`head_look_pose`]) and leg swing
+/// ([`humanoid_leg_swing_pose`]) plus the `ZombieModel.setupAnim` held-out arm pose
+/// ([`zombie_arm_held_out_pose`], which overrides the inherited arm swing and carries the
+/// always-on idle bob). Shared by the zombie, husk, drowned, and zombie-villager textured
+/// renders; the caller supplies the per-family passes, head index, and root transform.
+/// Because the held-out arms re-pose every frame, there is no static rest fast path.
+fn emit_zombie_family_textured_passes(
     meshes: &mut EntityModelTexturedMeshes,
+    passes: Vec<EntityModelLayerPass>,
+    head_index: usize,
+    transform: Mat4,
     instance: EntityModelInstance,
-    baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Mirrors the colored `emit_zombie_model`: vanilla `HumanoidModel.setupAnim` runs the head
-    // look and the leg swing, but `ZombieModel` overrides the arms with the held-out
-    // `animateZombieArms` pose, so bbb leaves the visible arms static (that arms-out pose is
-    // deferred). Only the head and legs animate. The baby layer's head is part 1 (the body is
-    // part 0); the adult head is part 0.
-    let head_index = if baby { 1 } else { 0 };
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let age_in_ticks = instance.render_state.age_in_ticks;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
     let limbs_resting = limb_swing_at_rest(limb_swing_amount);
-    let transform = entity_model_root_transform(instance);
-    for pass in zombie_textured_layer_passes(baby) {
-        if head_resting && limbs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
-        }
+    for pass in passes {
         let mut parts = pass.parts.to_vec();
         if !head_resting {
             if let Some(head) = parts.get_mut(head_index) {
@@ -2393,8 +2392,35 @@ fn emit_zombie_textured_model(
                 }
             }
         }
+        for index in HUMANOID_ARM_PART_INDICES {
+            if let Some(arm) = parts.get_mut(index) {
+                arm.pose = zombie_arm_held_out_pose(arm.pose, age_in_ticks);
+            }
+        }
         emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
+}
+
+fn emit_zombie_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Mirrors the colored `emit_zombie_model`: vanilla `HumanoidModel.setupAnim` runs the head
+    // look and the leg swing, then `ZombieModel` overrides the arms with the held-out
+    // `animateZombieArms` pose (`zombie_arm_held_out_pose`). The baby layer's head is part 1
+    // (the body is part 0); the adult head is part 0.
+    let head_index = if baby { 1 } else { 0 };
+    let transform = entity_model_root_transform(instance);
+    emit_zombie_family_textured_passes(
+        meshes,
+        zombie_textured_layer_passes(baby),
+        head_index,
+        transform,
+        instance,
+        atlas,
+    );
 }
 
 fn emit_husk_textured_model(
@@ -2405,41 +2431,22 @@ fn emit_husk_textured_model(
 ) {
     // Mirrors the colored `emit_zombie_variant_model` husk arm: `HuskRenderer extends
     // ZombieRenderer`, so the husk reuses the zombie body parts and the same `HumanoidModel`
-    // head-look + leg-swing animation (the held-out `animateZombieArms` arm pose stays deferred,
-    // so the visible arms stay static). Vanilla scales the adult husk mesh by 1.0625
-    // (`huskScale`); the baby husk reuses the unscaled `babyZombieLayer`.
+    // head-look + leg-swing plus the held-out `animateZombieArms` arm pose. Vanilla scales the
+    // adult husk mesh by 1.0625 (`huskScale`); the baby husk reuses the unscaled `babyZombieLayer`.
     let head_index = if baby { 1 } else { 0 };
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     let transform = if baby {
         entity_model_root_transform(instance)
     } else {
         mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
     };
-    for pass in husk_textured_layer_passes(baby) {
-        if head_resting && limbs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
-        }
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-        }
-        if !limbs_resting {
-            for index in HUMANOID_LEG_PART_INDICES {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-    }
+    emit_zombie_family_textured_passes(
+        meshes,
+        husk_textured_layer_passes(baby),
+        head_index,
+        transform,
+        instance,
+        atlas,
+    );
 }
 
 fn emit_drowned_textured_model(
@@ -2450,37 +2457,19 @@ fn emit_drowned_textured_model(
 ) {
     // Mirrors the colored `emit_zombie_variant_model` drowned arm: `DrownedModel extends
     // ZombieModel`, so the non-swimming drowned runs the same `HumanoidModel` head-look +
-    // leg-swing with the held-out `animateZombieArms` arms (deferred). The `DrownedOuterLayer`,
-    // the `setupRotations`/`setupAnim` swim re-pose (needs `swimAmount`), and the trident throw
+    // leg-swing with the held-out `animateZombieArms` arms. The `DrownedOuterLayer`, the
+    // `setupRotations`/`setupAnim` swim re-pose (needs `swimAmount`), and the trident throw
     // arm pose (needs a held item) all stay deferred. Drowned has no root scale.
     let head_index = if baby { 1 } else { 0 };
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     let transform = entity_model_root_transform(instance);
-    for pass in drowned_textured_layer_passes(baby) {
-        if head_resting && limbs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
-        }
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-        }
-        if !limbs_resting {
-            for index in HUMANOID_LEG_PART_INDICES {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-    }
+    emit_zombie_family_textured_passes(
+        meshes,
+        drowned_textured_layer_passes(baby),
+        head_index,
+        transform,
+        instance,
+        atlas,
+    );
 }
 
 fn emit_zombie_villager_textured_model(
@@ -2491,38 +2480,20 @@ fn emit_zombie_villager_textured_model(
 ) {
     // Mirrors the colored `emit_zombie_variant_model` zombie-villager arm: `ZombieVillagerModel
     // extends HumanoidModel` and runs `super.setupAnim` (head look + leg swing) then
-    // `AnimationUtils.animateZombieArms` (the held-out arms, deferred). Only the head and legs
-    // animate. The baby layout's head is part 1 (the body is part 0); the adult head is part 0.
-    // The hatted base layer is emitted; the no-hat model selection and the
-    // profession/type/level overlays stay deferred. Zombie villagers have no root scale.
+    // `AnimationUtils.animateZombieArms` (the held-out arms). The baby layout's head is part 1
+    // (the body is part 0); the adult head is part 0. The hatted base layer is emitted; the
+    // no-hat model selection and the profession/type/level overlays stay deferred. Zombie
+    // villagers have no root scale.
     let head_index = if baby { 1 } else { 0 };
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     let transform = entity_model_root_transform(instance);
-    for pass in zombie_villager_textured_layer_passes(baby) {
-        if head_resting && limbs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
-        }
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-        }
-        if !limbs_resting {
-            for index in HUMANOID_LEG_PART_INDICES {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-    }
+    emit_zombie_family_textured_passes(
+        meshes,
+        zombie_villager_textured_layer_passes(baby),
+        head_index,
+        transform,
+        instance,
+        atlas,
+    );
 }
 
 fn emit_piglin_textured_model(

@@ -501,9 +501,9 @@ When an agent does any of the following, update this file in the same slice:
     overlay swings too, since its layer `SkeletonModel` runs the same `setupAnim`).
     Both families inherit the `HumanoidModel` legs unchanged (`SkeletonModel`/
     `AbstractZombieModel extends HumanoidModel`); the zombie family then overrides the
-    arms with its constant held-out pose (deferred), while the skeleton family keeps the
-    inherited arm counter-swing in its default (non-aiming) state (implemented — see the
-    arm-swing note below). The piglin
+    arms with the held-out `animateZombieArms` pose (implemented — see the zombie-arms note
+    below), while the skeleton family keeps the inherited arm counter-swing in its default
+    (non-aiming) state (implemented — see the arm-swing note below). The piglin
     family (`emit_piglin_model` — piglin, piglin brute, zombified piglin, adult and
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
     `setupAnim` runs `super.setupAnim` (the inherited legs and arms) before swaying only
@@ -611,7 +611,9 @@ When an agent does any of the following, update this file in the same slice:
     are not `HumanoidModel`, do not get it); only the `SPYGLASS`-pose skip (needs a held
     spyglass) and the enderman's halve/clamp composition of the bob stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
-    arms, the skeleton melee swing (`isAggressive && !isHoldingBow`) and bow-aiming
+    arms' aggressive arm-raise (`armDrop = -π / 1.5`) and attack swing — the resting
+    held-out pose is implemented, see the zombie-arms note below; the skeleton melee swing
+    (`isAggressive && !isHoldingBow`) and bow-aiming
     `ArmPose`, the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
     `PiglinModel` dance/attack/crossbow/admire poses (the `AbstractPiglinModel` ear flap is
     implemented for every piglin/zombified-piglin subclass — see below), the `IllagerModel`
@@ -1021,17 +1023,18 @@ When an agent does any of the following, update this file in the same slice:
       `BabyZombieModel.createBodyLayer` UVs over
       `textures/entity/zombie/zombie_baby.png` (each limb has its own `texOffs`,
       no mirroring), with official PNG atlas upload/bind/sample and the head-look /
-      leg-swing animation on both render paths (the held-out `animateZombieArms`
-      arm pose stays deferred, so the visible arms hold still as in the colored
-      path); husk entities share that texture-backed render path through
+      leg-swing animation plus the held-out `animateZombieArms` resting arm pose
+      (`armDrop = -π/2.25`, `yRot ∓0.1`, `zRot 0`, then the idle bob) on both render
+      paths (the aggressive arm-raise (`armDrop = -π/1.5`) and the attack swing stay
+      deferred); husk entities share that texture-backed render path through
       `HuskRenderer extends ZombieRenderer`: they reuse the zombie adult/baby body
       parts (so the husk geometry is byte-for-byte the zombie geometry) over
       `textures/entity/zombie/husk.png` / `textures/entity/zombie/husk_baby.png`,
       with the adult mesh scaled by the vanilla 26.1 `LayerDefinitions`
       `MeshTransformer.scaling(1.0625F)` (`huskScale`) at the model root, the baby
       reusing the unscaled shared baby zombie body layer, and the same official PNG
-      atlas upload/bind/sample plus head-look / leg-swing animation on both render
-      paths (arms deferred, as for the base zombie); drowned entities share that
+      atlas upload/bind/sample plus head-look / leg-swing animation and the held-out
+      arms on both render paths (as for the base zombie); drowned entities share that
       texture-backed render path through `DrownedRenderer extends
       AbstractZombieRenderer`: the adult layer emits the vanilla 26.1
       `DrownedModel.createBodyLayer(CubeDeformation.NONE)` UVs over
@@ -1042,9 +1045,9 @@ When an agent does any of the following, update this file in the same slice:
       forwards to `BabyDrownedModel.createBodyLayer` (= `BabyZombieModel`) UVs over
       `textures/entity/zombie/drowned_baby.png`, with official PNG atlas
       upload/bind/sample and the head-look / leg-swing animation on both render
-      paths (the `DrownedOuterLayer`, the `setupRotations` / `setupAnim` swim
-      re-pose that needs `swimAmount`, the trident throw arm pose that needs a held
-      item, and the held-out `animateZombieArms` arms all stay deferred); zombie
+      paths plus the held-out `animateZombieArms` resting arms (the `DrownedOuterLayer`,
+      the `setupRotations` / `setupAnim` swim re-pose that needs `swimAmount`, and the
+      trident throw arm pose that needs a held item stay deferred); zombie
       villagers share that texture-backed render path through `ZombieVillagerModel
       extends HumanoidModel`: the adult layer emits the vanilla 26.1
       `ZombieVillagerModel.createBodyLayer()` UVs over
@@ -1057,8 +1060,8 @@ When an agent does any of the following, update this file in the same slice:
       `BabyZombieVillagerModel.createBodyLayer()` UVs over
       `textures/entity/zombie_villager/zombie_villager_baby.png` (each limb has its
       own `texOffs`, no mirroring), with official PNG atlas upload/bind/sample and
-      the head-look / leg-swing animation on both render paths (the held-out
-      `animateZombieArms` arms stay deferred); piglins, piglin brutes, and zombified
+      the head-look / leg-swing animation plus the held-out `animateZombieArms` resting
+      arms on both render paths; piglins, piglin brutes, and zombified
       piglins share a texture-backed render path through `AbstractPiglinModel`: all
       five families emit the shared vanilla 26.1 `AdultPiglinModel.createBodyLayer()`
       / `BabyPiglinModel.createBodyLayer()` geometry
@@ -1077,16 +1080,19 @@ When an agent does any of the following, update this file in the same slice:
       rotation, trident throw arm pose, zombie villager type/profession/level
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
-      layers, held items, and attack/walk/dance/crossbow/admiring/zombie-arm
-      animation remain unsupported;
+      layers, held items, attack/walk/dance/crossbow/admiring animation, and the
+      zombie-arm aggressive arm-raise / attack swing (the resting held-out arms are
+      implemented) remain unsupported;
       the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
       (the baby layout's index-1 head, and the baby piglin brute's adult-layout
       head, included), and the zombie and piglin families also apply the inherited
-      `HumanoidModel` leg swing on their two leg parts, with the inherited arm
-      counter-swing added on the two arm parts for the non-zombified piglin family
-      (adult/baby piglin and brute; the zombified piglin's arms keep the deferred
+      `HumanoidModel` leg swing on their two leg parts. The zombie family (zombie, husk,
+      drowned, zombie villager, and the 6× giant) applies the held-out
+      `animateZombieArms` resting pose on its two arm parts; the non-zombified piglin
+      family (adult/baby piglin and brute) instead applies the inherited arm
+      counter-swing (the zombified piglin's arms keep the deferred
       `animateZombieArms` held-out pose, and the `AbstractPiglinModel` ear sway and
       `PiglinModel` override arm poses stay deferred)
     - base skeleton, stray, parched, wither skeleton, and bogged entities as
@@ -1642,10 +1648,12 @@ When an agent does any of the following, update this file in the same slice:
       6.0))` (`LayerDefinitions` registers `ModelLayers.GIANT` this way; `EntityRenderers` registers the
       `GiantMobRenderer` with scale `6.0`), so the giant reuses the adult zombie body parts emitted through
       the shared `mesh_transformer_scaled_model_root_transform` at the 6.0 factor — exactly the husk's
-      `MeshTransformer` pattern but with the giant's larger factor and no baby variant. The head look and
-      the limb swing match the zombie (the giant extracts the same `ZombieRenderState`). The
-      `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie texture-backed path are deferred (this is a
-      colored-first slice; the giant reuses the zombie body tints)
+      `MeshTransformer` pattern but with the giant's larger factor and no baby variant. The head look, the
+      limb swing, and the held-out `animateZombieArms` resting arm pose match the zombie (`GiantZombieModel
+      extends ZombieModel`, the giant extracts the same `ZombieRenderState`). The
+      `HumanoidArmorLayer`, the `ItemInHandLayer`, the zombie-arm aggressive arm-raise / attack swing, and the
+      zombie texture-backed path are deferred (this is a colored-first slice; the giant reuses the zombie body
+      tints)
     - end crystal entities as renderer-owned vanilla 26.1 `EndCrystalModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `45` to the new
       `EntityModelKind::EndCrystal`, replacing the former placeholder bounds box. The static rest-pose

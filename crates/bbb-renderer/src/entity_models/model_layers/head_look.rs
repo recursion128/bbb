@@ -299,6 +299,29 @@ pub(in crate::entity_models) fn humanoid_arm_bob_pose(
     }
 }
 
+/// Vanilla `AnimationUtils.animateZombieArms` resting pose — the iconic held-out zombie
+/// arms — at `attackTime = 0` (not mid-swing). Each arm drops forward to `xRot = armDrop`,
+/// splays out by `yRot` (right arm, part offset `x < 0`, `-0.1`; left arm `+0.1`), zeroes
+/// `zRot`, then takes the idle bob (`bobArms` → [`humanoid_arm_bob_pose`]). `armDrop =
+/// -π / 2.25` for a non-aggressive zombie. `ZombieModel.setupAnim` calls this *after* the
+/// inherited `HumanoidModel.setupAnim`, so it overrides the walk arm swing while the legs
+/// keep theirs (the base arm pose carries no `xRot`/`yRot`, so the held-out values are set,
+/// not accumulated). Deferred refinements: the aggressive arm-raise (`armDrop = -π / 1.5`,
+/// gated on the synced `Mob` aggressive flag, `DATA_MOB_FLAGS_ID & 4`) and the attack swing
+/// (`attackTime > 0`, which needs the swing-progress render state).
+pub(in crate::entity_models) fn zombie_arm_held_out_pose(
+    base: PartPose,
+    age_in_ticks: f32,
+) -> PartPose {
+    const ARM_DROP: f32 = -std::f32::consts::PI / 2.25;
+    let y_rot = if base.offset[0] < 0.0 { -0.1 } else { 0.1 };
+    let held_out = PartPose {
+        offset: base.offset,
+        rotation: [ARM_DROP, y_rot, 0.0],
+    };
+    humanoid_arm_bob_pose(held_out, age_in_ticks)
+}
+
 /// `AbstractPiglinModel.ADULT_EAR_ANGLE_IN_DEGREES`/`BABY_EAR_ANGLE_IN_DEGREES` in radians
 /// (`getDefaultEarAngleInDegrees() * π/180`): `30°` for the adult piglin/brute/zombified
 /// piglin, `5°` for the babies.
