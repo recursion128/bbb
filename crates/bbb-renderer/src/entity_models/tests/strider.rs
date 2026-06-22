@@ -215,3 +215,77 @@ fn strider_texture_refs_match_vanilla_renderer() {
         })
     );
 }
+
+#[test]
+fn strider_textured_cubes_match_vanilla_body_layer_uvs() {
+    // Adult: body `texOffs(0, 0)`, legs `texOffs(0, 32)` / `texOffs(0, 55)`, and the six
+    // bristles `texOffs(16, 33/49/65)` (right mirrored, left not).
+    assert_eq!(STRIDER_TEXTURED_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(STRIDER_TEXTURED_BODY[0].uv_size, [16.0, 14.0, 16.0]);
+    assert_eq!(STRIDER_TEXTURED_RIGHT_LEG[0].tex, [0.0, 32.0]);
+    assert_eq!(STRIDER_TEXTURED_LEFT_LEG[0].tex, [0.0, 55.0]);
+    assert_eq!(STRIDER_TEXTURED_RIGHT_TOP_BRISTLE[0].tex, [16.0, 33.0]);
+    assert!(STRIDER_TEXTURED_RIGHT_TOP_BRISTLE[0].mirror);
+    assert_eq!(STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE[0].tex, [16.0, 49.0]);
+    assert_eq!(STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE[0].tex, [16.0, 65.0]);
+    assert_eq!(STRIDER_TEXTURED_LEFT_TOP_BRISTLE[0].tex, [16.0, 33.0]);
+    assert!(!STRIDER_TEXTURED_LEFT_TOP_BRISTLE[0].mirror);
+    assert_eq!(STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE[0].tex, [16.0, 49.0]);
+    assert_eq!(STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE[0].tex, [16.0, 65.0]);
+
+    // Baby: body `texOffs(0, 0)`, legs `texOffs(0, 24)` / `texOffs(8, 24)`, three bristles
+    // `texOffs(0, 15/18/21)`.
+    assert_eq!(STRIDER_BABY_TEXTURED_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(STRIDER_BABY_TEXTURED_RIGHT_LEG[0].tex, [0.0, 24.0]);
+    assert_eq!(STRIDER_BABY_TEXTURED_LEFT_LEG[0].tex, [8.0, 24.0]);
+    assert_eq!(STRIDER_BABY_TEXTURED_FRONT_BRISTLE[0].tex, [0.0, 15.0]);
+    assert_eq!(STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE[0].tex, [0.0, 18.0]);
+    assert_eq!(STRIDER_BABY_TEXTURED_BACK_BRISTLE[0].tex, [0.0, 21.0]);
+}
+
+#[test]
+fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&strider_texture_images()).unwrap();
+
+    // Adult renders into the cutout mesh (default `RenderTypes::entityCutout`). Nine cubes →
+    // 54 faces / 216 vertices, with nothing on the translucent or eyes passes.
+    let adult = EntityModelInstance::strider(750, [0.0, 64.0, 0.0], 0.0, false);
+    let meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 54);
+    assert_eq!(meshes.cutout.vertices.len(), 216);
+    assert_eq!(meshes.cutout.indices.len(), 324);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // Baby is the smaller model: six cubes → 36 faces / 144 vertices.
+    let baby = EntityModelInstance::strider(751, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 144);
+
+    // The body tracks the look, and the walk + age animate the legs/body/bristles.
+    let looking = entity_model_textured_meshes(&[adult.with_head_look(40.0, -25.0)], &atlas);
+    assert_ne!(meshes.cutout.vertices, looking.cutout.vertices);
+    let walking = entity_model_textured_meshes(&[adult.with_walk_animation(3.0, 0.2)], &atlas);
+    assert_ne!(meshes.cutout.vertices, walking.cutout.vertices);
+    let rippled = entity_model_textured_meshes(
+        &[adult.with_age_in_ticks(13.0).with_walk_animation(3.0, 0.2)],
+        &atlas,
+    );
+    assert_ne!(walking.cutout.vertices, rippled.cutout.vertices);
+}
+
+fn strider_texture_images() -> Vec<EntityModelTextureImage> {
+    strider_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

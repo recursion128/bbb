@@ -137,7 +137,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::Strider { baby } => {
-                emit_strider_model(&mut mesh, *instance, baby);
+                if !skip_texture_backed_entities {
+                    emit_strider_model(&mut mesh, *instance, baby);
+                }
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {

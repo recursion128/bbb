@@ -37,29 +37,46 @@ use super::{
         silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
         snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
         spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
-        tropical_fish_tail_yrot, vex_left_wing_y_rot, vex_moving_arm_z_bob,
-        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
-        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
-        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
-        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
-        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX,
-        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE,
-        PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE,
-        PHANTOM_LEFT_WING_BASE_POSE, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE,
-        PHANTOM_LEFT_WING_TIP_POSE, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE,
-        PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
-        PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
+        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
+        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
+        vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index, witch_nose_bob_pose,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
+        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
+        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
+        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
+        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT,
+        COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
+        PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
+        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
+        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
+        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
+        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
         RAVAGER_TEXTURED_NECK_CHILDREN, SALMON_BODY_BACK_PART_INDEX, SILVERFISH_LAYER_RULES,
         SILVERFISH_SEGMENT_COUNT, SMALL_ARMOR_STAND_PARTS, SNOW_GOLEM_HEAD_PART_INDEX,
         SNOW_GOLEM_LEFT_ARM_PART_INDEX, SNOW_GOLEM_RIGHT_ARM_PART_INDEX,
-        SNOW_GOLEM_UPPER_BODY_PART_INDEX, TROPICAL_FISH_TAIL_PART_INDEX, VEX_ARM_REST_Z_ROT,
-        VEX_BODY_POSE, VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE, VEX_LEFT_WING_POSE,
-        VEX_RIGHT_ARM_POSE, VEX_RIGHT_WING_POSE, VEX_ROOT_POSE, VEX_TEXTURED_BODY,
-        VEX_TEXTURED_HEAD, VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING, VEX_TEXTURED_RIGHT_ARM,
+        SNOW_GOLEM_UPPER_BODY_PART_INDEX, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
+        STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y,
+        STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
+        STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
+        STRIDER_BABY_TEXTURED_FRONT_BRISTLE, STRIDER_BABY_TEXTURED_LEFT_LEG,
+        STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE, STRIDER_BABY_TEXTURED_RIGHT_LEG,
+        STRIDER_BABY_TEXTURE_REF, STRIDER_BODY_BASE_Y, STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
+        STRIDER_LEFT_LEG_X, STRIDER_LEFT_MIDDLE_BRISTLE_POSE, STRIDER_LEFT_TOP_BRISTLE_POSE,
+        STRIDER_LEG_BASE_Y, STRIDER_RIGHT_BOTTOM_BRISTLE_POSE, STRIDER_RIGHT_LEG_X,
+        STRIDER_RIGHT_MIDDLE_BRISTLE_POSE, STRIDER_RIGHT_TOP_BRISTLE_POSE, STRIDER_TEXTURED_BODY,
+        STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE, STRIDER_TEXTURED_LEFT_LEG,
+        STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE, STRIDER_TEXTURED_LEFT_TOP_BRISTLE,
+        STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE, STRIDER_TEXTURED_RIGHT_LEG,
+        STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE, STRIDER_TEXTURED_RIGHT_TOP_BRISTLE,
+        STRIDER_TEXTURE_REF, TROPICAL_FISH_TAIL_PART_INDEX, VEX_ARM_REST_Z_ROT, VEX_BODY_POSE,
+        VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE, VEX_LEFT_WING_POSE, VEX_RIGHT_ARM_POSE,
+        VEX_RIGHT_WING_POSE, VEX_ROOT_POSE, VEX_TEXTURED_BODY, VEX_TEXTURED_HEAD,
+        VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING, VEX_TEXTURED_RIGHT_ARM,
         VEX_TEXTURED_RIGHT_WING, VEX_TEXTURE_REF, VEX_WING_X_ROT, VEX_WING_Z_ROT,
         WITCH_NOSE_CHILD_INDEX,
     },
@@ -175,6 +192,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Allay => {
                 emit_allay_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Strider { baby } => {
+                emit_strider_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -794,6 +814,209 @@ fn emit_allay_textured_model(
         ALLAY_TEXTURE_REF,
         uv,
     );
+}
+
+/// The textured strider base layer. The legs swing/roll/lift, the body sways/bobs/tracks the
+/// look, and the bristles flow with the walk plus an `ageInTicks` ripple, so the part list is
+/// animated per frame and the hierarchy is walked by hand exactly like the colored
+/// [`emit_strider_model`]. Strider uses the default `RenderTypes::entityCutout`, so it draws
+/// into the cutout mesh. The ridden pose, the saddle layer, and the cold/suffocating texture
+/// are deferred entity-side state.
+fn emit_strider_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = if baby {
+        STRIDER_BABY_TEXTURE_REF
+    } else {
+        STRIDER_TEXTURE_REF
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let uv = entry.uv;
+    let age = instance.render_state.age_in_ticks;
+    let pos = instance.render_state.walk_animation_pos;
+    let speed = strider_animation_speed(instance.render_state.walk_animation_speed);
+    let root = entity_model_root_transform(instance);
+    let body_pitch = instance.render_state.head_pitch.to_radians();
+    let body_yaw = instance.render_state.head_yaw.to_radians();
+    let flow = strider_bristle_flow(pos, speed);
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+
+    if baby {
+        emit_textured_cubes_at_pose(
+            mesh,
+            root,
+            PartPose {
+                offset: [
+                    STRIDER_BABY_RIGHT_LEG_X,
+                    strider_leg_y(STRIDER_BABY_LEG_BASE_Y, pos, speed, true),
+                    0.0,
+                ],
+                rotation: [
+                    strider_leg_x_rot(pos, speed, true),
+                    0.0,
+                    strider_leg_z_rot(pos, speed, true),
+                ],
+            },
+            &STRIDER_BABY_TEXTURED_RIGHT_LEG,
+            texture,
+            uv,
+        );
+        emit_textured_cubes_at_pose(
+            mesh,
+            root,
+            PartPose {
+                offset: [
+                    STRIDER_BABY_LEFT_LEG_X,
+                    strider_leg_y(STRIDER_BABY_LEG_BASE_Y, pos, speed, false),
+                    0.0,
+                ],
+                rotation: [
+                    strider_leg_x_rot(pos, speed, false),
+                    0.0,
+                    strider_leg_z_rot(pos, speed, false),
+                ],
+            },
+            &STRIDER_BABY_TEXTURED_LEFT_LEG,
+            texture,
+            uv,
+        );
+
+        let body_pose = PartPose {
+            offset: [
+                0.0,
+                strider_body_y(STRIDER_BABY_BODY_BASE_Y, 1.0, pos, speed),
+                0.0,
+            ],
+            rotation: [body_pitch, body_yaw, strider_body_z_rot(pos, speed)],
+        };
+        let body_t = root * part_pose_transform(body_pose);
+        emit_textured_cubes_at_pose(
+            mesh,
+            root,
+            body_pose,
+            &STRIDER_BABY_TEXTURED_BODY,
+            texture,
+            uv,
+        );
+
+        for (pose_const, cubes, add) in [
+            (
+                STRIDER_BABY_FRONT_BRISTLE_POSE,
+                &STRIDER_BABY_TEXTURED_FRONT_BRISTLE,
+                strider_bristle_top_flow(flow, age),
+            ),
+            (
+                STRIDER_BABY_MIDDLE_BRISTLE_POSE,
+                &STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE,
+                strider_bristle_middle_flow(flow, age),
+            ),
+            (
+                STRIDER_BABY_BACK_BRISTLE_POSE,
+                &STRIDER_BABY_TEXTURED_BACK_BRISTLE,
+                strider_bristle_bottom_flow(flow, age),
+            ),
+        ] {
+            let mut pose = pose_const;
+            pose.rotation[0] += add;
+            emit_textured_cubes_at_pose(mesh, body_t, pose, cubes, texture, uv);
+        }
+        return;
+    }
+
+    emit_textured_cubes_at_pose(
+        mesh,
+        root,
+        PartPose {
+            offset: [
+                STRIDER_RIGHT_LEG_X,
+                strider_leg_y(STRIDER_LEG_BASE_Y, pos, speed, true),
+                0.0,
+            ],
+            rotation: [
+                strider_leg_x_rot(pos, speed, true),
+                0.0,
+                strider_leg_z_rot(pos, speed, true),
+            ],
+        },
+        &STRIDER_TEXTURED_RIGHT_LEG,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        root,
+        PartPose {
+            offset: [
+                STRIDER_LEFT_LEG_X,
+                strider_leg_y(STRIDER_LEG_BASE_Y, pos, speed, false),
+                0.0,
+            ],
+            rotation: [
+                strider_leg_x_rot(pos, speed, false),
+                0.0,
+                strider_leg_z_rot(pos, speed, false),
+            ],
+        },
+        &STRIDER_TEXTURED_LEFT_LEG,
+        texture,
+        uv,
+    );
+
+    let body_pose = PartPose {
+        offset: [
+            0.0,
+            strider_body_y(STRIDER_BODY_BASE_Y, 2.0, pos, speed),
+            0.0,
+        ],
+        rotation: [body_pitch, body_yaw, strider_body_z_rot(pos, speed)],
+    };
+    let body_t = root * part_pose_transform(body_pose);
+    emit_textured_cubes_at_pose(mesh, root, body_pose, &STRIDER_TEXTURED_BODY, texture, uv);
+
+    let top = strider_bristle_top_flow(flow, age);
+    let middle = strider_bristle_middle_flow(flow, age);
+    let bottom = strider_bristle_bottom_flow(flow, age);
+    for (pose_const, cubes, add) in [
+        (
+            STRIDER_RIGHT_TOP_BRISTLE_POSE,
+            &STRIDER_TEXTURED_RIGHT_TOP_BRISTLE,
+            top,
+        ),
+        (
+            STRIDER_RIGHT_MIDDLE_BRISTLE_POSE,
+            &STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE,
+            middle,
+        ),
+        (
+            STRIDER_RIGHT_BOTTOM_BRISTLE_POSE,
+            &STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE,
+            bottom,
+        ),
+        (
+            STRIDER_LEFT_TOP_BRISTLE_POSE,
+            &STRIDER_TEXTURED_LEFT_TOP_BRISTLE,
+            top,
+        ),
+        (
+            STRIDER_LEFT_MIDDLE_BRISTLE_POSE,
+            &STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE,
+            middle,
+        ),
+        (
+            STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
+            &STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE,
+            bottom,
+        ),
+    ] {
+        let mut pose = pose_const;
+        pose.rotation[2] += add;
+        emit_textured_cubes_at_pose(mesh, body_t, pose, cubes, texture, uv);
+    }
 }
 
 /// The four leg part indices in the llama body layers, matching the colored

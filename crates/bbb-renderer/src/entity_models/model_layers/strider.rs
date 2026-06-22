@@ -1,4 +1,4 @@
-use super::{ModelCubeDesc, PartPose, STRIDER_LEG, STRIDER_MAROON};
+use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, STRIDER_LEG, STRIDER_MAROON};
 
 // Vanilla 26.1 `AdultStriderModel.createBodyLayer` (atlas 64×128). The mesh root parents the
 // two legs and the body directly; the six bristles hang under the body. The legs and body are
@@ -176,4 +176,111 @@ pub(in crate::entity_models) fn strider_bristle_middle_flow(flow: f32, age_in_ti
 /// Vanilla `animateBristle` for the bottom/back bristle: `flow·1.3 + 0.05·sin(age·-0.4)`.
 pub(in crate::entity_models) fn strider_bristle_bottom_flow(flow: f32, age_in_ticks: f32) -> f32 {
     flow * 1.3 + 0.05 * (age_in_ticks * -0.4).sin()
+}
+
+// Textured counterparts of the adult strider cubes (atlas 64×128). The right bristles are
+// mirrored; each bristle carries its own `texOffs`.
+pub(in crate::entity_models) const STRIDER_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-8.0, -6.0, -8.0],
+        size: [16.0, 14.0, 16.0],
+        uv_size: [16.0, 14.0, 16.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, -2.0],
+        size: [4.0, 16.0, 4.0],
+        uv_size: [4.0, 16.0, 4.0],
+        tex: [0.0, 32.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, -2.0],
+        size: [4.0, 16.0, 4.0],
+        uv_size: [4.0, 16.0, 4.0],
+        tex: [0.0, 55.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_TOP_BRISTLE: [TexturedModelCubeDesc; 1] =
+    [strider_textured_right_bristle([16.0, 33.0])];
+pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE: [TexturedModelCubeDesc;
+    1] = [strider_textured_right_bristle([16.0, 49.0])];
+pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE: [TexturedModelCubeDesc;
+    1] = [strider_textured_right_bristle([16.0, 65.0])];
+pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_TOP_BRISTLE: [TexturedModelCubeDesc; 1] =
+    [strider_textured_left_bristle([16.0, 33.0])];
+pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE: [TexturedModelCubeDesc;
+    1] = [strider_textured_left_bristle([16.0, 49.0])];
+pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE: [TexturedModelCubeDesc;
+    1] = [strider_textured_left_bristle([16.0, 65.0])];
+
+const fn strider_textured_right_bristle(tex: [f32; 2]) -> TexturedModelCubeDesc {
+    TexturedModelCubeDesc {
+        min: [-12.0, 0.0, 0.0],
+        size: [12.0, 0.0, 16.0],
+        uv_size: [12.0, 0.0, 16.0],
+        tex,
+        mirror: true,
+    }
+}
+
+const fn strider_textured_left_bristle(tex: [f32; 2]) -> TexturedModelCubeDesc {
+    TexturedModelCubeDesc {
+        min: [0.0, 0.0, 0.0],
+        size: [12.0, 0.0, 16.0],
+        uv_size: [12.0, 0.0, 16.0],
+        tex,
+        mirror: false,
+    }
+}
+
+// Textured counterparts of the baby strider cubes (atlas 32×32).
+pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.5, -3.75, -4.0],
+        size: [7.0, 7.0, 8.0],
+        uv_size: [7.0, 7.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 4.0, 2.0],
+        uv_size: [2.0, 4.0, 2.0],
+        tex: [0.0, 24.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 4.0, 2.0],
+        uv_size: [2.0, 4.0, 2.0],
+        tex: [8.0, 24.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_FRONT_BRISTLE: [TexturedModelCubeDesc; 1] =
+    [strider_baby_textured_bristle([0.0, 15.0])];
+pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE: [TexturedModelCubeDesc;
+    1] = [strider_baby_textured_bristle([0.0, 18.0])];
+pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_BACK_BRISTLE: [TexturedModelCubeDesc; 1] =
+    [strider_baby_textured_bristle([0.0, 21.0])];
+
+const fn strider_baby_textured_bristle(tex: [f32; 2]) -> TexturedModelCubeDesc {
+    TexturedModelCubeDesc {
+        min: [-3.5, -2.5, 0.0],
+        size: [7.0, 3.0, 0.0],
+        uv_size: [7.0, 3.0, 0.0],
+        tex,
+        mirror: false,
+    }
 }

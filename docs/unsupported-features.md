@@ -1330,7 +1330,7 @@ When an agent does any of the following, update this file in the same slice:
       roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch and
       held item), and the constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and
       overlay remain unsupported
-    - strider entities (colored render path) are wired end to end: the native entity scene
+    - strider entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `129` to the real `AdultStriderModel` /
       `BabyStriderModel`, replacing the former horse-quadruped fallback, keyed off the synced
       `AgeableMob.DATA_BABY_ID` (index 16, default adult). Renderer-owned vanilla 26.1
@@ -1347,10 +1347,12 @@ When an agent does any of the following, update this file in the same slice:
       `0.1·sin(age·0.4)` / `0.1·sin(age·0.2)` / `0.05·sin(age·-0.4)` idle ripple — adult bristles
       flow on `zRot`, baby bristles on `xRot`) are driven by the projected look angles, walk
       animation, and `age_in_ticks`, under the standard `LivingEntityRenderer.setupRotations`.
-      The texture-backed render path (the `textures/entity/strider/strider.png` and
-      `strider_baby.png` references are registered), the ridden pose (`isRidden` zeroing the body
-      look), the saddle equipment layer, and the cold/suffocating texture swap
-      (`strider_cold.png` / `strider_cold_baby.png`) and shake remain unsupported
+      The textured base layer draws the `textures/entity/strider/strider.png` /
+      `strider_baby.png` atlas references into the cutout mesh (default
+      `RenderTypes::entityCutout`), hand-emitted through the same animated leg/body/bristle
+      hierarchy as the colored path. The ridden pose (`isRidden` zeroing the body look), the
+      saddle equipment layer, and the cold/suffocating texture swap (`strider_cold.png` /
+      `strider_cold_baby.png`) and shake remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the
