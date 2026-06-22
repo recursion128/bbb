@@ -41,7 +41,6 @@ pub(super) const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 pub(super) const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
 pub(super) const ILLAGER_ROBE: [f32; 4] = [0.38, 0.40, 0.44, 1.0];
 pub(super) const ILLAGER_HAT_COLOR: [f32; 4] = [0.30, 0.31, 0.34, 1.0];
-pub(super) const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 pub(super) const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
@@ -63,6 +62,7 @@ mod head_look;
 mod hoglin;
 mod illager;
 mod llama;
+mod minecart;
 mod phantom;
 mod pig;
 mod piglin;
@@ -100,6 +100,7 @@ pub(super) use head_look::*;
 pub(super) use hoglin::*;
 pub(super) use illager::*;
 pub(super) use llama::*;
+pub(super) use minecart::*;
 pub(super) use phantom::*;
 pub(super) use pig::*;
 pub(super) use piglin::*;
@@ -120,11 +121,11 @@ pub use textures::{
     cow_entity_texture_refs, creeper_entity_texture_refs, enderman_entity_texture_refs,
     endermite_entity_texture_refs, entity_model_texture_refs, ghast_entity_texture_refs,
     goat_entity_texture_refs, happy_ghast_entity_texture_refs, hoglin_entity_texture_refs,
-    phantom_entity_texture_refs, pig_entity_texture_refs, player_entity_texture_refs,
-    polar_bear_entity_texture_refs, pufferfish_entity_texture_refs, ravager_entity_texture_refs,
-    sheep_entity_texture_refs, silverfish_entity_texture_refs, skeleton_entity_texture_refs,
-    slime_entity_texture_refs, spider_entity_texture_refs, villager_entity_texture_refs,
-    witch_entity_texture_refs, wolf_entity_texture_refs,
+    minecart_entity_texture_refs, phantom_entity_texture_refs, pig_entity_texture_refs,
+    player_entity_texture_refs, polar_bear_entity_texture_refs, pufferfish_entity_texture_refs,
+    ravager_entity_texture_refs, sheep_entity_texture_refs, silverfish_entity_texture_refs,
+    skeleton_entity_texture_refs, slime_entity_texture_refs, spider_entity_texture_refs,
+    villager_entity_texture_refs, witch_entity_texture_refs, wolf_entity_texture_refs,
 };
 pub(super) use villager::*;
 pub(super) use witch::*;

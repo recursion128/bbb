@@ -59,12 +59,13 @@ pub(super) use layers::{
     endermite_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
     happy_ghast_textured_layer_passes, hoglin_textured_layer_passes,
     iron_golem_textured_layer_passes, magma_cube_textured_layer_passes,
-    phantom_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
-    polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, villager_textured_layer_passes,
-    wandering_trader_textured_layer_passes, witch_textured_layer_passes,
-    wolf_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
+    minecart_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
+    player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
+    sheep_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
+    slime_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
+    witch_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerPass,
+    EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
@@ -156,6 +157,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::HappyGhast => {
                 emit_happy_ghast_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Minecart => {
+                emit_minecart_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Blaze => {
                 emit_blaze_textured_model(&mut meshes, *instance, atlas);
@@ -841,6 +845,19 @@ fn emit_happy_ghast_textured_model(
             part.pose.rotation[0] = ghast_tentacle_x_rot(tentacle, age_in_ticks);
         }
         emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
+}
+
+fn emit_minecart_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Vanilla `MinecartModel` has no `setupAnim`, so the cart is a static box; the textured
+    // path emits the shared geometry exactly like the colored path.
+    let transform = entity_model_root_transform(instance);
+    for pass in minecart_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }
 

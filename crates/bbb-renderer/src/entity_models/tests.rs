@@ -21,6 +21,7 @@ mod hoglin;
 mod illager;
 mod limb_swing;
 mod llama;
+mod minecart;
 mod phantom;
 mod pig;
 mod piglin;

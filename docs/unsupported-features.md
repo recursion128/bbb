@@ -1248,11 +1248,21 @@ When an agent does any of the following, update this file in the same slice:
       `setupAnim` pectoral/blue fin wiggle (`right.zRot = -0.2 + 0.4 · sin(ageInTicks ·
       0.2)`, left negated, set absolutely over the rest pose, on both render paths).
       Lighting and overlay remain unsupported
+    - minecart entities as renderer-owned vanilla 26.1
+      `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
+      panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a
+      64x32 texture; the official `textures/entity/minecart/minecart.png` texture
+      reference, texture-backed cutout emission, official PNG atlas upload/bind/sample
+      path, and the static `MinecartModel` (no `setupAnim`) shared by both render
+      paths. The `AbstractMinecartRenderer` rail-follow transform (along-track
+      position lerp, slope tilt, hover, the TNT/spawner `displayOffset` and 0.75x
+      block-content scale), the chest/furnace/hopper/command-block/TNT/spawner content
+      models, lighting, and overlay remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
-    - primitive renderer-owned model families for humanoids, quadrupeds, and
-      minecarts, plus named placeholder bounds for remaining entity types
+    - primitive renderer-owned model families for humanoids and quadrupeds, plus
+      named placeholder bounds for remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig

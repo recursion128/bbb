@@ -263,7 +263,11 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::Illager { family } => emit_illager_model(&mut mesh, *instance, family),
-            EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
+            EntityModelKind::Minecart => {
+                if !skip_texture_backed_entities {
+                    emit_minecart_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::Boat { family, chest } => {
                 if !skip_texture_backed_entities {
                     emit_boat_model(&mut mesh, *instance, family, chest);
@@ -2002,59 +2006,10 @@ fn head_first_colored_head_look_parts(
 }
 
 fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    let transform = entity_model_root_transform(instance);
-    for (min, size, pose) in [
-        (
-            [-10.0, -8.0, -1.0],
-            [20.0, 16.0, 2.0],
-            PartPose {
-                offset: [0.0, 4.0, 0.0],
-                rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-            },
-        ),
-        (
-            [-8.0, -9.0, -1.0],
-            [16.0, 8.0, 2.0],
-            PartPose {
-                offset: [-9.0, 4.0, 0.0],
-                rotation: [0.0, std::f32::consts::PI * 1.5, 0.0],
-            },
-        ),
-        (
-            [-8.0, -9.0, -1.0],
-            [16.0, 8.0, 2.0],
-            PartPose {
-                offset: [9.0, 4.0, 0.0],
-                rotation: [0.0, std::f32::consts::FRAC_PI_2, 0.0],
-            },
-        ),
-        (
-            [-8.0, -9.0, -1.0],
-            [16.0, 8.0, 2.0],
-            PartPose {
-                offset: [0.0, 4.0, -7.0],
-                rotation: [0.0, std::f32::consts::PI, 0.0],
-            },
-        ),
-        (
-            [-8.0, -9.0, -1.0],
-            [16.0, 8.0, 2.0],
-            PartPose {
-                offset: [0.0, 4.0, 7.0],
-                rotation: [0.0, 0.0, 0.0],
-            },
-        ),
-    ] {
-        emit_model_cube(
-            mesh,
-            transform * part_pose_transform(pose),
-            ModelCubeDesc {
-                min,
-                size,
-                color: MINECART_GRAY,
-            },
-        );
-    }
+    // Vanilla `MinecartModel.createBodyLayer()`: the floor panel plus four boxed-in wall
+    // panels. There is no `setupAnim`, so the cart is static; the shared `MINECART_PARTS`
+    // back both render paths so the colored and textured geometry stay identical.
+    emit_model_parts(mesh, &MINECART_PARTS, entity_model_root_transform(instance));
 }
 
 fn emit_boat_model(
