@@ -1,4 +1,7 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, SQUID_BLUE};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    SQUID_BLUE,
+};
 
 // Vanilla 26.1 `SquidModel.createBodyLayer` (atlas 64×32). The body carries a
 // `CubeDeformation(0.02)`, so its colored cube is the base box inflated by 0.02 on
@@ -46,6 +49,56 @@ pub(in crate::entity_models) fn squid_model_parts(tentacle_angle: f32) -> Vec<Mo
                 rotation: [tentacle_angle, y_rot, 0.0],
             },
             cubes: &SQUID_TENTACLE,
+            children: &[],
+        });
+    }
+    parts
+}
+
+// Textured counterparts of [`SQUID_BODY`] / [`SQUID_TENTACLE`]. The body's
+// `CubeDeformation(0.02)` inflates the geometry but not the UVs, so `uv_size` keeps the
+// base 12×16×12 box while `size` is the inflated 12.04×16.04×12.04.
+pub(in crate::entity_models) const SQUID_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-6.02, -8.02, -6.02],
+        size: [12.04, 16.04, 12.04],
+        uv_size: [12.0, 16.0, 12.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const SQUID_TEXTURED_TENTACLE: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 18.0, 2.0],
+        uv_size: [2.0, 18.0, 2.0],
+        tex: [48.0, 0.0],
+        mirror: false,
+    }];
+
+/// Textured counterpart of [`squid_model_parts`]: the same procedural body + tentacle
+/// ring with the `tentacleAngle` sweep, built as textured parts for the hand-emitted
+/// squid render path.
+pub(in crate::entity_models) fn squid_textured_model_parts(
+    tentacle_angle: f32,
+) -> Vec<TexturedModelPartDesc> {
+    let mut parts = Vec::with_capacity(9);
+    parts.push(TexturedModelPartDesc {
+        pose: SQUID_BODY_POSE,
+        cubes: &SQUID_TEXTURED_BODY,
+        children: &[],
+    });
+    for i in 0..8 {
+        let angle = i as f32 * std::f32::consts::TAU / 8.0;
+        let x = angle.cos() * 5.0;
+        let z = angle.sin() * 5.0;
+        let y_rot = -(i as f32) * std::f32::consts::TAU / 8.0 + std::f32::consts::FRAC_PI_2;
+        parts.push(TexturedModelPartDesc {
+            pose: PartPose {
+                offset: [x, 15.0, z],
+                rotation: [tentacle_angle, y_rot, 0.0],
+            },
+            cubes: &SQUID_TEXTURED_TENTACLE,
             children: &[],
         });
     }

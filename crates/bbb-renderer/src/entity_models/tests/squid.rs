@@ -172,3 +172,111 @@ fn squid_texture_refs_match_vanilla_renderer() {
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
 }
+
+#[test]
+fn squid_textured_model_parts_match_colored_layout() {
+    // The textured ring mirrors the colored one (same poses); only the cubes carry UVs.
+    // The body's `CubeDeformation(0.02)` inflates the geometry but keeps the base UV box.
+    assert_eq!(
+        SQUID_TEXTURED_BODY[0],
+        TexturedModelCubeDesc {
+            min: [-6.02, -8.02, -6.02],
+            size: [12.04, 16.04, 12.04],
+            uv_size: [12.0, 16.0, 12.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(SQUID_TEXTURED_TENTACLE[0].tex, [48.0, 0.0]);
+    assert_eq!(SQUID_TEXTURED_TENTACLE[0].uv_size, [2.0, 18.0, 2.0]);
+
+    let colored = squid_model_parts(0.37);
+    let textured = squid_textured_model_parts(0.37);
+    assert_eq!(textured.len(), colored.len());
+    for (c, t) in colored.iter().zip(textured.iter()) {
+        assert_eq!(c.pose, t.pose);
+    }
+}
+
+#[test]
+fn squid_textured_mesh_uses_vanilla_geometry_and_variant_texture() {
+    let (atlas, _) = build_entity_model_texture_atlas(&squid_texture_images()).unwrap();
+    // Nine cubes (body + eight tentacles) → 216 textured vertices, all on the cutout pass.
+    let squid = entity_model_textured_mesh(
+        &[EntityModelInstance::squid(
+            810,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(squid.vertices.len(), 216);
+
+    // The glow squid reuses the geometry at the same positions but samples a different
+    // texture (glow_squid.png), so the vertex UVs differ from the plain squid.
+    let glow = entity_model_textured_mesh(
+        &[EntityModelInstance::squid(
+            811,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(glow.vertices.len(), squid.vertices.len());
+    assert_eq!(
+        glow.vertices.iter().map(|v| v.position).collect::<Vec<_>>(),
+        squid
+            .vertices
+            .iter()
+            .map(|v| v.position)
+            .collect::<Vec<_>>()
+    );
+    assert_ne!(
+        glow.vertices.iter().map(|v| v.uv).collect::<Vec<_>>(),
+        squid.vertices.iter().map(|v| v.uv).collect::<Vec<_>>()
+    );
+
+    // The baby uses the 0.5-scaled body layer.
+    let baby = entity_model_textured_mesh(
+        &[EntityModelInstance::squid(
+            812,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+        )],
+        &atlas,
+    );
+    assert_eq!(baby.vertices.len(), 216);
+    let (adult_min, adult_max) = textured_mesh_extents(&squid);
+    let (baby_min, baby_max) = textured_mesh_extents(&baby);
+    assert!(
+        ((baby_max[1] - baby_min[1]) - (adult_max[1] - adult_min[1]) * 0.5).abs() < 1.0e-3,
+        "baby squid is half the adult height"
+    );
+}
+
+#[test]
+fn squid_textured_mesh_swims_its_tentacles() {
+    let (atlas, _) = build_entity_model_texture_atlas(&squid_texture_images()).unwrap();
+    let base = EntityModelInstance::squid(813, [0.0, 64.0, 0.0], 0.0, false, false);
+    let rest = entity_model_textured_mesh(&[base], &atlas);
+    let swept = entity_model_textured_mesh(&[base.with_squid_tentacle_angle(0.8)], &atlas);
+    assert_eq!(rest.vertices.len(), swept.vertices.len());
+    assert_ne!(rest.vertices, swept.vertices);
+}
+
+fn squid_texture_images() -> Vec<EntityModelTextureImage> {
+    squid_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

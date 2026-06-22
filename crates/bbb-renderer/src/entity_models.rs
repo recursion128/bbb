@@ -12,7 +12,7 @@ use colored::{
     entity_model_root_transform, ghast_model_root_transform, happy_ghast_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, slime_model_root_transform,
+    pufferfish_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 #[cfg(test)]
@@ -51,9 +51,9 @@ pub use model_layers::{
     piglin_entity_texture_refs, player_entity_texture_refs, polar_bear_entity_texture_refs,
     pufferfish_entity_texture_refs, ravager_entity_texture_refs, sheep_entity_texture_refs,
     silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
-    spider_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
-    wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
-    SheepHeadEatPose,
+    spider_entity_texture_refs, squid_entity_texture_refs, villager_entity_texture_refs,
+    witch_entity_texture_refs, wolf_entity_texture_refs, zombie_entity_texture_refs,
+    zombie_villager_entity_texture_refs, SheepHeadEatPose,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;

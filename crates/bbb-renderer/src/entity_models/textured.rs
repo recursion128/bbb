@@ -1,5 +1,6 @@
 use super::{
     boat_model_root_transform,
+    catalog::squid_texture_ref,
     catalog::{
         ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant,
         CowModelVariant, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
@@ -32,16 +33,17 @@ use super::{
         ravager_leg_swing_pose, ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index,
         sheep_head_pose, silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
         snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
-        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS,
-        ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT,
-        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE,
-        PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE,
-        PHANTOM_LEFT_WING_BASE_POSE, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE,
-        PHANTOM_LEFT_WING_TIP_POSE, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE,
-        PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
-        PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
+        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
+        BLAZE_ROD_COUNT, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
+        PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
+        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
+        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
+        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
+        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
         RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES, SILVERFISH_SEGMENT_COUNT,
@@ -49,7 +51,7 @@ use super::{
         SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, slime_model_root_transform,
+    pufferfish_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::Mat4;
@@ -140,6 +142,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Camel { family, baby } => {
                 emit_camel_textured_model(&mut meshes, *instance, family, baby, atlas);
+            }
+            EntityModelKind::Squid { glow, baby } => {
+                emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -430,6 +435,35 @@ fn emit_camel_textured_model(
     for pass in camel_textured_layer_passes(family, baby) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
+}
+
+/// The textured squid / glow squid base layer. The procedural tentacle ring is not a
+/// `&'static` part list, so the squid is hand-emitted: the variant texture's atlas UV is
+/// resolved once and the body + animated tentacle ring (built by
+/// [`squid_textured_model_parts`]) are emitted under [`squid_model_root_transform`]. The
+/// glow squid differs only by texture (its emissive light boost is deferred lighting).
+fn emit_squid_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    glow: bool,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = squid_texture_ref(glow, baby);
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let transform = squid_model_root_transform(instance, baby);
+    let parts = squid_textured_model_parts(instance.render_state.squid_tentacle_angle);
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+    emit_textured_model_parts(
+        mesh,
+        &parts,
+        transform,
+        texture,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+    );
 }
 
 /// The four leg part indices in the llama body layers, matching the colored

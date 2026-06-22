@@ -216,6 +216,10 @@ mod tests {
                 "textures/entity/camel/camel.png",
                 "textures/entity/camel/camel_baby.png",
                 "textures/entity/camel/camel_husk.png",
+                "textures/entity/squid/squid.png",
+                "textures/entity/squid/squid_baby.png",
+                "textures/entity/squid/glow_squid.png",
+                "textures/entity/squid/glow_squid_baby.png",
             ]
         );
         for image in images {
