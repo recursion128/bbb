@@ -1,6 +1,7 @@
 use super::{
     degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, PartPose, BREEZE_SLATE,
+    BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, PartPose, TexturedModelCubeDesc,
+    BREEZE_SLATE,
 };
 
 use KeyframeInterpolation::{CatmullRom, Linear};
@@ -28,6 +29,34 @@ pub(in crate::entity_models) const BREEZE_ROD: [ModelCubeDesc; 1] = [ModelCubeDe
     size: [2.0, 8.0, 2.0],
     color: BREEZE_SLATE,
 }];
+
+// The same geometry with the vanilla `BreezeModel.createBaseMesh` texOffs UV coordinates (atlas
+// 32×32); no `CubeDeformation`, so each `uv_size` matches its box `size`.
+pub(in crate::entity_models) const BREEZE_TEXTURED_HEAD: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-5.0, -5.0, -4.2],
+        size: [10.0, 3.0, 4.0],
+        uv_size: [10.0, 3.0, 4.0],
+        tex: [4.0, 24.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-4.0, -8.0, -4.0],
+        size: [8.0, 8.0, 8.0],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const BREEZE_TEXTURED_ROD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -3.0],
+        size: [2.0, 8.0, 2.0],
+        uv_size: [2.0, 8.0, 2.0],
+        tex: [0.0, 17.0],
+        mirror: false,
+    }];
 
 pub(in crate::entity_models) const BREEZE_BODY_POSE: PartPose = PartPose {
     offset: [0.0, 0.0, 0.0],

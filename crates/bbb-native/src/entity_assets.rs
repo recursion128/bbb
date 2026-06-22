@@ -233,6 +233,7 @@ mod tests {
                 "textures/entity/bat/bat.png",
                 "textures/entity/bee/bee.png",
                 "textures/entity/bee/bee_baby.png",
+                "textures/entity/breeze/breeze.png",
             ]
         );
         for image in images {

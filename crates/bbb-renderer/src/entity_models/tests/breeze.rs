@@ -75,4 +75,59 @@ fn breeze_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         })
     );
+    assert_eq!(
+        breeze_entity_texture_refs(),
+        &[EntityModelTextureRef {
+            path: "textures/entity/breeze/breeze.png",
+            size: [32, 32],
+        }]
+    );
+}
+
+#[test]
+fn breeze_textured_cubes_match_vanilla_base_body_uvs() {
+    // Vanilla `BreezeModel.createBaseMesh` texOffs (atlas 32×32); no `CubeDeformation`, so each
+    // `uv_size` matches the box `size`.
+    assert_eq!(BREEZE_TEXTURED_HEAD[0].tex, [4.0, 24.0]);
+    assert_eq!(BREEZE_TEXTURED_HEAD[0].uv_size, [10.0, 3.0, 4.0]);
+    assert_eq!(BREEZE_TEXTURED_HEAD[1].tex, [0.0, 0.0]);
+    assert_eq!(BREEZE_TEXTURED_ROD[0].tex, [0.0, 17.0]);
+    assert!(!BREEZE_TEXTURED_ROD[0].mirror);
+}
+
+#[test]
+fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&breeze_texture_images()).unwrap();
+
+    // The breeze base body draws into the translucent mesh (vanilla `RenderTypes::entityTranslucent`).
+    // Head (two cubes) plus three rods → 5 cubes / 30 faces / 120 vertices, nothing on the cutout
+    // or eyes passes, white tint.
+    let base = EntityModelInstance::breeze(960, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.translucent.cutout_faces, 30);
+    assert_eq!(meshes.translucent.vertices.len(), 120);
+    assert!(meshes
+        .translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // The looping IDLE re-poses the mesh with age and loops every 40 ticks.
+    let later = entity_model_textured_meshes(&[base.with_age_in_ticks(7.0)], &atlas);
+    assert_ne!(meshes.translucent.vertices, later.translucent.vertices);
+    let one_cycle = entity_model_textured_meshes(&[base.with_age_in_ticks(40.0)], &atlas);
+    assert_eq!(meshes.translucent.vertices, one_cycle.translucent.vertices);
+}
+
+fn breeze_texture_images() -> Vec<EntityModelTextureImage> {
+    breeze_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
 }

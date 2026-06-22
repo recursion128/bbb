@@ -66,9 +66,11 @@ use super::{
         BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
         BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
         BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT,
-        COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
-        PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
-        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE,
+        BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD,
+        BREEZE_TEXTURE_REF, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
+        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
         PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
         PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
@@ -232,6 +234,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Bee { baby } => {
                 emit_bee_textured_model(&mut meshes, *instance, baby, atlas);
+            }
+            EntityModelKind::Breeze => {
+                emit_breeze_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -1176,9 +1181,10 @@ fn emit_turtle_textured_model(
     }
 }
 
-/// Combine a bat bind pose with the keyframe position/rotation offsets, mirroring the colored
-/// `bat_animated_pose` (vanilla `ModelPart::offsetPos` / `offsetRotation` add to the bind pose).
-fn bat_textured_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
+/// Combine a bind pose with the keyframe position/rotation offsets, mirroring the colored
+/// `keyframe_animated_pose` (vanilla `ModelPart::offsetPos` / `offsetRotation` add to the bind
+/// pose). Shared by the textured keyframe-animated entities.
+fn keyframe_textured_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
     PartPose {
         offset: [
             bind.offset[0] + position[0],
@@ -1214,7 +1220,7 @@ fn emit_bat_textured_model(
 
     // Head (root child) carries the two ears at their bind poses.
     let (head_pos, head_rot) = sample("head");
-    let head_pose = bat_textured_pose(BAT_HEAD_POSE, head_pos, head_rot);
+    let head_pose = keyframe_textured_pose(BAT_HEAD_POSE, head_pos, head_rot);
     let head_t = root * part_pose_transform(head_pose);
     emit_textured_cubes_at_pose(mesh, root, head_pose, &BAT_TEXTURED_HEAD, texture, uv);
     emit_textured_cubes_at_pose(
@@ -1236,7 +1242,7 @@ fn emit_bat_textured_model(
 
     // Body (root child) carries the wings and feet.
     let (body_pos, body_rot) = sample("body");
-    let body_pose = bat_textured_pose(BAT_BODY_POSE, body_pos, body_rot);
+    let body_pose = keyframe_textured_pose(BAT_BODY_POSE, body_pos, body_rot);
     let body_t = root * part_pose_transform(body_pose);
     emit_textured_cubes_at_pose(mesh, root, body_pose, &BAT_TEXTURED_BODY, texture, uv);
 
@@ -1244,7 +1250,7 @@ fn emit_bat_textured_model(
     emit_textured_cubes_at_pose(
         mesh,
         body_t,
-        bat_textured_pose(BAT_FEET_POSE, [0.0; 3], feet_rot),
+        keyframe_textured_pose(BAT_FEET_POSE, [0.0; 3], feet_rot),
         &BAT_TEXTURED_FEET,
         texture,
         uv,
@@ -1252,7 +1258,7 @@ fn emit_bat_textured_model(
 
     // Each wing (body child) carries its tip.
     let (_, right_wing_rot) = sample("right_wing");
-    let right_wing_pose = bat_textured_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
+    let right_wing_pose = keyframe_textured_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
     let right_wing_t = body_t * part_pose_transform(right_wing_pose);
     emit_textured_cubes_at_pose(
         mesh,
@@ -1266,14 +1272,14 @@ fn emit_bat_textured_model(
     emit_textured_cubes_at_pose(
         mesh,
         right_wing_t,
-        bat_textured_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot),
+        keyframe_textured_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot),
         &BAT_TEXTURED_RIGHT_WING_TIP,
         texture,
         uv,
     );
 
     let (_, left_wing_rot) = sample("left_wing");
-    let left_wing_pose = bat_textured_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
+    let left_wing_pose = keyframe_textured_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
     let left_wing_t = body_t * part_pose_transform(left_wing_pose);
     emit_textured_cubes_at_pose(
         mesh,
@@ -1287,7 +1293,7 @@ fn emit_bat_textured_model(
     emit_textured_cubes_at_pose(
         mesh,
         left_wing_t,
-        bat_textured_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
+        keyframe_textured_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
         &BAT_TEXTURED_LEFT_WING_TIP,
         texture,
         uv,
@@ -1521,6 +1527,69 @@ fn emit_bee_textured_model(
             rotation: [back_x, 0.0, 0.0],
         },
         back_cubes,
+        texture,
+        uv,
+    );
+}
+
+fn emit_breeze_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = BREEZE_TEXTURE_REF;
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let uv = entry.uv;
+
+    // Mirror the colored `emit_breeze_model`: sample the looping `BreezeAnimation.IDLE` from
+    // `age_in_ticks` and walk the body→head/rods hierarchy by hand. The base body draws into the
+    // translucent mesh (vanilla `BreezeModel` uses `RenderTypes::entityTranslucent`).
+    let seconds = keyframe_elapsed_seconds(&BREEZE_IDLE, instance.render_state.age_in_ticks * 0.05);
+    let sample = |bone: &str| sample_bone_offsets(&BREEZE_IDLE, bone, seconds, 1.0);
+    let root = entity_model_root_transform(instance);
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Translucent);
+
+    // Body pivot (root child): no IDLE channel, identity bind pose.
+    let body_t = root * part_pose_transform(BREEZE_BODY_POSE);
+
+    // Head (body child): the IDLE position bob (CATMULLROM).
+    let (head_pos, _) = sample("head");
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        keyframe_textured_pose(BREEZE_HEAD_POSE, head_pos, [0.0; 3]),
+        &BREEZE_TEXTURED_HEAD,
+        texture,
+        uv,
+    );
+
+    // Rods pivot (body child): the IDLE yaw spin plus the position bob, carrying the three rods.
+    let (rods_pos, rods_rot) = sample("rods");
+    let rods_t =
+        body_t * part_pose_transform(keyframe_textured_pose(BREEZE_RODS_POSE, rods_pos, rods_rot));
+    emit_textured_cubes_at_pose(
+        mesh,
+        rods_t,
+        BREEZE_ROD_1_POSE,
+        &BREEZE_TEXTURED_ROD,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        rods_t,
+        BREEZE_ROD_2_POSE,
+        &BREEZE_TEXTURED_ROD,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        rods_t,
+        BREEZE_ROD_3_POSE,
+        &BREEZE_TEXTURED_ROD,
         texture,
         uv,
     );
