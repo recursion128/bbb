@@ -144,15 +144,19 @@ fn tropical_fish_small_mesh_uses_vanilla_geometry() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Small,
+        EntityDyeColor::Orange,
     )
     .with_in_water(true)]);
     assert_eq!(fish.opaque_faces, 30);
     assert_eq!(fish.vertices.len(), 120);
     assert_eq!(fish.indices.len(), 180);
+    // The base body is tinted by `getModelTint = state.baseColor` (the base dye's texture
+    // diffuse color), not the grayscale texture's own color.
     assert!(fish
         .vertices
         .iter()
-        .any(|vertex| vertex.color == shade_color(TROPICAL_FISH_ORANGE, 1.0)));
+        .any(|vertex| vertex.color
+            == shade_color(EntityDyeColor::Orange.texture_diffuse_color(), 1.0)));
 }
 
 #[test]
@@ -163,6 +167,7 @@ fn tropical_fish_large_mesh_uses_vanilla_geometry() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Large,
+        EntityDyeColor::White,
     )
     .with_in_water(true)]);
     assert_eq!(fish.opaque_faces, 36);
@@ -180,6 +185,7 @@ fn tropical_fish_flops_when_out_of_water() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Small,
+        EntityDyeColor::White,
     );
     let swimming = entity_model_mesh(&[base.with_in_water(true)]);
     let beached = entity_model_mesh(&[base.with_in_water(false)]);
@@ -209,6 +215,7 @@ fn tropical_fish_sways_its_tail_with_age() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Large,
+        EntityDyeColor::White,
     )
     .with_in_water(true);
     let still = entity_model_mesh(&[base]);
@@ -271,9 +278,11 @@ fn tropical_fish_texture_ref_matches_vanilla_renderer() {
     // `tropical_b`; the model layers are `ModelLayers.TROPICAL_FISH_{SMALL,LARGE}`.
     let small = EntityModelKind::TropicalFish {
         shape: TropicalFishModelShape::Small,
+        base_color: EntityDyeColor::White,
     };
     let large = EntityModelKind::TropicalFish {
         shape: TropicalFishModelShape::Large,
+        base_color: EntityDyeColor::White,
     };
     assert_eq!(small.model_key(), "tropical_fish_small");
     assert_eq!(large.model_key(), "tropical_fish_large");
@@ -311,13 +320,18 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
             TROPICAL_FISH_LARGE_TEXTURED_PARTS.as_slice(),
         ),
     ] {
-        let passes = tropical_fish_textured_layer_passes(shape);
+        let passes = tropical_fish_textured_layer_passes(shape, EntityDyeColor::Orange);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::TropicalFishBase);
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].parts, parts);
-        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        // `getModelTint = state.baseColor`: the base layer is tinted by the base dye's diffuse
+        // color, not left white.
+        assert_eq!(
+            passes[0].tint,
+            EntityDyeColor::Orange.texture_diffuse_color()
+        );
     }
 
     // The textured parts mirror the colored poses (so the tail sway re-poses the same
@@ -354,6 +368,7 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Small,
+        EntityDyeColor::White,
     )
     .with_in_water(true);
     let small_still = entity_model_textured_mesh(&[small], &atlas);
@@ -364,6 +379,7 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Large,
+        EntityDyeColor::White,
     )
     .with_in_water(true);
     let large_still = entity_model_textured_mesh(&[large], &atlas);

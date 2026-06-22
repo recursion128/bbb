@@ -302,7 +302,7 @@ impl EntityModelKind {
                 SalmonModelSize::Medium => "salmon",
                 SalmonModelSize::Large => "salmon_large",
             },
-            Self::TropicalFish { shape } => match shape {
+            Self::TropicalFish { shape, .. } => match shape {
                 TropicalFishModelShape::Small => "tropical_fish_small",
                 TropicalFishModelShape::Large => "tropical_fish_large",
             },
@@ -466,7 +466,7 @@ impl EntityModelKind {
             Self::Squid { glow, baby } => Some(squid_texture_ref(glow, baby)),
             Self::Cod => Some(COD_TEXTURE_REF),
             Self::Salmon { .. } => Some(SALMON_TEXTURE_REF),
-            Self::TropicalFish { shape } => Some(match shape {
+            Self::TropicalFish { shape, .. } => Some(match shape {
                 TropicalFishModelShape::Small => TROPICAL_FISH_SMALL_TEXTURE_REF,
                 TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_TEXTURE_REF,
             }),

@@ -338,9 +338,9 @@ fn entity_model_mesh_with_options(
                     emit_salmon_model(&mut mesh, *instance, size);
                 }
             }
-            EntityModelKind::TropicalFish { shape } => {
+            EntityModelKind::TropicalFish { shape, base_color } => {
                 if !skip_texture_backed_entities {
-                    emit_tropical_fish_model(&mut mesh, *instance, shape);
+                    emit_tropical_fish_model(&mut mesh, *instance, shape, base_color);
                 }
             }
             EntityModelKind::Illager { family } => {
@@ -1371,10 +1371,12 @@ fn emit_tropical_fish_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
     shape: TropicalFishModelShape,
+    base_color: EntityDyeColor,
 ) {
     // Vanilla `TropicalFish{Small,Large}Model.setupAnim` sways only the tail (`yRot`); the
     // swim wiggle and out-of-water flop live in `tropical_fish_model_root_transform`. The
-    // kob-style small body and flopper-style large body differ only in geometry.
+    // kob-style small body and flopper-style large body differ only in geometry. The body is
+    // tinted by the vanilla `getModelTint` = `getBaseColor().getTextureDiffuseColor()`.
     let in_water = instance.render_state.in_water;
     let root = tropical_fish_model_root_transform(instance, in_water);
     let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
@@ -1383,7 +1385,7 @@ fn emit_tropical_fish_model(
         TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_PARTS.to_vec(),
     };
     parts[TROPICAL_FISH_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
-    emit_model_parts_with_color(mesh, &parts, root, TROPICAL_FISH_ORANGE);
+    emit_model_parts_with_color(mesh, &parts, root, base_color.texture_diffuse_color());
 }
 
 fn emit_squid_model(

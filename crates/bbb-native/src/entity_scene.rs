@@ -813,6 +813,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TRIDENT_ID => placeholder("todo_trident_bounds", 0.5, 0.5, 0.5),
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
             shape: tropical_fish_shape(data_values),
+            base_color: tropical_fish_base_color(data_values),
         },
         VANILLA_ENTITY_TYPE_TURTLE_ID => EntityModelKind::Turtle {
             baby: ageable_baby(data_values),
@@ -1104,6 +1105,17 @@ fn tropical_fish_shape(
         TROPICAL_FISH_VARIANT_DATA_ID,
         TROPICAL_FISH_DEFAULT_VARIANT,
     ))
+}
+
+/// Vanilla `TropicalFish.getBaseColor(packedVariant) = DyeColor.byId(packedVariant >> 16 & 0xFF)`,
+/// projected into the renderer body tint (`TropicalFishRenderer.getModelTint = state.baseColor`).
+fn tropical_fish_base_color(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityDyeColor {
+    let packed = entity_data_int(
+        values,
+        TROPICAL_FISH_VARIANT_DATA_ID,
+        TROPICAL_FISH_DEFAULT_VARIANT,
+    );
+    EntityDyeColor::from_vanilla_id((packed >> 16) & 0xFF)
 }
 
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -3124,6 +3136,7 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, &[]),
             EntityModelKind::TropicalFish {
                 shape: TropicalFishModelShape::Small,
+                base_color: EntityDyeColor::White,
             }
         );
         // FLOPPER (LARGE base, index 0) with arbitrary base/pattern color bytes → large body.
@@ -3137,6 +3150,8 @@ mod tests {
             ),
             EntityModelKind::TropicalFish {
                 shape: TropicalFishModelShape::Large,
+                // base byte = (0x0405_0001 >> 16) & 0xFF = 0x05 → DyeColor.byId(5) = LIME.
+                base_color: EntityDyeColor::Lime,
             }
         );
         // SPOTTY (SMALL base, index 5 → 0x0500) stays the small body.
@@ -3147,8 +3162,34 @@ mod tests {
             ),
             EntityModelKind::TropicalFish {
                 shape: TropicalFishModelShape::Small,
+                // base byte = (0x0500 >> 16) & 0xFF = 0 → DyeColor.byId(0) = WHITE.
+                base_color: EntityDyeColor::White,
             }
         );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_tropical_fish_base_color_from_packed_variant() {
+        // Vanilla `TropicalFish.getBaseColor(packedVariant) = DyeColor.byId(packedVariant >> 16
+        // & 0xFF)`, surfaced by `TropicalFishRenderer.getModelTint = state.baseColor`. Each dye
+        // id occupies bits 16..24 of the packed variant; the low 16 bits (pattern) and high 8
+        // bits (pattern color) must not bleed into the base color.
+        let base_color_of = |packed: i32| match entity_model_kind(
+            VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+            &[protocol_int_data(TROPICAL_FISH_VARIANT_DATA_ID, packed)],
+        ) {
+            EntityModelKind::TropicalFish { base_color, .. } => base_color,
+            other => panic!("expected tropical fish, got {other:?}"),
+        };
+        // id 0 → WHITE, id 11 → BLUE, id 15 → BLACK, with noise in the other byte ranges.
+        assert_eq!(
+            base_color_of(0x00FF_FFFF & !0x00FF_0000),
+            EntityDyeColor::White
+        );
+        assert_eq!(base_color_of(0x000B_0000), EntityDyeColor::Blue);
+        assert_eq!(base_color_of(0xFF0F_FFFFu32 as i32), EntityDyeColor::Black);
+        // Out-of-range base byte (16) falls back to WHITE like `DyeColor.byId` (ZERO strategy).
+        assert_eq!(base_color_of(0x0010_0000), EntityDyeColor::White);
     }
 
     #[test]

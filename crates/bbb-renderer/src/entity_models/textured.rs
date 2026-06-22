@@ -220,8 +220,8 @@ pub(super) fn entity_model_textured_meshes(
             EntityModelKind::Salmon { size } => {
                 emit_salmon_textured_model(&mut meshes, *instance, size, atlas);
             }
-            EntityModelKind::TropicalFish { shape } => {
-                emit_tropical_fish_textured_model(&mut meshes, *instance, shape, atlas);
+            EntityModelKind::TropicalFish { shape, base_color } => {
+                emit_tropical_fish_textured_model(&mut meshes, *instance, shape, base_color, atlas);
             }
             EntityModelKind::Vex => {
                 emit_vex_textured_model(&mut meshes, *instance, atlas);
@@ -588,18 +588,20 @@ fn emit_salmon_textured_model(
 /// The textured tropical fish base layer. The parts are static apart from the tail, which
 /// is swayed by the vanilla `TropicalFish{Small,Large}Model.setupAnim`; the swim wiggle,
 /// out-of-water flop, and small/large body shape live in
-/// [`tropical_fish_model_root_transform`] and the per-shape pass. The twelve pattern
-/// overlays and the base/pattern color tints are deferred.
+/// [`tropical_fish_model_root_transform`] and the per-shape pass. The base body is tinted by the
+/// vanilla `getModelTint` = `getBaseColor().getTextureDiffuseColor()`. The twelve pattern overlays
+/// and their pattern color are deferred.
 fn emit_tropical_fish_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     shape: TropicalFishModelShape,
+    base_color: EntityDyeColor,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let in_water = instance.render_state.in_water;
     let transform = tropical_fish_model_root_transform(instance, in_water);
     let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
-    for pass in tropical_fish_textured_layer_passes(shape) {
+    for pass in tropical_fish_textured_layer_passes(shape, base_color) {
         if tail_yrot == 0.0 {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {

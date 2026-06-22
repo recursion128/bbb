@@ -1568,11 +1568,15 @@ When an agent does any of the following, update this file in the same slice:
       texture references, per-shape texture-backed base-layer pass emission
       (`ModelLayers.TROPICAL_FISH_{SMALL,LARGE}` keys, the tail/top fins keeping their
       negative `texOffs` V origins), and the official PNG atlas upload/bind/sample path
-      (colored and textured). The twelve `TropicalFishPatternLayer` pattern overlays
-      (`TROPICAL_FISH_{SMALL,LARGE}_PATTERN` layers, inflated by `FISH_PATTERN_DEFORMATION`),
-      and the per-entity base/pattern color tints (`getModelTint`/`patternColor`,
-      decoded from the high bytes of the packed variant), with their lighting and overlay,
-      remain unsupported
+      (colored and textured); and the per-entity base body tint
+      (`TropicalFishRenderer.getModelTint = getBaseColor().getTextureDiffuseColor()`, the
+      base dye decoded `DyeColor.byId((packedVariant >> 16) & 0xFF)` from the synced packed
+      variant and applied as the body color on both render paths — the grayscale base
+      texture is multiplied by the base dye's diffuse color instead of left white). The
+      twelve `TropicalFishPatternLayer` pattern overlays (`TROPICAL_FISH_{SMALL,LARGE}_PATTERN`
+      layers, inflated by `FISH_PATTERN_DEFORMATION`) and their per-entity pattern color tint
+      (`patternColor`, `DyeColor.byId((packedVariant >> 24) & 0xFF)`), with their lighting and
+      overlay, remain unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

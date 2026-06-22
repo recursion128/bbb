@@ -206,10 +206,12 @@ pub enum EntityModelKind {
     /// `TropicalFishRenderer`). `shape` selects the kob-style small body or the
     /// flopper-style large body (vanilla `TropicalFish.Pattern.base()`). The tail sway and
     /// `TropicalFishRenderer.setupRotations` wiggle / out-of-water flop read
-    /// `EntityRenderState.in_water` and `age_in_ticks`. The per-entity base/pattern colors
-    /// and the pattern overlay layer are deferred.
+    /// `EntityRenderState.in_water` and `age_in_ticks`. `base_color` is the body tint
+    /// (vanilla `getModelTint` = `getBaseColor().getTextureDiffuseColor()`, decoded from the
+    /// packed variant). The pattern overlay layer and its pattern color are deferred.
     TropicalFish {
         shape: TropicalFishModelShape,
+        base_color: EntityDyeColor,
     },
     Illager {
         family: IllagerModelFamily,

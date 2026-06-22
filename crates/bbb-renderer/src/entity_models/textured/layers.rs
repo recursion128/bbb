@@ -189,11 +189,14 @@ pub(in crate::entity_models) fn salmon_textured_layer_passes(
 
 pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
     shape: TropicalFishModelShape,
+    base_color: EntityDyeColor,
 ) -> Vec<EntityModelLayerPass> {
     let texture = match shape {
         TropicalFishModelShape::Small => TROPICAL_FISH_SMALL_TEXTURE_REF,
         TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_TEXTURE_REF,
     };
+    // Vanilla `getModelTint` tints the grayscale base body by the base color's texture diffuse
+    // color.
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::TropicalFishBase,
         render_type: EntityModelLayerRenderType::Cutout,
@@ -201,7 +204,7 @@ pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
         texture,
         parts: tropical_fish_textured_parts(shape),
         visibility: EntityModelLayerVisibility::All,
-        tint: [1.0, 1.0, 1.0, 1.0],
+        tint: base_color.texture_diffuse_color(),
         collector_order: 0,
         submit_sequence: 0,
     }]
