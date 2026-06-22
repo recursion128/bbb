@@ -76,6 +76,11 @@ pub struct EntityRenderState {
     /// the white-flash column of `OverlayTexture` so a priming creeper flashes
     /// white. `0.0` for every entity that is not flashing white.
     pub white_overlay_progress: f32,
+    /// Vanilla `CreeperRenderState.swelling` (`Creeper.getSwelling`, lerped): the raw
+    /// fuse progress that `CreeperRenderer.scale` inflates the model by while a creeper
+    /// primes to explode. `0.0` for every non-creeper entity and a creeper at rest, where
+    /// the swell scale is the identity.
+    pub creeper_swelling: f32,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
@@ -180,6 +185,7 @@ impl EntityRenderState {
             light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
             has_red_overlay: false,
             white_overlay_progress: 0.0,
+            creeper_swelling: 0.0,
             auto_spin_age_ticks: None,
             upside_down_height: None,
             sleeping: None,
@@ -274,6 +280,11 @@ impl EntityModelInstance {
 
     pub fn with_has_red_overlay(mut self, has_red_overlay: bool) -> Self {
         self.render_state.has_red_overlay = has_red_overlay;
+        self
+    }
+
+    pub fn with_creeper_swelling(mut self, creeper_swelling: f32) -> Self {
+        self.render_state.creeper_swelling = creeper_swelling;
         self
     }
 
@@ -1196,6 +1207,7 @@ mod tests {
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
                 has_red_overlay: false,
                 white_overlay_progress: 0.0,
+                creeper_swelling: 0.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,

@@ -18,8 +18,9 @@ use super::selection::{
 };
 use super::transforms::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
-    cod_model_root_transform, end_crystal_model_root_transform, ender_dragon_model_root_transform,
-    entity_model_root_transform, evoker_fangs_model_root_transform, ghast_model_root_transform,
+    cod_model_root_transform, creeper_model_root_transform, end_crystal_model_root_transform,
+    ender_dragon_model_root_transform, entity_model_root_transform,
+    evoker_fangs_model_root_transform, ghast_model_root_transform,
     happy_ghast_model_root_transform, leash_knot_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
@@ -3122,14 +3123,15 @@ fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     // Vanilla `CreeperModel` is a custom `EntityModel`, but its `setupAnim` leg swing
     // is exactly the `QuadrupedModel` formula (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`,
     // hind-right/front-left in phase), so the shared quadruped swing applies. Legs are
-    // at [2, 3, 4, 5]. The swelling scale and powered charge layer are deferred.
+    // at [2, 3, 4, 5]. The `CreeperRenderer.scale` swell inflate-and-flicker is folded
+    // into the root transform; the powered charge layer is deferred.
     let parts = quadruped_limb_swing_parts(
         head_first_colored_head_look_parts(&CREEPER_PARTS, instance),
         QUADRUPED_LEG_PART_INDICES,
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
     );
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+    emit_model_parts(mesh, &parts, creeper_model_root_transform(instance));
 }
 
 fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

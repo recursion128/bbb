@@ -42,6 +42,36 @@ fn living_entity_model_root_transform_with_renderer_transform(
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
 
+/// Vanilla `CreeperRenderer.scale`: the non-uniform swell scale applied at the per-renderer
+/// `this.scale()` hook (after the `(-1, -1, 1)` flip, before the `-1.501` y-offset) while a
+/// creeper primes to explode. `wobble = 1 + sin(swelling * 100) * swelling * 0.01` flickers
+/// the size; `g = clamp(swelling, 0, 1)^4` drives the steady inflation `s = (1 + g * 0.4) *
+/// wobble` on X/Z and `hs = (1 + g * 0.1) / wobble` on Y. At `swelling = 0` it is the
+/// identity (`s = hs = 1`), so a calm creeper is unscaled.
+fn creeper_swell_scale(swelling: f32) -> [f32; 3] {
+    let wobble = 1.0 + (swelling * 100.0).sin() * swelling * 0.01;
+    let g = swelling.clamp(0.0, 1.0);
+    let g = g * g;
+    let g = g * g;
+    let s = (1.0 + g * 0.4) * wobble;
+    let hs = (1.0 + g * 0.1) / wobble;
+    [s, hs, s]
+}
+
+/// Vanilla `CreeperRenderer` root transform: the shared living-entity transform with the
+/// [`creeper_swell_scale`] inserted at the `this.scale()` hook, so a priming creeper inflates
+/// and flickers. Reduces to [`entity_model_root_transform`] for a calm creeper (swell scale
+/// `1`).
+pub(in crate::entity_models) fn creeper_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    let [sx, sy, sz] = creeper_swell_scale(instance.render_state.creeper_swelling);
+    living_entity_model_root_transform_with_renderer_transform(
+        instance,
+        Mat4::from_scale(Vec3::new(sx, sy, sz)),
+    )
+}
+
 /// Vanilla `LivingEntityRenderer.submit` bed head-offset translate, applied before
 /// the entity scale (so it is in world units): `translate(-stepX * headOffset, 0,
 /// -stepZ * headOffset)` while sleeping in a bed. Identity otherwise. Our post-`T(pos)`

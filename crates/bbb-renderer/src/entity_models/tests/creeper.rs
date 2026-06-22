@@ -201,8 +201,8 @@ fn creeper_swings_its_legs_when_walking() {
     // Vanilla `CreeperModel` is a custom `EntityModel` whose `setupAnim` leg swing is
     // exactly the `QuadrupedModel` formula (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`,
     // hind-right/front-left in phase, legs at [2, 3, 4, 5]). A standing creeper is
-    // inert; a walking one lifts its feet and splays its legs along Z. The swelling
-    // scale and powered charge layer are deferred. Colored path here, textured below.
+    // inert; a walking one lifts its feet and splays its legs along Z (the swell scale
+    // is exercised separately below). Colored path here, textured below.
     let base = EntityModelInstance::new(250, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
     let rest = entity_model_mesh(&[base]);
     let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
@@ -253,6 +253,104 @@ fn creeper_textured_mesh_swings_legs_when_walking() {
     assert!(
         (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
         "a walking creeper's feet should lift off the ground"
+    );
+}
+
+#[test]
+fn creeper_inflates_as_it_primes_to_explode() {
+    // Vanilla `CreeperRenderer.scale` applies a non-uniform swell scale at the `this.scale()`
+    // hook while a creeper primes to explode:
+    //   wobble = 1 + sin(swelling * 100) * swelling * 0.01
+    //   g = clamp(swelling, 0, 1)^4
+    //   x/z *= (1 + g * 0.4) * wobble,   y *= (1 + g * 0.1) / wobble
+    // At swelling 0 it is the identity, so a calm creeper is byte-identical. The model scales
+    // about its local root (and the default 180-degree body yaw only flips X/Z), so each axis'
+    // extent grows by exactly its factor. Colored path here, textured below.
+    let base = EntityModelInstance::new(252, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    let calm = entity_model_mesh(&[base]);
+    let unswollen = entity_model_mesh(&[base.with_creeper_swelling(0.0)]);
+    assert_eq!(
+        calm.vertices, unswollen.vertices,
+        "an unswollen creeper is unscaled"
+    );
+
+    let swelling = 1.0_f32;
+    let primed = entity_model_mesh(&[base.with_creeper_swelling(swelling)]);
+    assert_ne!(
+        calm.vertices, primed.vertices,
+        "a priming creeper is rescaled"
+    );
+
+    let wobble = 1.0 + (swelling * 100.0).sin() * swelling * 0.01;
+    let g = swelling.clamp(0.0, 1.0);
+    let g = g * g * g * g;
+    let expected_s = (1.0 + g * 0.4) * wobble;
+    let expected_hs = (1.0 + g * 0.1) / wobble;
+    assert!(
+        expected_s > 1.0 && expected_hs > 1.0,
+        "a fully primed creeper grows on every axis"
+    );
+
+    let (calm_min, calm_max) = mesh_extents(&calm);
+    let (primed_min, primed_max) = mesh_extents(&primed);
+    let assert_ratio = |primed_w: f32, calm_w: f32, expected: f32| {
+        assert!(
+            (primed_w / calm_w - expected).abs() < 1.0e-4,
+            "extent ratio {} should match swell factor {expected}",
+            primed_w / calm_w
+        );
+    };
+    assert_ratio(
+        primed_max[0] - primed_min[0],
+        calm_max[0] - calm_min[0],
+        expected_s,
+    );
+    assert_ratio(
+        primed_max[2] - primed_min[2],
+        calm_max[2] - calm_min[2],
+        expected_s,
+    );
+    assert_ratio(
+        primed_max[1] - primed_min[1],
+        calm_max[1] - calm_min[1],
+        expected_hs,
+    );
+}
+
+#[test]
+fn creeper_textured_mesh_inflates_as_it_primes_to_explode() {
+    // The real creeper render path (texture-backed) inflates with the same
+    // `CreeperRenderer.scale` swell. An unswollen creeper is byte-identical; a fully primed
+    // one grows on the X/Z plane by `(1 + 0.4) * wobble`.
+    let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
+    let base = EntityModelInstance::new(253, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    let calm = entity_model_textured_mesh(&[base], &atlas);
+    let unswollen = entity_model_textured_mesh(&[base.with_creeper_swelling(0.0)], &atlas);
+    assert_eq!(
+        calm.vertices, unswollen.vertices,
+        "an unswollen creeper is unscaled"
+    );
+
+    let swelling = 1.0_f32;
+    let primed = entity_model_textured_mesh(&[base.with_creeper_swelling(swelling)], &atlas);
+    assert_eq!(
+        calm.vertices.len(),
+        primed.vertices.len(),
+        "the swell scale keeps the vertex count"
+    );
+    assert_ne!(
+        calm.vertices, primed.vertices,
+        "a priming creeper is rescaled"
+    );
+
+    let wobble = 1.0 + (swelling * 100.0).sin() * swelling * 0.01;
+    let expected_s = 1.4 * wobble;
+    let (calm_min, calm_max) = textured_mesh_extents(&calm);
+    let (primed_min, primed_max) = textured_mesh_extents(&primed);
+    let ratio = (primed_max[0] - primed_min[0]) / (calm_max[0] - calm_min[0]);
+    assert!(
+        (ratio - expected_s).abs() < 1.0e-4,
+        "X extent ratio {ratio} should match swell factor {expected_s}"
     );
 }
 

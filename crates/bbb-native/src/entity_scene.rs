@@ -382,6 +382,7 @@ fn entity_model_instance(
             game_time,
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
+        .with_creeper_swelling(source.creeper_swelling)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -2211,6 +2212,43 @@ mod tests {
             creeper_white_overlay_progress(swelling)
         );
         assert!(instances[0].render_state.white_overlay_progress >= 0.5);
+    }
+
+    #[test]
+    fn entity_model_instances_project_creeper_swelling_from_world() {
+        const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
+        const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            93,
+            VANILLA_ENTITY_TYPE_CREEPER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(
+            resting[0].render_state.creeper_swelling, 0.0,
+            "a calm creeper carries no swell, so CreeperRenderer.scale is the identity"
+        );
+
+        // Prime the creeper: swell direction = 1 advances the swell counter each tick, and
+        // vanilla `Creeper.getSwelling(partialTick) = swell / SWELL_MAX (28)`.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 93,
+            values: vec![EntityDataValue {
+                data_id: CREEPER_SWELL_DIR_DATA_ID,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(1),
+            }],
+        }));
+        world.advance_entity_client_animations(5);
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(
+            instances[0].render_state.creeper_swelling,
+            5.0 / 28.0,
+            "the projected swell drives the renderer inflate-and-flicker scale"
+        );
     }
 
     #[test]

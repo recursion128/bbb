@@ -10,8 +10,8 @@ mod textured;
 pub use catalog::*;
 use colored::{
     boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,
-    entity_model_colored_runtime_mesh, entity_model_root_transform, ghast_model_root_transform,
-    happy_ghast_model_root_transform, magma_cube_model_root_transform,
+    creeper_model_root_transform, entity_model_colored_runtime_mesh, entity_model_root_transform,
+    ghast_model_root_transform, happy_ghast_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
     player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
     salmon_model_root_transform, slime_model_root_transform, squid_model_root_transform,

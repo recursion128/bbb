@@ -10,7 +10,8 @@ use super::{
         PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
         TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
     },
-    cave_spider_model_root_transform, cod_model_root_transform, entity_model_root_transform,
+    cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
+    entity_model_root_transform,
     geometry::{
         emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
         fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh, ModelPartDesc,
@@ -1950,13 +1951,14 @@ fn emit_creeper_textured_model(
 ) {
     // Vanilla `CreeperModel.setupAnim` leg swing is the standard `QuadrupedModel`
     // formula (legs at [2, 3, 4, 5]), so reuse the quadruped textured pass emitter
-    // (full head look + leg swing). The swelling scale and powered layer are deferred.
+    // (full head look + leg swing). The `CreeperRenderer.scale` swell inflate-and-flicker
+    // is folded into the root transform; the powered charge layer is deferred.
     emit_quadruped_textured_passes(
         meshes,
         creeper_textured_layer_passes(),
         head_first_part_index(),
         QUADRUPED_LEG_PART_INDICES,
-        entity_model_root_transform(instance),
+        creeper_model_root_transform(instance),
         instance,
         atlas,
     );
