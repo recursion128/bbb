@@ -1172,8 +1172,21 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `GhastModel.setupAnim` tentacle wave (`tentacle.xRot = 0.2 *
       sin(ageInTicks * 0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on
       both render paths). The `isCharging` shooting-texture variant
-      (`ghast_shooting.png`), the happy ghast (a distinct rideable model), lighting,
-      and overlay remain unsupported
+      (`ghast_shooting.png`), lighting, and overlay remain unsupported
+    - happy ghast entities as renderer-owned vanilla 26.1
+      `HappyGhastModel.createBodyLayer(false, NONE)` geometry: the 16x16x16 body at
+      y 16 plus the nine tentacles parented under the body (world-space y 23) with
+      hard-coded lengths `[5, 7, 4, 5, 5, 7, 8, 8, 5]`, scaled 4.0x by the
+      `MeshTransformer.scaling(4.0F)` model-root transform; the official
+      `textures/entity/ghast/happy_ghast.png` texture reference, texture-backed base
+      layer pass emission, official PNG atlas upload/bind/sample path, and the
+      vanilla `HappyGhastModel.setupAnim` tentacle wave (it reuses
+      `GhastModel.animateTentacles` verbatim, `tentacle.xRot = 0.2 * sin(ageInTicks *
+      0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on both render paths).
+      The baby model (the extra `inner_body` cube plus the 0.2375 baby scale), the
+      `bodyItem` body squeeze (`0.9375` scale when a harness is equipped) with the
+      harness equipment layer and the rope/lead layer, lighting, and overlay remain
+      unsupported
     - blaze entities as renderer-owned vanilla 26.1 `BlazeModel.createBodyLayer()`
       geometry: the 8x8x8 head at `PartPose.ZERO` plus twelve `2x8x2` rods (the
       shared `texOffs(0, 16)` `rod` builder), with no `MeshTransformer` scaling (the

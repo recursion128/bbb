@@ -32,6 +32,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SlimeOuter,
     MagmaCubeBase,
     GhastBase,
+    HappyGhastBase,
     BlazeBase,
     EndermiteBase,
     SilverfishBase,
@@ -312,6 +313,20 @@ pub(in crate::entity_models) fn ghast_textured_layer_passes() -> Vec<EntityModel
         model_layer: MODEL_LAYER_GHAST,
         texture: GHAST_TEXTURE_REF,
         parts: &GHAST_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn happy_ghast_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::HappyGhastBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_HAPPY_GHAST,
+        texture: HAPPY_GHAST_TEXTURE_REF,
+        parts: &HAPPY_GHAST_TEXTURED_PARTS,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

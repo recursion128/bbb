@@ -17,6 +17,7 @@ pub(super) const DONKEY_SCALE: f32 = 0.87;
 pub(super) const MULE_SCALE: f32 = 0.92;
 pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;
 const GHAST_SCALE: f32 = 4.5;
+const HAPPY_GHAST_SCALE: f32 = 4.0;
 
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
@@ -211,6 +212,12 @@ pub(in crate::entity_models) fn villager_adult_model_root_transform(
 /// Vanilla `GhastModel.createBodyLayer` bakes `MeshTransformer.scaling(4.5F)` into the layer.
 pub(in crate::entity_models) fn ghast_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     mesh_transformer_scaled_model_root_transform(instance, GHAST_SCALE)
+}
+
+pub(in crate::entity_models) fn happy_ghast_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    mesh_transformer_scaled_model_root_transform(instance, HAPPY_GHAST_SCALE)
 }
 
 /// Vanilla `PhantomRenderer` transform overrides. `setupRotations` appends an extra

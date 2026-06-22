@@ -420,6 +420,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Ghast, position, y_rot)
     }
 
+    pub fn happy_ghast(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::HappyGhast, position, y_rot)
+    }
+
     pub fn blaze(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Blaze, position, y_rot)
     }
