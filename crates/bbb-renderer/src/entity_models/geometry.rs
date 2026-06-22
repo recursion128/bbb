@@ -95,6 +95,27 @@ pub(super) struct TexturedModelCubeDesc {
     pub(super) mirror: bool,
 }
 
+/// Applies a uniform vanilla `CubeDeformation(grow)` to a textured cube: the geometry grows
+/// by `grow` on every face (`min -= grow`, `size += 2·grow`) while the `uv_size` keeps the
+/// base box, exactly as `CubeListBuilder.addBox(..., CubeDeformation)` bakes it. Used to
+/// derive inflated overlay layers (e.g. the tropical fish pattern) from their base cubes.
+pub(super) const fn inflate_textured_cube(
+    base: TexturedModelCubeDesc,
+    grow: f32,
+) -> TexturedModelCubeDesc {
+    TexturedModelCubeDesc {
+        min: [base.min[0] - grow, base.min[1] - grow, base.min[2] - grow],
+        size: [
+            base.size[0] + 2.0 * grow,
+            base.size[1] + 2.0 * grow,
+            base.size[2] + 2.0 * grow,
+        ],
+        uv_size: base.uv_size,
+        tex: base.tex,
+        mirror: base.mirror,
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct PartPose {
     pub(super) offset: [f32; 3],

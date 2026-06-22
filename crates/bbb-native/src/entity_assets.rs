@@ -236,6 +236,18 @@ mod tests {
                 "textures/entity/breeze/breeze.png",
                 "textures/entity/dolphin/dolphin.png",
                 "textures/entity/dolphin/dolphin_baby.png",
+                "textures/entity/fish/tropical_a_pattern_1.png",
+                "textures/entity/fish/tropical_a_pattern_2.png",
+                "textures/entity/fish/tropical_a_pattern_3.png",
+                "textures/entity/fish/tropical_a_pattern_4.png",
+                "textures/entity/fish/tropical_a_pattern_5.png",
+                "textures/entity/fish/tropical_a_pattern_6.png",
+                "textures/entity/fish/tropical_b_pattern_1.png",
+                "textures/entity/fish/tropical_b_pattern_2.png",
+                "textures/entity/fish/tropical_b_pattern_3.png",
+                "textures/entity/fish/tropical_b_pattern_4.png",
+                "textures/entity/fish/tropical_b_pattern_5.png",
+                "textures/entity/fish/tropical_b_pattern_6.png",
             ]
         );
         for image in images {

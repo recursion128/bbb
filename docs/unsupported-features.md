@@ -1568,15 +1568,22 @@ When an agent does any of the following, update this file in the same slice:
       texture references, per-shape texture-backed base-layer pass emission
       (`ModelLayers.TROPICAL_FISH_{SMALL,LARGE}` keys, the tail/top fins keeping their
       negative `texOffs` V origins), and the official PNG atlas upload/bind/sample path
-      (colored and textured); and the per-entity base body tint
+      (colored and textured); the per-entity base body tint
       (`TropicalFishRenderer.getModelTint = getBaseColor().getTextureDiffuseColor()`, the
       base dye decoded `DyeColor.byId((packedVariant >> 16) & 0xFF)` from the synced packed
       variant and applied as the body color on both render paths — the grayscale base
-      texture is multiplied by the base dye's diffuse color instead of left white). The
-      twelve `TropicalFishPatternLayer` pattern overlays (`TROPICAL_FISH_{SMALL,LARGE}_PATTERN`
-      layers, inflated by `FISH_PATTERN_DEFORMATION`) and their per-entity pattern color tint
-      (`patternColor`, `DyeColor.byId((packedVariant >> 24) & 0xFF)`), with their lighting and
-      overlay, remain unsupported
+      texture is multiplied by the base dye's diffuse color instead of left white); and the
+      full `TropicalFishPatternLayer` overlay: the twelve patterns
+      (`TropicalFish.Pattern.byId(packedVariant & 0xFFFF)`, sparse-decoded to KOB on an
+      unknown id) each select one of the official `tropical_{a,b}_pattern_{1..6}.png`
+      textures, drawn over the body as a second cutout pass on the
+      `ModelLayers.TROPICAL_FISH_{SMALL,LARGE}_PATTERN` geometry (the body mesh inflated by
+      `LayerDefinitions.FISH_PATTERN_DEFORMATION = CubeDeformation(0.008)`, keeping the base
+      box for UVs) and tinted by the pattern color (`getPatternColor().getTextureDiffuseColor()`,
+      `DyeColor.byId((packedVariant >> 24) & 0xFF)`). Only the colored debug path omits the
+      pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
+      approximated by a solid-color box); its lighting/overlay remain the standard deferred
+      entity lighting
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

@@ -5,7 +5,7 @@ use super::super::{
         wolf_texture_ref, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
         EntityDyeColor, EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
         PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize,
-        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
     },
     geometry::TexturedModelPartDesc,
     model_layers::*,
@@ -19,6 +19,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CodBase,
     SalmonBase,
     TropicalFishBase,
+    TropicalFishPattern,
     CowBase,
     CreeperBase,
     EndermanBase,
@@ -190,24 +191,40 @@ pub(in crate::entity_models) fn salmon_textured_layer_passes(
 pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
     shape: TropicalFishModelShape,
     base_color: EntityDyeColor,
+    pattern: TropicalFishPattern,
+    pattern_color: EntityDyeColor,
 ) -> Vec<EntityModelLayerPass> {
     let texture = match shape {
         TropicalFishModelShape::Small => TROPICAL_FISH_SMALL_TEXTURE_REF,
         TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_TEXTURE_REF,
     };
     // Vanilla `getModelTint` tints the grayscale base body by the base color's texture diffuse
-    // color.
-    vec![EntityModelLayerPass {
-        kind: EntityModelLayerKind::TropicalFishBase,
-        render_type: EntityModelLayerRenderType::Cutout,
-        model_layer: tropical_fish_model_layer(shape),
-        texture,
-        parts: tropical_fish_textured_parts(shape),
-        visibility: EntityModelLayerVisibility::All,
-        tint: base_color.texture_diffuse_color(),
-        collector_order: 0,
-        submit_sequence: 0,
-    }]
+    // color; the `TropicalFishPatternLayer` then overlays the selected pattern texture (the body
+    // mesh inflated by `FISH_PATTERN_DEFORMATION`) tinted by the pattern color.
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::TropicalFishBase,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: tropical_fish_model_layer(shape),
+            texture,
+            parts: tropical_fish_textured_parts(shape),
+            visibility: EntityModelLayerVisibility::All,
+            tint: base_color.texture_diffuse_color(),
+            collector_order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::TropicalFishPattern,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: tropical_fish_pattern_model_layer(shape),
+            texture: tropical_fish_pattern_texture_ref(pattern),
+            parts: tropical_fish_pattern_textured_parts(shape),
+            visibility: EntityModelLayerVisibility::All,
+            tint: pattern_color.texture_diffuse_color(),
+            collector_order: 1,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn camel_textured_layer_passes(

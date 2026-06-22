@@ -5,8 +5,8 @@ use bbb_renderer::{
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
     PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SalmonModelSize,
     SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, TropicalFishModelShape, UndeadHorseModelFamily, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -814,6 +814,8 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
             shape: tropical_fish_shape(data_values),
             base_color: tropical_fish_base_color(data_values),
+            pattern: tropical_fish_pattern(data_values),
+            pattern_color: tropical_fish_pattern_color(data_values),
         },
         VANILLA_ENTITY_TYPE_TURTLE_ID => EntityModelKind::Turtle {
             baby: ageable_baby(data_values),
@@ -1116,6 +1118,29 @@ fn tropical_fish_base_color(values: &[bbb_protocol::packets::EntityDataValue]) -
         TROPICAL_FISH_DEFAULT_VARIANT,
     );
     EntityDyeColor::from_vanilla_id((packed >> 16) & 0xFF)
+}
+
+/// Vanilla `TropicalFish.getPattern(packedVariant) = Pattern.byId(packedVariant & 0xFFFF)`, the
+/// `TropicalFishPatternLayer` overlay selector.
+fn tropical_fish_pattern(values: &[bbb_protocol::packets::EntityDataValue]) -> TropicalFishPattern {
+    TropicalFishPattern::from_vanilla_packed_variant(entity_data_int(
+        values,
+        TROPICAL_FISH_VARIANT_DATA_ID,
+        TROPICAL_FISH_DEFAULT_VARIANT,
+    ))
+}
+
+/// Vanilla `TropicalFish.getPatternColor(packedVariant) = DyeColor.byId(packedVariant >> 24 &
+/// 0xFF)`, the `TropicalFishPatternLayer` tint (`state.patternColor`).
+fn tropical_fish_pattern_color(
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityDyeColor {
+    let packed = entity_data_int(
+        values,
+        TROPICAL_FISH_VARIANT_DATA_ID,
+        TROPICAL_FISH_DEFAULT_VARIANT,
+    );
+    EntityDyeColor::from_vanilla_id((packed >> 24) & 0xFF)
 }
 
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -3137,6 +3162,9 @@ mod tests {
             EntityModelKind::TropicalFish {
                 shape: TropicalFishModelShape::Small,
                 base_color: EntityDyeColor::White,
+                // pattern bits = 0 → Pattern.byId(0) = KOB; pattern color = (0 >> 24) = WHITE.
+                pattern: TropicalFishPattern::Kob,
+                pattern_color: EntityDyeColor::White,
             }
         );
         // FLOPPER (LARGE base, index 0) with arbitrary base/pattern color bytes → large body.
@@ -3152,6 +3180,10 @@ mod tests {
                 shape: TropicalFishModelShape::Large,
                 // base byte = (0x0405_0001 >> 16) & 0xFF = 0x05 → DyeColor.byId(5) = LIME.
                 base_color: EntityDyeColor::Lime,
+                // pattern bits = 0x0405_0001 & 0xFFFF = 1 → Pattern.byId(1) = FLOPPER.
+                pattern: TropicalFishPattern::Flopper,
+                // pattern color = (0x0405_0001 >> 24) & 0xFF = 0x04 → DyeColor.byId(4) = YELLOW.
+                pattern_color: EntityDyeColor::Yellow,
             }
         );
         // SPOTTY (SMALL base, index 5 → 0x0500) stays the small body.
@@ -3164,6 +3196,9 @@ mod tests {
                 shape: TropicalFishModelShape::Small,
                 // base byte = (0x0500 >> 16) & 0xFF = 0 → DyeColor.byId(0) = WHITE.
                 base_color: EntityDyeColor::White,
+                // pattern bits = 0x0500 = 1280 → Pattern.byId(1280) = SPOTTY (small, index 5).
+                pattern: TropicalFishPattern::Spotty,
+                pattern_color: EntityDyeColor::White,
             }
         );
     }
@@ -3190,6 +3225,104 @@ mod tests {
         assert_eq!(base_color_of(0xFF0F_FFFFu32 as i32), EntityDyeColor::Black);
         // Out-of-range base byte (16) falls back to WHITE like `DyeColor.byId` (ZERO strategy).
         assert_eq!(base_color_of(0x0010_0000), EntityDyeColor::White);
+    }
+
+    #[test]
+    fn entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packed_variant() {
+        // Vanilla `getPattern(packed) = Pattern.byId(packed & 0xFFFF)` (sparse, default KOB) and
+        // `getPatternColor(packed) = DyeColor.byId(packed >> 24 & 0xFF)`. The pattern occupies the
+        // low 16 bits and the pattern color the top byte; the base color byte (bits 16..24) must
+        // not bleed into either.
+        let decode = |packed: i32| match entity_model_kind(
+            VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+            &[protocol_int_data(TROPICAL_FISH_VARIANT_DATA_ID, packed)],
+        ) {
+            EntityModelKind::TropicalFish {
+                shape,
+                pattern,
+                pattern_color,
+                ..
+            } => (shape, pattern, pattern_color),
+            other => panic!("expected tropical fish, got {other:?}"),
+        };
+
+        // All twelve patterns map from their `base.id | index << 8` packed id.
+        for (packed_pattern, expected, shape) in [
+            (
+                0x0000,
+                TropicalFishPattern::Kob,
+                TropicalFishModelShape::Small,
+            ),
+            (
+                0x0100,
+                TropicalFishPattern::Sunstreak,
+                TropicalFishModelShape::Small,
+            ),
+            (
+                0x0200,
+                TropicalFishPattern::Snooper,
+                TropicalFishModelShape::Small,
+            ),
+            (
+                0x0300,
+                TropicalFishPattern::Dasher,
+                TropicalFishModelShape::Small,
+            ),
+            (
+                0x0400,
+                TropicalFishPattern::Brinely,
+                TropicalFishModelShape::Small,
+            ),
+            (
+                0x0500,
+                TropicalFishPattern::Spotty,
+                TropicalFishModelShape::Small,
+            ),
+            (
+                0x0001,
+                TropicalFishPattern::Flopper,
+                TropicalFishModelShape::Large,
+            ),
+            (
+                0x0101,
+                TropicalFishPattern::Stripey,
+                TropicalFishModelShape::Large,
+            ),
+            (
+                0x0201,
+                TropicalFishPattern::Glitter,
+                TropicalFishModelShape::Large,
+            ),
+            (
+                0x0301,
+                TropicalFishPattern::Blockfish,
+                TropicalFishModelShape::Large,
+            ),
+            (
+                0x0401,
+                TropicalFishPattern::Betty,
+                TropicalFishModelShape::Large,
+            ),
+            (
+                0x0501,
+                TropicalFishPattern::Clayfish,
+                TropicalFishModelShape::Large,
+            ),
+        ] {
+            // Mix in a non-zero base color byte (GRAY = 7) and pattern color byte (BLUE = 11) to
+            // prove neither disturbs the pattern decode.
+            let packed = packed_pattern | (0x07 << 16) | (0x0B << 24);
+            let (got_shape, got_pattern, got_pattern_color) = decode(packed);
+            assert_eq!(got_pattern, expected);
+            assert_eq!(got_shape, shape);
+            assert_eq!(got_shape, expected.shape(), "shape mirrors pattern.shape()");
+            assert_eq!(got_pattern_color, EntityDyeColor::Blue);
+        }
+
+        // Unknown pattern id falls back to KOB (small body) like `ByIdMap.sparse(..., KOB)`.
+        let (shape, pattern, _) = decode(0x00AB);
+        assert_eq!(pattern, TropicalFishPattern::Kob);
+        assert_eq!(shape, TropicalFishModelShape::Small);
     }
 
     #[test]

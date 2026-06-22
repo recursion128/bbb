@@ -377,10 +377,17 @@ impl EntityModelInstance {
         y_rot: f32,
         shape: TropicalFishModelShape,
         base_color: EntityDyeColor,
+        pattern: TropicalFishPattern,
+        pattern_color: EntityDyeColor,
     ) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::TropicalFish { shape, base_color },
+            EntityModelKind::TropicalFish {
+                shape,
+                base_color,
+                pattern,
+                pattern_color,
+            },
             position,
             y_rot,
         )

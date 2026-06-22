@@ -8,7 +8,7 @@ use super::{
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, HoglinModelFamily,
         IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, ZombieVariantModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
     },
     cave_spider_model_root_transform, cod_model_root_transform, entity_model_root_transform,
     geometry::{
@@ -220,8 +220,21 @@ pub(super) fn entity_model_textured_meshes(
             EntityModelKind::Salmon { size } => {
                 emit_salmon_textured_model(&mut meshes, *instance, size, atlas);
             }
-            EntityModelKind::TropicalFish { shape, base_color } => {
-                emit_tropical_fish_textured_model(&mut meshes, *instance, shape, base_color, atlas);
+            EntityModelKind::TropicalFish {
+                shape,
+                base_color,
+                pattern,
+                pattern_color,
+            } => {
+                emit_tropical_fish_textured_model(
+                    &mut meshes,
+                    *instance,
+                    shape,
+                    base_color,
+                    pattern,
+                    pattern_color,
+                    atlas,
+                );
             }
             EntityModelKind::Vex => {
                 emit_vex_textured_model(&mut meshes, *instance, atlas);
@@ -585,23 +598,27 @@ fn emit_salmon_textured_model(
     }
 }
 
-/// The textured tropical fish base layer. The parts are static apart from the tail, which
-/// is swayed by the vanilla `TropicalFish{Small,Large}Model.setupAnim`; the swim wiggle,
-/// out-of-water flop, and small/large body shape live in
-/// [`tropical_fish_model_root_transform`] and the per-shape pass. The base body is tinted by the
-/// vanilla `getModelTint` = `getBaseColor().getTextureDiffuseColor()`. The twelve pattern overlays
-/// and their pattern color are deferred.
+/// The textured tropical fish base layer plus the `TropicalFishPatternLayer` overlay. The
+/// parts are static apart from the tail, which is swayed by the vanilla
+/// `TropicalFish{Small,Large}Model.setupAnim`; the swim wiggle, out-of-water flop, and
+/// small/large body shape live in [`tropical_fish_model_root_transform`] and the per-shape
+/// pass. The base body is tinted by `getModelTint` = `getBaseColor().getTextureDiffuseColor()`,
+/// and the pattern overlay (the body inflated by `FISH_PATTERN_DEFORMATION`) by
+/// `getPatternColor().getTextureDiffuseColor()`.
+#[allow(clippy::too_many_arguments)]
 fn emit_tropical_fish_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     shape: TropicalFishModelShape,
     base_color: EntityDyeColor,
+    pattern: TropicalFishPattern,
+    pattern_color: EntityDyeColor,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let in_water = instance.render_state.in_water;
     let transform = tropical_fish_model_root_transform(instance, in_water);
     let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
-    for pass in tropical_fish_textured_layer_passes(shape, base_color) {
+    for pass in tropical_fish_textured_layer_passes(shape, base_color, pattern, pattern_color) {
         if tail_yrot == 0.0 {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
         } else {

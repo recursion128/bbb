@@ -207,11 +207,15 @@ pub enum EntityModelKind {
     /// flopper-style large body (vanilla `TropicalFish.Pattern.base()`). The tail sway and
     /// `TropicalFishRenderer.setupRotations` wiggle / out-of-water flop read
     /// `EntityRenderState.in_water` and `age_in_ticks`. `base_color` is the body tint
-    /// (vanilla `getModelTint` = `getBaseColor().getTextureDiffuseColor()`, decoded from the
-    /// packed variant). The pattern overlay layer and its pattern color are deferred.
+    /// (vanilla `getModelTint` = `getBaseColor().getTextureDiffuseColor()`); `pattern` selects
+    /// the `TropicalFishPatternLayer` overlay and `pattern_color` tints it
+    /// (`getPatternColor().getTextureDiffuseColor()`). All three are decoded from the same
+    /// synced packed variant, so `shape == pattern.shape()` always holds.
     TropicalFish {
         shape: TropicalFishModelShape,
         base_color: EntityDyeColor,
+        pattern: TropicalFishPattern,
+        pattern_color: EntityDyeColor,
     },
     Illager {
         family: IllagerModelFamily,
@@ -468,6 +472,83 @@ impl TropicalFishModelShape {
             Self::Large
         } else {
             Self::Small
+        }
+    }
+}
+
+/// Vanilla `TropicalFish.Pattern`: the twelve named patterns, six on the kob-style `Small`
+/// body and six on the flopper-style `Large` body, selecting the
+/// `TropicalFishPatternLayer` overlay texture. Each pattern is packed as
+/// `base.id | index << 8` (base `SMALL=0`/`LARGE=1`, index `0..=5`) in the low 16 bits of
+/// the synced variant (`TropicalFish.getPattern(packed & 0xFFFF)`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TropicalFishPattern {
+    Kob,
+    Sunstreak,
+    Snooper,
+    Dasher,
+    Brinely,
+    Spotty,
+    Flopper,
+    Stripey,
+    Glitter,
+    Blockfish,
+    Betty,
+    Clayfish,
+}
+
+impl TropicalFishPattern {
+    /// Vanilla `TropicalFish.Pattern.byId(packed & 0xFFFF)`, a sparse lookup over the twelve
+    /// patterns keyed on `packedId = base.id | index << 8` (so `KOB=0`, `SUNSTREAK=256`, …,
+    /// `FLOPPER=1`, `STRIPEY=257`, …). Any unrecognized id falls back to `KOB`, exactly like
+    /// `ByIdMap.sparse(..., KOB)`.
+    pub fn from_vanilla_packed_variant(packed_variant: i32) -> Self {
+        match packed_variant & 0xFFFF {
+            0 => Self::Kob,
+            256 => Self::Sunstreak,
+            512 => Self::Snooper,
+            768 => Self::Dasher,
+            1024 => Self::Brinely,
+            1280 => Self::Spotty,
+            1 => Self::Flopper,
+            257 => Self::Stripey,
+            513 => Self::Glitter,
+            769 => Self::Blockfish,
+            1025 => Self::Betty,
+            1281 => Self::Clayfish,
+            _ => Self::Kob,
+        }
+    }
+
+    /// Vanilla `TropicalFish.Pattern.base()`: the first six patterns ride the kob-style
+    /// `Small` body, the last six the flopper-style `Large` body.
+    pub fn shape(self) -> TropicalFishModelShape {
+        match self {
+            Self::Kob
+            | Self::Sunstreak
+            | Self::Snooper
+            | Self::Dasher
+            | Self::Brinely
+            | Self::Spotty => TropicalFishModelShape::Small,
+            Self::Flopper
+            | Self::Stripey
+            | Self::Glitter
+            | Self::Blockfish
+            | Self::Betty
+            | Self::Clayfish => TropicalFishModelShape::Large,
+        }
+    }
+
+    /// The pattern's index within its base (`0..=5`); the `TropicalFishPatternLayer` texture
+    /// is `tropical_{a,b}_pattern_{index + 1}.png`.
+    pub fn pattern_index(self) -> u8 {
+        match self {
+            Self::Kob | Self::Flopper => 0,
+            Self::Sunstreak | Self::Stripey => 1,
+            Self::Snooper | Self::Glitter => 2,
+            Self::Dasher | Self::Blockfish => 3,
+            Self::Brinely | Self::Betty => 4,
+            Self::Spotty | Self::Clayfish => 5,
         }
     }
 }

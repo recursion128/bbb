@@ -145,8 +145,12 @@ fn tropical_fish_small_mesh_uses_vanilla_geometry() {
         0.0,
         TropicalFishModelShape::Small,
         EntityDyeColor::Orange,
+        TropicalFishPattern::Kob,
+        EntityDyeColor::White,
     )
     .with_in_water(true)]);
+    // The colored debug path emits only the base body (the pattern overlay is texture-only):
+    // five cubes → 30 faces / 120 vertices, regardless of the pattern.
     assert_eq!(fish.opaque_faces, 30);
     assert_eq!(fish.vertices.len(), 120);
     assert_eq!(fish.indices.len(), 180);
@@ -168,6 +172,8 @@ fn tropical_fish_large_mesh_uses_vanilla_geometry() {
         0.0,
         TropicalFishModelShape::Large,
         EntityDyeColor::White,
+        TropicalFishPattern::Flopper,
+        EntityDyeColor::White,
     )
     .with_in_water(true)]);
     assert_eq!(fish.opaque_faces, 36);
@@ -185,6 +191,8 @@ fn tropical_fish_flops_when_out_of_water() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Small,
+        EntityDyeColor::White,
+        TropicalFishPattern::Kob,
         EntityDyeColor::White,
     );
     let swimming = entity_model_mesh(&[base.with_in_water(true)]);
@@ -215,6 +223,8 @@ fn tropical_fish_sways_its_tail_with_age() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Large,
+        EntityDyeColor::White,
+        TropicalFishPattern::Flopper,
         EntityDyeColor::White,
     )
     .with_in_water(true);
@@ -279,10 +289,14 @@ fn tropical_fish_texture_ref_matches_vanilla_renderer() {
     let small = EntityModelKind::TropicalFish {
         shape: TropicalFishModelShape::Small,
         base_color: EntityDyeColor::White,
+        pattern: TropicalFishPattern::Kob,
+        pattern_color: EntityDyeColor::White,
     };
     let large = EntityModelKind::TropicalFish {
         shape: TropicalFishModelShape::Large,
         base_color: EntityDyeColor::White,
+        pattern: TropicalFishPattern::Flopper,
+        pattern_color: EntityDyeColor::White,
     };
     assert_eq!(small.model_key(), "tropical_fish_small");
     assert_eq!(large.model_key(), "tropical_fish_large");
@@ -304,24 +318,39 @@ fn tropical_fish_texture_ref_matches_vanilla_renderer() {
 
 #[test]
 fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
-    // Each body shape renders a single cutout base layer keyed on its own model layer and
-    // base texture (`tropical_a`/`tropical_b`).
-    for (shape, layer, texture, parts) in [
+    // Each body shape renders a cutout base layer (`#main`) plus the `TropicalFishPatternLayer`
+    // overlay (`#pattern`, the body mesh inflated by `FISH_PATTERN_DEFORMATION`). The base is
+    // tinted by `getModelTint = state.baseColor`, the overlay by `state.patternColor`.
+    for (shape, layer, texture, parts, pattern, pattern_layer, pattern_texture, pattern_parts) in [
         (
             TropicalFishModelShape::Small,
             "minecraft:tropical_fish_small#main",
             TROPICAL_FISH_SMALL_TEXTURE_REF,
             TROPICAL_FISH_SMALL_TEXTURED_PARTS.as_slice(),
+            TropicalFishPattern::Brinely,
+            "minecraft:tropical_fish_small#pattern",
+            TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+            TROPICAL_FISH_SMALL_PATTERN_PARTS.as_slice(),
         ),
         (
             TropicalFishModelShape::Large,
             "minecraft:tropical_fish_large#main",
             TROPICAL_FISH_LARGE_TEXTURE_REF,
             TROPICAL_FISH_LARGE_TEXTURED_PARTS.as_slice(),
+            TropicalFishPattern::Betty,
+            "minecraft:tropical_fish_large#pattern",
+            TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
+            TROPICAL_FISH_LARGE_PATTERN_PARTS.as_slice(),
         ),
     ] {
-        let passes = tropical_fish_textured_layer_passes(shape, EntityDyeColor::Orange);
-        assert_eq!(passes.len(), 1);
+        let passes = tropical_fish_textured_layer_passes(
+            shape,
+            EntityDyeColor::Orange,
+            pattern,
+            EntityDyeColor::Cyan,
+        );
+        assert_eq!(passes.len(), 2);
+
         assert_eq!(passes[0].kind, EntityModelLayerKind::TropicalFishBase);
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, texture);
@@ -332,6 +361,16 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
             passes[0].tint,
             EntityDyeColor::Orange.texture_diffuse_color()
         );
+        assert_eq!(passes[0].submit_sequence, 0);
+
+        assert_eq!(passes[1].kind, EntityModelLayerKind::TropicalFishPattern);
+        assert_eq!(passes[1].model_layer, pattern_layer);
+        assert_eq!(passes[1].texture, pattern_texture);
+        assert_eq!(passes[1].parts, pattern_parts);
+        // The overlay is tinted by the pattern dye's diffuse color and drawn after the base.
+        assert_eq!(passes[1].tint, EntityDyeColor::Cyan.texture_diffuse_color());
+        assert_eq!(passes[1].submit_sequence, 1);
+        assert!(passes[1].collector_order > passes[0].collector_order);
     }
 
     // The textured parts mirror the colored poses (so the tail sway re-poses the same
@@ -362,17 +401,21 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
 fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&tropical_fish_texture_images()).unwrap();
 
-    // Small (kob): five cubes → 120 textured vertices; large (flopper): six → 144.
+    // Each shape now emits the base body plus the inflated pattern overlay (same cube counts),
+    // so the textured vertex count doubles. Small (kob): 2×5 cubes → 240 vertices; large
+    // (flopper): 2×6 → 288.
     let small = EntityModelInstance::tropical_fish(
         810,
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Small,
         EntityDyeColor::White,
+        TropicalFishPattern::Kob,
+        EntityDyeColor::White,
     )
     .with_in_water(true);
     let small_still = entity_model_textured_mesh(&[small], &atlas);
-    assert_eq!(small_still.vertices.len(), 120);
+    assert_eq!(small_still.vertices.len(), 240);
 
     let large = EntityModelInstance::tropical_fish(
         811,
@@ -380,10 +423,12 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
         0.0,
         TropicalFishModelShape::Large,
         EntityDyeColor::White,
+        TropicalFishPattern::Flopper,
+        EntityDyeColor::White,
     )
     .with_in_water(true);
     let large_still = entity_model_textured_mesh(&[large], &atlas);
-    assert_eq!(large_still.vertices.len(), 144);
+    assert_eq!(large_still.vertices.len(), 288);
 
     // The tail sway / body wiggle reorient the mesh as the age advances.
     let swimming = entity_model_textured_mesh(&[small.with_age_in_ticks(7.0)], &atlas);
@@ -404,4 +449,170 @@ fn tropical_fish_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+#[test]
+fn tropical_fish_pattern_from_vanilla_packed_variant() {
+    // `TropicalFish.Pattern.byId(packed & 0xFFFF)`, keyed on `packedId = base.id | index << 8`
+    // (`SMALL=0`/`LARGE=1`, index `0..=5`); unknown ids fall back to KOB.
+    let cases = [
+        (0x0000, TropicalFishPattern::Kob),
+        (0x0100, TropicalFishPattern::Sunstreak),
+        (0x0200, TropicalFishPattern::Snooper),
+        (0x0300, TropicalFishPattern::Dasher),
+        (0x0400, TropicalFishPattern::Brinely),
+        (0x0500, TropicalFishPattern::Spotty),
+        (0x0001, TropicalFishPattern::Flopper),
+        (0x0101, TropicalFishPattern::Stripey),
+        (0x0201, TropicalFishPattern::Glitter),
+        (0x0301, TropicalFishPattern::Blockfish),
+        (0x0401, TropicalFishPattern::Betty),
+        (0x0501, TropicalFishPattern::Clayfish),
+    ];
+    for (packed, expected) in cases {
+        assert_eq!(
+            TropicalFishPattern::from_vanilla_packed_variant(packed),
+            expected
+        );
+        // The base color (bits 16..24) and pattern color (bits 24..32) bytes never disturb it.
+        let noisy = packed | (0x09 << 16) | (0x0Du32 << 24) as i32;
+        assert_eq!(
+            TropicalFishPattern::from_vanilla_packed_variant(noisy),
+            expected
+        );
+    }
+    // Unknown low-byte base (0xAB) and out-of-range index (6 → 0x0601) both fall back to KOB.
+    assert_eq!(
+        TropicalFishPattern::from_vanilla_packed_variant(0x00AB),
+        TropicalFishPattern::Kob
+    );
+    assert_eq!(
+        TropicalFishPattern::from_vanilla_packed_variant(0x0601),
+        TropicalFishPattern::Kob
+    );
+}
+
+#[test]
+fn tropical_fish_pattern_texture_refs_match_vanilla() {
+    // Each pattern selects `tropical_{a,b}_pattern_{index + 1}.png`: the six small patterns ride
+    // `tropical_a`, the six large `tropical_b`.
+    let cases = [
+        (
+            TropicalFishPattern::Kob,
+            "textures/entity/fish/tropical_a_pattern_1.png",
+            TropicalFishModelShape::Small,
+            0,
+        ),
+        (
+            TropicalFishPattern::Sunstreak,
+            "textures/entity/fish/tropical_a_pattern_2.png",
+            TropicalFishModelShape::Small,
+            1,
+        ),
+        (
+            TropicalFishPattern::Snooper,
+            "textures/entity/fish/tropical_a_pattern_3.png",
+            TropicalFishModelShape::Small,
+            2,
+        ),
+        (
+            TropicalFishPattern::Dasher,
+            "textures/entity/fish/tropical_a_pattern_4.png",
+            TropicalFishModelShape::Small,
+            3,
+        ),
+        (
+            TropicalFishPattern::Brinely,
+            "textures/entity/fish/tropical_a_pattern_5.png",
+            TropicalFishModelShape::Small,
+            4,
+        ),
+        (
+            TropicalFishPattern::Spotty,
+            "textures/entity/fish/tropical_a_pattern_6.png",
+            TropicalFishModelShape::Small,
+            5,
+        ),
+        (
+            TropicalFishPattern::Flopper,
+            "textures/entity/fish/tropical_b_pattern_1.png",
+            TropicalFishModelShape::Large,
+            0,
+        ),
+        (
+            TropicalFishPattern::Stripey,
+            "textures/entity/fish/tropical_b_pattern_2.png",
+            TropicalFishModelShape::Large,
+            1,
+        ),
+        (
+            TropicalFishPattern::Glitter,
+            "textures/entity/fish/tropical_b_pattern_3.png",
+            TropicalFishModelShape::Large,
+            2,
+        ),
+        (
+            TropicalFishPattern::Blockfish,
+            "textures/entity/fish/tropical_b_pattern_4.png",
+            TropicalFishModelShape::Large,
+            3,
+        ),
+        (
+            TropicalFishPattern::Betty,
+            "textures/entity/fish/tropical_b_pattern_5.png",
+            TropicalFishModelShape::Large,
+            4,
+        ),
+        (
+            TropicalFishPattern::Clayfish,
+            "textures/entity/fish/tropical_b_pattern_6.png",
+            TropicalFishModelShape::Large,
+            5,
+        ),
+    ];
+    for (pattern, path, shape, index) in cases {
+        let texture = tropical_fish_pattern_texture_ref(pattern);
+        assert_eq!(texture.path, path);
+        assert_eq!(texture.size, [32, 32]);
+        assert_eq!(pattern.shape(), shape);
+        assert_eq!(pattern.pattern_index(), index);
+    }
+}
+
+#[test]
+fn tropical_fish_pattern_geometry_inflates_base_by_fish_pattern_deformation() {
+    // Vanilla `ModelLayers.TROPICAL_FISH_*_PATTERN = createBodyLayer(FISH_PATTERN_DEFORMATION)`:
+    // the overlay is the base body grown by 0.008 on every face (`min -= g`, `size += 2·g`),
+    // keeping the base box for UVs and the same `texOffs`/mirror.
+    assert_eq!(FISH_PATTERN_DEFORMATION, 0.008);
+    let g = FISH_PATTERN_DEFORMATION;
+    let base_cubes = TROPICAL_FISH_SMALL_TEXTURED_PARTS
+        .iter()
+        .flat_map(|part| part.cubes)
+        .chain(
+            TROPICAL_FISH_LARGE_TEXTURED_PARTS
+                .iter()
+                .flat_map(|part| part.cubes),
+        );
+    let pattern_cubes = TROPICAL_FISH_SMALL_PATTERN_PARTS
+        .iter()
+        .flat_map(|part| part.cubes)
+        .chain(
+            TROPICAL_FISH_LARGE_PATTERN_PARTS
+                .iter()
+                .flat_map(|part| part.cubes),
+        );
+    let mut count = 0;
+    for (base, pattern) in base_cubes.zip(pattern_cubes) {
+        for axis in 0..3 {
+            assert!((pattern.min[axis] - (base.min[axis] - g)).abs() < 1.0e-7);
+            assert!((pattern.size[axis] - (base.size[axis] + 2.0 * g)).abs() < 1.0e-7);
+        }
+        assert_eq!(pattern.uv_size, base.uv_size);
+        assert_eq!(pattern.tex, base.tex);
+        assert_eq!(pattern.mirror, base.mirror);
+        count += 1;
+    }
+    // Five small body cubes plus six large body cubes are inflated for the overlay.
+    assert_eq!(count, 11);
 }

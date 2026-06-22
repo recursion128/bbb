@@ -338,7 +338,12 @@ fn entity_model_mesh_with_options(
                     emit_salmon_model(&mut mesh, *instance, size);
                 }
             }
-            EntityModelKind::TropicalFish { shape, base_color } => {
+            EntityModelKind::TropicalFish {
+                shape, base_color, ..
+            } => {
+                // The colored debug path approximates the textured base body as a solid base-color
+                // box; the `TropicalFishPatternLayer` overlay is a cutout texture (its shape comes
+                // from the texture alpha) and so is only meaningful on the textured path.
                 if !skip_texture_backed_entities {
                     emit_tropical_fish_model(&mut mesh, *instance, shape, base_color);
                 }

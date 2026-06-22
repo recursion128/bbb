@@ -1,8 +1,15 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    TROPICAL_FISH_ORANGE,
+    inflate_textured_cube, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc, TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_BLOCKFISH_PATTERN_TEXTURE_REF, TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_CLAYFISH_PATTERN_TEXTURE_REF, TROPICAL_FISH_DASHER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_FLOPPER_PATTERN_TEXTURE_REF, TROPICAL_FISH_GLITTER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_KOB_PATTERN_TEXTURE_REF, TROPICAL_FISH_ORANGE,
+    TROPICAL_FISH_SNOOPER_PATTERN_TEXTURE_REF, TROPICAL_FISH_SPOTTY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_STRIPEY_PATTERN_TEXTURE_REF, TROPICAL_FISH_SUNSTREAK_PATTERN_TEXTURE_REF,
 };
-use crate::entity_models::catalog::TropicalFishModelShape;
+use crate::entity_models::catalog::{TropicalFishModelShape, TropicalFishPattern};
+use crate::entity_models::EntityModelTextureRef;
 
 // Vanilla 26.1 `TropicalFishSmallModel.createBodyLayer` (kob-style body, atlas 32×32,
 // `CubeDeformation.NONE`). The tail and top fin are zero-thickness planes flat in X; the
@@ -389,5 +396,179 @@ pub(in crate::entity_models) fn tropical_fish_textured_parts(
     match shape {
         TropicalFishModelShape::Small => &TROPICAL_FISH_SMALL_TEXTURED_PARTS,
         TropicalFishModelShape::Large => &TROPICAL_FISH_LARGE_TEXTURED_PARTS,
+    }
+}
+
+// Vanilla `LayerDefinitions.FISH_PATTERN_DEFORMATION = new CubeDeformation(0.008F)`: the
+// `TropicalFishPatternLayer` bakes the same body geometry one notch larger so the overlay sits
+// just outside the base body without z-fighting.
+pub(in crate::entity_models) const FISH_PATTERN_DEFORMATION: f32 = 0.008;
+
+// Vanilla `ModelLayers.TROPICAL_FISH_{SMALL,LARGE}_PATTERN` (`register("tropical_fish_small",
+// "pattern")`): the pattern overlay reuses the body mesh baked with `FISH_PATTERN_DEFORMATION`.
+pub(in crate::entity_models) const MODEL_LAYER_TROPICAL_FISH_SMALL_PATTERN: &str =
+    "minecraft:tropical_fish_small#pattern";
+pub(in crate::entity_models) const MODEL_LAYER_TROPICAL_FISH_LARGE_PATTERN: &str =
+    "minecraft:tropical_fish_large#pattern";
+
+/// The pattern overlay model-layer key for a body shape.
+pub(in crate::entity_models) fn tropical_fish_pattern_model_layer(
+    shape: TropicalFishModelShape,
+) -> &'static str {
+    match shape {
+        TropicalFishModelShape::Small => MODEL_LAYER_TROPICAL_FISH_SMALL_PATTERN,
+        TropicalFishModelShape::Large => MODEL_LAYER_TROPICAL_FISH_LARGE_PATTERN,
+    }
+}
+
+// Pattern overlay cubes: the base body cubes inflated by `FISH_PATTERN_DEFORMATION`, keeping
+// the base box as `uv_size` (`inflate_textured_cube` reproduces vanilla `CubeDeformation`).
+pub(in crate::entity_models) const TROPICAL_FISH_SMALL_PATTERN_BODY: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        TROPICAL_FISH_SMALL_TEXTURED_BODY[0],
+        FISH_PATTERN_DEFORMATION,
+    )];
+pub(in crate::entity_models) const TROPICAL_FISH_SMALL_PATTERN_TAIL: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        TROPICAL_FISH_SMALL_TEXTURED_TAIL[0],
+        FISH_PATTERN_DEFORMATION,
+    )];
+pub(in crate::entity_models) const TROPICAL_FISH_SMALL_PATTERN_RIGHT_FIN: [TexturedModelCubeDesc;
+    1] = [inflate_textured_cube(
+    TROPICAL_FISH_SMALL_TEXTURED_RIGHT_FIN[0],
+    FISH_PATTERN_DEFORMATION,
+)];
+pub(in crate::entity_models) const TROPICAL_FISH_SMALL_PATTERN_LEFT_FIN: [TexturedModelCubeDesc;
+    1] = [inflate_textured_cube(
+    TROPICAL_FISH_SMALL_TEXTURED_LEFT_FIN[0],
+    FISH_PATTERN_DEFORMATION,
+)];
+pub(in crate::entity_models) const TROPICAL_FISH_SMALL_PATTERN_TOP_FIN: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        TROPICAL_FISH_SMALL_TEXTURED_TOP_FIN[0],
+        FISH_PATTERN_DEFORMATION,
+    )];
+
+/// Pattern overlay parts for the small (kob) body — the base poses with inflated cubes.
+pub(in crate::entity_models) const TROPICAL_FISH_SMALL_PATTERN_PARTS: [TexturedModelPartDesc; 5] = [
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_SMALL_PARTS[0].pose,
+        cubes: &TROPICAL_FISH_SMALL_PATTERN_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_SMALL_PARTS[1].pose,
+        cubes: &TROPICAL_FISH_SMALL_PATTERN_TAIL,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_SMALL_PARTS[2].pose,
+        cubes: &TROPICAL_FISH_SMALL_PATTERN_RIGHT_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_SMALL_PARTS[3].pose,
+        cubes: &TROPICAL_FISH_SMALL_PATTERN_LEFT_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_SMALL_PARTS[4].pose,
+        cubes: &TROPICAL_FISH_SMALL_PATTERN_TOP_FIN,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_PATTERN_BODY: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        TROPICAL_FISH_LARGE_TEXTURED_BODY[0],
+        FISH_PATTERN_DEFORMATION,
+    )];
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_PATTERN_TAIL: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        TROPICAL_FISH_LARGE_TEXTURED_TAIL[0],
+        FISH_PATTERN_DEFORMATION,
+    )];
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_PATTERN_RIGHT_FIN: [TexturedModelCubeDesc;
+    1] = [inflate_textured_cube(
+    TROPICAL_FISH_LARGE_TEXTURED_RIGHT_FIN[0],
+    FISH_PATTERN_DEFORMATION,
+)];
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_PATTERN_LEFT_FIN: [TexturedModelCubeDesc;
+    1] = [inflate_textured_cube(
+    TROPICAL_FISH_LARGE_TEXTURED_LEFT_FIN[0],
+    FISH_PATTERN_DEFORMATION,
+)];
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_PATTERN_TOP_FIN: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        TROPICAL_FISH_LARGE_TEXTURED_TOP_FIN[0],
+        FISH_PATTERN_DEFORMATION,
+    )];
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_PATTERN_BOTTOM_FIN: [TexturedModelCubeDesc;
+    1] = [inflate_textured_cube(
+    TROPICAL_FISH_LARGE_TEXTURED_BOTTOM_FIN[0],
+    FISH_PATTERN_DEFORMATION,
+)];
+
+/// Pattern overlay parts for the large (flopper) body — the base poses with inflated cubes.
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_PATTERN_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_LARGE_PARTS[0].pose,
+        cubes: &TROPICAL_FISH_LARGE_PATTERN_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_LARGE_PARTS[1].pose,
+        cubes: &TROPICAL_FISH_LARGE_PATTERN_TAIL,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_LARGE_PARTS[2].pose,
+        cubes: &TROPICAL_FISH_LARGE_PATTERN_RIGHT_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_LARGE_PARTS[3].pose,
+        cubes: &TROPICAL_FISH_LARGE_PATTERN_LEFT_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_LARGE_PARTS[4].pose,
+        cubes: &TROPICAL_FISH_LARGE_PATTERN_TOP_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TROPICAL_FISH_LARGE_PARTS[5].pose,
+        cubes: &TROPICAL_FISH_LARGE_PATTERN_BOTTOM_FIN,
+        children: &[],
+    },
+];
+
+/// The pattern overlay parts for a body shape.
+pub(in crate::entity_models) fn tropical_fish_pattern_textured_parts(
+    shape: TropicalFishModelShape,
+) -> &'static [TexturedModelPartDesc] {
+    match shape {
+        TropicalFishModelShape::Small => &TROPICAL_FISH_SMALL_PATTERN_PARTS,
+        TropicalFishModelShape::Large => &TROPICAL_FISH_LARGE_PATTERN_PARTS,
+    }
+}
+
+/// Vanilla `TropicalFishPatternLayer` texture for a pattern (`tropical_{a,b}_pattern_{1..6}`).
+pub(in crate::entity_models) fn tropical_fish_pattern_texture_ref(
+    pattern: TropicalFishPattern,
+) -> EntityModelTextureRef {
+    match pattern {
+        TropicalFishPattern::Kob => TROPICAL_FISH_KOB_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Sunstreak => TROPICAL_FISH_SUNSTREAK_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Snooper => TROPICAL_FISH_SNOOPER_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Dasher => TROPICAL_FISH_DASHER_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Brinely => TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Spotty => TROPICAL_FISH_SPOTTY_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Flopper => TROPICAL_FISH_FLOPPER_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Stripey => TROPICAL_FISH_STRIPEY_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Glitter => TROPICAL_FISH_GLITTER_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Blockfish => TROPICAL_FISH_BLOCKFISH_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Betty => TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
+        TropicalFishPattern::Clayfish => TROPICAL_FISH_CLAYFISH_PATTERN_TEXTURE_REF,
     }
 }

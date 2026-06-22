@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 141] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 153] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -896,6 +896,18 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     BREEZE_TEXTURE_REF,
     DOLPHIN_TEXTURE_REF,
     DOLPHIN_BABY_TEXTURE_REF,
+    TROPICAL_FISH_KOB_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_SUNSTREAK_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_SNOOPER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_DASHER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_SPOTTY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_FLOPPER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_STRIPEY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_GLITTER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_BLOCKFISH_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_CLAYFISH_PATTERN_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -916,9 +928,21 @@ pub fn salmon_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SALMON_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const TROPICAL_FISH_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] = [
+pub(in crate::entity_models) const TROPICAL_FISH_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 14] = [
     TROPICAL_FISH_SMALL_TEXTURE_REF,
     TROPICAL_FISH_LARGE_TEXTURE_REF,
+    TROPICAL_FISH_KOB_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_SUNSTREAK_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_SNOOPER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_DASHER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_SPOTTY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_FLOPPER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_STRIPEY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_GLITTER_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_BLOCKFISH_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
+    TROPICAL_FISH_CLAYFISH_PATTERN_TEXTURE_REF,
 ];
 
 pub fn tropical_fish_entity_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -1084,6 +1108,81 @@ pub(in crate::entity_models) const TROPICAL_FISH_LARGE_TEXTURE_REF: EntityModelT
         path: "textures/entity/fish/tropical_b.png",
         size: [32, 32],
     };
+
+// `TropicalFishPatternLayer` overlay textures (vanilla 26.1, all 32×32). The six `tropical_a`
+// patterns ride the small (kob) body, the six `tropical_b` patterns the large (flopper) body;
+// the trailing index is the pattern's `index + 1`.
+pub(in crate::entity_models) const TROPICAL_FISH_KOB_PATTERN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fish/tropical_a_pattern_1.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const TROPICAL_FISH_SUNSTREAK_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_a_pattern_2.png",
+    size: [32, 32],
+};
+
+pub(in crate::entity_models) const TROPICAL_FISH_SNOOPER_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_a_pattern_3.png",
+    size: [32, 32],
+};
+
+pub(in crate::entity_models) const TROPICAL_FISH_DASHER_PATTERN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fish/tropical_a_pattern_4.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_a_pattern_5.png",
+    size: [32, 32],
+};
+
+pub(in crate::entity_models) const TROPICAL_FISH_SPOTTY_PATTERN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fish/tropical_a_pattern_6.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const TROPICAL_FISH_FLOPPER_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_b_pattern_1.png",
+    size: [32, 32],
+};
+
+pub(in crate::entity_models) const TROPICAL_FISH_STRIPEY_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_b_pattern_2.png",
+    size: [32, 32],
+};
+
+pub(in crate::entity_models) const TROPICAL_FISH_GLITTER_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_b_pattern_3.png",
+    size: [32, 32],
+};
+
+pub(in crate::entity_models) const TROPICAL_FISH_BLOCKFISH_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_b_pattern_4.png",
+    size: [32, 32],
+};
+
+pub(in crate::entity_models) const TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fish/tropical_b_pattern_5.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const TROPICAL_FISH_CLAYFISH_PATTERN_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fish/tropical_b_pattern_6.png",
+    size: [32, 32],
+};
 
 pub(in crate::entity_models) const LLAMA_CREAMY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
