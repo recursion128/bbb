@@ -1355,7 +1355,11 @@ When an agent does any of the following, update this file in the same slice:
       base layer pass emission (the top fin keeps its negative `texOffs(20, -6)` V
       origin), and the official PNG atlas upload/bind/sample path (colored and
       textured). Lighting and overlay remain unsupported
-    - salmon entities as renderer-owned vanilla 26.1
+    - salmon entities are wired end to end: the native entity scene (`entity_scene.rs`)
+      projects vanilla type id `110` to the real `SalmonModel`, decoding the synced
+      `Salmon.Variant` size (`DATA_TYPE`, index 17, ids `0/1/2` clamped, default MEDIUM)
+      to the small/medium/large body layer, replacing the former placeholder box.
+      Renderer-owned vanilla 26.1
       `SalmonModel.createBodyLayer()` geometry: the five-part body-front (carrying a
       flat top fin) / body-back (carrying the flat tail fin and a flat rear top fin) /
       head / two side fins (`zRot ±π/4`) layer (the tail, top, and side fins are
@@ -1368,13 +1372,13 @@ When an agent does any of the following, update this file in the same slice:
       `Axis.YP.rotationDegrees(amplitude · 4.3 · sin(angle · 0.6 · ageInTicks))` and the
       out-of-water flop `translate(0.2, 0.1, 0.0)` + `Axis.ZP.rotationDegrees(90)`),
       where `amplitude`/`angle` are `(1.0, 1.0)` in water and `(1.3, 1.7)` out, both
-      reading the `in_water` render-state flag; the official
-      `textures/entity/fish/salmon.png` texture reference, texture-backed base-layer
-      pass emission (per-size `ModelLayers.SALMON`/`SALMON_SMALL`/`SALMON_LARGE` keys,
-      the right fin keeping its negative `texOffs(-4, 0)` U origin), and the official
-      PNG atlas upload/bind/sample path (colored and textured). The entity-side
-      `isInWater`/`ageInTicks`/`variant` projection, lighting, and overlay remain
-      unsupported
+      reading the projected `in_water` render-state flag (`Entity.isInWater()`, the
+      vanilla `wasTouchingWater` AABB-vs-water overlap) and the projected `age_in_ticks`;
+      the official `textures/entity/fish/salmon.png` texture reference, texture-backed
+      base-layer pass emission (per-size `ModelLayers.SALMON`/`SALMON_SMALL`/`SALMON_LARGE`
+      keys, the right fin keeping its negative `texOffs(-4, 0)` U origin), and the official
+      PNG atlas upload/bind/sample path (colored and textured). Lighting and overlay
+      remain unsupported
     - tropical fish entities as renderer-owned vanilla 26.1
       `TropicalFishSmallModel`/`TropicalFishLargeModel.createBodyLayer(CubeDeformation.NONE)`
       geometry: the kob-style small body (five-part body / tail / two side fins

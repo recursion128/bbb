@@ -3,9 +3,9 @@ use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
     DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SelectionBox,
-    SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose,
-    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SalmonModelSize,
+    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    SleepingPose, UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -203,6 +203,10 @@ const PHANTOM_DEFAULT_SIZE: i32 = 0;
 // puff state is index 17. Defaults to 0 (deflated).
 const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
+// Salmon (`Salmon.DATA_TYPE`): AbstractFish defines FROM_BUCKET at index 16, so the size
+// variant is index 17. Defaults to 1 (`Salmon.Variant.MEDIUM`).
+const SALMON_VARIANT_DATA_ID: u8 = 17;
+const SALMON_DEFAULT_VARIANT: i32 = 1;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 const LLAMA_VARIANT_DATA_ID: u8 = 21;
 const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
@@ -767,7 +771,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID => EntityModelKind::Pufferfish {
             puff_state: pufferfish_puff_state(data_values),
         },
-        VANILLA_ENTITY_TYPE_SALMON_ID => placeholder("todo_salmon_bounds", 0.7, 0.4, 0.7),
+        VANILLA_ENTITY_TYPE_SALMON_ID => EntityModelKind::Salmon {
+            size: salmon_model_size(data_values),
+        },
         VANILLA_ENTITY_TYPE_SHULKER_ID => placeholder("todo_shulker_bounds", 1.0, 1.0, 1.0),
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
             placeholder("todo_shulker_bullet_bounds", 0.3125, 0.3125, 0.3125)
@@ -1066,6 +1072,14 @@ fn pufferfish_puff_state(values: &[bbb_protocol::packets::EntityDataValue]) -> i
         PUFFERFISH_PUFF_STATE_DATA_ID,
         PUFFERFISH_DEFAULT_PUFF_STATE,
     )
+}
+
+fn salmon_model_size(values: &[bbb_protocol::packets::EntityDataValue]) -> SalmonModelSize {
+    SalmonModelSize::from_vanilla_id(entity_data_int(
+        values,
+        SALMON_VARIANT_DATA_ID,
+        SALMON_DEFAULT_VARIANT,
+    ))
 }
 
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -2908,6 +2922,47 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_COD_ID, &[]),
             EntityModelKind::Cod
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_salmon_size_from_variant_data() {
+        // The salmon was a placeholder render box; it now resolves to the real `SalmonModel`
+        // and projects its synced `DATA_TYPE` size variant (index 17, `Salmon.Variant` ids
+        // SMALL=0/MEDIUM=1/LARGE=2 clamped, defaulting to MEDIUM).
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SALMON_ID, &[]),
+            EntityModelKind::Salmon {
+                size: SalmonModelSize::Medium,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SALMON_ID,
+                &[protocol_int_data(SALMON_VARIANT_DATA_ID, 0)]
+            ),
+            EntityModelKind::Salmon {
+                size: SalmonModelSize::Small,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SALMON_ID,
+                &[protocol_int_data(SALMON_VARIANT_DATA_ID, 2)]
+            ),
+            EntityModelKind::Salmon {
+                size: SalmonModelSize::Large,
+            }
+        );
+        // Out-of-range ids clamp to the large body, matching `ByIdMap.continuous(CLAMP)`.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SALMON_ID,
+                &[protocol_int_data(SALMON_VARIANT_DATA_ID, 9)]
+            ),
+            EntityModelKind::Salmon {
+                size: SalmonModelSize::Large,
+            }
         );
     }
 
