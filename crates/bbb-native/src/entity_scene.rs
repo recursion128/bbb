@@ -378,6 +378,7 @@ fn entity_model_instance(
         .with_is_aggressive(source.is_aggressive)
         .with_enderman_carrying(source.enderman_carrying)
         .with_enderman_creepy(source.enderman_creepy)
+        .with_bat_resting(source.bat_resting)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
@@ -1942,6 +1943,42 @@ mod tests {
         let primed = state(&world, 94);
         assert!(primed.enderman_carrying);
         assert!(primed.enderman_creepy);
+    }
+
+    #[test]
+    fn entity_model_instances_project_bat_resting() {
+        // Vanilla Bat.DATA_ID_FLAGS (16, BYTE) and the resting bit (1).
+        const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
+        const BAT_FLAG_RESTING: i8 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            95,
+            VANILLA_ENTITY_TYPE_BAT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let resting = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .bat_resting
+        };
+
+        // A flying bat projects bat_resting = false.
+        assert!(!resting(&world, 95));
+
+        // Setting Bat.isResting (DATA_ID_FLAGS & 1) projects through to the hanging-pose state.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 95,
+            values: vec![protocol_byte_data(
+                VANILLA_BAT_FLAGS_DATA_ID,
+                BAT_FLAG_RESTING
+            )],
+        }));
+        assert!(resting(&world, 95));
     }
 
     #[test]

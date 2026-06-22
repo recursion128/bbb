@@ -1009,16 +1009,26 @@ fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `BatModel.setupAnim` applies the keyframe `BatAnimation.BAT_FLYING` wing flap /
     // body bob, driven by the entity's `flyAnimationState`. The state's exact start tick is
     // deferred entity-side data, so the looping animation is sampled from `age_in_ticks` (the
-    // phase offset is imperceptible for a continuous flap). The resting pose (`isResting`,
-    // `BAT_RESTING`, the head look) is deferred entity-side state. The wings/tips and feet hang
+    // phase offset is imperceptible for a continuous flap). While `isResting` the model swaps
+    // to the static `BAT_RESTING` hanging pose (head/body flipped 180° about X, wings folded)
+    // and `applyHeadRotation` turns the head by the look yaw. The wings/tips and feet hang
     // under the body and the ears under the head, so the hierarchy is walked by hand. Bat uses
     // `LivingEntityRenderer.setupRotations`.
-    let seconds = keyframe_elapsed_seconds(&BAT_FLYING, instance.render_state.age_in_ticks * 0.05);
-    let sample = |bone: &str| sample_bone_offsets(&BAT_FLYING, bone, seconds, 1.0);
+    let resting = instance.render_state.bat_resting;
+    let animation = if resting { &BAT_RESTING } else { &BAT_FLYING };
+    let head_look_yaw = if resting {
+        instance.render_state.head_yaw.to_radians()
+    } else {
+        0.0
+    };
+    let seconds = keyframe_elapsed_seconds(animation, instance.render_state.age_in_ticks * 0.05);
+    let sample = |bone: &str| sample_bone_offsets(animation, bone, seconds, 1.0);
     let root = entity_model_root_transform(instance);
 
-    // Head (root child) carries the two ears at their bind poses.
+    // Head (root child) carries the two ears at their bind poses. While resting the head also
+    // turns by the look yaw (`applyHeadRotation`, additive to the pose's `yRot`).
     let (head_pos, head_rot) = sample("head");
+    let head_rot = [head_rot[0], head_rot[1] + head_look_yaw, head_rot[2]];
     let head_pose = keyframe_animated_pose(BAT_HEAD_POSE, head_pos, head_rot);
     let head_t = root * part_pose_transform(head_pose);
     emit_model_cubes_at_pose(mesh, root, head_pose, &BAT_HEAD);
@@ -1039,9 +1049,11 @@ fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         &BAT_FEET,
     );
 
-    // Each wing (body child) carries its tip.
-    let (_, right_wing_rot) = sample("right_wing");
-    let right_wing_pose = keyframe_animated_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
+    // Each wing (body child) carries its tip; the resting pose also shifts the wings by a
+    // position channel (`+1` z), so sample and apply the wing positions too.
+    let (right_wing_pos, right_wing_rot) = sample("right_wing");
+    let right_wing_pose =
+        keyframe_animated_pose(BAT_RIGHT_WING_POSE, right_wing_pos, right_wing_rot);
     let right_wing_t = body_t * part_pose_transform(right_wing_pose);
     emit_model_cubes_at_pose(mesh, body_t, right_wing_pose, &BAT_RIGHT_WING);
     let (_, right_tip_rot) = sample("right_wing_tip");
@@ -1052,8 +1064,8 @@ fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         &BAT_RIGHT_WING_TIP,
     );
 
-    let (_, left_wing_rot) = sample("left_wing");
-    let left_wing_pose = keyframe_animated_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
+    let (left_wing_pos, left_wing_rot) = sample("left_wing");
+    let left_wing_pose = keyframe_animated_pose(BAT_LEFT_WING_POSE, left_wing_pos, left_wing_rot);
     let left_wing_t = body_t * part_pose_transform(left_wing_pose);
     emit_model_cubes_at_pose(mesh, body_t, left_wing_pose, &BAT_LEFT_WING);
     let (_, left_tip_rot) = sample("left_wing_tip");

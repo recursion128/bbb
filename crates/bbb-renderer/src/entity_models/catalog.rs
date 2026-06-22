@@ -70,8 +70,9 @@ pub enum EntityModelKind {
     },
     /// Bat (`BatModel`, `BatRenderer`). The first keyframe-animated entity: the looping
     /// `BatAnimation.BAT_FLYING` wing flap / body bob is sampled from `EntityRenderState`'s
-    /// `age_in_ticks`. The resting pose (`isResting`, `BatAnimation.BAT_RESTING`) is deferred
-    /// entity-side state.
+    /// `age_in_ticks`. While the synced `isResting` is set the model swaps to the static
+    /// `BatAnimation.BAT_RESTING` hanging pose and `applyHeadRotation` turns the head by the
+    /// look yaw.
     Bat,
     /// Bee (`AdultBeeModel` / `BabyBeeModel`, `BeeRenderer`). The procedural `BeeModel.setupAnim`
     /// airborne wing flap (`zRot = cos(ageInTicks · 120.32113°) · π · 0.15`) and the idle

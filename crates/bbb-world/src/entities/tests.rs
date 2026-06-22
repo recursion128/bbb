@@ -1389,6 +1389,57 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
 }
 
 #[test]
+fn entity_model_sources_project_bat_resting_from_flags() {
+    const VANILLA_ENTITY_TYPE_BAT_ID: i32 = 10;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    // Vanilla Bat.DATA_ID_FLAGS (16, BYTE); FLAG_RESTING (1).
+    const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
+    const BAT_FLAG_RESTING: i8 = 1;
+
+    let resting = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .bat_resting
+    };
+    let set_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_BAT_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(flags),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_BAT_ID,
+    ));
+    // A bat with no flags is flying.
+    assert!(!resting(&store, 70));
+    // Setting Bat.FLAG_RESTING (DATA_ID_FLAGS & 1) projects the hanging pose; clearing it
+    // returns to flying.
+    assert!(set_flags(&mut store, 70, BAT_FLAG_RESTING));
+    assert!(resting(&store, 70));
+    assert!(set_flags(&mut store, 70, 0));
+    assert!(!resting(&store, 70));
+
+    // A chicken carries no bat flags byte; a stray bit at the same data id never reaches its
+    // render state.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(set_flags(&mut store, 71, BAT_FLAG_RESTING));
+    assert!(!resting(&store, 71));
+}
+
+#[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

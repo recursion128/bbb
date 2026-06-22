@@ -53,30 +53,31 @@ use super::{
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
         BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
-        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE,
-        BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD,
-        BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING, BAT_TEXTURED_LEFT_WING_TIP,
-        BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING, BAT_TEXTURED_RIGHT_WING_TIP,
-        BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE, BEE_BABY_BONE_POSE,
-        BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE, BEE_BABY_MIDDLE_LEGS_POSE,
-        BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE, BEE_BABY_TEXTURED_BACK_LEGS,
-        BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE, BEE_BABY_TEXTURED_FRONT_LEGS,
-        BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS, BEE_BABY_TEXTURED_RIGHT_WING,
-        BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF, BEE_BACK_LEGS_POSE, BEE_BODY_POSE,
-        BEE_BONE_POSE, BEE_FRONT_LEGS_POSE, BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE,
-        BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT, BEE_RIGHT_ANTENNA_POSE,
-        BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS, BEE_TEXTURED_BODY,
-        BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA, BEE_TEXTURED_LEFT_WING,
-        BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA, BEE_TEXTURED_RIGHT_WING,
-        BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT, BREEZE_BODY_POSE, BREEZE_HEAD_POSE,
-        BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE,
-        BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF, COD_TAIL_FIN_PART_INDEX,
-        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE,
-        DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT,
-        DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
-        DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
-        DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
-        DOLPHIN_TEXTURE_REF, ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
+        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
+        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
+        BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
+        BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
+        BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE,
+        BEE_BABY_TEXTURED_BACK_LEGS, BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE,
+        BEE_BABY_TEXTURED_FRONT_LEGS, BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS,
+        BEE_BABY_TEXTURED_RIGHT_WING, BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF,
+        BEE_BACK_LEGS_POSE, BEE_BODY_POSE, BEE_BONE_POSE, BEE_FRONT_LEGS_POSE,
+        BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE, BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT,
+        BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
+        BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
+        BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
+        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT,
+        BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE,
+        BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD,
+        BREEZE_TEXTURE_REF, COD_TAIL_FIN_PART_INDEX, DOLPHIN_BABY_TEXTURE_REF,
+        DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE, DOLPHIN_LEFT_FIN_POSE,
+        DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT, DOLPHIN_TAIL_FIN_POSE,
+        DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY, DOLPHIN_TEXTURED_HEAD,
+        DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE, DOLPHIN_TEXTURED_RIGHT_FIN,
+        DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN, DOLPHIN_TEXTURE_REF,
+        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
         HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
         PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
@@ -1240,16 +1241,26 @@ fn emit_bat_textured_model(
     };
     let uv = entry.uv;
 
-    // Mirror the colored `emit_bat_model`: sample the looping `BatAnimation.BAT_FLYING` from
-    // `age_in_ticks` and walk the head/ears + body/wings/feet hierarchy by hand, drawing the
-    // textured base layer into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`).
-    let seconds = keyframe_elapsed_seconds(&BAT_FLYING, instance.render_state.age_in_ticks * 0.05);
-    let sample = |bone: &str| sample_bone_offsets(&BAT_FLYING, bone, seconds, 1.0);
+    // Mirror the colored `emit_bat_model`: sample the looping `BatAnimation.BAT_FLYING` (or the
+    // static `BAT_RESTING` hanging pose while `isResting`) from `age_in_ticks` and walk the
+    // head/ears + body/wings/feet hierarchy by hand, drawing the textured base layer into the
+    // cutout mesh (vanilla `RenderTypes::entityCutoutCull`).
+    let resting = instance.render_state.bat_resting;
+    let animation = if resting { &BAT_RESTING } else { &BAT_FLYING };
+    let head_look_yaw = if resting {
+        instance.render_state.head_yaw.to_radians()
+    } else {
+        0.0
+    };
+    let seconds = keyframe_elapsed_seconds(animation, instance.render_state.age_in_ticks * 0.05);
+    let sample = |bone: &str| sample_bone_offsets(animation, bone, seconds, 1.0);
     let root = entity_model_root_transform(instance);
     let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
 
-    // Head (root child) carries the two ears at their bind poses.
+    // Head (root child) carries the two ears at their bind poses. While resting the head also
+    // turns by the look yaw (`applyHeadRotation`, additive to the pose's `yRot`).
     let (head_pos, head_rot) = sample("head");
+    let head_rot = [head_rot[0], head_rot[1] + head_look_yaw, head_rot[2]];
     let head_pose = keyframe_textured_pose(BAT_HEAD_POSE, head_pos, head_rot);
     let head_t = root * part_pose_transform(head_pose);
     emit_textured_cubes_at_pose(mesh, root, head_pose, &BAT_TEXTURED_HEAD, texture, uv);
@@ -1286,9 +1297,11 @@ fn emit_bat_textured_model(
         uv,
     );
 
-    // Each wing (body child) carries its tip.
-    let (_, right_wing_rot) = sample("right_wing");
-    let right_wing_pose = keyframe_textured_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
+    // Each wing (body child) carries its tip; the resting pose also shifts the wings by a
+    // position channel (`+1` z), so sample and apply the wing positions too.
+    let (right_wing_pos, right_wing_rot) = sample("right_wing");
+    let right_wing_pose =
+        keyframe_textured_pose(BAT_RIGHT_WING_POSE, right_wing_pos, right_wing_rot);
     let right_wing_t = body_t * part_pose_transform(right_wing_pose);
     emit_textured_cubes_at_pose(
         mesh,
@@ -1308,8 +1321,8 @@ fn emit_bat_textured_model(
         uv,
     );
 
-    let (_, left_wing_rot) = sample("left_wing");
-    let left_wing_pose = keyframe_textured_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
+    let (left_wing_pos, left_wing_rot) = sample("left_wing");
+    let left_wing_pose = keyframe_textured_pose(BAT_LEFT_WING_POSE, left_wing_pos, left_wing_rot);
     let left_wing_t = body_t * part_pose_transform(left_wing_pose);
     emit_textured_cubes_at_pose(
         mesh,

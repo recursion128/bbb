@@ -315,3 +315,104 @@ pub(in crate::entity_models) const BAT_FLYING: AnimationDefinition = AnimationDe
     looping: true,
     bones: &BAT_FLYING_BONES,
 };
+
+// Vanilla 26.1 `BatAnimation.BAT_RESTING` (length 0.5s, looping). Every channel has a single
+// keyframe at t = 0, so the animation is a static hanging pose: the head and body flip 180°
+// about X (and shift `+0.5` y) so the bat hangs upside down, and the wings fold inward.
+const BAT_RESTING_HEAD_ROT: [Keyframe; 1] = [keyframe(0.0, degree_vec(180.0, 0.0, 0.0), Linear)];
+const BAT_RESTING_HEAD_POS: [Keyframe; 1] = [keyframe(0.0, pos_vec(0.0, 0.5, 0.0), Linear)];
+const BAT_RESTING_BODY_ROT: [Keyframe; 1] = [keyframe(0.0, degree_vec(180.0, 0.0, 0.0), Linear)];
+const BAT_RESTING_BODY_POS: [Keyframe; 1] = [keyframe(0.0, pos_vec(0.0, 0.5, 0.0), Linear)];
+const BAT_RESTING_FEET_ROT: [Keyframe; 1] = [keyframe(0.0, degree_vec(0.0, 0.0, 0.0), Linear)];
+const BAT_RESTING_RIGHT_WING_ROT: [Keyframe; 1] =
+    [keyframe(0.0, degree_vec(0.0, -10.0, 0.0), Linear)];
+const BAT_RESTING_RIGHT_WING_POS: [Keyframe; 1] = [keyframe(0.0, pos_vec(0.0, 0.0, 1.0), Linear)];
+const BAT_RESTING_RIGHT_WING_TIP_ROT: [Keyframe; 1] =
+    [keyframe(0.0, degree_vec(0.0, -120.0, 0.0), Linear)];
+const BAT_RESTING_LEFT_WING_ROT: [Keyframe; 1] =
+    [keyframe(0.0, degree_vec(0.0, 10.0, 0.0), Linear)];
+const BAT_RESTING_LEFT_WING_POS: [Keyframe; 1] = [keyframe(0.0, pos_vec(0.0, 0.0, 1.0), Linear)];
+const BAT_RESTING_LEFT_WING_TIP_ROT: [Keyframe; 1] =
+    [keyframe(0.0, degree_vec(0.0, 120.0, 0.0), Linear)];
+
+const BAT_RESTING_BONES: [BoneAnimation; 7] = [
+    BoneAnimation {
+        bone: "head",
+        channels: &[
+            AnimationChannel {
+                target: AnimationTarget::Rotation,
+                keyframes: &BAT_RESTING_HEAD_ROT,
+            },
+            AnimationChannel {
+                target: AnimationTarget::Position,
+                keyframes: &BAT_RESTING_HEAD_POS,
+            },
+        ],
+    },
+    BoneAnimation {
+        bone: "body",
+        channels: &[
+            AnimationChannel {
+                target: AnimationTarget::Rotation,
+                keyframes: &BAT_RESTING_BODY_ROT,
+            },
+            AnimationChannel {
+                target: AnimationTarget::Position,
+                keyframes: &BAT_RESTING_BODY_POS,
+            },
+        ],
+    },
+    BoneAnimation {
+        bone: "feet",
+        channels: &[AnimationChannel {
+            target: AnimationTarget::Rotation,
+            keyframes: &BAT_RESTING_FEET_ROT,
+        }],
+    },
+    BoneAnimation {
+        bone: "right_wing",
+        channels: &[
+            AnimationChannel {
+                target: AnimationTarget::Rotation,
+                keyframes: &BAT_RESTING_RIGHT_WING_ROT,
+            },
+            AnimationChannel {
+                target: AnimationTarget::Position,
+                keyframes: &BAT_RESTING_RIGHT_WING_POS,
+            },
+        ],
+    },
+    BoneAnimation {
+        bone: "right_wing_tip",
+        channels: &[AnimationChannel {
+            target: AnimationTarget::Rotation,
+            keyframes: &BAT_RESTING_RIGHT_WING_TIP_ROT,
+        }],
+    },
+    BoneAnimation {
+        bone: "left_wing",
+        channels: &[
+            AnimationChannel {
+                target: AnimationTarget::Rotation,
+                keyframes: &BAT_RESTING_LEFT_WING_ROT,
+            },
+            AnimationChannel {
+                target: AnimationTarget::Position,
+                keyframes: &BAT_RESTING_LEFT_WING_POS,
+            },
+        ],
+    },
+    BoneAnimation {
+        bone: "left_wing_tip",
+        channels: &[AnimationChannel {
+            target: AnimationTarget::Rotation,
+            keyframes: &BAT_RESTING_LEFT_WING_TIP_ROT,
+        }],
+    },
+];
+
+pub(in crate::entity_models) const BAT_RESTING: AnimationDefinition = AnimationDefinition {
+    length_seconds: 0.5,
+    looping: true,
+    bones: &BAT_RESTING_BONES,
+};

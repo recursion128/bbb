@@ -10,6 +10,7 @@ mod block_attached;
 const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
 const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
 const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
+const VANILLA_ENTITY_TYPE_BAT_ID: i32 = 10;
 const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
 const VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID: i32 = 18;
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
@@ -714,6 +715,14 @@ pub(crate) fn vanilla_zombie_model_family(entity_type_id: i32) -> bool {
             | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
             | VANILLA_ENTITY_TYPE_GIANT_ID
     )
+}
+
+/// Whether the entity is rendered with the vanilla `BatModel`. Its `setupAnim` swaps to
+/// the `BatAnimation.BAT_RESTING` hanging pose (and applies a head look) while
+/// `Bat.isResting` (the synced `DATA_ID_FLAGS & 1`) is set, so the resting projection is
+/// gated to this one type — only the bat defines that flags byte.
+pub(crate) fn vanilla_is_bat(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_BAT_ID
 }
 
 /// Whether the entity is rendered with the vanilla `EndermanModel`. Its `setupAnim`

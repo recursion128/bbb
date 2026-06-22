@@ -339,6 +339,13 @@ pub struct EntityModelSourceState {
     /// for every other entity.
     #[serde(default)]
     pub enderman_creepy: bool,
+    /// Vanilla `BatRenderState.isResting` (`Bat.isResting`, the synced `DATA_ID_FLAGS & 1`):
+    /// the bat is hanging at rest, which `BatModel.setupAnim` shows by swapping to the
+    /// `BatAnimation.BAT_RESTING` upside-down pose (and applying a head look). Projected only
+    /// for the bat ([`vanilla_is_bat`](crate::entities::dimensions)); `false` for every other
+    /// entity.
+    #[serde(default)]
+    pub bat_resting: bool,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin

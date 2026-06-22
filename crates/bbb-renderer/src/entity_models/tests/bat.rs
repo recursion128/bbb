@@ -129,6 +129,85 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_eq!(meshes.cutout.vertices, one_cycle.cutout.vertices);
 }
 
+#[test]
+fn bat_resting_animation_matches_vanilla_definition() {
+    // Vanilla `BatAnimation.BAT_RESTING` is a 0.5s looping animation over the same seven bones
+    // as the flying flap, but every channel has a single keyframe (a static hanging pose).
+    assert_eq!(BAT_RESTING.length_seconds, 0.5);
+    assert!(BAT_RESTING.looping);
+    assert_eq!(BAT_RESTING.bones.len(), 7);
+}
+
+#[test]
+fn bat_hangs_upside_down_when_resting() {
+    // While `isResting`, `BatModel.setupAnim` swaps to the static `BAT_RESTING` hanging pose
+    // and `applyHeadRotation` turns the head by the look yaw. Colored path here, textured below.
+    let base = EntityModelInstance::bat(930, [0.0, 64.0, 0.0], 0.0);
+    let flying = entity_model_mesh(&[base]);
+    let resting = entity_model_mesh(&[base.with_bat_resting(true)]);
+    assert_eq!(flying.vertices.len(), resting.vertices.len());
+    assert_ne!(
+        flying.vertices, resting.vertices,
+        "a resting bat hangs in a different pose"
+    );
+
+    // The resting pose is a single keyframe, so it holds still as the age advances, whereas a
+    // flying bat keeps flapping.
+    let resting_later = entity_model_mesh(&[base.with_bat_resting(true).with_age_in_ticks(3.0)]);
+    assert_eq!(
+        resting.vertices, resting_later.vertices,
+        "the resting pose holds still"
+    );
+    let flying_later = entity_model_mesh(&[base.with_age_in_ticks(3.0)]);
+    assert_ne!(
+        flying.vertices, flying_later.vertices,
+        "a flying bat keeps flapping"
+    );
+
+    // Only a resting bat applies the head look (`applyHeadRotation`); a flying bat ignores it.
+    let resting_look = entity_model_mesh(&[base.with_bat_resting(true).with_head_look(60.0, 0.0)]);
+    assert_ne!(
+        resting.vertices, resting_look.vertices,
+        "a resting bat turns its head to look"
+    );
+    let flying_look = entity_model_mesh(&[base.with_head_look(60.0, 0.0)]);
+    assert_eq!(
+        flying.vertices, flying_look.vertices,
+        "a flying bat ignores the head look"
+    );
+}
+
+#[test]
+fn bat_textured_mesh_hangs_upside_down_when_resting() {
+    let (atlas, _) = build_entity_model_texture_atlas(&bat_texture_images()).unwrap();
+    let base = EntityModelInstance::bat(931, [0.0, 64.0, 0.0], 0.0);
+    let flying = entity_model_textured_meshes(&[base], &atlas);
+    let resting = entity_model_textured_meshes(&[base.with_bat_resting(true)], &atlas);
+    assert_eq!(flying.cutout.vertices.len(), resting.cutout.vertices.len());
+    assert_ne!(
+        flying.cutout.vertices, resting.cutout.vertices,
+        "a resting bat hangs in a different pose"
+    );
+
+    let resting_later = entity_model_textured_meshes(
+        &[base.with_bat_resting(true).with_age_in_ticks(3.0)],
+        &atlas,
+    );
+    assert_eq!(
+        resting.cutout.vertices, resting_later.cutout.vertices,
+        "the resting pose holds still"
+    );
+
+    let resting_look = entity_model_textured_meshes(
+        &[base.with_bat_resting(true).with_head_look(60.0, 0.0)],
+        &atlas,
+    );
+    assert_ne!(
+        resting.cutout.vertices, resting_look.cutout.vertices,
+        "a resting bat turns its head to look"
+    );
+}
+
 fn bat_texture_images() -> Vec<EntityModelTextureImage> {
     bat_entity_texture_refs()
         .iter()

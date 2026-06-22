@@ -98,3 +98,32 @@ fn sample_bone_offsets_reads_bat_flying_definition() {
     assert_eq!(missing_pos, [0.0, 0.0, 0.0]);
     assert_eq!(missing_rot, [0.0, 0.0, 0.0]);
 }
+
+#[test]
+fn sample_bone_offsets_reads_bat_resting_definition() {
+    // `BAT_RESTING` is a static single-keyframe pose: the head and body flip 180° about X (and
+    // shift `posVec(0, 0.5, 0)`, y negated to -0.5) so the bat hangs upside down, the wings
+    // fold (±10° yaw plus `posVec(0, 0, 1)`), and the wing tips fold hard (∓120° yaw).
+    let (head_pos, head_rot) = sample_bone_offsets(&BAT_RESTING, "head", 0.0, 1.0);
+    assert!((head_rot[0] - 180.0 * RAD).abs() < 1.0e-6);
+    assert_eq!(head_rot[1], 0.0);
+    assert!((head_pos[1] - -0.5).abs() < 1.0e-6);
+    let (body_pos, body_rot) = sample_bone_offsets(&BAT_RESTING, "body", 0.0, 1.0);
+    assert!((body_rot[0] - 180.0 * RAD).abs() < 1.0e-6);
+    assert!((body_pos[1] - -0.5).abs() < 1.0e-6);
+
+    let (right_wing_pos, right_wing_rot) =
+        sample_bone_offsets(&BAT_RESTING, "right_wing", 0.0, 1.0);
+    assert!((right_wing_rot[1] - -10.0 * RAD).abs() < 1.0e-6);
+    assert!((right_wing_pos[2] - 1.0).abs() < 1.0e-6);
+    let (_, left_wing_rot) = sample_bone_offsets(&BAT_RESTING, "left_wing", 0.0, 1.0);
+    assert!((left_wing_rot[1] - 10.0 * RAD).abs() < 1.0e-6);
+    let (_, right_tip_rot) = sample_bone_offsets(&BAT_RESTING, "right_wing_tip", 0.0, 1.0);
+    assert!((right_tip_rot[1] - -120.0 * RAD).abs() < 1.0e-6);
+    let (_, left_tip_rot) = sample_bone_offsets(&BAT_RESTING, "left_wing_tip", 0.0, 1.0);
+    assert!((left_tip_rot[1] - 120.0 * RAD).abs() < 1.0e-6);
+
+    // The single keyframe makes the pose static — a later time samples the same values.
+    let (_, head_rot_late) = sample_bone_offsets(&BAT_RESTING, "head", 0.4, 1.0);
+    assert!((head_rot_late[0] - 180.0 * RAD).abs() < 1.0e-6);
+}

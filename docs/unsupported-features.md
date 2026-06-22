@@ -272,7 +272,8 @@ When an agent does any of the following, update this file in the same slice:
       (`Mob.isAggressive`, the zombie-model family's held-out-arm raise), and the
       enderman `carriedBlock`-non-empty / `isCreepy` flags (carried as
       `enderman_carrying`/`enderman_creepy`, driving the held-out arm pose and the
-      creepy head/hat shift)
+      creepy head/hat shift), and the bat `isResting` flag (carried as
+      `bat_resting`, swapping the bat to the `BAT_RESTING` hanging pose with a head look)
     - `walkAnimationPos`/`walkAnimationSpeed` limb-swing: the client-side
       `WalkAnimationState` accumulator is implemented and tracked per living entity
       (see the dedicated bullet below), its lerped `position`/`speed` are projected
@@ -1429,10 +1430,12 @@ When an agent does any of the following, update this file in the same slice:
       `ageInTicks·0.05` seconds and added to the bind pose as vanilla `applyStatic` offsets. The
       textured base layer draws the `textures/entity/bat/bat.png` atlas reference into the cutout
       mesh (vanilla `RenderTypes::entityCutoutCull`), hand-emitted through the same animated
-      head/body/wing hierarchy as the colored path. The `isResting` branch and the `BAT_RESTING`
-      resting animation, the idle head-look pose, the `AnimationState` start-tick phase offset, and
-      the keyframe `CATMULLROM` interpolation / `Scale` target (only `LINEAR` + position/rotation
-      are ported so far) remain unsupported
+      head/body/wing hierarchy as the colored path. The `isResting` branch is implemented on both
+      paths: while the projected `bat_resting` (the synced `Bat.DATA_ID_FLAGS & 1`) is set the model
+      swaps to the static `BAT_RESTING` hanging pose (head/body flipped 180° about X plus `+0.5` y,
+      wings folded `±10°`/tips `∓120°`) and `applyHeadRotation` turns the head by the look yaw. The
+      `AnimationState` start-tick phase offset and the keyframe `CATMULLROM` interpolation / `Scale`
+      target (only `LINEAR` + position/rotation are ported so far) remain unsupported
     - bee entities are wired end to end on both render paths off the real vanilla 26.1
       `AdultBeeModel` / `BabyBeeModel`: the native entity scene (`entity_scene.rs`) projects vanilla
       type id `11` to the new `EntityModelKind::Bee { baby }`, keyed off the synced

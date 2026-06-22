@@ -18,7 +18,7 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_is_baby, vanilla_is_enderman, vanilla_living_entity_type,
+    vanilla_is_baby, vanilla_is_bat, vanilla_is_enderman, vanilla_living_entity_type,
     vanilla_pick_bounds_for_entity_data, vanilla_render_scale, vanilla_zombie_model_family,
     ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
 };
@@ -55,6 +55,14 @@ const VANILLA_ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
 /// Vanilla `Enderman.DATA_CREEPY` data id (17): the boolean staring/aggressive flag,
 /// defined right after `DATA_CARRY_STATE` (16).
 const VANILLA_ENDERMAN_CREEPY_DATA_ID: u8 = 17;
+
+/// Vanilla `Bat.DATA_ID_FLAGS` data id (16): the byte holding the bat flags. The bat is the
+/// first `AmbientCreature` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
+const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
+
+/// Vanilla `Bat.FLAG_RESTING` (1): the `DATA_ID_FLAGS` bit set while the bat hangs at rest
+/// (`Bat.isResting`).
+const BAT_FLAG_RESTING: i8 = 1;
 
 /// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
@@ -462,6 +470,15 @@ impl EntityStore {
             && self
                 .metadata_bool(id, VANILLA_ENDERMAN_CREEPY_DATA_ID, false)
                 .unwrap_or(false);
+        // Vanilla `BatModel.setupAnim` swaps to the `BAT_RESTING` hanging pose while
+        // `Bat.isResting` (`DATA_ID_FLAGS & 1`). Only the bat defines that flags byte, so
+        // the projection is gated to it and defaults to flying otherwise.
+        let bat_resting = vanilla_is_bat(identity.entity_type_id)
+            && self
+                .metadata_byte(id, VANILLA_BAT_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+                & BAT_FLAG_RESTING
+                != 0;
         // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
@@ -513,6 +530,7 @@ impl EntityStore {
             is_aggressive,
             enderman_carrying,
             enderman_creepy,
+            bat_resting,
             is_auto_spin_attack,
             is_upside_down,
             bounding_box_height,

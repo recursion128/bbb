@@ -134,6 +134,10 @@ pub struct EntityRenderState {
     /// `EndermanModel.setupAnim` drops the head (`y -= 5`) and raises the hat (`y += 5`)
     /// into the open-mouth screech pose. `false` for every other entity.
     pub enderman_creepy: bool,
+    /// Vanilla `BatRenderState.isResting`: the bat is hanging at rest, so `BatModel.setupAnim`
+    /// applies the `BatAnimation.BAT_RESTING` upside-down pose (and a head look) instead of
+    /// the flying flap. `false` for every other entity (and for a flying bat).
+    pub bat_resting: bool,
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -204,6 +208,7 @@ impl EntityRenderState {
             is_aggressive: false,
             enderman_carrying: false,
             enderman_creepy: false,
+            bat_resting: false,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
             squid_tentacle_angle: 0.0,
@@ -365,6 +370,11 @@ impl EntityModelInstance {
 
     pub fn with_enderman_creepy(mut self, enderman_creepy: bool) -> Self {
         self.render_state.enderman_creepy = enderman_creepy;
+        self
+    }
+
+    pub fn with_bat_resting(mut self, bat_resting: bool) -> Self {
+        self.render_state.bat_resting = bat_resting;
         self
     }
 
@@ -1238,6 +1248,7 @@ mod tests {
                 is_aggressive: false,
                 enderman_carrying: false,
                 enderman_creepy: false,
+                bat_resting: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 squid_tentacle_angle: 0.0,
