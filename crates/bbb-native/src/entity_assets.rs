@@ -159,6 +159,7 @@ mod tests {
                 "textures/entity/slime/slime.png",
                 "textures/entity/slime/magmacube.png",
                 "textures/entity/ghast/ghast.png",
+                "textures/entity/blaze/blaze.png",
                 "textures/entity/boat/acacia.png",
                 "textures/entity/chest_boat/acacia.png",
                 "textures/entity/boat/bamboo.png",

@@ -673,7 +673,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => placeholder("todo_axolotl_bounds", 0.75, 0.42, 0.75),
         VANILLA_ENTITY_TYPE_BAT_ID => placeholder("todo_bat_bounds", 0.5, 0.9, 0.5),
         VANILLA_ENTITY_TYPE_BEE_ID => placeholder("todo_bee_bounds", 0.7, 0.6, 0.7),
-        VANILLA_ENTITY_TYPE_BLAZE_ID => placeholder("todo_blaze_bounds", 0.6, 1.8, 0.6),
+        VANILLA_ENTITY_TYPE_BLAZE_ID => EntityModelKind::Blaze,
         VANILLA_ENTITY_TYPE_BREEZE_ID => placeholder("todo_breeze_bounds", 0.6, 1.77, 0.6),
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => {
             placeholder("todo_breeze_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
@@ -2815,6 +2815,15 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_GHAST_ID, &[]),
             EntityModelKind::Ghast
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_blaze() {
+        // The blaze was a placeholder render box; it now resolves to the real model.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_BLAZE_ID, &[]),
+            EntityModelKind::Blaze
         );
     }
 

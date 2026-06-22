@@ -1174,6 +1174,17 @@ When an agent does any of the following, update this file in the same slice:
       both render paths). The `isCharging` shooting-texture variant
       (`ghast_shooting.png`), the happy ghast (a distinct rideable model), lighting,
       and overlay remain unsupported
+    - blaze entities as renderer-owned vanilla 26.1 `BlazeModel.createBodyLayer()`
+      geometry: the 8x8x8 head at `PartPose.ZERO` plus twelve `2x8x2` rods (the
+      shared `texOffs(0, 16)` `rod` builder), with no `MeshTransformer` scaling (the
+      unit entity model-root transform); the official
+      `textures/entity/blaze/blaze.png` texture reference, texture-backed base layer
+      pass emission, official PNG atlas upload/bind/sample path, the vanilla
+      `BlazeModel.setupAnim` rod orbit (twelve rods in three rings of radius 9/7/5,
+      their x/y/z offsets set every frame from the projected `ageInTicks`), and the
+      shared head look (`head.yRot/xRot` from the net look angles), on both render
+      paths. The `BlazeRenderer` full-bright block light (`getBlockLightLevel = 15`),
+      lighting, and overlay remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

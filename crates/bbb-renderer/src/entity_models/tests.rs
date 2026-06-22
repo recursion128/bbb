@@ -2,6 +2,7 @@ use super::*;
 
 mod armor_stand;
 mod auto_spin;
+mod blaze;
 mod boat;
 mod camel;
 mod chicken;

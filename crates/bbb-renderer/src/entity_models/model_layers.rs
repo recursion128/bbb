@@ -46,6 +46,7 @@ pub(super) const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
 mod armor_stand;
+mod blaze;
 mod boat;
 mod camel;
 mod chicken;
@@ -77,6 +78,7 @@ mod wolf;
 mod zombie;
 
 pub(super) use armor_stand::*;
+pub(super) use blaze::*;
 pub(super) use boat::*;
 pub(super) use camel::*;
 pub(super) use chicken::*;
@@ -104,13 +106,13 @@ pub(super) use slime::*;
 pub(super) use spider::*;
 pub(super) use textures::*;
 pub use textures::{
-    boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
-    creeper_entity_texture_refs, enderman_entity_texture_refs, entity_model_texture_refs,
-    ghast_entity_texture_refs, goat_entity_texture_refs, hoglin_entity_texture_refs,
-    pig_entity_texture_refs, player_entity_texture_refs, polar_bear_entity_texture_refs,
-    ravager_entity_texture_refs, sheep_entity_texture_refs, skeleton_entity_texture_refs,
-    slime_entity_texture_refs, spider_entity_texture_refs, villager_entity_texture_refs,
-    witch_entity_texture_refs, wolf_entity_texture_refs,
+    blaze_entity_texture_refs, boat_entity_texture_refs, chicken_entity_texture_refs,
+    cow_entity_texture_refs, creeper_entity_texture_refs, enderman_entity_texture_refs,
+    entity_model_texture_refs, ghast_entity_texture_refs, goat_entity_texture_refs,
+    hoglin_entity_texture_refs, pig_entity_texture_refs, player_entity_texture_refs,
+    polar_bear_entity_texture_refs, ravager_entity_texture_refs, sheep_entity_texture_refs,
+    skeleton_entity_texture_refs, slime_entity_texture_refs, spider_entity_texture_refs,
+    villager_entity_texture_refs, witch_entity_texture_refs, wolf_entity_texture_refs,
 };
 pub(super) use villager::*;
 pub(super) use witch::*;

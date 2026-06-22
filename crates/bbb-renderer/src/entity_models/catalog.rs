@@ -38,6 +38,7 @@ pub enum EntityModelKind {
         size: i32,
     },
     Ghast,
+    Blaze,
     Zombie {
         baby: bool,
     },
