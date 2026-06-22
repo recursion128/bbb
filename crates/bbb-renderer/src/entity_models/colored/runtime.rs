@@ -222,7 +222,11 @@ fn entity_model_mesh_with_options(
                 variant,
                 baby,
                 has_chest,
-            } => emit_llama_model(&mut mesh, *instance, family, variant, baby, has_chest),
+            } => {
+                if !skip_texture_backed_entities {
+                    emit_llama_model(&mut mesh, *instance, family, variant, baby, has_chest);
+                }
+            }
             EntityModelKind::Goat {
                 baby,
                 left_horn,

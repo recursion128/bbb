@@ -1,9 +1,9 @@
 use super::super::{
     catalog::{
-        boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref,
+        boat_texture_ref, chicken_texture_ref, cow_texture_ref, llama_texture_ref, pig_texture_ref,
         player_texture_ref, sheep_wool_render_color, wolf_texture_ref, BoatModelFamily,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        HoglinModelFamily, IllagerModelFamily, PigModelVariant, PiglinModelFamily,
+        HoglinModelFamily, IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
     },
     geometry::TexturedModelPartDesc,
@@ -20,6 +20,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EndermanEyes,
     GoatBase,
     HoglinBase,
+    LlamaBase,
     IronGolemBase,
     PigBase,
     PlayerBase,
@@ -144,6 +145,24 @@ pub(in crate::entity_models) fn cow_textured_layer_passes(
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
         parts: cow_textured_model_parts(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn llama_textured_layer_passes(
+    variant: LlamaVariant,
+    baby: bool,
+    has_chest: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::LlamaBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: llama_model_layer(baby),
+        texture: llama_texture_ref(variant, baby),
+        parts: llama_textured_model_parts(baby, has_chest),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1111,6 +1130,24 @@ fn cow_textured_model_parts(
         (CowModelVariant::Warm, false) => &WARM_COW_TEXTURED_PARTS,
         (CowModelVariant::Cold, false) => &COLD_COW_TEXTURED_PARTS,
         (CowModelVariant::Temperate, false) => &ADULT_COW_TEXTURED_PARTS,
+    }
+}
+
+fn llama_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_LLAMA_BABY
+    } else {
+        MODEL_LAYER_LLAMA
+    }
+}
+
+fn llama_textured_model_parts(baby: bool, has_chest: bool) -> &'static [TexturedModelPartDesc] {
+    if baby {
+        &BABY_LLAMA_TEXTURED_PARTS
+    } else if has_chest {
+        &ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST
+    } else {
+        &ADULT_LLAMA_TEXTURED_PARTS
     }
 }
 

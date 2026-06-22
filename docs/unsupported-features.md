@@ -309,8 +309,8 @@ When an agent does any of the following, update this file in the same slice:
       part — `tail.yRot = cos(pos * 0.6662) * 1.4 * speed`), the chicken (`ChickenModel`, the
       two-leg `HumanoidModel` phase, legs `[2, 3]` adult/cold / `[1, 2]` headless baby),
       and the llama/trader llama (`LlamaModel`, the `QuadrupedModel` diagonal phase, legs
-      `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored
-      path), and the equines (`AbstractEquineModel` horse/donkey/mule/skeleton-horse/
+      `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored and
+      textured paths), and the equines (`AbstractEquineModel` horse/donkey/mule/skeleton-horse/
       zombie-horse, the front-`0.8`/hind-`0.5` gait, legs `[2, 3, 4, 5]` adult /
       `[1, 2, 3, 4]` baby horse, plus the neck head look/bob — yaw clamped to ±20°, pitch
       onto the π/6 tilt, and a `cos(pos * 0.8) * 0.15 * speed` walk bob — at `head_parts`
@@ -916,15 +916,17 @@ When an agent does any of the following, update this file in the same slice:
       animation, lighting, and GPU texture binding remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
-      `LlamaRenderer`, including variant texture references, metadata-driven
-      adult chest visibility, baby chest suppression, the shared
-      `ModelLayers.TRADER_LLAMA` / `TRADER_LLAMA_BABY` body layers, and the vanilla
-      `LlamaModel.setupAnim` head-look yaw/pitch on the head part plus the standard
-      `QuadrupedModel` diagonal leg swing (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`,
-      legs at `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby,
-      colored render path); llama decor/body equipment layers, trader llama decor
-      equipment assets, llama spit projectile model, lighting, and GPU texture
-      binding (the texture-backed render path) remain unsupported
+      `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader
+      llama shares the same baked mesh under `ModelLayers.TRADER_LLAMA` /
+      `TRADER_LLAMA_BABY`), official per-variant adult (128×64) / baby (64×64)
+      texture references, texture-backed base layer pass emission, official PNG
+      atlas upload/bind/sample path, metadata-driven adult chest visibility, baby
+      chest suppression, and the vanilla `LlamaModel.setupAnim` head-look yaw/pitch
+      on the head part plus the standard `QuadrupedModel` diagonal leg swing
+      (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[2, 3, 4, 5]` adult /
+      `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored and textured); the
+      trader llama's `LlamaDecorLayer` overlay and llama decor/body equipment
+      layers, llama spit projectile model, and lighting remain unsupported
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture

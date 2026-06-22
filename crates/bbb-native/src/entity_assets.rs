@@ -205,6 +205,14 @@ mod tests {
                 "textures/entity/chest_boat/pale_oak.png",
                 "textures/entity/boat/spruce.png",
                 "textures/entity/chest_boat/spruce.png",
+                "textures/entity/llama/llama_creamy.png",
+                "textures/entity/llama/llama_creamy_baby.png",
+                "textures/entity/llama/llama_white.png",
+                "textures/entity/llama/llama_white_baby.png",
+                "textures/entity/llama/llama_brown.png",
+                "textures/entity/llama/llama_brown_baby.png",
+                "textures/entity/llama/llama_gray.png",
+                "textures/entity/llama/llama_gray_baby.png",
             ]
         );
         for image in images {

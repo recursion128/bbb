@@ -1,8 +1,8 @@
 mod selection;
 
 pub(in crate::entity_models) use selection::{
-    boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref, player_texture_ref,
-    sheep_wool_render_color, wolf_texture_ref,
+    boat_texture_ref, chicken_texture_ref, cow_texture_ref, llama_texture_ref, pig_texture_ref,
+    player_texture_ref, sheep_wool_render_color, wolf_texture_ref,
 };
 #[cfg(test)]
 pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_wool_layer_color};

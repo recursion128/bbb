@@ -819,7 +819,10 @@ fn llama_model_key(family: LlamaModelFamily, variant: LlamaVariant, baby: bool) 
     }
 }
 
-fn llama_texture_ref(variant: LlamaVariant, baby: bool) -> EntityModelTextureRef {
+pub(in crate::entity_models) fn llama_texture_ref(
+    variant: LlamaVariant,
+    baby: bool,
+) -> EntityModelTextureRef {
     match (variant, baby) {
         (LlamaVariant::Creamy, false) => LLAMA_CREAMY_TEXTURE_REF,
         (LlamaVariant::Creamy, true) => LLAMA_CREAMY_BABY_TEXTURE_REF,

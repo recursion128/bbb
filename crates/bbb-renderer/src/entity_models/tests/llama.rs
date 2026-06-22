@@ -371,3 +371,212 @@ fn llama_applies_head_look() {
         );
     }
 }
+
+#[test]
+fn llama_textured_layer_passes_match_vanilla_renderer_model_choice() {
+    // The trader llama shares the same base mesh/texture; only its deferred decor layer
+    // differs, so the textured base layer is selected by variant + baby + chest alone.
+    let adult = llama_textured_layer_passes(LlamaVariant::Creamy, false, false);
+    assert_eq!(adult.len(), 1);
+    assert_eq!(adult[0].kind, EntityModelLayerKind::LlamaBase);
+    assert_eq!(adult[0].model_layer, MODEL_LAYER_LLAMA);
+    assert_eq!(adult[0].texture, LLAMA_CREAMY_TEXTURE_REF);
+    assert_eq!(adult[0].parts, ADULT_LLAMA_TEXTURED_PARTS.as_slice());
+    assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
+
+    let adult_chest = llama_textured_layer_passes(LlamaVariant::White, false, true);
+    assert_eq!(adult_chest[0].model_layer, MODEL_LAYER_LLAMA);
+    assert_eq!(adult_chest[0].texture, LLAMA_WHITE_TEXTURE_REF);
+    assert_eq!(
+        adult_chest[0].parts,
+        ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST.as_slice()
+    );
+
+    let baby = llama_textured_layer_passes(LlamaVariant::Brown, true, false);
+    assert_eq!(baby[0].model_layer, MODEL_LAYER_LLAMA_BABY);
+    assert_eq!(baby[0].texture, LLAMA_BROWN_BABY_TEXTURE_REF);
+    assert_eq!(baby[0].parts, BABY_LLAMA_TEXTURED_PARTS.as_slice());
+
+    // A baby never shows a chest in vanilla; the chest flag must not change its parts.
+    let baby_chest = llama_textured_layer_passes(LlamaVariant::Gray, true, true);
+    assert_eq!(baby_chest[0].texture, LLAMA_GRAY_BABY_TEXTURE_REF);
+    assert_eq!(baby_chest[0].parts, BABY_LLAMA_TEXTURED_PARTS.as_slice());
+}
+
+#[test]
+fn llama_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_LLAMA, "minecraft:llama#main");
+    assert_eq!(MODEL_LAYER_LLAMA_BABY, "minecraft:llama_baby#main");
+
+    // Adult `LlamaModel.createBodyLayer` (atlas 128×64): head box, neck, the two ears
+    // sharing `texOffs(17, 0)` unmirrored, the body, both chests, and the shared leg.
+    assert_eq!(
+        ADULT_LLAMA_TEXTURED_HEAD[1],
+        TexturedModelCubeDesc {
+            min: [-4.0, -16.0, -6.0],
+            size: [8.0, 18.0, 6.0],
+            uv_size: [8.0, 18.0, 6.0],
+            tex: [0.0, 14.0],
+            mirror: false,
+        }
+    );
+    // Both ears share `texOffs(17, 0)`, unmirrored, and the same box size — only their
+    // x position differs (right ear at -4, left ear at +1), so they sample the same texels.
+    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[2].tex, [17.0, 0.0]);
+    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[3].tex, [17.0, 0.0]);
+    assert!(!ADULT_LLAMA_TEXTURED_HEAD[2].mirror && !ADULT_LLAMA_TEXTURED_HEAD[3].mirror);
+    assert_eq!(
+        ADULT_LLAMA_TEXTURED_HEAD[2].size,
+        ADULT_LLAMA_TEXTURED_HEAD[3].size
+    );
+    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[2].min[0], -4.0);
+    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[3].min[0], 1.0);
+    assert_eq!(
+        ADULT_LLAMA_TEXTURED_BODY[0],
+        TexturedModelCubeDesc {
+            min: [-6.0, -10.0, -7.0],
+            size: [12.0, 18.0, 10.0],
+            uv_size: [12.0, 18.0, 10.0],
+            tex: [29.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(ADULT_LLAMA_TEXTURED_RIGHT_CHEST[0].tex, [45.0, 28.0]);
+    assert_eq!(ADULT_LLAMA_TEXTURED_LEFT_CHEST[0].tex, [45.0, 41.0]);
+    assert_eq!(
+        ADULT_LLAMA_TEXTURED_LEG[0],
+        TexturedModelCubeDesc {
+            min: [-2.0, 0.0, -2.0],
+            size: [4.0, 14.0, 4.0],
+            uv_size: [4.0, 14.0, 4.0],
+            tex: [29.0, 29.0],
+            mirror: false,
+        }
+    );
+
+    // Baby `BabyLlamaModel.createBodyLayer` (atlas 64×64): each leg has its own
+    // `texOffs` (right/left, hind/front), unlike the adult's single shared leg cube.
+    assert_eq!(
+        BABY_LLAMA_TEXTURED_HEAD[2],
+        TexturedModelCubeDesc {
+            min: [0.5, -11.0, -3.0],
+            size: [2.0, 2.0, 2.0],
+            uv_size: [2.0, 2.0, 2.0],
+            tex: [20.0, 4.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(BABY_LLAMA_TEXTURED_RIGHT_HIND_LEG[0].tex, [0.0, 45.0]);
+    assert_eq!(BABY_LLAMA_TEXTURED_LEFT_HIND_LEG[0].tex, [12.0, 45.0]);
+    assert_eq!(BABY_LLAMA_TEXTURED_RIGHT_FRONT_LEG[0].tex, [0.0, 34.0]);
+    assert_eq!(BABY_LLAMA_TEXTURED_LEFT_FRONT_LEG[0].tex, [12.0, 34.0]);
+    assert_eq!(BABY_LLAMA_TEXTURED_RIGHT_HIND_LEG[0].min[0], -1.4);
+    assert_eq!(BABY_LLAMA_TEXTURED_LEFT_HIND_LEG[0].min[0], -1.6);
+    assert_eq!(
+        BABY_LLAMA_TEXTURED_BODY[0],
+        TexturedModelCubeDesc {
+            min: [-4.0, -3.0, -8.5],
+            size: [8.0, 6.0, 13.0],
+            uv_size: [8.0, 6.0, 13.0],
+            tex: [0.0, 15.0],
+            mirror: false,
+        }
+    );
+
+    // The textured part trees reuse the colored part poses, in the colored layouts.
+    assert_eq!(ADULT_LLAMA_TEXTURED_PARTS.len(), 6);
+    assert_eq!(ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST.len(), 8);
+    assert_eq!(
+        ADULT_LLAMA_TEXTURED_PARTS[0].pose,
+        ADULT_LLAMA_PARTS[0].pose
+    );
+    assert_eq!(
+        ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST[2].pose,
+        ADULT_LLAMA_RIGHT_CHEST_PART.pose
+    );
+    assert_eq!(BABY_LLAMA_TEXTURED_PARTS.len(), 6);
+    assert_eq!(BABY_LLAMA_TEXTURED_PARTS[5].pose, BABY_LLAMA_PARTS[5].pose);
+}
+
+#[test]
+fn llama_textured_mesh_applies_head_look() {
+    let (atlas, _) = build_entity_model_texture_atlas(&llama_texture_images()).unwrap();
+    let base = EntityModelInstance::llama(
+        604,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::Llama,
+        LlamaVariant::Creamy,
+        false,
+        false,
+    );
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
+    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -25.0)], &atlas);
+
+    // Head look turns the textured head part without adding or dropping vertices.
+    assert_eq!(resting.vertices.len(), yawed.vertices.len());
+    assert_ne!(resting.vertices, yawed.vertices);
+    assert_ne!(resting.vertices, pitched.vertices);
+    assert_ne!(yawed.vertices, pitched.vertices);
+}
+
+#[test]
+fn llama_textured_mesh_swings_legs_when_walking() {
+    // The textured llama render path consumes the projected limb swing via the vanilla
+    // QuadrupedModel diagonal leg rotation. A standing llama is byte-identical however
+    // far the swing position has advanced; a walking one lifts its feet off the ground,
+    // for the adult, the with-chest, and the baby layouts (legs [2..5]/[4..7]/[1..4]).
+    let (atlas, _) = build_entity_model_texture_atlas(&llama_texture_images()).unwrap();
+    for (variant, baby, has_chest) in [
+        (LlamaVariant::Creamy, false, false),
+        (LlamaVariant::Brown, false, true),
+        (LlamaVariant::Gray, true, false),
+    ] {
+        let base = EntityModelInstance::llama(
+            605,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            variant,
+            baby,
+            has_chest,
+        );
+        let resting = entity_model_textured_mesh(&[base], &atlas);
+        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
+        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+
+        assert_eq!(
+            resting.vertices, still.vertices,
+            "{variant:?} baby={baby} chest={has_chest}: a standing llama is inert"
+        );
+        assert_eq!(
+            resting.vertices.len(),
+            walking.vertices.len(),
+            "{variant:?} baby={baby} chest={has_chest}: leg swing keeps the vertex count"
+        );
+        assert_ne!(
+            resting.vertices, walking.vertices,
+            "{variant:?} baby={baby} chest={has_chest}: a walking llama differs"
+        );
+
+        let (rest_min, rest_max) = textured_mesh_extents(&resting);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        assert!(
+            (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
+            "{variant:?} baby={baby} chest={has_chest}: a walking llama's feet lift off"
+        );
+    }
+}
+
+fn llama_texture_images() -> Vec<EntityModelTextureImage> {
+    llama_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

@@ -3,9 +3,9 @@ use super::{
     catalog::{
         ArmorStandModelPose, BoatModelFamily, ChickenModelVariant, CowModelVariant, EntityDyeColor,
         EntityModelKind, EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout,
-        EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, PigModelVariant,
-        PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
-        ZombieVariantModelFamily,
+        EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
+        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
+        SkeletonModelFamily, ZombieVariantModelFamily,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{
@@ -62,7 +62,7 @@ pub(super) use layers::{
     enderman_textured_layer_passes, endermite_textured_layer_passes, ghast_textured_layer_passes,
     goat_textured_layer_passes, happy_ghast_textured_layer_passes, hoglin_textured_layer_passes,
     husk_textured_layer_passes, illager_textured_layer_passes, iron_golem_textured_layer_passes,
-    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     phantom_textured_layer_passes, pig_textured_layer_passes, piglin_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
     sheep_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
@@ -128,6 +128,14 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Cow { variant, baby } => {
                 emit_cow_textured_model(&mut meshes, *instance, variant, baby, atlas);
+            }
+            EntityModelKind::Llama {
+                variant,
+                baby,
+                has_chest,
+                ..
+            } => {
+                emit_llama_textured_model(&mut meshes, *instance, variant, baby, has_chest, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -396,6 +404,45 @@ fn emit_cow_textured_model(
         cow_textured_layer_passes(variant, baby),
         cow_head_part_index(baby),
         QUADRUPED_LEG_PART_INDICES,
+        entity_model_root_transform(instance),
+        instance,
+        atlas,
+    );
+}
+
+/// The four leg part indices in the llama body layers, matching the colored
+/// `emit_llama_model`: the adult layer lists head/body at `0`/`1` then legs at
+/// `[2, 3, 4, 5]`; the chest layer inserts the two chests at `2`/`3`, pushing legs to
+/// `[4, 5, 6, 7]`; the baby layer lists the head at `0`, legs at `[1, 2, 3, 4]`, body
+/// last. [`quadruped_leg_swing_pose`] resolves each leg's phase from its offset.
+fn llama_leg_part_indices(baby: bool, has_chest: bool) -> [usize; 4] {
+    if baby {
+        [1, 2, 3, 4]
+    } else if has_chest {
+        [4, 5, 6, 7]
+    } else {
+        [2, 3, 4, 5]
+    }
+}
+
+/// The textured llama base layer. The trader llama shares this geometry/texture; its
+/// distinguishing `LlamaDecorLayer` overlay is a deferred equipment layer, so `family`
+/// is not consumed here. Vanilla `LlamaModel.setupAnim` is the standard
+/// `QuadrupedModel` head look plus the diagonal leg swing, both handled by
+/// [`emit_quadruped_textured_passes`]; the head is part `0` in every layout.
+fn emit_llama_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    variant: LlamaVariant,
+    baby: bool,
+    has_chest: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    emit_quadruped_textured_passes(
+        meshes,
+        llama_textured_layer_passes(variant, baby, has_chest),
+        0,
+        llama_leg_part_indices(baby, has_chest),
         entity_model_root_transform(instance),
         instance,
         atlas,
