@@ -668,8 +668,8 @@ When an agent does any of the following, update this file in the same slice:
     both colored and textured paths, and the sheep, which additionally overrides
     `head.xRot = headEatAngleScale` (its non-eating branch is exactly the look
     pitch `getXRot * π/180`, `Sheep.getHeadEatAngleScale`) composing with the
-    eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned
-    colored+textured; zombie villager colored); and the skeleton family (skeleton,
+    eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned, zombie
+    villager — all colored+textured); and the skeleton family (skeleton,
     stray, parched, wither skeleton, bogged) in both the colored and textured
     paths; the piglin family (piglin, piglin brute, zombified piglin) in the
     colored path; and the `VillagerModel`/`IllagerModel`/`WitchModel` family
@@ -1026,10 +1026,20 @@ When an agent does any of the following, update this file in the same slice:
       paths (the `DrownedOuterLayer`, the `setupRotations` / `setupAnim` swim
       re-pose that needs `swimAmount`, the trident throw arm pose that needs a held
       item, and the held-out `animateZombieArms` arms all stay deferred); zombie
-      villagers use vanilla
-      26.1 `ZombieVillagerModel.createBodyLayer()` /
-      `BabyZombieVillagerModel.createBodyLayer()` geometry with official base
-      adult/baby texture references; piglins and piglin brutes use vanilla 26.1
+      villagers share that texture-backed render path through `ZombieVillagerModel
+      extends HumanoidModel`: the adult layer emits the vanilla 26.1
+      `ZombieVillagerModel.createBodyLayer()` UVs over
+      `textures/entity/zombie_villager/zombie_villager.png` (head `texOffs(0, 0)`,
+      nose `texOffs(24, 0)`, the deformed villager hat `texOffs(32, 0)` over its
+      base 8x10x8 box plus the rotated `texOffs(30, 47)` hat rim, body
+      `texOffs(16, 20)` plus the `texOffs(0, 38)` robe overlay, arms
+      `texOffs(44, 22)` with the left mirrored, legs `texOffs(0, 22)` with the left
+      mirrored), the baby layer emits the
+      `BabyZombieVillagerModel.createBodyLayer()` UVs over
+      `textures/entity/zombie_villager/zombie_villager_baby.png` (each limb has its
+      own `texOffs`, no mirroring), with official PNG atlas upload/bind/sample and
+      the head-look / leg-swing animation on both render paths (the held-out
+      `animateZombieArms` arms stay deferred); piglins and piglin brutes use vanilla 26.1
       `AdultPiglinModel.createBodyLayer()` / `BabyPiglinModel.createBodyLayer()`
       geometry with official piglin, baby piglin, and brute texture references;
       zombified piglins use vanilla 26.1
@@ -1041,7 +1051,7 @@ When an agent does any of the following, update this file in the same slice:
       converting shake, zombie-family and piglin-family armor, custom head
       layers, held items, attack/walk/dance/crossbow/admiring/zombie-arm
       animation remain unsupported, and GPU texture binding remains unsupported
-      for the still-colored members (the zombie villager and the piglin family);
+      for the still-colored members (the piglin family);
       the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch

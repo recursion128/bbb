@@ -174,6 +174,8 @@ mod tests {
                 "textures/entity/zombie/husk_baby.png",
                 "textures/entity/zombie/drowned.png",
                 "textures/entity/zombie/drowned_baby.png",
+                "textures/entity/zombie_villager/zombie_villager.png",
+                "textures/entity/zombie_villager/zombie_villager_baby.png",
                 "textures/entity/illager/evoker.png",
                 "textures/entity/illager/illusioner.png",
                 "textures/entity/illager/pillager.png",

@@ -127,7 +127,7 @@ pub use textures::{
     pufferfish_entity_texture_refs, ravager_entity_texture_refs, sheep_entity_texture_refs,
     silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
     spider_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
-    wolf_entity_texture_refs, zombie_entity_texture_refs,
+    wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
 };
 pub(super) use villager::*;
 pub(super) use witch::*;

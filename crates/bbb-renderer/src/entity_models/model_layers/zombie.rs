@@ -9,6 +9,10 @@ pub(in crate::entity_models) const MODEL_LAYER_HUSK: &str = "minecraft:husk#main
 pub(in crate::entity_models) const MODEL_LAYER_HUSK_BABY: &str = "minecraft:husk_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_DROWNED: &str = "minecraft:drowned#main";
 pub(in crate::entity_models) const MODEL_LAYER_DROWNED_BABY: &str = "minecraft:drowned_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_VILLAGER: &str =
+    "minecraft:zombie_villager#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_VILLAGER_BABY: &str =
+    "minecraft:zombie_villager_baby#main";
 
 pub(in crate::entity_models) const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
 pub(in crate::entity_models) const HUSK_TAN: [f32; 4] = [0.60, 0.50, 0.31, 1.0];
@@ -643,4 +647,242 @@ pub(in crate::entity_models) const BABY_ZOMBIE_TEXTURED_PARTS: [TexturedModelPar
     zombie_textured_part([3.0, 15.5, 0.0], &BABY_ZOMBIE_TEXTURED_LEFT_ARM, &[]),
     zombie_textured_part([-1.0, 20.0, 0.0], &BABY_ZOMBIE_TEXTURED_RIGHT_LEG, &[]),
     zombie_textured_part([1.0, 20.0, 0.0], &BABY_ZOMBIE_TEXTURED_LEFT_LEG, &[]),
+];
+
+// ===== Textured zombie villager (vanilla 26.1 `zombie_villager.png` / `_baby.png`, 64x64) =====
+//
+// `ZombieVillagerModel`/`BabyZombieVillagerModel` geometry matches the colored parts above
+// verbatim; only the UV sources differ. The deformed hat/body cubes inflate their geometry but
+// keep the base box as `uv_size`, exactly like `CubeDeformation` in vanilla `addBox`.
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_HEAD: [TexturedModelCubeDesc; 2] = [
+    zombie_textured_cube(
+        [-4.0, -10.0, -4.0],
+        [8.0, 10.0, 8.0],
+        [8.0, 10.0, 8.0],
+        [0.0, 0.0],
+        false,
+    ),
+    zombie_textured_cube(
+        [-1.0, -3.0, -6.0],
+        [2.0, 4.0, 2.0],
+        [2.0, 4.0, 2.0],
+        [24.0, 0.0],
+        false,
+    ),
+];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_HAT: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-4.5, -10.5, -4.5],
+    [9.0, 11.0, 9.0],
+    [8.0, 10.0, 8.0],
+    [32.0, 0.0],
+    false,
+)];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_HAT_RIM: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-8.0, -8.0, -6.0],
+    [16.0, 16.0, 1.0],
+    [16.0, 16.0, 1.0],
+    [30.0, 47.0],
+    false,
+)];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
+    zombie_textured_cube(
+        [-4.0, 0.0, -3.0],
+        [8.0, 12.0, 6.0],
+        [8.0, 12.0, 6.0],
+        [16.0, 20.0],
+        false,
+    ),
+    zombie_textured_cube(
+        [-4.05, -0.05, -3.05],
+        [8.1, 20.1, 6.1],
+        [8.0, 20.0, 6.0],
+        [0.0, 38.0],
+        false,
+    ),
+];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] =
+    [zombie_textured_cube(
+        [-3.0, -2.0, -2.0],
+        [4.0, 12.0, 4.0],
+        [4.0, 12.0, 4.0],
+        [44.0, 22.0],
+        false,
+    )];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-1.0, -2.0, -2.0],
+    [4.0, 12.0, 4.0],
+    [4.0, 12.0, 4.0],
+    [44.0, 22.0],
+    true,
+)];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] =
+    [zombie_textured_cube(
+        [-2.0, 0.0, -2.0],
+        [4.0, 12.0, 4.0],
+        [4.0, 12.0, 4.0],
+        [0.0, 22.0],
+        false,
+    )];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-2.0, 0.0, -2.0],
+    [4.0, 12.0, 4.0],
+    [4.0, 12.0, 4.0],
+    [0.0, 22.0],
+    true,
+)];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_HAT_CHILDREN: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 0.0, 0.0],
+            rotation: [-std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_VILLAGER_TEXTURED_HAT_RIM,
+        children: &[],
+    }];
+const ADULT_ZOMBIE_VILLAGER_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_ZOMBIE_VILLAGER_TEXTURED_HAT,
+        children: &ADULT_ZOMBIE_VILLAGER_TEXTURED_HAT_CHILDREN,
+    }];
+
+pub(in crate::entity_models) const ADULT_ZOMBIE_VILLAGER_TEXTURED_PARTS: [TexturedModelPartDesc;
+    6] = [
+    zombie_textured_part(
+        [0.0, 0.0, 0.0],
+        &ADULT_ZOMBIE_VILLAGER_TEXTURED_HEAD,
+        &ADULT_ZOMBIE_VILLAGER_TEXTURED_HEAD_CHILDREN,
+    ),
+    zombie_textured_part([0.0, 0.0, 0.0], &ADULT_ZOMBIE_VILLAGER_TEXTURED_BODY, &[]),
+    zombie_textured_part(
+        [-5.0, 2.0, 0.0],
+        &ADULT_ZOMBIE_VILLAGER_TEXTURED_RIGHT_ARM,
+        &[],
+    ),
+    zombie_textured_part(
+        [5.0, 2.0, 0.0],
+        &ADULT_ZOMBIE_VILLAGER_TEXTURED_LEFT_ARM,
+        &[],
+    ),
+    zombie_textured_part(
+        [-2.0, 12.0, 0.0],
+        &ADULT_ZOMBIE_VILLAGER_TEXTURED_RIGHT_LEG,
+        &[],
+    ),
+    zombie_textured_part(
+        [2.0, 12.0, 0.0],
+        &ADULT_ZOMBIE_VILLAGER_TEXTURED_LEFT_LEG,
+        &[],
+    ),
+];
+
+const BABY_ZOMBIE_VILLAGER_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
+    zombie_textured_cube(
+        [-2.0, -2.75, -1.5],
+        [4.0, 5.0, 3.0],
+        [4.0, 5.0, 3.0],
+        [0.0, 15.0],
+        false,
+    ),
+    zombie_textured_cube(
+        [-2.1, -2.85, -1.6],
+        [4.2, 6.2, 3.2],
+        [4.0, 6.0, 3.0],
+        [16.0, 22.0],
+        false,
+    ),
+];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-4.0, -8.0, -3.5],
+    [8.0, 8.0, 7.0],
+    [8.0, 8.0, 7.0],
+    [0.0, 0.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_HAT: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-4.3, -4.3, -3.8],
+    [8.6, 8.6, 7.6],
+    [8.0, 8.0, 7.0],
+    [0.0, 31.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_HAT_RIM: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-7.0, -0.5, -6.0],
+    [14.0, 1.0, 12.0],
+    [14.0, 1.0, 12.0],
+    [0.0, 46.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_NOSE: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-1.0, -1.0, -0.5],
+    [2.0, 2.0, 1.0],
+    [2.0, 2.0, 1.0],
+    [23.0, 0.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-1.0, -0.5, -1.0],
+    [2.0, 5.0, 2.0],
+    [2.0, 5.0, 2.0],
+    [24.0, 15.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-1.0, -0.5, -1.0],
+    [2.0, 5.0, 2.0],
+    [2.0, 5.0, 2.0],
+    [16.0, 15.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-1.0, -0.5, -1.0],
+    [2.0, 3.0, 2.0],
+    [2.0, 3.0, 2.0],
+    [8.0, 23.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-1.0, -0.5, -1.0],
+    [2.0, 3.0, 2.0],
+    [2.0, 3.0, 2.0],
+    [0.0, 23.0],
+    false,
+)];
+const BABY_ZOMBIE_VILLAGER_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 3] = [
+    zombie_textured_part([0.0, -4.0, 0.0], &BABY_ZOMBIE_VILLAGER_TEXTURED_HAT, &[]),
+    zombie_textured_part(
+        [0.0, -4.5, 0.0],
+        &BABY_ZOMBIE_VILLAGER_TEXTURED_HAT_RIM,
+        &[],
+    ),
+    zombie_textured_part([0.0, -1.0, -4.0], &BABY_ZOMBIE_VILLAGER_TEXTURED_NOSE, &[]),
+];
+
+pub(in crate::entity_models) const BABY_ZOMBIE_VILLAGER_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    zombie_textured_part([0.0, 18.75, 0.0], &BABY_ZOMBIE_VILLAGER_TEXTURED_BODY, &[]),
+    zombie_textured_part(
+        [0.0, 16.0, 0.0],
+        &BABY_ZOMBIE_VILLAGER_TEXTURED_HEAD,
+        &BABY_ZOMBIE_VILLAGER_TEXTURED_HEAD_CHILDREN,
+    ),
+    zombie_textured_part(
+        [-3.0, 15.5, 0.0],
+        &BABY_ZOMBIE_VILLAGER_TEXTURED_RIGHT_ARM,
+        &[],
+    ),
+    zombie_textured_part(
+        [3.0, 15.5, 0.0],
+        &BABY_ZOMBIE_VILLAGER_TEXTURED_LEFT_ARM,
+        &[],
+    ),
+    zombie_textured_part(
+        [-1.0, 21.5, 0.0],
+        &BABY_ZOMBIE_VILLAGER_TEXTURED_RIGHT_LEG,
+        &[],
+    ),
+    zombie_textured_part(
+        [1.0, 21.5, 0.0],
+        &BABY_ZOMBIE_VILLAGER_TEXTURED_LEFT_LEG,
+        &[],
+    ),
 ];

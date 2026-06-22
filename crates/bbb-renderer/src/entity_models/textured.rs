@@ -67,8 +67,8 @@ pub(super) use layers::{
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     snow_golem_textured_layer_passes, spider_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
-    wolf_textured_layer_passes, zombie_textured_layer_passes, EntityModelLayerPass,
-    EntityModelLayerRenderType,
+    wolf_textured_layer_passes, zombie_textured_layer_passes,
+    zombie_villager_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
@@ -194,6 +194,12 @@ pub(super) fn entity_model_textured_meshes(
                 baby,
             } => {
                 emit_drowned_textured_model(&mut meshes, *instance, baby, atlas);
+            }
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby,
+            } => {
+                emit_zombie_villager_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Blaze => {
                 emit_blaze_textured_model(&mut meshes, *instance, atlas);
@@ -1071,6 +1077,48 @@ fn emit_drowned_textured_model(
     let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     let transform = entity_model_root_transform(instance);
     for pass in drowned_textured_layer_passes(baby) {
+        if head_resting && limbs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            continue;
+        }
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+        }
+        if !limbs_resting {
+            for index in HUMANOID_LEG_PART_INDICES {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
+}
+
+fn emit_zombie_villager_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Mirrors the colored `emit_zombie_variant_model` zombie-villager arm: `ZombieVillagerModel
+    // extends HumanoidModel` and runs `super.setupAnim` (head look + leg swing) then
+    // `AnimationUtils.animateZombieArms` (the held-out arms, deferred). Only the head and legs
+    // animate. The baby layout's head is part 1 (the body is part 0); the adult head is part 0.
+    // The hatted base layer is emitted; the no-hat model selection and the
+    // profession/type/level overlays stay deferred. Zombie villagers have no root scale.
+    let head_index = if baby { 1 } else { 0 };
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    let transform = entity_model_root_transform(instance);
+    for pass in zombie_villager_textured_layer_passes(baby) {
         if head_resting && limbs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
             continue;

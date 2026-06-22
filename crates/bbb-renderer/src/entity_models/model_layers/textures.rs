@@ -92,6 +92,15 @@ pub(in crate::entity_models) const ZOMBIE_VILLAGER_BABY_TEXTURE_REF: EntityModel
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const ZOMBIE_VILLAGER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] = [
+    ZOMBIE_VILLAGER_TEXTURE_REF,
+    ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
+];
+
+pub fn zombie_villager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ZOMBIE_VILLAGER_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const PIGLIN_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/piglin/piglin.png",
@@ -654,7 +663,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 103] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 105] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -734,6 +743,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     HUSK_BABY_TEXTURE_REF,
     DROWNED_TEXTURE_REF,
     DROWNED_BABY_TEXTURE_REF,
+    ZOMBIE_VILLAGER_TEXTURE_REF,
+    ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
     EVOKER_TEXTURE_REF,
     ILLUSIONER_TEXTURE_REF,
     PILLAGER_TEXTURE_REF,

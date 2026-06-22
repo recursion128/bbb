@@ -919,3 +919,151 @@ fn drowned_texture_images() -> Vec<EntityModelTextureImage> {
         })
         .collect()
 }
+
+#[test]
+fn zombie_villager_textured_parts_match_vanilla_body_layer_uv_sources() {
+    assert_eq!(
+        MODEL_LAYER_ZOMBIE_VILLAGER,
+        "minecraft:zombie_villager#main"
+    );
+    assert_eq!(
+        MODEL_LAYER_ZOMBIE_VILLAGER_BABY,
+        "minecraft:zombie_villager_baby#main"
+    );
+
+    // Adult: vanilla `ZombieVillagerModel.createBodyLayer` UVs (64x64). Head + nose, hat (deform
+    // 0.5, base 8x10x8) with the rotated hat rim child, body inner + 0.05 robe overlay, arms
+    // (left mirrors the right's texOffs(44, 22)), legs (left mirrors texOffs(0, 22)).
+    let adult = &ADULT_ZOMBIE_VILLAGER_TEXTURED_PARTS;
+    assert_eq!(adult.len(), 6);
+    assert_eq!(adult[0].cubes[0].tex, [0.0, 0.0]); // head
+    assert_eq!(adult[0].cubes[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(adult[0].cubes[1].tex, [24.0, 0.0]); // nose
+    let hat = &adult[0].children[0];
+    assert_eq!(hat.cubes[0].tex, [32.0, 0.0]); // hat texOffs(32, 0)
+    assert_eq!(hat.cubes[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(hat.cubes[0].size, [9.0, 11.0, 9.0]); // deform 0.5 geometry
+    let hat_rim = &hat.children[0];
+    assert_eq!(hat_rim.cubes[0].tex, [30.0, 47.0]); // hat rim texOffs(30, 47)
+    assert_eq!(
+        hat_rim.pose.rotation,
+        [-std::f32::consts::FRAC_PI_2, 0.0, 0.0]
+    );
+    assert_eq!(adult[1].cubes[0].tex, [16.0, 20.0]); // body
+    assert_eq!(adult[1].cubes[1].tex, [0.0, 38.0]); // robe overlay
+    assert_eq!(adult[1].cubes[1].uv_size, [8.0, 20.0, 6.0]);
+    assert_eq!(adult[2].cubes[0].tex, [44.0, 22.0]); // right arm
+    assert!(!adult[2].cubes[0].mirror);
+    assert_eq!(adult[3].cubes[0].tex, [44.0, 22.0]); // left arm mirror
+    assert!(adult[3].cubes[0].mirror);
+    assert_eq!(adult[4].cubes[0].tex, [0.0, 22.0]); // right leg
+    assert!(!adult[4].cubes[0].mirror);
+    assert_eq!(adult[5].cubes[0].tex, [0.0, 22.0]); // left leg mirror
+    assert!(adult[5].cubes[0].mirror);
+
+    // Baby: vanilla `BabyZombieVillagerModel.createBodyLayer`. Body part 0, head part 1 with hat,
+    // hat rim, and nose children; each limb has its own texOffs (no mirroring).
+    let baby = &BABY_ZOMBIE_VILLAGER_TEXTURED_PARTS;
+    assert_eq!(baby.len(), 6);
+    assert_eq!(baby[0].cubes[0].tex, [0.0, 15.0]); // body
+    assert_eq!(baby[0].cubes[1].tex, [16.0, 22.0]); // body overlay
+    let baby_head = &baby[1];
+    assert_eq!(baby_head.cubes[0].tex, [0.0, 0.0]); // head
+    assert_eq!(baby_head.children.len(), 3);
+    assert_eq!(baby_head.children[0].cubes[0].tex, [0.0, 31.0]); // hat
+    assert_eq!(baby_head.children[1].cubes[0].tex, [0.0, 46.0]); // hat rim
+    assert_eq!(baby_head.children[2].cubes[0].tex, [23.0, 0.0]); // nose
+    assert_eq!(baby[2].cubes[0].tex, [24.0, 15.0]); // right arm
+    assert_eq!(baby[3].cubes[0].tex, [16.0, 15.0]); // left arm
+    assert_eq!(baby[4].cubes[0].tex, [8.0, 23.0]); // right leg
+    assert_eq!(baby[5].cubes[0].tex, [0.0, 23.0]); // left leg
+    for part in baby {
+        for cube in part.cubes {
+            assert!(
+                !cube.mirror,
+                "baby zombie villager cubes are never mirrored"
+            );
+        }
+    }
+}
+
+#[test]
+fn zombie_villager_textured_layer_passes_match_vanilla_renderer() {
+    for (baby, model_layer, texture) in [
+        (
+            false,
+            "minecraft:zombie_villager#main",
+            ZOMBIE_VILLAGER_TEXTURE_REF,
+        ),
+        (
+            true,
+            "minecraft:zombie_villager_baby#main",
+            ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
+        ),
+    ] {
+        let passes = zombie_villager_textured_layer_passes(baby);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::ZombieVillagerBase);
+        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[0].model_layer, model_layer);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+    }
+    assert!(entity_model_texture_refs().contains(&ZOMBIE_VILLAGER_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&ZOMBIE_VILLAGER_BABY_TEXTURE_REF));
+    assert_eq!(
+        zombie_villager_entity_texture_refs(),
+        &[
+            ZOMBIE_VILLAGER_TEXTURE_REF,
+            ZOMBIE_VILLAGER_BABY_TEXTURE_REF
+        ]
+    );
+}
+
+#[test]
+fn zombie_villager_textured_mesh_matches_colored_geometry_and_legs_swing() {
+    let (atlas, _) = build_entity_model_texture_atlas(&zombie_villager_texture_images()).unwrap();
+    for baby in [false, true] {
+        let instances = [EntityModelInstance::zombie_variant(
+            58,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::ZombieVillager,
+            baby,
+        )];
+        let colored = entity_model_mesh(&instances);
+        let textured = entity_model_textured_mesh(&instances, &atlas);
+        // The textured zombie villager shares the colored geometry exactly.
+        assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
+        assert_eq!(textured.vertices.len(), colored.vertices.len());
+        assert!(textured
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        let (cmin, cmax) = mesh_extents(&colored);
+        let (tmin, tmax) = textured_mesh_extents(&textured);
+        assert_close3(tmin, cmin);
+        assert_close3(tmax, cmax);
+
+        // Walking re-poses the legs on both render paths (the held-out arms stay deferred).
+        let walking = [instances[0]
+            .with_walk_animation(2.0, 1.0)
+            .with_age_in_ticks(8.0)];
+        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        assert_ne!(
+            textured.vertices, textured_walk.vertices,
+            "legs swing (baby={baby})"
+        );
+    }
+}
+
+fn zombie_villager_texture_images() -> Vec<EntityModelTextureImage> {
+    zombie_villager_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
