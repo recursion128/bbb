@@ -261,3 +261,100 @@ fn tropical_fish_texture_ref_matches_vanilla_renderer() {
         })
     );
 }
+
+#[test]
+fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
+    // Each body shape renders a single cutout base layer keyed on its own model layer and
+    // base texture (`tropical_a`/`tropical_b`).
+    for (shape, layer, texture, parts) in [
+        (
+            TropicalFishModelShape::Small,
+            "minecraft:tropical_fish_small#main",
+            TROPICAL_FISH_SMALL_TEXTURE_REF,
+            TROPICAL_FISH_SMALL_TEXTURED_PARTS.as_slice(),
+        ),
+        (
+            TropicalFishModelShape::Large,
+            "minecraft:tropical_fish_large#main",
+            TROPICAL_FISH_LARGE_TEXTURE_REF,
+            TROPICAL_FISH_LARGE_TEXTURED_PARTS.as_slice(),
+        ),
+    ] {
+        let passes = tropical_fish_textured_layer_passes(shape);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::TropicalFishBase);
+        assert_eq!(passes[0].model_layer, layer);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].parts, parts);
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    }
+
+    // The textured parts mirror the colored poses (so the tail sway re-poses the same
+    // index), and the base layer uses `CubeDeformation.NONE` (no mirror, `uv_size == size`).
+    for (colored, textured) in TROPICAL_FISH_SMALL_PARTS
+        .iter()
+        .zip(TROPICAL_FISH_SMALL_TEXTURED_PARTS.iter())
+    {
+        assert_eq!(colored.pose, textured.pose);
+    }
+    for (colored, textured) in TROPICAL_FISH_LARGE_PARTS
+        .iter()
+        .zip(TROPICAL_FISH_LARGE_TEXTURED_PARTS.iter())
+    {
+        assert_eq!(colored.pose, textured.pose);
+    }
+    assert!(!TROPICAL_FISH_SMALL_TEXTURED_BODY[0].mirror);
+    assert_eq!(
+        TROPICAL_FISH_SMALL_TEXTURED_BODY[0].uv_size,
+        TROPICAL_FISH_SMALL_TEXTURED_BODY[0].size
+    );
+    // The small tail/top fin keep their negative `texOffs` V origins.
+    assert_eq!(TROPICAL_FISH_SMALL_TEXTURED_TAIL[0].tex, [22.0, -6.0]);
+    assert_eq!(TROPICAL_FISH_SMALL_TEXTURED_TOP_FIN[0].tex, [10.0, -5.0]);
+}
+
+#[test]
+fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&tropical_fish_texture_images()).unwrap();
+
+    // Small (kob): five cubes → 120 textured vertices; large (flopper): six → 144.
+    let small = EntityModelInstance::tropical_fish(
+        810,
+        [0.0, 64.0, 0.0],
+        0.0,
+        TropicalFishModelShape::Small,
+    )
+    .with_in_water(true);
+    let small_still = entity_model_textured_mesh(&[small], &atlas);
+    assert_eq!(small_still.vertices.len(), 120);
+
+    let large = EntityModelInstance::tropical_fish(
+        811,
+        [0.0, 64.0, 0.0],
+        0.0,
+        TropicalFishModelShape::Large,
+    )
+    .with_in_water(true);
+    let large_still = entity_model_textured_mesh(&[large], &atlas);
+    assert_eq!(large_still.vertices.len(), 144);
+
+    // The tail sway / body wiggle reorient the mesh as the age advances.
+    let swimming = entity_model_textured_mesh(&[small.with_age_in_ticks(7.0)], &atlas);
+    assert_eq!(small_still.vertices.len(), swimming.vertices.len());
+    assert_ne!(small_still.vertices, swimming.vertices);
+
+    // A beached fish flops onto its side.
+    let beached = entity_model_textured_mesh(&[small.with_in_water(false)], &atlas);
+    assert_ne!(small_still.vertices, beached.vertices);
+}
+
+fn tropical_fish_texture_images() -> Vec<EntityModelTextureImage> {
+    tropical_fish_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

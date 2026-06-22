@@ -5,7 +5,7 @@ use super::super::{
         wolf_texture_ref, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
         EntityDyeColor, EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
         PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize,
-        SheepWoolColor, SkeletonModelFamily,
+        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
     },
     geometry::TexturedModelPartDesc,
     model_layers::*,
@@ -18,6 +18,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     ChickenBase,
     CodBase,
     SalmonBase,
+    TropicalFishBase,
     CowBase,
     CreeperBase,
     EndermanBase,
@@ -179,6 +180,26 @@ pub(in crate::entity_models) fn salmon_textured_layer_passes(
         model_layer: salmon_model_layer(size),
         texture: SALMON_TEXTURE_REF,
         parts: &SALMON_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
+    shape: TropicalFishModelShape,
+) -> Vec<EntityModelLayerPass> {
+    let texture = match shape {
+        TropicalFishModelShape::Small => TROPICAL_FISH_SMALL_TEXTURE_REF,
+        TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_TEXTURE_REF,
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::TropicalFishBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: tropical_fish_model_layer(shape),
+        texture,
+        parts: tropical_fish_textured_parts(shape),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

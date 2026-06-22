@@ -675,7 +675,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 127] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 129] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -803,6 +803,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     GLOW_SQUID_BABY_TEXTURE_REF,
     COD_TEXTURE_REF,
     SALMON_TEXTURE_REF,
+    TROPICAL_FISH_SMALL_TEXTURE_REF,
+    TROPICAL_FISH_LARGE_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -821,6 +823,15 @@ pub(in crate::entity_models) const SALMON_ENTITY_TEXTURE_REFS: [EntityModelTextu
 
 pub fn salmon_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SALMON_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const TROPICAL_FISH_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] = [
+    TROPICAL_FISH_SMALL_TEXTURE_REF,
+    TROPICAL_FISH_LARGE_TEXTURE_REF,
+];
+
+pub fn tropical_fish_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &TROPICAL_FISH_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const SQUID_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [

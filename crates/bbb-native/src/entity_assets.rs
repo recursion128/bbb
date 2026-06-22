@@ -222,6 +222,8 @@ mod tests {
                 "textures/entity/squid/glow_squid_baby.png",
                 "textures/entity/fish/cod.png",
                 "textures/entity/fish/salmon.png",
+                "textures/entity/fish/tropical_a.png",
+                "textures/entity/fish/tropical_b.png",
             ]
         );
         for image in images {

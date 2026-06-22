@@ -1368,7 +1368,7 @@ When an agent does any of the following, update this file in the same slice:
       PNG atlas upload/bind/sample path (colored and textured). The entity-side
       `isInWater`/`ageInTicks`/`variant` projection, lighting, and overlay remain
       unsupported
-    - tropical fish entities (colored render path) as renderer-owned vanilla 26.1
+    - tropical fish entities as renderer-owned vanilla 26.1
       `TropicalFishSmallModel`/`TropicalFishLargeModel.createBodyLayer(CubeDeformation.NONE)`
       geometry: the kob-style small body (five-part body / tail / two side fins
       (`yRot ±π/4`) / top fin) and the flopper-style large body (the same plus a sixth
@@ -1381,11 +1381,14 @@ When an agent does any of the following, update this file in the same slice:
       out-of-water flop `translate(0.2, 0.1, 0.0)` + `Axis.ZP.rotationDegrees(90)`), both
       reading the `in_water` render-state flag; the official
       `textures/entity/fish/tropical_a.png` (small) / `tropical_b.png` (large) base
-      texture references are registered. The texture-backed base layer, the twelve
-      `TropicalFishPatternLayer` pattern overlays, the per-entity base/pattern color tints
-      (`getModelTint`/`patternColor`), and the entity-side
-      `isInWater`/`ageInTicks`/`pattern` projection, lighting, and overlay remain
-      unsupported
+      texture references, per-shape texture-backed base-layer pass emission
+      (`ModelLayers.TROPICAL_FISH_{SMALL,LARGE}` keys, the tail/top fins keeping their
+      negative `texOffs` V origins), and the official PNG atlas upload/bind/sample path
+      (colored and textured). The twelve `TropicalFishPatternLayer` pattern overlays
+      (`TROPICAL_FISH_{SMALL,LARGE}_PATTERN` layers, inflated by `FISH_PATTERN_DEFORMATION`),
+      the per-entity base/pattern color tints (`getModelTint`/`patternColor`), and the
+      entity-side `isInWater`/`ageInTicks`/`pattern` projection, lighting, and overlay
+      remain unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

@@ -7,7 +7,7 @@ use super::{
         EntityModelTextureAtlasLayout, EntityModelTextureRef, HoglinModelFamily,
         IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
-        ZombieVariantModelFamily,
+        TropicalFishModelShape, ZombieVariantModelFamily,
     },
     cave_spider_model_root_transform, cod_model_root_transform, entity_model_root_transform,
     geometry::{
@@ -36,27 +36,27 @@ use super::{
         silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
         snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
         spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
-        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
-        BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
-        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
-        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
-        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
-        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
-        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
-        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        tropical_fish_tail_yrot, villager_head_part_index, witch_nose_bob_pose,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        ADULT_GOAT_HEAD_INDEX, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
+        BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX,
+        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE,
+        PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_BASE_POSE, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_TIP_POSE, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
         RAVAGER_TEXTURED_NECK_CHILDREN, SALMON_BODY_BACK_PART_INDEX, SILVERFISH_LAYER_RULES,
         SILVERFISH_SEGMENT_COUNT, SMALL_ARMOR_STAND_PARTS, SNOW_GOLEM_HEAD_PART_INDEX,
         SNOW_GOLEM_LEFT_ARM_PART_INDEX, SNOW_GOLEM_RIGHT_ARM_PART_INDEX,
-        SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
+        SNOW_GOLEM_UPPER_BODY_PART_INDEX, TROPICAL_FISH_TAIL_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    squid_model_root_transform, tropical_fish_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::Mat4;
 
@@ -74,9 +74,9 @@ pub(super) use layers::{
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
     salmon_textured_layer_passes, sheep_textured_layer_passes, silverfish_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
-    spider_textured_layer_passes, villager_textured_layer_passes,
-    wandering_trader_textured_layer_passes, witch_textured_layer_passes,
-    wolf_textured_layer_passes, zombie_textured_layer_passes,
+    spider_textured_layer_passes, tropical_fish_textured_layer_passes,
+    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
+    witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
@@ -156,6 +156,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Salmon { size } => {
                 emit_salmon_textured_model(&mut meshes, *instance, size, atlas);
+            }
+            EntityModelKind::TropicalFish { shape } => {
+                emit_tropical_fish_textured_model(&mut meshes, *instance, shape, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -490,6 +493,31 @@ fn emit_salmon_textured_model(
         } else {
             let mut parts = pass.parts.to_vec();
             parts[SALMON_BODY_BACK_PART_INDEX].pose.rotation[1] = body_back_yrot;
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
+    }
+}
+
+/// The textured tropical fish base layer. The parts are static apart from the tail, which
+/// is swayed by the vanilla `TropicalFish{Small,Large}Model.setupAnim`; the swim wiggle,
+/// out-of-water flop, and small/large body shape live in
+/// [`tropical_fish_model_root_transform`] and the per-shape pass. The twelve pattern
+/// overlays and the base/pattern color tints are deferred.
+fn emit_tropical_fish_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    shape: TropicalFishModelShape,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let in_water = instance.render_state.in_water;
+    let transform = tropical_fish_model_root_transform(instance, in_water);
+    let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
+    for pass in tropical_fish_textured_layer_passes(shape) {
+        if tail_yrot == 0.0 {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            parts[TROPICAL_FISH_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
             emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
         }
     }

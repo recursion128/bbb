@@ -298,7 +298,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::TropicalFish { shape } => {
-                emit_tropical_fish_model(&mut mesh, *instance, shape);
+                if !skip_texture_backed_entities {
+                    emit_tropical_fish_model(&mut mesh, *instance, shape);
+                }
             }
             EntityModelKind::Illager { family } => {
                 if !skip_texture_backed_entities {
