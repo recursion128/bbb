@@ -1348,6 +1348,23 @@ When an agent does any of the following, update this file in the same slice:
       origin), and the official PNG atlas upload/bind/sample path (colored and
       textured). The entity-side `isInWater`/`ageInTicks` projection, lighting, and
       overlay remain unsupported
+    - salmon entities (colored render path) as renderer-owned vanilla 26.1
+      `SalmonModel.createBodyLayer()` geometry: the five-part body-front (carrying a
+      flat top fin) / body-back (carrying the flat tail fin and a flat rear top fin) /
+      head / two side fins (`zRot ±π/4`) layer (the tail, top, and side fins are
+      zero-thickness planes) on a 32x32 texture; the `SalmonModel.setupAnim` back-body
+      sway (`bodyBack.yRot = -amplitude · 0.25 · sin(angle · 0.6 · ageInTicks)`), the
+      small/medium/large size variants (`Salmon.Variant` ids `0/1/2`, clamped, selecting
+      the `MeshTransformer.scaling(0.5/1.0/1.5)` body layer), and the full
+      `SalmonRenderer.setupRotations` (the standard body yaw plus the swim wiggle
+      `Axis.YP.rotationDegrees(amplitude · 4.3 · sin(angle · 0.6 · ageInTicks))` and the
+      out-of-water flop `translate(0.2, 0.1, 0.0)` + `Axis.ZP.rotationDegrees(90)`),
+      where `amplitude`/`angle` are `(1.0, 1.0)` in water and `(1.3, 1.7)` out, both
+      reading the `in_water` render-state flag; the official
+      `textures/entity/fish/salmon.png` texture reference is registered. The
+      texture-backed salmon base-layer pass and PNG atlas sampling, plus the entity-side
+      `isInWater`/`ageInTicks`/`variant` projection, lighting, and overlay, remain
+      unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

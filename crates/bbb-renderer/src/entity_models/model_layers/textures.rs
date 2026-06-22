@@ -898,6 +898,12 @@ pub(in crate::entity_models) const COD_TEXTURE_REF: EntityModelTextureRef = Enti
     size: [32, 32],
 };
 
+pub(in crate::entity_models) const SALMON_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fish/salmon.png",
+        size: [32, 32],
+    };
+
 pub(in crate::entity_models) const LLAMA_CREAMY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/llama/llama_creamy.png",

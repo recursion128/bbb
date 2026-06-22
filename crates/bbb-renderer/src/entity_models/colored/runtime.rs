@@ -20,8 +20,8 @@ use super::transforms::{
     entity_model_root_transform, ghast_model_root_transform, happy_ghast_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, villager_adult_model_root_transform,
+    pufferfish_model_root_transform, salmon_model_root_transform, scaled_model_root_transform,
+    slime_model_root_transform, squid_model_root_transform, villager_adult_model_root_transform,
     wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
@@ -292,6 +292,9 @@ fn entity_model_mesh_with_options(
                     emit_cod_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Salmon { size } => {
+                emit_salmon_model(&mut mesh, *instance, size);
+            }
             EntityModelKind::Illager { family } => {
                 if !skip_texture_backed_entities {
                     emit_illager_model(&mut mesh, *instance, family)
@@ -484,6 +487,22 @@ fn emit_cod_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     let mut parts = COD_PARTS.to_vec();
     parts[COD_TAIL_FIN_PART_INDEX].pose.rotation[1] = tail_yrot;
     emit_model_parts_with_color(mesh, &parts, root, COD_TAN);
+}
+
+fn emit_salmon_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    size: SalmonModelSize,
+) {
+    // Vanilla `SalmonModel.setupAnim` sways only the back body segment (`bodyBack.yRot`),
+    // which carries the tail and rear top fin as children; the swim wiggle, out-of-water
+    // flop, and the small/medium/large mesh scale live in `salmon_model_root_transform`.
+    let in_water = instance.render_state.in_water;
+    let root = salmon_model_root_transform(instance, in_water, size);
+    let body_back_yrot = salmon_body_back_yrot(instance.render_state.age_in_ticks, in_water);
+    let mut parts = SALMON_PARTS.to_vec();
+    parts[SALMON_BODY_BACK_PART_INDEX].pose.rotation[1] = body_back_yrot;
+    emit_model_parts_with_color(mesh, &parts, root, SALMON_RED);
 }
 
 fn emit_squid_model(

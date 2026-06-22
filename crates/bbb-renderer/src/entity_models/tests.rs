@@ -30,6 +30,7 @@ mod player;
 mod polar_bear;
 mod pufferfish;
 mod ravager;
+mod salmon;
 mod scale;
 mod sheep;
 mod silverfish;

@@ -347,6 +347,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Cod, position, y_rot)
     }
 
+    pub fn salmon(entity_id: i32, position: [f32; 3], y_rot: f32, size: SalmonModelSize) -> Self {
+        Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
+    }
+
     pub fn squid(entity_id: i32, position: [f32; 3], y_rot: f32, glow: bool, baby: bool) -> Self {
         Self::new(
             entity_id,

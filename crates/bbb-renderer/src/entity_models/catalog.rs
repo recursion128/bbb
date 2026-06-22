@@ -144,6 +144,13 @@ pub enum EntityModelKind {
     /// `CodRenderer.setupRotations` body wiggle / out-of-water flop read
     /// `EntityRenderState.in_water` and `age_in_ticks`.
     Cod,
+    /// Salmon (`SalmonModel`, `SalmonRenderer`). `size` selects the small/medium/large
+    /// `MeshTransformer`-scaled body layer (the medium layer is the unscaled base). The
+    /// body-back sway and `SalmonRenderer.setupRotations` wiggle / out-of-water flop read
+    /// `EntityRenderState.in_water` and `age_in_ticks`.
+    Salmon {
+        size: SalmonModelSize,
+    },
     Illager {
         family: IllagerModelFamily,
     },
@@ -333,6 +340,35 @@ pub enum LlamaVariant {
     White,
     Brown,
     Gray,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SalmonModelSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl SalmonModelSize {
+    /// Vanilla `Salmon.Variant` ids (`SMALL=0`, `MEDIUM=1`, `LARGE=2`), clamped like
+    /// `ByIdMap.continuous(..., CLAMP)`.
+    pub fn from_vanilla_id(id: i32) -> Self {
+        match id {
+            i32::MIN..=0 => Self::Small,
+            1 => Self::Medium,
+            _ => Self::Large,
+        }
+    }
+
+    /// Vanilla `SalmonModel` `MeshTransformer` scale: small `0.5`, medium `1.0` (the
+    /// unscaled base layer), large `1.5`.
+    pub fn scale(self) -> f32 {
+        match self {
+            Self::Small => 0.5,
+            Self::Medium => 1.0,
+            Self::Large => 1.5,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
