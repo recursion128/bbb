@@ -129,6 +129,23 @@ pub(in crate::entity_models) fn entity_flip_degrees(kind: EntityModelKind) -> f3
     }
 }
 
+/// Vanilla `EnderDragonRenderer.submit`: a plain `EntityRenderer` that applies the flight-history
+/// yaw `Axis.YP.rotationDegrees(-yr)`, a flight-history pitch `Axis.XP.rotationDegrees(rot2 * 10)`, a
+/// fixed `translate(0, 0, 1)`, then the standard flip and `-1.501` y-offset. The whole
+/// `EnderDragonModel.setupAnim` is procedural (the neck/tail segments are re-placed from the flight
+/// history, the wings flap, the jaw opens, plus the `root.y/z/xRot` bounce), so it is deferred and
+/// the model renders at its `createBodyLayer` bind layout. The pitch (`rot2`) and the bounce are
+/// deferred (identity at rest); the yaw is projected through `body_rot`.
+pub(in crate::entity_models) fn ender_dragon_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_rotation_y((-instance.render_state.body_rot).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, 1.0))
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
 /// Vanilla `EndCrystalRenderer.submit`: a plain `EntityRenderer` (not `LivingEntityRenderer`), so
 /// there is no body-yaw / `setupRotations` flip. The model is authored right-side-up (the base at
 /// model-y `0..4`, the glass orbiting at model-y `24`), and the renderer applies only

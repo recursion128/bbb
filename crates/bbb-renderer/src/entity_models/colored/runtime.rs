@@ -18,8 +18,8 @@ use super::selection::{
 };
 use super::transforms::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
-    cod_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
-    evoker_fangs_model_root_transform, ghast_model_root_transform,
+    cod_model_root_transform, end_crystal_model_root_transform, ender_dragon_model_root_transform,
+    entity_model_root_transform, evoker_fangs_model_root_transform, ghast_model_root_transform,
     happy_ghast_model_root_transform, leash_knot_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
@@ -238,6 +238,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Trident => {
                 // Colored-only so far (no texture-backed trident yet), so this arm always emits.
                 emit_trident_model(&mut mesh, *instance);
+            }
+            EntityModelKind::EnderDragon => {
+                // Colored-only so far (no texture-backed ender dragon yet), so this arm always emits.
+                emit_ender_dragon_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -1537,6 +1541,15 @@ fn emit_trident_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     // flight-oriented transform (`Ry(yRot - 90) · Rz(xRot + 90)`).
     let root = trident_model_root_transform(instance);
     emit_model_parts(mesh, &TRIDENT_PARTS, root);
+}
+
+fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `EnderDragonModel` is a deep static hierarchy at its bind layout (head/jaw, the neck
+    // and tail spine segments, the body with wings and legs). The whole `setupAnim` is procedural
+    // (the flight-history neck/tail placement, the wing flap, the jaw, the root bounce) and deferred,
+    // so the bind-pose part tree is emitted directly at the `EnderDragonRenderer` transform.
+    let root = ender_dragon_model_root_transform(instance);
+    emit_model_parts(mesh, &ENDER_DRAGON_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

@@ -1696,6 +1696,25 @@ When an agent does any of the following, update this file in the same slice:
       / `head_pitch` and captured by `trident_model_root_transform`. The enchant-foil overlay pass and the
       texture-backed path are deferred, so the colored debug path renders the pole/base in teal and the
       spikes lighter
+    - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
+      the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new
+      `EntityModelKind::EnderDragon`, replacing the former placeholder bounds box. The straight bind layout
+      is emitted directly (atlas 256×256): 19 root parts — the head (six cubes: the upper lip, the upper
+      head, and the mirrored scale/nostril pairs) parenting the jaw; the five neck segments at
+      `offset(0, 20, -12 - i·10)` and the twelve tail segments at `offset(0, 10, 60 + i·10)`, each the
+      shared 10×10×10 vertebra plus its 2×4×6 dorsal scale; and the body (the 24×24×64 torso plus three
+      dorsal scales) parenting the two wings (each a 56×8×8 bone, a 56×0×56 membrane plane, and a wing tip)
+      and the four three-segment legs (leg → leg-tip → foot, with the vanilla bind rotations 1.3/-0.5/0.75
+      front and 1.0/0.5/0.75 hind) — sixty-five cubes. The whole `EnderDragonModel.setupAnim` is procedural:
+      every neck/tail segment is re-placed from the `DragonFlightHistory` path each frame, the wings flap
+      (`flapTime`), the jaw opens, and the root gets the `bounce` y / fixed `z = -48` / `xRot` adjustments —
+      all deferred (mirroring the guardian's deferred procedural tail), so the model renders at the straight
+      bind layout. `EnderDragonRenderer` is a plain `EntityRenderer` that applies the flight-history yaw
+      (`Ry(-yr)`), a flight-history pitch, a fixed `translate(0, 0, 1)`, and the standard flip / `-1.501`
+      y-offset (captured by `ender_dragon_model_root_transform`, with the pitch and bounce deferred to
+      identity at rest and the yaw projected through `body_rot`). The dying-dissolve render type, the
+      emissive `dragon_eyes` layer, the crystal-healing beam, and the texture-backed path are deferred, so
+      the colored debug path renders the body dark and the wing membranes a lighter tint
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

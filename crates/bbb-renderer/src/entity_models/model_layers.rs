@@ -83,6 +83,8 @@ pub(super) const ARROW_SHAFT: [f32; 4] = [0.42, 0.30, 0.20, 1.0];
 pub(super) const ARROW_HEAD: [f32; 4] = [0.55, 0.55, 0.58, 1.0];
 pub(super) const TRIDENT_POLE: [f32; 4] = [0.28, 0.46, 0.46, 1.0];
 pub(super) const TRIDENT_SPIKE: [f32; 4] = [0.40, 0.62, 0.60, 1.0];
+pub(super) const DRAGON_BODY: [f32; 4] = [0.12, 0.11, 0.15, 1.0];
+pub(super) const DRAGON_MEMBRANE: [f32; 4] = [0.22, 0.18, 0.26, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -145,6 +147,7 @@ mod creaking;
 mod creeper;
 mod dolphin;
 mod end_crystal;
+mod ender_dragon;
 mod enderman;
 mod endermite;
 mod equine;
@@ -211,6 +214,7 @@ pub(super) use creaking::*;
 pub(super) use creeper::*;
 pub(super) use dolphin::*;
 pub(super) use end_crystal::*;
+pub(super) use ender_dragon::*;
 pub(super) use enderman::*;
 pub(super) use endermite::*;
 pub(super) use equine::*;

@@ -165,6 +165,11 @@ pub enum EntityModelKind {
     /// geometry is complete; the enchant-foil overlay and the texture are deferred.
     /// `ThrownTridentRenderer` orients it along its flight.
     Trident,
+    /// `EnderDragonModel` at its `createBodyLayer` straight bind layout (head + jaw, five neck and
+    /// twelve tail segments, body with wings and four legs). The fully procedural `setupAnim` (the
+    /// flight-history neck/tail placement, the wing flap, the jaw, the root bounce), the dying
+    /// dissolve, the emissive eyes layer, and the crystal-healing beam are deferred.
+    EnderDragon,
     Phantom {
         size: i32,
     },

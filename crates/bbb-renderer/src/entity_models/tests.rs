@@ -20,6 +20,7 @@ mod creeper;
 mod death;
 mod dolphin;
 mod end_crystal;
+mod ender_dragon;
 mod enderman;
 mod endermite;
 mod equine;

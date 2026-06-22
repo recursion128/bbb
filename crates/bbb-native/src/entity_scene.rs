@@ -661,9 +661,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_EGG_ID | VANILLA_ENTITY_TYPE_SNOWBALL_ID => {
             placeholder("todo_thrown_item_projectile_bounds", 0.25, 0.25, 0.25)
         }
-        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
-            placeholder("todo_ender_dragon_bounds", 16.0, 8.0, 16.0)
-        }
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => EntityModelKind::EnderDragon,
         VANILLA_ENTITY_TYPE_ENDER_PEARL_ID => {
             placeholder("todo_ender_pearl_bounds", 0.25, 0.25, 0.25)
         }
@@ -3994,6 +3992,18 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_TRIDENT_ID, &[]),
             EntityModelKind::Trident
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_ender_dragon_to_real_model() {
+        // The ender dragon was a placeholder bounds box; it now resolves to the real
+        // `EnderDragonModel` at its bind layout. The fully procedural flight animation, the dying
+        // dissolve, the emissive eyes, and the crystal beam are deferred entity-side state, so no
+        // synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, &[]),
+            EntityModelKind::EnderDragon
         );
     }
 
