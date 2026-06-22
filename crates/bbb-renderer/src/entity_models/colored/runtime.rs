@@ -1081,10 +1081,11 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
     // Vanilla `BeeModel.setupAnim`: while airborne (`!isOnGround`) the wings flap on `ageInTicks`
     // and the non-angry `bobUpAndDown` rocks the bone pivot, front/back legs (and, on adults, the
     // antennae), with all three legs first set to `π/4` so the middle leg holds that angle. On the
-    // ground the model rests at its bind pose. The anger pose (`isAngry`), the rolled-up fall pose
-    // (`rollAmount`) and the stinger-loss visibility (`hasStinger`) are deferred entity-side state.
-    // The body (carrying the stinger and antennae), the wings, and the legs hang under the `bone`
-    // pivot, so the hierarchy is walked by hand. Bee uses `LivingEntityRenderer.setupRotations`.
+    // ground the model rests at its bind pose. The stinger cube is hidden once the bee has stung
+    // (`stinger.visible = hasStinger`, gated below). The anger pose (`isAngry`) and the rolled-up
+    // fall pose (`rollAmount`) are deferred entity-side state. The body (carrying the stinger and
+    // antennae), the wings, and the legs hang under the `bone` pivot, so the hierarchy is walked
+    // by hand. Bee uses `LivingEntityRenderer.setupRotations`.
     let age = instance.render_state.age_in_ticks;
     let flying = !instance.render_state.on_ground;
     let root = entity_model_root_transform(instance);
@@ -1125,20 +1126,23 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
         body_pose,
         if baby { &BEE_BABY_BODY } else { &BEE_BODY },
     );
-    emit_model_cubes_at_pose(
-        mesh,
-        body_t,
-        if baby {
-            BEE_BABY_STINGER_POSE
-        } else {
-            BEE_STINGER_POSE
-        },
-        if baby {
-            &BEE_BABY_STINGER
-        } else {
-            &BEE_STINGER
-        },
-    );
+    // The stinger cube is drawn only while the bee still carries it (`stinger.visible`).
+    if instance.render_state.bee_has_stinger {
+        emit_model_cubes_at_pose(
+            mesh,
+            body_t,
+            if baby {
+                BEE_BABY_STINGER_POSE
+            } else {
+                BEE_STINGER_POSE
+            },
+            if baby {
+                &BEE_BABY_STINGER
+            } else {
+                &BEE_STINGER
+            },
+        );
+    }
     if !baby {
         let antenna_x_rot = if flying { bee_antenna_x_rot(age) } else { 0.0 };
         emit_model_cubes_at_pose(

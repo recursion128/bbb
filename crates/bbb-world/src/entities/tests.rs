@@ -1440,6 +1440,55 @@ fn entity_model_sources_project_bat_resting_from_flags() {
 }
 
 #[test]
+fn entity_model_sources_project_bee_stinger_from_flags() {
+    const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    // Vanilla Bee.DATA_FLAGS_ID (17, BYTE); FLAG_HAS_STUNG (4).
+    const VANILLA_BEE_FLAGS_DATA_ID: u8 = 17;
+    const BEE_FLAG_HAS_STUNG: i8 = 4;
+
+    let has_stinger = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .bee_has_stinger
+    };
+    let set_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_BEE_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(flags),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_BEE_ID,
+    ));
+    // A fresh bee has not stung, so it keeps its stinger.
+    assert!(has_stinger(&store, 72));
+    // Setting Bee.hasStung (DATA_FLAGS_ID & 4) hides the stinger; clearing it restores it.
+    assert!(set_flags(&mut store, 72, BEE_FLAG_HAS_STUNG));
+    assert!(!has_stinger(&store, 72));
+    assert!(set_flags(&mut store, 72, 0));
+    assert!(has_stinger(&store, 72));
+
+    // A non-bee keeps the `true` stinger default regardless of a stray bit at the same data id.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(set_flags(&mut store, 73, BEE_FLAG_HAS_STUNG));
+    assert!(has_stinger(&store, 73));
+}
+
+#[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

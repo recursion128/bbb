@@ -18,9 +18,9 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_is_baby, vanilla_is_bat, vanilla_is_enderman, vanilla_living_entity_type,
-    vanilla_pick_bounds_for_entity_data, vanilla_render_scale, vanilla_zombie_model_family,
-    ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman,
+    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, vanilla_render_scale,
+    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -63,6 +63,14 @@ const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
 /// Vanilla `Bat.FLAG_RESTING` (1): the `DATA_ID_FLAGS` bit set while the bat hangs at rest
 /// (`Bat.isResting`).
 const BAT_FLAG_RESTING: i8 = 1;
+
+/// Vanilla `Bee.DATA_FLAGS_ID` data id (17): the byte holding the bee flags, defined right
+/// after the `AgeableMob.DATA_BABY_ID` (16).
+const VANILLA_BEE_FLAGS_DATA_ID: u8 = 17;
+
+/// Vanilla `Bee.FLAG_HAS_STUNG` (4): the `DATA_FLAGS_ID` bit set once the bee has stung and
+/// lost its stinger (`Bee.hasStung`).
+const BEE_FLAG_HAS_STUNG: i8 = 4;
 
 /// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
@@ -479,6 +487,15 @@ impl EntityStore {
                 .unwrap_or(0)
                 & BAT_FLAG_RESTING
                 != 0;
+        // Vanilla `BeeModel.setupAnim` hides the stinger cube once `Bee.hasStung`
+        // (`DATA_FLAGS_ID & 4`). Only the bee defines that flags byte; every other entity keeps
+        // its stinger field at the `true` default (and never renders a stinger anyway).
+        let bee_has_stinger = !vanilla_is_bee(identity.entity_type_id)
+            || self
+                .metadata_byte(id, VANILLA_BEE_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+                & BEE_FLAG_HAS_STUNG
+                == 0;
         // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
@@ -531,6 +548,7 @@ impl EntityStore {
             enderman_carrying,
             enderman_creepy,
             bat_resting,
+            bee_has_stinger,
             is_auto_spin_attack,
             is_upside_down,
             bounding_box_height,

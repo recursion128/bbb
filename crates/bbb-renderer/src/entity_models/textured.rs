@@ -1409,22 +1409,25 @@ fn emit_bee_textured_model(
         texture,
         uv,
     );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        if baby {
-            BEE_BABY_STINGER_POSE
-        } else {
-            BEE_STINGER_POSE
-        },
-        if baby {
-            &BEE_BABY_TEXTURED_STINGER
-        } else {
-            &BEE_TEXTURED_STINGER
-        },
-        texture,
-        uv,
-    );
+    // The stinger cube is drawn only while the bee still carries it (`stinger.visible`).
+    if instance.render_state.bee_has_stinger {
+        emit_textured_cubes_at_pose(
+            mesh,
+            body_t,
+            if baby {
+                BEE_BABY_STINGER_POSE
+            } else {
+                BEE_STINGER_POSE
+            },
+            if baby {
+                &BEE_BABY_TEXTURED_STINGER
+            } else {
+                &BEE_TEXTURED_STINGER
+            },
+            texture,
+            uv,
+        );
+    }
     if !baby {
         let antenna_x_rot = if flying { bee_antenna_x_rot(age) } else { 0.0 };
         emit_textured_cubes_at_pose(

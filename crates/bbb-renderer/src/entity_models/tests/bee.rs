@@ -175,6 +175,68 @@ fn bee_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_ne!(meshes.cutout.vertices, grounded.cutout.vertices);
 }
 
+#[test]
+fn bee_hides_its_stinger_after_stinging() {
+    // Vanilla `BeeModel.setupAnim` toggles `stinger.visible = hasStinger`. A bee that has not
+    // stung shows its stinger (the default), so the mesh is the full 9 cubes / 216 vertices;
+    // once it stings (`bee_has_stinger = false`) the stinger cube is dropped, leaving 8 cubes /
+    // 192 vertices. The adult emits the stinger right after the body, so the surviving vertices
+    // are the body (kept) plus everything past the stinger. Colored path here, textured below.
+    let adult = EntityModelInstance::bee(950, [0.0, 64.0, 0.0], 0.0, false);
+    let with_stinger = entity_model_mesh(&[adult]);
+    assert_eq!(
+        with_stinger.vertices.len(),
+        216,
+        "a bee that has not stung shows its stinger by default"
+    );
+
+    let stung = entity_model_mesh(&[adult.with_bee_has_stinger(false)]);
+    assert_eq!(stung.opaque_faces, 48);
+    assert_eq!(
+        stung.vertices.len(),
+        192,
+        "a stung bee drops the 24-vertex stinger cube"
+    );
+    // Exactly the stinger cube (vertices [24, 48), right after the body) is removed; the body
+    // and every other part are byte-identical.
+    assert_eq!(
+        with_stinger.vertices[0..24],
+        stung.vertices[0..24],
+        "the body is unchanged"
+    );
+    assert_eq!(
+        with_stinger.vertices[48..216],
+        stung.vertices[24..192],
+        "only the stinger cube is removed; the antennae, wings and legs are unchanged"
+    );
+
+    // Baby bees lose their stinger the same way (a fourth cube fewer from the 216).
+    let baby = EntityModelInstance::bee(951, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_stung = entity_model_mesh(&[baby.with_bee_has_stinger(false)]);
+    assert_eq!(baby_stung.vertices.len(), 192);
+}
+
+#[test]
+fn bee_textured_mesh_hides_its_stinger_after_stinging() {
+    let (atlas, _) = build_entity_model_texture_atlas(&bee_texture_images()).unwrap();
+    let adult = EntityModelInstance::bee(952, [0.0, 64.0, 0.0], 0.0, false);
+    let with_stinger = entity_model_textured_meshes(&[adult], &atlas);
+    assert_eq!(with_stinger.cutout.vertices.len(), 216);
+
+    let stung = entity_model_textured_meshes(&[adult.with_bee_has_stinger(false)], &atlas);
+    assert_eq!(stung.cutout.cutout_faces, 48);
+    assert_eq!(
+        stung.cutout.vertices.len(),
+        192,
+        "the textured stinger cube is dropped once the bee has stung"
+    );
+    assert_eq!(
+        with_stinger.cutout.vertices[48..216],
+        stung.cutout.vertices[24..192],
+        "only the stinger cube is removed"
+    );
+}
+
 fn bee_texture_images() -> Vec<EntityModelTextureImage> {
     bee_entity_texture_refs()
         .iter()

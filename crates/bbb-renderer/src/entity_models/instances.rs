@@ -138,6 +138,11 @@ pub struct EntityRenderState {
     /// applies the `BatAnimation.BAT_RESTING` upside-down pose (and a head look) instead of
     /// the flying flap. `false` for every other entity (and for a flying bat).
     pub bat_resting: bool,
+    /// Vanilla `BeeRenderState.hasStinger` (`!Bee.hasStung()`): whether the bee still carries
+    /// its stinger cube, which `BeeModel.setupAnim` toggles via `stinger.visible`. `true` for
+    /// every other entity and for a bee that has not stung; `false` only for a bee that has
+    /// lost its stinger.
+    pub bee_has_stinger: bool,
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -209,6 +214,7 @@ impl EntityRenderState {
             enderman_carrying: false,
             enderman_creepy: false,
             bat_resting: false,
+            bee_has_stinger: true,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
             squid_tentacle_angle: 0.0,
@@ -375,6 +381,11 @@ impl EntityModelInstance {
 
     pub fn with_bat_resting(mut self, bat_resting: bool) -> Self {
         self.render_state.bat_resting = bat_resting;
+        self
+    }
+
+    pub fn with_bee_has_stinger(mut self, bee_has_stinger: bool) -> Self {
+        self.render_state.bee_has_stinger = bee_has_stinger;
         self
     }
 
@@ -1249,6 +1260,7 @@ mod tests {
                 enderman_carrying: false,
                 enderman_creepy: false,
                 bat_resting: false,
+                bee_has_stinger: true,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 squid_tentacle_angle: 0.0,

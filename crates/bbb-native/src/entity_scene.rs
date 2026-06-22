@@ -379,6 +379,7 @@ fn entity_model_instance(
         .with_enderman_carrying(source.enderman_carrying)
         .with_enderman_creepy(source.enderman_creepy)
         .with_bat_resting(source.bat_resting)
+        .with_bee_has_stinger(source.bee_has_stinger)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
@@ -1979,6 +1980,42 @@ mod tests {
             )],
         }));
         assert!(resting(&world, 95));
+    }
+
+    #[test]
+    fn entity_model_instances_project_bee_stinger() {
+        // Vanilla Bee.DATA_FLAGS_ID (17, BYTE) and the has-stung bit (4).
+        const VANILLA_BEE_FLAGS_DATA_ID: u8 = 17;
+        const BEE_FLAG_HAS_STUNG: i8 = 4;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            96,
+            VANILLA_ENTITY_TYPE_BEE_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let has_stinger = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .bee_has_stinger
+        };
+
+        // A bee that has not stung keeps its stinger.
+        assert!(has_stinger(&world, 96));
+
+        // Setting Bee.hasStung (DATA_FLAGS_ID & 4) hides the stinger cube.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 96,
+            values: vec![protocol_byte_data(
+                VANILLA_BEE_FLAGS_DATA_ID,
+                BEE_FLAG_HAS_STUNG
+            )],
+        }));
+        assert!(!has_stinger(&world, 96));
     }
 
     #[test]

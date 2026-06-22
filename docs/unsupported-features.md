@@ -272,8 +272,10 @@ When an agent does any of the following, update this file in the same slice:
       (`Mob.isAggressive`, the zombie-model family's held-out-arm raise), and the
       enderman `carriedBlock`-non-empty / `isCreepy` flags (carried as
       `enderman_carrying`/`enderman_creepy`, driving the held-out arm pose and the
-      creepy head/hat shift), and the bat `isResting` flag (carried as
-      `bat_resting`, swapping the bat to the `BAT_RESTING` hanging pose with a head look)
+      creepy head/hat shift), the bat `isResting` flag (carried as
+      `bat_resting`, swapping the bat to the `BAT_RESTING` hanging pose with a head look),
+      and the bee `hasStinger` flag (carried as `bee_has_stinger`, hiding the stinger
+      cube once the bee has stung)
     - `walkAnimationPos`/`walkAnimationSpeed` limb-swing: the client-side
       `WalkAnimationState` accumulator is implemented and tracked per living entity
       (see the dedicated bullet below), its lerped `position`/`speed` are projected
@@ -1455,9 +1457,11 @@ When an agent does any of the following, update this file in the same slice:
       model rests at its bind pose. The textured base layer draws the `textures/entity/bee/bee.png` /
       `bee_baby.png` atlas references into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`),
       hand-emitted through the same animated hierarchy as the colored path (which approximates the
-      striped texture with a single representative yellow). The anger pose (`isAngry`), the rolled-up
-      fall pose (`rollAmount`, `Mth.rotLerpRad` toward `3.0915928`), the stinger-loss visibility
-      (`hasStinger`) and the nectar/angry texture swaps remain unsupported
+      striped texture with a single representative yellow). The stinger-loss visibility is
+      implemented on both paths: the stinger cube is drawn only while the projected `bee_has_stinger`
+      (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`) is set, dropping to eight cubes once the
+      bee stings. The anger pose (`isAngry`), the rolled-up fall pose (`rollAmount`,
+      `Mth.rotLerpRad` toward `3.0915928`) and the nectar/angry texture swaps remain unsupported
     - breeze entities are wired end to end on both render paths off the real vanilla 26.1
       `BreezeModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `17` to the
       new `EntityModelKind::Breeze`, replacing the former placeholder box. Renderer-owned vanilla

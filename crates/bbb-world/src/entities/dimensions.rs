@@ -725,6 +725,13 @@ pub(crate) fn vanilla_is_bat(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_BAT_ID
 }
 
+/// Whether the entity is rendered with the vanilla `BeeModel`. Its `setupAnim` hides the
+/// stinger cube once the bee has stung (`hasStinger = !Bee.hasStung()`, the synced
+/// `DATA_FLAGS_ID & 4`), so the stinger projection is gated to this one type.
+pub(crate) fn vanilla_is_bee(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_BEE_ID
+}
+
 /// Whether the entity is rendered with the vanilla `EndermanModel`. Its `setupAnim`
 /// poses the arms forward to hold a block (`!carriedBlock.isEmpty()`) and drops the
 /// head/raises the hat when staring at a player (`isCreepy`), so the carried-block and

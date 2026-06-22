@@ -346,6 +346,13 @@ pub struct EntityModelSourceState {
     /// entity.
     #[serde(default)]
     pub bat_resting: bool,
+    /// Vanilla `BeeRenderState.hasStinger` (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`):
+    /// whether the bee still carries its stinger, which `BeeModel.setupAnim` toggles as the
+    /// stinger cube's `visible` flag. Projected only for the bee
+    /// ([`vanilla_is_bee`](crate::entities::dimensions)) and defaults to `true` (a bee that has
+    /// not stung still has its stinger; every other entity is unaffected).
+    #[serde(default = "entity_model_source_default_true")]
+    pub bee_has_stinger: bool,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin
@@ -461,6 +468,10 @@ fn entity_model_source_full_bright_light() -> TerrainLight {
 /// when an `EntityModelSourceState` is deserialized without a recorded scale.
 fn entity_model_source_default_scale() -> f32 {
     1.0
+}
+
+fn entity_model_source_default_true() -> bool {
+    true
 }
 
 impl EntityTransformState {
