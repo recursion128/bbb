@@ -258,3 +258,41 @@ pub(in crate::entity_models) fn pufferfish_model_root_transform(
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
+
+const SQUID_BABY_SCALE: f32 = 0.5;
+
+/// Vanilla `SquidRenderer.setupRotations` fully overrides
+/// `LivingEntityRenderer.setupRotations`: `translate(0, isBaby ? 0.25 : 0.5, 0)`, the
+/// standard `Axis.YP.rotationDegrees(180 - bodyRot)` body yaw, the swim body tilt
+/// (`Axis.XP.rotationDegrees(xBodyRot)` then `Axis.YP.rotationDegrees(zBodyRot)`), and
+/// `translate(0, isBaby ? -0.6 : -1.2, 0)`. Because it overrides the base method, a
+/// squid never runs the death/auto-spin/sleeping/upside-down chain, so it never tips
+/// over. The swim body tilt (`xBodyRot`/`zBodyRot`) is deferred — both are `0` at rest,
+/// the orientation of a floating squid — leaving the `0.25/0.5` and `-0.6/-1.2`
+/// translates around the body yaw. The baby uses the `SquidModel.BABY_TRANSFORMER`
+/// (`MeshTransformer.scaling(0.5)`) body layer, composed innermost like the other
+/// mesh-transformer-scaled models.
+pub(in crate::entity_models) fn squid_model_root_transform(
+    instance: EntityModelInstance,
+    baby: bool,
+) -> Mat4 {
+    let (up, down) = if baby { (0.25, -0.6) } else { (0.5, -1.2) };
+    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * Mat4::from_translation(Vec3::new(0.0, up, 0.0))
+        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, down, 0.0))
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0));
+    if baby {
+        transform *= part_pose_transform(PartPose {
+            offset: [
+                0.0,
+                MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS * (1.0 - SQUID_BABY_SCALE),
+                0.0,
+            ],
+            rotation: [0.0, 0.0, 0.0],
+        }) * Mat4::from_scale(Vec3::splat(SQUID_BABY_SCALE));
+    }
+    transform
+}

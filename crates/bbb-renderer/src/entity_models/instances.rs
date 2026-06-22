@@ -128,6 +128,11 @@ pub struct EntityRenderState {
     /// folds its legs and tilts its body (`WolfModel.setSittingPose`) instead of swinging
     /// its legs. `false` for a standing wolf and every non-wolf entity.
     pub wolf_sitting: bool,
+    /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
+    /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
+    /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
+    /// entity.
+    pub squid_tentacle_angle: f32,
 }
 
 impl EntityRenderState {
@@ -155,6 +160,7 @@ impl EntityRenderState {
             age_in_ticks: 0.0,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
+            squid_tentacle_angle: 0.0,
         }
     }
 
@@ -299,6 +305,20 @@ impl EntityModelInstance {
     pub fn with_wolf_sitting(mut self, wolf_sitting: bool) -> Self {
         self.render_state.wolf_sitting = wolf_sitting;
         self
+    }
+
+    pub fn with_squid_tentacle_angle(mut self, squid_tentacle_angle: f32) -> Self {
+        self.render_state.squid_tentacle_angle = squid_tentacle_angle;
+        self
+    }
+
+    pub fn squid(entity_id: i32, position: [f32; 3], y_rot: f32, glow: bool, baby: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Squid { glow, baby },
+            position,
+            y_rot,
+        )
     }
 
     pub fn chicken(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
@@ -961,6 +981,7 @@ mod tests {
                 age_in_ticks: 0.0,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
+                squid_tentacle_angle: 0.0,
             }
         );
     }

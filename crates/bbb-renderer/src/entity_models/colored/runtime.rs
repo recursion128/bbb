@@ -20,8 +20,8 @@ use super::transforms::{
     ghast_model_root_transform, happy_ghast_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
     player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
-    scaled_model_root_transform, slime_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    scaled_model_root_transform, slime_model_root_transform, squid_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -281,6 +281,9 @@ fn entity_model_mesh_with_options(
                     emit_witch_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Squid { glow, baby } => {
+                emit_squid_model(&mut mesh, *instance, glow, baby)
+            }
             EntityModelKind::Illager { family } => {
                 if !skip_texture_backed_entities {
                     emit_illager_model(&mut mesh, *instance, family)
@@ -462,6 +465,21 @@ fn emit_pufferfish_model(
         };
         emit_model_cubes_at_pose(mesh, root, pose, &[part.colored_cube()]);
     }
+}
+
+fn emit_squid_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    glow: bool,
+    baby: bool,
+) {
+    // Vanilla `SquidModel.setupAnim` only sweeps the eight tentacles by the lerped
+    // `tentacleAngle` (`tentacle.xRot = tentacleAngle`); the body is static. The swim
+    // body tilt and the `0.5/1.2` translate live in `squid_model_root_transform`.
+    let root = squid_model_root_transform(instance, baby);
+    let color = if glow { GLOW_SQUID_TEAL } else { SQUID_BLUE };
+    let parts = squid_model_parts(instance.render_state.squid_tentacle_angle);
+    emit_model_parts_with_color(mesh, &parts, root, color);
 }
 
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {

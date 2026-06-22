@@ -132,6 +132,13 @@ pub enum EntityModelKind {
     IronGolem,
     SnowGolem,
     Witch,
+    /// Squid and glow squid (`SquidModel`, `SquidRenderer` / `GlowSquidRenderer`).
+    /// `glow` selects the glow-squid texture/color variant; `baby` selects the
+    /// `BABY_TRANSFORMER` 0.5-scaled body layer.
+    Squid {
+        glow: bool,
+        baby: bool,
+    },
     Illager {
         family: IllagerModelFamily,
     },

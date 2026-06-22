@@ -1314,6 +1314,22 @@ When an agent does any of the following, update this file in the same slice:
       `setupAnim` pectoral/blue fin wiggle (`right.zRot = -0.2 + 0.4 · sin(ageInTicks ·
       0.2)`, left negated, set absolutely over the rest pose, on both render paths).
       Lighting and overlay remain unsupported
+    - squid and glow squid entities as renderer-owned vanilla 26.1
+      `SquidModel.createBodyLayer()` geometry: the `CubeDeformation(0.02)` 12x16x12
+      body plus the procedural ring of eight `texOffs(48, 0)` 2x18x2 tentacles, each
+      placed at `(cos(i·2π/8)·5, 15, sin(i·2π/8)·5)` and yawed `-i·2π/8 + π/2`, on a
+      64x32 texture; the `SquidModel.setupAnim` tentacle sweep
+      (`tentacle.xRot = tentacleAngle` on all eight, from the lerped
+      `SquidRenderState.tentacleAngle`), the `BABY_TRANSFORMER`
+      (`MeshTransformer.scaling(0.5)`) baby body layer, the glow-squid colour
+      variant, and the `SquidRenderer.setupRotations` body translate
+      (`0.5/1.2` adult, `0.25/0.6` baby) around the body yaw, with no death tip-over
+      (the squid override replaces `LivingEntityRenderer.setupRotations`). The
+      glow-squid emissive overlay and `GlowSquidRenderer` darken-ticks light boost,
+      the `SquidRenderer.setupRotations` swim body tilt (`xBodyRot`/`zBodyRot`, the
+      velocity-driven pitch/roll), the texture-backed render path (squid/glow_squid
+      adult 64x32 and baby 32x32 texture references are recorded but not yet atlas-
+      loaded), lighting, and overlay remain unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

@@ -36,6 +36,7 @@ mod skeleton;
 mod sleeping;
 mod slime;
 mod spider;
+mod squid;
 mod upside_down;
 mod villager;
 mod witch;

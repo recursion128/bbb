@@ -278,6 +278,12 @@ impl EntityModelKind {
             Self::Illager {
                 family: IllagerModelFamily::Vindicator,
             } => "vindicator",
+            Self::Squid { glow, baby } => match (glow, baby) {
+                (false, false) => "squid",
+                (false, true) => "squid_baby",
+                (true, false) => "glow_squid",
+                (true, true) => "glow_squid_baby",
+            },
             Self::Minecart => "minecart",
             Self::Boat { family, chest } => boat_model_key(family, chest),
             Self::Placeholder { name, .. } => name,
@@ -423,6 +429,7 @@ impl EntityModelKind {
                 baby: true,
             } => Some(ZOMBIE_HORSE_BABY_TEXTURE_REF),
             Self::Camel { family, baby } => Some(camel_texture_ref(family, baby)),
+            Self::Squid { glow, baby } => Some(squid_texture_ref(glow, baby)),
             Self::Llama { variant, baby, .. } => Some(llama_texture_ref(variant, baby)),
             Self::Goat { baby: false, .. } => Some(GOAT_TEXTURE_REF),
             Self::Goat { baby: true, .. } => Some(GOAT_BABY_TEXTURE_REF),
@@ -593,6 +600,15 @@ pub(in crate::entity_models) fn cow_texture_ref(
         (CowModelVariant::Warm, true) => COW_WARM_BABY_TEXTURE_REF,
         (CowModelVariant::Cold, false) => COW_COLD_TEXTURE_REF,
         (CowModelVariant::Cold, true) => COW_COLD_BABY_TEXTURE_REF,
+    }
+}
+
+pub(in crate::entity_models) fn squid_texture_ref(glow: bool, baby: bool) -> EntityModelTextureRef {
+    match (glow, baby) {
+        (false, false) => SQUID_TEXTURE_REF,
+        (false, true) => SQUID_BABY_TEXTURE_REF,
+        (true, false) => GLOW_SQUID_TEXTURE_REF,
+        (true, true) => GLOW_SQUID_BABY_TEXTURE_REF,
     }
 }
 

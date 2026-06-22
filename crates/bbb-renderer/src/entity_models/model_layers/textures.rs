@@ -846,6 +846,30 @@ pub(in crate::entity_models) const CAMEL_HUSK_TEXTURE_REF: EntityModelTextureRef
         size: [128, 128],
     };
 
+pub(in crate::entity_models) const SQUID_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/squid/squid.png",
+        size: [64, 32],
+    };
+
+pub(in crate::entity_models) const SQUID_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/squid/squid_baby.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const GLOW_SQUID_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/squid/glow_squid.png",
+        size: [64, 32],
+    };
+
+pub(in crate::entity_models) const GLOW_SQUID_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/squid/glow_squid_baby.png",
+        size: [32, 32],
+    };
+
 pub(in crate::entity_models) const LLAMA_CREAMY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/llama/llama_creamy.png",
