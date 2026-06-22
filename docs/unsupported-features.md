@@ -1715,6 +1715,13 @@ When an agent does any of the following, update this file in the same slice:
       identity at rest and the yaw projected through `body_rot`). The dying-dissolve render type, the
       emissive `dragon_eyes` layer, the crystal-healing beam, and the texture-backed path are deferred, so
       the colored debug path renders the body dark and the wing membranes a lighter tint
+    - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
+      which emits no geometry — exact parity with vanilla, whose `EntityRenderers` registers all three to
+      `NoopRenderer` (the area effect cloud is drawn as particles, not a model; the marker is a pure
+      server-side data entity; the interaction is an invisible click hitbox). This replaces the former
+      placeholder boxes, which incorrectly drew a debug box where vanilla draws nothing. These three are
+      therefore deliberately unsupported *as models* (there is no vanilla model to render), and the native
+      scene no longer projects placeholder bounds for them
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

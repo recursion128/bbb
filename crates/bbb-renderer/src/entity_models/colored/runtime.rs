@@ -243,6 +243,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed ender dragon yet), so this arm always emits.
                 emit_ender_dragon_model(&mut mesh, *instance);
             }
+            EntityModelKind::NoRender => {
+                // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
+                // model, so this arm emits nothing — exact parity with vanilla.
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);

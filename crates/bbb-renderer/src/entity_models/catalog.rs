@@ -170,6 +170,11 @@ pub enum EntityModelKind {
     /// flight-history neck/tail placement, the wing flap, the jaw, the root bounce), the dying
     /// dissolve, the emissive eyes layer, and the crystal-healing beam are deferred.
     EnderDragon,
+    /// Entities whose vanilla renderer is `NoopRenderer` — the area effect cloud (its potion cloud
+    /// is particles, not a model), the marker (a pure data entity), and the interaction (an
+    /// invisible hitbox). Vanilla renders no model for these, so this kind emits no geometry, which
+    /// is exact parity (not a deferral).
+    NoRender,
     Phantom {
         size: i32,
     },

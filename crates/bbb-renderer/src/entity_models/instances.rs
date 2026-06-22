@@ -670,6 +670,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::EnderDragon, position, y_rot)
     }
 
+    pub fn no_render(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::NoRender, position, y_rot)
+    }
+
     pub fn phantom(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
         Self::new(
             entity_id,

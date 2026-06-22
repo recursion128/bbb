@@ -40,6 +40,7 @@ mod leash_knot;
 mod limb_swing;
 mod llama;
 mod minecart;
+mod no_render;
 mod parrot;
 mod phantom;
 mod pig;

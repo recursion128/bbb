@@ -646,9 +646,7 @@ fn entity_model_kind_with_time_and_registries(
         | VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID
         | VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID
         | VANILLA_ENTITY_TYPE_TNT_MINECART_ID => EntityModelKind::Minecart,
-        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID => {
-            placeholder("todo_area_effect_cloud_bounds", 1.0, 0.5, 1.0)
-        }
+        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ARROW_ID | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
             EntityModelKind::Arrow
         }
@@ -744,7 +742,7 @@ fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
-        VANILLA_ENTITY_TYPE_INTERACTION_ID => placeholder("todo_interaction_bounds", 1.0, 1.0, 1.0),
+        VANILLA_ENTITY_TYPE_INTERACTION_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ITEM_ID => placeholder("todo_item_entity_bounds", 0.25, 0.25, 0.25),
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
@@ -762,7 +760,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
             size: slime_size(data_values),
         },
-        VANILLA_ENTITY_TYPE_MARKER_ID => placeholder("todo_marker_bounds", 0.0625, 0.0625, 0.0625),
+        VANILLA_ENTITY_TYPE_MARKER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => {
             placeholder("todo_ominous_item_spawner_bounds", 0.25, 0.25, 0.25)
         }
@@ -4004,6 +4002,25 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, &[]),
             EntityModelKind::EnderDragon
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_renders_nothing_for_noop_renderer_entities() {
+        // The area effect cloud, marker, and interaction use vanilla `NoopRenderer` — they render no
+        // model — so they resolve to `EntityModelKind::NoRender`, replacing the former placeholder
+        // boxes (which incorrectly drew a debug box where vanilla draws nothing).
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, &[]),
+            EntityModelKind::NoRender
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_INTERACTION_ID, &[]),
+            EntityModelKind::NoRender
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_MARKER_ID, &[]),
+            EntityModelKind::NoRender
         );
     }
 

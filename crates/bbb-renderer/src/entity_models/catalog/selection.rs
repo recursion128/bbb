@@ -98,6 +98,7 @@ impl EntityModelKind {
             Self::Arrow => "arrow",
             Self::Trident => "trident",
             Self::EnderDragon => "ender_dragon",
+            Self::NoRender => "no_render",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",
