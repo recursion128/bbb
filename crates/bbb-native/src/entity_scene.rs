@@ -690,7 +690,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => placeholder("todo_armadillo_bounds", 0.7, 0.65, 0.7),
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => placeholder("todo_axolotl_bounds", 0.75, 0.42, 0.75),
-        VANILLA_ENTITY_TYPE_BAT_ID => placeholder("todo_bat_bounds", 0.5, 0.9, 0.5),
+        VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
         VANILLA_ENTITY_TYPE_BEE_ID => placeholder("todo_bee_bounds", 0.7, 0.6, 0.7),
         VANILLA_ENTITY_TYPE_BLAZE_ID => EntityModelKind::Blaze,
         VANILLA_ENTITY_TYPE_BREEZE_ID => placeholder("todo_breeze_bounds", 0.6, 1.77, 0.6),
@@ -2954,6 +2954,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ALLAY_ID, &[]),
             EntityModelKind::Allay
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_bat_to_real_model() {
+        // The bat was a placeholder render box; it now resolves to the real `BatModel`, the
+        // first keyframe-animated entity. Its looping `BAT_FLYING` wing flap reads the projected
+        // age; the resting pose (`isResting` / `BAT_RESTING`) is deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_BAT_ID, &[]),
+            EntityModelKind::Bat
         );
     }
 

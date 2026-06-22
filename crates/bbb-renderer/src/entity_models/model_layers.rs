@@ -1,6 +1,7 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    PART_POSE_ZERO,
+    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
+    BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
 };
 
 pub(super) const CHICKEN_WHITE: [f32; 4] = [0.94, 0.94, 0.86, 1.0];
@@ -47,6 +48,7 @@ pub(super) const STRIDER_MAROON: [f32; 4] = [0.49, 0.20, 0.27, 1.0];
 pub(super) const STRIDER_LEG: [f32; 4] = [0.78, 0.32, 0.30, 1.0];
 pub(super) const TURTLE_GREEN: [f32; 4] = [0.40, 0.60, 0.36, 1.0];
 pub(super) const TURTLE_SHELL: [f32; 4] = [0.42, 0.45, 0.30, 1.0];
+pub(super) const BAT_BROWN: [f32; 4] = [0.32, 0.27, 0.22, 1.0];
 pub(super) const GLOW_SQUID_TEAL: [f32; 4] = [0.13, 0.65, 0.62, 1.0];
 pub(super) const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 pub(super) const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
@@ -57,6 +59,7 @@ pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
 mod allay;
 mod armor_stand;
+mod bat;
 mod blaze;
 mod boat;
 mod camel;
@@ -103,6 +106,7 @@ mod zombie;
 
 pub(super) use allay::*;
 pub(super) use armor_stand::*;
+pub(super) use bat::*;
 pub(super) use blaze::*;
 pub(super) use boat::*;
 pub(super) use camel::*;

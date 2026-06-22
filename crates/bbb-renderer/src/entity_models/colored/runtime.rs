@@ -5,6 +5,7 @@ use glam::{Mat4, Vec3};
 use super::super::catalog::{sheep_wool_render_color, *};
 use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
+use super::super::keyframe::*;
 use super::super::model_layers::*;
 use super::armor_stand::emit_armor_stand_model;
 use super::mounts::{
@@ -145,6 +146,9 @@ fn entity_model_mesh_with_options(
                 if !skip_texture_backed_entities {
                     emit_turtle_model(&mut mesh, *instance, baby);
                 }
+            }
+            EntityModelKind::Bat => {
+                emit_bat_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -879,6 +883,83 @@ fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
             cubes,
         );
     }
+}
+
+/// Combine a bat bind pose with the keyframe position/rotation offsets (vanilla
+/// `ModelPart::offsetPos` / `offsetRotation` add to the bind pose).
+fn bat_animated_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
+    PartPose {
+        offset: [
+            bind.offset[0] + position[0],
+            bind.offset[1] + position[1],
+            bind.offset[2] + position[2],
+        ],
+        rotation: [
+            bind.rotation[0] + rotation[0],
+            bind.rotation[1] + rotation[1],
+            bind.rotation[2] + rotation[2],
+        ],
+    }
+}
+
+fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `BatModel.setupAnim` applies the keyframe `BatAnimation.BAT_FLYING` wing flap /
+    // body bob, driven by the entity's `flyAnimationState`. The state's exact start tick is
+    // deferred entity-side data, so the looping animation is sampled from `age_in_ticks` (the
+    // phase offset is imperceptible for a continuous flap). The resting pose (`isResting`,
+    // `BAT_RESTING`, the head look) is deferred entity-side state. The wings/tips and feet hang
+    // under the body and the ears under the head, so the hierarchy is walked by hand. Bat uses
+    // `LivingEntityRenderer.setupRotations`.
+    let seconds = keyframe_elapsed_seconds(&BAT_FLYING, instance.render_state.age_in_ticks * 0.05);
+    let sample = |bone: &str| sample_bone_offsets(&BAT_FLYING, bone, seconds, 1.0);
+    let root = entity_model_root_transform(instance);
+
+    // Head (root child) carries the two ears at their bind poses.
+    let (head_pos, head_rot) = sample("head");
+    let head_pose = bat_animated_pose(BAT_HEAD_POSE, head_pos, head_rot);
+    let head_t = root * part_pose_transform(head_pose);
+    emit_model_cubes_at_pose(mesh, root, head_pose, &BAT_HEAD);
+    emit_model_cubes_at_pose(mesh, head_t, BAT_RIGHT_EAR_POSE, &BAT_RIGHT_EAR);
+    emit_model_cubes_at_pose(mesh, head_t, BAT_LEFT_EAR_POSE, &BAT_LEFT_EAR);
+
+    // Body (root child) carries the wings and feet.
+    let (body_pos, body_rot) = sample("body");
+    let body_pose = bat_animated_pose(BAT_BODY_POSE, body_pos, body_rot);
+    let body_t = root * part_pose_transform(body_pose);
+    emit_model_cubes_at_pose(mesh, root, body_pose, &BAT_BODY);
+
+    let (_, feet_rot) = sample("feet");
+    emit_model_cubes_at_pose(
+        mesh,
+        body_t,
+        bat_animated_pose(BAT_FEET_POSE, [0.0; 3], feet_rot),
+        &BAT_FEET,
+    );
+
+    // Each wing (body child) carries its tip.
+    let (_, right_wing_rot) = sample("right_wing");
+    let right_wing_pose = bat_animated_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
+    let right_wing_t = body_t * part_pose_transform(right_wing_pose);
+    emit_model_cubes_at_pose(mesh, body_t, right_wing_pose, &BAT_RIGHT_WING);
+    let (_, right_tip_rot) = sample("right_wing_tip");
+    emit_model_cubes_at_pose(
+        mesh,
+        right_wing_t,
+        bat_animated_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot),
+        &BAT_RIGHT_WING_TIP,
+    );
+
+    let (_, left_wing_rot) = sample("left_wing");
+    let left_wing_pose = bat_animated_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
+    let left_wing_t = body_t * part_pose_transform(left_wing_pose);
+    emit_model_cubes_at_pose(mesh, body_t, left_wing_pose, &BAT_LEFT_WING);
+    let (_, left_tip_rot) = sample("left_wing_tip");
+    emit_model_cubes_at_pose(
+        mesh,
+        left_wing_t,
+        bat_animated_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
+        &BAT_LEFT_WING_TIP,
+    );
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

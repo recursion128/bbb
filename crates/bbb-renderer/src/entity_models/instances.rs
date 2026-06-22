@@ -544,6 +544,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Turtle { baby }, position, y_rot)
     }
 
+    pub fn bat(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Bat, position, y_rot)
+    }
+
     pub fn phantom(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
         Self::new(
             entity_id,

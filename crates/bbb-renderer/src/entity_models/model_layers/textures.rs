@@ -233,6 +233,12 @@ pub(in crate::entity_models) const TURTLE_BABY_TEXTURE_REF: EntityModelTextureRe
         size: [16, 16],
     };
 
+// Vanilla `BatRenderer` texture.
+pub(in crate::entity_models) const BAT_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/bat/bat.png",
+    size: [32, 32],
+};
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",

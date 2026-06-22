@@ -68,6 +68,11 @@ pub enum EntityModelKind {
     Turtle {
         baby: bool,
     },
+    /// Bat (`BatModel`, `BatRenderer`). The first keyframe-animated entity: the looping
+    /// `BatAnimation.BAT_FLYING` wing flap / body bob is sampled from `EntityRenderState`'s
+    /// `age_in_ticks`. The resting pose (`isResting`, `BatAnimation.BAT_RESTING`) is deferred
+    /// entity-side state.
+    Bat,
     Phantom {
         size: i32,
     },

@@ -3,6 +3,7 @@ mod colored;
 mod geometry;
 mod gpu;
 mod instances;
+mod keyframe;
 mod model_layers;
 mod textured;
 
@@ -40,6 +41,7 @@ pub(crate) use gpu::{
 };
 pub(super) use gpu::{EntityModelMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu};
 pub use instances::*;
+use keyframe::*;
 #[cfg(test)]
 use model_layers::*;
 pub use model_layers::{
