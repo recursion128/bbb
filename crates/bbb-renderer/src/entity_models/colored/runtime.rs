@@ -153,7 +153,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::Bee { baby } => {
-                emit_bee_model(&mut mesh, *instance, baby);
+                if !skip_texture_backed_entities {
+                    emit_bee_model(&mut mesh, *instance, baby);
+                }
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {

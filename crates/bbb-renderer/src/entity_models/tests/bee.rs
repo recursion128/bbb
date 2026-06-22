@@ -103,4 +103,85 @@ fn bee_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         })
     );
+    // The accessor lists the adult then baby base textures.
+    assert_eq!(
+        bee_entity_texture_refs(),
+        &[
+            EntityModelTextureRef {
+                path: "textures/entity/bee/bee.png",
+                size: [64, 64],
+            },
+            EntityModelTextureRef {
+                path: "textures/entity/bee/bee_baby.png",
+                size: [32, 32],
+            }
+        ]
+    );
+}
+
+#[test]
+fn bee_textured_cubes_match_vanilla_body_layer_uvs() {
+    // Adult `AdultBeeModel.createBodyLayer` texOffs (atlas 64×64).
+    assert_eq!(BEE_TEXTURED_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(BEE_TEXTURED_STINGER[0].tex, [26.0, 7.0]);
+    assert_eq!(BEE_TEXTURED_LEFT_ANTENNA[0].tex, [2.0, 0.0]);
+    assert_eq!(BEE_TEXTURED_RIGHT_ANTENNA[0].tex, [2.0, 3.0]);
+    assert_eq!(BEE_TEXTURED_RIGHT_WING[0].tex, [0.0, 18.0]);
+    assert!(!BEE_TEXTURED_RIGHT_WING[0].mirror);
+    // The left wing is mirrored; the wing keeps the BASE box `uv_size` despite the deformation.
+    assert_eq!(BEE_TEXTURED_LEFT_WING[0].tex, [0.0, 18.0]);
+    assert!(BEE_TEXTURED_LEFT_WING[0].mirror);
+    assert_eq!(BEE_TEXTURED_LEFT_WING[0].uv_size, [9.0, 0.0, 6.0]);
+    assert_eq!(BEE_TEXTURED_FRONT_LEGS[0].tex, [26.0, 1.0]);
+    assert_eq!(BEE_TEXTURED_MIDDLE_LEGS[0].tex, [26.0, 3.0]);
+    assert_eq!(BEE_TEXTURED_BACK_LEGS[0].tex, [26.0, 5.0]);
+
+    // Baby `BabyBeeModel.createBodyLayer` texOffs (atlas 32×32): the bone's two cubes, and the
+    // negative-offset mirrored left wing.
+    assert_eq!(BEE_BABY_TEXTURED_BONE[0].tex, [6.0, 12.0]);
+    assert_eq!(BEE_BABY_TEXTURED_BONE[1].tex, [0.0, 12.0]);
+    assert_eq!(BEE_BABY_TEXTURED_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(BEE_BABY_TEXTURED_LEFT_WING[0].tex, [-3.0, 9.0]);
+    assert!(BEE_BABY_TEXTURED_LEFT_WING[0].mirror);
+}
+
+#[test]
+fn bee_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&bee_texture_images()).unwrap();
+
+    // Adult renders into the cutout mesh. Nine cubes → 54 faces / 216 vertices, nothing on the
+    // translucent or eyes passes, white tint.
+    let adult = EntityModelInstance::bee(940, [0.0, 64.0, 0.0], 0.0, false);
+    let meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 54);
+    assert_eq!(meshes.cutout.vertices.len(), 216);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // Baby is the smaller separate model: also nine cubes → 54 faces / 216 vertices.
+    let baby = EntityModelInstance::bee(941, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 216);
+
+    // Airborne the flap re-poses the mesh with age; a grounded bee rests at its bind pose.
+    let later = entity_model_textured_meshes(&[adult.with_age_in_ticks(3.0)], &atlas);
+    assert_ne!(meshes.cutout.vertices, later.cutout.vertices);
+    let grounded = entity_model_textured_meshes(&[adult.with_on_ground(true)], &atlas);
+    assert_ne!(meshes.cutout.vertices, grounded.cutout.vertices);
+}
+
+fn bee_texture_images() -> Vec<EntityModelTextureImage> {
+    bee_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
 }

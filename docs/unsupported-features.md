@@ -1396,25 +1396,28 @@ When an agent does any of the following, update this file in the same slice:
       resting animation, the idle head-look pose, the `AnimationState` start-tick phase offset, and
       the keyframe `CATMULLROM` interpolation / `Scale` target (only `LINEAR` + position/rotation
       are ported so far) remain unsupported
-    - bee entities render on the colored path off the real vanilla 26.1 `AdultBeeModel` /
-      `BabyBeeModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `11` to
-      the new `EntityModelKind::Bee { baby }`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index
-      16, default adult), replacing the former placeholder box. Renderer-owned vanilla geometry: the
-      adult `createBodyLayer()` (atlas 64×64) — the empty `bone` pivot at `+19` parenting the
-      7×7×10 body (carrying the zero-thickness stinger and the two antennae), the two
-      `CubeDeformation(0.001)`-inflated wing planes, and the three zero-depth leg planes — and the
-      baby `createBodyLayer()` (atlas 32×32) — the two-cube `bone`, the 4×4×5 body, the stinger, the
-      `0.2182`-pitched wings, and the three leg planes (no antennae). The procedural
-      `BeeModel.setupAnim` is hand-emitted through the bone→body/wings/legs hierarchy: while
-      airborne (`!isOnGround`, read from the synced `Entity.onGround`) the wings flap
-      (`zRot = cos(ageInTicks·120.32113°)·π·0.15`, the left mirrored) and the non-angry
-      `bobUpAndDown` rocks the bone pivot (`xRot`, `y`), the front/back legs, and — on adults — the
-      antennae, with the middle leg held at `π/4`; on the ground the model rests at its bind pose.
-      The colored path approximates the striped texture with a single representative yellow. The
-      textured base layer (`textures/entity/bee/bee.png` / `bee_baby.png` into the cutout mesh), the
-      anger pose (`isAngry`), the rolled-up fall pose (`rollAmount`, `Mth.rotLerpRad` toward
-      `3.0915928`), the stinger-loss visibility (`hasStinger`) and the nectar/angry texture swaps
-      remain unsupported
+    - bee entities are wired end to end on both render paths off the real vanilla 26.1
+      `AdultBeeModel` / `BabyBeeModel`: the native entity scene (`entity_scene.rs`) projects vanilla
+      type id `11` to the new `EntityModelKind::Bee { baby }`, keyed off the synced
+      `AgeableMob.DATA_BABY_ID` (index 16, default adult), replacing the former placeholder box.
+      Renderer-owned vanilla geometry: the adult `createBodyLayer()` (atlas 64×64) — the empty
+      `bone` pivot at `+19` parenting the `texOffs(0, 0)` 7×7×10 body (carrying the
+      `texOffs(26, 7)` zero-thickness stinger and the `texOffs(2, 0)` / `texOffs(2, 3)` antennae),
+      the two `CubeDeformation(0.001)`-inflated `texOffs(0, 18)` wing planes (the left mirrored), and
+      the three `texOffs(26, 1/3/5)` zero-depth leg planes — and the baby `createBodyLayer()` (atlas
+      32×32) — the two-cube `bone` (`texOffs(6, 12)` / `texOffs(0, 12)`), the 4×4×5 body, the
+      stinger, the `0.2182`-pitched wings (the left at the vanilla negative `texOffs(-3, 9)`), and
+      the three leg planes (no antennae). The procedural `BeeModel.setupAnim` is hand-emitted through
+      the bone→body/wings/legs hierarchy: while airborne (`!isOnGround`, read from the synced
+      `Entity.onGround`) the wings flap (`zRot = cos(ageInTicks·120.32113°)·π·0.15`, the left
+      mirrored) and the non-angry `bobUpAndDown` rocks the bone pivot (`xRot`, `y`), the front/back
+      legs, and — on adults — the antennae, with the middle leg held at `π/4`; on the ground the
+      model rests at its bind pose. The textured base layer draws the `textures/entity/bee/bee.png` /
+      `bee_baby.png` atlas references into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`),
+      hand-emitted through the same animated hierarchy as the colored path (which approximates the
+      striped texture with a single representative yellow). The anger pose (`isAngry`), the rolled-up
+      fall pose (`rollAmount`, `Mth.rotLerpRad` toward `3.0915928`), the stinger-loss visibility
+      (`hasStinger`) and the nectar/angry texture swaps remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

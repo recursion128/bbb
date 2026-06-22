@@ -1,4 +1,4 @@
-use super::{ModelCubeDesc, PartPose, BEE_YELLOW};
+use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, BEE_YELLOW};
 
 use std::f32::consts::PI;
 
@@ -193,6 +193,172 @@ pub(in crate::entity_models) const BEE_BABY_BACK_LEGS_POSE: PartPose = PartPose 
     offset: [0.0, 3.3333, 3.8567],
     rotation: [0.0, 0.0, 0.0],
 };
+
+// The same geometry with the vanilla `AdultBeeModel.createBodyLayer` texOffs UV coordinates (atlas
+// 64×64). The wings keep the BASE box `uv_size` (`[9, 0, 6]`) while the geometry inflates by the
+// `CubeDeformation(0.001)`.
+pub(in crate::entity_models) const BEE_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.5, -4.0, -5.0],
+        size: [7.0, 7.0, 10.0],
+        uv_size: [7.0, 7.0, 10.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_STINGER: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, -1.0, 5.0],
+        size: [0.0, 1.0, 2.0],
+        uv_size: [0.0, 1.0, 2.0],
+        tex: [26.0, 7.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_LEFT_ANTENNA: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [1.5, -2.0, -3.0],
+        size: [1.0, 2.0, 3.0],
+        uv_size: [1.0, 2.0, 3.0],
+        tex: [2.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_RIGHT_ANTENNA: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.5, -2.0, -3.0],
+        size: [1.0, 2.0, 3.0],
+        uv_size: [1.0, 2.0, 3.0],
+        tex: [2.0, 3.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-9.001, -0.001, -0.001],
+        size: [9.002, 0.002, 6.002],
+        uv_size: [9.0, 0.0, 6.0],
+        tex: [0.0, 18.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-0.001, -0.001, -0.001],
+        size: [9.002, 0.002, 6.002],
+        uv_size: [9.0, 0.0, 6.0],
+        tex: [0.0, 18.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_FRONT_LEGS: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-5.0, 0.0, 0.0],
+        size: [7.0, 2.0, 0.0],
+        uv_size: [7.0, 2.0, 0.0],
+        tex: [26.0, 1.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_MIDDLE_LEGS: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-5.0, 0.0, 0.0],
+        size: [7.0, 2.0, 0.0],
+        uv_size: [7.0, 2.0, 0.0],
+        tex: [26.0, 3.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_TEXTURED_BACK_LEGS: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-5.0, 0.0, 0.0],
+        size: [7.0, 2.0, 0.0],
+        uv_size: [7.0, 2.0, 0.0],
+        tex: [26.0, 5.0],
+        mirror: false,
+    }];
+
+// The baby textured geometry (`BabyBeeModel.createBodyLayer`, atlas 32×32). The left wing carries
+// the vanilla negative `texOffs(-3, 9)` with a mirrored box.
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_BONE: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [1.0, -1.6667, -2.1633],
+        size: [1.0, 2.0, 2.0],
+        uv_size: [1.0, 2.0, 2.0],
+        tex: [6.0, 12.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-2.0, -1.6667, -2.1933],
+        size: [1.0, 2.0, 2.0],
+        uv_size: [1.0, 2.0, 2.0],
+        tex: [0.0, 12.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -2.0, -2.5],
+        size: [4.0, 4.0, 5.0],
+        uv_size: [4.0, 4.0, 5.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_STINGER: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, -0.5, 0.0],
+        size: [0.0, 1.0, 1.0],
+        uv_size: [0.0, 1.0, 1.0],
+        tex: [13.0, 2.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, 0.0, 0.0],
+        size: [3.0, 0.0, 3.0],
+        uv_size: [3.0, 0.0, 3.0],
+        tex: [3.0, 9.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, 0.0],
+        size: [3.0, 0.0, 3.0],
+        uv_size: [3.0, 0.0, 3.0],
+        tex: [-3.0, 9.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_FRONT_LEGS: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, 0.0, 0.0],
+        size: [3.0, 1.0, 0.0],
+        uv_size: [3.0, 1.0, 0.0],
+        tex: [13.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_MIDDLE_LEGS: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, 0.0, 0.0],
+        size: [3.0, 1.0, 0.0],
+        uv_size: [3.0, 1.0, 0.0],
+        tex: [13.0, 1.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BEE_BABY_TEXTURED_BACK_LEGS: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, 0.0, 0.0],
+        size: [3.0, 1.0, 0.0],
+        uv_size: [3.0, 1.0, 0.0],
+        tex: [13.0, 2.0],
+        mirror: false,
+    }];
 
 // The flying middle-leg angle (vanilla sets all three legs to `π/4` in the airborne branch before
 // the bob overrides the front/back pair).

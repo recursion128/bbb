@@ -22,40 +22,53 @@ use super::{
     model_layers::{
         allay_arm_idle_bob_amount, allay_body_x_rot, allay_root_y, allay_wing_flap_amount,
         allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
-        armor_stand_textured_cube, blaze_rod_offset, chicken_leg_part_indices, cod_tail_fin_yrot,
-        cow_head_part_index, enderman_arm_swing_pose, enderman_leg_swing_pose,
-        endermite_segment_pose, ghast_tentacle_x_rot, half_amplitude_leg_swing_pose,
-        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
-        head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
-        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
-        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
-        pig_head_part_index, piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
-        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
-        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
-        salmon_body_back_yrot, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
-        silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
-        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
-        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
-        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
-        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
-        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
-        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
-        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
-        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE,
-        BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD,
-        BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING, BAT_TEXTURED_LEFT_WING_TIP,
-        BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING, BAT_TEXTURED_RIGHT_WING_TIP,
-        BAT_TEXTURE_REF, BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
-        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
-        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot,
+        bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, blaze_rod_offset,
+        chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index, enderman_arm_swing_pose,
+        enderman_leg_swing_pose, endermite_segment_pose, ghast_tentacle_x_rot,
+        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
+        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
+        hoglin_leg_swing_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
+        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
+        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
+        phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, piglin_ear_flap_pose,
+        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
+        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, ravager_head_child_index,
+        ravager_leg_swing_pose, ravager_neck_part_index, salmon_body_back_yrot, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose, silverfish_layer_pose, silverfish_segment_pose,
+        skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
+        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
+        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
+        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
+        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
+        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
+        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
+        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
+        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
+        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
+        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
+        BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
+        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RIGHT_EAR_POSE,
+        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
+        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
+        BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
+        BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
+        BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE,
+        BEE_BABY_TEXTURED_BACK_LEGS, BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE,
+        BEE_BABY_TEXTURED_FRONT_LEGS, BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS,
+        BEE_BABY_TEXTURED_RIGHT_WING, BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF,
+        BEE_BACK_LEGS_POSE, BEE_BODY_POSE, BEE_BONE_POSE, BEE_FRONT_LEGS_POSE,
+        BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE, BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT,
+        BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
+        BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
+        BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
+        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT,
+        COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
+        PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
+        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
         PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
         PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
@@ -216,6 +229,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Bat => {
                 emit_bat_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Bee { baby } => {
+                emit_bee_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -1273,6 +1289,238 @@ fn emit_bat_textured_model(
         left_wing_t,
         bat_textured_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
         &BAT_TEXTURED_LEFT_WING_TIP,
+        texture,
+        uv,
+    );
+}
+
+fn emit_bee_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = if baby {
+        BEE_BABY_TEXTURE_REF
+    } else {
+        BEE_TEXTURE_REF
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let uv = entry.uv;
+
+    // Mirror the colored `emit_bee_model`: while airborne the wings flap and the non-angry bob
+    // rocks the bone/legs/antennae; on the ground the model rests. Draws the textured base layer
+    // into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`).
+    let age = instance.render_state.age_in_ticks;
+    let flying = !instance.render_state.on_ground;
+    let root = entity_model_root_transform(instance);
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+
+    // Bone pivot (root child).
+    let bone_bind = if baby {
+        BEE_BABY_BONE_POSE
+    } else {
+        BEE_BONE_POSE
+    };
+    let bone_pose = if flying {
+        PartPose {
+            offset: [
+                bone_bind.offset[0],
+                bone_bind.offset[1] + bee_bone_y_delta(age),
+                bone_bind.offset[2],
+            ],
+            rotation: [bee_bone_x_rot(age), 0.0, 0.0],
+        }
+    } else {
+        bone_bind
+    };
+    let bone_t = root * part_pose_transform(bone_pose);
+    if baby {
+        emit_textured_cubes_at_pose(mesh, root, bone_pose, &BEE_BABY_TEXTURED_BONE, texture, uv);
+    }
+
+    // Body (bone child) carries the stinger and, on adults, the antennae.
+    let body_pose = if baby {
+        BEE_BABY_BODY_POSE
+    } else {
+        BEE_BODY_POSE
+    };
+    let body_t = bone_t * part_pose_transform(body_pose);
+    emit_textured_cubes_at_pose(
+        mesh,
+        bone_t,
+        body_pose,
+        if baby {
+            &BEE_BABY_TEXTURED_BODY
+        } else {
+            &BEE_TEXTURED_BODY
+        },
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        if baby {
+            BEE_BABY_STINGER_POSE
+        } else {
+            BEE_STINGER_POSE
+        },
+        if baby {
+            &BEE_BABY_TEXTURED_STINGER
+        } else {
+            &BEE_TEXTURED_STINGER
+        },
+        texture,
+        uv,
+    );
+    if !baby {
+        let antenna_x_rot = if flying { bee_antenna_x_rot(age) } else { 0.0 };
+        emit_textured_cubes_at_pose(
+            mesh,
+            body_t,
+            PartPose {
+                offset: BEE_LEFT_ANTENNA_POSE.offset,
+                rotation: [antenna_x_rot, 0.0, 0.0],
+            },
+            &BEE_TEXTURED_LEFT_ANTENNA,
+            texture,
+            uv,
+        );
+        emit_textured_cubes_at_pose(
+            mesh,
+            body_t,
+            PartPose {
+                offset: BEE_RIGHT_ANTENNA_POSE.offset,
+                rotation: [antenna_x_rot, 0.0, 0.0],
+            },
+            &BEE_TEXTURED_RIGHT_ANTENNA,
+            texture,
+            uv,
+        );
+    }
+
+    // Wings (bone children): the flap overrides the bind yaw to 0 and drives `zRot`.
+    let (right_wing_pose, left_wing_pose, right_wing, left_wing): (
+        _,
+        _,
+        &[TexturedModelCubeDesc],
+        _,
+    ) = if baby {
+        (
+            BEE_BABY_RIGHT_WING_POSE,
+            BEE_BABY_LEFT_WING_POSE,
+            &BEE_BABY_TEXTURED_RIGHT_WING,
+            &BEE_BABY_TEXTURED_LEFT_WING,
+        )
+    } else {
+        (
+            BEE_RIGHT_WING_POSE,
+            BEE_LEFT_WING_POSE,
+            &BEE_TEXTURED_RIGHT_WING,
+            &BEE_TEXTURED_LEFT_WING,
+        )
+    };
+    let wing_z_rot = bee_wing_z_rot(age);
+    emit_textured_cubes_at_pose(
+        mesh,
+        bone_t,
+        if flying {
+            PartPose {
+                offset: right_wing_pose.offset,
+                rotation: [right_wing_pose.rotation[0], 0.0, wing_z_rot],
+            }
+        } else {
+            right_wing_pose
+        },
+        right_wing,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        bone_t,
+        if flying {
+            PartPose {
+                offset: left_wing_pose.offset,
+                rotation: [left_wing_pose.rotation[0], 0.0, -wing_z_rot],
+            }
+        } else {
+            left_wing_pose
+        },
+        left_wing,
+        texture,
+        uv,
+    );
+
+    // Legs (bone children): airborne, the front/back pair bob while the middle leg holds `π/4`.
+    let (front_x, mid_x, back_x) = if flying {
+        (
+            bee_front_leg_x_rot(age),
+            BEE_MID_LEG_FLYING_X_ROT,
+            bee_back_leg_x_rot(age),
+        )
+    } else {
+        (0.0, 0.0, 0.0)
+    };
+    let (front_pose, mid_pose, back_pose, front_cubes, mid_cubes, back_cubes): (
+        _,
+        _,
+        _,
+        &[TexturedModelCubeDesc],
+        &[TexturedModelCubeDesc],
+        &[TexturedModelCubeDesc],
+    ) = if baby {
+        (
+            BEE_BABY_FRONT_LEGS_POSE,
+            BEE_BABY_MIDDLE_LEGS_POSE,
+            BEE_BABY_BACK_LEGS_POSE,
+            &BEE_BABY_TEXTURED_FRONT_LEGS,
+            &BEE_BABY_TEXTURED_MIDDLE_LEGS,
+            &BEE_BABY_TEXTURED_BACK_LEGS,
+        )
+    } else {
+        (
+            BEE_FRONT_LEGS_POSE,
+            BEE_MIDDLE_LEGS_POSE,
+            BEE_BACK_LEGS_POSE,
+            &BEE_TEXTURED_FRONT_LEGS,
+            &BEE_TEXTURED_MIDDLE_LEGS,
+            &BEE_TEXTURED_BACK_LEGS,
+        )
+    };
+    emit_textured_cubes_at_pose(
+        mesh,
+        bone_t,
+        PartPose {
+            offset: front_pose.offset,
+            rotation: [front_x, 0.0, 0.0],
+        },
+        front_cubes,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        bone_t,
+        PartPose {
+            offset: mid_pose.offset,
+            rotation: [mid_x, 0.0, 0.0],
+        },
+        mid_cubes,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        bone_t,
+        PartPose {
+            offset: back_pose.offset,
+            rotation: [back_x, 0.0, 0.0],
+        },
+        back_cubes,
         texture,
         uv,
     );
