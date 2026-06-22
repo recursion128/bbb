@@ -34,6 +34,7 @@ mod head_look;
 mod hoglin;
 mod illager;
 mod keyframe;
+mod leash_knot;
 mod limb_swing;
 mod llama;
 mod minecart;

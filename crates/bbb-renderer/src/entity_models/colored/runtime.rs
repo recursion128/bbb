@@ -20,11 +20,11 @@ use super::transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,
     end_crystal_model_root_transform, entity_model_root_transform,
     evoker_fangs_model_root_transform, ghast_model_root_transform,
-    happy_ghast_model_root_transform, magma_cube_model_root_transform,
-    mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
-    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
-    salmon_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, tropical_fish_model_root_transform,
+    happy_ghast_model_root_transform, leash_knot_model_root_transform,
+    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
+    phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
+    pufferfish_model_root_transform, salmon_model_root_transform, scaled_model_root_transform,
+    slime_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
     HUSK_SCALE,
 };
@@ -226,6 +226,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::EvokerFangs => {
                 // Colored-only so far (no texture-backed evoker fangs yet), so this arm always emits.
                 emit_evoker_fangs_model(&mut mesh, *instance);
+            }
+            EntityModelKind::LeashKnot => {
+                // Colored-only so far (no texture-backed leash knot yet), so this arm always emits.
+                emit_leash_knot_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -1502,6 +1506,13 @@ fn emit_evoker_fangs_model(mesh: &mut EntityModelMesh, instance: EntityModelInst
     // transform (`Ry(90 - yRot)` plus the standard flip and `-1.501` y-offset).
     let root = evoker_fangs_model_root_transform(instance);
     emit_model_parts(mesh, &EVOKER_FANGS_PARTS, root);
+}
+
+fn emit_leash_knot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `LeashKnotModel` is a single static knot box with no `setupAnim`, so the bind-pose
+    // part is emitted directly at the `LeashKnotRenderer` flip-only transform.
+    let root = leash_knot_model_root_transform(instance);
+    emit_model_parts(mesh, &LEASH_KNOT_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

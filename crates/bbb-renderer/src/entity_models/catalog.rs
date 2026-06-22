@@ -154,6 +154,9 @@ pub enum EntityModelKind {
     /// `EvokerFangsModel` at its `createBodyLayer` closed-jaw rest pose (the base block plus the two
     /// jaws). The bite open/close, the base drop, and the emerge scale are deferred.
     EvokerFangs,
+    /// `LeashKnotModel` — the single 6×8×6 knot box. The model has no `setupAnim`, so the geometry
+    /// is complete; only the texture-backed path is deferred.
+    LeashKnot,
     Phantom {
         size: i32,
     },

@@ -1664,6 +1664,14 @@ When an agent does any of the following, update this file in the same slice:
       applies the standard flip and `-1.501` y-offset but a distinct `Ry(90 - yRot)` yaw (captured by
       `evoker_fangs_model_root_transform`). The texture-backed path is deferred, so the colored debug path
       renders a grey base and lighter-bone jaws
+    - leash knot entities as renderer-owned vanilla 26.1 `LeashKnotModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `76` to the new
+      `EntityModelKind::LeashKnot`, replacing the former placeholder bounds box. The mesh root holds a single
+      `knot` part at ZERO with one 6×8×6 box — one cube. `LeashKnotModel` has no `setupAnim`, so the geometry
+      is complete (nothing deferred on the geometry side). `LeashKnotRenderer` is a plain `EntityRenderer`
+      that applies only the model flip (`scale(-1, -1, 1)`, no yaw / y-offset / scale), captured by
+      `leash_knot_model_root_transform`. Only the texture-backed path is deferred, so the colored debug path
+      renders the knot with one brown tint
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

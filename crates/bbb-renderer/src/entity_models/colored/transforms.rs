@@ -156,6 +156,16 @@ pub(in crate::entity_models) fn evoker_fangs_model_root_transform(
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
 
+/// Vanilla `LeashKnotRenderer.submit`: a plain `EntityRenderer` that applies only the standard model
+/// flip (`scale(-1, -1, 1)`) — no yaw, no `-1.501` y-offset, no render scale. `LeashKnotModel` has no
+/// `setupAnim`, so this is the complete (not deferred) transform; only the texture is colored-first.
+pub(in crate::entity_models) fn leash_knot_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+}
+
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))

@@ -754,9 +754,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID => {
             placeholder("todo_item_frame_bounds", 0.75, 0.75, 0.0625)
         }
-        VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => {
-            placeholder("todo_leash_knot_bounds", 0.375, 0.5, 0.375)
-        }
+        VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => EntityModelKind::LeashKnot,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => {
             placeholder("todo_lightning_bolt_bounds", 0.5, 2.0, 0.5)
         }
@@ -3960,6 +3958,16 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, &[]),
             EntityModelKind::EvokerFangs
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_leash_knot_to_real_model() {
+        // The leash knot was a placeholder bounds box; it now resolves to the real `LeashKnotModel`.
+        // The model has no animation, so the geometry is complete; no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, &[]),
+            EntityModelKind::LeashKnot
         );
     }
 

@@ -78,6 +78,7 @@ pub(super) const END_CRYSTAL_CORE: [f32; 4] = [0.95, 0.55, 0.90, 1.0];
 pub(super) const END_CRYSTAL_BASE: [f32; 4] = [0.32, 0.30, 0.36, 1.0];
 pub(super) const EVOKER_FANGS_BASE: [f32; 4] = [0.55, 0.52, 0.48, 1.0];
 pub(super) const EVOKER_FANGS_JAW: [f32; 4] = [0.78, 0.75, 0.68, 1.0];
+pub(super) const LEASH_KNOT_COLOR: [f32; 4] = [0.45, 0.32, 0.22, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -152,6 +153,7 @@ mod happy_ghast;
 mod head_look;
 mod hoglin;
 mod illager;
+mod leash_knot;
 mod llama;
 mod minecart;
 mod parrot;
@@ -215,6 +217,7 @@ pub(super) use happy_ghast::*;
 pub(super) use head_look::*;
 pub(super) use hoglin::*;
 pub(super) use illager::*;
+pub(super) use leash_knot::*;
 pub(super) use llama::*;
 pub(super) use minecart::*;
 pub(super) use parrot::*;
