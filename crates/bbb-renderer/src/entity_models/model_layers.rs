@@ -71,6 +71,8 @@ pub(super) const PARROT_BODY: [f32; 4] = [0.80, 0.20, 0.18, 1.0];
 pub(super) const PARROT_BEAK: [f32; 4] = [0.20, 0.20, 0.22, 1.0];
 pub(super) const SHULKER_SHELL: [f32; 4] = [0.55, 0.45, 0.58, 1.0];
 pub(super) const SHULKER_HEAD: [f32; 4] = [0.82, 0.74, 0.42, 1.0];
+pub(super) const WITHER_BODY: [f32; 4] = [0.22, 0.22, 0.24, 1.0];
+pub(super) const WITHER_HEAD: [f32; 4] = [0.32, 0.32, 0.34, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -172,6 +174,7 @@ mod vex;
 mod villager;
 mod warden;
 mod witch;
+mod wither;
 mod wolf;
 mod zombie;
 
@@ -251,5 +254,6 @@ pub(super) use vex::*;
 pub(super) use villager::*;
 pub(super) use warden::*;
 pub(super) use witch::*;
+pub(super) use wither::*;
 pub(super) use wolf::*;
 pub(super) use zombie::*;

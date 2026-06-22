@@ -1610,6 +1610,19 @@ When an agent does any of the following, update this file in the same slice:
       variants live on the deferred texture-backed path, so the colored debug path renders a purple shell
       tint plus a yellow head tint. The texture-backed path remains unsupported (this is a colored-first
       slice)
+    - wither entities as renderer-owned vanilla 26.1
+      `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` geometry on the colored path: the native
+      entity scene (`entity_scene.rs`) projects vanilla type id `145` to the new `EntityModelKind::Wither`,
+      replacing the former placeholder bounds box. The static bind rest-pose hierarchy is emitted directly
+      (atlas 64×64): six sibling root parts — the 20×3×3 shoulders bar, the ribcage (a 3×10×3 spine plus
+      three 11×2×2 rib bars, at `offset(-2, 6.9, -0.5)` pitched 0.20420352 rad), the 3×6×3 hanging tail
+      (at the bind position `(-2, 6.9 + cos(0.20420352)·10, -0.5 + sin(0.20420352)·10)` pitched 0.83252203
+      rad), the 8×8×8 center head, and the two 6×6×6 side heads — nine cubes. Every
+      `WitherBossModel.setupAnim` motion is deferred: the procedural ribcage/tail breathing sway
+      (`cos(ageInTicks · 0.1)`), the center-head look (`yRot`/`xRot`), and the two side heads' target
+      tracking. The `WITHER_ARMOR` invulnerable-shimmer overlay layer (the same mesh re-rendered with
+      `INNER_ARMOR_DEFORMATION`) and the texture-backed path are deferred, so the colored debug path renders
+      a dark body tint plus a lighter head tint (this is a colored-first slice)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

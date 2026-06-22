@@ -62,6 +62,7 @@ mod vex;
 mod villager;
 mod warden;
 mod witch;
+mod wither;
 mod wolf;
 mod zombie;
 

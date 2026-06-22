@@ -208,6 +208,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed shulker yet), so this arm always emits.
                 emit_shulker_model(&mut mesh, *instance);
             }
+            EntityModelKind::Wither => {
+                // Colored-only so far (no texture-backed wither yet), so this arm always emits.
+                emit_wither_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1436,6 +1440,15 @@ fn emit_shulker_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     // the bind-pose part tree is emitted directly at the floor rest pose.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &SHULKER_PARTS, root);
+}
+
+fn emit_wither_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `WitherBossModel` is six static sibling parts (shoulders, ribcage, tail, the three
+    // heads) at their baked rest poses. The procedural ribcage/tail breathing sway, the head look,
+    // and the invulnerable-shimmer overlay layer are deferred, so the bind-pose part tree is
+    // emitted directly. Wither uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &WITHER_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

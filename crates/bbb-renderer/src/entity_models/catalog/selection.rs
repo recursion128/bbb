@@ -90,6 +90,7 @@ impl EntityModelKind {
             Self::Tadpole => "tadpole",
             Self::Parrot => "parrot",
             Self::Shulker => "shulker",
+            Self::Wither => "wither",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",

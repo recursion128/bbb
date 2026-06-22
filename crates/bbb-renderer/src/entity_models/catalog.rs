@@ -139,6 +139,10 @@ pub enum EntityModelKind {
     /// the `ShulkerRenderer.setupRotations` attach-face rotation and body-yaw inversion, and the
     /// sixteen dye-color variants are deferred.
     Shulker,
+    /// `WitherBossModel` at its `createBodyLayer` bind rest pose. The procedural ribcage/tail
+    /// breathing sway, the center/side head look, and the `WITHER_ARMOR` invulnerable-shimmer
+    /// overlay layer are deferred.
+    Wither,
     Phantom {
         size: i32,
     },

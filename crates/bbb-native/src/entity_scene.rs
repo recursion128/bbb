@@ -826,7 +826,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => {
             placeholder("todo_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
         }
-        VANILLA_ENTITY_TYPE_WITHER_ID => placeholder("todo_wither_bounds", 0.9, 3.5, 0.9),
+        VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => {
             placeholder("todo_wither_skull_bounds", 0.3125, 0.3125, 0.3125)
         }
@@ -3917,6 +3917,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_ID, &[]),
             EntityModelKind::Shulker
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_wither_to_real_model() {
+        // The wither was a placeholder bounds box; it now resolves to the real `WitherBossModel` at
+        // its bind rest pose. The procedural ribcage/tail breathing sway, the head look, and the
+        // invulnerable-shimmer overlay are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WITHER_ID, &[]),
+            EntityModelKind::Wither
         );
     }
 
