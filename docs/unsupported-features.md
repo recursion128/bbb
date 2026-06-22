@@ -1595,6 +1595,21 @@ When an agent does any of the following, update this file in the same slice:
       `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) live on the deferred
       texture-backed path, so the colored debug path renders one body tint plus a beak tint. The
       texture-backed path remains unsupported (this is a colored-first slice)
+    - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to the new
+      `EntityModelKind::Shulker`, replacing the former placeholder bounds box. The static closed rest-pose
+      hierarchy is emitted directly (atlas 64×64): three sibling root parts — the 16×12×16 lid and the
+      16×8×16 base (both at `offset(0, 24, 0)`), and the 6×6×6 head at `offset(0, 12, 0)` — three cubes.
+      The closed pose equals the bind pose: `ShulkerModel.setupAnim` resets the lid to
+      `y = 16 + sin((0.5 + peekAmount) * π) * 8`, which is exactly `24` at `peekAmount = 0`, so the peek
+      open/close (`lid.setPos` + the `lid.yRot` wobble) and the head look (`head.xRot/yRot`) are deferred.
+      The `ShulkerRenderer.setupRotations` attach-face rotation (`attachFace.getOpposite().getRotation()`,
+      the identity for a floor shulker) and the `bodyRot + 180` body-yaw inversion read the entity-side
+      `attachFace`/yaw state, which the native scene does not yet project, so the floor rest pose is emitted
+      (the geometry is exact; only the wall/ceiling attach orientation is deferred). The sixteen dye-color
+      variants live on the deferred texture-backed path, so the colored debug path renders a purple shell
+      tint plus a yellow head tint. The texture-backed path remains unsupported (this is a colored-first
+      slice)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

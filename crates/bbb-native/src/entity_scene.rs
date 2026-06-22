@@ -787,7 +787,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SALMON_ID => EntityModelKind::Salmon {
             size: salmon_model_size(data_values),
         },
-        VANILLA_ENTITY_TYPE_SHULKER_ID => placeholder("todo_shulker_bounds", 1.0, 1.0, 1.0),
+        VANILLA_ENTITY_TYPE_SHULKER_ID => EntityModelKind::Shulker,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
             placeholder("todo_shulker_bullet_bounds", 0.3125, 0.3125, 0.3125)
         }
@@ -3906,6 +3906,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[]),
             EntityModelKind::Parrot
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_shulker_to_real_model() {
+        // The shulker was a placeholder bounds box; it now resolves to the real `ShulkerModel` at
+        // its closed rest pose. The peek open/close, head look, attach-face rotation, and the
+        // sixteen dye-color variants are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_ID, &[]),
+            EntityModelKind::Shulker
         );
     }
 

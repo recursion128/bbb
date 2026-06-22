@@ -69,6 +69,8 @@ pub(super) const TADPOLE_BODY: [f32; 4] = [0.24, 0.20, 0.18, 1.0];
 pub(super) const TADPOLE_TAIL: [f32; 4] = [0.34, 0.30, 0.28, 1.0];
 pub(super) const PARROT_BODY: [f32; 4] = [0.80, 0.20, 0.18, 1.0];
 pub(super) const PARROT_BEAK: [f32; 4] = [0.20, 0.20, 0.22, 1.0];
+pub(super) const SHULKER_SHELL: [f32; 4] = [0.55, 0.45, 0.58, 1.0];
+pub(super) const SHULKER_HEAD: [f32; 4] = [0.82, 0.74, 0.42, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -153,6 +155,7 @@ mod pufferfish;
 mod ravager;
 mod salmon;
 mod sheep;
+mod shulker;
 mod silverfish;
 mod skeleton;
 mod skeleton_clothing;
@@ -213,6 +216,7 @@ pub(super) use ravager::*;
 pub(super) use salmon::*;
 pub use sheep::SheepHeadEatPose;
 pub(super) use sheep::*;
+pub(super) use shulker::*;
 pub(super) use silverfish::*;
 pub(super) use skeleton::*;
 pub(super) use skeleton_clothing::*;

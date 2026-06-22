@@ -45,6 +45,7 @@ mod ravager;
 mod salmon;
 mod scale;
 mod sheep;
+mod shulker;
 mod silverfish;
 mod skeleton;
 mod sleeping;

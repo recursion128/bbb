@@ -204,6 +204,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed parrot yet), so this arm always emits.
                 emit_parrot_model(&mut mesh, *instance);
             }
+            EntityModelKind::Shulker => {
+                // Colored-only so far (no texture-backed shulker yet), so this arm always emits.
+                emit_shulker_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1423,6 +1427,15 @@ fn emit_parrot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
     // Parrot uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &PARROT_PARTS, root);
+}
+
+fn emit_shulker_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `ShulkerModel` is three static sibling parts (lid, base, head) at rest; the closed
+    // pose equals the bind pose. The peek open/close, the head look, and the
+    // `ShulkerRenderer.setupRotations` attach-face rotation / body-yaw inversion are deferred, so
+    // the bind-pose part tree is emitted directly at the floor rest pose.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &SHULKER_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

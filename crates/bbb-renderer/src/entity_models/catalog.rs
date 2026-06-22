@@ -135,6 +135,10 @@ pub enum EntityModelKind {
     /// `prepare` offsets, the leg walk swing, the wing flap, the flap bob, the PARTY dance, and the
     /// five color variants are deferred.
     Parrot,
+    /// `ShulkerModel` at its `createBodyLayer` closed rest pose. The peek open/close, the head look,
+    /// the `ShulkerRenderer.setupRotations` attach-face rotation and body-yaw inversion, and the
+    /// sixteen dye-color variants are deferred.
+    Shulker,
     Phantom {
         size: i32,
     },
