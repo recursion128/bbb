@@ -79,6 +79,8 @@ pub(super) const END_CRYSTAL_BASE: [f32; 4] = [0.32, 0.30, 0.36, 1.0];
 pub(super) const EVOKER_FANGS_BASE: [f32; 4] = [0.55, 0.52, 0.48, 1.0];
 pub(super) const EVOKER_FANGS_JAW: [f32; 4] = [0.78, 0.75, 0.68, 1.0];
 pub(super) const LEASH_KNOT_COLOR: [f32; 4] = [0.45, 0.32, 0.22, 1.0];
+pub(super) const ARROW_SHAFT: [f32; 4] = [0.42, 0.30, 0.20, 1.0];
+pub(super) const ARROW_HEAD: [f32; 4] = [0.55, 0.55, 0.58, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -126,6 +128,7 @@ pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 mod allay;
 mod armadillo;
 mod armor_stand;
+mod arrow;
 mod axolotl;
 mod bat;
 mod bee;
@@ -190,6 +193,7 @@ mod zombie;
 pub(super) use allay::*;
 pub(super) use armadillo::*;
 pub(super) use armor_stand::*;
+pub(super) use arrow::*;
 pub(super) use axolotl::*;
 pub(super) use bat::*;
 pub(super) use bee::*;

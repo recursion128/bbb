@@ -3,6 +3,7 @@ use super::*;
 mod allay;
 mod armadillo;
 mod armor_stand;
+mod arrow;
 mod auto_spin;
 mod axolotl;
 mod bat;

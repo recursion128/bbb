@@ -95,6 +95,7 @@ impl EntityModelKind {
             Self::EndCrystal => "end_crystal",
             Self::EvokerFangs => "evoker_fangs",
             Self::LeashKnot => "leash_knot",
+            Self::Arrow => "arrow",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",

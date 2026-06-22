@@ -17,8 +17,8 @@ use super::selection::{
     pig_model_parts, piglin_model_color, quadruped_model_color,
 };
 use super::transforms::{
-    boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,
-    end_crystal_model_root_transform, entity_model_root_transform,
+    arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
+    cod_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     evoker_fangs_model_root_transform, ghast_model_root_transform,
     happy_ghast_model_root_transform, leash_knot_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
@@ -230,6 +230,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::LeashKnot => {
                 // Colored-only so far (no texture-backed leash knot yet), so this arm always emits.
                 emit_leash_knot_model(&mut mesh, *instance);
+            }
+            EntityModelKind::Arrow => {
+                // Colored-only so far (no texture-backed arrow yet), so this arm always emits.
+                emit_arrow_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -1513,6 +1517,14 @@ fn emit_leash_knot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
     // part is emitted directly at the `LeashKnotRenderer` flip-only transform.
     let root = leash_knot_model_root_transform(instance);
     emit_model_parts(mesh, &LEASH_KNOT_PARTS, root);
+}
+
+fn emit_arrow_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `ArrowModel` is three static planes (the arrowhead plus the two crossed fletching
+    // planes). The impact-shake wobble is deferred, so the bind-pose part tree is emitted at the
+    // `ArrowRenderer` flight-oriented transform (`Ry(yRot - 90) · Rz(xRot) · scale(0.9)`).
+    let root = arrow_model_root_transform(instance);
+    emit_model_parts(mesh, &ARROW_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

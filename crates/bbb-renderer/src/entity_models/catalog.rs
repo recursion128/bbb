@@ -157,6 +157,10 @@ pub enum EntityModelKind {
     /// `LeashKnotModel` — the single 6×8×6 knot box. The model has no `setupAnim`, so the geometry
     /// is complete; only the texture-backed path is deferred.
     LeashKnot,
+    /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
+    /// fletching planes, the whole mesh scaled 0.9). The impact-shake wobble and the
+    /// tipped/spectral textures are deferred; `ArrowRenderer` orients it along its flight.
+    Arrow,
     Phantom {
         size: i32,
     },

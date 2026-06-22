@@ -1672,6 +1672,19 @@ When an agent does any of the following, update this file in the same slice:
       that applies only the model flip (`scale(-1, -1, 1)`, no yaw / y-offset / scale), captured by
       `leash_knot_model_root_transform`. Only the texture-backed path is deferred, so the colored debug path
       renders the knot with one brown tint
+    - arrow and spectral arrow entities as renderer-owned vanilla 26.1 `ArrowModel.createBodyLayer()`
+      geometry on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type ids `6`
+      (arrow) and `123` (spectral arrow) to the new `EntityModelKind::Arrow` (they share one model, differing
+      only in the deferred tipped/spectral texture), replacing the former placeholder bounds box. The static
+      rest-pose hierarchy is emitted directly (atlas 32×32): three sibling planes — the `back` arrowhead (a
+      0×5×5 YZ plane at `offset(-11, 0, 0)`, pitched π/4, with `withScale(0.8)` baked into its cube → a 0×4×4
+      box) and the two crossed fletching planes (`cross_1`/`cross_2`, each a 16×4×0 XY plane pitched π/4 and
+      3π/4) — three cubes. The whole mesh is baked through `mesh.transformed(pose -> pose.scaled(0.9))`; that
+      0.9 lives in `arrow_model_root_transform`. `ArrowModel.setupAnim` only adds the impact-shake `root.zRot`
+      wobble (`-sin(shake·3)·shake`), which is deferred. `ArrowRenderer` is a plain `EntityRenderer` that
+      orients the arrow along its flight with `Ry(yRot - 90)` then `Rz(xRot)` (no flip), projected through the
+      instance's `body_rot` / `head_pitch`. The tipped/spectral texture-backed path is deferred, so the
+      colored debug path renders the shaft cross and the head with two tints
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

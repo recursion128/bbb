@@ -650,7 +650,7 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_area_effect_cloud_bounds", 1.0, 0.5, 1.0)
         }
         VANILLA_ENTITY_TYPE_ARROW_ID | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
-            placeholder("todo_arrow_bounds", 0.5, 0.5, 0.5)
+            EntityModelKind::Arrow
         }
         VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID => {
             placeholder("todo_block_display_bounds", 1.0, 1.0, 1.0)
@@ -3968,6 +3968,21 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, &[]),
             EntityModelKind::LeashKnot
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_arrows_to_real_model() {
+        // The arrow and spectral arrow were placeholder boxes; they now resolve to the real
+        // `ArrowModel`. They share one model, differing only in the deferred tipped/spectral texture,
+        // so both type ids map to `Arrow`. The impact-shake wobble is deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ARROW_ID, &[]),
+            EntityModelKind::Arrow
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, &[]),
+            EntityModelKind::Arrow
         );
     }
 
