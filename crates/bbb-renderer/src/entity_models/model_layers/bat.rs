@@ -1,6 +1,7 @@
 use super::{
     degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, PartPose, BAT_BROWN,
+    BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, PartPose, TexturedModelCubeDesc,
+    BAT_BROWN,
 };
 
 use KeyframeInterpolation::Linear;
@@ -63,6 +64,89 @@ pub(in crate::entity_models) const BAT_FEET: [ModelCubeDesc; 1] = [ModelCubeDesc
     size: [3.0, 2.0, 0.0],
     color: BAT_BROWN,
 }];
+
+// The same geometry with the vanilla `BatModel.createBodyLayer` texOffs UV coordinates (atlas
+// 32×32). No `CubeDeformation`, so each `uv_size` matches its box `size`.
+pub(in crate::entity_models) const BAT_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, 0.0, -1.0],
+        size: [3.0, 5.0, 2.0],
+        uv_size: [3.0, 5.0, 2.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -3.0, -1.0],
+        size: [4.0, 3.0, 2.0],
+        uv_size: [4.0, 3.0, 2.0],
+        tex: [0.0, 7.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_RIGHT_EAR: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.5, -4.0, 0.0],
+        size: [3.0, 5.0, 0.0],
+        uv_size: [3.0, 5.0, 0.0],
+        tex: [1.0, 15.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_LEFT_EAR: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-0.1, -3.0, 0.0],
+        size: [3.0, 5.0, 0.0],
+        uv_size: [3.0, 5.0, 0.0],
+        tex: [8.0, 15.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -2.0, 0.0],
+        size: [2.0, 7.0, 0.0],
+        uv_size: [2.0, 7.0, 0.0],
+        tex: [12.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_RIGHT_WING_TIP: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-6.0, -2.0, 0.0],
+        size: [6.0, 8.0, 0.0],
+        uv_size: [6.0, 8.0, 0.0],
+        tex: [16.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, -2.0, 0.0],
+        size: [2.0, 7.0, 0.0],
+        uv_size: [2.0, 7.0, 0.0],
+        tex: [12.0, 7.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_LEFT_WING_TIP: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, -2.0, 0.0],
+        size: [6.0, 8.0, 0.0],
+        uv_size: [6.0, 8.0, 0.0],
+        tex: [16.0, 8.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BAT_TEXTURED_FEET: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, 0.0, 0.0],
+        size: [3.0, 2.0, 0.0],
+        uv_size: [3.0, 2.0, 0.0],
+        tex: [16.0, 16.0],
+        mirror: false,
+    }];
 
 pub(in crate::entity_models) const BAT_BODY_POSE: PartPose = PartPose {
     offset: [0.0, 17.0, 0.0],

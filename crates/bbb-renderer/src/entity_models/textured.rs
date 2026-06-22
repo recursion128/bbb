@@ -1,3 +1,4 @@
+use super::keyframe::{keyframe_elapsed_seconds, sample_bone_offsets};
 use super::{
     boat_model_root_transform,
     catalog::squid_texture_ref,
@@ -47,7 +48,12 @@ use super::{
         ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
-        BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE,
+        BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD,
+        BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING, BAT_TEXTURED_LEFT_WING_TIP,
+        BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING, BAT_TEXTURED_RIGHT_WING_TIP,
+        BAT_TEXTURE_REF, BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
         HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
         PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
@@ -207,6 +213,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Turtle { baby } => {
                 emit_turtle_textured_model(&mut meshes, *instance, baby, atlas);
+            }
+            EntityModelKind::Bat => {
+                emit_bat_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -1149,6 +1158,124 @@ fn emit_turtle_textured_model(
             uv,
         );
     }
+}
+
+/// Combine a bat bind pose with the keyframe position/rotation offsets, mirroring the colored
+/// `bat_animated_pose` (vanilla `ModelPart::offsetPos` / `offsetRotation` add to the bind pose).
+fn bat_textured_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
+    PartPose {
+        offset: [
+            bind.offset[0] + position[0],
+            bind.offset[1] + position[1],
+            bind.offset[2] + position[2],
+        ],
+        rotation: [
+            bind.rotation[0] + rotation[0],
+            bind.rotation[1] + rotation[1],
+            bind.rotation[2] + rotation[2],
+        ],
+    }
+}
+
+fn emit_bat_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = BAT_TEXTURE_REF;
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let uv = entry.uv;
+
+    // Mirror the colored `emit_bat_model`: sample the looping `BatAnimation.BAT_FLYING` from
+    // `age_in_ticks` and walk the head/ears + body/wings/feet hierarchy by hand, drawing the
+    // textured base layer into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`).
+    let seconds = keyframe_elapsed_seconds(&BAT_FLYING, instance.render_state.age_in_ticks * 0.05);
+    let sample = |bone: &str| sample_bone_offsets(&BAT_FLYING, bone, seconds, 1.0);
+    let root = entity_model_root_transform(instance);
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+
+    // Head (root child) carries the two ears at their bind poses.
+    let (head_pos, head_rot) = sample("head");
+    let head_pose = bat_textured_pose(BAT_HEAD_POSE, head_pos, head_rot);
+    let head_t = root * part_pose_transform(head_pose);
+    emit_textured_cubes_at_pose(mesh, root, head_pose, &BAT_TEXTURED_HEAD, texture, uv);
+    emit_textured_cubes_at_pose(
+        mesh,
+        head_t,
+        BAT_RIGHT_EAR_POSE,
+        &BAT_TEXTURED_RIGHT_EAR,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        head_t,
+        BAT_LEFT_EAR_POSE,
+        &BAT_TEXTURED_LEFT_EAR,
+        texture,
+        uv,
+    );
+
+    // Body (root child) carries the wings and feet.
+    let (body_pos, body_rot) = sample("body");
+    let body_pose = bat_textured_pose(BAT_BODY_POSE, body_pos, body_rot);
+    let body_t = root * part_pose_transform(body_pose);
+    emit_textured_cubes_at_pose(mesh, root, body_pose, &BAT_TEXTURED_BODY, texture, uv);
+
+    let (_, feet_rot) = sample("feet");
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        bat_textured_pose(BAT_FEET_POSE, [0.0; 3], feet_rot),
+        &BAT_TEXTURED_FEET,
+        texture,
+        uv,
+    );
+
+    // Each wing (body child) carries its tip.
+    let (_, right_wing_rot) = sample("right_wing");
+    let right_wing_pose = bat_textured_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
+    let right_wing_t = body_t * part_pose_transform(right_wing_pose);
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        right_wing_pose,
+        &BAT_TEXTURED_RIGHT_WING,
+        texture,
+        uv,
+    );
+    let (_, right_tip_rot) = sample("right_wing_tip");
+    emit_textured_cubes_at_pose(
+        mesh,
+        right_wing_t,
+        bat_textured_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot),
+        &BAT_TEXTURED_RIGHT_WING_TIP,
+        texture,
+        uv,
+    );
+
+    let (_, left_wing_rot) = sample("left_wing");
+    let left_wing_pose = bat_textured_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
+    let left_wing_t = body_t * part_pose_transform(left_wing_pose);
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        left_wing_pose,
+        &BAT_TEXTURED_LEFT_WING,
+        texture,
+        uv,
+    );
+    let (_, left_tip_rot) = sample("left_wing_tip");
+    emit_textured_cubes_at_pose(
+        mesh,
+        left_wing_t,
+        bat_textured_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
+        &BAT_TEXTURED_LEFT_WING_TIP,
+        texture,
+        uv,
+    );
 }
 
 /// The four leg part indices in the llama body layers, matching the colored

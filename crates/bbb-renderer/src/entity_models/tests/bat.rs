@@ -77,4 +77,65 @@ fn bat_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         })
     );
+    // The texture-ref accessor lists exactly the single base texture.
+    assert_eq!(
+        bat_entity_texture_refs(),
+        &[EntityModelTextureRef {
+            path: "textures/entity/bat/bat.png",
+            size: [32, 32],
+        }]
+    );
+}
+
+#[test]
+fn bat_textured_cubes_match_vanilla_body_layer_uvs() {
+    // Vanilla `BatModel.createBodyLayer` texOffs (atlas 32×32); no `CubeDeformation`, so each
+    // `uv_size` matches the box `size`.
+    assert_eq!(BAT_TEXTURED_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(BAT_TEXTURED_BODY[0].uv_size, [3.0, 5.0, 2.0]);
+    assert_eq!(BAT_TEXTURED_HEAD[0].tex, [0.0, 7.0]);
+    assert_eq!(BAT_TEXTURED_RIGHT_EAR[0].tex, [1.0, 15.0]);
+    assert_eq!(BAT_TEXTURED_LEFT_EAR[0].tex, [8.0, 15.0]);
+    assert_eq!(BAT_TEXTURED_RIGHT_WING[0].tex, [12.0, 0.0]);
+    assert_eq!(BAT_TEXTURED_RIGHT_WING_TIP[0].tex, [16.0, 0.0]);
+    assert_eq!(BAT_TEXTURED_LEFT_WING[0].tex, [12.0, 7.0]);
+    assert_eq!(BAT_TEXTURED_LEFT_WING_TIP[0].tex, [16.0, 8.0]);
+    assert_eq!(BAT_TEXTURED_FEET[0].tex, [16.0, 16.0]);
+    assert!(!BAT_TEXTURED_BODY[0].mirror);
+}
+
+#[test]
+fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&bat_texture_images()).unwrap();
+
+    // Bat renders into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`). Nine cubes →
+    // 54 faces / 216 vertices, with nothing on the translucent or eyes passes and a white tint.
+    let base = EntityModelInstance::bat(920, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 54);
+    assert_eq!(meshes.cutout.vertices.len(), 216);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // The looping flap re-poses the wings as the age advances and repeats every 10 ticks.
+    let later = entity_model_textured_meshes(&[base.with_age_in_ticks(3.0)], &atlas);
+    assert_ne!(meshes.cutout.vertices, later.cutout.vertices);
+    let one_cycle = entity_model_textured_meshes(&[base.with_age_in_ticks(10.0)], &atlas);
+    assert_eq!(meshes.cutout.vertices, one_cycle.cutout.vertices);
+}
+
+fn bat_texture_images() -> Vec<EntityModelTextureImage> {
+    bat_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
 }

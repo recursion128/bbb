@@ -723,7 +723,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 135] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 136] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -859,6 +859,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     STRIDER_BABY_TEXTURE_REF,
     TURTLE_TEXTURE_REF,
     TURTLE_BABY_TEXTURE_REF,
+    BAT_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -914,6 +915,13 @@ pub(in crate::entity_models) const TURTLE_ENTITY_TEXTURE_REFS: [EntityModelTextu
 
 pub fn turtle_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &TURTLE_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const BAT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [BAT_TEXTURE_REF];
+
+pub fn bat_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &BAT_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const SQUID_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [

@@ -148,7 +148,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::Bat => {
-                emit_bat_model(&mut mesh, *instance);
+                if !skip_texture_backed_entities {
+                    emit_bat_model(&mut mesh, *instance);
+                }
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {

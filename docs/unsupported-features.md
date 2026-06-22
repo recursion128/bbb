@@ -1374,24 +1374,28 @@ When an agent does any of the following, update this file in the same slice:
       head/body/leg hierarchy as the colored path. The egg-laying leg amplitude (`isLayingEgg`,
       the `layEgg`/`layEggAmplitude` multipliers) and the `egg_belly` overlay shell (`hasEgg`)
       remain unsupported
-    - bat entities render on the colored path off the real vanilla 26.1 `BatModel`: the
-      native entity scene (`entity_scene.rs`) projects vanilla type id `10` to the new
-      `EntityModelKind::Bat`, replacing the former placeholder box. Renderer-owned vanilla
+    - bat entities are wired end to end on both render paths off the real vanilla 26.1
+      `BatModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `10` to the
+      new `EntityModelKind::Bat`, replacing the former placeholder box. Renderer-owned vanilla
       `BatModel.createBodyLayer()` geometry (atlas 32×32) — the `texOffs(0, 0)` 3×5×2 body and
-      `texOffs(0, 0)` 4×3×2 head at `+17`, the zero-thickness ear/wing/wing-tip/feet planes
-      hand-emitted through the bind-pose hierarchy (ears parented under the head, wings and feet
-      under the body, each wing tip under its wing). This slice also introduces a renderer-owned
-      port of the vanilla `net.minecraft.client.animation` keyframe framework
-      (`entity_models/keyframe.rs`): `AnimationDefinition` / `AnimationChannel` / `Keyframe` with
-      the `KeyframeAnimations.posVec` (y negated) and `degreeVec` (degrees→radians) helpers and
-      LINEAR-interpolation sampling (the `Mth.binarySearch` previous/next lookup plus the clamped
-      `lerp(prev.post, next.pre, alpha)·scale`) verbatim. The looping 0.5s `BatAnimation.BAT_FLYING`
-      definition over its seven bones (head, body, feet, both wings, both wing tips) drives the
-      flap, sampled at `ageInTicks·0.05` seconds and added to the bind pose as vanilla `applyStatic`
-      offsets. The textured base layer (`textures/entity/bat/bat.png` into the cutout mesh), the
-      `isResting` branch and the `BAT_RESTING` resting animation, the idle head-look pose, the
-      `AnimationState` start-tick phase offset, and the keyframe `CATMULLROM` interpolation /
-      `Scale` target (only `LINEAR` + position/rotation are ported so far) remain unsupported
+      `texOffs(0, 7)` 4×3×2 head at `+17`, the zero-thickness ear (`texOffs(1, 15)` /
+      `texOffs(8, 15)`), wing (`texOffs(12, 0)` / `texOffs(12, 7)`), wing-tip (`texOffs(16, 0)` /
+      `texOffs(16, 8)`) and feet (`texOffs(16, 16)`) planes hand-emitted through the bind-pose
+      hierarchy (ears parented under the head, wings and feet under the body, each wing tip under
+      its wing). This slice also introduces a renderer-owned port of the vanilla
+      `net.minecraft.client.animation` keyframe framework (`entity_models/keyframe.rs`):
+      `AnimationDefinition` / `AnimationChannel` / `Keyframe` with the `KeyframeAnimations.posVec`
+      (y negated) and `degreeVec` (degrees→radians) helpers and LINEAR-interpolation sampling (the
+      `Mth.binarySearch` previous/next lookup plus the clamped `lerp(prev.post, next.pre,
+      alpha)·scale`) verbatim. The looping 0.5s `BatAnimation.BAT_FLYING` definition over its seven
+      bones (head, body, feet, both wings, both wing tips) drives the flap, sampled at
+      `ageInTicks·0.05` seconds and added to the bind pose as vanilla `applyStatic` offsets. The
+      textured base layer draws the `textures/entity/bat/bat.png` atlas reference into the cutout
+      mesh (vanilla `RenderTypes::entityCutoutCull`), hand-emitted through the same animated
+      head/body/wing hierarchy as the colored path. The `isResting` branch and the `BAT_RESTING`
+      resting animation, the idle head-look pose, the `AnimationState` start-tick phase offset, and
+      the keyframe `CATMULLROM` interpolation / `Scale` target (only `LINEAR` + position/rotation
+      are ported so far) remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the
