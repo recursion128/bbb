@@ -1418,6 +1418,23 @@ When an agent does any of the following, update this file in the same slice:
       striped texture with a single representative yellow). The anger pose (`isAngry`), the rolled-up
       fall pose (`rollAmount`, `Mth.rotLerpRad` toward `3.0915928`), the stinger-loss visibility
       (`hasStinger`) and the nectar/angry texture swaps remain unsupported
+    - breeze entities render on the colored path off the real vanilla 26.1 `BreezeModel`: the native
+      entity scene (`entity_scene.rs`) projects vanilla type id `17` to the new
+      `EntityModelKind::Breeze`, replacing the former placeholder box. Renderer-owned vanilla base
+      body layer geometry (`createBodyLayer` retained to `head` + `rods`, atlas 32×32) — the head
+      (`texOffs(4, 24)` 10×3×4 jaw plate + `texOffs(0, 0)` 8×8×8 cube) and the three `texOffs(0, 17)`
+      2×8×2 rods at their compound bind rotations, under the `body` pivot. This slice extends the
+      keyframe framework (`entity_models/keyframe.rs`) with the cubic `CATMULLROM` interpolation
+      (vanilla `AnimationChannel.Interpolations.CATMULLROM` sampling the four surrounding
+      `postTarget`s through `Mth.catmullrom`), the second keyframe entity after the bat and the first
+      to need it. The looping 2.0s `BreezeAnimation.IDLE` base-body channels drive the model — the
+      head bobs on a CATMULLROM position spline while the rods spin a full `1080°` of yaw per cycle
+      (LINEAR) and bob on a LINEAR position spline — sampled from `ageInTicks` (the idle
+      `AnimationState` runs continuously). The colored path approximates the translucent wind body
+      with a single representative slate. The textured base layer
+      (`textures/entity/breeze/breeze.png`, a `RenderTypes::entityTranslucent` pass), the swirling
+      `breeze_wind.png` wind layer, the emissive `breeze_eyes.png` eyes, and the
+      shoot/slide/inhale/jump action animations remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

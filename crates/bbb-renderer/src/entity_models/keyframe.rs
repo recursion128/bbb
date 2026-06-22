@@ -7,14 +7,15 @@
 //! sampling reproduces `KeyframeAnimation.Entry.apply` exactly: a binary search for the
 //! surrounding keyframes, a clamped alpha, and the interpolation.
 //!
-//! Only the [`KeyframeInterpolation::Linear`] interpolation and the position/rotation targets
-//! are implemented so far — the cubic `CATMULLROM` interpolation and the `SCALE` target are
-//! added when the first entity that uses them is wired (the bat uses neither).
+//! The [`KeyframeInterpolation::Linear`] and [`KeyframeInterpolation::CatmullRom`] interpolations
+//! and the position/rotation targets are implemented — the `SCALE` target is added when the first
+//! entity that uses it is wired.
 
-/// Vanilla `AnimationChannel.Interpolations`. Only `LINEAR` is implemented so far.
+/// Vanilla `AnimationChannel.Interpolations` (`LINEAR` and the cubic `CATMULLROM`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::entity_models) enum KeyframeInterpolation {
     Linear,
+    CatmullRom,
 }
 
 /// Vanilla `AnimationChannel.Target` (the subset implemented so far). `Position` mirrors
@@ -120,6 +121,7 @@ pub(in crate::entity_models) fn sample_keyframe_channel(
         0.0
     };
 
+    // Vanilla picks the interpolation from the NEXT keyframe (`keyframes[next].interpolation`).
     match next_frame.interpolation {
         KeyframeInterpolation::Linear => {
             // Vanilla LINEAR: lerp(prev.postTarget, next.preTarget, alpha) * targetScale.
@@ -131,11 +133,33 @@ pub(in crate::entity_models) fn sample_keyframe_channel(
                 lerp(point0[2], point1[2], alpha) * target_scale,
             ]
         }
+        KeyframeInterpolation::CatmullRom => {
+            // Vanilla CATMULLROM samples the four surrounding `postTarget`s (the prev/next pair
+            // plus the clamped neighbours `prev - 1` and `next + 1`) through `Mth.catmullrom`.
+            let point0 = keyframes[prev.saturating_sub(1)].post_target;
+            let point1 = previous_frame.post_target;
+            let point2 = next_frame.post_target;
+            let point3 = keyframes[(next + 1).min(keyframes.len() - 1)].post_target;
+            [
+                catmullrom(alpha, point0[0], point1[0], point2[0], point3[0]) * target_scale,
+                catmullrom(alpha, point0[1], point1[1], point2[1], point3[1]) * target_scale,
+                catmullrom(alpha, point0[2], point1[2], point2[2], point3[2]) * target_scale,
+            ]
+        }
     }
 }
 
 fn lerp(a: f32, b: f32, alpha: f32) -> f32 {
     a + (b - a) * alpha
+}
+
+/// Vanilla `Mth.catmullrom(alpha, p0, p1, p2, p3)`: the Catmull-Rom spline through `p1`/`p2` with
+/// `p0`/`p3` as the surrounding control points.
+fn catmullrom(alpha: f32, p0: f32, p1: f32, p2: f32, p3: f32) -> f32 {
+    0.5 * (2.0 * p1
+        + (p2 - p0) * alpha
+        + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * alpha * alpha
+        + (3.0 * p1 - p0 - 3.0 * p2 + p3) * alpha * alpha * alpha)
 }
 
 /// The position and rotation offsets a bone receives from an [`AnimationDefinition`] at

@@ -55,6 +55,29 @@ fn sample_keyframe_channel_linear_matches_vanilla() {
 }
 
 #[test]
+fn sample_keyframe_channel_catmullrom_matches_vanilla() {
+    // The breeze head bob: a 3-keyframe `0 → 1 → 0` spline, all CATMULLROM.
+    const KEYS: [Keyframe; 3] = [
+        keyframe(0.0, [0.0, 0.0, 0.0], KeyframeInterpolation::CatmullRom),
+        keyframe(1.0, [0.0, 1.0, 0.0], KeyframeInterpolation::CatmullRom),
+        keyframe(2.0, [0.0, 0.0, 0.0], KeyframeInterpolation::CatmullRom),
+    ];
+
+    // The spline passes through each keyframe's `postTarget` exactly.
+    assert!((sample_keyframe_channel(&KEYS, 0.0, 1.0)[1] - 0.0).abs() < 1.0e-6);
+    assert!((sample_keyframe_channel(&KEYS, 1.0, 1.0)[1] - 1.0).abs() < 1.0e-6);
+    assert!((sample_keyframe_channel(&KEYS, 2.0, 1.0)[1] - 0.0).abs() < 1.0e-6);
+
+    // Midway through the first segment, vanilla `Mth.catmullrom(0.5, p0=0, p1=0, p2=1, p3=0)`:
+    // `0.5·(0 + 0.5 + 4·0.25 − 3·0.125) = 0.5·1.125 = 0.5625` (`p0` clamps to `keyframes[0]`).
+    let mid = sample_keyframe_channel(&KEYS, 0.5, 1.0)[1];
+    assert!((mid - 0.5625).abs() < 1.0e-6, "got {mid}");
+
+    // The target scale multiplies the cubic result.
+    assert!((sample_keyframe_channel(&KEYS, 0.5, 2.0)[1] - 1.125).abs() < 1.0e-6);
+}
+
+#[test]
 fn sample_bone_offsets_reads_bat_flying_definition() {
     // At t=0 the flying body holds `degreeVec(40, 0, 0)` and the wings ±85° yaw.
     let (body_pos, body_rot) = sample_bone_offsets(&BAT_FLYING, "body", 0.0, 1.0);

@@ -7,6 +7,7 @@ mod bat;
 mod bee;
 mod blaze;
 mod boat;
+mod breeze;
 mod camel;
 mod chicken;
 mod cod;

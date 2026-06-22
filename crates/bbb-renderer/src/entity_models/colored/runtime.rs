@@ -157,6 +157,9 @@ fn entity_model_mesh_with_options(
                     emit_bee_model(&mut mesh, *instance, baby);
                 }
             }
+            EntityModelKind::Breeze => {
+                emit_breeze_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -892,9 +895,9 @@ fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     }
 }
 
-/// Combine a bat bind pose with the keyframe position/rotation offsets (vanilla
-/// `ModelPart::offsetPos` / `offsetRotation` add to the bind pose).
-fn bat_animated_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
+/// Combine a bind pose with the keyframe position/rotation offsets (vanilla `ModelPart::offsetPos`
+/// / `offsetRotation` add to the bind pose). Shared by the keyframe-animated entities.
+fn keyframe_animated_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
     PartPose {
         offset: [
             bind.offset[0] + position[0],
@@ -923,7 +926,7 @@ fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
 
     // Head (root child) carries the two ears at their bind poses.
     let (head_pos, head_rot) = sample("head");
-    let head_pose = bat_animated_pose(BAT_HEAD_POSE, head_pos, head_rot);
+    let head_pose = keyframe_animated_pose(BAT_HEAD_POSE, head_pos, head_rot);
     let head_t = root * part_pose_transform(head_pose);
     emit_model_cubes_at_pose(mesh, root, head_pose, &BAT_HEAD);
     emit_model_cubes_at_pose(mesh, head_t, BAT_RIGHT_EAR_POSE, &BAT_RIGHT_EAR);
@@ -931,7 +934,7 @@ fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
 
     // Body (root child) carries the wings and feet.
     let (body_pos, body_rot) = sample("body");
-    let body_pose = bat_animated_pose(BAT_BODY_POSE, body_pos, body_rot);
+    let body_pose = keyframe_animated_pose(BAT_BODY_POSE, body_pos, body_rot);
     let body_t = root * part_pose_transform(body_pose);
     emit_model_cubes_at_pose(mesh, root, body_pose, &BAT_BODY);
 
@@ -939,32 +942,32 @@ fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_cubes_at_pose(
         mesh,
         body_t,
-        bat_animated_pose(BAT_FEET_POSE, [0.0; 3], feet_rot),
+        keyframe_animated_pose(BAT_FEET_POSE, [0.0; 3], feet_rot),
         &BAT_FEET,
     );
 
     // Each wing (body child) carries its tip.
     let (_, right_wing_rot) = sample("right_wing");
-    let right_wing_pose = bat_animated_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
+    let right_wing_pose = keyframe_animated_pose(BAT_RIGHT_WING_POSE, [0.0; 3], right_wing_rot);
     let right_wing_t = body_t * part_pose_transform(right_wing_pose);
     emit_model_cubes_at_pose(mesh, body_t, right_wing_pose, &BAT_RIGHT_WING);
     let (_, right_tip_rot) = sample("right_wing_tip");
     emit_model_cubes_at_pose(
         mesh,
         right_wing_t,
-        bat_animated_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot),
+        keyframe_animated_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot),
         &BAT_RIGHT_WING_TIP,
     );
 
     let (_, left_wing_rot) = sample("left_wing");
-    let left_wing_pose = bat_animated_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
+    let left_wing_pose = keyframe_animated_pose(BAT_LEFT_WING_POSE, [0.0; 3], left_wing_rot);
     let left_wing_t = body_t * part_pose_transform(left_wing_pose);
     emit_model_cubes_at_pose(mesh, body_t, left_wing_pose, &BAT_LEFT_WING);
     let (_, left_tip_rot) = sample("left_wing_tip");
     emit_model_cubes_at_pose(
         mesh,
         left_wing_t,
-        bat_animated_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
+        keyframe_animated_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
         &BAT_LEFT_WING_TIP,
     );
 }
@@ -1162,6 +1165,40 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
         },
         back_cubes,
     );
+}
+
+fn emit_breeze_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `BreezeModel.setupAnim` applies the looping `BreezeAnimation.IDLE` to the base body.
+    // The idle `AnimationState` runs continuously, so the looping definition is sampled from
+    // `age_in_ticks` (the exact start tick is deferred entity-side data, imperceptible for a
+    // continuous idle). The translucent wind layer, the emissive eyes, and the
+    // shoot/slide/inhale/jump action animations are deferred entity-side state. The head and the
+    // three rods hang under the `body` pivot, so the hierarchy is walked by hand. Breeze uses
+    // `LivingEntityRenderer.setupRotations`.
+    let seconds = keyframe_elapsed_seconds(&BREEZE_IDLE, instance.render_state.age_in_ticks * 0.05);
+    let sample = |bone: &str| sample_bone_offsets(&BREEZE_IDLE, bone, seconds, 1.0);
+    let root = entity_model_root_transform(instance);
+
+    // Body pivot (root child): no IDLE channel, so it holds its identity bind pose.
+    let body_t = root * part_pose_transform(BREEZE_BODY_POSE);
+
+    // Head (body child): the IDLE position bob (CATMULLROM).
+    let (head_pos, _) = sample("head");
+    emit_model_cubes_at_pose(
+        mesh,
+        body_t,
+        keyframe_animated_pose(BREEZE_HEAD_POSE, head_pos, [0.0; 3]),
+        &BREEZE_HEAD,
+    );
+
+    // Rods pivot (body child): the IDLE yaw spin plus the position bob, carrying the three rods at
+    // their fixed bind poses.
+    let (rods_pos, rods_rot) = sample("rods");
+    let rods_t =
+        body_t * part_pose_transform(keyframe_animated_pose(BREEZE_RODS_POSE, rods_pos, rods_rot));
+    emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_1_POSE, &BREEZE_ROD);
+    emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_2_POSE, &BREEZE_ROD);
+    emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_3_POSE, &BREEZE_ROD);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

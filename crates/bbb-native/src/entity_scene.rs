@@ -695,7 +695,7 @@ fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_BLAZE_ID => EntityModelKind::Blaze,
-        VANILLA_ENTITY_TYPE_BREEZE_ID => placeholder("todo_breeze_bounds", 0.6, 1.77, 0.6),
+        VANILLA_ENTITY_TYPE_BREEZE_ID => EntityModelKind::Breeze,
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => {
             placeholder("todo_breeze_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
         }
@@ -2986,6 +2986,18 @@ mod tests {
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
             EntityModelKind::Bee { baby: true }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_breeze_to_real_model() {
+        // The breeze was a placeholder render box; it now resolves to the real `BreezeModel`, the
+        // second keyframe entity (and the first to use CATMULLROM). Its looping `IDLE` head bob /
+        // rod spin reads the projected age; the wind layer, eyes, and action animations are
+        // deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_BREEZE_ID, &[]),
+            EntityModelKind::Breeze
         );
     }
 

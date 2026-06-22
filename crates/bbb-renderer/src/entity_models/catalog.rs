@@ -81,6 +81,12 @@ pub enum EntityModelKind {
     Bee {
         baby: bool,
     },
+    /// Breeze (`BreezeModel`, `BreezeRenderer`). The base body layer (head + three rods) driven by
+    /// the looping `BreezeAnimation.IDLE` keyframe animation (the second keyframe entity, and the
+    /// first to use CATMULLROM), sampled from `EntityRenderState`'s `age_in_ticks`. The swirling
+    /// translucent wind layer, the emissive eyes, and the shoot/slide/inhale/jump action animations
+    /// are deferred entity-side state.
+    Breeze,
     Phantom {
         size: i32,
     },

@@ -250,6 +250,14 @@ pub(in crate::entity_models) const BEE_BABY_TEXTURE_REF: EntityModelTextureRef =
         size: [32, 32],
     };
 
+// Vanilla `BreezeRenderer` base body texture (the swirling wind layer / emissive eyes use the
+// separate `breeze_wind.png` / `breeze_eyes.png`).
+pub(in crate::entity_models) const BREEZE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/breeze/breeze.png",
+        size: [32, 32],
+    };
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",
