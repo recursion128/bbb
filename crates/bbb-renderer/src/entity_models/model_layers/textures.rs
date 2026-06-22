@@ -206,6 +206,20 @@ pub(in crate::entity_models) const ALLAY_TEXTURE_REF: EntityModelTextureRef =
         size: [32, 32],
     };
 
+// Vanilla `StriderRenderer` non-suffocating textures. The cold/suffocating swaps
+// (`strider_cold.png` / `strider_cold_baby.png`) and the saddle equipment layer are deferred.
+pub(in crate::entity_models) const STRIDER_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/strider/strider.png",
+        size: [64, 128],
+    };
+
+pub(in crate::entity_models) const STRIDER_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/strider/strider_baby.png",
+        size: [32, 32],
+    };
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",

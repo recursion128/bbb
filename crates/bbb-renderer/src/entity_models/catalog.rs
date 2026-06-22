@@ -52,6 +52,14 @@ pub enum EntityModelKind {
     /// animation, and the head yaw/pitch. The dance pose (`isDancing`/`isSpinning`) and
     /// held-item arm poses are deferred entity-side state.
     Allay,
+    /// Strider (`AdultStriderModel` / `BabyStriderModel`, `StriderRenderer`). The body sway,
+    /// vertical bob, leg swing/lift, and bristle flow read `EntityRenderState.age_in_ticks`,
+    /// the walk animation, and the look angles. The ridden pose (`isRidden` zeroing the body
+    /// look), the saddle equipment layer, and the cold/suffocating texture and shake are
+    /// deferred entity-side state.
+    Strider {
+        baby: bool,
+    },
     Phantom {
         size: i32,
     },

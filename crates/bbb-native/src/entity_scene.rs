@@ -796,9 +796,9 @@ fn entity_model_kind_with_time_and_registries(
             glow: false,
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_STRIDER_ID => {
-            quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_STRIDER_ID => EntityModelKind::Strider {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_TADPOLE_ID => placeholder("todo_tadpole_bounds", 0.4, 0.3, 0.4),
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
             placeholder("todo_text_display_bounds", 1.0, 0.5, 0.0625)
@@ -2951,6 +2951,26 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ALLAY_ID, &[]),
             EntityModelKind::Allay
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_strider_baby_from_data() {
+        // The strider previously fell back to the horse quadruped; it now resolves to the real
+        // `AdultStriderModel` / `BabyStriderModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
+        // (index 16, default adult). The body sway/bob, leg swing/lift, and bristle flow read
+        // the projected age, walk animation, and look angles; the ridden pose, saddle layer, and
+        // cold/suffocating texture are deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_STRIDER_ID, &[]),
+            EntityModelKind::Strider { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_STRIDER_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Strider { baby: true }
         );
     }
 

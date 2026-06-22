@@ -43,6 +43,8 @@ pub(super) const SALMON_RED: [f32; 4] = [0.74, 0.33, 0.31, 1.0];
 pub(super) const TROPICAL_FISH_ORANGE: [f32; 4] = [0.93, 0.52, 0.18, 1.0];
 pub(super) const VEX_GREY: [f32; 4] = [0.62, 0.69, 0.74, 1.0];
 pub(super) const ALLAY_BLUE: [f32; 4] = [0.42, 0.62, 0.86, 1.0];
+pub(super) const STRIDER_MAROON: [f32; 4] = [0.49, 0.20, 0.27, 1.0];
+pub(super) const STRIDER_LEG: [f32; 4] = [0.78, 0.32, 0.30, 1.0];
 pub(super) const GLOW_SQUID_TEAL: [f32; 4] = [0.13, 0.65, 0.62, 1.0];
 pub(super) const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 pub(super) const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
@@ -87,6 +89,7 @@ mod skeleton_clothing;
 mod slime;
 mod spider;
 mod squid;
+mod strider;
 mod textures;
 mod tropical_fish;
 mod vex;
@@ -132,6 +135,7 @@ pub(super) use skeleton_clothing::*;
 pub(super) use slime::*;
 pub(super) use spider::*;
 pub(super) use squid::*;
+pub(super) use strider::*;
 pub(super) use textures::*;
 pub use textures::{
     allay_entity_texture_refs, armor_stand_entity_texture_refs, blaze_entity_texture_refs,

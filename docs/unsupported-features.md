@@ -1330,6 +1330,27 @@ When an agent does any of the following, update this file in the same slice:
       roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch and
       held item), and the constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and
       overlay remain unsupported
+    - strider entities (colored render path) are wired end to end: the native entity scene
+      (`entity_scene.rs`) projects vanilla type id `129` to the real `AdultStriderModel` /
+      `BabyStriderModel`, replacing the former horse-quadruped fallback, keyed off the synced
+      `AgeableMob.DATA_BABY_ID` (index 16, default adult). Renderer-owned vanilla 26.1
+      geometry: the adult `createBodyLayer()` (atlas 64×128) — the `texOffs(0, 0)` 16×14×16
+      body, the two `texOffs(0, 32)`/`texOffs(0, 55)` 4×16×4 legs, and the six zero-thickness
+      `12×0×16` bristles (right mirrored, `texOffs(16, 33/49/65)`) parented under the body — and
+      the baby `createBodyLayer()` (atlas 32×32) — the `texOffs(0, 0)` 7×7×8 body, two
+      `texOffs(0/8, 24)` 2×4×2 legs, and three zero-thickness `7×3×0` bristles. The shared
+      `StriderModel.setupAnim` (body sway `zRot = 0.1·sin(pos·1.5)·4·speed`, leg swing
+      `xRot = sin(pos·0.75 + phase)·2·speed` and roll `zRot = (π/18)·cos(pos·0.75 + phase)·speed`
+      with `speed = min(walkSpeed, 0.25)`) plus `customAnimations` (body bob `base -
+      mul·cos(pos·1.5)·2·speed`, leg lift `base + 2·sin(pos·0.75 + phase)·2·speed`, and the
+      bristle flow `cos(pos·1.5 + π)·speed` with the per-bristle `0.6/1.2/1.3` weights and the
+      `0.1·sin(age·0.4)` / `0.1·sin(age·0.2)` / `0.05·sin(age·-0.4)` idle ripple — adult bristles
+      flow on `zRot`, baby bristles on `xRot`) are driven by the projected look angles, walk
+      animation, and `age_in_ticks`, under the standard `LivingEntityRenderer.setupRotations`.
+      The texture-backed render path (the `textures/entity/strider/strider.png` and
+      `strider_baby.png` references are registered), the ridden pose (`isRidden` zeroing the body
+      look), the saddle equipment layer, and the cold/suffocating texture swap
+      (`strider_cold.png` / `strider_cold_baby.png`) and shake remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

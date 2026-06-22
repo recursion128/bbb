@@ -40,6 +40,7 @@ mod sleeping;
 mod slime;
 mod spider;
 mod squid;
+mod strider;
 mod tropical_fish;
 mod upside_down;
 mod vex;

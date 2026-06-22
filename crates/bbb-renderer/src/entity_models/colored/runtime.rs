@@ -136,6 +136,9 @@ fn entity_model_mesh_with_options(
                     emit_allay_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Strider { baby } => {
+                emit_strider_model(&mut mesh, *instance, baby);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -578,6 +581,193 @@ fn emit_allay_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         },
         &ALLAY_WING,
     );
+}
+
+fn emit_strider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    if baby {
+        emit_strider_baby_model(mesh, instance);
+    } else {
+        emit_strider_adult_model(mesh, instance);
+    }
+}
+
+fn emit_strider_adult_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `StriderModel.setupAnim` + `AdultStriderModel.customAnimations`: the body sways
+    // and bobs, the legs swing/roll/lift in opposition, and the six bristles flow with the
+    // walk plus an idle `ageInTicks` ripple. Legs are children of the root; the bristles hang
+    // under the body, so the body sway carries them — the hierarchy is walked by hand. The
+    // ridden pose (`isRidden` zeroing the body look), the saddle layer, and the cold texture
+    // are deferred entity-side state. Strider uses `LivingEntityRenderer.setupRotations`.
+    let age = instance.render_state.age_in_ticks;
+    let pos = instance.render_state.walk_animation_pos;
+    let speed = strider_animation_speed(instance.render_state.walk_animation_speed);
+    let root = entity_model_root_transform(instance);
+
+    // Legs (children of root) swing on `xRot`, roll on `zRot`, and lift on `y`.
+    emit_model_cubes_at_pose(
+        mesh,
+        root,
+        PartPose {
+            offset: [
+                STRIDER_RIGHT_LEG_X,
+                strider_leg_y(STRIDER_LEG_BASE_Y, pos, speed, true),
+                0.0,
+            ],
+            rotation: [
+                strider_leg_x_rot(pos, speed, true),
+                0.0,
+                strider_leg_z_rot(pos, speed, true),
+            ],
+        },
+        &STRIDER_RIGHT_LEG,
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        root,
+        PartPose {
+            offset: [
+                STRIDER_LEFT_LEG_X,
+                strider_leg_y(STRIDER_LEG_BASE_Y, pos, speed, false),
+                0.0,
+            ],
+            rotation: [
+                strider_leg_x_rot(pos, speed, false),
+                0.0,
+                strider_leg_z_rot(pos, speed, false),
+            ],
+        },
+        &STRIDER_LEFT_LEG,
+    );
+
+    // Body (child of root) tracks the look, sways on `zRot`, and bobs on `y`.
+    let body_pose = PartPose {
+        offset: [
+            0.0,
+            strider_body_y(STRIDER_BODY_BASE_Y, 2.0, pos, speed),
+            0.0,
+        ],
+        rotation: [
+            instance.render_state.head_pitch.to_radians(),
+            instance.render_state.head_yaw.to_radians(),
+            strider_body_z_rot(pos, speed),
+        ],
+    };
+    let body_t = root * part_pose_transform(body_pose);
+    emit_model_cubes_at_pose(mesh, root, body_pose, &STRIDER_BODY);
+
+    // The six bristles (children of body) hold their rest roll plus the flow ripple.
+    let flow = strider_bristle_flow(pos, speed);
+    let top = strider_bristle_top_flow(flow, age);
+    let middle = strider_bristle_middle_flow(flow, age);
+    let bottom = strider_bristle_bottom_flow(flow, age);
+    for (pose_const, cubes, add) in [
+        (STRIDER_RIGHT_TOP_BRISTLE_POSE, &STRIDER_RIGHT_BRISTLE, top),
+        (
+            STRIDER_RIGHT_MIDDLE_BRISTLE_POSE,
+            &STRIDER_RIGHT_BRISTLE,
+            middle,
+        ),
+        (
+            STRIDER_RIGHT_BOTTOM_BRISTLE_POSE,
+            &STRIDER_RIGHT_BRISTLE,
+            bottom,
+        ),
+        (STRIDER_LEFT_TOP_BRISTLE_POSE, &STRIDER_LEFT_BRISTLE, top),
+        (
+            STRIDER_LEFT_MIDDLE_BRISTLE_POSE,
+            &STRIDER_LEFT_BRISTLE,
+            middle,
+        ),
+        (
+            STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
+            &STRIDER_LEFT_BRISTLE,
+            bottom,
+        ),
+    ] {
+        let mut pose = pose_const;
+        pose.rotation[2] += add;
+        emit_model_cubes_at_pose(mesh, body_t, pose, cubes);
+    }
+}
+
+fn emit_strider_baby_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // The baby strider shares `StriderModel.setupAnim` (body sway + leg swing/roll) but has its
+    // own smaller geometry and `BabyStriderModel.customAnimations`: a shallower body bob, the
+    // leg lift, and three bristles that flap on `xRot` (no rest roll).
+    let age = instance.render_state.age_in_ticks;
+    let pos = instance.render_state.walk_animation_pos;
+    let speed = strider_animation_speed(instance.render_state.walk_animation_speed);
+    let root = entity_model_root_transform(instance);
+
+    emit_model_cubes_at_pose(
+        mesh,
+        root,
+        PartPose {
+            offset: [
+                STRIDER_BABY_RIGHT_LEG_X,
+                strider_leg_y(STRIDER_BABY_LEG_BASE_Y, pos, speed, true),
+                0.0,
+            ],
+            rotation: [
+                strider_leg_x_rot(pos, speed, true),
+                0.0,
+                strider_leg_z_rot(pos, speed, true),
+            ],
+        },
+        &STRIDER_BABY_RIGHT_LEG,
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        root,
+        PartPose {
+            offset: [
+                STRIDER_BABY_LEFT_LEG_X,
+                strider_leg_y(STRIDER_BABY_LEG_BASE_Y, pos, speed, false),
+                0.0,
+            ],
+            rotation: [
+                strider_leg_x_rot(pos, speed, false),
+                0.0,
+                strider_leg_z_rot(pos, speed, false),
+            ],
+        },
+        &STRIDER_BABY_LEFT_LEG,
+    );
+
+    let body_pose = PartPose {
+        offset: [
+            0.0,
+            strider_body_y(STRIDER_BABY_BODY_BASE_Y, 1.0, pos, speed),
+            0.0,
+        ],
+        rotation: [
+            instance.render_state.head_pitch.to_radians(),
+            instance.render_state.head_yaw.to_radians(),
+            strider_body_z_rot(pos, speed),
+        ],
+    };
+    let body_t = root * part_pose_transform(body_pose);
+    emit_model_cubes_at_pose(mesh, root, body_pose, &STRIDER_BABY_BODY);
+
+    let flow = strider_bristle_flow(pos, speed);
+    for (pose_const, add) in [
+        (
+            STRIDER_BABY_FRONT_BRISTLE_POSE,
+            strider_bristle_top_flow(flow, age),
+        ),
+        (
+            STRIDER_BABY_MIDDLE_BRISTLE_POSE,
+            strider_bristle_middle_flow(flow, age),
+        ),
+        (
+            STRIDER_BABY_BACK_BRISTLE_POSE,
+            strider_bristle_bottom_flow(flow, age),
+        ),
+    ] {
+        let mut pose = pose_const;
+        pose.rotation[0] += add;
+        emit_model_cubes_at_pose(mesh, body_t, pose, &STRIDER_BABY_BRISTLE);
+    }
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
