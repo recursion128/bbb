@@ -169,6 +169,20 @@ pub(in crate::entity_models) fn arrow_model_root_transform(instance: EntityModel
         * Mat4::from_scale(Vec3::splat(0.9))
 }
 
+/// Vanilla `ThrownTridentRenderer.submit`: a plain `EntityRenderer` that orients the trident along
+/// its flight with `Axis.YP.rotationDegrees(yRot - 90)` then `Axis.ZP.rotationDegrees(xRot + 90)`
+/// (no flip / scale / y-offset; the `+90` points the upright pole along the flight axis).
+/// `TridentModel` is a `Model<Unit>` with no animation, so this is the complete transform; the
+/// enchant-foil overlay and the texture are deferred. The yaw/pitch are projected through
+/// `body_rot` / `head_pitch`.
+pub(in crate::entity_models) fn trident_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_rotation_y((instance.render_state.body_rot - 90.0).to_radians())
+        * Mat4::from_rotation_z((instance.render_state.head_pitch + 90.0).to_radians())
+}
+
 /// Vanilla `LeashKnotRenderer.submit`: a plain `EntityRenderer` that applies only the standard model
 /// flip (`scale(-1, -1, 1)`) — no yaw, no `-1.501` y-offset, no render scale. `LeashKnotModel` has no
 /// `setupAnim`, so this is the complete (not deferred) transform; only the texture is colored-first.

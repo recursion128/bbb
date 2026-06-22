@@ -161,6 +161,10 @@ pub enum EntityModelKind {
     /// fletching planes, the whole mesh scaled 0.9). The impact-shake wobble and the
     /// tipped/spectral textures are deferred; `ArrowRenderer` orients it along its flight.
     Arrow,
+    /// `TridentModel` — the pole, crossguard, and three spikes. The model has no animation, so the
+    /// geometry is complete; the enchant-foil overlay and the texture are deferred.
+    /// `ThrownTridentRenderer` orients it along its flight.
+    Trident,
     Phantom {
         size: i32,
     },

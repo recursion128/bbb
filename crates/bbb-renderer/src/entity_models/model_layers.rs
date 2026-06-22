@@ -81,6 +81,8 @@ pub(super) const EVOKER_FANGS_JAW: [f32; 4] = [0.78, 0.75, 0.68, 1.0];
 pub(super) const LEASH_KNOT_COLOR: [f32; 4] = [0.45, 0.32, 0.22, 1.0];
 pub(super) const ARROW_SHAFT: [f32; 4] = [0.42, 0.30, 0.20, 1.0];
 pub(super) const ARROW_HEAD: [f32; 4] = [0.55, 0.55, 0.58, 1.0];
+pub(super) const TRIDENT_POLE: [f32; 4] = [0.28, 0.46, 0.46, 1.0];
+pub(super) const TRIDENT_SPIKE: [f32; 4] = [0.40, 0.62, 0.60, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -180,6 +182,7 @@ mod squid;
 mod strider;
 mod tadpole;
 mod textures;
+mod trident;
 mod tropical_fish;
 mod turtle;
 mod vex;
@@ -264,6 +267,7 @@ pub use textures::{
     vex_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
     wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
 };
+pub(super) use trident::*;
 pub(super) use tropical_fish::*;
 pub(super) use turtle::*;
 pub(super) use vex::*;

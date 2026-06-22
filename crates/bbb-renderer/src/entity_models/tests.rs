@@ -60,6 +60,7 @@ mod spider;
 mod squid;
 mod strider;
 mod tadpole;
+mod trident;
 mod tropical_fish;
 mod turtle;
 mod upside_down;

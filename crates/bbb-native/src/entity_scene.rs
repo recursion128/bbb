@@ -807,7 +807,7 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_text_display_bounds", 1.0, 0.5, 0.0625)
         }
         VANILLA_ENTITY_TYPE_TNT_ID => placeholder("todo_tnt_bounds", 0.98, 0.98, 0.98),
-        VANILLA_ENTITY_TYPE_TRIDENT_ID => placeholder("todo_trident_bounds", 0.5, 0.5, 0.5),
+        VANILLA_ENTITY_TYPE_TRIDENT_ID => EntityModelKind::Trident,
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
             shape: tropical_fish_shape(data_values),
             base_color: tropical_fish_base_color(data_values),
@@ -3983,6 +3983,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, &[]),
             EntityModelKind::Arrow
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_trident_to_real_model() {
+        // The thrown trident was a placeholder box; it now resolves to the real `TridentModel`. The
+        // model has no animation, so the geometry is complete; the enchant-foil overlay and the
+        // texture are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_TRIDENT_ID, &[]),
+            EntityModelKind::Trident
         );
     }
 

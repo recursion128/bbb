@@ -1685,6 +1685,17 @@ When an agent does any of the following, update this file in the same slice:
       orients the arrow along its flight with `Ry(yRot - 90)` then `Rz(xRot)` (no flip), projected through the
       instance's `body_rot` / `head_pitch`. The tipped/spectral texture-backed path is deferred, so the
       colored debug path renders the shaft cross and the head with two tints
+    - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `135` to the new
+      `EntityModelKind::Trident`, replacing the former placeholder bounds box. The static hierarchy is
+      emitted directly (atlas 32×32): the `pole` (a 1×25×1 shaft) parents the `base` crossguard (3×2×1) and
+      the three spikes (left / middle / right, each 1×4×1), all at ZERO — five cubes. `TridentModel` is a
+      `Model<Unit>` with no animation, so the geometry is complete. `ThrownTridentRenderer` is a plain
+      `EntityRenderer` that orients the trident along its flight with `Ry(yRot - 90)` then `Rz(xRot + 90)`
+      (the `+90` points the upright pole along the flight axis), projected through the instance's `body_rot`
+      / `head_pitch` and captured by `trident_model_root_transform`. The enchant-foil overlay pass and the
+      texture-backed path are deferred, so the colored debug path renders the pole/base in teal and the
+      spikes lighter
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

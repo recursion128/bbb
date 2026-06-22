@@ -24,9 +24,9 @@ use super::transforms::{
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, scaled_model_root_transform,
-    slime_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
-    HUSK_SCALE,
+    slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
+    tropical_fish_model_root_transform, villager_adult_model_root_transform,
+    wither_skeleton_model_root_transform, GIANT_SCALE, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -234,6 +234,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Arrow => {
                 // Colored-only so far (no texture-backed arrow yet), so this arm always emits.
                 emit_arrow_model(&mut mesh, *instance);
+            }
+            EntityModelKind::Trident => {
+                // Colored-only so far (no texture-backed trident yet), so this arm always emits.
+                emit_trident_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -1525,6 +1529,14 @@ fn emit_arrow_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // `ArrowRenderer` flight-oriented transform (`Ry(yRot - 90) · Rz(xRot) · scale(0.9)`).
     let root = arrow_model_root_transform(instance);
     emit_model_parts(mesh, &ARROW_PARTS, root);
+}
+
+fn emit_trident_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `TridentModel` is the pole parenting the crossguard and three spikes, with no
+    // animation, so the bind-pose part tree is emitted directly at the `ThrownTridentRenderer`
+    // flight-oriented transform (`Ry(yRot - 90) · Rz(xRot + 90)`).
+    let root = trident_model_root_transform(instance);
+    emit_model_parts(mesh, &TRIDENT_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
