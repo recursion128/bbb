@@ -18,7 +18,8 @@ use super::selection::{
 };
 use super::transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,
-    end_crystal_model_root_transform, entity_model_root_transform, ghast_model_root_transform,
+    end_crystal_model_root_transform, entity_model_root_transform,
+    evoker_fangs_model_root_transform, ghast_model_root_transform,
     happy_ghast_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
     player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
@@ -221,6 +222,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::EndCrystal => {
                 // Colored-only so far (no texture-backed end crystal yet), so this arm always emits.
                 emit_end_crystal_model(&mut mesh, *instance);
+            }
+            EntityModelKind::EvokerFangs => {
+                // Colored-only so far (no texture-backed evoker fangs yet), so this arm always emits.
+                emit_evoker_fangs_model(&mut mesh, *instance);
             }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
@@ -1488,6 +1493,15 @@ fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     // `EndCrystalRenderer` transform (`scale(2.0)` + `translate(0, -0.5, 0)`, no living flip).
     let root = end_crystal_model_root_transform(instance);
     emit_model_parts(mesh, &END_CRYSTAL_PARTS, root);
+}
+
+fn emit_evoker_fangs_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `EvokerFangsModel` is the base block parenting the two jaws, whose bind rotations are
+    // the closed-jaw `biteProgress = 0` rest. The bite open/close, the base drop, and the emerge
+    // scale are deferred, so the bind-pose part tree is emitted at the `EvokerFangsRenderer`
+    // transform (`Ry(90 - yRot)` plus the standard flip and `-1.501` y-offset).
+    let root = evoker_fangs_model_root_transform(instance);
+    emit_model_parts(mesh, &EVOKER_FANGS_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

@@ -22,6 +22,7 @@ mod end_crystal;
 mod enderman;
 mod endermite;
 mod equine;
+mod evoker_fangs;
 mod frog;
 mod ghast;
 mod giant;

@@ -1651,6 +1651,19 @@ When an agent does any of the following, update this file in the same slice:
       `base.visible = showsBottom` toggle (the base is emitted at its default-visible rest), and the
       `submitCrystalBeams` beam to the dragon. The texture-backed path is deferred, so the colored debug path
       renders the magenta glass, the bright core, and the dark base with three tints
+    - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
+      the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
+      `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw
+      rest-pose hierarchy is emitted directly (atlas 64×32): the 10×12×10 base block at `offset(-5, 24, -5)`
+      parents the two jaws (a shared 4×14×8 box) at their bind rotations — `upper_jaw` at `offset(6.5, 0, 1)`
+      with `zRot = 0.65π = 2.042035`, `lower_jaw` at `offset(3.5, 0, 9)` with `yRot = π` and `zRot = 1.35π =
+      4.2411504` — three cubes. The bind rotations are exactly the `setupAnim` closed-jaw rest at
+      `biteProgress = 0` (`upperJaw.zRot = π - 0.35π`, `lowerJaw.zRot = π + 0.35π`), so every
+      `EvokerFangsModel.setupAnim` motion is deferred — the jaw bite open/close, the `base.y` drop, and the
+      root emerge scale / `root.y = 24 - 20·preScale`. `EvokerFangsRenderer` is a plain `EntityRenderer` that
+      applies the standard flip and `-1.501` y-offset but a distinct `Ry(90 - yRot)` yaw (captured by
+      `evoker_fangs_model_root_transform`). The texture-backed path is deferred, so the colored debug path
+      renders a grey base and lighter-bone jaws
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

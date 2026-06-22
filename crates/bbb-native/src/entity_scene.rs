@@ -712,9 +712,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => EntityModelKind::Guardian { elder: true },
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => EntityModelKind::EndCrystal,
-        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => {
-            placeholder("todo_evoker_fangs_bounds", 0.5, 0.8, 0.5)
-        }
+        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => EntityModelKind::EvokerFangs,
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
         | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID
         | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID => {
@@ -3951,6 +3949,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, &[]),
             EntityModelKind::EndCrystal
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_evoker_fangs_to_real_model() {
+        // The evoker fangs were a placeholder bounds box; they now resolve to the real
+        // `EvokerFangsModel` at the closed-jaw rest pose. The bite animation, the base drop, and the
+        // emerge scale are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, &[]),
+            EntityModelKind::EvokerFangs
         );
     }
 

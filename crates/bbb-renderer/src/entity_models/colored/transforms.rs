@@ -142,6 +142,20 @@ pub(in crate::entity_models) fn end_crystal_model_root_transform(
         * Mat4::from_translation(Vec3::new(0.0, -0.5, 0.0))
 }
 
+/// Vanilla `EvokerFangsRenderer.submit`: a plain `EntityRenderer` that applies the standard model
+/// flip and `-1.501` y-offset, but a distinct yaw `Axis.YP.rotationDegrees(90 - yRot)` (the entity's
+/// own yaw, not a `LivingEntityRenderer` body rotation) and no render scale / setup-rotations chain.
+/// The bite animation, the base drop, and the emerge scale are deferred, so this is the static
+/// transform. The fang yaw is projected through `body_rot` (the instance's `y_rot`).
+pub(in crate::entity_models) fn evoker_fangs_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_rotation_y((90.0 - instance.render_state.body_rot).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))

@@ -151,6 +151,9 @@ pub enum EntityModelKind {
     /// core boxes, scaled 2× by `EndCrystalRenderer`). The diagonal spin, the vertical bob, the
     /// `showsBottom` base toggle, and the beam to the dragon are deferred.
     EndCrystal,
+    /// `EvokerFangsModel` at its `createBodyLayer` closed-jaw rest pose (the base block plus the two
+    /// jaws). The bite open/close, the base drop, and the emerge scale are deferred.
+    EvokerFangs,
     Phantom {
         size: i32,
     },
