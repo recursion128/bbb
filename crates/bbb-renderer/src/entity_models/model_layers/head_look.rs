@@ -248,8 +248,11 @@ pub(in crate::entity_models) fn humanoid_leg_swing_pose(
 /// the opposite phasing to the same-side leg, the natural walking counter-swing. The
 /// base arm pose carries no `xRot`, so it is set (not accumulated). Vanilla also divides
 /// by `state.speedValue` (`1.0` except in the deferred crouch/swim/elytra poses) and
-/// layers the `ageInTicks` idle bob and the held-item/attack/crouch/swim arm poses on
-/// top — all deferred because the client does not yet track that state.
+/// layers the `ageInTicks` idle bob ([`humanoid_arm_bob_pose`], applied separately on
+/// top) and the held-item/attack/crouch/swim arm poses on top — the latter still
+/// deferred because the client does not yet track that state. This helper is also reused
+/// by the pillager's separate arms and the enderman (which are not `HumanoidModel` and so
+/// do *not* get the idle bob), so the bob is kept out of this swing helper.
 pub(in crate::entity_models) fn humanoid_arm_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -267,6 +270,31 @@ pub(in crate::entity_models) fn humanoid_arm_swing_pose(
             angle.cos() * 2.0 * walk_animation_speed * 0.5,
             base.rotation[1],
             base.rotation[2],
+        ],
+    }
+}
+
+/// Vanilla `HumanoidModel.setupAnim` idle arm bob (`AnimationUtils.bobModelPart`),
+/// applied to both arms on top of the walk swing (and any pose). The right arm (part
+/// offset `x < 0`, vanilla `bobModelPart(rightArm, ageInTicks, 1.0)`) accumulates
+/// `+ (cos(ageInTicks * 0.09) * 0.05 + 0.05)` onto `zRot` and `+ sin(ageInTicks * 0.067)
+/// * 0.05` onto `xRot`; the left arm (offset `x >= 0`, vanilla scale `-1.0`) subtracts the
+/// same. Vanilla skips it only for the `SPYGLASS` arm pose (a held spyglass the client
+/// does not track), so it is unconditional here — and because `ageInTicks` advances every
+/// frame, the arms never sit perfectly still (there is no static rest fast path). The
+/// offset and `yRot` are preserved; `xRot`/`zRot` are accumulated onto whatever the swing
+/// (or rest) left, matching vanilla's `+=`.
+pub(in crate::entity_models) fn humanoid_arm_bob_pose(
+    base: PartPose,
+    age_in_ticks: f32,
+) -> PartPose {
+    let scale = if base.offset[0] < 0.0 { 1.0 } else { -1.0 };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            base.rotation[0] + scale * ((age_in_ticks * 0.067).sin() * 0.05),
+            base.rotation[1],
+            base.rotation[2] + scale * ((age_in_ticks * 0.09).cos() * 0.05 + 0.05),
         ],
     }
 }

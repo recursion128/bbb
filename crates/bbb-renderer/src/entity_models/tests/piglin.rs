@@ -188,9 +188,12 @@ fn piglin_meshes_use_vanilla_body_layer_geometry() {
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(PIGLIN_SKIN, 0.78)));
+    // The always-on HumanoidModel idle arm bob rolls the resting arms (zRot ±0.1 at
+    // ageInTicks 0), widening the adult X extent from ±0.515625 to ±0.578566. The baby's
+    // wider head/body still bounds its X, so the baby extents below are unchanged.
     let (piglin_min, piglin_max) = mesh_extents(&piglin);
-    assert_close3(piglin_min, [-0.515625, 63.985374, -0.25000003]);
-    assert_close3(piglin_max, [0.515625, 66.001, 0.31250003]);
+    assert_close3(piglin_min, [-0.578566, 63.985374, -0.25000003]);
+    assert_close3(piglin_max, [0.578566, 66.001, 0.31250003]);
 
     let baby_piglin = entity_model_mesh(&[EntityModelInstance::piglin(
         101,
@@ -234,7 +237,15 @@ fn piglin_meshes_use_vanilla_body_layer_geometry() {
         PiglinModelFamily::ZombifiedPiglin,
         false,
     )]);
-    assert_same_geometry(&zombified, &piglin);
+    // The zombified piglin reuses the regular piglin's body-layer model (same cubes, faces,
+    // and indices), but vanilla overrides its arms with the held-out `animateZombieArms`
+    // pose, which we defer to the bind rest — so, unlike the regular piglin and the brute, it
+    // does not apply the always-on idle arm bob, and its rendered arm vertices differ.
+    assert_same_structure(&zombified, &piglin);
+    assert_ne!(
+        zombified.vertices, piglin.vertices,
+        "the zombified piglin's deferred arms stay at rest while the regular piglin's bob"
+    );
     assert!(zombified
         .vertices
         .iter()
@@ -247,7 +258,13 @@ fn piglin_meshes_use_vanilla_body_layer_geometry() {
         PiglinModelFamily::ZombifiedPiglin,
         true,
     )]);
-    assert_same_geometry(&baby_zombified, &baby_piglin);
+    // The baby zombified piglin likewise shares the baby piglin's model but defers its arm
+    // pose, so it does not bob while the baby piglin does.
+    assert_same_structure(&baby_zombified, &baby_piglin);
+    assert_ne!(
+        baby_zombified.vertices, baby_piglin.vertices,
+        "the baby zombified piglin's deferred arms stay at rest while the baby piglin's bob"
+    );
     assert!(baby_zombified
         .vertices
         .iter()

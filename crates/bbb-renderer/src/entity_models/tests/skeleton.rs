@@ -57,9 +57,12 @@ fn skeleton_model_mesh_uses_vanilla_body_layer_geometry() {
     assert_eq!(mesh.vertices.len(), 168);
     assert_eq!(mesh.indices.len(), 252);
 
+    // The always-on HumanoidModel idle arm bob rolls the resting arms by zRot ±0.1 at
+    // ageInTicks 0, which widens the X extent from the bare ±0.375 bind half-width to
+    // ±0.43708366 (Y/Z are unchanged — a zRot roll only moves the arm in the XY plane).
     let (min, max) = mesh_extents(&mesh);
-    assert_close3(min, [-0.375, 64.001, -0.28125]);
-    assert_close3(max, [0.375, 66.03225, 0.28125]);
+    assert_close3(min, [-0.43708366, 64.001, -0.28125]);
+    assert_close3(max, [0.43708366, 66.03225, 0.28125]);
 }
 
 #[test]
@@ -539,8 +542,8 @@ fn skeleton_variant_meshes_use_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(WITHER_SKELETON_DARK, 0.78)));
     let (wither_min, wither_max) = mesh_extents(&wither);
-    assert_close3(wither_min, [-0.45000002, 64.0012, -0.33750004]);
-    assert_close3(wither_max, [0.45000002, 66.4387, 0.33750004]);
+    assert_close3(wither_min, [-0.52450037, 64.0012, -0.33750004]);
+    assert_close3(wither_max, [0.52450037, 66.4387, 0.33750004]);
 
     let parched = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
         97,
@@ -552,8 +555,8 @@ fn skeleton_variant_meshes_use_vanilla_body_layer_geometry() {
     assert_eq!(parched.vertices.len(), 312);
     assert_eq!(parched.indices.len(), 468);
     let (parched_min, parched_max) = mesh_extents(&parched);
-    assert_close3(parched_min, [-0.440625, 64.001, -0.26250002]);
-    assert_close3(parched_max, [0.440625, 66.0135, 0.26250002]);
+    assert_close3(parched_min, [-0.50238097, 64.001, -0.26250002]);
+    assert_close3(parched_max, [0.50238097, 66.0135, 0.26250002]);
 
     let bogged = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
         16,
@@ -569,8 +572,8 @@ fn skeleton_variant_meshes_use_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(BOGGED_RED_MUSHROOM_COLOR, 0.78)));
     let (bogged_min, bogged_max) = mesh_extents(&bogged);
-    assert_close3(bogged_min, [-0.375, 64.001, -0.5]);
-    assert_close3(bogged_max, [0.375, 66.1885, 0.32008255]);
+    assert_close3(bogged_min, [-0.43708366, 64.001, -0.5]);
+    assert_close3(bogged_max, [0.43708366, 66.1885, 0.32008255]);
 
     let sheared_bogged = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
         17,
@@ -600,9 +603,10 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    // Same idle-bob X widening as the colored base skeleton above (±0.375 -> ±0.43708366).
     let (min, max) = textured_mesh_extents(&skeleton);
-    assert_close3(min, [-0.375, 64.001, -0.28125]);
-    assert_close3(max, [0.375, 66.03225, 0.28125]);
+    assert_close3(min, [-0.43708366, 64.001, -0.28125]);
+    assert_close3(max, [0.43708366, 66.03225, 0.28125]);
 
     let stray = entity_model_textured_mesh(
         &[EntityModelInstance::skeleton_variant(
@@ -618,8 +622,8 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close2(stray.vertices[0].uv, [16.0 / 64.0, 32.0 / 256.0]);
     assert_close2(stray.vertices[168].uv, [16.0 / 64.0, 64.0 / 256.0]);
     let (stray_min, stray_max) = textured_mesh_extents(&stray);
-    assert_close3(stray_min, [-0.515625, 63.985374, -0.296875]);
-    assert_close3(stray_max, [0.515625, 66.047875, 0.296875]);
+    assert_close3(stray_min, [-0.578566, 63.985374, -0.296875]);
+    assert_close3(stray_max, [0.578566, 66.047875, 0.296875]);
 
     let wither = entity_model_textured_mesh(
         &[EntityModelInstance::skeleton_variant(
@@ -633,8 +637,8 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_eq!(wither.cutout_faces, 42);
     assert_close2(wither.vertices[0].uv, [16.0 / 64.0, 160.0 / 256.0]);
     let (wither_min, wither_max) = textured_mesh_extents(&wither);
-    assert_close3(wither_min, [-0.45000002, 64.0012, -0.33750004]);
-    assert_close3(wither_max, [0.45000002, 66.4387, 0.33750004]);
+    assert_close3(wither_min, [-0.52450037, 64.0012, -0.33750004]);
+    assert_close3(wither_max, [0.52450037, 66.4387, 0.33750004]);
 
     let parched = entity_model_textured_mesh(
         &[EntityModelInstance::skeleton_variant(
@@ -649,8 +653,8 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_eq!(parched.vertices.len(), 312);
     assert_close2(parched.vertices[0].uv, [28.0 / 64.0, 112.0 / 256.0]);
     let (parched_min, parched_max) = textured_mesh_extents(&parched);
-    assert_close3(parched_min, [-0.440625, 64.001, -0.26250002]);
-    assert_close3(parched_max, [0.440625, 66.0135, 0.26250002]);
+    assert_close3(parched_min, [-0.50238097, 64.001, -0.26250002]);
+    assert_close3(parched_max, [0.50238097, 66.0135, 0.26250002]);
 
     let bogged = entity_model_textured_mesh(
         &[EntityModelInstance::skeleton_variant(
@@ -666,8 +670,8 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close2(bogged.vertices[48].uv, [56.0 / 64.0, 208.0 / 256.0]);
     assert_close2(bogged.vertices[312].uv, [16.0 / 64.0, 224.0 / 256.0]);
     let (bogged_min, bogged_max) = textured_mesh_extents(&bogged);
-    assert_close3(bogged_min, [-0.51250005, 63.9885, -0.5]);
-    assert_close3(bogged_max, [0.51250005, 66.1885, 0.32008255]);
+    assert_close3(bogged_min, [-0.57514465, 63.9885, -0.5]);
+    assert_close3(bogged_max, [0.57514465, 66.1885, 0.32008255]);
 
     let sheared_bogged = entity_model_textured_mesh(
         &[EntityModelInstance::skeleton_variant(
@@ -685,8 +689,8 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
         [16.0 / 64.0, 224.0 / 256.0],
     );
     let (sheared_bogged_min, sheared_bogged_max) = textured_mesh_extents(&sheared_bogged);
-    assert_close3(sheared_bogged_min, [-0.51250005, 63.9885, -0.29375]);
-    assert_close3(sheared_bogged_max, [0.51250005, 66.04475, 0.29375]);
+    assert_close3(sheared_bogged_min, [-0.57514465, 63.9885, -0.29375]);
+    assert_close3(sheared_bogged_max, [0.57514465, 66.04475, 0.29375]);
 }
 
 #[test]
@@ -939,14 +943,16 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
     // state, inherits the HumanoidModel.setupAnim arm swing:
     //   rightArm.xRot = cos(pos * 0.6662 + π) * 2.0 * speed * 0.5
     //   leftArm.xRot  = cos(pos * 0.6662)     * 2.0 * speed * 0.5
-    // SKELETON_PARTS lists rightArm (offset x = -5) at index 2 and leftArm (x = +5) at
-    // index 3. With pos = 0, speed = 1: rightArm = -1.0, leftArm = +1.0 — the opposite
-    // phase to the same-side leg (right leg = +1.4), as in vanilla walking.
+    // plus the always-on idle bob (AnimationUtils.bobModelPart). SKELETON_PARTS lists
+    // rightArm (offset x = -5) at index 2 and leftArm (x = +5) at index 3. At ageInTicks = 0
+    // the bob's xRot term is sin(0) * 0.05 = 0, so the xRot is pure swing; with pos = 0,
+    // speed = 1: rightArm = -1.0, leftArm = +1.0 — the opposite phase to the same-side leg.
     let posed = humanoid_arm_swing_parts(
         Cow::Borrowed(&SKELETON_PARTS),
         HUMANOID_ARM_PART_INDICES,
         0.0,
         1.0,
+        0.0,
     );
     assert!(
         (posed[2].pose.rotation[0] + 1.0).abs() < 1e-5,
@@ -958,18 +964,33 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
         "left arm in phase: {}",
         posed[3].pose.rotation[0]
     );
-    // humanoid_arm_swing_parts only swings the arms; the legs (indices 4, 5) are posed
+    // The idle bob's zRot baseline rides on at every age: at ageInTicks = 0 it is
+    // scale * (cos(0) * 0.05 + 0.05) = ±0.1 (right arm +, left arm -), accumulated onto the
+    // arm's rest zRot. The swing leaves zRot untouched, so this isolates the bob baseline.
+    assert!(
+        (posed[2].pose.rotation[2] - (SKELETON_PARTS[2].pose.rotation[2] + 0.1)).abs() < 1e-5,
+        "right arm idle-bob zRot baseline: {}",
+        posed[2].pose.rotation[2]
+    );
+    assert!(
+        (posed[3].pose.rotation[2] - (SKELETON_PARTS[3].pose.rotation[2] - 0.1)).abs() < 1e-5,
+        "left arm idle-bob zRot baseline: {}",
+        posed[3].pose.rotation[2]
+    );
+    // humanoid_arm_swing_parts only poses the arms; the legs (indices 4, 5) are posed
     // separately, so this helper leaves them at rest.
     assert_eq!(posed[4].pose.rotation, SKELETON_PARTS[4].pose.rotation);
     assert_eq!(posed[5].pose.rotation, SKELETON_PARTS[5].pose.rotation);
 
     // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5,
-    // including the 0.6662 frequency factor and the 0.5 amplitude scale.
+    // including the 0.6662 frequency factor and the 0.5 amplitude scale (ageInTicks = 0
+    // keeps the bob's xRot term zero).
     let posed = humanoid_arm_swing_parts(
         Cow::Borrowed(&SKELETON_PARTS),
         HUMANOID_ARM_PART_INDICES,
         1.5,
         0.5,
+        0.0,
     );
     let phase = 1.5_f32 * 0.6662;
     assert!(
@@ -978,14 +999,42 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
     );
     assert!((posed[3].pose.rotation[0] - phase.cos() * 2.0 * 0.5 * 0.5).abs() < 1e-5);
 
-    // At rest (speed = 0) the static parts are borrowed unchanged.
+    // Even at rest (speed = 0) the always-on idle bob re-poses the arms, so the result is
+    // owned, not borrowed. At a nonzero age the bob accumulates both terms onto each arm:
+    //   xRot += scale * sin(age * 0.067) * 0.05
+    //   zRot += scale * (cos(age * 0.09) * 0.05 + 0.05)
+    // with scale +1 for the right arm (x < 0) and -1 for the left.
+    let age = 31.4_f32;
     let resting = humanoid_arm_swing_parts(
         Cow::Borrowed(&SKELETON_PARTS),
         HUMANOID_ARM_PART_INDICES,
         3.0,
         0.0,
+        age,
     );
-    assert!(matches!(resting, Cow::Borrowed(_)));
+    assert!(matches!(resting, Cow::Owned(_)));
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
+    assert!(
+        (resting[2].pose.rotation[0] - (SKELETON_PARTS[2].pose.rotation[0] + bob_x)).abs() < 1e-5,
+        "right arm idle-bob xRot: {}",
+        resting[2].pose.rotation[0]
+    );
+    assert!(
+        (resting[2].pose.rotation[2] - (SKELETON_PARTS[2].pose.rotation[2] + bob_z)).abs() < 1e-5,
+        "right arm idle-bob zRot: {}",
+        resting[2].pose.rotation[2]
+    );
+    assert!(
+        (resting[3].pose.rotation[0] - (SKELETON_PARTS[3].pose.rotation[0] - bob_x)).abs() < 1e-5,
+        "left arm idle-bob xRot mirrored: {}",
+        resting[3].pose.rotation[0]
+    );
+    assert!(
+        (resting[3].pose.rotation[2] - (SKELETON_PARTS[3].pose.rotation[2] - bob_z)).abs() < 1e-5,
+        "left arm idle-bob zRot mirrored: {}",
+        resting[3].pose.rotation[2]
+    );
 }
 
 #[test]
@@ -1139,6 +1188,33 @@ fn skeleton_textured_mesh_swings_arms_when_walking() {
     assert!(
         walk_arm_z > rest_arm_z + 0.1,
         "the textured arms splay along Z when walking: {rest_arm_z} -> {walk_arm_z}"
+    );
+}
+
+#[test]
+fn skeleton_textured_arms_idle_bob_as_age_advances() {
+    // The restructured textured humanoid path applies the inherited HumanoidModel idle arm
+    // bob every frame, so a standing skeleton's arms ([72, 120)) move with ageInTicks while
+    // the head and body ([0, 72)) and the legs ([120, 168)) stay byte-identical across ages.
+    let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
+    let base = EntityModelInstance::skeleton(97, [0.0, 64.0, 0.0], 0.0);
+    let early = entity_model_textured_mesh(&[base], &atlas);
+    let later = entity_model_textured_mesh(&[base.with_age_in_ticks(27.3)], &atlas);
+    assert_eq!(early.vertices.len(), later.vertices.len());
+    assert_eq!(
+        early.vertices[0..72],
+        later.vertices[0..72],
+        "head and body do not bob"
+    );
+    assert_ne!(
+        early.vertices[72..120],
+        later.vertices[72..120],
+        "the arms idle-bob with ageInTicks"
+    );
+    assert_eq!(
+        early.vertices[120..168],
+        later.vertices[120..168],
+        "the legs do not bob"
     );
 }
 

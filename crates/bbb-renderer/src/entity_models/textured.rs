@@ -28,7 +28,7 @@ use super::{
         enderman_arm_swing_pose, enderman_leg_swing_pose, endermite_segment_pose,
         ghast_tentacle_x_rot, half_amplitude_leg_swing_pose, head_first_part_index,
         head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
+        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_bob_pose,
         humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
         iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
         phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
@@ -1854,32 +1854,36 @@ fn emit_humanoid_textured_passes(
     let head_pitch = instance.render_state.head_pitch;
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let age_in_ticks = instance.render_state.age_in_ticks;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
     let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     for pass in passes {
-        if head_resting && limbs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-                }
+        // The inherited `HumanoidModel.setupAnim` idle arm bob advances every frame, so the
+        // arms are always re-posed — there is no static rest fast path for a humanoid.
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
             }
-            if !limbs_resting {
-                for index in leg_indices {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-                for index in HUMANOID_ARM_PART_INDICES {
-                    if let Some(arm) = parts.get_mut(index) {
-                        arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
         }
+        if !limbs_resting {
+            for index in leg_indices {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+            for index in HUMANOID_ARM_PART_INDICES {
+                if let Some(arm) = parts.get_mut(index) {
+                    arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                }
+            }
+        }
+        for index in HUMANOID_ARM_PART_INDICES {
+            if let Some(arm) = parts.get_mut(index) {
+                arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
+            }
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 
@@ -2563,9 +2567,13 @@ fn emit_piglin_textured_model(
             }
         }
         if swing_arms {
+            // The inherited arm counter-swing plus the always-on `HumanoidModel.setupAnim`
+            // idle arm bob (`humanoid_arm_bob_pose`). The zombified piglin's deferred held-out
+            // arms carry their own bob, so this whole branch is skipped for it.
             for index in HUMANOID_ARM_PART_INDICES {
                 if let Some(arm) = parts.get_mut(index) {
-                    arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                    let swung = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                    arm.pose = humanoid_arm_bob_pose(swung, age_in_ticks);
                 }
             }
         }
@@ -3120,6 +3128,7 @@ fn emit_player_textured_model(
     // parts before emitting every pass (the pants children ride the leg parts).
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let age_in_ticks = instance.render_state.age_in_ticks;
     let mut visible_parts = player_visible_textured_model_parts(slim, parts);
     if !head_look_at_rest(head_yaw, head_pitch) {
         if let Some(head) = visible_parts.get_mut(player_head_part_index()) {
@@ -3134,11 +3143,19 @@ fn emit_player_textured_model(
         }
         // `PlayerModel` inherits the `HumanoidModel` arm swing (its `setupAnim` only
         // toggles visibility), so the arms counter-swing too; the sleeve children ride
-        // the arm parts. Held-item/attack/crouch/swim arm poses and the idle bob defer.
+        // the arm parts. Held-item/attack/crouch/swim arm poses still defer.
         for index in HUMANOID_ARM_PART_INDICES {
             if let Some(arm) = visible_parts.get_mut(index) {
                 arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
             }
+        }
+    }
+    // The inherited `HumanoidModel.setupAnim` idle arm bob (`humanoid_arm_bob_pose`) rides
+    // on top of the swing every frame, so it is applied unconditionally — even a standing
+    // player's arms bob with `ageInTicks`.
+    for index in HUMANOID_ARM_PART_INDICES {
+        if let Some(arm) = visible_parts.get_mut(index) {
+            arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
         }
     }
     for pass in player_textured_layer_passes(slim, parts) {

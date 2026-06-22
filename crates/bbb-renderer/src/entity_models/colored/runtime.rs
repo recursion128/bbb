@@ -1713,6 +1713,7 @@ fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
         HUMANOID_ARM_PART_INDICES,
         limb_swing,
         limb_swing_amount,
+        instance.render_state.age_in_ticks,
     );
     emit_model_parts(mesh, &parts, transform);
 }
@@ -1919,6 +1920,7 @@ fn emit_piglin_model(
             HUMANOID_ARM_PART_INDICES,
             limb_swing,
             limb_swing_amount,
+            instance.render_state.age_in_ticks,
         )
     };
     let transform = entity_model_root_transform(instance);
@@ -2199,6 +2201,7 @@ fn skeleton_colored_posed_parts(
         HUMANOID_ARM_PART_INDICES,
         limb_swing,
         limb_swing_amount,
+        instance.render_state.age_in_ticks,
     )
 }
 
@@ -2286,24 +2289,30 @@ pub(in crate::entity_models) fn humanoid_limb_swing_parts(
 /// the right and left arms at `[2, 3]` (every humanoid layer, adult or baby).
 pub(in crate::entity_models) const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
 
-/// Applies the vanilla `HumanoidModel.setupAnim` arm swing ([`humanoid_arm_swing_pose`])
-/// to a colored layer's two arm parts at `arm_indices`. Borrows the static parts
-/// unchanged at rest (`walkAnimationSpeed == 0`). Callers whose subclass keeps the
-/// inherited default arms use this (the player and the skeleton family); the
-/// zombie/piglin constant arms-out poses stay deferred.
+/// Applies the vanilla `HumanoidModel.setupAnim` arm animation to a colored layer's two
+/// arm parts at `arm_indices`: the walk swing ([`humanoid_arm_swing_pose`], only while
+/// the limbs move) plus the always-on `ageInTicks` idle bob ([`humanoid_arm_bob_pose`]).
+/// Because the idle bob advances every frame, the arms are always re-posed (the parts are
+/// never borrowed unchanged). Callers whose subclass keeps the inherited default arms use
+/// this (the player, the skeleton family, and the non-zombified piglin family); the
+/// zombie / zombified-piglin constant arms-out poses (which carry their own bob) stay
+/// deferred.
 pub(in crate::entity_models) fn humanoid_arm_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     arm_indices: [usize; 2],
     limb_swing: f32,
     limb_swing_amount: f32,
+    age_in_ticks: f32,
 ) -> Cow<'_, [ModelPartDesc]> {
-    if limb_swing_at_rest(limb_swing_amount) {
-        return parts;
-    }
+    let swing = !limb_swing_at_rest(limb_swing_amount);
     let mut owned = parts.into_owned();
     for index in arm_indices {
         if let Some(arm) = owned.get_mut(index) {
-            arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+            let mut pose = arm.pose;
+            if swing {
+                pose = humanoid_arm_swing_pose(pose, limb_swing, limb_swing_amount);
+            }
+            arm.pose = humanoid_arm_bob_pose(pose, age_in_ticks);
         }
     }
     Cow::Owned(owned)

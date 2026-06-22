@@ -612,6 +612,105 @@ fn humanoid_arm_swing_pose_matches_vanilla_formula() {
     );
 }
 
+#[test]
+fn humanoid_arm_bob_pose_matches_vanilla_formula() {
+    // Vanilla HumanoidModel.setupAnim applies AnimationUtils.bobModelPart to both arms every
+    // frame — bobModelPart(rightArm, age, 1.0), bobModelPart(leftArm, age, -1.0):
+    //   arm.zRot += scale * (cos(age * 0.09)  * 0.05 + 0.05)
+    //   arm.xRot += scale * (sin(age * 0.067) * 0.05)
+    // PLAYER_WIDE_PARTS lists rightArm (offset x = -5, scale +1) at [2] and leftArm
+    // (x = +5, scale -1) at [3]; the bob accumulates onto the arm's rest pose.
+    let age = 27.3_f32;
+    let bob_x = (age * 0.067).sin() * 0.05;
+    let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
+    let right = humanoid_arm_bob_pose(PLAYER_WIDE_PARTS[2].pose, age);
+    let left = humanoid_arm_bob_pose(PLAYER_WIDE_PARTS[3].pose, age);
+    assert!(
+        (right.rotation[0] - (PLAYER_WIDE_PARTS[2].pose.rotation[0] + bob_x)).abs() < 1e-6,
+        "right arm bob xRot"
+    );
+    assert!(
+        (right.rotation[2] - (PLAYER_WIDE_PARTS[2].pose.rotation[2] + bob_z)).abs() < 1e-6,
+        "right arm bob zRot"
+    );
+    // The left arm uses the opposite sign (scale -1).
+    assert!(
+        (left.rotation[0] - (PLAYER_WIDE_PARTS[3].pose.rotation[0] - bob_x)).abs() < 1e-6,
+        "left arm bob xRot mirrored"
+    );
+    assert!(
+        (left.rotation[2] - (PLAYER_WIDE_PARTS[3].pose.rotation[2] - bob_z)).abs() < 1e-6,
+        "left arm bob zRot mirrored"
+    );
+    // The bob preserves the offset and yRot.
+    assert_eq!(right.offset, PLAYER_WIDE_PARTS[2].pose.offset);
+    assert_eq!(right.rotation[1], PLAYER_WIDE_PARTS[2].pose.rotation[1]);
+    // The xRot term vanishes at age 0 (sin 0 = 0) but the zRot baseline does not
+    // (cos 0 = 1 gives ±0.1), so the arms never sit at the bare rest pose.
+    let at_zero = humanoid_arm_bob_pose(PLAYER_WIDE_PARTS[2].pose, 0.0);
+    assert!((at_zero.rotation[0] - PLAYER_WIDE_PARTS[2].pose.rotation[0]).abs() < 1e-6);
+    assert!((at_zero.rotation[2] - (PLAYER_WIDE_PARTS[2].pose.rotation[2] + 0.1)).abs() < 1e-6);
+}
+
+#[test]
+fn player_arms_idle_bob_as_age_advances_even_when_standing() {
+    // The HumanoidModel idle arm bob advances every frame regardless of walking, so a
+    // standing player's arms move with ageInTicks while the head, body, and legs stay put
+    // (no walk swing, no head look). The colored mesh emits head+body (0..96), the two arms
+    // with sleeves (96..192), then the two legs with pants (192..288).
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(930, [0.0, 64.0, 0.0], 0.0, slim);
+        let early = entity_model_mesh(&[base]);
+        let later = entity_model_mesh(&[base.with_age_in_ticks(27.3)]);
+        assert_eq!(early.vertices.len(), 288, "slim={slim}");
+        assert_eq!(early.vertices.len(), later.vertices.len(), "slim={slim}");
+        assert_eq!(
+            early.vertices[0..96],
+            later.vertices[0..96],
+            "slim={slim}: head and body do not bob"
+        );
+        assert_ne!(
+            early.vertices[96..192],
+            later.vertices[96..192],
+            "slim={slim}: the arms idle-bob with ageInTicks"
+        );
+        assert_eq!(
+            early.vertices[192..288],
+            later.vertices[192..288],
+            "slim={slim}: the legs do not bob"
+        );
+    }
+}
+
+#[test]
+fn player_textured_arms_idle_bob_as_age_advances() {
+    // The texture-backed player path applies the same idle bob on the shared
+    // visibility-filtered part array, so a standing player's arms bob with ageInTicks while
+    // the head, body, and legs are byte-identical across ages.
+    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(931, [0.0, 64.0, 0.0], 0.0, slim);
+        let early = entity_model_textured_mesh(&[base], &atlas);
+        let later = entity_model_textured_mesh(&[base.with_age_in_ticks(27.3)], &atlas);
+        assert_eq!(early.vertices.len(), 288, "slim={slim}");
+        assert_eq!(
+            early.vertices[0..96],
+            later.vertices[0..96],
+            "slim={slim}: head and body do not bob"
+        );
+        assert_ne!(
+            early.vertices[96..192],
+            later.vertices[96..192],
+            "slim={slim}: the arms idle-bob with ageInTicks"
+        );
+        assert_eq!(
+            early.vertices[192..288],
+            later.vertices[192..288],
+            "slim={slim}: the legs do not bob"
+        );
+    }
+}
+
 fn player_texture_images() -> Vec<EntityModelTextureImage> {
     player_entity_texture_refs()
         .iter()

@@ -600,7 +600,16 @@ When an agent does any of the following, update this file in the same slice:
     `(Abstract)PiglinModel` run `super.setupAnim` and override the arms only in their
     deferred pose branches, so the default arms swing — for the skeleton in both the
     colored and textured paths, every variant (skeleton, stray, parched, wither skeleton,
-    bogged sheared/unsheared), and for the colored adult/baby piglin and brute); the
+    bogged sheared/unsheared), and for the colored adult/baby piglin and brute). The
+    always-on `HumanoidModel.setupAnim` idle arm bob (`AnimationUtils.bobModelPart` →
+    `humanoid_arm_bob_pose`: `arm.zRot += scale * (cos(ageInTicks * 0.09) * 0.05 + 0.05)`,
+    `arm.xRot += scale * sin(ageInTicks * 0.067) * 0.05`, scale `+1` right arm / `-1` left)
+    rides on top of that swing every frame for the same three families — the player and
+    skeleton in both render paths and the piglin colored and textured — so their arms never
+    sit perfectly still (there is no static rest fast path, and the bob is kept out of the
+    shared `humanoid_arm_swing_pose` so the pillager's separate arms and the enderman, which
+    are not `HumanoidModel`, do not get it); only the `SPYGLASS`-pose skip (needs a held
+    spyglass) and the enderman's halve/clamp composition of the bob stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms, the skeleton melee swing (`isAggressive && !isHoldingBow`) and bow-aiming
     `ArmPose`, the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
@@ -613,7 +622,7 @@ When an agent does any of the following, update this file in the same slice:
     tilt, the `HoglinModel` headbutt head tilt, the `EndermanModel`
     carried-block arm pose and creepy attack pose, the `IronGolemModel`
     attack swing and offer-flower arm pose,
-    item/attack/crouch/swim/elytra poses, and the always-on arm bob, and the
+    item/attack/crouch/swim/elytra poses, and the
     player crouch/swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track;
     (3) consuming the projected values in the remaining model families' `setupAnim`
@@ -745,15 +754,18 @@ When an agent does any of the following, update this file in the same slice:
       inherited `HumanoidModel.setupAnim` walk swing — the legs at `[4, 5]`
       (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, pants children riding them) and the
       arms at `[2, 3]` (the counter-swing `cos(pos * 0.6662 [+ π]) * 2.0 * speed *
-      0.5`, sleeve children riding them) — all applied once to the shared
+      0.5`, sleeve children riding them) plus the always-on `HumanoidModel.setupAnim`
+      idle arm bob (`AnimationUtils.bobModelPart` → `humanoid_arm_bob_pose`, applied to
+      both arms every frame on top of the swing so even a standing player's arms move
+      with `ageInTicks`) — all applied once to the shared
       visibility-filtered part array (colored and textured); true
       `RenderTypes.entityTranslucent` alpha blending, UUID/default-skin
       selection, live skin downloads, automatic slim-vs-wide model selection
       from `PlayerSkin`, capes, ears, armor/equipment, held items,
       elytra/wings, shoulder parrots,
       arrows/stingers, spectator visibility, crouch/flying offsets, name
-      display, the held-item/attack/crouch/swim arm poses, the `ageInTicks` idle
-      arm bob, and the elytra `speedValue` poses remain unsupported
+      display, the held-item/attack/crouch/swim arm poses, and the elytra
+      `speedValue` poses remain unsupported
       (metadata-driven `DATA_PLAYER_MODE_CUSTOMISATION` projection now controls
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer
