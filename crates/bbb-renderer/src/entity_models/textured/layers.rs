@@ -1,10 +1,11 @@
 use super::super::{
     catalog::{
-        boat_texture_ref, chicken_texture_ref, cow_texture_ref, llama_texture_ref, pig_texture_ref,
-        player_texture_ref, sheep_wool_render_color, wolf_texture_ref, BoatModelFamily,
-        ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        HoglinModelFamily, IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
+        boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
+        llama_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
+        wolf_texture_ref, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
+        EntityDyeColor, EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
+        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
+        SkeletonModelFamily,
     },
     geometry::TexturedModelPartDesc,
     model_layers::*,
@@ -13,6 +14,7 @@ use super::super::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerKind {
     BoatBase,
+    CamelBase,
     ChickenBase,
     CowBase,
     CreeperBase,
@@ -145,6 +147,23 @@ pub(in crate::entity_models) fn cow_textured_layer_passes(
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
         parts: cow_textured_model_parts(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn camel_textured_layer_passes(
+    family: CamelModelFamily,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::CamelBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: camel_model_layer(family, baby),
+        texture: camel_texture_ref(family, baby),
+        parts: camel_textured_model_parts(family, baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1130,6 +1149,27 @@ fn cow_textured_model_parts(
         (CowModelVariant::Warm, false) => &WARM_COW_TEXTURED_PARTS,
         (CowModelVariant::Cold, false) => &COLD_COW_TEXTURED_PARTS,
         (CowModelVariant::Temperate, false) => &ADULT_COW_TEXTURED_PARTS,
+    }
+}
+
+fn camel_model_layer(family: CamelModelFamily, baby: bool) -> &'static str {
+    // The camel husk reuses the adult camel mesh, so only a real baby camel uses the
+    // baby body layer.
+    if family == CamelModelFamily::Camel && baby {
+        MODEL_LAYER_CAMEL_BABY
+    } else {
+        MODEL_LAYER_CAMEL
+    }
+}
+
+fn camel_textured_model_parts(
+    family: CamelModelFamily,
+    baby: bool,
+) -> &'static [TexturedModelPartDesc] {
+    if family == CamelModelFamily::Camel && baby {
+        &BABY_CAMEL_TEXTURED_PARTS
+    } else {
+        &ADULT_CAMEL_TEXTURED_PARTS
     }
 }
 

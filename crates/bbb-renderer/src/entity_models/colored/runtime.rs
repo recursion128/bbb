@@ -215,7 +215,9 @@ fn entity_model_mesh_with_options(
                 emit_undead_horse_model(&mut mesh, *instance, family, baby)
             }
             EntityModelKind::Camel { family, baby } => {
-                emit_camel_model(&mut mesh, *instance, family, baby)
+                if !skip_texture_backed_entities {
+                    emit_camel_model(&mut mesh, *instance, family, baby);
+                }
             }
             EntityModelKind::Llama {
                 family,

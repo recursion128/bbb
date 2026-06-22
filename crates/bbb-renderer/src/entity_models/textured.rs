@@ -1,11 +1,11 @@
 use super::{
     boat_model_root_transform,
     catalog::{
-        ArmorStandModelPose, BoatModelFamily, ChickenModelVariant, CowModelVariant, EntityDyeColor,
-        EntityModelKind, EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout,
-        EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
-        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
-        SkeletonModelFamily, ZombieVariantModelFamily,
+        ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant,
+        CowModelVariant, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, HoglinModelFamily,
+        IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, ZombieVariantModelFamily,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{
@@ -57,12 +57,13 @@ use glam::Mat4;
 mod layers;
 
 pub(super) use layers::{
-    blaze_textured_layer_passes, boat_textured_layer_passes, chicken_textured_layer_passes,
-    cow_textured_layer_passes, creeper_textured_layer_passes, drowned_textured_layer_passes,
-    enderman_textured_layer_passes, endermite_textured_layer_passes, ghast_textured_layer_passes,
-    goat_textured_layer_passes, happy_ghast_textured_layer_passes, hoglin_textured_layer_passes,
-    husk_textured_layer_passes, illager_textured_layer_passes, iron_golem_textured_layer_passes,
-    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
+    chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
+    drowned_textured_layer_passes, enderman_textured_layer_passes, endermite_textured_layer_passes,
+    ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
+    hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
+    iron_golem_textured_layer_passes, llama_textured_layer_passes,
+    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     phantom_textured_layer_passes, pig_textured_layer_passes, piglin_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
     sheep_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
@@ -136,6 +137,9 @@ pub(super) fn entity_model_textured_meshes(
                 ..
             } => {
                 emit_llama_textured_model(&mut meshes, *instance, variant, baby, has_chest, atlas);
+            }
+            EntityModelKind::Camel { family, baby } => {
+                emit_camel_textured_model(&mut meshes, *instance, family, baby, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -408,6 +412,24 @@ fn emit_cow_textured_model(
         instance,
         atlas,
     );
+}
+
+/// The textured camel base layer. Vanilla `CamelModel.setupAnim` drives every limb via
+/// baked `KeyframeAnimation`s (walk/sit/standup/idle/dash) plus a direct head yaw/pitch
+/// clamp, none of which the colored path applies; the textured path matches that static
+/// pose. The camel husk shares the adult mesh, differing only in texture. The keyframe
+/// animations and head rotation remain deferred.
+fn emit_camel_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    family: CamelModelFamily,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in camel_textured_layer_passes(family, baby) {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
 }
 
 /// The four leg part indices in the llama body layers, matching the colored

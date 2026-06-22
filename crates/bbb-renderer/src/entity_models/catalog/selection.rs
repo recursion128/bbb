@@ -422,18 +422,7 @@ impl EntityModelKind {
                 family: UndeadHorseModelFamily::Zombie,
                 baby: true,
             } => Some(ZOMBIE_HORSE_BABY_TEXTURE_REF),
-            Self::Camel {
-                family: CamelModelFamily::Camel,
-                baby: false,
-            } => Some(CAMEL_TEXTURE_REF),
-            Self::Camel {
-                family: CamelModelFamily::Camel,
-                baby: true,
-            } => Some(CAMEL_BABY_TEXTURE_REF),
-            Self::Camel {
-                family: CamelModelFamily::CamelHusk,
-                ..
-            } => Some(CAMEL_HUSK_TEXTURE_REF),
+            Self::Camel { family, baby } => Some(camel_texture_ref(family, baby)),
             Self::Llama { variant, baby, .. } => Some(llama_texture_ref(variant, baby)),
             Self::Goat { baby: false, .. } => Some(GOAT_TEXTURE_REF),
             Self::Goat { baby: true, .. } => Some(GOAT_BABY_TEXTURE_REF),
@@ -604,6 +593,19 @@ pub(in crate::entity_models) fn cow_texture_ref(
         (CowModelVariant::Warm, true) => COW_WARM_BABY_TEXTURE_REF,
         (CowModelVariant::Cold, false) => COW_COLD_TEXTURE_REF,
         (CowModelVariant::Cold, true) => COW_COLD_BABY_TEXTURE_REF,
+    }
+}
+
+pub(in crate::entity_models) fn camel_texture_ref(
+    family: CamelModelFamily,
+    baby: bool,
+) -> EntityModelTextureRef {
+    match (family, baby) {
+        // `CamelHuskRenderer` reuses the adult camel model with `camel_husk.png` and is
+        // never a baby, so the husk maps to the husk texture regardless of the age flag.
+        (CamelModelFamily::CamelHusk, _) => CAMEL_HUSK_TEXTURE_REF,
+        (CamelModelFamily::Camel, false) => CAMEL_TEXTURE_REF,
+        (CamelModelFamily::Camel, true) => CAMEL_BABY_TEXTURE_REF,
     }
 }
 

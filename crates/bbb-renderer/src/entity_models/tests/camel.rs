@@ -225,3 +225,151 @@ fn camel_texture_refs_match_vanilla_renderer() {
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
 }
+
+#[test]
+fn camel_textured_layer_passes_match_vanilla_renderer_model_choice() {
+    let adult = camel_textured_layer_passes(CamelModelFamily::Camel, false);
+    assert_eq!(adult.len(), 1);
+    assert_eq!(adult[0].kind, EntityModelLayerKind::CamelBase);
+    assert_eq!(adult[0].model_layer, MODEL_LAYER_CAMEL);
+    assert_eq!(adult[0].texture, CAMEL_TEXTURE_REF);
+    assert_eq!(adult[0].parts, ADULT_CAMEL_TEXTURED_PARTS.as_slice());
+    assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
+
+    let baby = camel_textured_layer_passes(CamelModelFamily::Camel, true);
+    assert_eq!(baby[0].model_layer, MODEL_LAYER_CAMEL_BABY);
+    assert_eq!(baby[0].texture, CAMEL_BABY_TEXTURE_REF);
+    assert_eq!(baby[0].parts, BABY_CAMEL_TEXTURED_PARTS.as_slice());
+
+    // The camel husk shares the adult mesh/layer; only the texture differs, and it is
+    // never a baby (the husk renderer is adult-only), so the age flag must not change it.
+    let husk = camel_textured_layer_passes(CamelModelFamily::CamelHusk, false);
+    assert_eq!(husk[0].model_layer, MODEL_LAYER_CAMEL);
+    assert_eq!(husk[0].texture, CAMEL_HUSK_TEXTURE_REF);
+    assert_eq!(husk[0].parts, ADULT_CAMEL_TEXTURED_PARTS.as_slice());
+    let husk_baby = camel_textured_layer_passes(CamelModelFamily::CamelHusk, true);
+    assert_eq!(husk_baby[0].model_layer, MODEL_LAYER_CAMEL);
+    assert_eq!(husk_baby[0].texture, CAMEL_HUSK_TEXTURE_REF);
+    assert_eq!(husk_baby[0].parts, ADULT_CAMEL_TEXTURED_PARTS.as_slice());
+}
+
+#[test]
+fn camel_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_CAMEL, "minecraft:camel#main");
+    assert_eq!(MODEL_LAYER_CAMEL_BABY, "minecraft:camel_baby#main");
+
+    // Adult `AdultCamelModel.createBodyMesh` (atlas 128×128): body, hump, the
+    // zero-thickness tail plane, the three head cubes, the two ears, and four legs each
+    // with a distinct `texOffs`.
+    assert_eq!(
+        ADULT_CAMEL_TEXTURED_BODY[0],
+        TexturedModelCubeDesc {
+            min: [-7.5, -12.0, -23.5],
+            size: [15.0, 12.0, 27.0],
+            uv_size: [15.0, 12.0, 27.0],
+            tex: [0.0, 25.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(ADULT_CAMEL_TEXTURED_HUMP[0].tex, [74.0, 0.0]);
+    assert_eq!(
+        ADULT_CAMEL_TEXTURED_TAIL[0],
+        TexturedModelCubeDesc {
+            min: [-1.5, 0.0, 0.0],
+            size: [3.0, 14.0, 0.0],
+            uv_size: [3.0, 14.0, 0.0],
+            tex: [122.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(ADULT_CAMEL_TEXTURED_HEAD[0].tex, [60.0, 24.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_HEAD[1].tex, [21.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_HEAD[2].tex, [50.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_LEFT_EAR[0].tex, [45.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_RIGHT_EAR[0].tex, [67.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_LEFT_HIND_LEG[0].tex, [58.0, 16.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_RIGHT_HIND_LEG[0].tex, [94.0, 16.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_LEFT_FRONT_LEG[0].tex, [0.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_TEXTURED_RIGHT_FRONT_LEG[0].tex, [0.0, 26.0]);
+
+    // Adult part tree: body carries hump/tail/head, head carries the two ears.
+    assert_eq!(ADULT_CAMEL_TEXTURED_PARTS.len(), 5);
+    assert_eq!(
+        ADULT_CAMEL_TEXTURED_PARTS[0].pose,
+        ADULT_CAMEL_PARTS[0].pose
+    );
+    assert_eq!(ADULT_CAMEL_TEXTURED_PARTS[0].children.len(), 3);
+    assert_eq!(ADULT_CAMEL_TEXTURED_BODY_CHILDREN[2].children.len(), 2);
+
+    // Baby `BabyCamelModel.createBodyLayer` (atlas 64×64): four legs with distinct
+    // `texOffs`, and the tail plane / head cubes at the baby offsets.
+    assert_eq!(BABY_CAMEL_TEXTURED_BODY[0].tex, [0.0, 14.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_TAIL[0].size, [3.0, 9.0, 0.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_HEAD[0].tex, [20.0, 0.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_HEAD[1].tex, [0.0, 0.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_HEAD[2].tex, [0.0, 14.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_RIGHT_FRONT_LEG[0].tex, [36.0, 14.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_LEFT_FRONT_LEG[0].tex, [48.0, 14.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_LEFT_HIND_LEG[0].tex, [12.0, 38.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_RIGHT_HIND_LEG[0].tex, [0.0, 38.0]);
+    assert_eq!(BABY_CAMEL_TEXTURED_PARTS.len(), 5);
+    assert_eq!(BABY_CAMEL_TEXTURED_PARTS[0].children.len(), 2);
+}
+
+#[test]
+fn camel_textured_mesh_matches_static_vanilla_pose() {
+    // Vanilla `CamelModel.setupAnim` drives the limbs via baked `KeyframeAnimation`s and a
+    // direct head clamp, none of which the colored path applies. The textured path matches
+    // that static pose, so its meshes carry the full body-layer geometry (12 adult cubes /
+    // 11 baby cubes, 24 vertices each) and are inert under head look and walk animation.
+    let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
+    let adult =
+        EntityModelInstance::camel(700, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+    let baby =
+        EntityModelInstance::camel(701, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, true);
+    let husk = EntityModelInstance::camel(
+        702,
+        [0.0, 64.0, 0.0],
+        0.0,
+        CamelModelFamily::CamelHusk,
+        true,
+    );
+
+    let adult_mesh = entity_model_textured_mesh(&[adult], &atlas);
+    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    let husk_mesh = entity_model_textured_mesh(&[husk], &atlas);
+    assert_eq!(adult_mesh.vertices.len(), 288);
+    assert_eq!(baby_mesh.vertices.len(), 264);
+    // The husk reuses the adult mesh (adult-only renderer); only its sampled texels differ.
+    assert_eq!(husk_mesh.vertices.len(), 288);
+    assert_eq!(
+        husk_mesh
+            .vertices
+            .iter()
+            .map(|v| v.position)
+            .collect::<Vec<_>>(),
+        adult_mesh
+            .vertices
+            .iter()
+            .map(|v| v.position)
+            .collect::<Vec<_>>()
+    );
+
+    // Head look and walk animation are deferred, so the mesh is byte-identical to rest.
+    let yawed = entity_model_textured_mesh(&[adult.with_head_look(40.0, -20.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[adult.with_walk_animation(0.0, 1.0)], &atlas);
+    assert_eq!(adult_mesh.vertices, yawed.vertices);
+    assert_eq!(adult_mesh.vertices, walking.vertices);
+}
+
+fn camel_texture_images() -> Vec<EntityModelTextureImage> {
+    camel_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

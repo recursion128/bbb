@@ -213,6 +213,9 @@ mod tests {
                 "textures/entity/llama/llama_brown_baby.png",
                 "textures/entity/llama/llama_gray.png",
                 "textures/entity/llama/llama_gray_baby.png",
+                "textures/entity/camel/camel.png",
+                "textures/entity/camel/camel_baby.png",
+                "textures/entity/camel/camel_husk.png",
             ]
         );
         for image in images {

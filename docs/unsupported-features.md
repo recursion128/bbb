@@ -909,11 +909,16 @@ When an agent does any of the following, update this file in the same slice:
       texture binding remain unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
-      `CamelHuskRenderer`, including normal camel adult/baby model selection,
-      camel_husk adult-only renderer selection, zero-thickness tail cubes, and
-      official camel/camel_baby/camel_husk texture references recorded from
-      assets; saddle equipment layers, ridden/sit/dash/idle/walk/head/jump
-      animation, lighting, and GPU texture binding remain unsupported
+      `CamelHuskRenderer`, including `ModelLayers.CAMEL` / `CAMEL_BABY` (the camel
+      husk reuses the adult `camel#main` mesh), normal camel adult/baby model
+      selection, camel_husk adult-only renderer selection, zero-thickness tail
+      cubes, official camel (128×128) / camel_baby (64×64) / camel_husk (128×128)
+      texture references, texture-backed base layer pass emission, and the official
+      PNG atlas upload/bind/sample path (colored and textured, both at the static
+      rest pose); saddle equipment layers, the `CamelModel.setupAnim` keyframe
+      walk/sit/standup/idle/dash animations and the direct head yaw/pitch clamp
+      (which would require the deferred `KeyframeAnimation` framework and camel head
+      tracking), and lighting remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader
