@@ -360,3 +360,27 @@ pub(in crate::entity_models) fn salmon_model_root_transform(
     }
     transform
 }
+
+/// Vanilla `TropicalFishRenderer.setupRotations` extends `super.setupRotations` (body yaw
+/// + death chain) with a swim wiggle `Axis.YP.rotationDegrees(4.3 * sin(0.6 *
+/// ageInTicks))` (no amplitude multiplier, unlike salmon), then — out of water — the
+/// beached flop `translate(0.2, 0.1, 0.0)` + `Axis.ZP.rotationDegrees(90)`. The
+/// small/large body shapes share this transform (the geometry differs, not the rotation).
+pub(in crate::entity_models) fn tropical_fish_model_root_transform(
+    instance: EntityModelInstance,
+    in_water: bool,
+) -> Mat4 {
+    let wiggle = 4.3 * (0.6 * instance.render_state.age_in_ticks).sin();
+    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * entity_setup_rotations_transform(instance)
+        * Mat4::from_rotation_y(wiggle.to_radians());
+    if !in_water {
+        transform *= Mat4::from_translation(Vec3::new(0.2, 0.1, 0.0))
+            * Mat4::from_rotation_z(90.0_f32.to_radians());
+    }
+    transform
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}

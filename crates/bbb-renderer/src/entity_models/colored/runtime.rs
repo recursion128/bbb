@@ -21,8 +21,8 @@ use super::transforms::{
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, scaled_model_root_transform,
-    slime_model_root_transform, squid_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    slime_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -297,6 +297,9 @@ fn entity_model_mesh_with_options(
                     emit_salmon_model(&mut mesh, *instance, size);
                 }
             }
+            EntityModelKind::TropicalFish { shape } => {
+                emit_tropical_fish_model(&mut mesh, *instance, shape);
+            }
             EntityModelKind::Illager { family } => {
                 if !skip_texture_backed_entities {
                     emit_illager_model(&mut mesh, *instance, family)
@@ -505,6 +508,25 @@ fn emit_salmon_model(
     let mut parts = SALMON_PARTS.to_vec();
     parts[SALMON_BODY_BACK_PART_INDEX].pose.rotation[1] = body_back_yrot;
     emit_model_parts_with_color(mesh, &parts, root, SALMON_RED);
+}
+
+fn emit_tropical_fish_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    shape: TropicalFishModelShape,
+) {
+    // Vanilla `TropicalFish{Small,Large}Model.setupAnim` sways only the tail (`yRot`); the
+    // swim wiggle and out-of-water flop live in `tropical_fish_model_root_transform`. The
+    // kob-style small body and flopper-style large body differ only in geometry.
+    let in_water = instance.render_state.in_water;
+    let root = tropical_fish_model_root_transform(instance, in_water);
+    let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
+    let mut parts = match shape {
+        TropicalFishModelShape::Small => TROPICAL_FISH_SMALL_PARTS.to_vec(),
+        TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_PARTS.to_vec(),
+    };
+    parts[TROPICAL_FISH_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
+    emit_model_parts_with_color(mesh, &parts, root, TROPICAL_FISH_ORANGE);
 }
 
 fn emit_squid_model(

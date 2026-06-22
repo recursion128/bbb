@@ -21,8 +21,8 @@ pub(super) use transforms::{
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    squid_model_root_transform, tropical_fish_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 #[cfg(test)]
 pub(super) use transforms::{death_fall_factor, entity_flip_degrees};

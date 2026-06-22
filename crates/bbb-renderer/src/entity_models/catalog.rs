@@ -151,6 +151,15 @@ pub enum EntityModelKind {
     Salmon {
         size: SalmonModelSize,
     },
+    /// Tropical fish (`TropicalFishSmallModel`/`TropicalFishLargeModel`,
+    /// `TropicalFishRenderer`). `shape` selects the kob-style small body or the
+    /// flopper-style large body (vanilla `TropicalFish.Pattern.base()`). The tail sway and
+    /// `TropicalFishRenderer.setupRotations` wiggle / out-of-water flop read
+    /// `EntityRenderState.in_water` and `age_in_ticks`. The per-entity base/pattern colors
+    /// and the pattern overlay layer are deferred.
+    TropicalFish {
+        shape: TropicalFishModelShape,
+    },
     Illager {
         family: IllagerModelFamily,
     },
@@ -367,6 +376,27 @@ impl SalmonModelSize {
             Self::Small => 0.5,
             Self::Medium => 1.0,
             Self::Large => 1.5,
+        }
+    }
+}
+
+/// Vanilla `TropicalFish.Base` body shape (`TropicalFish.Pattern.base()`): the kob-style
+/// `Small` body (`TropicalFishSmallModel`) or the flopper-style `Large` body
+/// (`TropicalFishLargeModel`). Each of the twelve patterns maps to one of these two
+/// shapes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TropicalFishModelShape {
+    Small,
+    Large,
+}
+
+impl TropicalFishModelShape {
+    /// Vanilla `TropicalFish.Base` ids (`SMALL=0`, `LARGE=1`). Any other id falls back to
+    /// the small body, matching the pattern-decode default.
+    pub fn from_vanilla_base_id(id: i32) -> Self {
+        match id {
+            1 => Self::Large,
+            _ => Self::Small,
         }
     }
 }

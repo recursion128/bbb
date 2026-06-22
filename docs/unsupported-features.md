@@ -1368,6 +1368,24 @@ When an agent does any of the following, update this file in the same slice:
       PNG atlas upload/bind/sample path (colored and textured). The entity-side
       `isInWater`/`ageInTicks`/`variant` projection, lighting, and overlay remain
       unsupported
+    - tropical fish entities (colored render path) as renderer-owned vanilla 26.1
+      `TropicalFishSmallModel`/`TropicalFishLargeModel.createBodyLayer(CubeDeformation.NONE)`
+      geometry: the kob-style small body (five-part body / tail / two side fins
+      (`yRot ±π/4`) / top fin) and the flopper-style large body (the same plus a sixth
+      bottom fin), where the tail, top, and bottom fins are zero-thickness planes and the
+      shape is selected by `TropicalFish.Pattern.base()` (`SMALL=0`/`LARGE=1`); the
+      `TropicalFish{Small,Large}Model.setupAnim` tail sway (`tail.yRot = -amplitude · 0.45
+      · sin(0.6 · ageInTicks)`, amplitude `1.0` in water / `1.5` out, identical to the cod
+      tail), and the full `TropicalFishRenderer.setupRotations` (the standard body yaw plus
+      the swim wiggle `Axis.YP.rotationDegrees(4.3 · sin(0.6 · ageInTicks))` and the
+      out-of-water flop `translate(0.2, 0.1, 0.0)` + `Axis.ZP.rotationDegrees(90)`), both
+      reading the `in_water` render-state flag; the official
+      `textures/entity/fish/tropical_a.png` (small) / `tropical_b.png` (large) base
+      texture references are registered. The texture-backed base layer, the twelve
+      `TropicalFishPatternLayer` pattern overlays, the per-entity base/pattern color tints
+      (`getModelTint`/`patternColor`), and the entity-side
+      `isInWater`/`ageInTicks`/`pattern` projection, lighting, and overlay remain
+      unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

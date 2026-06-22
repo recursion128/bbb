@@ -290,6 +290,10 @@ impl EntityModelKind {
                 SalmonModelSize::Medium => "salmon",
                 SalmonModelSize::Large => "salmon_large",
             },
+            Self::TropicalFish { shape } => match shape {
+                TropicalFishModelShape::Small => "tropical_fish_small",
+                TropicalFishModelShape::Large => "tropical_fish_large",
+            },
             Self::Minecart => "minecart",
             Self::Boat { family, chest } => boat_model_key(family, chest),
             Self::Placeholder { name, .. } => name,
@@ -438,6 +442,10 @@ impl EntityModelKind {
             Self::Squid { glow, baby } => Some(squid_texture_ref(glow, baby)),
             Self::Cod => Some(COD_TEXTURE_REF),
             Self::Salmon { .. } => Some(SALMON_TEXTURE_REF),
+            Self::TropicalFish { shape } => Some(match shape {
+                TropicalFishModelShape::Small => TROPICAL_FISH_SMALL_TEXTURE_REF,
+                TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_TEXTURE_REF,
+            }),
             Self::Llama { variant, baby, .. } => Some(llama_texture_ref(variant, baby)),
             Self::Goat { baby: false, .. } => Some(GOAT_TEXTURE_REF),
             Self::Goat { baby: true, .. } => Some(GOAT_BABY_TEXTURE_REF),

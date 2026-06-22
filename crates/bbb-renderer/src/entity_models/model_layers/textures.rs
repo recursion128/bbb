@@ -912,6 +912,21 @@ pub(in crate::entity_models) const SALMON_TEXTURE_REF: EntityModelTextureRef =
         size: [32, 32],
     };
 
+// Vanilla `TropicalFishRenderer` base textures: `tropical_a` for the small (kob) body
+// and `tropical_b` for the large (flopper) body. Both are tinted per-entity by the base
+// color; the twelve pattern overlays are separate textures (deferred).
+pub(in crate::entity_models) const TROPICAL_FISH_SMALL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fish/tropical_a.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const TROPICAL_FISH_LARGE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fish/tropical_b.png",
+        size: [32, 32],
+    };
+
 pub(in crate::entity_models) const LLAMA_CREAMY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/llama/llama_creamy.png",

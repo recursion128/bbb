@@ -351,6 +351,20 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Salmon { size }, position, y_rot)
     }
 
+    pub fn tropical_fish(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        shape: TropicalFishModelShape,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::TropicalFish { shape },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn squid(entity_id: i32, position: [f32; 3], y_rot: f32, glow: bool, baby: bool) -> Self {
         Self::new(
             entity_id,

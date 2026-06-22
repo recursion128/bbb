@@ -39,6 +39,7 @@ mod sleeping;
 mod slime;
 mod spider;
 mod squid;
+mod tropical_fish;
 mod upside_down;
 mod villager;
 mod witch;

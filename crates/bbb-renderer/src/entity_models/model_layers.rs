@@ -40,6 +40,7 @@ pub(super) const SNOW_GOLEM_WHITE: [f32; 4] = [0.90, 0.92, 0.88, 1.0];
 pub(super) const SQUID_BLUE: [f32; 4] = [0.39, 0.45, 0.55, 1.0];
 pub(super) const COD_TAN: [f32; 4] = [0.62, 0.55, 0.42, 1.0];
 pub(super) const SALMON_RED: [f32; 4] = [0.74, 0.33, 0.31, 1.0];
+pub(super) const TROPICAL_FISH_ORANGE: [f32; 4] = [0.93, 0.52, 0.18, 1.0];
 pub(super) const GLOW_SQUID_TEAL: [f32; 4] = [0.13, 0.65, 0.62, 1.0];
 pub(super) const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 pub(super) const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
@@ -84,6 +85,7 @@ mod slime;
 mod spider;
 mod squid;
 mod textures;
+mod tropical_fish;
 mod villager;
 mod witch;
 mod wolf;
@@ -141,6 +143,7 @@ pub use textures::{
     squid_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
     wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
 };
+pub(super) use tropical_fish::*;
 pub(super) use villager::*;
 pub(super) use witch::*;
 pub(super) use wolf::*;
