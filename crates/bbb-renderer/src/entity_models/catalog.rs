@@ -41,6 +41,9 @@ pub enum EntityModelKind {
     Blaze,
     Endermite,
     Silverfish,
+    Phantom {
+        size: i32,
+    },
     Zombie {
         baby: bool,
     },

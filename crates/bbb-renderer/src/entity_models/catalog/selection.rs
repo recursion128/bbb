@@ -64,6 +64,7 @@ impl EntityModelKind {
             Self::Blaze => "blaze",
             Self::Endermite => "endermite",
             Self::Silverfish => "silverfish",
+            Self::Phantom { .. } => "phantom",
             Self::Zombie { baby: false } => "zombie",
             Self::Zombie { baby: true } => "zombie_baby",
             Self::ZombieVariant {
@@ -291,6 +292,7 @@ impl EntityModelKind {
             Self::Blaze => Some(BLAZE_TEXTURE_REF),
             Self::Endermite => Some(ENDERMITE_TEXTURE_REF),
             Self::Silverfish => Some(SILVERFISH_TEXTURE_REF),
+            Self::Phantom { .. } => Some(PHANTOM_TEXTURE_REF),
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
             Self::ZombieVariant {

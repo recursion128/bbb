@@ -18,9 +18,10 @@ use super::selection::{
 use super::transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, entity_model_root_transform,
     ghast_model_root_transform, magma_cube_model_root_transform,
-    mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    polar_bear_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
+    player_model_root_transform, polar_bear_model_root_transform, scaled_model_root_transform,
+    slime_model_root_transform, villager_adult_model_root_transform,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -113,6 +114,11 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Silverfish => {
                 if !skip_texture_backed_entities {
                     emit_silverfish_model(&mut mesh, *instance);
+                }
+            }
+            EntityModelKind::Phantom { size } => {
+                if !skip_texture_backed_entities {
+                    emit_phantom_model(&mut mesh, *instance, size);
                 }
             }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
@@ -342,6 +348,47 @@ fn emit_silverfish_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
         part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
     }
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+}
+
+fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
+    // Vanilla `PhantomModel.setupAnim` flaps the nested wing/tail chains from `flapTime`
+    // (`id*3 + ageInTicks`) every frame, while the body and head hold their rest tilt. The
+    // hierarchy (body → tail chain / wing chains / head) is walked by hand so the animated
+    // descendants can be re-posed; the size scale and body pitch live in the root transform.
+    let root = phantom_model_root_transform(instance, size);
+    let flap = phantom_flap_time(instance.entity_id, instance.render_state.age_in_ticks);
+    let wing_z = phantom_wing_z_rot(flap);
+    let tail_x = phantom_tail_x_rot(flap);
+
+    let body_t = root * part_pose_transform(PHANTOM_BODY_POSE);
+    emit_model_cube(mesh, body_t, PHANTOM_BODY_CUBE);
+
+    let tail_base_t =
+        body_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_BASE_POSE, tail_x));
+    emit_model_cube(mesh, tail_base_t, PHANTOM_TAIL_BASE_CUBE);
+    let tail_tip_t =
+        tail_base_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_TIP_POSE, tail_x));
+    emit_model_cube(mesh, tail_tip_t, PHANTOM_TAIL_TIP_CUBE);
+
+    let left_base_t =
+        body_t * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_BASE_POSE, wing_z));
+    emit_model_cube(mesh, left_base_t, PHANTOM_LEFT_WING_BASE_CUBE);
+    let left_tip_t =
+        left_base_t * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_TIP_POSE, wing_z));
+    emit_model_cube(mesh, left_tip_t, PHANTOM_LEFT_WING_TIP_CUBE);
+
+    let right_base_t =
+        body_t * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_BASE_POSE, -wing_z));
+    emit_model_cube(mesh, right_base_t, PHANTOM_RIGHT_WING_BASE_CUBE);
+    let right_tip_t =
+        right_base_t * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_TIP_POSE, -wing_z));
+    emit_model_cube(mesh, right_tip_t, PHANTOM_RIGHT_WING_TIP_CUBE);
+
+    emit_model_cube(
+        mesh,
+        body_t * part_pose_transform(PHANTOM_HEAD_POSE),
+        PHANTOM_HEAD_CUBE,
+    );
 }
 
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {

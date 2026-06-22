@@ -212,3 +212,25 @@ pub(in crate::entity_models) fn villager_adult_model_root_transform(
 pub(in crate::entity_models) fn ghast_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     mesh_transformer_scaled_model_root_transform(instance, GHAST_SCALE)
 }
+
+/// Vanilla `PhantomRenderer` transform overrides. `setupRotations` appends an extra
+/// `Axis.XP.rotationDegrees(state.xRot)` body pitch right after the standard body-yaw stage
+/// (before the `(-1, -1, 1)` flip); `state.xRot` is the projected `head_pitch` (the entity
+/// pitch, already negated when upside down). The `scale()` override then scales by `1 + 0.15
+/// * size` and translates `(0, 1.3125, 0.1875)` in the scaled frame (the `this.scale()` slot,
+/// between the flip and the `-1.501` model-Y offset).
+pub(in crate::entity_models) fn phantom_model_root_transform(
+    instance: EntityModelInstance,
+    size: i32,
+) -> Mat4 {
+    let scale = 1.0 + 0.15 * size as f32;
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * entity_setup_rotations_transform(instance)
+        * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_scale(Vec3::splat(scale))
+        * Mat4::from_translation(Vec3::new(0.0, 1.3125, 0.1875))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}

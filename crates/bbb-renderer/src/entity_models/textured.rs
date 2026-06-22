@@ -23,7 +23,8 @@ use super::{
         head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
         hoglin_leg_swing_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
         iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
-        parched_head_part_index, pig_head_part_index, player_head_part_index,
+        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
+        phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, silverfish_layer_pose,
@@ -32,12 +33,20 @@ use super::{
         spider_leg_swing_roles, villager_head_part_index, witch_nose_bob_pose,
         wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, HOGLIN_LEFT_EAR_CHILD_INDEX,
-        HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES,
-        SILVERFISH_SEGMENT_COUNT, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
+        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
+        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
+        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
+        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
+        RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES, SILVERFISH_SEGMENT_COUNT,
+        SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
         SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
-    player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform,
+    phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
+    slime_model_root_transform, villager_adult_model_root_transform,
+    wither_skeleton_model_root_transform,
 };
 use glam::Mat4;
 
@@ -48,12 +57,13 @@ pub(super) use layers::{
     cow_textured_layer_passes, creeper_textured_layer_passes, enderman_textured_layer_passes,
     endermite_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
     hoglin_textured_layer_passes, iron_golem_textured_layer_passes,
-    magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
-    polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, villager_textured_layer_passes,
-    wandering_trader_textured_layer_passes, witch_textured_layer_passes,
-    wolf_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
+    magma_cube_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
+    player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
+    sheep_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
+    slime_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
+    witch_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerPass,
+    EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
@@ -151,6 +161,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Silverfish => {
                 emit_silverfish_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Phantom { size } => {
+                emit_phantom_textured_model(&mut meshes, *instance, size, atlas);
             }
             EntityModelKind::PolarBear { baby } => {
                 emit_polar_bear_textured_model(&mut meshes, *instance, baby, atlas);
@@ -869,6 +882,60 @@ fn emit_silverfish_textured_model(
             part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
         }
         emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
+}
+
+fn emit_phantom_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    size: i32,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Vanilla `PhantomModel.setupAnim` flaps the nested wing/tail chains from `flapTime`
+    // (`id*3 + ageInTicks`); the hierarchy is walked by hand so the animated descendants can
+    // be re-posed. The size scale and body pitch live in the root transform.
+    let root = phantom_model_root_transform(instance, size);
+    let flap = phantom_flap_time(instance.entity_id, instance.render_state.age_in_ticks);
+    let wing_z = phantom_wing_z_rot(flap);
+    let tail_x = phantom_tail_x_rot(flap);
+    for pass in phantom_textured_layer_passes() {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        let mesh = meshes.mesh_mut(pass.render_type);
+        let (tex, uv, tint) = (pass.texture, entry.uv, pass.tint);
+        let mut emit = |transform: Mat4, cube| {
+            emit_textured_model_cube(mesh, transform, cube, tex, uv, tint);
+        };
+
+        let body_t = root * part_pose_transform(PHANTOM_BODY_POSE);
+        emit(body_t, PHANTOM_BODY_TEXTURED_CUBE);
+
+        let tail_base_t =
+            body_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_BASE_POSE, tail_x));
+        emit(tail_base_t, PHANTOM_TAIL_BASE_TEXTURED_CUBE);
+        let tail_tip_t =
+            tail_base_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_TIP_POSE, tail_x));
+        emit(tail_tip_t, PHANTOM_TAIL_TIP_TEXTURED_CUBE);
+
+        let left_base_t =
+            body_t * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_BASE_POSE, wing_z));
+        emit(left_base_t, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE);
+        let left_tip_t = left_base_t
+            * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_TIP_POSE, wing_z));
+        emit(left_tip_t, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE);
+
+        let right_base_t =
+            body_t * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_BASE_POSE, -wing_z));
+        emit(right_base_t, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE);
+        let right_tip_t = right_base_t
+            * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_TIP_POSE, -wing_z));
+        emit(right_tip_t, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE);
+
+        emit(
+            body_t * part_pose_transform(PHANTOM_HEAD_POSE),
+            PHANTOM_HEAD_TEXTURED_CUBE,
+        );
     }
 }
 

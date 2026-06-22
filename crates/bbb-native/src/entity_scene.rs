@@ -196,6 +196,9 @@ const ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 4;
 const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
+// Phantom (`Phantom.ID_SIZE`, the first Mob-subclass synced data, index 16). Defaults to 0.
+const PHANTOM_SIZE_DATA_ID: u8 = 16;
+const PHANTOM_DEFAULT_SIZE: i32 = 0;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 const LLAMA_VARIANT_DATA_ID: u8 = 21;
 const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
@@ -746,7 +749,9 @@ fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => placeholder("todo_parrot_bounds", 0.5, 0.9, 0.5),
-        VANILLA_ENTITY_TYPE_PHANTOM_ID => placeholder("todo_phantom_bounds", 0.9, 0.5, 0.9),
+        VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {
+            size: phantom_size(data_values),
+        },
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => EntityModelKind::Piglin {
             family: PiglinModelFamily::PiglinBrute,
             baby: false,
@@ -1036,6 +1041,10 @@ fn armor_stand_pose(values: &[bbb_protocol::packets::EntityDataValue]) -> ArmorS
 
 fn slime_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
     entity_data_int(values, SLIME_SIZE_DATA_ID, SLIME_DEFAULT_SIZE)
+}
+
+fn phantom_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
+    entity_data_int(values, PHANTOM_SIZE_DATA_ID, PHANTOM_DEFAULT_SIZE)
 }
 
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -2842,6 +2851,23 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SILVERFISH_ID, &[]),
             EntityModelKind::Silverfish
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_phantom_size_from_data() {
+        // The phantom was a placeholder render box; it now resolves to the real model and
+        // projects its synced `ID_SIZE` (index 16, defaulting to 0).
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PHANTOM_ID, &[]),
+            EntityModelKind::Phantom { size: 0 }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_PHANTOM_ID,
+                &[protocol_int_data(PHANTOM_SIZE_DATA_ID, 5)]
+            ),
+            EntityModelKind::Phantom { size: 5 }
         );
     }
 

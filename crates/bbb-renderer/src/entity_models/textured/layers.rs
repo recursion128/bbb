@@ -35,6 +35,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BlazeBase,
     EndermiteBase,
     SilverfishBase,
+    PhantomBase,
     PolarBearBase,
     RavagerBase,
     SnowGolemBase,
@@ -352,6 +353,20 @@ pub(in crate::entity_models) fn silverfish_textured_layer_passes() -> Vec<Entity
         model_layer: MODEL_LAYER_SILVERFISH,
         texture: SILVERFISH_TEXTURE_REF,
         parts: &SILVERFISH_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::PhantomBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_PHANTOM,
+        texture: PHANTOM_TEXTURE_REF,
+        parts: &PHANTOM_TEXTURED_PARTS,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

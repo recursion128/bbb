@@ -1209,6 +1209,19 @@ When an agent does any of the following, update this file in the same slice:
       sin(phase) * π * 0.2 * |i - 2|`, `phase = ageInTicks * 0.9 + i * 0.15 * π`,
       with the overlay layers copying segments 2/4/1, driven by the projected
       `ageInTicks`, on both render paths). Lighting and overlay remain unsupported
+    - phantom entities as renderer-owned vanilla 26.1
+      `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
+      chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the
+      vanilla `PhantomRenderer` transform overrides — the `scale(1 + 0.15 * size)`
+      and `translate(0, 1.3125, 0.1875)` from the synced `ID_SIZE` (entity-data index
+      16, defaulting to 0) and the extra `Axis.XP.rotationDegrees(state.xRot)` body
+      pitch; the official `textures/entity/phantom/phantom.png` texture reference,
+      texture-backed base layer pass emission, official PNG atlas upload/bind/sample
+      path, and the vanilla `PhantomModel.setupAnim` flap (`flapTime = id*3 +
+      ageInTicks`; wings `zRot = ±cos(anim)·16°`, tail `xRot = -(5° + cos(2·anim)·5°)`,
+      `anim = flapTime · 7.448451 · π/180`, on both render paths). The
+      `PhantomEyesLayer` emissive eyes overlay, lighting, and overlay remain
+      unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

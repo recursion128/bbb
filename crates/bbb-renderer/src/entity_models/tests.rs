@@ -20,6 +20,7 @@ mod hoglin;
 mod illager;
 mod limb_swing;
 mod llama;
+mod phantom;
 mod pig;
 mod piglin;
 mod player;
