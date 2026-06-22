@@ -228,6 +228,8 @@ mod tests {
                 "textures/entity/allay/allay.png",
                 "textures/entity/strider/strider.png",
                 "textures/entity/strider/strider_baby.png",
+                "textures/entity/turtle/turtle.png",
+                "textures/entity/turtle/turtle_baby.png",
             ]
         );
         for image in images {

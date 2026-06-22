@@ -40,16 +40,16 @@ use super::{
         strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
         strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
-        vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index, witch_nose_bob_pose,
-        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
-        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
-        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
-        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
-        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT,
-        COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
-        PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
-        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
+        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
+        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
+        BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
+        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
         PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
         PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
@@ -73,12 +73,21 @@ use super::{
         STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE, STRIDER_TEXTURED_LEFT_TOP_BRISTLE,
         STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE, STRIDER_TEXTURED_RIGHT_LEG,
         STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE, STRIDER_TEXTURED_RIGHT_TOP_BRISTLE,
-        STRIDER_TEXTURE_REF, TROPICAL_FISH_TAIL_PART_INDEX, VEX_ARM_REST_Z_ROT, VEX_BODY_POSE,
-        VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE, VEX_LEFT_WING_POSE, VEX_RIGHT_ARM_POSE,
-        VEX_RIGHT_WING_POSE, VEX_ROOT_POSE, VEX_TEXTURED_BODY, VEX_TEXTURED_HEAD,
-        VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING, VEX_TEXTURED_RIGHT_ARM,
-        VEX_TEXTURED_RIGHT_WING, VEX_TEXTURE_REF, VEX_WING_X_ROT, VEX_WING_Z_ROT,
-        WITCH_NOSE_CHILD_INDEX,
+        STRIDER_TEXTURE_REF, TROPICAL_FISH_TAIL_PART_INDEX, TURTLE_BABY_BODY_POSE,
+        TURTLE_BABY_HEAD_POSE, TURTLE_BABY_LEFT_FRONT_LEG_POSE, TURTLE_BABY_LEFT_HIND_LEG_POSE,
+        TURTLE_BABY_RIGHT_FRONT_LEG_POSE, TURTLE_BABY_RIGHT_HIND_LEG_POSE,
+        TURTLE_BABY_TEXTURED_BODY, TURTLE_BABY_TEXTURED_HEAD, TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG,
+        TURTLE_BABY_TEXTURED_LEFT_HIND_LEG, TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG,
+        TURTLE_BABY_TEXTURED_RIGHT_HIND_LEG, TURTLE_BABY_TEXTURE_REF, TURTLE_BODY_POSE,
+        TURTLE_HEAD_POSE, TURTLE_LEFT_FRONT_LEG_POSE, TURTLE_LEFT_HIND_LEG_POSE,
+        TURTLE_RIGHT_FRONT_LEG_POSE, TURTLE_RIGHT_HIND_LEG_POSE, TURTLE_TEXTURED_BODY,
+        TURTLE_TEXTURED_HEAD, TURTLE_TEXTURED_LEFT_FRONT_LEG, TURTLE_TEXTURED_LEFT_HIND_LEG,
+        TURTLE_TEXTURED_RIGHT_FRONT_LEG, TURTLE_TEXTURED_RIGHT_HIND_LEG, TURTLE_TEXTURE_REF,
+        VEX_ARM_REST_Z_ROT, VEX_BODY_POSE, VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE,
+        VEX_LEFT_WING_POSE, VEX_RIGHT_ARM_POSE, VEX_RIGHT_WING_POSE, VEX_ROOT_POSE,
+        VEX_TEXTURED_BODY, VEX_TEXTURED_HEAD, VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING,
+        VEX_TEXTURED_RIGHT_ARM, VEX_TEXTURED_RIGHT_WING, VEX_TEXTURE_REF, VEX_WING_X_ROT,
+        VEX_WING_Z_ROT, WITCH_NOSE_CHILD_INDEX,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
@@ -195,6 +204,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Strider { baby } => {
                 emit_strider_textured_model(&mut meshes, *instance, baby, atlas);
+            }
+            EntityModelKind::Turtle { baby } => {
+                emit_turtle_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -1016,6 +1028,126 @@ fn emit_strider_textured_model(
         let mut pose = pose_const;
         pose.rotation[2] += add;
         emit_textured_cubes_at_pose(mesh, body_t, pose, cubes, texture, uv);
+    }
+}
+
+/// The textured turtle base layer. The head tracks the look, the body holds its fixed shell
+/// tilt, and the four legs walk (land) or paddle (water) per [`turtle_leg_rotation`], so the
+/// part list is animated per frame and emitted by hand exactly like the colored
+/// [`emit_turtle_model`]. Turtle uses the default `RenderTypes::entityCutout`, so it draws into
+/// the cutout mesh. The egg-laying leg amplitude and the `egg_belly` shell are deferred
+/// entity-side state.
+fn emit_turtle_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = if baby {
+        TURTLE_BABY_TEXTURE_REF
+    } else {
+        TURTLE_TEXTURE_REF
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let uv = entry.uv;
+    let pos = instance.render_state.walk_animation_pos;
+    let speed = instance.render_state.walk_animation_speed;
+    let on_land = !instance.render_state.in_water && instance.render_state.on_ground;
+    let root = entity_model_root_transform(instance);
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+
+    let (head_cubes, head_pose, body_cubes, body_pose, legs): (_, _, _, _, [_; 4]) = if baby {
+        (
+            &TURTLE_BABY_TEXTURED_HEAD[..],
+            TURTLE_BABY_HEAD_POSE,
+            &TURTLE_BABY_TEXTURED_BODY[..],
+            TURTLE_BABY_BODY_POSE,
+            [
+                (
+                    &TURTLE_BABY_TEXTURED_RIGHT_HIND_LEG[..],
+                    TURTLE_BABY_RIGHT_HIND_LEG_POSE,
+                    false,
+                    true,
+                ),
+                (
+                    &TURTLE_BABY_TEXTURED_LEFT_HIND_LEG[..],
+                    TURTLE_BABY_LEFT_HIND_LEG_POSE,
+                    false,
+                    false,
+                ),
+                (
+                    &TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG[..],
+                    TURTLE_BABY_RIGHT_FRONT_LEG_POSE,
+                    true,
+                    true,
+                ),
+                (
+                    &TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG[..],
+                    TURTLE_BABY_LEFT_FRONT_LEG_POSE,
+                    true,
+                    false,
+                ),
+            ],
+        )
+    } else {
+        (
+            &TURTLE_TEXTURED_HEAD[..],
+            TURTLE_HEAD_POSE,
+            &TURTLE_TEXTURED_BODY[..],
+            TURTLE_BODY_POSE,
+            [
+                (
+                    &TURTLE_TEXTURED_RIGHT_HIND_LEG[..],
+                    TURTLE_RIGHT_HIND_LEG_POSE,
+                    false,
+                    true,
+                ),
+                (
+                    &TURTLE_TEXTURED_LEFT_HIND_LEG[..],
+                    TURTLE_LEFT_HIND_LEG_POSE,
+                    false,
+                    false,
+                ),
+                (
+                    &TURTLE_TEXTURED_RIGHT_FRONT_LEG[..],
+                    TURTLE_RIGHT_FRONT_LEG_POSE,
+                    true,
+                    true,
+                ),
+                (
+                    &TURTLE_TEXTURED_LEFT_FRONT_LEG[..],
+                    TURTLE_LEFT_FRONT_LEG_POSE,
+                    true,
+                    false,
+                ),
+            ],
+        )
+    };
+
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+
+    let head_pose = PartPose {
+        offset: head_pose.offset,
+        rotation: [head_pitch, head_yaw, 0.0],
+    };
+    emit_textured_cubes_at_pose(mesh, root, head_pose, head_cubes, texture, uv);
+    emit_textured_cubes_at_pose(mesh, root, body_pose, body_cubes, texture, uv);
+
+    for (cubes, leg_pose, front, right) in legs {
+        emit_textured_cubes_at_pose(
+            mesh,
+            root,
+            PartPose {
+                offset: leg_pose.offset,
+                rotation: turtle_leg_rotation(pos, speed, on_land, front, right),
+            },
+            cubes,
+            texture,
+            uv,
+        );
     }
 }
 

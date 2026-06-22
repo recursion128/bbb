@@ -1353,7 +1353,7 @@ When an agent does any of the following, update this file in the same slice:
       hierarchy as the colored path. The ridden pose (`isRidden` zeroing the body look), the
       saddle equipment layer, and the cold/suffocating texture swap (`strider_cold.png` /
       `strider_cold_baby.png`) and shake remain unsupported
-    - turtle entities (colored render path) are wired end to end: the native entity scene
+    - turtle entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `137` to the real `AdultTurtleModel` /
       `BabyTurtleModel`, replacing the former placeholder box, keyed off the synced
       `AgeableMob.DATA_BABY_ID` (index 16, default adult). Renderer-owned vanilla 26.1 geometry:
@@ -1368,10 +1368,12 @@ When an agent does any of the following, update this file in the same slice:
       same on `zRot`) — driven by the projected look angles, walk animation, and the real
       `isOnLand = !isInWater && onGround` (both the water overlap and the synced `Entity.onGround`
       flag are now projected into the entity render state), under the standard
-      `LivingEntityRenderer.setupRotations`. The texture-backed render path (the
-      `textures/entity/turtle/turtle.png` and `turtle_baby.png` references are registered), the
-      egg-laying leg amplitude (`isLayingEgg`, the `layEgg`/`layEggAmplitude` multipliers), and
-      the `egg_belly` overlay shell (`hasEgg`) remain unsupported
+      `LivingEntityRenderer.setupRotations`. The textured base layer draws the
+      `textures/entity/turtle/turtle.png` / `turtle_baby.png` atlas references into the cutout
+      mesh (default `RenderTypes::entityCutout`), hand-emitted through the same animated
+      head/body/leg hierarchy as the colored path. The egg-laying leg amplitude (`isLayingEgg`,
+      the `layEgg`/`layEggAmplitude` multipliers) and the `egg_belly` overlay shell (`hasEgg`)
+      remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

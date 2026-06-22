@@ -192,3 +192,81 @@ fn turtle_texture_refs_match_vanilla_renderer() {
         })
     );
 }
+
+#[test]
+fn turtle_textured_cubes_match_vanilla_body_layer_uvs() {
+    // Adult (atlas 128×64): head `texOffs(3, 0)`, shell `texOffs(7, 37)`, belly `texOffs(31, 1)`,
+    // hind legs `texOffs(1, 23)` / `texOffs(1, 12)`, front legs `texOffs(27, 30)` / `texOffs(27, 24)`.
+    assert_eq!(TURTLE_TEXTURED_HEAD[0].tex, [3.0, 0.0]);
+    assert_eq!(TURTLE_TEXTURED_HEAD[0].uv_size, [6.0, 5.0, 6.0]);
+    assert_eq!(TURTLE_TEXTURED_BODY[0].tex, [7.0, 37.0]);
+    assert_eq!(TURTLE_TEXTURED_BODY[1].tex, [31.0, 1.0]);
+    assert_eq!(TURTLE_TEXTURED_RIGHT_HIND_LEG[0].tex, [1.0, 23.0]);
+    assert_eq!(TURTLE_TEXTURED_LEFT_HIND_LEG[0].tex, [1.0, 12.0]);
+    assert_eq!(TURTLE_TEXTURED_RIGHT_FRONT_LEG[0].tex, [27.0, 30.0]);
+    assert_eq!(TURTLE_TEXTURED_LEFT_FRONT_LEG[0].tex, [27.0, 24.0]);
+    assert!(!TURTLE_TEXTURED_HEAD[0].mirror);
+
+    // Baby (atlas 16×16): body `texOffs(0, 0)`, head `texOffs(0, 6)`, the hind legs use the
+    // vanilla negative `texOffs(-1, …)`, the front legs `texOffs(8, …)`.
+    assert_eq!(TURTLE_BABY_TEXTURED_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(TURTLE_BABY_TEXTURED_HEAD[0].tex, [0.0, 6.0]);
+    assert_eq!(TURTLE_BABY_TEXTURED_RIGHT_HIND_LEG[0].tex, [-1.0, 0.0]);
+    assert_eq!(TURTLE_BABY_TEXTURED_LEFT_HIND_LEG[0].tex, [-1.0, 1.0]);
+    assert_eq!(TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG[0].tex, [8.0, 6.0]);
+    assert_eq!(TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG[0].tex, [8.0, 7.0]);
+}
+
+#[test]
+fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&turtle_texture_images()).unwrap();
+
+    // Adult renders into the cutout mesh (default `RenderTypes::entityCutout`). Seven cubes →
+    // 42 faces / 168 vertices, with nothing on the translucent or eyes passes.
+    let adult = EntityModelInstance::turtle(750, [0.0, 64.0, 0.0], 0.0, false).with_on_ground(true);
+    let meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 42);
+    assert_eq!(meshes.cutout.vertices.len(), 168);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // Baby is the smaller model: six cubes → 36 faces / 144 vertices.
+    let baby = EntityModelInstance::turtle(751, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 144);
+
+    // The head tracks the look, and the land walk differs from the water paddle.
+    let looking = entity_model_textured_meshes(&[adult.with_head_look(40.0, -20.0)], &atlas);
+    assert_ne!(meshes.cutout.vertices, looking.cutout.vertices);
+    let walking = entity_model_textured_meshes(
+        &[adult
+            .with_walk_animation(3.0, 0.7)
+            .with_on_ground(true)
+            .with_in_water(false)],
+        &atlas,
+    );
+    let swimming = entity_model_textured_meshes(
+        &[adult
+            .with_walk_animation(3.0, 0.7)
+            .with_on_ground(false)
+            .with_in_water(true)],
+        &atlas,
+    );
+    assert_ne!(walking.cutout.vertices, swimming.cutout.vertices);
+}
+
+fn turtle_texture_images() -> Vec<EntityModelTextureImage> {
+    turtle_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

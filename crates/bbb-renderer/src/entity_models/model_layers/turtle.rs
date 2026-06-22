@@ -1,4 +1,4 @@
-use super::{ModelCubeDesc, PartPose, TURTLE_GREEN, TURTLE_SHELL};
+use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, TURTLE_GREEN, TURTLE_SHELL};
 
 // Vanilla 26.1 `AdultTurtleModel.createBodyLayer` (atlas 128×64). The head, body (shell +
 // belly), and four legs are direct children of the mesh root; the `egg_belly` overlay shell is
@@ -205,3 +205,122 @@ pub(in crate::entity_models) fn turtle_leg_rotation(
         }
     }
 }
+
+// Textured counterparts of the adult turtle cubes (atlas 128×64). No turtle cube is mirrored.
+pub(in crate::entity_models) const TURTLE_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, -1.0, -3.0],
+        size: [6.0, 5.0, 6.0],
+        uv_size: [6.0, 5.0, 6.0],
+        tex: [3.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-9.5, 3.0, -10.0],
+        size: [19.0, 20.0, 6.0],
+        uv_size: [19.0, 20.0, 6.0],
+        tex: [7.0, 37.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-5.5, 3.0, -13.0],
+        size: [11.0, 18.0, 3.0],
+        uv_size: [11.0, 18.0, 3.0],
+        tex: [31.0, 1.0],
+        mirror: false,
+    },
+];
+
+pub(in crate::entity_models) const TURTLE_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, 0.0],
+        size: [4.0, 1.0, 10.0],
+        uv_size: [4.0, 1.0, 10.0],
+        tex: [1.0, 23.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, 0.0],
+        size: [4.0, 1.0, 10.0],
+        uv_size: [4.0, 1.0, 10.0],
+        tex: [1.0, 12.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-13.0, 0.0, -2.0],
+        size: [13.0, 1.0, 5.0],
+        uv_size: [13.0, 1.0, 5.0],
+        tex: [27.0, 30.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, -2.0],
+        size: [13.0, 1.0, 5.0],
+        uv_size: [13.0, 1.0, 5.0],
+        tex: [27.0, 24.0],
+        mirror: false,
+    }];
+
+// Textured counterparts of the baby turtle cubes (atlas 16×16). The hind-leg planes use the
+// vanilla negative `texOffs(-1, …)` exactly as `BabyTurtleModel` bakes them.
+pub(in crate::entity_models) const TURTLE_BABY_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -1.0, -2.0],
+        size: [4.0, 2.0, 4.0],
+        uv_size: [4.0, 2.0, 4.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_BABY_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -2.0, -3.0],
+        size: [3.0, 3.0, 3.0],
+        uv_size: [3.0, 3.0, 3.0],
+        tex: [0.0, 6.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_BABY_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, -0.5],
+        size: [2.0, 0.0, 1.0],
+        uv_size: [2.0, 0.0, 1.0],
+        tex: [-1.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_BABY_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, -0.5],
+        size: [2.0, 0.0, 1.0],
+        uv_size: [2.0, 0.0, 1.0],
+        tex: [-1.0, 1.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc;
+    1] = [TexturedModelCubeDesc {
+    min: [-2.0, 0.0, -0.5],
+    size: [2.0, 0.0, 1.0],
+    uv_size: [2.0, 0.0, 1.0],
+    tex: [8.0, 6.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, -0.5],
+        size: [2.0, 0.0, 1.0],
+        uv_size: [2.0, 0.0, 1.0],
+        tex: [8.0, 7.0],
+        mirror: false,
+    }];
