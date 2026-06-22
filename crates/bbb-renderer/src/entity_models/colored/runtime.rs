@@ -105,6 +105,11 @@ fn entity_model_mesh_with_options(
                     emit_blaze_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Endermite => {
+                if !skip_texture_backed_entities {
+                    emit_endermite_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
             EntityModelKind::ZombieVariant { family, baby } => {
                 emit_zombie_variant_model(&mut mesh, *instance, family, baby)
@@ -300,6 +305,18 @@ fn emit_blaze_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     }
     for index in 0..BLAZE_ROD_COUNT {
         parts[index + 1].pose.offset = blaze_rod_offset(index, age_in_ticks);
+    }
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+}
+
+fn emit_endermite_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `EndermiteModel.setupAnim` wiggles all four chitin segments from `ageInTicks`
+    // every frame (`endermite_segment_pose` sets each segment's `x`/`yRot`); there is no head
+    // look or walk swing. The endermite has no MeshTransformer scaling (unit model root).
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let mut parts = ENDERMITE_PARTS.to_vec();
+    for (index, part) in parts.iter_mut().enumerate() {
+        part.pose = endermite_segment_pose(part.pose, index, age_in_ticks);
     }
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }

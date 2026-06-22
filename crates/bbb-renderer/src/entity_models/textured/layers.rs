@@ -33,6 +33,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     MagmaCubeBase,
     GhastBase,
     BlazeBase,
+    EndermiteBase,
     PolarBearBase,
     RavagerBase,
     SnowGolemBase,
@@ -322,6 +323,20 @@ pub(in crate::entity_models) fn blaze_textured_layer_passes() -> Vec<EntityModel
         model_layer: MODEL_LAYER_BLAZE,
         texture: BLAZE_TEXTURE_REF,
         parts: &BLAZE_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn endermite_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::EndermiteBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_ENDERMITE,
+        texture: ENDERMITE_TEXTURE_REF,
+        parts: &ENDERMITE_TEXTURED_PARTS,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

@@ -685,7 +685,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
             placeholder("todo_elder_guardian_bounds", 1.9975, 1.9975, 1.9975)
         }
-        VANILLA_ENTITY_TYPE_ENDERMITE_ID => placeholder("todo_endermite_bounds", 0.4, 0.3, 0.4),
+        VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => placeholder("todo_end_crystal_bounds", 2.0, 2.0, 2.0),
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => {
             placeholder("todo_evoker_fangs_bounds", 0.5, 0.8, 0.5)
@@ -2824,6 +2824,15 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_BLAZE_ID, &[]),
             EntityModelKind::Blaze
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_endermite() {
+        // The endermite was a placeholder render box; it now resolves to the real model.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ENDERMITE_ID, &[]),
+            EntityModelKind::Endermite
         );
     }
 

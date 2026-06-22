@@ -10,6 +10,7 @@ mod cow;
 mod creeper;
 mod death;
 mod enderman;
+mod endermite;
 mod equine;
 mod ghast;
 mod goat;

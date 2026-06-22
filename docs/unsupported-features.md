@@ -1185,6 +1185,17 @@ When an agent does any of the following, update this file in the same slice:
       shared head look (`head.yRot/xRot` from the net look angles), on both render
       paths. The `BlazeRenderer` full-bright block light (`getBlockLightLevel = 15`),
       lighting, and overlay remain unsupported
+    - endermite entities as renderer-owned vanilla 26.1
+      `EndermiteModel.createBodyLayer()` geometry: the four nested chitin segments
+      from `BODY_SIZES`/`BODY_TEXS` (each `addBox(-sx/2, 0, -sz/2, sx, sy, sz)` posed
+      at `(0, 24 - sy, placement)`), with no `MeshTransformer` scaling (the unit
+      entity model-root transform); the official
+      `textures/entity/endermite/endermite.png` texture reference, texture-backed
+      base layer pass emission, official PNG atlas upload/bind/sample path, and the
+      vanilla `EndermiteModel.setupAnim` segment wiggle (`segment.yRot = cos(phase) *
+      π * 0.01 * (1 + |i - 2|)`, `segment.x = sin(phase) * π * 0.1 * |i - 2|`,
+      `phase = ageInTicks * 0.9 + i * 0.15 * π`, driven by the projected
+      `ageInTicks`, on both render paths). Lighting and overlay remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
