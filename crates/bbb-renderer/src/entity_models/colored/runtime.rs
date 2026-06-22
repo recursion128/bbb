@@ -287,7 +287,11 @@ fn entity_model_mesh_with_options(
                     emit_squid_model(&mut mesh, *instance, glow, baby);
                 }
             }
-            EntityModelKind::Cod => emit_cod_model(&mut mesh, *instance),
+            EntityModelKind::Cod => {
+                if !skip_texture_backed_entities {
+                    emit_cod_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::Illager { family } => {
                 if !skip_texture_backed_entities {
                     emit_illager_model(&mut mesh, *instance, family)

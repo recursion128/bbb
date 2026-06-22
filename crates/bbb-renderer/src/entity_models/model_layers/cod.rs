@@ -1,4 +1,6 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, COD_TAN};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, COD_TAN,
+};
 
 // Vanilla 26.1 `CodModel.createBodyLayer` (atlas 32×32). All offsets share the
 // `yo = 22` baseline. The fins are zero-thickness planes (`right`/`left` flat in Y,
@@ -109,6 +111,9 @@ pub(in crate::entity_models) const COD_PARTS: [ModelPartDesc; 7] = [
 
 pub(in crate::entity_models) const COD_TAIL_FIN_PART_INDEX: usize = 5;
 
+// Vanilla 26.1 `ModelLayers.COD` (`CodRenderer`).
+pub(in crate::entity_models) const MODEL_LAYER_COD: &str = "minecraft:cod#main";
+
 /// Vanilla `CodModel.setupAnim`: `tailFin.yRot = -amplitude * 0.45 * sin(0.6 *
 /// ageInTicks)`, with `amplitude = isInWater ? 1.0 : 1.5` (a beached cod thrashes
 /// harder). The rest pose has `yRot = 0`, so this is set absolutely.
@@ -116,3 +121,107 @@ pub(in crate::entity_models) fn cod_tail_fin_yrot(age_in_ticks: f32, in_water: b
     let amplitude = if in_water { 1.0 } else { 1.5 };
     -amplitude * 0.45 * (0.6 * age_in_ticks).sin()
 }
+
+// Textured counterparts of the cod cubes (atlas 32×32). `CubeDeformation.NONE`, so each
+// `uv_size` equals the geometry size. The top fin's `texOffs(20, -6)` has a negative V
+// origin, exactly as vanilla bakes it.
+pub(in crate::entity_models) const COD_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.0, 0.0],
+        size: [2.0, 4.0, 7.0],
+        uv_size: [2.0, 4.0, 7.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const COD_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.0, -3.0],
+        size: [2.0, 4.0, 3.0],
+        uv_size: [2.0, 4.0, 3.0],
+        tex: [11.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const COD_TEXTURED_NOSE: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.0, -1.0],
+        size: [2.0, 3.0, 1.0],
+        uv_size: [2.0, 3.0, 1.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const COD_TEXTURED_RIGHT_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, -1.0],
+        size: [2.0, 0.0, 2.0],
+        uv_size: [2.0, 0.0, 2.0],
+        tex: [22.0, 1.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const COD_TEXTURED_LEFT_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, 0.0, -1.0],
+        size: [2.0, 0.0, 2.0],
+        uv_size: [2.0, 0.0, 2.0],
+        tex: [22.0, 4.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const COD_TEXTURED_TAIL_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, -2.0, 0.0],
+        size: [0.0, 4.0, 4.0],
+        uv_size: [0.0, 4.0, 4.0],
+        tex: [22.0, 3.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const COD_TEXTURED_TOP_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.0, -1.0, -1.0],
+        size: [0.0, 1.0, 6.0],
+        uv_size: [0.0, 1.0, 6.0],
+        tex: [20.0, -6.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const COD_TEXTURED_PARTS: [TexturedModelPartDesc; 7] = [
+    TexturedModelPartDesc {
+        pose: COD_PARTS[0].pose,
+        cubes: &COD_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COD_PARTS[1].pose,
+        cubes: &COD_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COD_PARTS[2].pose,
+        cubes: &COD_TEXTURED_NOSE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COD_PARTS[3].pose,
+        cubes: &COD_TEXTURED_RIGHT_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COD_PARTS[4].pose,
+        cubes: &COD_TEXTURED_LEFT_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COD_PARTS[5].pose,
+        cubes: &COD_TEXTURED_TAIL_FIN,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COD_PARTS[6].pose,
+        cubes: &COD_TEXTURED_TOP_FIN,
+        children: &[],
+    },
+];

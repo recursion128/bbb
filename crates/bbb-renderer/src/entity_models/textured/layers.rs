@@ -16,6 +16,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BoatBase,
     CamelBase,
     ChickenBase,
+    CodBase,
     CowBase,
     CreeperBase,
     EndermanBase,
@@ -147,6 +148,20 @@ pub(in crate::entity_models) fn cow_textured_layer_passes(
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
         parts: cow_textured_model_parts(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn cod_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::CodBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_COD,
+        texture: COD_TEXTURE_REF,
+        parts: &COD_TEXTURED_PARTS,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

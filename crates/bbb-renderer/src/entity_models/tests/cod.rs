@@ -119,3 +119,51 @@ fn cod_texture_ref_matches_vanilla_renderer() {
         })
     );
 }
+
+#[test]
+fn cod_textured_layer_passes_match_vanilla_renderer() {
+    let passes = cod_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::CodBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_COD);
+    assert_eq!(passes[0].texture, COD_TEXTURE_REF);
+    assert_eq!(passes[0].parts, COD_TEXTURED_PARTS.as_slice());
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+
+    // The textured parts mirror the colored poses (the top fin keeps its negative
+    // `texOffs(20, -6)` V origin).
+    assert_eq!(MODEL_LAYER_COD, "minecraft:cod#main");
+    assert_eq!(COD_TEXTURED_TOP_FIN[0].tex, [20.0, -6.0]);
+    for (colored, textured) in COD_PARTS.iter().zip(COD_TEXTURED_PARTS.iter()) {
+        assert_eq!(colored.pose, textured.pose);
+    }
+}
+
+#[test]
+fn cod_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&cod_texture_images()).unwrap();
+    // Seven cubes → 168 textured vertices on the cutout pass.
+    let base = EntityModelInstance::cod(910, [0.0, 64.0, 0.0], 0.0).with_in_water(true);
+    let still = entity_model_textured_mesh(&[base], &atlas);
+    assert_eq!(still.vertices.len(), 168);
+
+    // The tail sway / body wiggle reorient the mesh as the age advances.
+    let swimming = entity_model_textured_mesh(&[base.with_age_in_ticks(7.0)], &atlas);
+    assert_eq!(still.vertices.len(), swimming.vertices.len());
+    assert_ne!(still.vertices, swimming.vertices);
+
+    // A beached cod flops onto its side.
+    let beached = entity_model_textured_mesh(&[base.with_in_water(false)], &atlas);
+    assert_ne!(still.vertices, beached.vertices);
+}
+
+fn cod_texture_images() -> Vec<EntityModelTextureImage> {
+    cod_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

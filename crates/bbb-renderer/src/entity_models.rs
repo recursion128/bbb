@@ -8,12 +8,13 @@ mod textured;
 
 pub use catalog::*;
 use colored::{
-    boat_model_root_transform, cave_spider_model_root_transform, entity_model_colored_runtime_mesh,
-    entity_model_root_transform, ghast_model_root_transform, happy_ghast_model_root_transform,
-    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
-    phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, slime_model_root_transform, squid_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,
+    entity_model_colored_runtime_mesh, entity_model_root_transform, ghast_model_root_transform,
+    happy_ghast_model_root_transform, magma_cube_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
+    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
+    slime_model_root_transform, squid_model_root_transform, villager_adult_model_root_transform,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 #[cfg(test)]
 use colored::{
@@ -42,18 +43,18 @@ pub use instances::*;
 use model_layers::*;
 pub use model_layers::{
     armor_stand_entity_texture_refs, blaze_entity_texture_refs, boat_entity_texture_refs,
-    camel_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
-    creeper_entity_texture_refs, drowned_entity_texture_refs, enderman_entity_texture_refs,
-    endermite_entity_texture_refs, entity_model_texture_refs, ghast_entity_texture_refs,
-    goat_entity_texture_refs, happy_ghast_entity_texture_refs, hoglin_entity_texture_refs,
-    husk_entity_texture_refs, illager_entity_texture_refs, llama_entity_texture_refs,
-    minecart_entity_texture_refs, phantom_entity_texture_refs, pig_entity_texture_refs,
-    piglin_entity_texture_refs, player_entity_texture_refs, polar_bear_entity_texture_refs,
-    pufferfish_entity_texture_refs, ravager_entity_texture_refs, sheep_entity_texture_refs,
-    silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
-    spider_entity_texture_refs, squid_entity_texture_refs, villager_entity_texture_refs,
-    witch_entity_texture_refs, wolf_entity_texture_refs, zombie_entity_texture_refs,
-    zombie_villager_entity_texture_refs, SheepHeadEatPose,
+    camel_entity_texture_refs, chicken_entity_texture_refs, cod_entity_texture_refs,
+    cow_entity_texture_refs, creeper_entity_texture_refs, drowned_entity_texture_refs,
+    enderman_entity_texture_refs, endermite_entity_texture_refs, entity_model_texture_refs,
+    ghast_entity_texture_refs, goat_entity_texture_refs, happy_ghast_entity_texture_refs,
+    hoglin_entity_texture_refs, husk_entity_texture_refs, illager_entity_texture_refs,
+    llama_entity_texture_refs, minecart_entity_texture_refs, phantom_entity_texture_refs,
+    pig_entity_texture_refs, piglin_entity_texture_refs, player_entity_texture_refs,
+    polar_bear_entity_texture_refs, pufferfish_entity_texture_refs, ravager_entity_texture_refs,
+    sheep_entity_texture_refs, silverfish_entity_texture_refs, skeleton_entity_texture_refs,
+    slime_entity_texture_refs, spider_entity_texture_refs, squid_entity_texture_refs,
+    villager_entity_texture_refs, witch_entity_texture_refs, wolf_entity_texture_refs,
+    zombie_entity_texture_refs, zombie_villager_entity_texture_refs, SheepHeadEatPose,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;
@@ -61,11 +62,11 @@ use textured::entity_model_textured_meshes;
 #[cfg(test)]
 use textured::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
-    chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
-    drowned_textured_layer_passes, enderman_textured_layer_passes, endermite_textured_layer_passes,
-    ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
-    hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
-    iron_golem_textured_layer_passes, llama_textured_layer_passes,
+    chicken_textured_layer_passes, cod_textured_layer_passes, cow_textured_layer_passes,
+    creeper_textured_layer_passes, drowned_textured_layer_passes, enderman_textured_layer_passes,
+    endermite_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
+    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
+    illager_textured_layer_passes, iron_golem_textured_layer_passes, llama_textured_layer_passes,
     magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     phantom_textured_layer_passes, pig_textured_layer_passes, piglin_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,

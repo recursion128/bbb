@@ -8,7 +8,7 @@ use super::{
         IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, ZombieVariantModelFamily,
     },
-    cave_spider_model_root_transform, entity_model_root_transform,
+    cave_spider_model_root_transform, cod_model_root_transform, entity_model_root_transform,
     geometry::{
         emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
         fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh, ModelPartDesc,
@@ -19,31 +19,31 @@ use super::{
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
         apply_polar_bear_standing_pose, apply_wolf_sitting_pose, armor_stand_textured_cube,
-        blaze_rod_offset, chicken_leg_part_indices, cow_head_part_index, enderman_arm_swing_pose,
-        enderman_leg_swing_pose, endermite_segment_pose, ghast_tentacle_x_rot,
-        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
-        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
-        hoglin_leg_swing_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
-        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
-        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
-        phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, piglin_ear_flap_pose,
-        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
-        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, ravager_head_child_index,
-        ravager_leg_swing_pose, ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index,
-        sheep_head_pose, silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
-        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
-        BLAZE_ROD_COUNT, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
-        PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
-        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
-        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
-        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
-        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
-        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        blaze_rod_offset, chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index,
+        enderman_arm_swing_pose, enderman_leg_swing_pose, endermite_segment_pose,
+        ghast_tentacle_x_rot, half_amplitude_leg_swing_pose, head_first_part_index,
+        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
+        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
+        humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
+        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
+        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
+        pig_head_part_index, piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
+        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
+        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
+        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, silverfish_layer_pose,
+        silverfish_segment_pose, skeleton_head_part_index, snow_golem_arm_pose,
+        snow_golem_upper_body_pose, snow_golem_upper_body_yrot, spider_leg_swing_pose,
+        spider_leg_swing_roles, squid_textured_model_parts, villager_head_part_index,
+        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
+        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS,
+        ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX,
+        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE,
+        PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_BASE_POSE, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_TIP_POSE, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
         RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES, SILVERFISH_SEGMENT_COUNT,
@@ -60,11 +60,11 @@ mod layers;
 
 pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
-    chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
-    drowned_textured_layer_passes, enderman_textured_layer_passes, endermite_textured_layer_passes,
-    ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
-    hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
-    iron_golem_textured_layer_passes, llama_textured_layer_passes,
+    chicken_textured_layer_passes, cod_textured_layer_passes, cow_textured_layer_passes,
+    creeper_textured_layer_passes, drowned_textured_layer_passes, enderman_textured_layer_passes,
+    endermite_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
+    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
+    illager_textured_layer_passes, iron_golem_textured_layer_passes, llama_textured_layer_passes,
     magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     phantom_textured_layer_passes, pig_textured_layer_passes, piglin_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
@@ -145,6 +145,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Squid { glow, baby } => {
                 emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
+            }
+            EntityModelKind::Cod => {
+                emit_cod_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -434,6 +437,29 @@ fn emit_camel_textured_model(
     let transform = entity_model_root_transform(instance);
     for pass in camel_textured_layer_passes(family, baby) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+/// The textured cod base layer. The cod parts are static, so the body/head/nose/fins
+/// emit through the standard pass while only the tail fin is re-posed by the vanilla
+/// `CodModel.setupAnim` sway; the swim wiggle and out-of-water flop live in
+/// [`cod_model_root_transform`].
+fn emit_cod_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let in_water = instance.render_state.in_water;
+    let transform = cod_model_root_transform(instance, in_water);
+    let tail_yrot = cod_tail_fin_yrot(instance.render_state.age_in_ticks, in_water);
+    for pass in cod_textured_layer_passes() {
+        if tail_yrot == 0.0 {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            let mut parts = pass.parts.to_vec();
+            parts[COD_TAIL_FIN_PART_INDEX].pose.rotation[1] = tail_yrot;
+            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        }
     }
 }
 
