@@ -1,4 +1,6 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, FROG_BODY, FROG_EYE};
+use super::{
+    bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, FROG_BODY, FROG_EYE,
+};
 
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
@@ -7,25 +9,6 @@ use super::{ModelCubeDesc, ModelPartDesc, PartPose, FROG_BODY, FROG_EYE};
 // animation (jump, croak, tongue, swim/walk, idle-in-water) is deferred, so the model renders at
 // this rest pose. The three frog texture variants share this geometry and are deferred with the
 // texture-backed path.
-
-const fn cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
-    ModelCubeDesc { min, size, color }
-}
-
-const fn part(
-    offset: [f32; 3],
-    cubes: &'static [ModelCubeDesc],
-    children: &'static [ModelPartDesc],
-) -> ModelPartDesc {
-    ModelPartDesc {
-        pose: PartPose {
-            offset,
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes,
-        children,
-    }
-}
 
 // `body`: the `texOffs(3,1)` 7×3×9 box plus the `texOffs(23,22)` 7×0×9 underside plane.
 const FROG_BODY_CUBES: [ModelCubeDesc; 2] = [

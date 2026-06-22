@@ -12,6 +12,7 @@ mod camel;
 mod chicken;
 mod cod;
 mod cow;
+mod creaking;
 mod creeper;
 mod death;
 mod dolphin;

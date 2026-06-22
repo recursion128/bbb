@@ -1492,6 +1492,20 @@ When an agent does any of the following, update this file in the same slice:
       (temperate/warm/cold, `FrogVariant`) also remain unsupported (this is a colored-first slice;
       the colored debug path approximates the body with one orange-tan tint and the eyes with a
       gold tint)
+    - creaking entities as renderer-owned vanilla 26.1 `CreakingModel.createBodyLayer()` geometry
+      on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id
+      `31` to the new `EntityModelKind::Creaking`, replacing the former placeholder box. The static
+      rest-pose hierarchy is emitted directly (atlas 64×64): the `root` part at `offset(0, 24, 0)`
+      parents the `upper_body` pivot and the two legs; `upper_body` parents the head (the 6×10×6
+      skull, the 6×3×6 brow, and two 9×14×0 antler/branch planes), the body (6×13×5 trunk + 6×7×5
+      block), and the two asymmetric arms (the right a 3×21×3 limb + hand, the left a 3×16×3 limb +
+      two blocks); each leg carries a 5×0×9 foot plane and the right leg an extra 3×3×3 hip block —
+      sixteen cubes. Every `CreakingModel.setupAnim` animation is deferred (fittingly, the creaking
+      freezes into a statue while observed): the head look (`head.xRot/yRot = state.xRot/yRot`), the
+      walk (`applyWalk`), and the attack / invulnerable / death keyframe animations. The emissive
+      eyes layer (`createEyesLayer`, the `head` part only) and the texture-backed path also remain
+      unsupported (this is a colored-first slice; the colored debug path approximates the whole
+      model with one dark-bark tint)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

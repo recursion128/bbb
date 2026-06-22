@@ -56,6 +56,28 @@ pub(super) const GUARDIAN_BODY: [f32; 4] = [0.49, 0.53, 0.45, 1.0];
 pub(super) const GUARDIAN_EYE: [f32; 4] = [0.80, 0.42, 0.52, 1.0];
 pub(super) const FROG_BODY: [f32; 4] = [0.80, 0.50, 0.28, 1.0];
 pub(super) const FROG_EYE: [f32; 4] = [0.88, 0.66, 0.22, 1.0];
+pub(super) const CREAKING_BARK: [f32; 4] = [0.30, 0.27, 0.25, 1.0];
+
+/// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
+pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
+    ModelCubeDesc { min, size, color }
+}
+
+/// Builds a model part at `offset` with no rotation (a vanilla `PartPose.offset(...)` bind part).
+pub(super) const fn bind_part(
+    offset: [f32; 3],
+    cubes: &'static [ModelCubeDesc],
+    children: &'static [ModelPartDesc],
+) -> ModelPartDesc {
+    ModelPartDesc {
+        pose: PartPose {
+            offset,
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes,
+        children,
+    }
+}
 pub(super) const GLOW_SQUID_TEAL: [f32; 4] = [0.13, 0.65, 0.62, 1.0];
 pub(super) const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 pub(super) const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
@@ -75,6 +97,7 @@ mod camel;
 mod chicken;
 mod cod;
 mod cow;
+mod creaking;
 mod creeper;
 mod dolphin;
 mod enderman;
@@ -127,6 +150,7 @@ pub(super) use camel::*;
 pub(super) use chicken::*;
 pub(super) use cod::*;
 pub(super) use cow::*;
+pub(super) use creaking::*;
 pub(super) use creeper::*;
 pub(super) use dolphin::*;
 pub(super) use enderman::*;

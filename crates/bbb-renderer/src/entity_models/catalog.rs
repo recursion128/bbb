@@ -104,6 +104,9 @@ pub enum EntityModelKind {
     /// `FrogModel` at its `createBodyLayer` rest pose. The keyframe animations (jump, croak,
     /// tongue, swim/walk, idle-in-water) and the three texture variants are deferred.
     Frog,
+    /// `CreakingModel` at its `createBodyLayer` rest pose. The head look, walk, attack,
+    /// invulnerable, and death keyframe animations and the emissive eyes layer are deferred.
+    Creaking,
     Phantom {
         size: i32,
     },

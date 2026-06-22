@@ -176,6 +176,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed frog yet), so this arm is always emitted.
                 emit_frog_model(&mut mesh, *instance);
             }
+            EntityModelKind::Creaking => {
+                // Colored-only so far (no texture-backed creaking yet), so this arm always emits.
+                emit_creaking_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1319,6 +1323,15 @@ fn emit_frog_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // bind-pose part tree is emitted directly. Frogs use `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &FROG_PARTS, root);
+}
+
+fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `CreakingModel` is a static nested hierarchy at rest (`root` → upper_body/legs,
+    // upper_body → head/body/arms). All of `CreakingModel.setupAnim` (head look, walk, attack,
+    // invulnerable, death) is deferred, so the bind-pose part tree is emitted directly. Creaking
+    // uses `LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &CREAKING_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

@@ -702,7 +702,7 @@ fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
         VANILLA_ENTITY_TYPE_COD_ID => EntityModelKind::Cod,
-        VANILLA_ENTITY_TYPE_CREAKING_ID => placeholder("todo_creaking_bounds", 0.9, 2.7, 0.9),
+        VANILLA_ENTITY_TYPE_CREAKING_ID => EntityModelKind::Creaking,
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => EntityModelKind::Dolphin {
             baby: ageable_baby(data_values),
         },
@@ -3059,6 +3059,18 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, &[]),
             EntityModelKind::Guardian { elder: true }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_creaking_to_real_model() {
+        // The creaking was a placeholder render box; it now resolves to the real `CreakingModel`
+        // at its rest pose. The head look, walk, attack, invulnerable, and death keyframe
+        // animations and the emissive eyes layer are deferred entity-side state, so no synced
+        // data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_CREAKING_ID, &[]),
+            EntityModelKind::Creaking
         );
     }
 
