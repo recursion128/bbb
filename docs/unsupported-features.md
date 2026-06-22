@@ -1506,6 +1506,20 @@ When an agent does any of the following, update this file in the same slice:
       eyes layer (`createEyesLayer`, the `head` part only) and the texture-backed path also remain
       unsupported (this is a colored-first slice; the colored debug path approximates the whole
       model with one dark-bark tint)
+    - sniffer entities as renderer-owned vanilla 26.1 `SnifferModel.createBodyLayer()` geometry on
+      the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `119`
+      to the new `EntityModelKind::Sniffer`, replacing the former cow-quadruped approximation (the
+      sniffer no longer borrows the `CowModel`). The static rest-pose hierarchy is emitted directly
+      (atlas 192×192): the `bone` part at `offset(0, 5, 0)` parents the body (the 25×29×40 trunk, a
+      25×24×40 inner block inflated by `CubeDeformation(0.5)` — geometry `min -= 0.5`, `size += 1`,
+      baked into the colored cube exactly like the vex/illager deformed cubes — and the 25×0×40
+      belly plane) and the six 7×10×8 legs; the body parents the head (13×18×11 skull + top plane)
+      which parents the two 1×19×7 ears, the 13×2×9 nose pad, and the 13×12×9 lower beak — fifteen
+      cubes. Every `SnifferModel.setupAnim` animation is deferred: the head look (`head.xRot/yRot =
+      state.xRot/yRot`), the search/walk (`applyWalk`), and the dig / long-sniff / stand-up / happy
+      / scenting keyframe animations. The texture-backed path remains unsupported (this is a
+      colored-first slice; the colored debug path approximates the body with one brown tint and the
+      nose pad with a pink tint)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

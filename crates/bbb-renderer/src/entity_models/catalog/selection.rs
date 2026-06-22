@@ -81,6 +81,7 @@ impl EntityModelKind {
             Self::Guardian { elder: true } => "elder_guardian",
             Self::Frog => "frog",
             Self::Creaking => "creaking",
+            Self::Sniffer => "sniffer",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",

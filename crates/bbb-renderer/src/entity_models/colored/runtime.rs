@@ -180,6 +180,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed creaking yet), so this arm always emits.
                 emit_creaking_model(&mut mesh, *instance);
             }
+            EntityModelKind::Sniffer => {
+                // Colored-only so far (no texture-backed sniffer yet), so this arm always emits.
+                emit_sniffer_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1332,6 +1336,15 @@ fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     // uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &CREAKING_PARTS, root);
+}
+
+fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `SnifferModel` is a static nested hierarchy at rest (`bone` → body/legs, body →
+    // head → ears/nose/beak). All of `SnifferModel.setupAnim` (head look, search/walk, dig,
+    // long-sniff, stand-up, happy, scenting) is deferred, so the bind-pose part tree is emitted
+    // directly. Sniffer uses `LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &SNIFFER_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

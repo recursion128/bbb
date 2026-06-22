@@ -46,6 +46,7 @@ mod silverfish;
 mod skeleton;
 mod sleeping;
 mod slime;
+mod sniffer;
 mod spider;
 mod squid;
 mod strider;

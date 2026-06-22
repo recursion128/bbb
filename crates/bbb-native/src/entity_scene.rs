@@ -588,11 +588,10 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
         VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, pig_variants),
         VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, cow_variants),
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID
-        | VANILLA_ENTITY_TYPE_PANDA_ID
-        | VANILLA_ENTITY_TYPE_SNIFFER_ID => {
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID | VANILLA_ENTITY_TYPE_PANDA_ID => {
             quadruped(QuadrupedModelFamily::Cow, ageable_baby(data_values))
         }
+        VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer,
         VANILLA_ENTITY_TYPE_RAVAGER_ID => EntityModelKind::Ravager,
         VANILLA_ENTITY_TYPE_HOGLIN_ID => EntityModelKind::Hoglin {
             family: HoglinModelFamily::Hoglin,
@@ -3818,9 +3817,17 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_RAVAGER_ID, &[]),
             EntityModelKind::Ravager
         );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_sniffer_to_real_model() {
+        // The sniffer was approximated by the cow quadruped model; it now resolves to the real
+        // `SnifferModel` at its rest pose. The head look, search/walk, and the dig / long-sniff /
+        // stand-up / happy / scenting keyframe animations are deferred entity-side state, so no
+        // synced data is read.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SNIFFER_ID, &[]),
-            quadruped(QuadrupedModelFamily::Cow, false)
+            EntityModelKind::Sniffer
         );
     }
 

@@ -57,6 +57,8 @@ pub(super) const GUARDIAN_EYE: [f32; 4] = [0.80, 0.42, 0.52, 1.0];
 pub(super) const FROG_BODY: [f32; 4] = [0.80, 0.50, 0.28, 1.0];
 pub(super) const FROG_EYE: [f32; 4] = [0.88, 0.66, 0.22, 1.0];
 pub(super) const CREAKING_BARK: [f32; 4] = [0.30, 0.27, 0.25, 1.0];
+pub(super) const SNIFFER_BROWN: [f32; 4] = [0.46, 0.36, 0.28, 1.0];
+pub(super) const SNIFFER_NOSE: [f32; 4] = [0.78, 0.52, 0.50, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -127,6 +129,7 @@ mod silverfish;
 mod skeleton;
 mod skeleton_clothing;
 mod slime;
+mod sniffer;
 mod spider;
 mod squid;
 mod strider;
@@ -181,6 +184,7 @@ pub(super) use silverfish::*;
 pub(super) use skeleton::*;
 pub(super) use skeleton_clothing::*;
 pub(super) use slime::*;
+pub(super) use sniffer::*;
 pub(super) use spider::*;
 pub(super) use squid::*;
 pub(super) use strider::*;

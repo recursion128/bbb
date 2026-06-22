@@ -107,6 +107,9 @@ pub enum EntityModelKind {
     /// `CreakingModel` at its `createBodyLayer` rest pose. The head look, walk, attack,
     /// invulnerable, and death keyframe animations and the emissive eyes layer are deferred.
     Creaking,
+    /// `SnifferModel` at its `createBodyLayer` rest pose. The head look, search/walk, and the
+    /// dig / long-sniff / stand-up / happy / scenting keyframe animations are deferred.
+    Sniffer,
     Phantom {
         size: i32,
     },
