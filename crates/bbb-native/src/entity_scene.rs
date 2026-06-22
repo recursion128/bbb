@@ -230,6 +230,10 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
+/// `Bee.DATA_ANGER_END_TIME` data id (18): the synced `NeutralMob` anger-end game time,
+/// defined right after `Bee.DATA_FLAGS_ID` (17). `Bee.isAngry()` is `endTime > 0 &&
+/// endTime - gameTime > 0`.
+const BEE_ANGER_END_TIME_DATA_ID: u8 = 18;
 /// `LivingEntity.DATA_HEALTH_ID` — the synced current-health float.
 const LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
 
@@ -380,6 +384,11 @@ fn entity_model_instance(
         .with_enderman_creepy(source.enderman_creepy)
         .with_bat_resting(source.bat_resting)
         .with_bee_has_stinger(source.bee_has_stinger)
+        .with_bee_angry(bee_is_angry(
+            source.entity_type_id,
+            &source.data_values,
+            game_time,
+        ))
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
@@ -933,6 +942,21 @@ fn entity_invisible(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
 
 fn wolf_is_angry(values: &[bbb_protocol::packets::EntityDataValue], game_time: i64) -> bool {
     let end_time = entity_data_long(values, WOLF_ANGER_END_TIME_DATA_ID, -1);
+    end_time > 0 && end_time - game_time > 0
+}
+
+/// Vanilla `BeeRenderState.isAngry` (`Bee.isAngry()`, the `NeutralMob` anger): the synced
+/// `DATA_ANGER_END_TIME` is in the future (`endTime > 0 && endTime - gameTime > 0`). An angry
+/// bee skips `BeeModel.bobUpAndDown`. Gated to the bee; every other entity is calm.
+fn bee_is_angry(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    game_time: i64,
+) -> bool {
+    if entity_type_id != VANILLA_ENTITY_TYPE_BEE_ID {
+        return false;
+    }
+    let end_time = entity_data_long(values, BEE_ANGER_END_TIME_DATA_ID, -1);
     end_time > 0 && end_time - game_time > 0
 }
 
@@ -2016,6 +2040,46 @@ mod tests {
             )],
         }));
         assert!(!has_stinger(&world, 96));
+    }
+
+    #[test]
+    fn entity_model_instances_project_bee_angry_from_anger_end_time() {
+        // Vanilla Bee.DATA_ANGER_END_TIME (18, LONG): isAngry = endTime > 0 && endTime - gameTime
+        // > 0. The world has no time set here, so the game time defaults to 0.
+        const VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = 18;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            97,
+            VANILLA_ENTITY_TYPE_BEE_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let angry = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .bee_angry
+        };
+
+        // A bee with no anger end time (default -1) is calm.
+        assert!(!angry(&world, 97));
+
+        // An anger end time in the future (game time 0) makes the bee angry.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 97,
+            values: vec![protocol_long_data(VANILLA_BEE_ANGER_END_TIME_DATA_ID, 200)],
+        }));
+        assert!(angry(&world, 97));
+
+        // A zero/past end time is calm again.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 97,
+            values: vec![protocol_long_data(VANILLA_BEE_ANGER_END_TIME_DATA_ID, 0)],
+        }));
+        assert!(!angry(&world, 97));
     }
 
     #[test]

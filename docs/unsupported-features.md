@@ -274,8 +274,10 @@ When an agent does any of the following, update this file in the same slice:
       `enderman_carrying`/`enderman_creepy`, driving the held-out arm pose and the
       creepy head/hat shift), the bat `isResting` flag (carried as
       `bat_resting`, swapping the bat to the `BAT_RESTING` hanging pose with a head look),
-      and the bee `hasStinger` flag (carried as `bee_has_stinger`, hiding the stinger
-      cube once the bee has stung)
+      the bee `hasStinger` flag (carried as `bee_has_stinger`, hiding the stinger
+      cube once the bee has stung), and the bee `isAngry` state (carried as `bee_angry`,
+      the synced `NeutralMob` anger-end time vs the world game time, suppressing the
+      bee's `bobUpAndDown`)
     - `walkAnimationPos`/`walkAnimationSpeed` limb-swing: the client-side
       `WalkAnimationState` accumulator is implemented and tracked per living entity
       (see the dedicated bullet below), its lerped `position`/`speed` are projected
@@ -1452,15 +1454,18 @@ When an agent does any of the following, update this file in the same slice:
       the three leg planes (no antennae). The procedural `BeeModel.setupAnim` is hand-emitted through
       the bone→body/wings/legs hierarchy: while airborne (`!isOnGround`, read from the synced
       `Entity.onGround`) the wings flap (`zRot = cos(ageInTicks·120.32113°)·π·0.15`, the left
-      mirrored) and the non-angry `bobUpAndDown` rocks the bone pivot (`xRot`, `y`), the front/back
-      legs, and — on adults — the antennae, with the middle leg held at `π/4`; on the ground the
-      model rests at its bind pose. The textured base layer draws the `textures/entity/bee/bee.png` /
-      `bee_baby.png` atlas references into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`),
-      hand-emitted through the same animated hierarchy as the colored path (which approximates the
-      striped texture with a single representative yellow). The stinger-loss visibility is
-      implemented on both paths: the stinger cube is drawn only while the projected `bee_has_stinger`
-      (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`) is set, dropping to eight cubes once the
-      bee stings. The anger pose (`isAngry`), the rolled-up fall pose (`rollAmount`,
+      mirrored) and — unless the bee is angry — `bobUpAndDown` rocks the bone pivot (`xRot`, `y`),
+      the front/back legs, and — on adults — the antennae, with the middle leg held at `π/4`; on the
+      ground the model rests at its bind pose. The anger gate is implemented on both paths: the
+      projected `bee_angry` (`Bee.isAngry()`, the synced `NeutralMob` `DATA_ANGER_END_TIME` vs the
+      world game time) suppresses `bobUpAndDown`, so an angry airborne bee keeps flapping but holds
+      its body, legs (at `π/4`) and antennae still. The textured base layer draws the
+      `textures/entity/bee/bee.png` / `bee_baby.png` atlas references into the cutout mesh (vanilla
+      `RenderTypes::entityCutoutCull`), hand-emitted through the same animated hierarchy as the
+      colored path (which approximates the striped texture with a single representative yellow). The
+      stinger-loss visibility is implemented on both paths: the stinger cube is drawn only while the
+      projected `bee_has_stinger` (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`) is set,
+      dropping to eight cubes once the bee stings. The rolled-up fall pose (`rollAmount`,
       `Mth.rotLerpRad` toward `3.0915928`) and the nectar/angry texture swaps remain unsupported
     - breeze entities are wired end to end on both render paths off the real vanilla 26.1
       `BreezeModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `17` to the

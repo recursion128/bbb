@@ -1364,6 +1364,8 @@ fn emit_bee_textured_model(
     // into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`).
     let age = instance.render_state.age_in_ticks;
     let flying = !instance.render_state.on_ground;
+    // An angry airborne bee flaps but skips `bobUpAndDown` (see the colored path).
+    let bob = flying && !instance.render_state.bee_angry;
     let root = entity_model_root_transform(instance);
     let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
 
@@ -1373,7 +1375,7 @@ fn emit_bee_textured_model(
     } else {
         BEE_BONE_POSE
     };
-    let bone_pose = if flying {
+    let bone_pose = if bob {
         PartPose {
             offset: [
                 bone_bind.offset[0],
@@ -1429,7 +1431,7 @@ fn emit_bee_textured_model(
         );
     }
     if !baby {
-        let antenna_x_rot = if flying { bee_antenna_x_rot(age) } else { 0.0 };
+        let antenna_x_rot = if bob { bee_antenna_x_rot(age) } else { 0.0 };
         emit_textured_cubes_at_pose(
             mesh,
             body_t,
@@ -1507,12 +1509,21 @@ fn emit_bee_textured_model(
         uv,
     );
 
-    // Legs (bone children): airborne, the front/back pair bob while the middle leg holds `π/4`.
+    // Legs (bone children): airborne, all three splay to `π/4`; the non-angry bob then overrides
+    // the front/back pair, while an angry bee holds all three at `π/4`.
     let (front_x, mid_x, back_x) = if flying {
         (
-            bee_front_leg_x_rot(age),
+            if bob {
+                bee_front_leg_x_rot(age)
+            } else {
+                BEE_MID_LEG_FLYING_X_ROT
+            },
             BEE_MID_LEG_FLYING_X_ROT,
-            bee_back_leg_x_rot(age),
+            if bob {
+                bee_back_leg_x_rot(age)
+            } else {
+                BEE_MID_LEG_FLYING_X_ROT
+            },
         )
     } else {
         (0.0, 0.0, 0.0)

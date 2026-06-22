@@ -1081,13 +1081,17 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
     // Vanilla `BeeModel.setupAnim`: while airborne (`!isOnGround`) the wings flap on `ageInTicks`
     // and the non-angry `bobUpAndDown` rocks the bone pivot, front/back legs (and, on adults, the
     // antennae), with all three legs first set to `π/4` so the middle leg holds that angle. On the
-    // ground the model rests at its bind pose. The stinger cube is hidden once the bee has stung
-    // (`stinger.visible = hasStinger`, gated below). The anger pose (`isAngry`) and the rolled-up
-    // fall pose (`rollAmount`) are deferred entity-side state. The body (carrying the stinger and
-    // antennae), the wings, and the legs hang under the `bone` pivot, so the hierarchy is walked
-    // by hand. Bee uses `LivingEntityRenderer.setupRotations`.
+    // ground the model rests at its bind pose. An angry bee (`isAngry`) keeps flapping but skips
+    // the `bobUpAndDown`, and the stinger cube is hidden once the bee has stung (`stinger.visible
+    // = hasStinger`, gated below). The rolled-up fall pose (`rollAmount`) is deferred entity-side
+    // state. The body (carrying the stinger and antennae), the wings, and the legs hang under the
+    // `bone` pivot, so the hierarchy is walked by hand. Bee uses `LivingEntityRenderer.setupRotations`.
     let age = instance.render_state.age_in_ticks;
     let flying = !instance.render_state.on_ground;
+    // Vanilla gates `bobUpAndDown` on `!isAngry && !isOnGround`: an angry airborne bee still
+    // flaps its wings and splays its legs to `π/4`, but its body, front/back legs and antennae
+    // hold still instead of rocking.
+    let bob = flying && !instance.render_state.bee_angry;
     let root = entity_model_root_transform(instance);
 
     // Bone pivot (root child): the airborne bob rocks it forward and lifts/drops it.
@@ -1096,7 +1100,7 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
     } else {
         BEE_BONE_POSE
     };
-    let bone_pose = if flying {
+    let bone_pose = if bob {
         PartPose {
             offset: [
                 bone_bind.offset[0],
@@ -1144,7 +1148,7 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
         );
     }
     if !baby {
-        let antenna_x_rot = if flying { bee_antenna_x_rot(age) } else { 0.0 };
+        let antenna_x_rot = if bob { bee_antenna_x_rot(age) } else { 0.0 };
         emit_model_cubes_at_pose(
             mesh,
             body_t,
@@ -1211,12 +1215,21 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
         left_wing,
     );
 
-    // Legs (bone children): airborne, the front/back pair bob while the middle leg holds `π/4`.
+    // Legs (bone children): airborne, all three splay to `π/4`; the non-angry bob then overrides
+    // the front/back pair, while an angry bee holds all three at `π/4`.
     let (front_x, mid_x, back_x) = if flying {
         (
-            bee_front_leg_x_rot(age),
+            if bob {
+                bee_front_leg_x_rot(age)
+            } else {
+                BEE_MID_LEG_FLYING_X_ROT
+            },
             BEE_MID_LEG_FLYING_X_ROT,
-            bee_back_leg_x_rot(age),
+            if bob {
+                bee_back_leg_x_rot(age)
+            } else {
+                BEE_MID_LEG_FLYING_X_ROT
+            },
         )
     } else {
         (0.0, 0.0, 0.0)

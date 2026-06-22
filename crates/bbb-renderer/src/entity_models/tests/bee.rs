@@ -237,6 +237,85 @@ fn bee_textured_mesh_hides_its_stinger_after_stinging() {
     );
 }
 
+#[test]
+fn bee_stops_bobbing_when_angry() {
+    // Vanilla `BeeModel.setupAnim` gates `bobUpAndDown` on `!isAngry`: a calm airborne bee
+    // rocks its whole body (the bob runs through the `bone` pivot), while an angry one freezes
+    // everything except the wings, which keep flapping. Adult vertices: body[0,24),
+    // stinger[24,48), antennae[48,96), wings[96,144), legs[144,216).
+    let calm = EntityModelInstance::bee(960, [0.0, 64.0, 0.0], 0.0, false); // airborne by default
+    let angry = calm.with_bee_angry(true);
+
+    // A calm bee bobs: the body and antennae shift as the age advances.
+    let calm0 = entity_model_mesh(&[calm]);
+    let calm3 = entity_model_mesh(&[calm.with_age_in_ticks(3.0)]);
+    assert_ne!(
+        calm0.vertices[0..96],
+        calm3.vertices[0..96],
+        "a calm bee rocks its body and antennae with the bob"
+    );
+
+    // An angry bee freezes the body, antennae and legs; only the wings keep flapping.
+    let angry0 = entity_model_mesh(&[angry]);
+    let angry3 = entity_model_mesh(&[angry.with_age_in_ticks(3.0)]);
+    assert_eq!(
+        angry0.vertices[0..96],
+        angry3.vertices[0..96],
+        "an angry bee's body and antennae hold still"
+    );
+    assert_eq!(
+        angry0.vertices[144..216],
+        angry3.vertices[144..216],
+        "an angry bee's legs hold still at π/4"
+    );
+    assert_ne!(
+        angry0.vertices[96..144],
+        angry3.vertices[96..144],
+        "the wings keep flapping even when the bee is angry"
+    );
+
+    // At a fixed age the anger gate changes the pose (the bob is off).
+    assert_ne!(
+        calm0.vertices, angry0.vertices,
+        "an angry bee poses differently from a calm one"
+    );
+
+    // A grounded bee rests at its bind pose regardless of anger (the bob never runs).
+    let grounded_calm = entity_model_mesh(&[calm.with_on_ground(true)]);
+    let grounded_angry = entity_model_mesh(&[calm.with_on_ground(true).with_bee_angry(true)]);
+    assert_eq!(
+        grounded_calm.vertices, grounded_angry.vertices,
+        "a grounded bee ignores anger"
+    );
+}
+
+#[test]
+fn bee_textured_mesh_stops_bobbing_when_angry() {
+    let (atlas, _) = build_entity_model_texture_atlas(&bee_texture_images()).unwrap();
+    let calm = EntityModelInstance::bee(961, [0.0, 64.0, 0.0], 0.0, false);
+    let angry = calm.with_bee_angry(true);
+
+    let calm0 = entity_model_textured_meshes(&[calm], &atlas);
+    let angry0 = entity_model_textured_meshes(&[angry], &atlas);
+    assert_ne!(
+        calm0.cutout.vertices, angry0.cutout.vertices,
+        "the anger gate changes the textured pose"
+    );
+
+    // As with the colored path, an angry bee freezes everything but the wings.
+    let angry3 = entity_model_textured_meshes(&[angry.with_age_in_ticks(3.0)], &atlas);
+    assert_eq!(
+        angry0.cutout.vertices[0..96],
+        angry3.cutout.vertices[0..96],
+        "the body and antennae hold still while angry"
+    );
+    assert_ne!(
+        angry0.cutout.vertices[96..144],
+        angry3.cutout.vertices[96..144],
+        "the wings keep flapping while angry"
+    );
+}
+
 fn bee_texture_images() -> Vec<EntityModelTextureImage> {
     bee_entity_texture_refs()
         .iter()
