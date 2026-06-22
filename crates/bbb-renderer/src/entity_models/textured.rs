@@ -2376,6 +2376,7 @@ fn emit_zombie_family_textured_passes(
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let age_in_ticks = instance.render_state.age_in_ticks;
+    let aggressive = instance.render_state.is_aggressive;
     let head_resting = head_look_at_rest(head_yaw, head_pitch);
     let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     for pass in passes {
@@ -2394,7 +2395,7 @@ fn emit_zombie_family_textured_passes(
         }
         for index in HUMANOID_ARM_PART_INDICES {
             if let Some(arm) = parts.get_mut(index) {
-                arm.pose = zombie_arm_held_out_pose(arm.pose, age_in_ticks);
+                arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
             }
         }
         emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);

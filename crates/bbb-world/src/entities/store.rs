@@ -19,7 +19,8 @@ use super::{
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
     vanilla_is_baby, vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
-    vanilla_render_scale, ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_render_scale, vanilla_zombie_model_family, ENTITY_DATA_POSE_ID,
+    VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -38,6 +39,14 @@ const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
 /// `DATA_LIVING_ENTITY_FLAGS` bit set while a riptide trident spin is active
 /// (`LivingEntity.isAutoSpinAttack`).
 const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
+
+/// Vanilla `Mob.DATA_MOB_FLAGS_ID` data id (15): the byte holding the no-AI /
+/// left-handed / aggressive flags.
+const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+
+/// Vanilla `Mob.MOB_FLAG_AGGRESSIVE` (4): the `DATA_MOB_FLAGS_ID` bit set while a mob is
+/// in its aggressive AI state (`Mob.isAggressive`).
+const MOB_FLAG_AGGRESSIVE: i8 = 4;
 
 /// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
@@ -403,6 +412,16 @@ impl EntityStore {
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
             && self.ticks_frozen(id).unwrap_or(0) >= VANILLA_TICKS_REQUIRED_TO_FREEZE;
+        // Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): only the zombie-model
+        // family consumes it (their held-out `animateZombieArms` arm drop deepens when
+        // aggressive). Every such type is a Mob carrying the flags byte; other entities have
+        // no mob-flags byte (or do not use those arms), so they default to calm.
+        let is_aggressive = vanilla_zombie_model_family(identity.entity_type_id)
+            && self
+                .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+                & MOB_FLAG_AGGRESSIVE
+                != 0;
         // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
@@ -451,6 +470,7 @@ impl EntityStore {
             y_head_rot: transform.y_head_rot,
             age_ticks: client_animations.animations.age_ticks,
             is_fully_frozen,
+            is_aggressive,
             is_auto_spin_attack,
             is_upside_down,
             bounding_box_height,

@@ -117,6 +117,10 @@ pub struct EntityRenderState {
     /// lerped per-frame age that drives continuous idle animations (e.g. the
     /// `AbstractPiglinModel` ear flap). `0.0` until the entity scene projects it.
     pub age_in_ticks: f32,
+    /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): deepens the held-out
+    /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs
+    /// `-π / 2.25` calm). `false` for every calm or non-zombie-family entity.
+    pub is_aggressive: bool,
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -183,6 +187,7 @@ impl EntityRenderState {
             walk_animation_pos: 0.0,
             walk_animation_speed: 0.0,
             age_in_ticks: 0.0,
+            is_aggressive: false,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
             squid_tentacle_angle: 0.0,
@@ -324,6 +329,11 @@ impl EntityModelInstance {
 
     pub fn with_age_in_ticks(mut self, age_in_ticks: f32) -> Self {
         self.render_state.age_in_ticks = age_in_ticks;
+        self
+    }
+
+    pub fn with_is_aggressive(mut self, is_aggressive: bool) -> Self {
+        self.render_state.is_aggressive = is_aggressive;
         self
     }
 
@@ -1193,6 +1203,7 @@ mod tests {
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,
                 age_in_ticks: 0.0,
+                is_aggressive: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 squid_tentacle_angle: 0.0,

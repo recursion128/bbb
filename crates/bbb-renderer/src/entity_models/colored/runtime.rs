@@ -1503,6 +1503,7 @@ fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     let parts = zombie_arm_held_out_parts(
         parts,
         HUMANOID_ARM_PART_INDICES,
+        instance.render_state.is_aggressive,
         instance.render_state.age_in_ticks,
     );
     emit_model_parts(
@@ -1819,6 +1820,7 @@ fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     let parts = zombie_arm_held_out_parts(
         parts,
         HUMANOID_ARM_PART_INDICES,
+        instance.render_state.is_aggressive,
         instance.render_state.age_in_ticks,
     );
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
@@ -1871,6 +1873,7 @@ fn emit_zombie_variant_model(
     let parts = zombie_arm_held_out_parts(
         parts,
         HUMANOID_ARM_PART_INDICES,
+        instance.render_state.is_aggressive,
         instance.render_state.age_in_ticks,
     );
     emit_model_parts_with_color(mesh, &parts, transform, color);
@@ -2341,12 +2344,13 @@ pub(in crate::entity_models) fn humanoid_arm_swing_parts(
 pub(in crate::entity_models) fn zombie_arm_held_out_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     arm_indices: [usize; 2],
+    aggressive: bool,
     age_in_ticks: f32,
 ) -> Cow<'_, [ModelPartDesc]> {
     let mut owned = parts.into_owned();
     for index in arm_indices {
         if let Some(arm) = owned.get_mut(index) {
-            arm.pose = zombie_arm_held_out_pose(arm.pose, age_in_ticks);
+            arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
         }
     }
     Cow::Owned(owned)

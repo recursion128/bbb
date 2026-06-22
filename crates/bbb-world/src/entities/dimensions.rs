@@ -22,6 +22,7 @@ const VANILLA_ENTITY_TYPE_DONKEY_ID: i32 = 36;
 const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 const VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID: i32 = 58;
+const VANILLA_ENTITY_TYPE_GIANT_ID: i32 = 59;
 const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
 const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
@@ -696,6 +697,22 @@ pub(crate) fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
     VANILLA_LIVING_ENTITY_TYPE_IDS
         .binary_search(&entity_type_id)
         .is_ok()
+}
+
+/// Entities rendered with the vanilla `ZombieModel` / `GiantZombieModel`, whose
+/// `setupAnim` overrides the arms with `AnimationUtils.animateZombieArms` (the held-out
+/// pose, whose `armDrop` deepens for an aggressive mob). These are the only consumers of
+/// the synced `Mob` aggressive flag in the renderer, so the `is_aggressive` projection is
+/// gated to them — every one is a `Mob` carrying the `DATA_MOB_FLAGS_ID` byte.
+pub(crate) fn vanilla_zombie_model_family(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_DROWNED_ID
+            | VANILLA_ENTITY_TYPE_HUSK_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+            | VANILLA_ENTITY_TYPE_GIANT_ID
+    )
 }
 
 fn scales_with_living_scale_attribute(

@@ -1259,6 +1259,64 @@ fn entity_model_sources_project_auto_spin_attack_flag() {
 }
 
 #[test]
+fn entity_model_sources_project_aggressive_for_zombie_model_family() {
+    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    // Vanilla Mob.DATA_MOB_FLAGS_ID (15); MOB_FLAG_AGGRESSIVE (4), LEFTHANDED is bit 2.
+    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+    const MOB_FLAG_AGGRESSIVE: i8 = 4;
+    const MOB_FLAG_LEFTHANDED: i8 = 2;
+
+    let aggressive = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .is_aggressive
+    };
+    let set_mob_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_MOB_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(flags),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    // A zombie with no mob flags is calm.
+    assert!(!aggressive(&store, 80));
+
+    // Vanilla Mob.isAggressive(): (DATA_MOB_FLAGS_ID & 4) != 0, detected alongside other flags.
+    assert!(set_mob_flags(
+        &mut store,
+        80,
+        MOB_FLAG_AGGRESSIVE | MOB_FLAG_LEFTHANDED,
+    ));
+    assert!(aggressive(&store, 80));
+    // Clearing the aggressive bit (left-handed still set) returns to calm.
+    assert!(set_mob_flags(&mut store, 80, MOB_FLAG_LEFTHANDED));
+    assert!(!aggressive(&store, 80));
+
+    // A chicken is a Mob too (it carries the mob-flags byte), but it does not render with the
+    // zombie model's `animateZombieArms`, so the projection is gated out: a stray aggressive
+    // bit never reaches the chicken's render state.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(set_mob_flags(&mut store, 81, MOB_FLAG_AGGRESSIVE));
+    assert!(!aggressive(&store, 81));
+}
+
+#[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

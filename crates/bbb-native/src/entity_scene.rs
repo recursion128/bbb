@@ -375,6 +375,7 @@ fn entity_model_instance(
         .with_is_moving(source.is_moving)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
+        .with_is_aggressive(source.is_aggressive)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
@@ -1855,6 +1856,43 @@ mod tests {
             )],
         }));
         assert_eq!(auto_spin(&world, 87, 0.5), None);
+    }
+
+    #[test]
+    fn entity_model_instances_project_aggressive_for_zombie_family() {
+        // Vanilla Mob.DATA_MOB_FLAGS_ID (15) and the aggressive bit (4).
+        const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+        const MOB_FLAG_AGGRESSIVE: i8 = 4;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            90,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let aggressive = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .is_aggressive
+        };
+
+        // A calm zombie projects is_aggressive = false.
+        assert!(!aggressive(&world, 90));
+
+        // Setting Mob.isAggressive (DATA_MOB_FLAGS_ID & 4) projects through to the held-out
+        // arm render state.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 90,
+            values: vec![protocol_byte_data(
+                VANILLA_MOB_FLAGS_DATA_ID,
+                MOB_FLAG_AGGRESSIVE,
+            )],
+        }));
+        assert!(aggressive(&world, 90));
     }
 
     #[test]

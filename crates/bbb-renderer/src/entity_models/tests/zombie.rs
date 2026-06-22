@@ -180,8 +180,8 @@ fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
     // zRot, then take the idle bob. ADULT_ZOMBIE_PARTS lists rightArm (x = -5) at [2] and
     // leftArm (x = +5) at [3].
     let arm_drop = -std::f32::consts::PI / 2.25;
-    let right = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[2].pose, 0.0);
-    let left = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[3].pose, 0.0);
+    let right = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[2].pose, false, 0.0);
+    let left = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[3].pose, false, 0.0);
     // At ageInTicks 0 the bob's xRot term is sin(0) * 0.05 = 0, so xRot is the bare arm drop.
     assert!(
         (right.rotation[0] - arm_drop).abs() < 1e-6,
@@ -202,6 +202,31 @@ fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
     // The pose is set absolutely (the deep arm drop overrides the inherited swing); the
     // offset is preserved.
     assert_eq!(right.offset, ADULT_ZOMBIE_PARTS[2].pose.offset);
+
+    // An aggressive mob (Mob.isAggressive) raises its arms higher: armDrop = -π/1.5, deeper
+    // (more negative) than the calm -π/2.25. Only xRot changes; the yRot splay and the bob
+    // are unchanged.
+    let aggressive_arm_drop = -std::f32::consts::PI / 1.5;
+    let aggressive_right = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[2].pose, true, 0.0);
+    assert!(
+        (aggressive_right.rotation[0] - aggressive_arm_drop).abs() < 1e-6,
+        "aggressive right arm drop: {}",
+        aggressive_right.rotation[0]
+    );
+    assert!(
+        aggressive_right.rotation[0] < right.rotation[0],
+        "aggressive arms are raised higher (deeper drop) than calm: {} vs {}",
+        aggressive_right.rotation[0],
+        right.rotation[0]
+    );
+    assert!(
+        (aggressive_right.rotation[1] - (-0.1)).abs() < 1e-6,
+        "splay unchanged"
+    );
+    assert!(
+        (aggressive_right.rotation[2] - 0.1).abs() < 1e-6,
+        "bob zRot unchanged"
+    );
 }
 
 #[test]
@@ -223,6 +248,30 @@ fn zombie_arms_held_out_and_bob_with_age() {
     assert_ne!(
         early.vertices, later.vertices,
         "the held-out arms bob with ageInTicks"
+    );
+}
+
+#[test]
+fn aggressive_zombie_poses_its_arms_differently() {
+    // An aggressive zombie (Mob.isAggressive, projected as is_aggressive) raises its held-out
+    // arms higher — armDrop -π/1.5 (past horizontal) vs the calm -π/2.25 — so its arm
+    // geometry differs from a calm zombie at the same age; the head/body/legs are unaffected
+    // (same topology). The exact armDrop is pinned by the pose formula test above; here we
+    // confirm the projected flag reaches the rendered mesh.
+    let calm = entity_model_mesh(&[EntityModelInstance::zombie(
+        61,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    let aggressive =
+        entity_model_mesh(&[
+            EntityModelInstance::zombie(61, [0.0, 64.0, 0.0], 0.0, false).with_is_aggressive(true),
+        ]);
+    assert_eq!(calm.vertices.len(), aggressive.vertices.len());
+    assert_ne!(
+        calm.vertices, aggressive.vertices,
+        "the aggressive flag raises the arms, changing the mesh"
     );
 }
 

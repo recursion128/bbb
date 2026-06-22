@@ -318,6 +318,13 @@ pub struct EntityModelSourceState {
     /// non-living entities and any entity that is not frozen solid.
     #[serde(default)]
     pub is_fully_frozen: bool,
+    /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): whether the mob is in its
+    /// aggressive AI state, which deepens the held-out `animateZombieArms` arm drop
+    /// (`-π / 1.5` aggressive vs `-π / 2.25` calm). Projected only for the zombie-model
+    /// family ([`vanilla_zombie_model_family`](crate::entities::dimensions)); `false` for
+    /// every other entity (which has no mob-flags byte or does not use those arms).
+    #[serde(default)]
+    pub is_aggressive: bool,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin
