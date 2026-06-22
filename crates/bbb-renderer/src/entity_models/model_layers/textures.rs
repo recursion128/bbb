@@ -654,7 +654,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 99] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 103] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -734,6 +734,10 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     HUSK_BABY_TEXTURE_REF,
     DROWNED_TEXTURE_REF,
     DROWNED_BABY_TEXTURE_REF,
+    EVOKER_TEXTURE_REF,
+    ILLUSIONER_TEXTURE_REF,
+    PILLAGER_TEXTURE_REF,
+    VINDICATOR_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -987,6 +991,17 @@ pub(in crate::entity_models) const VINDICATOR_TEXTURE_REF: EntityModelTextureRef
         path: "textures/entity/illager/vindicator.png",
         size: [64, 64],
     };
+
+pub(in crate::entity_models) const ILLAGER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
+    EVOKER_TEXTURE_REF,
+    ILLUSIONER_TEXTURE_REF,
+    PILLAGER_TEXTURE_REF,
+    VINDICATOR_TEXTURE_REF,
+];
+
+pub fn illager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ILLAGER_ENTITY_TEXTURE_REFS
+}
 
 pub(in crate::entity_models) const ARMOR_STAND_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {

@@ -668,13 +668,13 @@ When an agent does any of the following, update this file in the same slice:
     both colored and textured paths, and the sheep, which additionally overrides
     `head.xRot = headEatAngleScale` (its non-eating branch is exactly the look
     pitch `getXRot * π/180`, `Sheep.getHeadEatAngleScale`) composing with the
-    eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned,
-    zombie villager) in the colored path; and the skeleton family (skeleton,
+    eat-grass dip; the `HumanoidModel` zombie family (zombie, husk, drowned
+    colored+textured; zombie villager colored); and the skeleton family (skeleton,
     stray, parched, wither skeleton, bogged) in both the colored and textured
     paths; the piglin family (piglin, piglin brute, zombified piglin) in the
     colored path; and the `VillagerModel`/`IllagerModel`/`WitchModel` family
     (villager and wandering trader colored+textured, witch colored+textured,
-    illagers colored) — the baby villager's index-3 head included. Remaining
+    illagers colored+textured) — the baby villager's index-3 head included. Remaining
     head-look work: now applied to every part-list humanoid and quadruped,
     including the wide/slim player model, and the standalone head-first models
     (creeper, spider/cave spider, enderman, iron golem, snow golem) — all colored
@@ -1159,8 +1159,18 @@ When an agent does any of the following, update this file in the same slice:
       hat/body `CubeDeformation` bounds, official 64x64 texture references from
       their vanilla renderers, illusioner's renderer-enabled hat, idle crossed
       arms for evoker/illusioner/vindicator, and uncrossed base arms for
-      pillager, and the vanilla `IllagerModel.setupAnim` head-look yaw/pitch on
-      the head part; item-in-hand/custom-head layers, spell/crossbow/attacking/
+      pillager, with a texture-backed cutout render path: each family emits the
+      shared `IllagerModel.createBodyLayer` UVs (head `texOffs(0, 0)`, nose
+      `texOffs(24, 0)`, hat `texOffs(32, 0)` over its base 8x12x8 box, body
+      `texOffs(16, 20)` plus the `texOffs(0, 38)` robe overlay keeping its base
+      8x20x6 box, the folded `texOffs(44, 22)`/`texOffs(40, 38)` arms with the
+      mirrored left-shoulder child, legs `texOffs(0, 22)`, and the uncrossed
+      pillager arms `texOffs(40, 46)`) over its own
+      `textures/entity/illager/{evoker,illusioner,pillager,vindicator}.png`, with
+      official PNG atlas upload/bind/sample and the vanilla `IllagerModel.setupAnim`
+      head-look yaw/pitch plus the half-amplitude leg swing (and the pillager's
+      `HumanoidModel` arm swing on its separate arms) on both render paths; the
+      item-in-hand/custom-head layers, spell/crossbow/attacking/
       celebrating/riding arm poses and animation, held item projection,
       illusioner clone offsets/invisible-body rendering, and renderer state
       extraction for dynamic arm visibility remain unsupported

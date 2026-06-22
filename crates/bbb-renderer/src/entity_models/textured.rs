@@ -3,8 +3,8 @@ use super::{
     catalog::{
         ArmorStandModelPose, BoatModelFamily, ChickenModelVariant, CowModelVariant, EntityDyeColor,
         EntityModelKind, EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout,
-        EntityModelTextureRef, HoglinModelFamily, PigModelVariant, PlayerModelPartVisibility,
-        SheepWoolColor, SkeletonModelFamily, ZombieVariantModelFamily,
+        EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, PigModelVariant,
+        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, ZombieVariantModelFamily,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{
@@ -60,14 +60,15 @@ pub(super) use layers::{
     cow_textured_layer_passes, creeper_textured_layer_passes, drowned_textured_layer_passes,
     enderman_textured_layer_passes, endermite_textured_layer_passes, ghast_textured_layer_passes,
     goat_textured_layer_passes, happy_ghast_textured_layer_passes, hoglin_textured_layer_passes,
-    husk_textured_layer_passes, iron_golem_textured_layer_passes, magma_cube_textured_layer_passes,
-    minecart_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
-    player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
-    sheep_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
-    slime_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
-    EntityModelLayerPass, EntityModelLayerRenderType,
+    husk_textured_layer_passes, illager_textured_layer_passes, iron_golem_textured_layer_passes,
+    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    phantom_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
+    polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, villager_textured_layer_passes,
+    wandering_trader_textured_layer_passes, witch_textured_layer_passes,
+    wolf_textured_layer_passes, zombie_textured_layer_passes, EntityModelLayerPass,
+    EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
@@ -223,6 +224,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::WanderingTrader => {
                 emit_wandering_trader_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Illager { family } => {
+                emit_illager_textured_model(&mut meshes, *instance, family, atlas);
             }
             EntityModelKind::Player { slim, parts } => {
                 emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
@@ -1081,6 +1085,61 @@ fn emit_drowned_textured_model(
             for index in HUMANOID_LEG_PART_INDICES {
                 if let Some(leg) = parts.get_mut(index) {
                     leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
+}
+
+fn emit_illager_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    family: IllagerModelFamily,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Mirrors the colored `emit_illager_model`: `IllagerModel.setupAnim` runs the head look, then
+    // the half-amplitude leg swing (`cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`). The separate
+    // arms swing with the `HumanoidModel` amplitude, but only the pillager renders the uncrossed
+    // arms; the evoker/vindicator/illusioner show the static folded `arms` part (vanilla swings
+    // the *invisible* separate arms). The arm-pose overrides (attack/spellcast/bow/crossbow/
+    // celebrate), the riding sit pose, and the item-in-hand layers stay deferred.
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    let transform = villager_adult_model_root_transform(instance);
+    let (leg_indices, arm_indices): ([usize; 2], Option<[usize; 2]>) = match family {
+        IllagerModelFamily::Pillager => ([2, 3], Some([4, 5])),
+        IllagerModelFamily::Evoker
+        | IllagerModelFamily::Vindicator
+        | IllagerModelFamily::Illusioner => ([3, 4], None),
+    };
+    for pass in illager_textured_layer_passes(family) {
+        if head_resting && limbs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            continue;
+        }
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(0) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+        }
+        if !limbs_resting {
+            for index in leg_indices {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose =
+                        half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+            if let Some(arm_indices) = arm_indices {
+                for index in arm_indices {
+                    if let Some(arm) = parts.get_mut(index) {
+                        arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                    }
                 }
             }
         }

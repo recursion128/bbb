@@ -3,8 +3,8 @@ use super::super::{
         boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref,
         player_texture_ref, sheep_wool_render_color, wolf_texture_ref, BoatModelFamily,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        HoglinModelFamily, PigModelVariant, PlayerModelPartVisibility, SheepWoolColor,
-        SkeletonModelFamily,
+        HoglinModelFamily, IllagerModelFamily, PigModelVariant, PlayerModelPartVisibility,
+        SheepWoolColor, SkeletonModelFamily,
     },
     geometry::TexturedModelPartDesc,
     model_layers::*,
@@ -37,6 +37,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     ZombieBase,
     HuskBase,
     DrownedBase,
+    IllagerBase,
     BlazeBase,
     EndermiteBase,
     SilverfishBase,
@@ -436,6 +437,48 @@ pub(in crate::entity_models) fn drowned_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::DrownedBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer,
+        texture,
+        parts,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn illager_textured_layer_passes(
+    family: IllagerModelFamily,
+) -> Vec<EntityModelLayerPass> {
+    // Vanilla `IllagerModel.createBodyLayer` is shared across all four illagers; only the model
+    // layer key and texture differ, plus per-renderer visibility: the pillager shows its separate
+    // (swinging) arms, the evoker/vindicator show the static folded `arms` part, and the
+    // illusioner additionally re-enables the head hat (`this.model.getHat().visible = true`).
+    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = match family {
+        IllagerModelFamily::Evoker => (
+            MODEL_LAYER_EVOKER,
+            EVOKER_TEXTURE_REF,
+            &ILLAGER_TEXTURED_CROSSED_PARTS,
+        ),
+        IllagerModelFamily::Vindicator => (
+            MODEL_LAYER_VINDICATOR,
+            VINDICATOR_TEXTURE_REF,
+            &ILLAGER_TEXTURED_CROSSED_PARTS,
+        ),
+        IllagerModelFamily::Illusioner => (
+            MODEL_LAYER_ILLUSIONER,
+            ILLUSIONER_TEXTURE_REF,
+            &ILLAGER_TEXTURED_ILLUSIONER_PARTS,
+        ),
+        IllagerModelFamily::Pillager => (
+            MODEL_LAYER_PILLAGER,
+            PILLAGER_TEXTURE_REF,
+            &ILLAGER_TEXTURED_UNCROSSED_PARTS,
+        ),
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::IllagerBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,

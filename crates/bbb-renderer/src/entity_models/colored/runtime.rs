@@ -279,7 +279,11 @@ fn entity_model_mesh_with_options(
                     emit_witch_model(&mut mesh, *instance);
                 }
             }
-            EntityModelKind::Illager { family } => emit_illager_model(&mut mesh, *instance, family),
+            EntityModelKind::Illager { family } => {
+                if !skip_texture_backed_entities {
+                    emit_illager_model(&mut mesh, *instance, family)
+                }
+            }
             EntityModelKind::Minecart => {
                 if !skip_texture_backed_entities {
                     emit_minecart_model(&mut mesh, *instance);
