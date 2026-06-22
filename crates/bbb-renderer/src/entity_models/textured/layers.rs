@@ -36,6 +36,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EndermiteBase,
     SilverfishBase,
     PhantomBase,
+    PhantomEyes,
     PolarBearBase,
     RavagerBase,
     SnowGolemBase,
@@ -361,17 +362,32 @@ pub(in crate::entity_models) fn silverfish_textured_layer_passes() -> Vec<Entity
 }
 
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass {
-        kind: EntityModelLayerKind::PhantomBase,
-        render_type: EntityModelLayerRenderType::Cutout,
-        model_layer: MODEL_LAYER_PHANTOM,
-        texture: PHANTOM_TEXTURE_REF,
-        parts: &PHANTOM_TEXTURED_PARTS,
-        visibility: EntityModelLayerVisibility::All,
-        tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
-        submit_sequence: 0,
-    }]
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::PhantomBase,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: MODEL_LAYER_PHANTOM,
+            texture: PHANTOM_TEXTURE_REF,
+            parts: &PHANTOM_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 0,
+            submit_sequence: 0,
+        },
+        // Vanilla `PhantomEyesLayer` (an `EyesLayer`): the whole model is re-rendered with
+        // the emissive `phantom_eyes.png` in the eyes render type.
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::PhantomEyes,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_PHANTOM,
+            texture: PHANTOM_EYES_TEXTURE_REF,
+            parts: &PHANTOM_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 1,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn polar_bear_textured_layer_passes(

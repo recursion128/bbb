@@ -163,6 +163,7 @@ mod tests {
                 "textures/entity/endermite/endermite.png",
                 "textures/entity/silverfish/silverfish.png",
                 "textures/entity/phantom/phantom.png",
+                "textures/entity/phantom/phantom_eyes.png",
                 "textures/entity/boat/acacia.png",
                 "textures/entity/chest_boat/acacia.png",
                 "textures/entity/boat/bamboo.png",

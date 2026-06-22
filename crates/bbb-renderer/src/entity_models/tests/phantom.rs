@@ -80,8 +80,10 @@ fn phantom_textured_parts_match_vanilla_model_layer_uv_sources() {
 
 #[test]
 fn phantom_layer_passes_match_vanilla_renderer() {
+    // Vanilla PhantomRenderer adds a PhantomEyesLayer, so the model emits a cutout base pass
+    // plus an emissive eyes pass over the same geometry.
     let passes = phantom_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
+    assert_eq!(passes.len(), 2);
     assert_eq!(passes[0].kind, EntityModelLayerKind::PhantomBase);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_PHANTOM);
@@ -89,6 +91,20 @@ fn phantom_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].parts, PHANTOM_TEXTURED_PARTS.as_slice());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (passes[0].collector_order, passes[0].submit_sequence),
+        (0, 0)
+    );
+
+    assert_eq!(passes[1].kind, EntityModelLayerKind::PhantomEyes);
+    assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[1].model_layer, MODEL_LAYER_PHANTOM);
+    assert_eq!(passes[1].texture, PHANTOM_EYES_TEXTURE_REF);
+    assert_eq!(passes[1].parts, PHANTOM_TEXTURED_PARTS.as_slice());
+    assert_eq!(
+        (passes[1].collector_order, passes[1].submit_sequence),
+        (1, 1)
+    );
 }
 
 #[test]
@@ -103,7 +119,11 @@ fn phantom_texture_ref_matches_vanilla_renderer() {
         })
     );
     assert!(entity_model_texture_refs().contains(&PHANTOM_TEXTURE_REF));
-    assert_eq!(phantom_entity_texture_refs(), &[PHANTOM_TEXTURE_REF]);
+    assert!(entity_model_texture_refs().contains(&PHANTOM_EYES_TEXTURE_REF));
+    assert_eq!(
+        phantom_entity_texture_refs(),
+        &[PHANTOM_TEXTURE_REF, PHANTOM_EYES_TEXTURE_REF]
+    );
 }
 
 #[test]
@@ -200,6 +220,30 @@ fn phantom_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (min, max) = textured_mesh_extents(&mesh);
     assert_close3(min, [-1.3223567, 63.913067, -0.991909]);
     assert_close3(max, [1.2598567, 64.36279, 0.577472]);
+}
+
+#[test]
+fn phantom_eyes_textured_mesh_uses_parent_model_geometry_and_eyes_render_type() {
+    // Vanilla PhantomEyesLayer re-renders the whole model with phantom_eyes.png in the eyes
+    // render type, so the eyes mesh shares the base geometry (8 cubes) and lands in the eyes
+    // pass.
+    let (atlas, _) = build_entity_model_texture_atlas(&phantom_texture_images()).unwrap();
+    let meshes = entity_model_textured_meshes(
+        &[EntityModelInstance::phantom(99, [0.0, 64.0, 0.0], 0.0, 0)],
+        &atlas,
+    );
+    assert_eq!(meshes.cutout.cutout_faces, 48);
+    assert_eq!(meshes.eyes.cutout_faces, 48);
+    assert_eq!(meshes.eyes.vertices.len(), 192);
+    assert!(meshes
+        .eyes
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert_eq!(
+        textured_mesh_extents(&meshes.eyes),
+        textured_mesh_extents(&meshes.cutout)
+    );
 }
 
 #[test]

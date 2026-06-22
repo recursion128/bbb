@@ -633,7 +633,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 88] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 89] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -702,6 +702,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ENDERMITE_TEXTURE_REF,
     SILVERFISH_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
+    PHANTOM_EYES_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -1039,8 +1040,14 @@ pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =
         size: [64, 64],
     };
 
-pub(in crate::entity_models) const PHANTOM_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [PHANTOM_TEXTURE_REF];
+pub(in crate::entity_models) const PHANTOM_EYES_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/phantom/phantom_eyes.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const PHANTOM_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [PHANTOM_TEXTURE_REF, PHANTOM_EYES_TEXTURE_REF];
 
 pub fn phantom_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &PHANTOM_ENTITY_TEXTURE_REFS
