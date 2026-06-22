@@ -65,6 +65,9 @@ impl EntityModelKind {
             Self::Endermite => "endermite",
             Self::Silverfish => "silverfish",
             Self::Phantom { .. } => "phantom",
+            Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
+            Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",
+            Self::Pufferfish { .. } => "pufferfish_big",
             Self::Zombie { baby: false } => "zombie",
             Self::Zombie { baby: true } => "zombie_baby",
             Self::ZombieVariant {
@@ -293,6 +296,7 @@ impl EntityModelKind {
             Self::Endermite => Some(ENDERMITE_TEXTURE_REF),
             Self::Silverfish => Some(SILVERFISH_TEXTURE_REF),
             Self::Phantom { .. } => Some(PHANTOM_TEXTURE_REF),
+            Self::Pufferfish { .. } => Some(PUFFERFISH_TEXTURE_REF),
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
             Self::ZombieVariant {

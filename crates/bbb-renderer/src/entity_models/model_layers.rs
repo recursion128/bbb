@@ -67,6 +67,7 @@ mod pig;
 mod piglin;
 mod player;
 mod polar_bear;
+mod pufferfish;
 mod ravager;
 mod sheep;
 mod silverfish;
@@ -102,6 +103,7 @@ pub(super) use pig::*;
 pub(super) use piglin::*;
 pub(super) use player::*;
 pub(super) use polar_bear::*;
+pub(super) use pufferfish::*;
 pub(super) use ravager::*;
 pub use sheep::SheepHeadEatPose;
 pub(super) use sheep::*;
@@ -117,9 +119,10 @@ pub use textures::{
     endermite_entity_texture_refs, entity_model_texture_refs, ghast_entity_texture_refs,
     goat_entity_texture_refs, hoglin_entity_texture_refs, phantom_entity_texture_refs,
     pig_entity_texture_refs, player_entity_texture_refs, polar_bear_entity_texture_refs,
-    ravager_entity_texture_refs, sheep_entity_texture_refs, silverfish_entity_texture_refs,
-    skeleton_entity_texture_refs, slime_entity_texture_refs, spider_entity_texture_refs,
-    villager_entity_texture_refs, witch_entity_texture_refs, wolf_entity_texture_refs,
+    pufferfish_entity_texture_refs, ravager_entity_texture_refs, sheep_entity_texture_refs,
+    silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
+    spider_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
+    wolf_entity_texture_refs,
 };
 pub(super) use villager::*;
 pub(super) use witch::*;

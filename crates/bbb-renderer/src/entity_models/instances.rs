@@ -441,6 +441,15 @@ impl EntityModelInstance {
         )
     }
 
+    pub fn pufferfish(entity_id: i32, position: [f32; 3], y_rot: f32, puff_state: i32) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Pufferfish { puff_state },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn zombie(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
         Self::new(entity_id, EntityModelKind::Zombie { baby }, position, y_rot)
     }

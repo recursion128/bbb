@@ -234,3 +234,20 @@ pub(in crate::entity_models) fn phantom_model_root_transform(
         * Mat4::from_translation(Vec3::new(0.0, 1.3125, 0.1875))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
+
+/// Vanilla `PufferfishRenderer.setupRotations` vertical bob, applied before the standard
+/// body-yaw stage: `translate(0, cos(ageInTicks * 0.05) * 0.08, 0)`. Inserted in the
+/// post-scale (`entityScale`) frame, exactly where vanilla calls `poseStack.translate`
+/// before `super.setupRotations`.
+pub(in crate::entity_models) fn pufferfish_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    let bob = (instance.render_state.age_in_ticks * 0.05).cos() * 0.08;
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * Mat4::from_translation(Vec3::new(0.0, bob, 0.0))
+        * entity_setup_rotations_transform(instance)
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}

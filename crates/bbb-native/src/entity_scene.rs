@@ -199,6 +199,10 @@ const SLIME_DEFAULT_SIZE: i32 = 1;
 // Phantom (`Phantom.ID_SIZE`, the first Mob-subclass synced data, index 16). Defaults to 0.
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const PHANTOM_DEFAULT_SIZE: i32 = 0;
+// Pufferfish (`Pufferfish.PUFF_STATE`): AbstractFish defines FROM_BUCKET at index 16, so the
+// puff state is index 17. Defaults to 0 (deflated).
+const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
+const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 const LLAMA_VARIANT_DATA_ID: u8 = 21;
 const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
@@ -756,7 +760,9 @@ fn entity_model_kind_with_time_and_registries(
             family: PiglinModelFamily::PiglinBrute,
             baby: false,
         },
-        VANILLA_ENTITY_TYPE_PUFFERFISH_ID => placeholder("todo_pufferfish_bounds", 0.7, 0.7, 0.7),
+        VANILLA_ENTITY_TYPE_PUFFERFISH_ID => EntityModelKind::Pufferfish {
+            puff_state: pufferfish_puff_state(data_values),
+        },
         VANILLA_ENTITY_TYPE_SALMON_ID => placeholder("todo_salmon_bounds", 0.7, 0.4, 0.7),
         VANILLA_ENTITY_TYPE_SHULKER_ID => placeholder("todo_shulker_bounds", 1.0, 1.0, 1.0),
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
@@ -1045,6 +1051,14 @@ fn slime_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
 
 fn phantom_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
     entity_data_int(values, PHANTOM_SIZE_DATA_ID, PHANTOM_DEFAULT_SIZE)
+}
+
+fn pufferfish_puff_state(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
+    entity_data_int(
+        values,
+        PUFFERFISH_PUFF_STATE_DATA_ID,
+        PUFFERFISH_DEFAULT_PUFF_STATE,
+    )
 }
 
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -2851,6 +2865,23 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SILVERFISH_ID, &[]),
             EntityModelKind::Silverfish
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_pufferfish_puff_state_from_data() {
+        // The pufferfish was a placeholder render box; it now resolves to the real model and
+        // projects its synced `PUFF_STATE` (index 17, defaulting to 0 = deflated).
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PUFFERFISH_ID, &[]),
+            EntityModelKind::Pufferfish { puff_state: 0 }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+                &[protocol_int_data(PUFFERFISH_PUFF_STATE_DATA_ID, 2)]
+            ),
+            EntityModelKind::Pufferfish { puff_state: 2 }
         );
     }
 

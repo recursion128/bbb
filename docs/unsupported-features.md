@@ -1223,6 +1223,18 @@ When an agent does any of the following, update this file in the same slice:
       `PhantomEyesLayer` — an emissive `EyesLayer` re-rendering the whole model with
       `textures/entity/phantom/phantom_eyes.png` in the eyes render type. Lighting and
       overlay remain unsupported
+    - pufferfish entities as renderer-owned vanilla 26.1
+      `PufferfishSmallModel`/`PufferfishMidModel`/`PufferfishBigModel.createBodyLayer()`
+      geometry: the small (6-cube), medium (11-cube), and big (13-cube) body layers
+      on a 32x32 texture, selected by the synced `PUFF_STATE` int (entity-data index
+      17, defaulting to 0; `0` small, `1` medium, `>=2` big, matching
+      `PufferfishRenderer.submit`), with the vanilla `PufferfishRenderer.setupRotations`
+      vertical bob (`translate(0, cos(ageInTicks · 0.05) · 0.08, 0)`); the official
+      `textures/entity/fish/pufferfish.png` texture reference, texture-backed cutout
+      emission, official PNG atlas upload/bind/sample path, and the shared vanilla
+      `setupAnim` pectoral/blue fin wiggle (`right.zRot = -0.2 + 0.4 · sin(ageInTicks ·
+      0.2)`, left negated, set absolutely over the rest pose, on both render paths).
+      Lighting and overlay remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

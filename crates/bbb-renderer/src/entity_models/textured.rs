@@ -25,7 +25,8 @@ use super::{
         iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
         parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
         phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
+        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
+        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
         sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, silverfish_layer_pose,
         silverfish_segment_pose, skeleton_head_part_index, snow_golem_arm_pose,
@@ -40,13 +41,13 @@ use super::{
         PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
         PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
-        RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES, SILVERFISH_SEGMENT_COUNT,
-        SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        PUFFERFISH_TEXTURE_REF, RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES,
+        SILVERFISH_SEGMENT_COUNT, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
         SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    slime_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform,
+    pufferfish_model_root_transform, slime_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform,
 };
 use glam::Mat4;
 
@@ -164,6 +165,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Phantom { size } => {
                 emit_phantom_textured_model(&mut meshes, *instance, size, atlas);
+            }
+            EntityModelKind::Pufferfish { puff_state } => {
+                emit_pufferfish_textured_model(&mut meshes, *instance, puff_state, atlas);
             }
             EntityModelKind::PolarBear { baby } => {
                 emit_polar_bear_textured_model(&mut meshes, *instance, baby, atlas);
@@ -935,6 +939,40 @@ fn emit_phantom_textured_model(
         emit(
             body_t * part_pose_transform(PHANTOM_HEAD_POSE),
             PHANTOM_HEAD_TEXTURED_CUBE,
+        );
+    }
+}
+
+fn emit_pufferfish_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    puff_state: i32,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Vanilla picks the small/mid/big model by puff state; each wiggles its two fins on
+    // `ageInTicks`. A single cutout pass over `pufferfish.png` (no eyes layer).
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, PUFFERFISH_TEXTURE_REF) else {
+        return;
+    };
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+    let root = pufferfish_model_root_transform(instance);
+    let (parts, fins) = pufferfish_parts(puff_state);
+    let fin_z = pufferfish_right_fin_z_rot(instance.render_state.age_in_ticks);
+    for (index, part) in parts.iter().enumerate() {
+        let pose = if index == fins[0] {
+            pufferfish_fin_pose(part.pose(), fin_z)
+        } else if index == fins[1] {
+            pufferfish_fin_pose(part.pose(), -fin_z)
+        } else {
+            part.pose()
+        };
+        emit_textured_model_cube(
+            mesh,
+            root * part_pose_transform(pose),
+            part.textured_cube(),
+            PUFFERFISH_TEXTURE_REF,
+            entry.uv,
+            [1.0, 1.0, 1.0, 1.0],
         );
     }
 }

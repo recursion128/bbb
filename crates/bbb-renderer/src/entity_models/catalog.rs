@@ -44,6 +44,9 @@ pub enum EntityModelKind {
     Phantom {
         size: i32,
     },
+    Pufferfish {
+        puff_state: i32,
+    },
     Zombie {
         baby: bool,
     },

@@ -19,8 +19,8 @@ use super::transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, entity_model_root_transform,
     ghast_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
-    player_model_root_transform, polar_bear_model_root_transform, scaled_model_root_transform,
-    slime_model_root_transform, villager_adult_model_root_transform,
+    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
+    scaled_model_root_transform, slime_model_root_transform, villager_adult_model_root_transform,
     wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
@@ -119,6 +119,11 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
+                }
+            }
+            EntityModelKind::Pufferfish { puff_state } => {
+                if !skip_texture_backed_entities {
+                    emit_pufferfish_model(&mut mesh, *instance, puff_state);
                 }
             }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
@@ -389,6 +394,28 @@ fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance,
         body_t * part_pose_transform(PHANTOM_HEAD_POSE),
         PHANTOM_HEAD_CUBE,
     );
+}
+
+fn emit_pufferfish_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    puff_state: i32,
+) {
+    // Vanilla picks the small/mid/big model by puff state; each wiggles its two fins on
+    // `ageInTicks` (the rest are static). The body bob lives in the root transform.
+    let root = pufferfish_model_root_transform(instance);
+    let (parts, fins) = pufferfish_parts(puff_state);
+    let fin_z = pufferfish_right_fin_z_rot(instance.render_state.age_in_ticks);
+    for (index, part) in parts.iter().enumerate() {
+        let pose = if index == fins[0] {
+            pufferfish_fin_pose(part.pose(), fin_z)
+        } else if index == fins[1] {
+            pufferfish_fin_pose(part.pose(), -fin_z)
+        } else {
+            part.pose()
+        };
+        emit_model_cubes_at_pose(mesh, root, pose, &[part.colored_cube()]);
+    }
 }
 
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {
