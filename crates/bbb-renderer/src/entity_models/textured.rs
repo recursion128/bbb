@@ -26,13 +26,14 @@ use super::{
         parched_head_part_index, pig_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, villager_head_part_index,
-        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT,
-        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN,
-        SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, silverfish_layer_pose,
+        silverfish_segment_pose, skeleton_head_part_index, snow_golem_arm_pose,
+        snow_golem_upper_body_pose, snow_golem_upper_body_yrot, spider_leg_swing_pose,
+        spider_leg_swing_roles, villager_head_part_index, witch_nose_bob_pose,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        HOGLIN_RIGHT_EAR_CHILD_INDEX, RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES,
+        SILVERFISH_SEGMENT_COUNT, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
         SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
     player_model_root_transform, polar_bear_model_root_transform, slime_model_root_transform,
@@ -49,8 +50,8 @@ pub(super) use layers::{
     hoglin_textured_layer_passes, iron_golem_textured_layer_passes,
     magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
     polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
-    spider_textured_layer_passes, villager_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
     wolf_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
 };
@@ -147,6 +148,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Endermite => {
                 emit_endermite_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Silverfish => {
+                emit_silverfish_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::PolarBear { baby } => {
                 emit_polar_bear_textured_model(&mut meshes, *instance, baby, atlas);
@@ -839,6 +843,30 @@ fn emit_endermite_textured_model(
         let mut parts = pass.parts.to_vec();
         for (index, part) in parts.iter_mut().enumerate() {
             part.pose = endermite_segment_pose(part.pose, index, age_in_ticks);
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
+}
+
+fn emit_silverfish_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Vanilla `SilverfishModel.setupAnim` wiggles all seven body segments from `ageInTicks`
+    // every frame (`silverfish_segment_pose`), then the three overlay layers copy segments
+    // 2/4/1 (`silverfish_layer_pose` per `SILVERFISH_LAYER_RULES`).
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let transform = entity_model_root_transform(instance);
+    for pass in silverfish_textured_layer_passes() {
+        let mut parts = pass.parts.to_vec();
+        for index in 0..SILVERFISH_SEGMENT_COUNT {
+            parts[index].pose = silverfish_segment_pose(parts[index].pose, index, age_in_ticks);
+        }
+        for (layer, &(source, copy_x)) in SILVERFISH_LAYER_RULES.iter().enumerate() {
+            let source_pose = parts[source].pose;
+            let part = &mut parts[SILVERFISH_SEGMENT_COUNT + layer];
+            part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
         }
         emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }

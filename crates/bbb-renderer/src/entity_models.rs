@@ -44,9 +44,9 @@ pub use model_layers::{
     endermite_entity_texture_refs, entity_model_texture_refs, ghast_entity_texture_refs,
     goat_entity_texture_refs, hoglin_entity_texture_refs, pig_entity_texture_refs,
     player_entity_texture_refs, polar_bear_entity_texture_refs, ravager_entity_texture_refs,
-    sheep_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
-    spider_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
-    wolf_entity_texture_refs, SheepHeadEatPose,
+    sheep_entity_texture_refs, silverfish_entity_texture_refs, skeleton_entity_texture_refs,
+    slime_entity_texture_refs, spider_entity_texture_refs, villager_entity_texture_refs,
+    witch_entity_texture_refs, wolf_entity_texture_refs, SheepHeadEatPose,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;
@@ -59,8 +59,8 @@ use textured::{
     hoglin_textured_layer_passes, iron_golem_textured_layer_passes,
     magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
     polar_bear_textured_layer_passes, ravager_textured_layer_passes, sheep_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
-    spider_textured_layer_passes, villager_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
     wolf_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
     EntityModelLayerVisibility,

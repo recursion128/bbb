@@ -68,6 +68,7 @@ mod player;
 mod polar_bear;
 mod ravager;
 mod sheep;
+mod silverfish;
 mod skeleton;
 mod skeleton_clothing;
 mod slime;
@@ -102,6 +103,7 @@ pub(super) use polar_bear::*;
 pub(super) use ravager::*;
 pub use sheep::SheepHeadEatPose;
 pub(super) use sheep::*;
+pub(super) use silverfish::*;
 pub(super) use skeleton::*;
 pub(super) use skeleton_clothing::*;
 pub(super) use slime::*;
@@ -113,9 +115,9 @@ pub use textures::{
     endermite_entity_texture_refs, entity_model_texture_refs, ghast_entity_texture_refs,
     goat_entity_texture_refs, hoglin_entity_texture_refs, pig_entity_texture_refs,
     player_entity_texture_refs, polar_bear_entity_texture_refs, ravager_entity_texture_refs,
-    sheep_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
-    spider_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
-    wolf_entity_texture_refs,
+    sheep_entity_texture_refs, silverfish_entity_texture_refs, skeleton_entity_texture_refs,
+    slime_entity_texture_refs, spider_entity_texture_refs, villager_entity_texture_refs,
+    witch_entity_texture_refs, wolf_entity_texture_refs,
 };
 pub(super) use villager::*;
 pub(super) use witch::*;

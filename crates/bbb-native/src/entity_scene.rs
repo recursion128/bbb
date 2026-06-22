@@ -757,7 +757,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
             placeholder("todo_shulker_bullet_bounds", 0.3125, 0.3125, 0.3125)
         }
-        VANILLA_ENTITY_TYPE_SILVERFISH_ID => placeholder("todo_silverfish_bounds", 0.4, 0.3, 0.4),
+        VANILLA_ENTITY_TYPE_SILVERFISH_ID => EntityModelKind::Silverfish,
         VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {
             size: slime_size(data_values),
         },
@@ -2833,6 +2833,15 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ENDERMITE_ID, &[]),
             EntityModelKind::Endermite
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_silverfish() {
+        // The silverfish was a placeholder render box; it now resolves to the real model.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SILVERFISH_ID, &[]),
+            EntityModelKind::Silverfish
         );
     }
 

@@ -27,6 +27,7 @@ mod polar_bear;
 mod ravager;
 mod scale;
 mod sheep;
+mod silverfish;
 mod skeleton;
 mod sleeping;
 mod slime;

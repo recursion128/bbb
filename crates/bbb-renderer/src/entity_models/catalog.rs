@@ -40,6 +40,7 @@ pub enum EntityModelKind {
     Ghast,
     Blaze,
     Endermite,
+    Silverfish,
     Zombie {
         baby: bool,
     },

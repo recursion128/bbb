@@ -1196,6 +1196,19 @@ When an agent does any of the following, update this file in the same slice:
       π * 0.01 * (1 + |i - 2|)`, `segment.x = sin(phase) * π * 0.1 * |i - 2|`,
       `phase = ageInTicks * 0.9 + i * 0.15 * π`, driven by the projected
       `ageInTicks`, on both render paths). Lighting and overlay remain unsupported
+    - silverfish entities as renderer-owned vanilla 26.1
+      `SilverfishModel.createBodyLayer()` geometry: the seven nested body segments
+      from `BODY_SIZES`/`BODY_TEXS` plus the three wider overlay layers riding
+      segments 2/4/1 (`texOffs(20, 0/11/18)`, including the vanilla quirk where
+      layer2 takes its z-min from `BODY_SIZES[4]` but its z-size from
+      `BODY_SIZES[1]`), with no `MeshTransformer` scaling (the unit entity model-root
+      transform); the official `textures/entity/silverfish/silverfish.png` texture
+      reference, texture-backed base layer pass emission, official PNG atlas
+      upload/bind/sample path, and the vanilla `SilverfishModel.setupAnim` segment
+      wiggle (`segment.yRot = cos(phase) * π * 0.05 * (1 + |i - 2|)`, `segment.x =
+      sin(phase) * π * 0.2 * |i - 2|`, `phase = ageInTicks * 0.9 + i * 0.15 * π`,
+      with the overlay layers copying segments 2/4/1, driven by the projected
+      `ageInTicks`, on both render paths). Lighting and overlay remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

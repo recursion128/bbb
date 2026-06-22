@@ -110,6 +110,11 @@ fn entity_model_mesh_with_options(
                     emit_endermite_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Silverfish => {
+                if !skip_texture_backed_entities {
+                    emit_silverfish_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
             EntityModelKind::ZombieVariant { family, baby } => {
                 emit_zombie_variant_model(&mut mesh, *instance, family, baby)
@@ -317,6 +322,24 @@ fn emit_endermite_model(mesh: &mut EntityModelMesh, instance: EntityModelInstanc
     let mut parts = ENDERMITE_PARTS.to_vec();
     for (index, part) in parts.iter_mut().enumerate() {
         part.pose = endermite_segment_pose(part.pose, index, age_in_ticks);
+    }
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+}
+
+fn emit_silverfish_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `SilverfishModel.setupAnim` wiggles all seven body segments from `ageInTicks`
+    // every frame (`silverfish_segment_pose`), then the three overlay layers copy segments
+    // 2/4/1 (`silverfish_layer_pose` per `SILVERFISH_LAYER_RULES`). There is no head look or
+    // walk swing, and no MeshTransformer scaling (unit model root).
+    let age_in_ticks = instance.render_state.age_in_ticks;
+    let mut parts = SILVERFISH_PARTS.to_vec();
+    for index in 0..SILVERFISH_SEGMENT_COUNT {
+        parts[index].pose = silverfish_segment_pose(parts[index].pose, index, age_in_ticks);
+    }
+    for (layer, &(source, copy_x)) in SILVERFISH_LAYER_RULES.iter().enumerate() {
+        let source_pose = parts[source].pose;
+        let part = &mut parts[SILVERFISH_SEGMENT_COUNT + layer];
+        part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
     }
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
