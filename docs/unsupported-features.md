@@ -1142,9 +1142,13 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.ARMOR_STAND_SMALL` `HumanoidModel.BABY_TRANSFORMER` root-part
       transform, official `textures/entity/armorstand/armorstand.png` texture
       reference, client flags for small/show-arms/no-baseplate, and head/body/
-      arm/leg pose metadata projection; armor/equipment/custom-head/elytra/
-      held-item layers, hurt wiggle, marker/invisible render-type nuances,
-      animation interpolation, and GPU texture binding remain unsupported
+      arm/leg pose metadata projection; the textured base layer emits the vanilla
+      `createBodyLayer` `texOffs` UVs (the small layer reuses the full-model UVs
+      because `BABY_TRANSFORMER` only scales geometry, not texture coordinates),
+      with official PNG atlas upload/bind/sample on both render paths;
+      armor/equipment/custom-head/elytra/held-item layers, hurt wiggle,
+      marker/invisible render-type nuances, and animation interpolation remain
+      unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,

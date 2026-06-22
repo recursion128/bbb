@@ -167,6 +167,7 @@ mod tests {
                 "textures/entity/fish/pufferfish.png",
                 "textures/entity/ghast/happy_ghast.png",
                 "textures/entity/minecart/minecart.png",
+                "textures/entity/armorstand/armorstand.png",
                 "textures/entity/boat/acacia.png",
                 "textures/entity/chest_boat/acacia.png",
                 "textures/entity/boat/bamboo.png",

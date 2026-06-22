@@ -633,7 +633,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 92] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 93] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -706,6 +706,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PUFFERFISH_TEXTURE_REF,
     HAPPY_GHAST_TEXTURE_REF,
     MINECART_TEXTURE_REF,
+    ARMOR_STAND_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -965,6 +966,13 @@ pub(in crate::entity_models) const ARMOR_STAND_TEXTURE_REF: EntityModelTextureRe
         path: "textures/entity/armorstand/armorstand.png",
         size: [64, 64],
     };
+
+pub(in crate::entity_models) const ARMOR_STAND_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [ARMOR_STAND_TEXTURE_REF];
+
+pub fn armor_stand_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ARMOR_STAND_ENTITY_TEXTURE_REFS
+}
 
 pub(in crate::entity_models) const SLIME_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {

@@ -209,4 +209,92 @@ fn armor_stand_texture_refs_match_vanilla_renderer() {
         })
     );
     assert_eq!(small.vanilla_texture_ref(), adult.vanilla_texture_ref());
+    assert!(entity_model_texture_refs().contains(&ARMOR_STAND_TEXTURE_REF));
+    assert_eq!(
+        armor_stand_entity_texture_refs(),
+        &[ARMOR_STAND_TEXTURE_REF]
+    );
+}
+
+#[test]
+fn armor_stand_textured_part_uvs_match_vanilla_model_layer() {
+    // Vanilla ArmorStandModel.createBodyLayer texOffs + box per part (texture 64x64). The small
+    // layer is the same mesh scaled by BABY_TRANSFORMER, so its UVs equal the full model's.
+    assert_eq!(ARMOR_STAND_PART_UVS.len(), 10);
+    let expected: [([f32; 2], [f32; 3], bool); 10] = [
+        ([0.0, 0.0], [2.0, 7.0, 2.0], false),
+        ([0.0, 26.0], [12.0, 3.0, 3.0], false),
+        ([24.0, 0.0], [2.0, 12.0, 2.0], false),
+        ([32.0, 16.0], [2.0, 12.0, 2.0], true),
+        ([8.0, 0.0], [2.0, 11.0, 2.0], false),
+        ([40.0, 16.0], [2.0, 11.0, 2.0], true),
+        ([16.0, 0.0], [2.0, 7.0, 2.0], false),
+        ([48.0, 16.0], [2.0, 7.0, 2.0], false),
+        ([0.0, 48.0], [8.0, 2.0, 2.0], false),
+        ([0.0, 32.0], [12.0, 1.0, 12.0], false),
+    ];
+    for (index, (tex, uv_size, mirror)) in expected.iter().enumerate() {
+        let uv = ARMOR_STAND_PART_UVS[index];
+        assert_eq!(uv.tex, *tex, "part {index} texOffs");
+        assert_eq!(uv.uv_size, *uv_size, "part {index} uv_size");
+        assert_eq!(uv.mirror, *mirror, "part {index} mirror");
+    }
+    // The full model's textured cube reuses the colored geometry verbatim.
+    let head = armor_stand_textured_cube(&ARMOR_STAND_PARTS[0], ARMOR_STAND_PART_UVS[0]);
+    assert_eq!(head.min, ARMOR_STAND_HEAD[0].min);
+    assert_eq!(head.size, ARMOR_STAND_HEAD[0].size);
+    assert_eq!(head.uv_size, [2.0, 7.0, 2.0]);
+    // The small model scales the geometry but keeps the full-model UV source.
+    let small_head =
+        armor_stand_textured_cube(&SMALL_ARMOR_STAND_PARTS[0], ARMOR_STAND_PART_UVS[0]);
+    assert_eq!(small_head.min, SMALL_ARMOR_STAND_HEAD[0].min);
+    assert_eq!(small_head.size, SMALL_ARMOR_STAND_HEAD[0].size);
+    assert_eq!(small_head.uv_size, [2.0, 7.0, 2.0]);
+}
+
+#[test]
+fn armor_stand_textured_mesh_matches_colored_geometry_and_visibility() {
+    let (atlas, _) = build_entity_model_texture_atlas(&armor_stand_texture_images()).unwrap();
+    for (small, show_arms, show_base_plate) in [
+        (false, false, true),
+        (false, true, false),
+        (true, true, true),
+    ] {
+        let mut pose = DEFAULT_ARMOR_STAND_MODEL_POSE;
+        pose.head = [0.0, 45.0, 0.0];
+        pose.body = [0.0, 0.0, 12.0];
+        let instances = [EntityModelInstance::armor_stand(
+            5,
+            [0.0, 64.0, 0.0],
+            0.0,
+            small,
+            show_arms,
+            show_base_plate,
+            pose,
+        )];
+        let colored = entity_model_mesh(&instances);
+        let textured = entity_model_textured_mesh(&instances, &atlas);
+        // The textured cart shares the colored geometry exactly: same cube count and bounds.
+        assert_eq!(textured.cutout_faces, colored.opaque_faces);
+        assert_eq!(textured.vertices.len(), colored.vertices.len());
+        assert!(textured
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        let (cmin, cmax) = mesh_extents(&colored);
+        let (tmin, tmax) = textured_mesh_extents(&textured);
+        assert_close3(tmin, cmin);
+        assert_close3(tmax, cmax);
+    }
+}
+
+fn armor_stand_texture_images() -> Vec<EntityModelTextureImage> {
+    armor_stand_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
 }

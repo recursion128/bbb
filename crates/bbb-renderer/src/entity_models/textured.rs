@@ -1,23 +1,23 @@
 use super::{
     boat_model_root_transform,
     catalog::{
-        BoatModelFamily, ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelKind,
-        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        HoglinModelFamily, PigModelVariant, PlayerModelPartVisibility, SheepWoolColor,
-        SkeletonModelFamily,
+        ArmorStandModelPose, BoatModelFamily, ChickenModelVariant, CowModelVariant, EntityDyeColor,
+        EntityModelKind, EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout,
+        EntityModelTextureRef, HoglinModelFamily, PigModelVariant, PlayerModelPartVisibility,
+        SheepWoolColor, SkeletonModelFamily,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{
         emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
-        fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh,
-        TexturedModelPartDesc,
+        fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh, ModelPartDesc,
+        PartPose, TexturedModelPartDesc,
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
     magma_cube_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, apply_wolf_sitting_pose, blaze_rod_offset,
-        chicken_leg_part_indices, cow_head_part_index, enderman_arm_swing_pose,
+        apply_polar_bear_standing_pose, apply_wolf_sitting_pose, armor_stand_textured_cube,
+        blaze_rod_offset, chicken_leg_part_indices, cow_head_part_index, enderman_arm_swing_pose,
         enderman_leg_swing_pose, endermite_segment_pose, ghast_tentacle_x_rot,
         half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
         head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
@@ -33,7 +33,8 @@ use super::{
         snow_golem_upper_body_pose, snow_golem_upper_body_yrot, spider_leg_swing_pose,
         spider_leg_swing_roles, villager_head_part_index, witch_nose_bob_pose,
         wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        ADULT_GOAT_HEAD_INDEX, BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        ADULT_GOAT_HEAD_INDEX, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
+        BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, HOGLIN_LEFT_EAR_CHILD_INDEX,
         HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
         PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
@@ -42,8 +43,9 @@ use super::{
         PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PUFFERFISH_TEXTURE_REF, RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES,
-        SILVERFISH_SEGMENT_COUNT, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
-        SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
+        SILVERFISH_SEGMENT_COUNT, SMALL_ARMOR_STAND_PARTS, SNOW_GOLEM_HEAD_PART_INDEX,
+        SNOW_GOLEM_LEFT_ARM_PART_INDEX, SNOW_GOLEM_RIGHT_ARM_PART_INDEX,
+        SNOW_GOLEM_UPPER_BODY_PART_INDEX, WITCH_NOSE_CHILD_INDEX,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, slime_model_root_transform,
@@ -160,6 +162,22 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Minecart => {
                 emit_minecart_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::ArmorStand {
+                small,
+                show_arms,
+                show_base_plate,
+                pose,
+            } => {
+                emit_armor_stand_textured_model(
+                    &mut meshes,
+                    *instance,
+                    small,
+                    show_arms,
+                    show_base_plate,
+                    pose,
+                    atlas,
+                );
             }
             EntityModelKind::Blaze => {
                 emit_blaze_textured_model(&mut meshes, *instance, atlas);
@@ -859,6 +877,73 @@ fn emit_minecart_textured_model(
     for pass in minecart_textured_layer_passes() {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_armor_stand_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    small: bool,
+    show_arms: bool,
+    show_base_plate: bool,
+    pose: ArmorStandModelPose,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Mirrors the colored `emit_armor_stand_model`: vanilla `ArmorStandModel.setupAnim` poses
+    // each part from the synced pose (degrees), hides the arms/base plate by visibility, and
+    // yaws the base plate by `-yRot`. The body, both body sticks, and the shoulder stick all
+    // share the body pose. The geometry comes from the shared colored parts so the colored and
+    // textured meshes stay identical; only the UVs differ.
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, ARMOR_STAND_TEXTURE_REF) else {
+        return;
+    };
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+    let parts: &[ModelPartDesc] = if small {
+        &SMALL_ARMOR_STAND_PARTS
+    } else {
+        &ARMOR_STAND_PARTS
+    };
+    let transform = entity_model_root_transform(instance);
+    let mut emit_part = |index: usize, rotation: [f32; 3]| {
+        let part = &parts[index];
+        let cube = armor_stand_textured_cube(part, ARMOR_STAND_PART_UVS[index]);
+        let part_pose = PartPose {
+            offset: part.pose.offset,
+            rotation,
+        };
+        emit_textured_model_cube(
+            mesh,
+            transform * part_pose_transform(part_pose),
+            cube,
+            ARMOR_STAND_TEXTURE_REF,
+            entry.uv,
+            [1.0, 1.0, 1.0, 1.0],
+        );
+    };
+
+    let body = degrees_to_radians3(pose.body);
+    emit_part(0, degrees_to_radians3(pose.head));
+    emit_part(1, body);
+    if show_arms {
+        emit_part(2, degrees_to_radians3(pose.right_arm));
+        emit_part(3, degrees_to_radians3(pose.left_arm));
+    }
+    emit_part(4, degrees_to_radians3(pose.right_leg));
+    emit_part(5, degrees_to_radians3(pose.left_leg));
+    emit_part(6, body);
+    emit_part(7, body);
+    emit_part(8, body);
+    if show_base_plate {
+        emit_part(9, [0.0, -instance.render_state.body_rot.to_radians(), 0.0]);
+    }
+}
+
+fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
+    [
+        rotation[0].to_radians(),
+        rotation[1].to_radians(),
+        rotation[2].to_radians(),
+    ]
 }
 
 fn emit_blaze_textured_model(

@@ -78,14 +78,18 @@ fn entity_model_mesh_with_options(
                 show_arms,
                 show_base_plate,
                 pose,
-            } => emit_armor_stand_model(
-                &mut mesh,
-                *instance,
-                small,
-                show_arms,
-                show_base_plate,
-                pose,
-            ),
+            } => {
+                if !skip_texture_backed_entities {
+                    emit_armor_stand_model(
+                        &mut mesh,
+                        *instance,
+                        small,
+                        show_arms,
+                        show_base_plate,
+                        pose,
+                    );
+                }
+            }
             EntityModelKind::Slime { size } => {
                 if !skip_texture_backed_entities {
                     emit_slime_model(&mut mesh, *instance, size);
