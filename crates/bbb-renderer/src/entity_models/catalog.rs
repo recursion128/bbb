@@ -73,6 +73,14 @@ pub enum EntityModelKind {
     /// `age_in_ticks`. The resting pose (`isResting`, `BatAnimation.BAT_RESTING`) is deferred
     /// entity-side state.
     Bat,
+    /// Bee (`AdultBeeModel` / `BabyBeeModel`, `BeeRenderer`). The procedural `BeeModel.setupAnim`
+    /// airborne wing flap (`zRot = cos(ageInTicks · 120.32113°) · π · 0.15`) and the idle
+    /// `bobUpAndDown` bone/leg/antenna bob, gated on the synced `Entity.onGround`. The anger pose
+    /// (`isAngry`), the rolled-up fall pose (`rollAmount`), the stinger-loss (`hasStinger`) and the
+    /// nectar/angry texture swaps are deferred entity-side state.
+    Bee {
+        baby: bool,
+    },
     Phantom {
         size: i32,
     },

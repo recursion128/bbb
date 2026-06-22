@@ -239,6 +239,17 @@ pub(in crate::entity_models) const BAT_TEXTURE_REF: EntityModelTextureRef = Enti
     size: [32, 32],
 };
 
+// Vanilla `BeeRenderer` base textures (the non-angry, non-nectar adult and baby).
+pub(in crate::entity_models) const BEE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/bee/bee.png",
+    size: [64, 64],
+};
+pub(in crate::entity_models) const BEE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_baby.png",
+        size: [32, 32],
+    };
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",

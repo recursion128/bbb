@@ -152,6 +152,9 @@ fn entity_model_mesh_with_options(
                     emit_bat_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Bee { baby } => {
+                emit_bee_model(&mut mesh, *instance, baby);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -961,6 +964,201 @@ fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         left_wing_t,
         bat_animated_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
         &BAT_LEFT_WING_TIP,
+    );
+}
+
+fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    // Vanilla `BeeModel.setupAnim`: while airborne (`!isOnGround`) the wings flap on `ageInTicks`
+    // and the non-angry `bobUpAndDown` rocks the bone pivot, front/back legs (and, on adults, the
+    // antennae), with all three legs first set to `π/4` so the middle leg holds that angle. On the
+    // ground the model rests at its bind pose. The anger pose (`isAngry`), the rolled-up fall pose
+    // (`rollAmount`) and the stinger-loss visibility (`hasStinger`) are deferred entity-side state.
+    // The body (carrying the stinger and antennae), the wings, and the legs hang under the `bone`
+    // pivot, so the hierarchy is walked by hand. Bee uses `LivingEntityRenderer.setupRotations`.
+    let age = instance.render_state.age_in_ticks;
+    let flying = !instance.render_state.on_ground;
+    let root = entity_model_root_transform(instance);
+
+    // Bone pivot (root child): the airborne bob rocks it forward and lifts/drops it.
+    let bone_bind = if baby {
+        BEE_BABY_BONE_POSE
+    } else {
+        BEE_BONE_POSE
+    };
+    let bone_pose = if flying {
+        PartPose {
+            offset: [
+                bone_bind.offset[0],
+                bone_bind.offset[1] + bee_bone_y_delta(age),
+                bone_bind.offset[2],
+            ],
+            rotation: [bee_bone_x_rot(age), 0.0, 0.0],
+        }
+    } else {
+        bone_bind
+    };
+    let bone_t = root * part_pose_transform(bone_pose);
+    if baby {
+        emit_model_cubes_at_pose(mesh, root, bone_pose, &BEE_BABY_BONE);
+    }
+
+    // Body (bone child) carries the stinger and, on adults, the two antennae.
+    let body_pose = if baby {
+        BEE_BABY_BODY_POSE
+    } else {
+        BEE_BODY_POSE
+    };
+    let body_t = bone_t * part_pose_transform(body_pose);
+    emit_model_cubes_at_pose(
+        mesh,
+        bone_t,
+        body_pose,
+        if baby { &BEE_BABY_BODY } else { &BEE_BODY },
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        body_t,
+        if baby {
+            BEE_BABY_STINGER_POSE
+        } else {
+            BEE_STINGER_POSE
+        },
+        if baby {
+            &BEE_BABY_STINGER
+        } else {
+            &BEE_STINGER
+        },
+    );
+    if !baby {
+        let antenna_x_rot = if flying { bee_antenna_x_rot(age) } else { 0.0 };
+        emit_model_cubes_at_pose(
+            mesh,
+            body_t,
+            PartPose {
+                offset: BEE_LEFT_ANTENNA_POSE.offset,
+                rotation: [antenna_x_rot, 0.0, 0.0],
+            },
+            &BEE_LEFT_ANTENNA,
+        );
+        emit_model_cubes_at_pose(
+            mesh,
+            body_t,
+            PartPose {
+                offset: BEE_RIGHT_ANTENNA_POSE.offset,
+                rotation: [antenna_x_rot, 0.0, 0.0],
+            },
+            &BEE_RIGHT_ANTENNA,
+        );
+    }
+
+    // Wings (bone children): the flap overrides the bind yaw to 0 and drives `zRot`, mirrored on
+    // the left, while the bind pitch (0 on adults, `0.2182` on babies) is preserved.
+    let (right_wing_pose, left_wing_pose, right_wing, left_wing): (_, _, &[ModelCubeDesc], _) =
+        if baby {
+            (
+                BEE_BABY_RIGHT_WING_POSE,
+                BEE_BABY_LEFT_WING_POSE,
+                &BEE_BABY_RIGHT_WING,
+                &BEE_BABY_LEFT_WING,
+            )
+        } else {
+            (
+                BEE_RIGHT_WING_POSE,
+                BEE_LEFT_WING_POSE,
+                &BEE_RIGHT_WING,
+                &BEE_LEFT_WING,
+            )
+        };
+    let wing_z_rot = bee_wing_z_rot(age);
+    emit_model_cubes_at_pose(
+        mesh,
+        bone_t,
+        if flying {
+            PartPose {
+                offset: right_wing_pose.offset,
+                rotation: [right_wing_pose.rotation[0], 0.0, wing_z_rot],
+            }
+        } else {
+            right_wing_pose
+        },
+        right_wing,
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        bone_t,
+        if flying {
+            PartPose {
+                offset: left_wing_pose.offset,
+                rotation: [left_wing_pose.rotation[0], 0.0, -wing_z_rot],
+            }
+        } else {
+            left_wing_pose
+        },
+        left_wing,
+    );
+
+    // Legs (bone children): airborne, the front/back pair bob while the middle leg holds `π/4`.
+    let (front_x, mid_x, back_x) = if flying {
+        (
+            bee_front_leg_x_rot(age),
+            BEE_MID_LEG_FLYING_X_ROT,
+            bee_back_leg_x_rot(age),
+        )
+    } else {
+        (0.0, 0.0, 0.0)
+    };
+    let (front_pose, mid_pose, back_pose, front_cubes, mid_cubes, back_cubes): (
+        _,
+        _,
+        _,
+        &[ModelCubeDesc],
+        &[ModelCubeDesc],
+        &[ModelCubeDesc],
+    ) = if baby {
+        (
+            BEE_BABY_FRONT_LEGS_POSE,
+            BEE_BABY_MIDDLE_LEGS_POSE,
+            BEE_BABY_BACK_LEGS_POSE,
+            &BEE_BABY_FRONT_LEGS,
+            &BEE_BABY_MIDDLE_LEGS,
+            &BEE_BABY_BACK_LEGS,
+        )
+    } else {
+        (
+            BEE_FRONT_LEGS_POSE,
+            BEE_MIDDLE_LEGS_POSE,
+            BEE_BACK_LEGS_POSE,
+            &BEE_FRONT_LEGS,
+            &BEE_MIDDLE_LEGS,
+            &BEE_BACK_LEGS,
+        )
+    };
+    emit_model_cubes_at_pose(
+        mesh,
+        bone_t,
+        PartPose {
+            offset: front_pose.offset,
+            rotation: [front_x, 0.0, 0.0],
+        },
+        front_cubes,
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        bone_t,
+        PartPose {
+            offset: mid_pose.offset,
+            rotation: [mid_x, 0.0, 0.0],
+        },
+        mid_cubes,
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        bone_t,
+        PartPose {
+            offset: back_pose.offset,
+            rotation: [back_x, 0.0, 0.0],
+        },
+        back_cubes,
     );
 }
 

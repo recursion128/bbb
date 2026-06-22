@@ -691,7 +691,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => placeholder("todo_armadillo_bounds", 0.7, 0.65, 0.7),
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => placeholder("todo_axolotl_bounds", 0.75, 0.42, 0.75),
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
-        VANILLA_ENTITY_TYPE_BEE_ID => placeholder("todo_bee_bounds", 0.7, 0.6, 0.7),
+        VANILLA_ENTITY_TYPE_BEE_ID => EntityModelKind::Bee {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_BLAZE_ID => EntityModelKind::Blaze,
         VANILLA_ENTITY_TYPE_BREEZE_ID => placeholder("todo_breeze_bounds", 0.6, 1.77, 0.6),
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => {
@@ -2965,6 +2967,25 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_BAT_ID, &[]),
             EntityModelKind::Bat
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_bee_baby_from_data() {
+        // The bee was a placeholder render box; it now resolves to the real `AdultBeeModel` /
+        // `BabyBeeModel`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default adult).
+        // The procedural airborne flap / bob reads the projected age and ground state; the anger /
+        // rolled-up / nectar states are deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_BEE_ID, &[]),
+            EntityModelKind::Bee { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_BEE_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Bee { baby: true }
         );
     }
 
