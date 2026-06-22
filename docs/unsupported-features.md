@@ -1314,7 +1314,11 @@ When an agent does any of the following, update this file in the same slice:
       `setupAnim` pectoral/blue fin wiggle (`right.zRot = -0.2 + 0.4 · sin(ageInTicks ·
       0.2)`, left negated, set absolutely over the rest pose, on both render paths).
       Lighting and overlay remain unsupported
-    - squid and glow squid entities as renderer-owned vanilla 26.1
+    - squid and glow squid entities are wired end to end: the native entity scene
+      (`entity_scene.rs`) projects vanilla type ids `127` (squid) / `61` (glow squid)
+      to the real `SquidModel` (the glow variant keyed off the type id and the baby flag
+      off the synced `AgeableMob.DATA_BABY_ID`), replacing the former placeholder boxes.
+      Renderer-owned vanilla 26.1
       `SquidModel.createBodyLayer()` geometry: the `CubeDeformation(0.02)` 12x16x12
       body plus the procedural ring of eight `texOffs(48, 0)` 2x18x2 tentacles, each
       placed at `(cos(i·2π/8)·5, 15, sin(i·2π/8)·5)` and yawed `-i·2π/8 + π/2`, on a

@@ -725,7 +725,10 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => {
             placeholder("todo_glow_item_frame_bounds", 0.75, 0.75, 0.0625)
         }
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => placeholder("todo_glow_squid_bounds", 0.8, 0.8, 0.8),
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => EntityModelKind::Squid {
+            glow: true,
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_GUARDIAN_ID => placeholder("todo_guardian_bounds", 0.85, 0.85, 0.85),
         VANILLA_ENTITY_TYPE_INTERACTION_ID => placeholder("todo_interaction_bounds", 1.0, 1.0, 1.0),
         VANILLA_ENTITY_TYPE_ITEM_ID => placeholder("todo_item_entity_bounds", 0.25, 0.25, 0.25),
@@ -776,7 +779,10 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_small_fireball_bounds", 0.3125, 0.3125, 0.3125)
         }
         VANILLA_ENTITY_TYPE_SPIDER_ID => EntityModelKind::Spider,
-        VANILLA_ENTITY_TYPE_SQUID_ID => placeholder("todo_squid_bounds", 0.8, 0.8, 0.8),
+        VANILLA_ENTITY_TYPE_SQUID_ID => EntityModelKind::Squid {
+            glow: false,
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_STRIDER_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
@@ -2891,6 +2897,48 @@ mod tests {
                 &[protocol_int_data(PUFFERFISH_PUFF_STATE_DATA_ID, 2)]
             ),
             EntityModelKind::Pufferfish { puff_state: 2 }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_squid_glow_and_baby_from_data() {
+        // The squid and glow squid were placeholder render boxes; they now resolve to the
+        // real `SquidModel`. The glow variant is keyed off the entity type id and the baby
+        // flag is the synced `AgeableMob.DATA_BABY_ID` (index 16, default adult). The
+        // tentacle sweep / body tilt are deferred entity-side animation (default rest pose).
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SQUID_ID, &[]),
+            EntityModelKind::Squid {
+                glow: false,
+                baby: false,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &[]),
+            EntityModelKind::Squid {
+                glow: true,
+                baby: false,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SQUID_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Squid {
+                glow: false,
+                baby: true,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Squid {
+                glow: true,
+                baby: true,
+            }
         );
     }
 
