@@ -1012,10 +1012,21 @@ When an agent does any of the following, update this file in the same slice:
       `MeshTransformer.scaling(1.0625F)` (`huskScale`) at the model root, the baby
       reusing the unscaled shared baby zombie body layer, and the same official PNG
       atlas upload/bind/sample plus head-look / leg-swing animation on both render
-      paths (arms deferred, as for the base zombie); drowned entities use
-      vanilla 26.1 `DrownedModel.createBodyLayer(CubeDeformation.NONE)` /
-      `BabyDrownedModel.createBodyLayer(CubeDeformation.NONE)` geometry with
-      official adult/baby texture references; zombie villagers use vanilla
+      paths (arms deferred, as for the base zombie); drowned entities share that
+      texture-backed render path through `DrownedRenderer extends
+      AbstractZombieRenderer`: the adult layer emits the vanilla 26.1
+      `DrownedModel.createBodyLayer(CubeDeformation.NONE)` UVs over
+      `textures/entity/zombie/drowned.png` (the head/hat/body/right-limb UVs match
+      the humanoid layer, but the left arm/leg take their own non-mirrored
+      `texOffs(32, 48)` / `texOffs(16, 48)` regions; the geometry is identical to
+      the humanoid limbs, so the colored geometry is unchanged), the baby layer
+      forwards to `BabyDrownedModel.createBodyLayer` (= `BabyZombieModel`) UVs over
+      `textures/entity/zombie/drowned_baby.png`, with official PNG atlas
+      upload/bind/sample and the head-look / leg-swing animation on both render
+      paths (the `DrownedOuterLayer`, the `setupRotations` / `setupAnim` swim
+      re-pose that needs `swimAmount`, the trident throw arm pose that needs a held
+      item, and the held-out `animateZombieArms` arms all stay deferred); zombie
+      villagers use vanilla
       26.1 `ZombieVillagerModel.createBodyLayer()` /
       `BabyZombieVillagerModel.createBodyLayer()` geometry with official base
       adult/baby texture references; piglins and piglin brutes use vanilla 26.1
@@ -1030,8 +1041,8 @@ When an agent does any of the following, update this file in the same slice:
       converting shake, zombie-family and piglin-family armor, custom head
       layers, held items, attack/walk/dance/crossbow/admiring/zombie-arm
       animation remain unsupported, and GPU texture binding remains unsupported
-      for the still-colored members (drowned, zombie villager, and the piglin
-      family); the zombie, husk,
+      for the still-colored members (the zombie villager and the piglin family);
+      the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
       (the baby layout's index-1 head, and the baby piglin brute's adult-layout

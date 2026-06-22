@@ -7,6 +7,8 @@ pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE: &str = "minecraft:zombie#
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_BABY: &str = "minecraft:zombie_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_HUSK: &str = "minecraft:husk#main";
 pub(in crate::entity_models) const MODEL_LAYER_HUSK_BABY: &str = "minecraft:husk_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_DROWNED: &str = "minecraft:drowned#main";
+pub(in crate::entity_models) const MODEL_LAYER_DROWNED_BABY: &str = "minecraft:drowned_baby#main";
 
 pub(in crate::entity_models) const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
 pub(in crate::entity_models) const HUSK_TAN: [f32; 4] = [0.60, 0.50, 0.31, 1.0];
@@ -545,6 +547,39 @@ pub(in crate::entity_models) const ADULT_ZOMBIE_TEXTURED_PARTS: [TexturedModelPa
     zombie_textured_part([5.0, 2.0, 0.0], &ADULT_ZOMBIE_TEXTURED_LEFT_ARM, &[]),
     zombie_textured_part([-1.9, 12.0, 0.0], &ADULT_ZOMBIE_TEXTURED_RIGHT_LEG, &[]),
     zombie_textured_part([1.9, 12.0, 0.0], &ADULT_ZOMBIE_TEXTURED_LEFT_LEG, &[]),
+];
+
+// Adult drowned: vanilla `DrownedModel.createBodyLayer` starts from `HumanoidModel.createMesh`
+// (same head/hat/body/right-limb UVs as the zombie) but replaces the left arm and left leg with
+// their own non-mirrored `texOffs(32, 48)` / `texOffs(16, 48)` regions (the geometry is identical
+// to the humanoid limbs, only the UV source changes), so the colored geometry still matches the
+// shared zombie body parts.
+const ADULT_DROWNED_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-1.0, -2.0, -2.0],
+    [4.0, 12.0, 4.0],
+    [4.0, 12.0, 4.0],
+    [32.0, 48.0],
+    false,
+)];
+const ADULT_DROWNED_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] = [zombie_textured_cube(
+    [-2.0, 0.0, -2.0],
+    [4.0, 12.0, 4.0],
+    [4.0, 12.0, 4.0],
+    [16.0, 48.0],
+    false,
+)];
+
+pub(in crate::entity_models) const ADULT_DROWNED_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    zombie_textured_part(
+        [0.0, 0.0, 0.0],
+        &ADULT_ZOMBIE_TEXTURED_HEAD,
+        &ADULT_ZOMBIE_TEXTURED_HEAD_CHILDREN,
+    ),
+    zombie_textured_part([0.0, 0.0, 0.0], &ADULT_ZOMBIE_TEXTURED_BODY, &[]),
+    zombie_textured_part([-5.0, 2.0, 0.0], &ADULT_ZOMBIE_TEXTURED_RIGHT_ARM, &[]),
+    zombie_textured_part([5.0, 2.0, 0.0], &ADULT_DROWNED_TEXTURED_LEFT_ARM, &[]),
+    zombie_textured_part([-1.9, 12.0, 0.0], &ADULT_ZOMBIE_TEXTURED_RIGHT_LEG, &[]),
+    zombie_textured_part([1.9, 12.0, 0.0], &ADULT_DROWNED_TEXTURED_LEFT_LEG, &[]),
 ];
 
 // Baby: vanilla `BabyZombieModel.createBodyLayer`. Each limb has its own `texOffs` (no

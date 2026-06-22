@@ -801,3 +801,121 @@ fn husk_texture_images() -> Vec<EntityModelTextureImage> {
         })
         .collect()
 }
+
+#[test]
+fn drowned_textured_parts_match_vanilla_drowned_body_layer() {
+    assert_eq!(MODEL_LAYER_DROWNED, "minecraft:drowned#main");
+    assert_eq!(MODEL_LAYER_DROWNED_BABY, "minecraft:drowned_baby#main");
+
+    // Adult: vanilla `DrownedModel.createBodyLayer` keeps the humanoid head/hat/body/right-limb
+    // UVs but overrides the left arm (`texOffs(32, 48)`) and left leg (`texOffs(16, 48)`) with
+    // their own non-mirrored regions. The geometry is identical to the zombie's (only the UVs
+    // change), so the head/body/right limbs reuse the shared zombie cubes verbatim.
+    let adult = drowned_textured_layer_passes(false)[0].parts;
+    assert_eq!(adult.len(), 6);
+    assert_eq!(adult[0].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[0].cubes);
+    assert_eq!(adult[0].children, ADULT_ZOMBIE_TEXTURED_PARTS[0].children);
+    assert_eq!(adult[1].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[1].cubes);
+    assert_eq!(adult[2].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[2].cubes);
+    assert_eq!(adult[4].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[4].cubes);
+    // Left arm: own non-mirrored texOffs(32, 48); geometry matches the humanoid left arm.
+    assert_eq!(adult[3].cubes[0].tex, [32.0, 48.0]);
+    assert!(!adult[3].cubes[0].mirror);
+    assert_eq!(adult[3].cubes[0].size, [4.0, 12.0, 4.0]);
+    assert_eq!(adult[3].cubes[0].uv_size, [4.0, 12.0, 4.0]);
+    assert_eq!(
+        adult[3].pose.offset,
+        ADULT_ZOMBIE_TEXTURED_PARTS[3].pose.offset
+    );
+    // Left leg: own non-mirrored texOffs(16, 48); geometry matches the humanoid left leg.
+    assert_eq!(adult[5].cubes[0].tex, [16.0, 48.0]);
+    assert!(!adult[5].cubes[0].mirror);
+    assert_eq!(adult[5].cubes[0].size, [4.0, 12.0, 4.0]);
+    assert_eq!(
+        adult[5].pose.offset,
+        ADULT_ZOMBIE_TEXTURED_PARTS[5].pose.offset
+    );
+
+    // Baby: `BabyDrownedModel.createBodyLayer` forwards to `BabyZombieModel.createBodyLayer`, so
+    // the baby drowned parts are byte-for-byte the baby zombie's.
+    assert_eq!(
+        drowned_textured_layer_passes(true)[0].parts,
+        &BABY_ZOMBIE_TEXTURED_PARTS
+    );
+}
+
+#[test]
+fn drowned_textured_layer_passes_match_vanilla_renderer() {
+    for (baby, model_layer, texture) in [
+        (false, "minecraft:drowned#main", DROWNED_TEXTURE_REF),
+        (
+            true,
+            "minecraft:drowned_baby#main",
+            DROWNED_BABY_TEXTURE_REF,
+        ),
+    ] {
+        let passes = drowned_textured_layer_passes(baby);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::DrownedBase);
+        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[0].model_layer, model_layer);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+    }
+    assert!(entity_model_texture_refs().contains(&DROWNED_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&DROWNED_BABY_TEXTURE_REF));
+    assert_eq!(
+        drowned_entity_texture_refs(),
+        &[DROWNED_TEXTURE_REF, DROWNED_BABY_TEXTURE_REF]
+    );
+}
+
+#[test]
+fn drowned_textured_mesh_matches_colored_geometry_and_legs_swing() {
+    let (atlas, _) = build_entity_model_texture_atlas(&drowned_texture_images()).unwrap();
+    for baby in [false, true] {
+        let instances = [EntityModelInstance::zombie_variant(
+            57,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Drowned,
+            baby,
+        )];
+        let colored = entity_model_mesh(&instances);
+        let textured = entity_model_textured_mesh(&instances, &atlas);
+        // The textured drowned shares the colored geometry exactly (drowned only changes the left
+        // arm/leg UVs, not their geometry): same cube count and bounds.
+        assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
+        assert_eq!(textured.vertices.len(), colored.vertices.len());
+        assert!(textured
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        let (cmin, cmax) = mesh_extents(&colored);
+        let (tmin, tmax) = textured_mesh_extents(&textured);
+        assert_close3(tmin, cmin);
+        assert_close3(tmax, cmax);
+
+        // Vanilla runs the leg swing every frame; advancing the walk animation re-poses the legs
+        // (the held-out arms and the swim/outer layers stay deferred, like the colored path).
+        let walking = [instances[0]
+            .with_walk_animation(2.0, 1.0)
+            .with_age_in_ticks(8.0)];
+        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        assert_ne!(
+            textured.vertices, textured_walk.vertices,
+            "legs swing (baby={baby})"
+        );
+    }
+}
+
+fn drowned_texture_images() -> Vec<EntityModelTextureImage> {
+    drowned_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

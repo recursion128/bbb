@@ -172,6 +172,8 @@ mod tests {
                 "textures/entity/zombie/zombie_baby.png",
                 "textures/entity/zombie/husk.png",
                 "textures/entity/zombie/husk_baby.png",
+                "textures/entity/zombie/drowned.png",
+                "textures/entity/zombie/drowned_baby.png",
                 "textures/entity/boat/acacia.png",
                 "textures/entity/chest_boat/acacia.png",
                 "textures/entity/boat/bamboo.png",

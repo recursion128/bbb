@@ -36,6 +36,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     MinecartBase,
     ZombieBase,
     HuskBase,
+    DrownedBase,
     BlazeBase,
     EndermiteBase,
     SilverfishBase,
@@ -402,6 +403,39 @@ pub(in crate::entity_models) fn husk_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::HuskBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer,
+        texture,
+        parts,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn drowned_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    // Vanilla `DrownedModel.createBodyLayer` reuses the humanoid head/hat/body/right-limb UVs but
+    // gives the left arm/leg their own non-mirrored `texOffs` (`ADULT_DROWNED_TEXTURED_PARTS`);
+    // `BabyDrownedModel.createBodyLayer` simply forwards to `BabyZombieModel.createBodyLayer`, so
+    // the baby drowned reuses the baby zombie parts. Only the texture differs from the husk path.
+    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = if baby {
+        (
+            MODEL_LAYER_DROWNED_BABY,
+            DROWNED_BABY_TEXTURE_REF,
+            &BABY_ZOMBIE_TEXTURED_PARTS,
+        )
+    } else {
+        (
+            MODEL_LAYER_DROWNED,
+            DROWNED_TEXTURE_REF,
+            &ADULT_DROWNED_TEXTURED_PARTS,
+        )
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::DrownedBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
