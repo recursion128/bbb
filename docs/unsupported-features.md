@@ -1573,6 +1573,15 @@ When an agent does any of the following, update this file in the same slice:
       textures) live on the deferred texture-backed path, so the colored debug path renders the lucy (pink)
       body with one body tint and one gill tint. The texture-backed path remains unsupported (this is a
       colored-first slice)
+    - tadpole entities as renderer-owned vanilla 26.1 `TadpoleModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `130` to the new
+      `EntityModelKind::Tadpole`, replacing the former placeholder bounds box. The static rest-pose
+      hierarchy is emitted directly (atlas 16×16): two sibling root parts — a 3×2×3 body box at
+      `offset(0, 22, -3)` and a 0×2×7 tail fin plane at `offset(0, 22, 0)` — two cubes. The only
+      `TadpoleModel.setupAnim` motion, the tail yaw sway (`tail.yRot = -amplitude * 0.25 *
+      sin(0.3 * ageInTicks)`, amplitude `1.0` in water / `1.5` on land), is deferred. The texture-backed
+      path remains unsupported (this is a colored-first slice; the colored debug path approximates the body
+      with one dark tint and the tail fin with a lighter tint)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

@@ -87,6 +87,7 @@ impl EntityModelKind {
             Self::Armadillo { baby: true } => "armadillo_baby",
             Self::Axolotl { baby: false } => "axolotl",
             Self::Axolotl { baby: true } => "axolotl_baby",
+            Self::Tadpole => "tadpole",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",

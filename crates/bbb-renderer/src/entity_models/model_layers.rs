@@ -65,6 +65,8 @@ pub(super) const ARMADILLO_SHELL: [f32; 4] = [0.42, 0.31, 0.25, 1.0];
 pub(super) const ARMADILLO_SKIN: [f32; 4] = [0.66, 0.55, 0.50, 1.0];
 pub(super) const AXOLOTL_BODY: [f32; 4] = [0.93, 0.66, 0.78, 1.0];
 pub(super) const AXOLOTL_GILLS: [f32; 4] = [0.96, 0.45, 0.60, 1.0];
+pub(super) const TADPOLE_BODY: [f32; 4] = [0.24, 0.20, 0.18, 1.0];
+pub(super) const TADPOLE_TAIL: [f32; 4] = [0.34, 0.30, 0.28, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -156,6 +158,7 @@ mod sniffer;
 mod spider;
 mod squid;
 mod strider;
+mod tadpole;
 mod textures;
 mod tropical_fish;
 mod turtle;
@@ -214,6 +217,7 @@ pub(super) use sniffer::*;
 pub(super) use spider::*;
 pub(super) use squid::*;
 pub(super) use strider::*;
+pub(super) use tadpole::*;
 pub(super) use textures::*;
 pub use textures::{
     allay_entity_texture_refs, armor_stand_entity_texture_refs, bat_entity_texture_refs,

@@ -806,7 +806,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_STRIDER_ID => EntityModelKind::Strider {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_TADPOLE_ID => placeholder("todo_tadpole_bounds", 0.4, 0.3, 0.4),
+        VANILLA_ENTITY_TYPE_TADPOLE_ID => EntityModelKind::Tadpole,
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
             placeholder("todo_text_display_bounds", 1.0, 0.5, 0.0625)
         }
@@ -3884,6 +3884,17 @@ mod tests {
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
             EntityModelKind::Axolotl { baby: true }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_tadpole_to_real_model() {
+        // The tadpole was a placeholder bounds box; it now resolves to the real `TadpoleModel` at
+        // its rest pose. The tail yaw sway is deferred entity-side state, so no synced data is read
+        // (the tadpole is an `AbstractFish`, not an `AgeableMob`, so it carries no baby flag).
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_TADPOLE_ID, &[]),
+            EntityModelKind::Tadpole
         );
     }
 

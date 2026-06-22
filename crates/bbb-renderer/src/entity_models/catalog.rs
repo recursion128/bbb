@@ -128,6 +128,9 @@ pub enum EntityModelKind {
     Axolotl {
         baby: bool,
     },
+    /// `TadpoleModel` at its `createBodyLayer` rest pose. The tail yaw sway (`tail.yRot`) is
+    /// deferred.
+    Tadpole,
     Phantom {
         size: i32,
     },

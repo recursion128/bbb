@@ -52,6 +52,7 @@ mod sniffer;
 mod spider;
 mod squid;
 mod strider;
+mod tadpole;
 mod tropical_fish;
 mod turtle;
 mod upside_down;

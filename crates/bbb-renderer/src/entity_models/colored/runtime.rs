@@ -196,6 +196,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed axolotl yet), so this arm always emits.
                 emit_axolotl_model(&mut mesh, *instance, baby);
             }
+            EntityModelKind::Tadpole => {
+                // Colored-only so far (no texture-backed tadpole yet), so this arm always emits.
+                emit_tadpole_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1397,6 +1401,14 @@ fn emit_axolotl_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance,
         &ADULT_AXOLOTL_PARTS
     };
     emit_model_parts(mesh, parts, root);
+}
+
+fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `TadpoleModel` is two static sibling parts (body box, tail fin) at rest. The only
+    // animation — the tail yaw sway — is deferred, so the bind-pose part tree is emitted directly.
+    // Tadpole uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    emit_model_parts(mesh, &TADPOLE_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
