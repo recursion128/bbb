@@ -298,3 +298,26 @@ pub(in crate::entity_models) fn squid_model_root_transform(
     }
     transform
 }
+
+/// Vanilla `CodRenderer.setupRotations` extends the standard `MobRenderer`
+/// `super.setupRotations` (body yaw + death/auto-spin/upside-down chain) with a swim
+/// wiggle `Axis.YP.rotationDegrees(4.3 * sin(0.6 * ageInTicks))`, then — when out of
+/// water — a beached flop `translate(0.1, 0.1, -0.1)` + `Axis.ZP.rotationDegrees(90)`.
+pub(in crate::entity_models) fn cod_model_root_transform(
+    instance: EntityModelInstance,
+    in_water: bool,
+) -> Mat4 {
+    let wiggle = 4.3 * (0.6 * instance.render_state.age_in_ticks).sin();
+    let mut transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * entity_setup_rotations_transform(instance)
+        * Mat4::from_rotation_y(wiggle.to_radians());
+    if !in_water {
+        transform *= Mat4::from_translation(Vec3::new(0.1, 0.1, -0.1))
+            * Mat4::from_rotation_z(90.0_f32.to_radians());
+    }
+    transform
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}

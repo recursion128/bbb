@@ -144,6 +144,12 @@ pub struct EntityRenderState {
     /// as `Axis.YP.rotationDegrees(zBodyRot)` after the pitch. Accumulates while
     /// swimming. `0.0` at rest and for every non-squid entity.
     pub squid_z_body_rot: f32,
+    /// Vanilla `LivingEntityRenderState.isInWater` (`entity.isInWaterOrBubble()`): a fish
+    /// out of water thrashes harder and flops onto its side. `CodModel.setupAnim` scales
+    /// its tail sway by `1.0` in water / `1.5` out, and `CodRenderer.setupRotations` adds
+    /// the beached `RotZ(90)` flop when `false`. `false` (the Java default) for every
+    /// entity until the entity scene projects `entity.isInWater()`.
+    pub in_water: bool,
 }
 
 impl EntityRenderState {
@@ -174,6 +180,7 @@ impl EntityRenderState {
             squid_tentacle_angle: 0.0,
             squid_x_body_rot: 0.0,
             squid_z_body_rot: 0.0,
+            in_water: false,
         }
     }
 
@@ -329,6 +336,15 @@ impl EntityModelInstance {
         self.render_state.squid_x_body_rot = x_body_rot;
         self.render_state.squid_z_body_rot = z_body_rot;
         self
+    }
+
+    pub fn with_in_water(mut self, in_water: bool) -> Self {
+        self.render_state.in_water = in_water;
+        self
+    }
+
+    pub fn cod(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Cod, position, y_rot)
     }
 
     pub fn squid(entity_id: i32, position: [f32; 3], y_rot: f32, glow: bool, baby: bool) -> Self {
@@ -1003,6 +1019,7 @@ mod tests {
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
+                in_water: false,
             }
         );
     }

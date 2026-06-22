@@ -6,6 +6,7 @@ mod blaze;
 mod boat;
 mod camel;
 mod chicken;
+mod cod;
 mod cow;
 mod creeper;
 mod death;

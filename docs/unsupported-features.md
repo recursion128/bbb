@@ -1334,6 +1334,19 @@ When an agent does any of the following, update this file in the same slice:
       projection that populates `xBodyRot`/`zBodyRot`/`tentacleAngle` (the renderer
       consumes them but the `Squid.aiStep` swim integration is not yet projected),
       lighting, and overlay remain unsupported
+    - cod entities as renderer-owned vanilla 26.1 `CodModel.createBodyLayer()`
+      geometry: the seven-part body/head/nose/two side fins (`zRot ±π/4`)/tail
+      fin/top fin layer (the side, tail, and top fins are zero-thickness planes) on a
+      32x32 texture; the `CodModel.setupAnim` tail-fin sway
+      (`tailFin.yRot = -amplitude · 0.45 · sin(0.6 · ageInTicks)`, amplitude `1.0`
+      in water / `1.5` out), and the full `CodRenderer.setupRotations` (the standard
+      body yaw plus the swim wiggle `Axis.YP.rotationDegrees(4.3 · sin(0.6 ·
+      ageInTicks))` and the out-of-water flop `translate(0.1, 0.1, -0.1)` +
+      `Axis.ZP.rotationDegrees(90)`), both reading the `in_water` render-state flag.
+      The official `textures/entity/fish/cod.png` texture reference is recorded but
+      not yet atlas-loaded (the texture-backed render path is not yet wired), and the
+      entity-side `isInWater`/`ageInTicks` projection, lighting, and overlay remain
+      unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

@@ -140,6 +140,10 @@ pub enum EntityModelKind {
         glow: bool,
         baby: bool,
     },
+    /// Cod (`CodModel`, `CodRenderer`). The tail-fin sway and the
+    /// `CodRenderer.setupRotations` body wiggle / out-of-water flop read
+    /// `EntityRenderState.in_water` and `age_in_ticks`.
+    Cod,
     Illager {
         family: IllagerModelFamily,
     },
