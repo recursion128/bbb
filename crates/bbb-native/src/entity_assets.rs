@@ -170,6 +170,8 @@ mod tests {
                 "textures/entity/armorstand/armorstand.png",
                 "textures/entity/zombie/zombie.png",
                 "textures/entity/zombie/zombie_baby.png",
+                "textures/entity/zombie/husk.png",
+                "textures/entity/zombie/husk_baby.png",
                 "textures/entity/boat/acacia.png",
                 "textures/entity/chest_boat/acacia.png",
                 "textures/entity/boat/bamboo.png",

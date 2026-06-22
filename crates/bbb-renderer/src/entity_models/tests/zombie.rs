@@ -712,3 +712,92 @@ fn zombie_texture_images() -> Vec<EntityModelTextureImage> {
         })
         .collect()
 }
+
+#[test]
+fn husk_textured_layer_passes_reuse_the_zombie_body_layer() {
+    // Vanilla `HuskRenderer extends ZombieRenderer`: `ModelLayers.HUSK` is the shared
+    // `humanoidBodyLayer` (the adult husk mesh is scaled at the root, not in its UVs) and
+    // `HUSK_BABY` is the shared `babyZombieLayer`, so the husk's textured parts are byte-for-byte
+    // the zombie's, with only the texture and the adult scale changing.
+    assert_eq!(MODEL_LAYER_HUSK, "minecraft:husk#main");
+    assert_eq!(MODEL_LAYER_HUSK_BABY, "minecraft:husk_baby#main");
+
+    let adult = husk_textured_layer_passes(false);
+    assert_eq!(adult.len(), 1);
+    assert_eq!(adult[0].parts, &ADULT_ZOMBIE_TEXTURED_PARTS);
+    let baby = husk_textured_layer_passes(true);
+    assert_eq!(baby.len(), 1);
+    assert_eq!(baby[0].parts, &BABY_ZOMBIE_TEXTURED_PARTS);
+}
+
+#[test]
+fn husk_textured_layer_passes_match_vanilla_renderer() {
+    for (baby, model_layer, texture) in [
+        (false, "minecraft:husk#main", HUSK_TEXTURE_REF),
+        (true, "minecraft:husk_baby#main", HUSK_BABY_TEXTURE_REF),
+    ] {
+        let passes = husk_textured_layer_passes(baby);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::HuskBase);
+        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[0].model_layer, model_layer);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+    }
+    assert!(entity_model_texture_refs().contains(&HUSK_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&HUSK_BABY_TEXTURE_REF));
+    assert_eq!(
+        husk_entity_texture_refs(),
+        &[HUSK_TEXTURE_REF, HUSK_BABY_TEXTURE_REF]
+    );
+}
+
+#[test]
+fn husk_textured_mesh_matches_colored_geometry_and_legs_swing() {
+    let (atlas, _) = build_entity_model_texture_atlas(&husk_texture_images()).unwrap();
+    for baby in [false, true] {
+        let instances = [EntityModelInstance::zombie_variant(
+            56,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Husk,
+            baby,
+        )];
+        let colored = entity_model_mesh(&instances);
+        let textured = entity_model_textured_mesh(&instances, &atlas);
+        // The textured husk shares the colored geometry exactly, including the adult's 1.0625
+        // root scale (`huskScale`): same cube count and bounds.
+        assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
+        assert_eq!(textured.vertices.len(), colored.vertices.len());
+        assert!(textured
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        let (cmin, cmax) = mesh_extents(&colored);
+        let (tmin, tmax) = textured_mesh_extents(&textured);
+        assert_close3(tmin, cmin);
+        assert_close3(tmax, cmax);
+
+        // Vanilla runs the leg swing every frame; advancing the walk animation re-poses the legs
+        // (the held-out arms stay deferred, like the colored path).
+        let walking = [instances[0]
+            .with_walk_animation(2.0, 1.0)
+            .with_age_in_ticks(8.0)];
+        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        assert_ne!(
+            textured.vertices, textured_walk.vertices,
+            "legs swing (baby={baby})"
+        );
+    }
+}
+
+fn husk_texture_images() -> Vec<EntityModelTextureImage> {
+    husk_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

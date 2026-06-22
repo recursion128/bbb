@@ -5,6 +5,8 @@ use super::{
 
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE: &str = "minecraft:zombie#main";
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_BABY: &str = "minecraft:zombie_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_HUSK: &str = "minecraft:husk#main";
+pub(in crate::entity_models) const MODEL_LAYER_HUSK_BABY: &str = "minecraft:husk_baby#main";
 
 pub(in crate::entity_models) const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
 pub(in crate::entity_models) const HUSK_TAN: [f32; 4] = [0.60, 0.50, 0.31, 1.0];

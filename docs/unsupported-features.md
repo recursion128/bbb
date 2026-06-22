@@ -1004,10 +1004,15 @@ When an agent does any of the following, update this file in the same slice:
       no mirroring), with official PNG atlas upload/bind/sample and the head-look /
       leg-swing animation on both render paths (the held-out `animateZombieArms`
       arm pose stays deferred, so the visible arms hold still as in the colored
-      path); husk entities use the
-      vanilla 26.1 adult `LayerDefinitions` `MeshTransformer.scaling(1.0625F)`
-      body layer, `HuskRenderer`'s official adult/baby texture references, and
-      the shared baby zombie body layer for baby husks; drowned entities use
+      path); husk entities share that texture-backed render path through
+      `HuskRenderer extends ZombieRenderer`: they reuse the zombie adult/baby body
+      parts (so the husk geometry is byte-for-byte the zombie geometry) over
+      `textures/entity/zombie/husk.png` / `textures/entity/zombie/husk_baby.png`,
+      with the adult mesh scaled by the vanilla 26.1 `LayerDefinitions`
+      `MeshTransformer.scaling(1.0625F)` (`huskScale`) at the model root, the baby
+      reusing the unscaled shared baby zombie body layer, and the same official PNG
+      atlas upload/bind/sample plus head-look / leg-swing animation on both render
+      paths (arms deferred, as for the base zombie); drowned entities use
       vanilla 26.1 `DrownedModel.createBodyLayer(CubeDeformation.NONE)` /
       `BabyDrownedModel.createBodyLayer(CubeDeformation.NONE)` geometry with
       official adult/baby texture references; zombie villagers use vanilla
@@ -1024,7 +1029,9 @@ When an agent does any of the following, update this file in the same slice:
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
       layers, held items, attack/walk/dance/crossbow/admiring/zombie-arm
-      animation, and GPU texture binding remain unsupported; the zombie, husk,
+      animation remain unsupported, and GPU texture binding remains unsupported
+      for the still-colored members (drowned, zombie villager, and the piglin
+      family); the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
       (the baby layout's index-1 head, and the baby piglin brute's adult-layout

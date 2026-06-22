@@ -54,6 +54,13 @@ pub(in crate::entity_models) const HUSK_BABY_TEXTURE_REF: EntityModelTextureRef 
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const HUSK_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [HUSK_TEXTURE_REF, HUSK_BABY_TEXTURE_REF];
+
+pub fn husk_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &HUSK_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const DROWNED_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/zombie/drowned.png",
@@ -640,7 +647,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 95] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 97] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -716,6 +723,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ARMOR_STAND_TEXTURE_REF,
     ZOMBIE_TEXTURE_REF,
     ZOMBIE_BABY_TEXTURE_REF,
+    HUSK_TEXTURE_REF,
+    HUSK_BABY_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,

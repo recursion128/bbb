@@ -4,7 +4,7 @@ use super::{
         ArmorStandModelPose, BoatModelFamily, ChickenModelVariant, CowModelVariant, EntityDyeColor,
         EntityModelKind, EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout,
         EntityModelTextureRef, HoglinModelFamily, PigModelVariant, PlayerModelPartVisibility,
-        SheepWoolColor, SkeletonModelFamily,
+        SheepWoolColor, SkeletonModelFamily, ZombieVariantModelFamily,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{
@@ -14,7 +14,7 @@ use super::{
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
-    magma_cube_model_root_transform,
+    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
         apply_polar_bear_standing_pose, apply_wolf_sitting_pose, armor_stand_textured_cube,
         blaze_rod_offset, chicken_leg_part_indices, cow_head_part_index, enderman_arm_swing_pose,
@@ -49,7 +49,7 @@ use super::{
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, slime_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::Mat4;
 
@@ -59,7 +59,7 @@ pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, chicken_textured_layer_passes,
     cow_textured_layer_passes, creeper_textured_layer_passes, enderman_textured_layer_passes,
     endermite_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes,
+    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
     iron_golem_textured_layer_passes, magma_cube_textured_layer_passes,
     minecart_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
@@ -181,6 +181,12 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Zombie { baby } => {
                 emit_zombie_textured_model(&mut meshes, *instance, baby, atlas);
+            }
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby,
+            } => {
+                emit_husk_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Blaze => {
                 emit_blaze_textured_model(&mut meshes, *instance, atlas);
@@ -969,6 +975,51 @@ fn emit_zombie_textured_model(
     let limbs_resting = limb_swing_at_rest(limb_swing_amount);
     let transform = entity_model_root_transform(instance);
     for pass in zombie_textured_layer_passes(baby) {
+        if head_resting && limbs_resting {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            continue;
+        }
+        let mut parts = pass.parts.to_vec();
+        if !head_resting {
+            if let Some(head) = parts.get_mut(head_index) {
+                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+            }
+        }
+        if !limbs_resting {
+            for index in HUMANOID_LEG_PART_INDICES {
+                if let Some(leg) = parts.get_mut(index) {
+                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+                }
+            }
+        }
+        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    }
+}
+
+fn emit_husk_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    // Mirrors the colored `emit_zombie_variant_model` husk arm: `HuskRenderer extends
+    // ZombieRenderer`, so the husk reuses the zombie body parts and the same `HumanoidModel`
+    // head-look + leg-swing animation (the held-out `animateZombieArms` arm pose stays deferred,
+    // so the visible arms stay static). Vanilla scales the adult husk mesh by 1.0625
+    // (`huskScale`); the baby husk reuses the unscaled `babyZombieLayer`.
+    let head_index = if baby { 1 } else { 0 };
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    let transform = if baby {
+        entity_model_root_transform(instance)
+    } else {
+        mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+    };
+    for pass in husk_textured_layer_passes(baby) {
         if head_resting && limbs_resting {
             emit_textured_layer_pass(meshes, &pass, transform, atlas);
             continue;

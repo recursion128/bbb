@@ -35,6 +35,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     HappyGhastBase,
     MinecartBase,
     ZombieBase,
+    HuskBase,
     BlazeBase,
     EndermiteBase,
     SilverfishBase,
@@ -368,6 +369,39 @@ pub(in crate::entity_models) fn zombie_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer,
+        texture,
+        parts,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn husk_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    // Vanilla `HuskRenderer extends ZombieRenderer`: it reuses `ZombieModel`/`BabyZombieModel`
+    // geometry (`ModelLayers.HUSK` is `humanoidBodyLayer.apply(huskScale)` and `HUSK_BABY` is the
+    // shared `babyZombieLayer`), so the husk body parts are byte-for-byte the zombie body parts;
+    // only the texture (`husk.png`/`husk_baby.png`) and the adult's 1.0625 mesh scale differ.
+    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = if baby {
+        (
+            MODEL_LAYER_HUSK_BABY,
+            HUSK_BABY_TEXTURE_REF,
+            &BABY_ZOMBIE_TEXTURED_PARTS,
+        )
+    } else {
+        (
+            MODEL_LAYER_HUSK,
+            HUSK_TEXTURE_REF,
+            &ADULT_ZOMBIE_TEXTURED_PARTS,
+        )
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::HuskBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,

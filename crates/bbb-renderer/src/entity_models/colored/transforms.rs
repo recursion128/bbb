@@ -11,7 +11,7 @@ const WITHER_SKELETON_SCALE: f32 = 1.2;
 const CAVE_SPIDER_SCALE: f32 = 0.7;
 const AVATAR_RENDERER_SCALE: f32 = 0.9375;
 
-pub(super) const HUSK_SCALE: f32 = 1.0625;
+pub(in crate::entity_models) const HUSK_SCALE: f32 = 1.0625;
 pub(super) const HORSE_SCALE: f32 = 1.1;
 pub(super) const DONKEY_SCALE: f32 = 0.87;
 pub(super) const MULE_SCALE: f32 = 0.92;
@@ -187,7 +187,7 @@ pub(super) fn scaled_model_root_transform(instance: EntityModelInstance, scale: 
     entity_model_root_transform(instance) * Mat4::from_scale(Vec3::splat(scale))
 }
 
-pub(super) fn mesh_transformer_scaled_model_root_transform(
+pub(in crate::entity_models) fn mesh_transformer_scaled_model_root_transform(
     instance: EntityModelInstance,
     scale: f32,
 ) -> Mat4 {

@@ -141,7 +141,13 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::ZombieVariant { family, baby } => {
-                emit_zombie_variant_model(&mut mesh, *instance, family, baby)
+                // Only the husk has a wired texture-backed path so far; drowned and the zombie
+                // villager stay on the colored path.
+                let husk_textured = skip_texture_backed_entities
+                    && matches!(family, ZombieVariantModelFamily::Husk);
+                if !husk_textured {
+                    emit_zombie_variant_model(&mut mesh, *instance, family, baby)
+                }
             }
             EntityModelKind::Piglin { family, baby } => {
                 emit_piglin_model(&mut mesh, *instance, family, baby)
