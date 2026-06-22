@@ -122,4 +122,78 @@ fn dolphin_texture_ref_matches_vanilla_renderer() {
             size: [64, 64],
         })
     );
+    assert_eq!(
+        dolphin_entity_texture_refs(),
+        &[
+            EntityModelTextureRef {
+                path: "textures/entity/dolphin/dolphin.png",
+                size: [64, 64],
+            },
+            EntityModelTextureRef {
+                path: "textures/entity/dolphin/dolphin_baby.png",
+                size: [64, 64],
+            }
+        ]
+    );
+}
+
+#[test]
+fn dolphin_textured_cubes_match_vanilla_body_layer_uvs() {
+    // Vanilla `DolphinModel.createBodyLayer` texOffs (atlas 64×64); no `CubeDeformation`, so each
+    // `uv_size` matches the box `size`. The left fin is the mirrored twin of the right fin.
+    assert_eq!(DOLPHIN_TEXTURED_BODY[0].tex, [22.0, 0.0]);
+    assert_eq!(DOLPHIN_TEXTURED_BODY[0].uv_size, [8.0, 7.0, 13.0]);
+    assert_eq!(DOLPHIN_TEXTURED_BACK_FIN[0].tex, [51.0, 0.0]);
+    assert_eq!(DOLPHIN_TEXTURED_LEFT_FIN[0].tex, [48.0, 20.0]);
+    assert!(DOLPHIN_TEXTURED_LEFT_FIN[0].mirror);
+    assert_eq!(DOLPHIN_TEXTURED_RIGHT_FIN[0].tex, [48.0, 20.0]);
+    assert!(!DOLPHIN_TEXTURED_RIGHT_FIN[0].mirror);
+    assert_eq!(DOLPHIN_TEXTURED_TAIL[0].tex, [0.0, 19.0]);
+    assert_eq!(DOLPHIN_TEXTURED_TAIL_FIN[0].tex, [19.0, 20.0]);
+    assert_eq!(DOLPHIN_TEXTURED_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(DOLPHIN_TEXTURED_NOSE[0].tex, [0.0, 13.0]);
+}
+
+#[test]
+fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
+    let (atlas, _) = build_entity_model_texture_atlas(&dolphin_texture_images()).unwrap();
+
+    // The dolphin draws into the cutout mesh (the `DolphinModel` default `entityCutoutNoCull`).
+    // Eight cubes → 48 faces / 192 vertices, nothing on the translucent or eyes passes, white tint.
+    let base = EntityModelInstance::dolphin(980, [0.0, 64.0, 0.0], 0.0, false);
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 48);
+    assert_eq!(meshes.cutout.vertices.len(), 192);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // The baby is the same geometry scaled by 0.5.
+    let baby = EntityModelInstance::dolphin(981, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 192);
+    assert_ne!(meshes.cutout.vertices, baby_meshes.cutout.vertices);
+
+    // A still dolphin is static; a moving one waves its tail with age.
+    let still_later = entity_model_textured_meshes(&[base.with_age_in_ticks(5.0)], &atlas);
+    assert_eq!(meshes.cutout.vertices, still_later.cutout.vertices);
+    let moving = base.with_is_moving(true);
+    let moving_early = entity_model_textured_meshes(&[moving], &atlas);
+    let moving_later = entity_model_textured_meshes(&[moving.with_age_in_ticks(5.0)], &atlas);
+    assert_ne!(moving_early.cutout.vertices, moving_later.cutout.vertices);
+}
+
+fn dolphin_texture_images() -> Vec<EntityModelTextureImage> {
+    dolphin_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
 }

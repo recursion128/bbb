@@ -14,7 +14,7 @@ use super::{
     geometry::{
         emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
         fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh, ModelPartDesc,
-        PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+        PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
@@ -24,53 +24,59 @@ use super::{
         allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
         armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot,
         bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, blaze_rod_offset,
-        chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index, enderman_arm_swing_pose,
-        enderman_leg_swing_pose, endermite_segment_pose, ghast_tentacle_x_rot,
-        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
-        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
-        hoglin_leg_swing_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
-        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
-        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
-        phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, piglin_ear_flap_pose,
-        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
-        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, ravager_head_child_index,
-        ravager_leg_swing_pose, ravager_neck_part_index, salmon_body_back_yrot, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, silverfish_layer_pose, silverfish_segment_pose,
-        skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
-        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
-        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
-        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
-        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
-        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
-        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
-        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
-        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
-        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
-        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
-        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RIGHT_EAR_POSE,
-        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
-        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
-        BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
-        BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
-        BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
-        BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE,
-        BEE_BABY_TEXTURED_BACK_LEGS, BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE,
-        BEE_BABY_TEXTURED_FRONT_LEGS, BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS,
-        BEE_BABY_TEXTURED_RIGHT_WING, BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF,
-        BEE_BACK_LEGS_POSE, BEE_BODY_POSE, BEE_BONE_POSE, BEE_FRONT_LEGS_POSE,
-        BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE, BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT,
-        BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
-        BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
-        BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
-        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT,
-        BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE,
-        BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD,
-        BREEZE_TEXTURE_REF, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
-        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
-        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index, dolphin_wave,
+        enderman_arm_swing_pose, enderman_leg_swing_pose, endermite_segment_pose,
+        ghast_tentacle_x_rot, half_amplitude_leg_swing_pose, head_first_part_index,
+        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
+        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
+        humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
+        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
+        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
+        pig_head_part_index, piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
+        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
+        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
+        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
+        salmon_body_back_yrot, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
+        silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
+        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
+        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
+        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
+        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
+        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
+        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
+        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
+        wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
+        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE,
+        BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD,
+        BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING, BAT_TEXTURED_LEFT_WING_TIP,
+        BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING, BAT_TEXTURED_RIGHT_WING_TIP,
+        BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE, BEE_BABY_BONE_POSE,
+        BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE, BEE_BABY_MIDDLE_LEGS_POSE,
+        BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE, BEE_BABY_TEXTURED_BACK_LEGS,
+        BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE, BEE_BABY_TEXTURED_FRONT_LEGS,
+        BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS, BEE_BABY_TEXTURED_RIGHT_WING,
+        BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF, BEE_BACK_LEGS_POSE, BEE_BODY_POSE,
+        BEE_BONE_POSE, BEE_FRONT_LEGS_POSE, BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE,
+        BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT, BEE_RIGHT_ANTENNA_POSE,
+        BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS, BEE_TEXTURED_BODY,
+        BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA, BEE_TEXTURED_LEFT_WING,
+        BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA, BEE_TEXTURED_RIGHT_WING,
+        BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT, BREEZE_BODY_POSE, BREEZE_HEAD_POSE,
+        BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE,
+        BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF, COD_TAIL_FIN_PART_INDEX,
+        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE,
+        DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT,
+        DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
+        DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
+        DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
+        DOLPHIN_TEXTURE_REF, HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX,
+        PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
+        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
         PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
         PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
@@ -237,6 +243,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Breeze => {
                 emit_breeze_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Dolphin { baby } => {
+                emit_dolphin_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -1590,6 +1599,123 @@ fn emit_breeze_textured_model(
         rods_t,
         BREEZE_ROD_3_POSE,
         &BREEZE_TEXTURED_ROD,
+        texture,
+        uv,
+    );
+}
+
+fn emit_dolphin_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = if baby {
+        DOLPHIN_BABY_TEXTURE_REF
+    } else {
+        DOLPHIN_TEXTURE_REF
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let uv = entry.uv;
+
+    // Mirror the colored `emit_dolphin_model`: steer the body by the look pitch/yaw and add the
+    // swim wave while moving. The base body draws into the cutout mesh (the `DolphinModel` default
+    // `RenderTypes::entityCutoutNoCull`). The baby uses the `MeshTransformer.scaling(0.5)` layer.
+    let moving = instance.render_state.is_moving;
+    let age = instance.render_state.age_in_ticks;
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+    let wave = dolphin_wave(age);
+    let root = mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
+
+    // Body (root child) carries the fins, the tail chain, and the head chain.
+    let body_pose = PartPose {
+        offset: DOLPHIN_BODY_POSE.offset,
+        rotation: [
+            head_pitch + if moving { -0.05 - 0.05 * wave } else { 0.0 },
+            head_yaw,
+            0.0,
+        ],
+    };
+    let body_t = root * part_pose_transform(body_pose);
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        PART_POSE_ZERO,
+        &DOLPHIN_TEXTURED_BODY,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        DOLPHIN_BACK_FIN_POSE,
+        &DOLPHIN_TEXTURED_BACK_FIN,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        DOLPHIN_LEFT_FIN_POSE,
+        &DOLPHIN_TEXTURED_LEFT_FIN,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        DOLPHIN_RIGHT_FIN_POSE,
+        &DOLPHIN_TEXTURED_RIGHT_FIN,
+        texture,
+        uv,
+    );
+
+    // Tail (body child) carries the tail fin; both pitch with the swim wave while moving.
+    let tail_pose = PartPose {
+        offset: DOLPHIN_TAIL_POSE.offset,
+        rotation: [
+            if moving {
+                -0.1 * wave
+            } else {
+                DOLPHIN_TAIL_BIND_X_ROT
+            },
+            0.0,
+            0.0,
+        ],
+    };
+    let tail_t = body_t * part_pose_transform(tail_pose);
+    emit_textured_cubes_at_pose(mesh, body_t, tail_pose, &DOLPHIN_TEXTURED_TAIL, texture, uv);
+    emit_textured_cubes_at_pose(
+        mesh,
+        tail_t,
+        PartPose {
+            offset: DOLPHIN_TAIL_FIN_POSE.offset,
+            rotation: [if moving { -0.2 * wave } else { 0.0 }, 0.0, 0.0],
+        },
+        &DOLPHIN_TEXTURED_TAIL_FIN,
+        texture,
+        uv,
+    );
+
+    // Head (body child) carries the nose.
+    let head_t = body_t * part_pose_transform(DOLPHIN_HEAD_POSE);
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        DOLPHIN_HEAD_POSE,
+        &DOLPHIN_TEXTURED_HEAD,
+        texture,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        head_t,
+        DOLPHIN_NOSE_POSE,
+        &DOLPHIN_TEXTURED_NOSE,
         texture,
         uv,
     );

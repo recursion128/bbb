@@ -1436,23 +1436,26 @@ When an agent does any of the following, update this file in the same slice:
       hierarchy as the colored path (which approximates the translucent wind body with a single
       representative slate). The swirling `breeze_wind.png` wind layer, the emissive
       `breeze_eyes.png` eyes, and the shoot/slide/inhale/jump action animations remain unsupported
-    - dolphin entities render on the colored path off the real vanilla 26.1 `DolphinModel`: the
-      native entity scene (`entity_scene.rs`) projects vanilla type id `35` to the new
-      `EntityModelKind::Dolphin { baby }`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16,
-      default adult), replacing the former placeholder box. Renderer-owned vanilla
-      `DolphinModel.createBodyLayer()` geometry (atlas 64×64) — the 8×7×13 `body` root child
-      parenting the back fin, the two mirrored side fins (at their compound `Rx(π/3)·Rz(±2π/3)` bind
-      rotations), the tail (with its tail fin), and the head (with its nose). The procedural
-      `DolphinModel.setupAnim` is hand-emitted: the `body` steers by the projected look pitch/yaw
-      (`body.xRot = state.xRot`, `body.yRot = state.yRot`) and, while moving (`isMoving`, projected
-      from the synced `Entity.getDeltaMovement().horizontalDistanceSqr() > 1e-7` into the entity
-      render state), adds the swim body tilt (`xRot += -0.05 - 0.05·cos(ageInTicks·0.3)`) and the
-      tail / tail-fin wave (`tail.xRot = -0.1·cos`, `tailFin.xRot = -0.2·cos`); at rest the tail
-      holds its `-0.10471976` bind pitch. The baby uses the `MeshTransformer.scaling(0.5)` body
-      layer (the shared mesh-transformer root scale, like the squid baby). The colored path
-      approximates the texture with a single representative grey. The textured base layer
-      (`textures/entity/dolphin/dolphin.png` / `dolphin_baby.png` into the cutout mesh) and the
-      held-item carry layer (`DolphinCarryingItemLayer`) remain unsupported
+    - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
+      `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to
+      the new `EntityModelKind::Dolphin { baby }`, keyed off the synced `AgeableMob.DATA_BABY_ID`
+      (index 16, default adult), replacing the former placeholder box. Renderer-owned vanilla
+      `DolphinModel.createBodyLayer()` geometry (atlas 64×64) — the `texOffs(22, 0)` 8×7×13 `body`
+      root child parenting the back fin, the two mirrored side fins (at their compound
+      `Rx(π/3)·Rz(±2π/3)` bind rotations), the tail (with its tail fin), and the head (with its
+      nose). The procedural `DolphinModel.setupAnim` is hand-emitted: the `body` steers by the
+      projected look pitch/yaw (`body.xRot = state.xRot`, `body.yRot = state.yRot`) and, while moving
+      (`isMoving`, projected from the synced `Entity.getDeltaMovement().horizontalDistanceSqr() >
+      1e-7` into the entity render state), adds the swim body tilt
+      (`xRot += -0.05 - 0.05·cos(ageInTicks·0.3)`) and the tail / tail-fin wave (`tail.xRot =
+      -0.1·cos`, `tailFin.xRot = -0.2·cos`); at rest the tail holds its `-0.10471976` bind pitch. The
+      baby uses the `MeshTransformer.scaling(0.5)` body layer (the shared mesh-transformer root
+      scale, like the squid baby). The textured base layer draws the
+      `textures/entity/dolphin/dolphin.png` / `dolphin_baby.png` atlas references into the cutout
+      mesh (the `DolphinModel` default `RenderTypes::entityCutoutNoCull`), hand-emitted through the
+      same animated hierarchy as the colored path (which approximates the texture with a single
+      representative grey). The held-item carry layer (`DolphinCarryingItemLayer`) remains
+      unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

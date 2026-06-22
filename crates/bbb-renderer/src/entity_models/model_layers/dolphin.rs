@@ -1,4 +1,4 @@
-use super::{ModelCubeDesc, PartPose, DOLPHIN_GRAY};
+use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, DOLPHIN_GRAY};
 
 use std::f32::consts::PI;
 
@@ -87,3 +87,77 @@ pub(in crate::entity_models) const DOLPHIN_NOSE_POSE: PartPose = PartPose {
 pub(in crate::entity_models) fn dolphin_wave(age_in_ticks: f32) -> f32 {
     (age_in_ticks * 0.3).cos()
 }
+
+// The same geometry with the vanilla `DolphinModel.createBodyLayer` texOffs UV coordinates (atlas
+// 64×64); no `CubeDeformation`, so each `uv_size` matches its box `size`. The left fin is mirrored.
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, -7.0, 0.0],
+        size: [8.0, 7.0, 13.0],
+        uv_size: [8.0, 7.0, 13.0],
+        tex: [22.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_BACK_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-0.5, 0.0, 8.0],
+        size: [1.0, 4.0, 5.0],
+        uv_size: [1.0, 4.0, 5.0],
+        tex: [51.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_LEFT_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-0.5, -4.0, 0.0],
+        size: [1.0, 4.0, 7.0],
+        uv_size: [1.0, 4.0, 7.0],
+        tex: [48.0, 20.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_RIGHT_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-0.5, -4.0, 0.0],
+        size: [1.0, 4.0, 7.0],
+        uv_size: [1.0, 4.0, 7.0],
+        tex: [48.0, 20.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_TAIL: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -2.5, 0.0],
+        size: [4.0, 5.0, 11.0],
+        uv_size: [4.0, 5.0, 11.0],
+        tex: [0.0, 19.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_TAIL_FIN: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-5.0, -0.5, 0.0],
+        size: [10.0, 1.0, 6.0],
+        uv_size: [10.0, 1.0, 6.0],
+        tex: [19.0, 20.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, -3.0, -3.0],
+        size: [8.0, 7.0, 6.0],
+        uv_size: [8.0, 7.0, 6.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const DOLPHIN_TEXTURED_NOSE: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 2.0, -7.0],
+        size: [2.0, 2.0, 4.0],
+        uv_size: [2.0, 2.0, 4.0],
+        tex: [0.0, 13.0],
+        mirror: false,
+    }];
