@@ -688,7 +688,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID => boat(BoatModelFamily::Spruce, false),
         VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID => boat(BoatModelFamily::Spruce, true),
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
-        VANILLA_ENTITY_TYPE_ARMADILLO_ID => placeholder("todo_armadillo_bounds", 0.7, 0.65, 0.7),
+        VANILLA_ENTITY_TYPE_ARMADILLO_ID => EntityModelKind::Armadillo {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => placeholder("todo_axolotl_bounds", 0.75, 0.42, 0.75),
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
         VANILLA_ENTITY_TYPE_BEE_ID => EntityModelKind::Bee {
@@ -3840,6 +3842,26 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WARDEN_ID, &[]),
             EntityModelKind::Warden
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_armadillo_baby_from_data() {
+        // The armadillo was a placeholder bounds box; it now resolves to the real
+        // `AdultArmadilloModel` / `BabyArmadilloModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
+        // (index 16, default adult), as in the vanilla `AgeableMobRenderer`. The clamped head look,
+        // `applyWalk` leg sway, roll-out / roll-up / peek keyframes, and the `isHidingInShell`
+        // shell-ball swap are deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ARMADILLO_ID, &[]),
+            EntityModelKind::Armadillo { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Armadillo { baby: true }
         );
     }
 

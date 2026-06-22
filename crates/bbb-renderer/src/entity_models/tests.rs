@@ -1,6 +1,7 @@
 use super::*;
 
 mod allay;
+mod armadillo;
 mod armor_stand;
 mod auto_spin;
 mod bat;

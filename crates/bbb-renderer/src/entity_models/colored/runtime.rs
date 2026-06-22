@@ -188,6 +188,10 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed warden yet), so this arm always emits.
                 emit_warden_model(&mut mesh, *instance);
             }
+            EntityModelKind::Armadillo { baby } => {
+                // Colored-only so far (no texture-backed armadillo yet), so this arm always emits.
+                emit_armadillo_model(&mut mesh, *instance, baby);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -1358,6 +1362,22 @@ fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
     // bind-pose part tree is emitted directly. Warden uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &WARDEN_PARTS, root);
+}
+
+fn emit_armadillo_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    // Vanilla `AdultArmadilloModel`/`BabyArmadilloModel` are static nested hierarchies at rest
+    // (root → body/legs, body → tail/head, head → ears). All of `ArmadilloModel.setupAnim` (the
+    // clamped head look, `applyWalk`, and the roll-out / roll-up / peek keyframes) plus the
+    // `isHidingInShell` shell-ball swap are deferred, so the bind-pose part tree is emitted
+    // directly. The baby flag (synced `AgeableMob.DATA_BABY_ID`) selects the baby body layer, as
+    // in the vanilla `AgeableMobRenderer`. Armadillo uses `LivingEntityRenderer.setupRotations`.
+    let root = entity_model_root_transform(instance);
+    let parts: &[ModelPartDesc] = if baby {
+        &BABY_ARMADILLO_PARTS
+    } else {
+        &ADULT_ARMADILLO_PARTS
+    };
+    emit_model_parts(mesh, parts, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

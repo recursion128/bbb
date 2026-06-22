@@ -1534,6 +1534,25 @@ When an agent does any of the following, update this file in the same slice:
       keyed off the danger/heartbeat/anger animation state) are deferred. The texture-backed path
       remains unsupported (this is a colored-first slice; the colored debug path approximates the body
       with one dark-teal tint and the tendrils with a brighter cyan tint)
+    - armadillo entities as renderer-owned vanilla 26.1 `AdultArmadilloModel` /
+      `BabyArmadilloModel.createBodyLayer()` geometry on the colored path: the native entity scene
+      (`entity_scene.rs`) projects vanilla type id `4` to the new `EntityModelKind::Armadillo { baby }`,
+      replacing the former placeholder bounds box. The synced `AgeableMob.DATA_BABY_ID` flag (entity-data
+      index 16, defaulting to adult) selects the baby body layer, matching the vanilla
+      `AgeableMobRenderer` two-model dispatch. Both static rest-pose hierarchies are emitted directly
+      (atlas 64×64): the root parents the body and the four legs directly (no wrapping bone); the body
+      parents the tail and the head, and the head parents the head cube and the two ear planes. The
+      adult body is a `CubeDeformation(0.3)`-inflated 8×8×12 shell over the bare box (baked into the
+      colored cube exactly like the vex/illager/sniffer deformed cubes), with a 1×6×1 tail, a 3×5×2
+      head snout, two 2×5×0 ears, and four 2×3×2 legs — ten cubes; the baby is the smaller 5×4×7 / 5×4×6
+      shell with a 1×1×4 tail stub, a 2×2×4 snout, two 2×3×0 ears parented to the head cube, and four
+      2×2×2 legs (front legs at vanilla's swapped X origins) — ten cubes. Every `ArmadilloModel.setupAnim`
+      animation is deferred: the clamped head look (`head.xRot/yRot`), the `applyWalk` leg sway, and the
+      roll-out / roll-up / peek keyframe animations. The shell-ball `cube` part and the `isHidingInShell`
+      visibility swap (which hides the body/legs/tail and shows the 10×10×10 ball) are deferred entity-side
+      state, so the non-hiding rest pose is emitted. The texture-backed path remains unsupported (this is a
+      colored-first slice; the colored debug path approximates the armored body/legs with one brown tint and
+      the soft head/ears/tail with a tan tint)
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

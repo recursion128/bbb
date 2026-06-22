@@ -83,6 +83,8 @@ impl EntityModelKind {
             Self::Creaking => "creaking",
             Self::Sniffer => "sniffer",
             Self::Warden => "warden",
+            Self::Armadillo { baby: false } => "armadillo",
+            Self::Armadillo { baby: true } => "armadillo_baby",
             Self::Phantom { .. } => "phantom",
             Self::Pufferfish { puff_state: 0 } => "pufferfish_small",
             Self::Pufferfish { puff_state: 1 } => "pufferfish_mid",

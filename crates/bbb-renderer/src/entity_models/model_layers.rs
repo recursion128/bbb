@@ -61,6 +61,8 @@ pub(super) const SNIFFER_BROWN: [f32; 4] = [0.46, 0.36, 0.28, 1.0];
 pub(super) const SNIFFER_NOSE: [f32; 4] = [0.78, 0.52, 0.50, 1.0];
 pub(super) const WARDEN_BODY: [f32; 4] = [0.13, 0.22, 0.26, 1.0];
 pub(super) const WARDEN_TENDRIL: [f32; 4] = [0.20, 0.62, 0.66, 1.0];
+pub(super) const ARMADILLO_SHELL: [f32; 4] = [0.42, 0.31, 0.25, 1.0];
+pub(super) const ARMADILLO_SKIN: [f32; 4] = [0.66, 0.55, 0.50, 1.0];
 
 /// Builds a colored model cube descriptor — vanilla `addBox(min, size)` with a baked color.
 pub(super) const fn model_cube(min: [f32; 3], size: [f32; 3], color: [f32; 4]) -> ModelCubeDesc {
@@ -82,6 +84,21 @@ pub(super) const fn bind_part(
         children,
     }
 }
+
+/// Builds a model part at `offset` with a baked rotation (a vanilla
+/// `PartPose.offsetAndRotation(...)` bind part; `rotation` is `[xRot, yRot, zRot]` in radians).
+pub(super) const fn bind_part_rot(
+    offset: [f32; 3],
+    rotation: [f32; 3],
+    cubes: &'static [ModelCubeDesc],
+    children: &'static [ModelPartDesc],
+) -> ModelPartDesc {
+    ModelPartDesc {
+        pose: PartPose { offset, rotation },
+        cubes,
+        children,
+    }
+}
 pub(super) const GLOW_SQUID_TEAL: [f32; 4] = [0.13, 0.65, 0.62, 1.0];
 pub(super) const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 pub(super) const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
@@ -91,6 +108,7 @@ pub(super) const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
 mod allay;
+mod armadillo;
 mod armor_stand;
 mod bat;
 mod bee;
@@ -146,6 +164,7 @@ mod wolf;
 mod zombie;
 
 pub(super) use allay::*;
+pub(super) use armadillo::*;
 pub(super) use armor_stand::*;
 pub(super) use bat::*;
 pub(super) use bee::*;
