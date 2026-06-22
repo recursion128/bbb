@@ -30,26 +30,27 @@ use super::{
         endermite_segment_pose, ghast_tentacle_x_rot, half_amplitude_leg_swing_pose,
         head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
         head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
-        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
-        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
-        phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, piglin_ear_flap_pose,
-        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
-        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, ravager_head_child_index,
-        ravager_leg_swing_pose, ravager_neck_part_index, salmon_body_back_yrot, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, silverfish_layer_pose, silverfish_segment_pose,
-        skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
-        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
-        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
-        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
-        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
-        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
-        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        zombie_arm_held_out_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_crouch_arm_pose,
+        humanoid_crouch_body_pose, humanoid_crouch_head_pose, humanoid_crouch_leg_pose,
+        humanoid_leg_swing_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
+        limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
+        phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index,
+        piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
+        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
+        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
+        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
+        salmon_body_back_yrot, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
+        silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
+        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
+        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
+        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
+        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
+        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
+        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
+        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
+        wolf_tail_swing_pose, zombie_arm_held_out_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE,
+        ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
+        ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
         BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
@@ -1861,6 +1862,9 @@ const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
 /// `HumanoidModel` arm part indices (head/body at `0`/`1`, arms at `[2, 3]`).
 const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
 
+/// The `HumanoidModel` body part index (`head` is `0`, `body` is `1`).
+const HUMANOID_BODY_PART_INDEX: usize = 1;
+
 /// Emits the skeleton family's textured layer passes, applying the vanilla
 /// `HumanoidModel.setupAnim` head look ([`head_look_pose`]) to the head part at
 /// `head_index`, the leg swing ([`humanoid_leg_swing_pose`]) to the two leg parts at
@@ -3177,6 +3181,27 @@ fn emit_player_textured_model(
     for index in HUMANOID_ARM_PART_INDICES {
         if let Some(arm) = visible_parts.get_mut(index) {
             arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
+        }
+    }
+    // The `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose: lean the body, drop
+    // the head, tilt the arms and tuck the legs (the hat/jacket/sleeve/pants children ride the
+    // shifted parts). Applied after the swing/bob, exactly as vanilla does.
+    if instance.render_state.is_crouching {
+        if let Some(head) = visible_parts.get_mut(player_head_part_index()) {
+            head.pose = humanoid_crouch_head_pose(head.pose);
+        }
+        if let Some(body) = visible_parts.get_mut(HUMANOID_BODY_PART_INDEX) {
+            body.pose = humanoid_crouch_body_pose(body.pose);
+        }
+        for index in HUMANOID_ARM_PART_INDICES {
+            if let Some(arm) = visible_parts.get_mut(index) {
+                arm.pose = humanoid_crouch_arm_pose(arm.pose);
+            }
+        }
+        for index in HUMANOID_LEG_PART_INDICES {
+            if let Some(leg) = visible_parts.get_mut(index) {
+                leg.pose = humanoid_crouch_leg_pose(leg.pose);
+            }
         }
     }
     for pass in player_textured_layer_passes(slim, parts) {

@@ -275,9 +275,10 @@ When an agent does any of the following, update this file in the same slice:
       creepy head/hat shift), the bat `isResting` flag (carried as
       `bat_resting`, swapping the bat to the `BAT_RESTING` hanging pose with a head look),
       the bee `hasStinger` flag (carried as `bee_has_stinger`, hiding the stinger
-      cube once the bee has stung), and the bee `isAngry` state (carried as `bee_angry`,
+      cube once the bee has stung), the bee `isAngry` state (carried as `bee_angry`,
       the synced `NeutralMob` anger-end time vs the world game time, suppressing the
-      bee's `bobUpAndDown`)
+      bee's `bobUpAndDown`), and the player `isCrouching` pose (carried as
+      `is_crouching`, the synced `Pose.CROUCHING`, applying the `HumanoidModel` sneak pose)
     - `walkAnimationPos`/`walkAnimationSpeed` limb-swing: the client-side
       `WalkAnimationState` accumulator is implemented and tracked per living entity
       (see the dedicated bullet below), its lerped `position`/`speed` are projected
@@ -641,10 +642,11 @@ When an agent does any of the following, update this file in the same slice:
     tilt, the `HoglinModel` headbutt head tilt (the `EndermanModel`
     carried-block arm pose and creepy head/hat shift are implemented — see the
     enderman note above), the `IronGolemModel`
-    attack swing and offer-flower arm pose,
-    item/attack/crouch/swim/elytra poses, and the
-    player crouch/swim/elytra `speedValue` poses) are separate animations driven by
-    states the client does not yet track;
+    attack swing and offer-flower arm pose, the `HumanoidModel`
+    item/attack/swim/elytra poses, and the
+    player swim/elytra `speedValue` poses) are separate animations driven by
+    states the client does not yet track (the `HumanoidModel` crouch sneaking
+    pose is implemented for the player — see below);
     (3) consuming the projected values in the remaining model families' `setupAnim`
     (fish, other birds, etc.) are the next slices, plus the chicken wing flap (untracked
     `flap`/`flapSpeed`) and the several deferred event/tail poses noted above. (The snow
@@ -783,9 +785,12 @@ When an agent does any of the following, update this file in the same slice:
       selection, live skin downloads, automatic slim-vs-wide model selection
       from `PlayerSkin`, capes, ears, armor/equipment, held items,
       elytra/wings, shoulder parrots,
-      arrows/stingers, spectator visibility, crouch/flying offsets, name
-      display, the held-item/attack/crouch/swim arm poses, and the elytra
-      `speedValue` poses remain unsupported
+      arrows/stingers, spectator visibility, the elytra flying offsets, name
+      display, the held-item/attack/swim arm poses, and the elytra
+      `speedValue` poses remain unsupported; the `HumanoidModel` crouch
+      (`isCrouching`/`Pose.CROUCHING`, projected as `is_crouching`) sneaking pose is
+      implemented on both render paths — the body leans (`xRot = 0.5`) and drops, the
+      head drops, the arms tilt (`xRot += 0.4`) and the legs tuck back (`z += 4`)
       (metadata-driven `DATA_PLAYER_MODE_CUSTOMISATION` projection now controls
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer

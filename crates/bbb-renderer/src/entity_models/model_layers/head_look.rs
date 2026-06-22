@@ -299,6 +299,42 @@ pub(in crate::entity_models) fn humanoid_arm_bob_pose(
     }
 }
 
+/// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) head drop: `head.y += 4.2`, so the
+/// sneaking head sinks with the lowered body. Applied after the look/swing/bob.
+pub(in crate::entity_models) fn humanoid_crouch_head_pose(base: PartPose) -> PartPose {
+    PartPose {
+        offset: [base.offset[0], base.offset[1] + 4.2, base.offset[2]],
+        rotation: base.rotation,
+    }
+}
+
+/// Vanilla `HumanoidModel.setupAnim` crouch body lean: `body.xRot = 0.5` (set, the standing
+/// body has no pitch) and `body.y += 3.2`, so the torso tilts forward and drops.
+pub(in crate::entity_models) fn humanoid_crouch_body_pose(base: PartPose) -> PartPose {
+    PartPose {
+        offset: [base.offset[0], base.offset[1] + 3.2, base.offset[2]],
+        rotation: [0.5, base.rotation[1], base.rotation[2]],
+    }
+}
+
+/// Vanilla `HumanoidModel.setupAnim` crouch arm pose: `arm.xRot += 0.4` (accumulated onto the
+/// swing and idle bob) and `arm.y += 3.2`, so the arms tilt forward and ride the lowered body.
+pub(in crate::entity_models) fn humanoid_crouch_arm_pose(base: PartPose) -> PartPose {
+    PartPose {
+        offset: [base.offset[0], base.offset[1] + 3.2, base.offset[2]],
+        rotation: [base.rotation[0] + 0.4, base.rotation[1], base.rotation[2]],
+    }
+}
+
+/// Vanilla `HumanoidModel.setupAnim` crouch leg pose: `leg.z += 4.0`, so the legs tuck back
+/// under the lowered body. The offset is shifted; the leg swing rotation is preserved.
+pub(in crate::entity_models) fn humanoid_crouch_leg_pose(base: PartPose) -> PartPose {
+    PartPose {
+        offset: [base.offset[0], base.offset[1], base.offset[2] + 4.0],
+        rotation: base.rotation,
+    }
+}
+
 /// Vanilla `AnimationUtils.animateZombieArms` resting pose — the iconic held-out zombie
 /// arms — at `attackTime = 0` (not mid-swing). Each arm drops forward to `xRot = armDrop`,
 /// splays out by `yRot` (right arm, part offset `x < 0`, `-0.1`; left arm `+0.1`), zeroes

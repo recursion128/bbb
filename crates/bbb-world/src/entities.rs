@@ -353,6 +353,12 @@ pub struct EntityModelSourceState {
     /// not stung still has its stinger; every other entity is unaffected).
     #[serde(default = "entity_model_source_default_true")]
     pub bee_has_stinger: bool,
+    /// Vanilla `LivingEntityRenderState.isCrouching` (`Entity.isCrouching`, the synced
+    /// `Pose.CROUCHING`): a sneaking player, whose `HumanoidModel.setupAnim` leans the body,
+    /// drops the head, tucks the legs and tilts the arms. Projected only for the player (the
+    /// only entity the server puts in the crouch pose); `false` for every other entity.
+    #[serde(default)]
+    pub is_crouching: bool,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin

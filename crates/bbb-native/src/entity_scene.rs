@@ -389,6 +389,7 @@ fn entity_model_instance(
             &source.data_values,
             game_time,
         ))
+        .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
@@ -2080,6 +2081,49 @@ mod tests {
             values: vec![protocol_long_data(VANILLA_BEE_ANGER_END_TIME_DATA_ID, 0)],
         }));
         assert!(!angry(&world, 97));
+    }
+
+    #[test]
+    fn entity_model_instances_project_player_crouch_pose() {
+        // Vanilla Entity.isCrouching (Pose.CROUCHING, ordinal 5, POSE serializer 20).
+        const ENTITY_DATA_POSE_ID: u8 = 6;
+        const POSE_STANDING: i32 = 0;
+        const POSE_CROUCHING: i32 = 5;
+        const POSE_SERIALIZER_ID: i32 = 20;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            98,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let crouching = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .is_crouching
+        };
+        let set_pose = |world: &mut WorldStore, id: i32, pose: i32| {
+            world.apply_set_entity_data(SetEntityData {
+                id,
+                values: vec![EntityDataValue {
+                    data_id: ENTITY_DATA_POSE_ID,
+                    serializer_id: POSE_SERIALIZER_ID,
+                    value: EntityDataValueKind::Pose(pose),
+                }],
+            })
+        };
+
+        // A standing player is not crouching.
+        assert!(!crouching(&world, 98));
+        // Pose.CROUCHING projects the sneaking pose; standing again clears it.
+        assert!(set_pose(&mut world, 98, POSE_CROUCHING));
+        assert!(crouching(&world, 98));
+        assert!(set_pose(&mut world, 98, POSE_STANDING));
+        assert!(!crouching(&world, 98));
     }
 
     #[test]

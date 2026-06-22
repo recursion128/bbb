@@ -20,7 +20,8 @@ use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
     vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman,
     vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, vanilla_render_scale,
-    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, VANILLA_POSE_CROUCHING_ID,
+    VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -527,6 +528,11 @@ impl EntityStore {
         // source defaults to the no-bed fallback.
         let is_sleeping = vanilla_living_entity_type(identity.entity_type_id)
             && entity_data_pose(&metadata.data_values) == VANILLA_POSE_SLEEPING_ID;
+        // Vanilla `Entity.isCrouching` (`Pose.CROUCHING`): only the player is ever put into the
+        // crouch pose by the server, and only the player model has the `HumanoidModel.setupAnim`
+        // crouch, so the projection is gated to the player.
+        let is_crouching = identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+            && entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
         // Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the SCALE
         // attribute): only living entities carry a render scale; everything else
         // renders at its default size.
@@ -549,6 +555,7 @@ impl EntityStore {
             enderman_creepy,
             bat_resting,
             bee_has_stinger,
+            is_crouching,
             is_auto_spin_attack,
             is_upside_down,
             bounding_box_height,

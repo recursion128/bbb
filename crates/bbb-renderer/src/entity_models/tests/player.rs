@@ -711,6 +711,71 @@ fn player_textured_arms_idle_bob_as_age_advances() {
     }
 }
 
+#[test]
+fn player_crouches_when_sneaking() {
+    // Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`): the body leans forward
+    // (`xRot = 0.5`) and drops (`y += 3.2`), the head drops (`y += 4.2`), the arms tilt
+    // (`xRot += 0.4`, `y += 3.2`) and the legs tuck back (`z += 4`). A sneaking player is
+    // shorter and leans forward. Colored path here, textured below.
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(920, [0.0, 64.0, 0.0], 0.0, slim);
+        let standing = entity_model_mesh(&[base]);
+        let crouching = entity_model_mesh(&[base.with_is_crouching(true)]);
+        assert_eq!(standing.vertices.len(), crouching.vertices.len());
+        assert_ne!(
+            standing.vertices, crouching.vertices,
+            "slim={slim}: a sneaking player poses differently"
+        );
+
+        let (stand_min, stand_max) = mesh_extents(&standing);
+        let (crouch_min, crouch_max) = mesh_extents(&crouching);
+        assert!(
+            (crouch_max[1] - crouch_min[1]) < (stand_max[1] - stand_min[1]) - 0.1,
+            "slim={slim}: a sneaking player is shorter"
+        );
+        assert!(
+            (crouch_max[2] - crouch_min[2]) > (stand_max[2] - stand_min[2]) + 0.1,
+            "slim={slim}: a sneaking player leans forward, deepening its Z footprint"
+        );
+
+        // A standing player is unaffected by the flag default.
+        assert_eq!(
+            standing.vertices,
+            entity_model_mesh(&[base.with_is_crouching(false)]).vertices,
+            "slim={slim}: a standing player is unchanged"
+        );
+    }
+}
+
+#[test]
+fn player_textured_mesh_crouches_when_sneaking() {
+    // The real player render path (texture-backed) applies the same crouch to the shared
+    // visibility-filtered part array (the hat/jacket/sleeve/pants children ride the shifted
+    // parts).
+    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    for slim in [false, true] {
+        let base = EntityModelInstance::player(921, [0.0, 64.0, 0.0], 0.0, slim);
+        let standing = entity_model_textured_mesh(&[base], &atlas);
+        let crouching = entity_model_textured_mesh(&[base.with_is_crouching(true)], &atlas);
+        assert_eq!(standing.vertices.len(), crouching.vertices.len());
+        assert_ne!(
+            standing.vertices, crouching.vertices,
+            "slim={slim}: a sneaking player poses differently"
+        );
+
+        let (stand_min, stand_max) = textured_mesh_extents(&standing);
+        let (crouch_min, crouch_max) = textured_mesh_extents(&crouching);
+        assert!(
+            (crouch_max[1] - crouch_min[1]) < (stand_max[1] - stand_min[1]) - 0.1,
+            "slim={slim}: a sneaking player is shorter"
+        );
+        assert!(
+            (crouch_max[2] - crouch_min[2]) > (stand_max[2] - stand_min[2]) + 0.1,
+            "slim={slim}: a sneaking player leans forward"
+        );
+    }
+}
+
 fn player_texture_images() -> Vec<EntityModelTextureImage> {
     player_entity_texture_refs()
         .iter()

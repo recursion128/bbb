@@ -1729,8 +1729,8 @@ fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     // `PlayerModel extends HumanoidModel`: its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so the legs and arms swing exactly as in the
     // inherited `HumanoidModel.setupAnim` (the pants/sleeve children ride the limb
-    // parts). The held-item/attack arm poses, crouch, swim, the idle bob, and the
-    // elytra `speedValue` are deferred.
+    // parts). The crouch (`isCrouching`) sneaking pose is applied below; the
+    // held-item/attack arm poses, swim, and the elytra `speedValue` are deferred.
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
     let parts = colored_head_look_parts(
@@ -1752,6 +1752,7 @@ fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
         limb_swing_amount,
         instance.render_state.age_in_ticks,
     );
+    let parts = humanoid_crouch_parts(parts, instance.render_state.is_crouching);
     emit_model_parts(mesh, &parts, transform);
 }
 
@@ -2337,6 +2338,35 @@ pub(in crate::entity_models) fn humanoid_limb_swing_parts(
 /// Vanilla `HumanoidModel` arm part indices: the head and body occupy `0`/`1`, then
 /// the right and left arms at `[2, 3]` (every humanoid layer, adult or baby).
 pub(in crate::entity_models) const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
+
+/// The `HumanoidModel` body part index (`head` is `0`, `body` is `1`).
+pub(in crate::entity_models) const HUMANOID_BODY_PART_INDEX: usize = 1;
+
+/// Applies the vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose to a
+/// player layer: the body leans forward and drops ([`humanoid_crouch_body_pose`]), the head
+/// drops with it, the arms tilt forward and ride down, and the legs tuck back. Applied after
+/// the swing and idle bob (the arm tilt accumulates onto them). A standing player
+/// (`crouching == false`) is returned unchanged.
+fn humanoid_crouch_parts(
+    parts: Cow<'_, [ModelPartDesc]>,
+    crouching: bool,
+) -> Cow<'_, [ModelPartDesc]> {
+    if !crouching {
+        return parts;
+    }
+    let mut owned = parts.into_owned();
+    let head = player_head_part_index();
+    owned[head].pose = humanoid_crouch_head_pose(owned[head].pose);
+    owned[HUMANOID_BODY_PART_INDEX].pose =
+        humanoid_crouch_body_pose(owned[HUMANOID_BODY_PART_INDEX].pose);
+    for index in HUMANOID_ARM_PART_INDICES {
+        owned[index].pose = humanoid_crouch_arm_pose(owned[index].pose);
+    }
+    for index in HUMANOID_LEG_PART_INDICES {
+        owned[index].pose = humanoid_crouch_leg_pose(owned[index].pose);
+    }
+    Cow::Owned(owned)
+}
 
 /// Applies the vanilla `HumanoidModel.setupAnim` arm animation to a colored layer's two
 /// arm parts at `arm_indices`: the walk swing ([`humanoid_arm_swing_pose`], only while

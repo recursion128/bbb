@@ -147,6 +147,10 @@ pub struct EntityRenderState {
     /// `BeeModel.bobUpAndDown`, so its body, front/back legs and antennae hold still (the wing
     /// flap continues). `false` for every other entity and for a calm bee.
     pub bee_angry: bool,
+    /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
+    /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
+    /// back and tilts the arms. `false` for every other entity and for a standing player.
+    pub is_crouching: bool,
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -220,6 +224,7 @@ impl EntityRenderState {
             bat_resting: false,
             bee_has_stinger: true,
             bee_angry: false,
+            is_crouching: false,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
             squid_tentacle_angle: 0.0,
@@ -396,6 +401,11 @@ impl EntityModelInstance {
 
     pub fn with_bee_angry(mut self, bee_angry: bool) -> Self {
         self.render_state.bee_angry = bee_angry;
+        self
+    }
+
+    pub fn with_is_crouching(mut self, is_crouching: bool) -> Self {
+        self.render_state.is_crouching = is_crouching;
         self
     }
 
@@ -1272,6 +1282,7 @@ mod tests {
                 bat_resting: false,
                 bee_has_stinger: true,
                 bee_angry: false,
+                is_crouching: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 squid_tentacle_angle: 0.0,

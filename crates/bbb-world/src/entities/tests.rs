@@ -1489,6 +1489,54 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
 }
 
 #[test]
+fn entity_model_sources_gate_crouch_pose_on_the_player() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const POSE_STANDING: i32 = 0;
+    const POSE_CROUCHING: i32 = 5;
+
+    let crouching = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .is_crouching
+    };
+    let set_pose = |store: &mut WorldStore, id: i32, pose: i32| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_pose_data(
+                super::dimensions::ENTITY_DATA_POSE_ID,
+                pose,
+            )],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        74,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    // A standing player is not crouching.
+    assert!(!crouching(&store, 74));
+    // Vanilla Pose.CROUCHING marks the player sneaking; standing again clears it.
+    assert!(set_pose(&mut store, 74, POSE_CROUCHING));
+    assert!(crouching(&store, 74));
+    assert!(set_pose(&mut store, 74, POSE_STANDING));
+    assert!(!crouching(&store, 74));
+
+    // A non-player entity is never crouched, even with a CROUCHING pose: only the player model
+    // has the `HumanoidModel.setupAnim` crouch.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        75,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(set_pose(&mut store, 75, POSE_CROUCHING));
+    assert!(!crouching(&store, 75));
+}
+
+#[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
