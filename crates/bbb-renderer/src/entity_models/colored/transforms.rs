@@ -267,9 +267,9 @@ const SQUID_BABY_SCALE: f32 = 0.5;
 /// (`Axis.XP.rotationDegrees(xBodyRot)` then `Axis.YP.rotationDegrees(zBodyRot)`), and
 /// `translate(0, isBaby ? -0.6 : -1.2, 0)`. Because it overrides the base method, a
 /// squid never runs the death/auto-spin/sleeping/upside-down chain, so it never tips
-/// over. The swim body tilt (`xBodyRot`/`zBodyRot`) is deferred — both are `0` at rest,
-/// the orientation of a floating squid — leaving the `0.25/0.5` and `-0.6/-1.2`
-/// translates around the body yaw. The baby uses the `SquidModel.BABY_TRANSFORMER`
+/// over. The swim body tilt (`xBodyRot` the movement pitch, `zBodyRot` the swim roll,
+/// both in degrees, lerped into the render state) is `0` at rest — the orientation of a
+/// floating squid. The baby uses the `SquidModel.BABY_TRANSFORMER`
 /// (`MeshTransformer.scaling(0.5)`) body layer, composed innermost like the other
 /// mesh-transformer-scaled models.
 pub(in crate::entity_models) fn squid_model_root_transform(
@@ -281,6 +281,8 @@ pub(in crate::entity_models) fn squid_model_root_transform(
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * Mat4::from_translation(Vec3::new(0.0, up, 0.0))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_x(instance.render_state.squid_x_body_rot.to_radians())
+        * Mat4::from_rotation_y(instance.render_state.squid_z_body_rot.to_radians())
         * Mat4::from_translation(Vec3::new(0.0, down, 0.0))
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0));

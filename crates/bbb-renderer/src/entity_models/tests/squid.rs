@@ -270,6 +270,42 @@ fn squid_textured_mesh_swims_its_tentacles() {
     assert_ne!(rest.vertices, swept.vertices);
 }
 
+#[test]
+fn squid_applies_swim_body_tilt() {
+    // `SquidRenderer.setupRotations` pitches the squid by `xBodyRot` (about X) then rolls
+    // it by `zBodyRot` (about Y) after the body yaw. A resting squid is upright; a pitched
+    // squid is reoriented (its tall body lays toward the horizontal) without changing the
+    // vertex count.
+    let base = EntityModelInstance::squid(820, [0.0, 64.0, 0.0], 0.0, false, false);
+    let rest = entity_model_mesh(&[base]);
+    let pitched = entity_model_mesh(&[base.with_squid_body_tilt(-90.0, 0.0)]);
+    assert_eq!(rest.vertices.len(), pitched.vertices.len());
+    assert_ne!(
+        rest.vertices, pitched.vertices,
+        "the pitch reorients the squid"
+    );
+
+    // A 90° pitch swaps the body's vertical extent into depth: the pitched squid is much
+    // shorter in Y and deeper in Z than the upright one.
+    let (rest_min, rest_max) = mesh_extents(&rest);
+    let (pitch_min, pitch_max) = mesh_extents(&pitched);
+    assert!(
+        (pitch_max[1] - pitch_min[1]) < (rest_max[1] - rest_min[1]) - 0.3,
+        "a pitched squid is shorter in Y"
+    );
+    assert!(
+        (pitch_max[2] - pitch_min[2]) > (rest_max[2] - rest_min[2]) + 0.3,
+        "a pitched squid is deeper in Z"
+    );
+
+    // The roll about Y also reorients the model.
+    let rolled = entity_model_mesh(&[base.with_squid_body_tilt(0.0, 35.0)]);
+    assert_ne!(
+        rest.vertices, rolled.vertices,
+        "the roll reorients the squid"
+    );
+}
+
 fn squid_texture_images() -> Vec<EntityModelTextureImage> {
     squid_entity_texture_refs()
         .iter()

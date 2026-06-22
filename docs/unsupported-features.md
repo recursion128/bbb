@@ -1322,15 +1322,18 @@ When an agent does any of the following, update this file in the same slice:
       (`tentacle.xRot = tentacleAngle` on all eight, from the lerped
       `SquidRenderState.tentacleAngle`), the `BABY_TRANSFORMER`
       (`MeshTransformer.scaling(0.5)`) baby body layer, the glow-squid variant, and
-      the `SquidRenderer.setupRotations` body translate (`0.5/1.2` adult, `0.25/0.6`
-      baby) around the body yaw, with no death tip-over (the squid override replaces
-      `LivingEntityRenderer.setupRotations`); the official squid/glow_squid adult
+      the full `SquidRenderer.setupRotations` (the `0.5/1.2` adult, `0.25/0.6` baby
+      body translate, the `180 - bodyRot` yaw, and the swim body tilt
+      `Axis.XP.rotationDegrees(xBodyRot)` pitch then `Axis.YP.rotationDegrees(zBodyRot)`
+      roll, both lerped into the render state), with no death tip-over (the squid
+      override replaces `LivingEntityRenderer.setupRotations`); the official squid/glow_squid adult
       (64x32) / baby (32x32) texture references, the hand-emitted texture-backed
       render path over the procedural ring, and the official PNG atlas
       upload/bind/sample path (colored and textured). The glow-squid emissive overlay
-      and `GlowSquidRenderer` darken-ticks light boost, the
-      `SquidRenderer.setupRotations` swim body tilt (`xBodyRot`/`zBodyRot`, the
-      velocity-driven pitch/roll), lighting, and overlay remain unsupported
+      and `GlowSquidRenderer` darken-ticks light boost, the entity-side movement
+      projection that populates `xBodyRot`/`zBodyRot`/`tentacleAngle` (the renderer
+      consumes them but the `Squid.aiStep` swim integration is not yet projected),
+      lighting, and overlay remain unsupported
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a

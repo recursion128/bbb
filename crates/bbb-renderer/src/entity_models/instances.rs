@@ -133,6 +133,17 @@ pub struct EntityRenderState {
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
     /// entity.
     pub squid_tentacle_angle: f32,
+    /// Vanilla `SquidRenderState.xBodyRot` (`Mth.lerp(partialTick, xBodyRotO,
+    /// xBodyRot)`, degrees): the squid swim pitch `SquidRenderer.setupRotations` applies
+    /// as `Axis.XP.rotationDegrees(xBodyRot)` after the body yaw. Tracks the movement
+    /// direction while swimming and drifts toward `-90` while idle. `0.0` at rest and
+    /// for every non-squid entity.
+    pub squid_x_body_rot: f32,
+    /// Vanilla `SquidRenderState.zBodyRot` (`Mth.lerp(partialTick, zBodyRotO,
+    /// zBodyRot)`, degrees): the squid swim roll `SquidRenderer.setupRotations` applies
+    /// as `Axis.YP.rotationDegrees(zBodyRot)` after the pitch. Accumulates while
+    /// swimming. `0.0` at rest and for every non-squid entity.
+    pub squid_z_body_rot: f32,
 }
 
 impl EntityRenderState {
@@ -161,6 +172,8 @@ impl EntityRenderState {
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
             squid_tentacle_angle: 0.0,
+            squid_x_body_rot: 0.0,
+            squid_z_body_rot: 0.0,
         }
     }
 
@@ -309,6 +322,12 @@ impl EntityModelInstance {
 
     pub fn with_squid_tentacle_angle(mut self, squid_tentacle_angle: f32) -> Self {
         self.render_state.squid_tentacle_angle = squid_tentacle_angle;
+        self
+    }
+
+    pub fn with_squid_body_tilt(mut self, x_body_rot: f32, z_body_rot: f32) -> Self {
+        self.render_state.squid_x_body_rot = x_body_rot;
+        self.render_state.squid_z_body_rot = z_body_rot;
         self
     }
 
@@ -982,6 +1001,8 @@ mod tests {
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 squid_tentacle_angle: 0.0,
+                squid_x_body_rot: 0.0,
+                squid_z_body_rot: 0.0,
             }
         );
     }
