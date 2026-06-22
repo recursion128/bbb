@@ -126,6 +126,9 @@ fn entity_model_mesh_with_options(
                     emit_silverfish_model(&mut mesh, *instance);
                 }
             }
+            EntityModelKind::Vex => {
+                emit_vex_model(&mut mesh, *instance);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -420,6 +423,75 @@ fn emit_silverfish_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
         part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
     }
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
+}
+
+fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `VexModel.setupAnim` (non-charging idle): the head tracks the look angles, the
+    // arms hold `±π/5` with a small `ageInTicks` z-bob, the body tilts `π/20`, and the wings
+    // flap on `ageInTicks`. The arms and wings hang under the body, so the body tilt carries
+    // them; the hierarchy is walked by hand. The charging pose and held-item arms are
+    // deferred entity-side state. Vex uses the standard `LivingEntityRenderer.setupRotations`.
+    let age = instance.render_state.age_in_ticks;
+    let root = entity_model_root_transform(instance) * part_pose_transform(VEX_ROOT_POSE);
+
+    // Head (child of root) tracks the look yaw/pitch.
+    let head_pose = PartPose {
+        offset: VEX_HEAD_POSE.offset,
+        rotation: [
+            instance.render_state.head_pitch.to_radians(),
+            instance.render_state.head_yaw.to_radians(),
+            0.0,
+        ],
+    };
+    emit_model_cubes_at_pose(mesh, root, head_pose, &VEX_HEAD);
+
+    // Body (child of root) holds the idle tilt and carries the arms and wings.
+    let body_pose = PartPose {
+        offset: VEX_BODY_POSE.offset,
+        rotation: [VEX_BODY_X_ROT, 0.0, 0.0],
+    };
+    let body_t = root * part_pose_transform(body_pose);
+    emit_model_cubes_at_pose(mesh, root, body_pose, &VEX_BODY);
+
+    let bob = vex_moving_arm_z_bob(age);
+    emit_model_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: VEX_RIGHT_ARM_POSE.offset,
+            rotation: [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],
+        },
+        &VEX_RIGHT_ARM,
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: VEX_LEFT_ARM_POSE.offset,
+            rotation: [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)],
+        },
+        &VEX_LEFT_ARM,
+    );
+
+    let left_wing_yrot = vex_left_wing_y_rot(age);
+    emit_model_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: VEX_LEFT_WING_POSE.offset,
+            rotation: [VEX_WING_X_ROT, left_wing_yrot, -VEX_WING_Z_ROT],
+        },
+        &VEX_WING,
+    );
+    emit_model_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: VEX_RIGHT_WING_POSE.offset,
+            rotation: [VEX_WING_X_ROT, -left_wing_yrot, VEX_WING_Z_ROT],
+        },
+        &VEX_WING,
+    );
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {

@@ -43,6 +43,10 @@ pub enum EntityModelKind {
     Blaze,
     Endermite,
     Silverfish,
+    /// Vex (`VexModel`, `VexRenderer`). The idle wing flap, arm bob, head look, and body
+    /// tilt read `EntityRenderState.age_in_ticks` and the head yaw/pitch. The charging
+    /// pose (`isCharging`) and held-item arm poses are deferred entity-side state.
+    Vex,
     Phantom {
         size: i32,
     },

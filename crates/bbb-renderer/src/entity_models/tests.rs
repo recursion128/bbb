@@ -41,6 +41,7 @@ mod spider;
 mod squid;
 mod tropical_fish;
 mod upside_down;
+mod vex;
 mod villager;
 mod witch;
 mod wolf;

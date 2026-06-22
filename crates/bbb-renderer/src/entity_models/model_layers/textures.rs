@@ -191,6 +191,13 @@ pub fn ravager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &RAVAGER_ENTITY_TEXTURE_REFS
 }
 
+// Vanilla `VexRenderer` non-charging texture. The `vex_charging.png` swap and the constant
+// full-bright `getBlockLightLevel` glow are deferred.
+pub(in crate::entity_models) const VEX_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/illager/vex.png",
+    size: [32, 32],
+};
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",
