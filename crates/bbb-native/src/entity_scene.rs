@@ -360,6 +360,7 @@ fn entity_model_instance(
         .with_upside_down_height(upside_down_height)
         .with_sleeping(sleeping)
         .with_scale(source.scale)
+        .with_in_water(source.in_water)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -686,7 +687,7 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_breeze_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
         }
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
-        VANILLA_ENTITY_TYPE_COD_ID => placeholder("todo_cod_bounds", 0.5, 0.3, 0.5),
+        VANILLA_ENTITY_TYPE_COD_ID => EntityModelKind::Cod,
         VANILLA_ENTITY_TYPE_CREAKING_ID => placeholder("todo_creaking_bounds", 0.9, 2.7, 0.9),
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => placeholder("todo_dolphin_bounds", 0.9, 0.6, 0.9),
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
@@ -2897,6 +2898,16 @@ mod tests {
                 &[protocol_int_data(PUFFERFISH_PUFF_STATE_DATA_ID, 2)]
             ),
             EntityModelKind::Pufferfish { puff_state: 2 }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_cod_to_real_model() {
+        // The cod was a placeholder render box; it now resolves to the real `CodModel`. Its
+        // tail sway / out-of-water flop read the projected `in_water` render-state flag.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_COD_ID, &[]),
+            EntityModelKind::Cod
         );
     }
 

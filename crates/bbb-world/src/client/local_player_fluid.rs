@@ -244,21 +244,7 @@ fn block_has_solid_flow_face(block: Option<&BlockProbe>) -> bool {
 }
 
 fn probe_fluid_height(world: &WorldStore, pos: BlockPos, fluid: TerrainFluidState) -> f64 {
-    let same_fluid_above = pos.y.checked_add(1).is_some_and(|above_y| {
-        world
-            .probe_block(BlockPos {
-                x: pos.x,
-                y: above_y,
-                z: pos.z,
-            })
-            .and_then(|block| block.fluid)
-            .is_some_and(|above| above.kind == fluid.kind)
-    });
-    if same_fluid_above {
-        1.0
-    } else {
-        fluid.own_height()
-    }
+    crate::fluid::fluid_height_at(world, pos, fluid)
 }
 
 #[derive(Debug, Clone, Copy)]

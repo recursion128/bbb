@@ -368,6 +368,14 @@ pub struct EntityModelSourceState {
     /// render-state light coords.
     #[serde(default = "entity_model_source_full_bright_light")]
     pub light: TerrainLight,
+    /// Vanilla `LivingEntityRenderState.isInWater` (`Entity.isInWater()`): whether the
+    /// entity's bounding box overlaps water, projected per frame from the world fluid state
+    /// at the entity's interpolated AABB (the client does not run entity physics, but the
+    /// overlap test is the vanilla `wasTouchingWater` algorithm). Drives the swim-pose
+    /// branches of the fish renderers (`CodRenderer`/`SalmonRenderer`/`TropicalFishRenderer`
+    /// out-of-water flop and tail thrash amplitude).
+    #[serde(default)]
+    pub in_water: bool,
     /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0 ||
     /// deathTime > 0`): drives the red damage overlay pass.
     #[serde(default)]
@@ -630,6 +638,20 @@ impl WorldStore {
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))
                     .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+                // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: project
+                // the `wasTouchingWater` overlap from the entity's interpolated world AABB
+                // (`position + EntityDimensions`) against the chunk fluid state.
+                let aabb_min = [
+                    target.position.x + f64::from(target.bounds.min[0]),
+                    target.position.y + f64::from(target.bounds.min[1]),
+                    target.position.z + f64::from(target.bounds.min[2]),
+                ];
+                let aabb_max = [
+                    target.position.x + f64::from(target.bounds.max[0]),
+                    target.position.y + f64::from(target.bounds.max[1]),
+                    target.position.z + f64::from(target.bounds.max[2]),
+                ];
+                source.in_water = crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max);
                 if source.is_sleeping {
                     if let Some((yaw, offset)) = self.resolve_sleeping_bed(target.entity_id) {
                         source.sleeping_bed_yaw = Some(yaw);

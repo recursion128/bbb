@@ -1338,7 +1338,9 @@ When an agent does any of the following, update this file in the same slice:
       projection that populates `xBodyRot`/`zBodyRot`/`tentacleAngle` (the renderer
       consumes them but the `Squid.aiStep` swim integration is not yet projected),
       lighting, and overlay remain unsupported
-    - cod entities as renderer-owned vanilla 26.1 `CodModel.createBodyLayer()`
+    - cod entities are wired end to end: the native entity scene (`entity_scene.rs`)
+      projects vanilla type id `27` to the real `CodModel`, replacing the former
+      placeholder box. Renderer-owned vanilla 26.1 `CodModel.createBodyLayer()`
       geometry: the seven-part body/head/nose/two side fins (`zRot ±π/4`)/tail
       fin/top fin layer (the side, tail, and top fins are zero-thickness planes) on a
       32x32 texture; the `CodModel.setupAnim` tail-fin sway
@@ -1346,12 +1348,13 @@ When an agent does any of the following, update this file in the same slice:
       in water / `1.5` out), and the full `CodRenderer.setupRotations` (the standard
       body yaw plus the swim wiggle `Axis.YP.rotationDegrees(4.3 · sin(0.6 ·
       ageInTicks))` and the out-of-water flop `translate(0.1, 0.1, -0.1)` +
-      `Axis.ZP.rotationDegrees(90)`), both reading the `in_water` render-state flag;
+      `Axis.ZP.rotationDegrees(90)`), both reading the projected `in_water`
+      render-state flag (`Entity.isInWater()`, computed per frame as the vanilla
+      `wasTouchingWater` AABB-vs-water overlap) and the projected `age_in_ticks`;
       the official `textures/entity/fish/cod.png` texture reference, texture-backed
       base layer pass emission (the top fin keeps its negative `texOffs(20, -6)` V
       origin), and the official PNG atlas upload/bind/sample path (colored and
-      textured). The entity-side `isInWater`/`ageInTicks` projection, lighting, and
-      overlay remain unsupported
+      textured). Lighting and overlay remain unsupported
     - salmon entities as renderer-owned vanilla 26.1
       `SalmonModel.createBodyLayer()` geometry: the five-part body-front (carrying a
       flat top fin) / body-back (carrying the flat tail fin and a flat rear top fin) /

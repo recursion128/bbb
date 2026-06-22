@@ -8,6 +8,7 @@ mod diagnostics;
 mod entities;
 mod error;
 mod exports;
+mod fluid;
 mod internal;
 mod level;
 mod maps;

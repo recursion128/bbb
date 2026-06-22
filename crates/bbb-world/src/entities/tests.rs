@@ -910,6 +910,53 @@ fn entity_model_sources_project_narrow_render_state_from_pick_targets() {
 }
 
 #[test]
+fn entity_model_sources_project_in_water_from_world_fluid() {
+    // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
+    // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid
+    // state. A cod (0.5 × 0.3 box) submerged in a water source block is in water; the same
+    // cod in air is not.
+    const VANILLA_ENTITY_TYPE_COD_ID: i32 = 27;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 50,
+        uuid: default_entity_uuid(),
+        entity_type_id: VANILLA_ENTITY_TYPE_COD_ID,
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 8.5,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 99,
+    });
+
+    let dry = store.entity_model_sources_at_partial_tick(1.0);
+    assert_eq!(dry.len(), 1);
+    assert!(!dry[0].in_water, "a cod in air is not in water");
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 8, y: 2, z: 8 },
+        block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+    }));
+    let wet = store.entity_model_sources_at_partial_tick(1.0);
+    assert_eq!(wet.len(), 1);
+    assert!(wet[0].in_water, "a cod inside a water column is in water");
+}
+
+#[test]
 fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 
