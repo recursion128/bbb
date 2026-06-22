@@ -376,6 +376,12 @@ pub struct EntityModelSourceState {
     /// out-of-water flop and tail thrash amplitude).
     #[serde(default)]
     pub in_water: bool,
+    /// Vanilla `Entity.onGround()`: whether the entity's last synced movement landed it on the
+    /// ground. Combined with [`in_water`](Self::in_water) to drive the vanilla
+    /// `TurtleRenderer` `isOnLand = !isInWater && onGround` walk/swim leg branch. Defaults to
+    /// `false` (the vanilla `Entity.onGround` default) until a movement packet sets it.
+    #[serde(default)]
+    pub on_ground: bool,
     /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0 ||
     /// deathTime > 0`): drives the red damage overlay pass.
     #[serde(default)]

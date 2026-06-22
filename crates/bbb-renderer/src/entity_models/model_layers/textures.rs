@@ -220,6 +220,19 @@ pub(in crate::entity_models) const STRIDER_BABY_TEXTURE_REF: EntityModelTextureR
         size: [32, 32],
     };
 
+// Vanilla `TurtleRenderer` textures (adult 128×64, baby 16×16).
+pub(in crate::entity_models) const TURTLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/turtle/turtle.png",
+        size: [128, 64],
+    };
+
+pub(in crate::entity_models) const TURTLE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/turtle/turtle_baby.png",
+        size: [16, 16],
+    };
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",

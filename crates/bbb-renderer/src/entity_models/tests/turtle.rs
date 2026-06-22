@@ -1,0 +1,194 @@
+use super::*;
+
+#[test]
+fn turtle_adult_geometry_matches_vanilla_26_1_body_layer() {
+    // Vanilla `AdultTurtleModel.createBodyLayer` (atlas 128×64).
+    assert_eq!(TURTLE_HEAD[0].min, [-3.0, -1.0, -3.0]);
+    assert_eq!(TURTLE_HEAD[0].size, [6.0, 5.0, 6.0]);
+
+    // Body: the `texOffs(7, 37)` shell box plus the `texOffs(31, 1)` belly box.
+    assert_eq!(TURTLE_BODY.len(), 2);
+    assert_eq!(TURTLE_BODY[0].min, [-9.5, 3.0, -10.0]);
+    assert_eq!(TURTLE_BODY[0].size, [19.0, 20.0, 6.0]);
+    assert_eq!(TURTLE_BODY[1].min, [-5.5, 3.0, -13.0]);
+    assert_eq!(TURTLE_BODY[1].size, [11.0, 18.0, 3.0]);
+
+    assert_eq!(TURTLE_RIGHT_HIND_LEG[0].size, [4.0, 1.0, 10.0]);
+    assert_eq!(TURTLE_RIGHT_FRONT_LEG[0].min, [-13.0, 0.0, -2.0]);
+    assert_eq!(TURTLE_RIGHT_FRONT_LEG[0].size, [13.0, 1.0, 5.0]);
+    assert_eq!(TURTLE_LEFT_FRONT_LEG[0].min, [0.0, 0.0, -2.0]);
+
+    // Offsets; the body carries the fixed `Rx(π/2)` shell tilt.
+    assert_eq!(TURTLE_HEAD_POSE.offset, [0.0, 19.0, -10.0]);
+    assert_eq!(TURTLE_BODY_POSE.offset, [0.0, 11.0, -10.0]);
+    assert!((TURTLE_BODY_POSE.rotation[0] - std::f32::consts::FRAC_PI_2).abs() < 1.0e-6);
+    assert_eq!(TURTLE_RIGHT_HIND_LEG_POSE.offset, [-3.5, 22.0, 11.0]);
+    assert_eq!(TURTLE_LEFT_HIND_LEG_POSE.offset, [3.5, 22.0, 11.0]);
+    assert_eq!(TURTLE_RIGHT_FRONT_LEG_POSE.offset, [-5.0, 21.0, -4.0]);
+    assert_eq!(TURTLE_LEFT_FRONT_LEG_POSE.offset, [5.0, 21.0, -4.0]);
+}
+
+#[test]
+fn turtle_baby_geometry_matches_vanilla_26_1_body_layer() {
+    // Vanilla `BabyTurtleModel.createBodyLayer` (atlas 16×16).
+    assert_eq!(TURTLE_BABY_BODY[0].min, [-2.0, -1.0, -2.0]);
+    assert_eq!(TURTLE_BABY_BODY[0].size, [4.0, 2.0, 4.0]);
+    assert_eq!(TURTLE_BABY_HEAD[0].size, [3.0, 3.0, 3.0]);
+
+    // Baby legs are zero-height `2×0×1` planes.
+    assert_eq!(TURTLE_BABY_RIGHT_HIND_LEG[0].size, [2.0, 0.0, 1.0]);
+    assert_eq!(TURTLE_BABY_LEFT_FRONT_LEG[0].size, [2.0, 0.0, 1.0]);
+
+    assert_eq!(TURTLE_BABY_HEAD_POSE.offset, [0.0, 22.9, -1.0]);
+    assert_eq!(TURTLE_BABY_BODY_POSE.offset, [0.0, 22.9, 1.0]);
+    assert_eq!(TURTLE_BABY_RIGHT_HIND_LEG_POSE.offset, [-2.0, 23.9, 2.5]);
+    assert_eq!(TURTLE_BABY_LEFT_FRONT_LEG_POSE.offset, [2.0, 23.9, -0.5]);
+}
+
+#[test]
+fn turtle_setup_anim_curves_match_vanilla() {
+    let (pos, speed) = (3.0_f32, 0.7_f32);
+
+    // Quadruped base swing: diagonal phase (right-hind / left-front at phase 0, the other two π).
+    let expected_phase0 = (pos * 0.6662).cos() * 1.4 * speed;
+    let expected_phasepi = (pos * 0.6662 + std::f32::consts::PI).cos() * 1.4 * speed;
+    assert!((turtle_quadruped_leg_x_rot(pos, speed, false) - expected_phase0).abs() < 1.0e-6);
+    assert!((turtle_quadruped_leg_x_rot(pos, speed, true) - expected_phasepi).abs() < 1.0e-6);
+
+    // Land yaw swing: front weight 8, hind weight 3, right negated.
+    let swing = (pos * 5.0).cos();
+    assert!((turtle_land_leg_y_rot(pos, speed, true, false) - swing * 8.0 * speed).abs() < 1.0e-6);
+    assert!(
+        (turtle_land_leg_y_rot(pos, speed, false, true) - -(swing * 3.0 * speed)).abs() < 1.0e-6
+    );
+
+    // Water paddle swing.
+    let water = (pos * 0.6662 * 0.6).cos() * 0.5 * speed;
+    assert!((turtle_water_swing(pos, speed) - water).abs() < 1.0e-6);
+
+    // Combined per-leg rotation: on land the quadruped xRot remains and the yRot is added; in
+    // water the hind xRot is the paddle swing and the front legs add it on zRot.
+    let right_hind_land = turtle_leg_rotation(pos, speed, true, false, true);
+    assert!((right_hind_land[0] - turtle_quadruped_leg_x_rot(pos, speed, false)).abs() < 1.0e-6);
+    assert!((right_hind_land[1] - turtle_land_leg_y_rot(pos, speed, false, true)).abs() < 1.0e-6);
+    assert_eq!(right_hind_land[2], 0.0);
+
+    let right_hind_water = turtle_leg_rotation(pos, speed, false, false, true);
+    assert!((right_hind_water[0] - water).abs() < 1.0e-6);
+    assert_eq!(right_hind_water[1], 0.0);
+    assert_eq!(right_hind_water[2], 0.0);
+
+    let right_front_water = turtle_leg_rotation(pos, speed, false, true, true);
+    assert!((right_front_water[0] - turtle_quadruped_leg_x_rot(pos, speed, true)).abs() < 1.0e-6);
+    assert!((right_front_water[2] - -water).abs() < 1.0e-6);
+}
+
+#[test]
+fn turtle_adult_mesh_uses_vanilla_body_layer_geometry() {
+    // Seven cubes (head, shell, belly, four legs) → 42 faces / 168 vertices. The egg_belly
+    // shell is gated on the deferred `hasEgg` state and is not emitted.
+    let turtle = entity_model_mesh(&[EntityModelInstance::turtle(
+        660,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    assert_eq!(turtle.opaque_faces, 42);
+    assert_eq!(turtle.vertices.len(), 168);
+    assert_eq!(turtle.indices.len(), 252);
+    assert!(turtle
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(TURTLE_SHELL, 1.0)));
+    assert!(turtle
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(TURTLE_GREEN, 1.0)));
+}
+
+#[test]
+fn turtle_baby_mesh_uses_vanilla_body_layer_geometry() {
+    // Six cubes (body, head, four zero-height leg planes) → 36 faces / 144 vertices.
+    let baby = entity_model_mesh(&[EntityModelInstance::turtle(
+        661,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+    )]);
+    assert_eq!(baby.opaque_faces, 36);
+    assert_eq!(baby.vertices.len(), 144);
+
+    // The baby is a different (smaller) model than the adult.
+    let adult = entity_model_mesh(&[EntityModelInstance::turtle(
+        662,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    assert_ne!(baby.vertices.len(), adult.vertices.len());
+}
+
+#[test]
+fn turtle_head_tracks_look_angles() {
+    let base = EntityModelInstance::turtle(663, [0.0, 64.0, 0.0], 0.0, false);
+    let forward = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(40.0, -20.0)]);
+    assert_eq!(forward.vertices.len(), looking.vertices.len());
+    assert_ne!(
+        forward.vertices, looking.vertices,
+        "the head tracks the look"
+    );
+}
+
+#[test]
+fn turtle_land_and_water_leg_poses_differ() {
+    // The land walk (legs swing on yRot) differs from the water paddle (hind xRot / front zRot).
+    // `isOnLand = !in_water && on_ground`.
+    let walking = EntityModelInstance::turtle(664, [0.0, 64.0, 0.0], 0.0, false)
+        .with_walk_animation(3.0, 0.7);
+    let on_land = walking.with_on_ground(true).with_in_water(false);
+    let swimming = walking.with_on_ground(false).with_in_water(true);
+    let land_mesh = entity_model_mesh(&[on_land]);
+    let water_mesh = entity_model_mesh(&[swimming]);
+    assert_eq!(land_mesh.vertices.len(), water_mesh.vertices.len());
+    assert_ne!(
+        land_mesh.vertices, water_mesh.vertices,
+        "the land walk and water paddle pose the legs differently"
+    );
+
+    // A standing turtle (no walk) differs from a walking one.
+    let standing =
+        entity_model_mesh(&[
+            EntityModelInstance::turtle(665, [0.0, 64.0, 0.0], 0.0, false).with_on_ground(true),
+        ]);
+    assert_ne!(
+        standing.vertices, land_mesh.vertices,
+        "the walk animates the legs"
+    );
+}
+
+#[test]
+fn turtle_texture_refs_match_vanilla_renderer() {
+    assert_eq!(
+        EntityModelKind::Turtle { baby: false }.model_key(),
+        "turtle"
+    );
+    assert_eq!(
+        EntityModelKind::Turtle { baby: true }.model_key(),
+        "turtle_baby"
+    );
+    assert_eq!(
+        EntityModelKind::Turtle { baby: false }.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/turtle/turtle.png",
+            size: [128, 64],
+        })
+    );
+    assert_eq!(
+        EntityModelKind::Turtle { baby: true }.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/turtle/turtle_baby.png",
+            size: [16, 16],
+        })
+    );
+}

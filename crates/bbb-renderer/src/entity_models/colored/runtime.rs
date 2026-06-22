@@ -141,6 +141,9 @@ fn entity_model_mesh_with_options(
                     emit_strider_model(&mut mesh, *instance, baby);
                 }
             }
+            EntityModelKind::Turtle { baby } => {
+                emit_turtle_model(&mut mesh, *instance, baby);
+            }
             EntityModelKind::Phantom { size } => {
                 if !skip_texture_backed_entities {
                     emit_phantom_model(&mut mesh, *instance, size);
@@ -769,6 +772,110 @@ fn emit_strider_baby_model(mesh: &mut EntityModelMesh, instance: EntityModelInst
         let mut pose = pose_const;
         pose.rotation[0] += add;
         emit_model_cubes_at_pose(mesh, body_t, pose, &STRIDER_BABY_BRISTLE);
+    }
+}
+
+fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    // Vanilla `QuadrupedModel.setupAnim` (head look + the diagonal leg swing) plus
+    // `TurtleModel.setupAnim`: on land the turtle adds a `yRot` walk swing to the legs, in
+    // water it paddles (hind `xRot` / front `zRot`). `isOnLand = !isInWater && onGround` is
+    // projected from the real water + ground state. The legs and head/body are direct children
+    // of the root, so each is posed from the root transform. The egg-laying leg amplitude
+    // (`isLayingEgg`) and the `egg_belly` shell (`hasEgg`) are deferred entity-side state.
+    // Turtle uses `LivingEntityRenderer.setupRotations`.
+    let pos = instance.render_state.walk_animation_pos;
+    let speed = instance.render_state.walk_animation_speed;
+    let on_land = !instance.render_state.in_water && instance.render_state.on_ground;
+    let root = entity_model_root_transform(instance);
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+
+    let (head_cubes, head_pose, body_cubes, body_pose, legs): (_, _, _, _, [_; 4]) = if baby {
+        (
+            &TURTLE_BABY_HEAD[..],
+            TURTLE_BABY_HEAD_POSE,
+            &TURTLE_BABY_BODY[..],
+            TURTLE_BABY_BODY_POSE,
+            [
+                (
+                    &TURTLE_BABY_RIGHT_HIND_LEG[..],
+                    TURTLE_BABY_RIGHT_HIND_LEG_POSE,
+                    false,
+                    true,
+                ),
+                (
+                    &TURTLE_BABY_LEFT_HIND_LEG[..],
+                    TURTLE_BABY_LEFT_HIND_LEG_POSE,
+                    false,
+                    false,
+                ),
+                (
+                    &TURTLE_BABY_RIGHT_FRONT_LEG[..],
+                    TURTLE_BABY_RIGHT_FRONT_LEG_POSE,
+                    true,
+                    true,
+                ),
+                (
+                    &TURTLE_BABY_LEFT_FRONT_LEG[..],
+                    TURTLE_BABY_LEFT_FRONT_LEG_POSE,
+                    true,
+                    false,
+                ),
+            ],
+        )
+    } else {
+        (
+            &TURTLE_HEAD[..],
+            TURTLE_HEAD_POSE,
+            &TURTLE_BODY[..],
+            TURTLE_BODY_POSE,
+            [
+                (
+                    &TURTLE_RIGHT_HIND_LEG[..],
+                    TURTLE_RIGHT_HIND_LEG_POSE,
+                    false,
+                    true,
+                ),
+                (
+                    &TURTLE_LEFT_HIND_LEG[..],
+                    TURTLE_LEFT_HIND_LEG_POSE,
+                    false,
+                    false,
+                ),
+                (
+                    &TURTLE_RIGHT_FRONT_LEG[..],
+                    TURTLE_RIGHT_FRONT_LEG_POSE,
+                    true,
+                    true,
+                ),
+                (
+                    &TURTLE_LEFT_FRONT_LEG[..],
+                    TURTLE_LEFT_FRONT_LEG_POSE,
+                    true,
+                    false,
+                ),
+            ],
+        )
+    };
+
+    // Head tracks the look; the body holds its fixed shell tilt.
+    let head_pose = PartPose {
+        offset: head_pose.offset,
+        rotation: [head_pitch, head_yaw, 0.0],
+    };
+    emit_model_cubes_at_pose(mesh, root, head_pose, head_cubes);
+    emit_model_cubes_at_pose(mesh, root, body_pose, body_cubes);
+
+    for (cubes, leg_pose, front, right) in legs {
+        emit_model_cubes_at_pose(
+            mesh,
+            root,
+            PartPose {
+                offset: leg_pose.offset,
+                rotation: turtle_leg_rotation(pos, speed, on_land, front, right),
+            },
+            cubes,
+        );
     }
 }
 

@@ -45,6 +45,8 @@ pub(super) const VEX_GREY: [f32; 4] = [0.62, 0.69, 0.74, 1.0];
 pub(super) const ALLAY_BLUE: [f32; 4] = [0.42, 0.62, 0.86, 1.0];
 pub(super) const STRIDER_MAROON: [f32; 4] = [0.49, 0.20, 0.27, 1.0];
 pub(super) const STRIDER_LEG: [f32; 4] = [0.78, 0.32, 0.30, 1.0];
+pub(super) const TURTLE_GREEN: [f32; 4] = [0.40, 0.60, 0.36, 1.0];
+pub(super) const TURTLE_SHELL: [f32; 4] = [0.42, 0.45, 0.30, 1.0];
 pub(super) const GLOW_SQUID_TEAL: [f32; 4] = [0.13, 0.65, 0.62, 1.0];
 pub(super) const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
 pub(super) const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
@@ -92,6 +94,7 @@ mod squid;
 mod strider;
 mod textures;
 mod tropical_fish;
+mod turtle;
 mod vex;
 mod villager;
 mod witch;
@@ -155,6 +158,7 @@ pub use textures::{
     zombie_villager_entity_texture_refs,
 };
 pub(super) use tropical_fish::*;
+pub(super) use turtle::*;
 pub(super) use vex::*;
 pub(super) use villager::*;
 pub(super) use witch::*;

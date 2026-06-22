@@ -957,6 +957,47 @@ fn entity_model_sources_project_in_water_from_world_fluid() {
 }
 
 #[test]
+fn entity_model_sources_project_on_ground_from_movement() {
+    // Vanilla `Entity.onGround()`: the scene projects the entity's last synced movement ground
+    // flag (combined with `isInWater` to drive the `TurtleRenderer` walk/swim branch). It
+    // defaults to `false` until a movement packet sets it.
+    const VANILLA_ENTITY_TYPE_TURTLE_ID: i32 = 137;
+
+    let on_ground = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 60)
+            .unwrap()
+            .on_ground
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        60,
+        VANILLA_ENTITY_TYPE_TURTLE_ID,
+    ));
+    assert!(
+        !on_ground(&store),
+        "a freshly spawned entity defaults to not on ground"
+    );
+
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 60,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground: true,
+    }));
+    assert!(
+        on_ground(&store),
+        "a grounded movement packet projects on_ground"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 

@@ -60,6 +60,14 @@ pub enum EntityModelKind {
     Strider {
         baby: bool,
     },
+    /// Turtle (`AdultTurtleModel` / `BabyTurtleModel`, `TurtleRenderer`). The
+    /// `QuadrupedModel` head look plus the `TurtleModel.setupAnim` land walk / water swim leg
+    /// branch (`isOnLand = !isInWater && onGround`) read the projected look angles, walk
+    /// animation, water, and ground state. The egg-laying leg amplitude (`isLayingEgg`) and the
+    /// `egg_belly` shell (`hasEgg`) are deferred entity-side state.
+    Turtle {
+        baby: bool,
+    },
     Phantom {
         size: i32,
     },

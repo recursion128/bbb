@@ -1353,6 +1353,25 @@ When an agent does any of the following, update this file in the same slice:
       hierarchy as the colored path. The ridden pose (`isRidden` zeroing the body look), the
       saddle equipment layer, and the cold/suffocating texture swap (`strider_cold.png` /
       `strider_cold_baby.png`) and shake remain unsupported
+    - turtle entities (colored render path) are wired end to end: the native entity scene
+      (`entity_scene.rs`) projects vanilla type id `137` to the real `AdultTurtleModel` /
+      `BabyTurtleModel`, replacing the former placeholder box, keyed off the synced
+      `AgeableMob.DATA_BABY_ID` (index 16, default adult). Renderer-owned vanilla 26.1 geometry:
+      the adult `createBodyLayer()` (atlas 128×64) — the `texOffs(3, 0)` 6×5×6 head, the body's
+      `texOffs(7, 37)` 19×20×6 shell + `texOffs(31, 1)` 11×18×3 belly under a fixed `Rx(π/2)`,
+      and the four legs (hind `4×1×10`, front `13×1×5`) — and the baby `createBodyLayer()` (atlas
+      16×16) — the `texOffs(0, 0)` 4×2×4 body, the `texOffs(0, 6)` 3×3×3 head, and four
+      zero-height `2×0×1` leg planes. The shared `QuadrupedModel.setupAnim` head look + diagonal
+      leg swing (`leg.xRot = cos(pos·0.6662 + phase)·1.4·speed`) plus `TurtleModel.setupAnim`'s
+      land/water branch — on land the legs add a `yRot` walk swing (`±cos(pos·5)·{8 front, 3
+      hind}·speed`), in water they paddle (hind `xRot = cos(pos·0.39972)·0.5·speed`, front the
+      same on `zRot`) — driven by the projected look angles, walk animation, and the real
+      `isOnLand = !isInWater && onGround` (both the water overlap and the synced `Entity.onGround`
+      flag are now projected into the entity render state), under the standard
+      `LivingEntityRenderer.setupRotations`. The texture-backed render path (the
+      `textures/entity/turtle/turtle.png` and `turtle_baby.png` references are registered), the
+      egg-laying leg amplitude (`isLayingEgg`, the `layEgg`/`layEggAmplitude` multipliers), and
+      the `egg_belly` overlay shell (`hasEgg`) remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

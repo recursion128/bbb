@@ -150,6 +150,10 @@ pub struct EntityRenderState {
     /// the beached `RotZ(90)` flop when `false`. `false` (the Java default) for every
     /// entity until the entity scene projects `entity.isInWater()`.
     pub in_water: bool,
+    /// Vanilla `Entity.onGround()`: combined with [`in_water`](Self::in_water) to drive the
+    /// vanilla `TurtleRenderer` `isOnLand = !isInWater && onGround` walk/swim leg branch.
+    /// `false` (the Java default) for every entity until the entity scene projects it.
+    pub on_ground: bool,
 }
 
 impl EntityRenderState {
@@ -181,6 +185,7 @@ impl EntityRenderState {
             squid_x_body_rot: 0.0,
             squid_z_body_rot: 0.0,
             in_water: false,
+            on_ground: false,
         }
     }
 
@@ -335,6 +340,11 @@ impl EntityModelInstance {
     pub fn with_squid_body_tilt(mut self, x_body_rot: f32, z_body_rot: f32) -> Self {
         self.render_state.squid_x_body_rot = x_body_rot;
         self.render_state.squid_z_body_rot = z_body_rot;
+        self
+    }
+
+    pub fn with_on_ground(mut self, on_ground: bool) -> Self {
+        self.render_state.on_ground = on_ground;
         self
     }
 
@@ -528,6 +538,10 @@ impl EntityModelInstance {
             position,
             y_rot,
         )
+    }
+
+    pub fn turtle(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Turtle { baby }, position, y_rot)
     }
 
     pub fn phantom(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
@@ -1055,6 +1069,7 @@ mod tests {
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
                 in_water: false,
+                on_ground: false,
             }
         );
     }

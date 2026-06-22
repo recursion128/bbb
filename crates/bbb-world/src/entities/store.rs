@@ -468,6 +468,9 @@ impl EntityStore {
             // `in_water` is likewise resolved by the WorldStore aggregation (it owns the
             // chunk fluid data); the per-entity source defaults to dry.
             in_water: false,
+            // Vanilla `Entity.onGround()`: the last synced movement ground flag (default
+            // `false` until a movement packet sets it).
+            on_ground: transform.on_ground.unwrap_or(false),
             has_red_overlay: client_animations.animations.has_red_overlay(),
             death_time: client_animations.animations.death_time(partial_ticks),
             creeper_swelling: client_animations.animations.creeper_swelling(partial_ticks),

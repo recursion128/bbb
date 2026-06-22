@@ -42,6 +42,7 @@ mod spider;
 mod squid;
 mod strider;
 mod tropical_fish;
+mod turtle;
 mod upside_down;
 mod vex;
 mod villager;

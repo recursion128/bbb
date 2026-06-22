@@ -371,6 +371,7 @@ fn entity_model_instance(
         .with_sleeping(sleeping)
         .with_scale(source.scale)
         .with_in_water(source.in_water)
+        .with_on_ground(source.on_ground)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -808,7 +809,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
             shape: tropical_fish_shape(data_values),
         },
-        VANILLA_ENTITY_TYPE_TURTLE_ID => placeholder("todo_turtle_bounds", 1.2, 0.4, 1.2),
+        VANILLA_ENTITY_TYPE_TURTLE_ID => EntityModelKind::Turtle {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex,
         VANILLA_ENTITY_TYPE_WARDEN_ID => placeholder("todo_warden_bounds", 0.9, 2.9, 0.9),
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => {
@@ -2951,6 +2954,26 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ALLAY_ID, &[]),
             EntityModelKind::Allay
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_turtle_baby_from_data() {
+        // The turtle was a placeholder render box; it now resolves to the real
+        // `AdultTurtleModel` / `BabyTurtleModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
+        // (index 16, default adult). The head look and land-walk / water-swim leg branch read
+        // the projected look angles, walk animation, water, and ground state; the egg-laying
+        // amplitude and the egg-belly shell are deferred entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_TURTLE_ID, &[]),
+            EntityModelKind::Turtle { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_TURTLE_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Turtle { baby: true }
         );
     }
 
