@@ -47,6 +47,11 @@ pub enum EntityModelKind {
     /// tilt read `EntityRenderState.age_in_ticks` and the head yaw/pitch. The charging
     /// pose (`isCharging`) and held-item arm poses are deferred entity-side state.
     Vex,
+    /// Allay (`AllayModel`, `AllayRenderer`). The idle/flying wing flap, arm bob, head look,
+    /// body tilt, and vertical bob read `EntityRenderState.age_in_ticks`, the walk
+    /// animation, and the head yaw/pitch. The dance pose (`isDancing`/`isSpinning`) and
+    /// held-item arm poses are deferred entity-side state.
+    Allay,
     Phantom {
         size: i32,
     },

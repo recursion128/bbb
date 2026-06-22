@@ -1,5 +1,6 @@
 use super::*;
 
+mod allay;
 mod armor_stand;
 mod auto_spin;
 mod blaze;

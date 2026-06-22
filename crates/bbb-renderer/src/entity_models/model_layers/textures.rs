@@ -198,6 +198,14 @@ pub(in crate::entity_models) const VEX_TEXTURE_REF: EntityModelTextureRef = Enti
     size: [32, 32],
 };
 
+// Vanilla `AllayRenderer` texture. The constant full-bright `getBlockLightLevel` glow is
+// deferred lighting.
+pub(in crate::entity_models) const ALLAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/allay/allay.png",
+        size: [32, 32],
+    };
+
 pub(in crate::entity_models) const SKELETON_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/skeleton/skeleton.png",
@@ -682,7 +690,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 130] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 131] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -813,6 +821,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     TROPICAL_FISH_SMALL_TEXTURE_REF,
     TROPICAL_FISH_LARGE_TEXTURE_REF,
     VEX_TEXTURE_REF,
+    ALLAY_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -847,6 +856,13 @@ pub(in crate::entity_models) const VEX_ENTITY_TEXTURE_REFS: [EntityModelTextureR
 
 pub fn vex_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &VEX_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const ALLAY_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [ALLAY_TEXTURE_REF];
+
+pub fn allay_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ALLAY_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const SQUID_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [

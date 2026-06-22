@@ -686,7 +686,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID => boat(BoatModelFamily::PaleOak, true),
         VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID => boat(BoatModelFamily::Spruce, false),
         VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID => boat(BoatModelFamily::Spruce, true),
-        VANILLA_ENTITY_TYPE_ALLAY_ID => placeholder("todo_allay_bounds", 0.35, 0.6, 0.35),
+        VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => placeholder("todo_armadillo_bounds", 0.7, 0.65, 0.7),
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => placeholder("todo_axolotl_bounds", 0.75, 0.42, 0.75),
         VANILLA_ENTITY_TYPE_BAT_ID => placeholder("todo_bat_bounds", 0.5, 0.9, 0.5),
@@ -2939,6 +2939,18 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_VEX_ID, &[]),
             EntityModelKind::Vex
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_allay_to_real_model() {
+        // The allay was a placeholder render box; it now resolves to the real `AllayModel`. Its
+        // idle/flying wing flap, arm bob, head look, and vertical bob read the projected age,
+        // walk animation, and look angles; the dance pose and held item are deferred
+        // entity-side state.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ALLAY_ID, &[]),
+            EntityModelKind::Allay
         );
     }
 

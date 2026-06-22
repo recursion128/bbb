@@ -517,6 +517,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Vex, position, y_rot)
     }
 
+    pub fn allay(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Allay, position, y_rot)
+    }
+
     pub fn phantom(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
         Self::new(
             entity_id,

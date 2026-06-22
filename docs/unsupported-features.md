@@ -1307,6 +1307,29 @@ When an agent does any of the following, update this file in the same slice:
       hierarchy as the colored path. The charging pose (`isCharging` texture swap to
       `vex_charging.png`, the charging arm poses and held items) and the constant full-bright
       `getBlockLightLevel` (→ 15) glow, lighting, and overlay remain unsupported
+    - allay entities are wired end to end on both render paths: the native entity scene
+      (`entity_scene.rs`) projects vanilla type id `2` to the real `AllayModel`, replacing
+      the former placeholder box. Renderer-owned vanilla 26.1 `AllayModel.createBodyLayer()`
+      geometry: the `(0, 23.5, 0)` model root carrying the 5³ head and the body (a plain
+      `texOffs(0, 10)` 3×4×2 box plus a `texOffs(0, 16)` 3×5×2 box inset by
+      `CubeDeformation(-0.2)`), with the two arms (`texOffs(23, 0)`/`texOffs(23, 6)`, 1×4×2
+      inset by `CubeDeformation(-0.01)`) and the two zero-thickness `0×5×8` wings
+      (`texOffs(16, 14)`, neither mirrored) parented under the body so the body tilt carries
+      them; the non-dancing `AllayModel.setupAnim` idle / flying pose (head look `yRot`/`xRot`,
+      arm idle roll `±(0.43633232 - cos(ageInTicks · 9° + 3π/2) · π · 0.075 · (1 -
+      flyingFactor))`, wings flapping `yRot = ±π/4 ∓ (cos(ageInTicks · 20° + walkPos) · π ·
+      0.15 + walkSpeed)` and pitched `0.43633232 · (1 - flyingFactor)`, body tilt
+      `flyingFactor · π/4`, and the vertical root bob `23.5 + cos(ageInTicks · 9°) · 0.25 · (1
+      - flyingFactor)` with `flyingFactor = min(walkSpeed / 0.3, 1)`), driven by the projected
+      head yaw/pitch, walk animation, and `age_in_ticks`, under the standard
+      `LivingEntityRenderer.setupRotations`. The textured base layer draws the
+      `textures/entity/allay/allay.png` atlas reference into the translucent mesh
+      (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
+      hierarchy as the colored path. The dance pose (`isDancing`/`isSpinning`,
+      `spinningProgress`), the held-item arm poses (`holdingAnimationProgress` scaling the arm
+      roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch and
+      held item), and the constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and
+      overlay remain unsupported
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

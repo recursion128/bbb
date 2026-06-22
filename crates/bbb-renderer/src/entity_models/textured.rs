@@ -19,12 +19,13 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        apply_polar_bear_standing_pose, apply_wolf_sitting_pose, armor_stand_textured_cube,
-        blaze_rod_offset, chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index,
-        enderman_arm_swing_pose, enderman_leg_swing_pose, endermite_segment_pose,
-        ghast_tentacle_x_rot, half_amplitude_leg_swing_pose, head_first_part_index,
-        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
+        allay_arm_idle_bob_amount, allay_body_x_rot, allay_root_y, allay_wing_flap_amount,
+        allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
+        armor_stand_textured_cube, blaze_rod_offset, chicken_leg_part_indices, cod_tail_fin_yrot,
+        cow_head_part_index, enderman_arm_swing_pose, enderman_leg_swing_pose,
+        endermite_segment_pose, ghast_tentacle_x_rot, half_amplitude_leg_swing_pose,
+        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
+        head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
         humanoid_arm_swing_pose, humanoid_leg_swing_pose, iron_golem_walk_part_roles,
         iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
         phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
@@ -39,14 +40,17 @@ use super::{
         tropical_fish_tail_yrot, vex_left_wing_y_rot, vex_moving_arm_z_bob,
         villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, ADULT_GOAT_HEAD_INDEX,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
-        BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX, HOGLIN_LEFT_EAR_CHILD_INDEX,
-        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
-        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
-        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
-        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
-        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
-        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
+        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
+        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
+        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
+        BABY_GOAT_HEAD_INDEX, BLAZE_ROD_COUNT, COD_TAIL_FIN_PART_INDEX,
+        HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE,
+        PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_BASE_POSE, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_TIP_POSE, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
         RAVAGER_TEXTURED_NECK_CHILDREN, SALMON_BODY_BACK_PART_INDEX, SILVERFISH_LAYER_RULES,
@@ -168,6 +172,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Vex => {
                 emit_vex_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Allay => {
+                emit_allay_textured_model(&mut meshes, *instance, atlas);
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut meshes, *instance, atlas);
@@ -561,9 +568,10 @@ fn emit_squid_textured_model(
     );
 }
 
-/// Emit one vex cube group at `parent · pose` into the translucent mesh, mirroring the
-/// colored [`emit_model_cubes_at_pose`] but for the textured atlas path.
-fn emit_vex_textured_cubes_at_pose(
+/// Emit one cube group at `parent · pose` into a textured mesh, mirroring the colored
+/// [`emit_model_cubes_at_pose`] but for the textured atlas path. Used by the hand-emitted
+/// nested hierarchies (vex, allay) where the animated children are not `&'static` parts.
+fn emit_textured_cubes_at_pose(
     mesh: &mut EntityModelTexturedMesh,
     parent_transform: Mat4,
     pose: PartPose,
@@ -606,7 +614,7 @@ fn emit_vex_textured_model(
             0.0,
         ],
     };
-    emit_vex_textured_cubes_at_pose(
+    emit_textured_cubes_at_pose(
         mesh,
         root,
         head_pose,
@@ -621,7 +629,7 @@ fn emit_vex_textured_model(
         rotation: [VEX_BODY_X_ROT, 0.0, 0.0],
     };
     let body_t = root * part_pose_transform(body_pose);
-    emit_vex_textured_cubes_at_pose(
+    emit_textured_cubes_at_pose(
         mesh,
         root,
         body_pose,
@@ -631,7 +639,7 @@ fn emit_vex_textured_model(
     );
 
     let bob = vex_moving_arm_z_bob(age);
-    emit_vex_textured_cubes_at_pose(
+    emit_textured_cubes_at_pose(
         mesh,
         body_t,
         PartPose {
@@ -642,7 +650,7 @@ fn emit_vex_textured_model(
         VEX_TEXTURE_REF,
         uv,
     );
-    emit_vex_textured_cubes_at_pose(
+    emit_textured_cubes_at_pose(
         mesh,
         body_t,
         PartPose {
@@ -655,7 +663,7 @@ fn emit_vex_textured_model(
     );
 
     let left_wing_yrot = vex_left_wing_y_rot(age);
-    emit_vex_textured_cubes_at_pose(
+    emit_textured_cubes_at_pose(
         mesh,
         body_t,
         PartPose {
@@ -666,7 +674,7 @@ fn emit_vex_textured_model(
         VEX_TEXTURE_REF,
         uv,
     );
-    emit_vex_textured_cubes_at_pose(
+    emit_textured_cubes_at_pose(
         mesh,
         body_t,
         PartPose {
@@ -675,6 +683,115 @@ fn emit_vex_textured_model(
         },
         &VEX_TEXTURED_RIGHT_WING,
         VEX_TEXTURE_REF,
+        uv,
+    );
+}
+
+/// The textured allay base layer. Like the vex, the arms and wings hang under the body and
+/// are swayed by the vanilla `AllayModel.setupAnim` (non-dancing idle / flying pose) plus
+/// the vertical root bob, so the part list is animated per frame and the hierarchy is walked
+/// by hand exactly like the colored [`emit_allay_model`]. Allay uses
+/// `RenderTypes::entityTranslucent`, so it draws into the translucent mesh. The dance pose
+/// (`isDancing`/`isSpinning`) and held-item arms are deferred entity-side state, and the
+/// vanilla full-bright block light (`getBlockLightLevel` → 15) is deferred lighting.
+fn emit_allay_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, ALLAY_TEXTURE_REF) else {
+        return;
+    };
+    let uv = entry.uv;
+    let age = instance.render_state.age_in_ticks;
+    let walk_pos = instance.render_state.walk_animation_pos;
+    let walk_speed = instance.render_state.walk_animation_speed;
+    let root_pose = PartPose {
+        offset: [0.0, allay_root_y(age, walk_speed), 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let root = entity_model_root_transform(instance) * part_pose_transform(root_pose);
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Translucent);
+
+    // Head (child of root) tracks the look yaw/pitch.
+    let head_pose = PartPose {
+        offset: ALLAY_HEAD_POSE.offset,
+        rotation: [
+            instance.render_state.head_pitch.to_radians(),
+            instance.render_state.head_yaw.to_radians(),
+            0.0,
+        ],
+    };
+    emit_textured_cubes_at_pose(
+        mesh,
+        root,
+        head_pose,
+        &ALLAY_TEXTURED_HEAD,
+        ALLAY_TEXTURE_REF,
+        uv,
+    );
+
+    // Body (child of root) tilts toward the flying pose and carries the arms and wings.
+    let body_pose = PartPose {
+        offset: ALLAY_BODY_POSE.offset,
+        rotation: [allay_body_x_rot(walk_speed), 0.0, 0.0],
+    };
+    let body_t = root * part_pose_transform(body_pose);
+    emit_textured_cubes_at_pose(
+        mesh,
+        root,
+        body_pose,
+        &ALLAY_TEXTURED_BODY,
+        ALLAY_TEXTURE_REF,
+        uv,
+    );
+
+    let arm_bob = allay_arm_idle_bob_amount(age, walk_speed);
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: ALLAY_RIGHT_ARM_POSE.offset,
+            rotation: [0.0, 0.0, arm_bob],
+        },
+        &ALLAY_TEXTURED_RIGHT_ARM,
+        ALLAY_TEXTURE_REF,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: ALLAY_LEFT_ARM_POSE.offset,
+            rotation: [0.0, 0.0, -arm_bob],
+        },
+        &ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURE_REF,
+        uv,
+    );
+
+    let wing_x_rot = allay_wing_rest_x_rot(walk_speed);
+    let flap = allay_wing_flap_amount(age, walk_pos, walk_speed);
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: ALLAY_RIGHT_WING_POSE.offset,
+            rotation: [wing_x_rot, -ALLAY_WING_Y_ROT_BASE + flap, 0.0],
+        },
+        &ALLAY_TEXTURED_WING,
+        ALLAY_TEXTURE_REF,
+        uv,
+    );
+    emit_textured_cubes_at_pose(
+        mesh,
+        body_t,
+        PartPose {
+            offset: ALLAY_LEFT_WING_POSE.offset,
+            rotation: [wing_x_rot, ALLAY_WING_Y_ROT_BASE - flap, 0.0],
+        },
+        &ALLAY_TEXTURED_WING,
+        ALLAY_TEXTURE_REF,
         uv,
     );
 }
