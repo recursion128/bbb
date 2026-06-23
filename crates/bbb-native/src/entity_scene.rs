@@ -643,9 +643,10 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
         VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, pig_variants),
         VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, cow_variants),
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID | VANILLA_ENTITY_TYPE_PANDA_ID => {
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID => {
             quadruped(QuadrupedModelFamily::Cow, ageable_baby(data_values))
         }
+        VANILLA_ENTITY_TYPE_PANDA_ID => panda_model_kind(data_values),
         VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer,
         VANILLA_ENTITY_TYPE_RAVAGER_ID => EntityModelKind::Ravager,
         VANILLA_ENTITY_TYPE_HOGLIN_ID => EntityModelKind::Hoglin {
@@ -888,6 +889,17 @@ fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entit
         quadruped(QuadrupedModelFamily::Wolf, true)
     } else {
         EntityModelKind::Rabbit
+    }
+}
+
+/// Vanilla `PandaRenderer` (an `AgeableMobRenderer`) picks `PandaModel` for an adult and the distinct
+/// `BabyPandaModel` mesh for a baby. The adult renders through the dedicated [`EntityModelKind::Panda`];
+/// the baby still falls back to the cow-shaped proxy until its body layer is modeled.
+fn panda_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    if ageable_baby(values) {
+        quadruped(QuadrupedModelFamily::Cow, true)
+    } else {
+        EntityModelKind::Panda
     }
 }
 
@@ -4841,9 +4853,18 @@ mod tests {
             ),
             EntityModelKind::PolarBear { baby: true }
         );
+        // The adult panda renders through its dedicated `PandaModel`; the baby (whose own
+        // `BabyPandaModel` mesh is not yet modeled) still falls back to the cow-shaped proxy.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PANDA_ID, &[]),
-            quadruped(QuadrupedModelFamily::Cow, false)
+            EntityModelKind::Panda
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_PANDA_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            quadruped(QuadrupedModelFamily::Cow, true)
         );
     }
 

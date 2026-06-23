@@ -2057,6 +2057,27 @@ When an agent does any of the following, update this file in the same slice:
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred
       entity lighting
+    - adult panda entities as renderer-owned vanilla 26.1 `PandaModel.createBodyLayer()` geometry on
+      the colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type id `96` out
+      of the mooshroom/panda cow-shaped quadruped proxy — the adult maps to the new
+      `EntityModelKind::Panda`, replacing the cow-shaped stand-in (a completely wrong silhouette) with the
+      real panda mesh (the baby, whose distinct `BabyPandaModel` mesh is not yet modeled, stays on the cow
+      proxy as a documented follow-up). The static rest-pose hierarchy is emitted directly (atlas 64×64) in
+      the `QuadrupedModel` six-part layout: the `head` at `offset(0, 11.5, -17)` (the 13×10×9 skull, the
+      7×5×2 muzzle, and the two 5×4×1 ears), the `body` at `offset(0, 10, 0)` pitched `π/2` (the 19×26×13
+      trunk), and the four legs at `offset(±5.5, 15, ±9)` (each the shared 6×9×6 box) — nine cubes. Because
+      `PandaModel extends QuadrupedModel`, the shared base `setupAnim` is reproduced: the head turns by the
+      projected `head_yaw/head_pitch` (`head.xRot/yRot` set from the look) and the four legs swing off the
+      projected `walk_animation_pos/speed` (`leg.xRot = cos(pos·0.6662 [+π])·1.4·speed`, the diagonal pair
+      in phase), via the same `apply_head_look` / `apply_quadruped_leg_swing` helpers the cow / pig / sheep /
+      polar-bear paths use. Every panda-specific `PandaModel.setupAnim` pose — the `isUnhappy` head shake and
+      front-leg paddle, the `isSneezing` head dip, the `sitAmount` sitting fold with its eating / scared
+      variants, the `lieOnBackAmount` belly roll, and the `rollAmount` somersault — reads un-projected
+      `PandaRenderState` fields / `AnimationState`s and stays deferred, so a resting panda renders at this
+      bind pose plus the head look and leg swing. The seven `Panda.Gene` color/texture variants and the
+      `BabyPandaModel` body layer live on the deferred texture-backed / baby paths; the geometry separates
+      two tones (white skull / muzzle / body, black ears / legs), so the colored debug path renders those two
+      tints. The texture-backed path remains unsupported (this is a colored-first slice)
     - adult rabbit entities as renderer-owned vanilla 26.1 `AdultRabbitModel.createBodyLayer()`
       geometry on the colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type
       id `108` out of the cat/ocelot/fox wolf-shaped quadruped proxy — the adult maps to the new

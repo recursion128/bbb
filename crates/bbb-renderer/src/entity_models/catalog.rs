@@ -270,6 +270,12 @@ pub enum EntityModelKind {
     PolarBear {
         baby: bool,
     },
+    /// `PandaModel` (a `QuadrupedModel`) at its `createBodyLayer` rest pose. The shared
+    /// `QuadrupedModel.setupAnim` head look and four-leg walk swing are reproduced; every
+    /// panda-specific pose (`isUnhappy`, `isSneezing`, `sitAmount`, `lieOnBackAmount`, `rollAmount`)
+    /// reads un-projected `PandaRenderState` state and stays deferred, as do the gene-driven textures
+    /// and the baby `MeshTransformer` scale.
+    Panda,
     /// `AdultRabbitModel` at its `createBodyLayer` rest pose (the `body`/`backlegs` roots, the head
     /// nested under `body`). `RabbitModel.setupAnim` turns the head by the look angles (reproduced).
     /// The looping `RabbitAnimation.HOP` and `IDLE_HEAD_TILT` keyframe animations need un-projected

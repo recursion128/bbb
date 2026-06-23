@@ -43,6 +43,7 @@ mod llama_spit;
 mod minecart;
 mod model;
 mod no_render;
+mod panda;
 mod parrot;
 mod phantom;
 mod pig;
