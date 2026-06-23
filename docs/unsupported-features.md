@@ -1846,14 +1846,15 @@ When an agent does any of the following, update this file in the same slice:
       `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `143` (wind charge) and `18` (breeze wind charge) — both
       registered to `WindChargeRenderer` in vanilla — to the new `EntityModelKind::WindCharge`, replacing the
-      former placeholder bounds boxes. The static hierarchy is emitted directly (atlas 64×32): the `bone`
-      root (no cubes) parents the `wind` shell (a fixed `yRot = -π/4` bind rotation with the `texOffs(15, 20)`
-      8×2×8 and `texOffs(0, 9)` 6×4×6 boxes) and the `wind_charge` core (the `texOffs(0, 0)` 4×4×4 box).
-      `WindChargeRenderer` is a plain `EntityRenderer` that applies no extra transform, captured by the
-      position-only `wind_charge_model_root_transform`. The `WindChargeModel.setupAnim` counter-rotation
-      (`wind.yRot = age·16°`, `windCharge.yRot = -age·16°`), the translucent scrolling `breezeWind` texture,
-      and the texture-backed path are deferred, so the colored debug path renders the wind shell and core as
-      opaque tinted geometry
+      former placeholder bounds boxes. The hierarchy is emitted directly (atlas 64×32): the `bone`
+      root (no cubes) parents the `wind` shell (the `texOffs(15, 20)` 8×2×8 and `texOffs(0, 9)` 6×4×6 boxes,
+      `yRot = -π/4` bind) and the `wind_charge` core (the `texOffs(0, 0)` 4×4×4 box). `WindChargeRenderer` is
+      a plain `EntityRenderer` that applies no extra transform, captured by the position-only
+      `wind_charge_model_root_transform`. The `WindChargeModel.setupAnim` counter-spin is reproduced off the
+      projected `age_in_ticks`: `wind.yRot = age·16°` (a *set* that overwrites the -π/4 bind) and
+      `windCharge.yRot = -age·16°`, so the two halves continuously counter-rotate. The translucent scrolling
+      `breezeWind` texture and the texture-backed path stay deferred, so the colored debug path renders the
+      spinning wind shell and core as opaque tinted geometry
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new
       `EntityModelKind::EnderDragon`, replacing the former placeholder bounds box. The straight bind layout

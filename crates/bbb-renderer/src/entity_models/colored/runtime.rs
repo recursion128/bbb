@@ -1893,12 +1893,19 @@ fn emit_shulker_bullet_model(mesh: &mut EntityModelMesh, instance: EntityModelIn
 }
 
 fn emit_wind_charge_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `WindChargeModel` is the `bone` root parenting the `wind` shell (a fixed `-π/4` bind
-    // rotation) and the `wind_charge` core. The bind-pose part tree is emitted at the position-only
-    // `WindChargeRenderer` transform; the `setupAnim` counter-rotation and the translucent scrolling
-    // texture are deferred.
+    // Vanilla `WindChargeModel` is the `bone` root (no cubes) parenting the `wind` shell and the
+    // `wind_charge` core. `setupAnim` counter-spins them off `ageInTicks`: `wind.yRot = age·16°` (a
+    // set that overwrites the -π/4 bind) and `windCharge.yRot = -age·16°`. The bone carries no cubes,
+    // so its two children are posed and emitted at the position-only `WindChargeRenderer` transform;
+    // the translucent scrolling texture stays deferred.
     let root = wind_charge_model_root_transform(instance);
-    emit_model_parts(mesh, &WIND_CHARGE_PARTS, root);
+    let bone = &WIND_CHARGE_PARTS[0];
+    let bone_t = root * part_pose_transform(bone.pose);
+    let spin = wind_charge_spin_yrot(instance.render_state.age_in_ticks);
+    let mut children = bone.children.to_vec();
+    children[WIND_CHARGE_WIND_CHILD_INDEX].pose.rotation[1] = spin;
+    children[WIND_CHARGE_CORE_CHILD_INDEX].pose.rotation[1] = -spin;
+    emit_model_parts(mesh, &children, bone_t);
 }
 
 fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

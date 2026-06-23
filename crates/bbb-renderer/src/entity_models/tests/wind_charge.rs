@@ -57,18 +57,37 @@ fn wind_charge_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
-fn wind_charge_wind_shell_is_rotated_off_axis() {
-    // The `wind` shell's -π/4 bind rotation swings its 8×2×8 slab off-axis. The slab's half-extent is
-    // 0.25 block, so un-rotated no vertex passes |x| = 0.25; rotated 45° its corner `(0.25, 0.25)`
-    // maps to `(0.354, 0)`, reaching ~0.354 on X. A vertex with |x| > 0.30 can only come from the
-    // rotated shell, proving the bind rotation is applied.
-    let charge = entity_model_mesh(&[EntityModelInstance::wind_charge(181, [0.0, 0.0, 0.0], 0.0)]);
-    let off_axis_reach = charge
-        .vertices
-        .iter()
-        .any(|vertex| vertex.position[0].abs() > 0.30);
+fn wind_charge_spin_matches_vanilla_setup_anim() {
+    // `wind.yRot = age·16°·π/180` (set, overwriting the -π/4 bind); `windCharge.yRot = -that`.
+    let age = 5.0_f32;
+    let expected = (age * 16.0).to_radians();
+    assert!((wind_charge_spin_yrot(age) - expected).abs() < 1.0e-6);
+    assert_eq!(wind_charge_spin_yrot(0.0), 0.0);
+}
+
+#[test]
+fn wind_charge_counter_spins_shell_and_core_with_age() {
+    // Vanilla `WindChargeModel.setupAnim` sets `wind.yRot = age·16°` (overwriting the -π/4 bind) and
+    // `windCharge.yRot = -age·16°`. So at age 0 the shell sits axis-aligned: its 8×2×8 slab
+    // half-extent is 0.25 block, so no vertex passes |x| = 0.30. At age 2.8125 the shell turns 45°,
+    // mapping its corner (0.25, 0.25) to (0.354, 0) — reaching ~0.354 on X.
+    let rest = entity_model_mesh(&[EntityModelInstance::wind_charge(181, [0.0, 0.0, 0.0], 0.0)]);
     assert!(
-        off_axis_reach,
-        "the -π/4 bind rotation swings the wind shell off-axis"
+        !rest.vertices.iter().any(|v| v.position[0].abs() > 0.30),
+        "at age 0 the spin is zero, so the shell sits axis-aligned (the -π/4 bind is overwritten)"
+    );
+
+    let age = 45.0_f32 / 16.0; // age·16° = 45°
+    let spun = entity_model_mesh(&[
+        EntityModelInstance::wind_charge(182, [0.0, 0.0, 0.0], 0.0).with_age_in_ticks(age)
+    ]);
+    assert!(
+        spun.vertices.iter().any(|v| v.position[0].abs() > 0.30),
+        "the age-driven spin swings the shell off-axis"
+    );
+    assert_eq!(rest.vertices.len(), spun.vertices.len());
+    assert_ne!(
+        rest.vertices, spun.vertices,
+        "both the shell and the counter-spun core turn with age"
     );
 }
