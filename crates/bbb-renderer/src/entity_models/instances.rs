@@ -835,6 +835,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Trident, position, y_rot)
     }
 
+    pub fn llama_spit(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::LlamaSpit, position, y_rot)
+    }
+
     pub fn ender_dragon(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::EnderDragon, position, y_rot)
     }

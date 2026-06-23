@@ -97,6 +97,7 @@ impl EntityModelKind {
             Self::LeashKnot => "leash_knot",
             Self::Arrow => "arrow",
             Self::Trident => "trident",
+            Self::LlamaSpit => "llama_spit",
             Self::EnderDragon => "ender_dragon",
             Self::NoRender => "no_render",
             Self::Phantom { .. } => "phantom",

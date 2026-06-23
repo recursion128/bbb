@@ -22,12 +22,13 @@ use super::transforms::{
     ender_dragon_model_root_transform, entity_model_root_transform,
     evoker_fangs_model_root_transform, ghast_model_root_transform,
     happy_ghast_model_root_transform, leash_knot_model_root_transform,
-    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
-    phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, salmon_model_root_transform, scaled_model_root_transform,
-    slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
-    tropical_fish_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, GIANT_SCALE, HUSK_SCALE,
+    llama_spit_model_root_transform, magma_cube_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
+    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
+    salmon_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
+    squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
+    HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -239,6 +240,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Trident => {
                 // Colored-only so far (no texture-backed trident yet), so this arm always emits.
                 emit_trident_model(&mut mesh, *instance);
+            }
+            EntityModelKind::LlamaSpit => {
+                // Colored-only so far (no texture-backed llama spit yet), so this arm always emits.
+                emit_llama_spit_model(&mut mesh, *instance);
             }
             EntityModelKind::EnderDragon => {
                 // Colored-only so far (no texture-backed ender dragon yet), so this arm always emits.
@@ -1656,6 +1661,14 @@ fn emit_trident_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     // flight-oriented transform (`Ry(yRot - 90) · Rz(xRot + 90)`).
     let root = trident_model_root_transform(instance);
     emit_model_parts(mesh, &TRIDENT_PARTS, root);
+}
+
+fn emit_llama_spit_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `LlamaSpitModel` is a single static cross of seven 2×2×2 boxes with no `setupAnim`, so
+    // the bind-pose part is emitted directly at the `LlamaSpitRenderer` flight-oriented transform
+    // (`translate(0, 0.15, 0) · Ry(yRot - 90) · Rz(xRot)`).
+    let root = llama_spit_model_root_transform(instance);
+    emit_model_parts(mesh, &LLAMA_SPIT_PARTS, root);
 }
 
 fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

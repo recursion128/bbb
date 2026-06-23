@@ -168,6 +168,10 @@ pub enum EntityModelKind {
     /// geometry is complete; the enchant-foil overlay and the texture are deferred.
     /// `ThrownTridentRenderer` orients it along its flight.
     Trident,
+    /// `LlamaSpitModel` — a single `main` part of seven 2×2×2 boxes forming a cross. The model has
+    /// no `setupAnim`, so the geometry is complete; only the texture-backed path is deferred.
+    /// `LlamaSpitRenderer` orients it along its flight.
+    LlamaSpit,
     /// `EnderDragonModel` at its `createBodyLayer` straight bind layout (head + jaw, five neck and
     /// twelve tail segments, body with wings and four legs). The fully procedural `setupAnim` (the
     /// flight-history neck/tail placement, the wing flap, the jaw, the root bounce), the dying

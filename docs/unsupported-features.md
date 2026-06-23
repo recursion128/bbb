@@ -974,7 +974,8 @@ When an agent does any of the following, update this file in the same slice:
       (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[2, 3, 4, 5]` adult /
       `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored and textured); the
       trader llama's `LlamaDecorLayer` overlay and llama decor/body equipment
-      layers, llama spit projectile model, and lighting remain unsupported
+      layers and lighting remain unsupported (the llama spit projectile is now
+      modeled on the colored path — see the llama spit entry below)
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture
@@ -1793,6 +1794,15 @@ When an agent does any of the following, update this file in the same slice:
       / `head_pitch` and captured by `trident_model_root_transform`. The enchant-foil overlay pass and the
       texture-backed path are deferred, so the colored debug path renders the pole/base in teal and the
       spikes lighter
+    - llama spit entities as renderer-owned vanilla 26.1 `LlamaSpitModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `79` to the new
+      `EntityModelKind::LlamaSpit`, replacing the former placeholder bounds box. The static `main` part is
+      emitted directly (atlas 64×32): seven 2×2×2 boxes (all `texOffs(0, 0)`) forming a cross — a centre cube
+      and one neighbour stepping out along each of ±X / ±Y / ±Z. `LlamaSpitModel` has no `setupAnim`, so the
+      geometry is complete. `LlamaSpitRenderer` is a plain `EntityRenderer` that lifts the spit and orients it
+      along its flight with `translate(0, 0.15, 0)` then `Ry(yRot - 90)` then `Rz(xRot)`, projected through
+      the instance's `body_rot` / `head_pitch` and captured by `llama_spit_model_root_transform`. Only the
+      texture-backed path is deferred, so the colored debug path renders the cross with one tint
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new
       `EntityModelKind::EnderDragon`, replacing the former placeholder bounds box. The straight bind layout

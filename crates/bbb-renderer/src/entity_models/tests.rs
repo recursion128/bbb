@@ -39,6 +39,7 @@ mod keyframe;
 mod leash_knot;
 mod limb_swing;
 mod llama;
+mod llama_spit;
 mod minecart;
 mod no_render;
 mod parrot;

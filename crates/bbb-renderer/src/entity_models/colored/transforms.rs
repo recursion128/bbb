@@ -240,6 +240,20 @@ pub(in crate::entity_models) fn leash_knot_model_root_transform(
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
 }
 
+/// Vanilla `LlamaSpitRenderer.submit`: a plain `EntityRenderer` that lifts the spit slightly and
+/// orients it along its flight with `translate(0, 0.15, 0)` then `Axis.YP.rotationDegrees(yRot - 90)`
+/// then `Axis.ZP.rotationDegrees(xRot)` (no flip / scale / y-offset). `LlamaSpitModel` has no
+/// `setupAnim`, so this is the complete transform; only the texture is colored-first. The yaw/pitch
+/// are projected through `body_rot` / `head_pitch`.
+pub(in crate::entity_models) fn llama_spit_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0))
+        * Mat4::from_rotation_y((instance.render_state.body_rot - 90.0).to_radians())
+        * Mat4::from_rotation_z(instance.render_state.head_pitch.to_radians())
+}
+
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))

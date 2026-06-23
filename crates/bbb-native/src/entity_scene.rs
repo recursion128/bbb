@@ -809,9 +809,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => {
             placeholder("todo_lightning_bolt_bounds", 0.5, 2.0, 0.5)
         }
-        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => {
-            placeholder("todo_llama_spit_bounds", 0.25, 0.25, 0.25)
-        }
+        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => EntityModelKind::LlamaSpit,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
             size: slime_size(data_values),
         },
@@ -4724,6 +4722,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_TRIDENT_ID, &[]),
             EntityModelKind::Trident
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_llama_spit_to_real_model() {
+        // The llama spit was a placeholder box; it now resolves to the real `LlamaSpitModel`. The
+        // model has no `setupAnim`, so the geometry is complete; only the texture is deferred
+        // entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, &[]),
+            EntityModelKind::LlamaSpit
         );
     }
 
