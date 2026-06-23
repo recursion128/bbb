@@ -1,20 +1,45 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
 use std::f32::consts::PI;
 
 #[test]
 fn dolphin_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `DolphinModel.createBodyLayer` (atlas 64×64): the `body` is the 8×7×13 root child.
-    assert_eq!(DOLPHIN_BODY[0].min, [-4.0, -7.0, 0.0]);
-    assert_eq!(DOLPHIN_BODY[0].size, [8.0, 7.0, 13.0]);
+    // Each unified cube carries both the colored geometry/tint and the textured `uv_size` /
+    // `texOffs` / `mirror`; with no `CubeDeformation`, each `uv_size` matches the box `size`.
+    assert_eq!(
+        DOLPHIN_BODY[0],
+        ModelCube::new(
+            [-4.0, -7.0, 0.0],
+            [8.0, 7.0, 13.0],
+            DOLPHIN_GRAY,
+            [8.0, 7.0, 13.0],
+            [22.0, 0.0],
+            false,
+        )
+    );
     assert_eq!(DOLPHIN_BODY_POSE.offset, [0.0, 22.0, -5.0]);
 
-    // The side fins share one 1×4×7 box; the tail/tail-fin/head/nose match vanilla.
-    assert_eq!(DOLPHIN_SIDE_FIN[0].size, [1.0, 4.0, 7.0]);
+    // The back fin and the tail/tail-fin/head/nose boxes match vanilla, each `texOffs` baked in.
+    assert_eq!(DOLPHIN_BACK_FIN[0].size, [1.0, 4.0, 5.0]);
+    assert_eq!(DOLPHIN_BACK_FIN[0].tex, [51.0, 0.0]);
     assert_eq!(DOLPHIN_TAIL[0].size, [4.0, 5.0, 11.0]);
+    assert_eq!(DOLPHIN_TAIL[0].tex, [0.0, 19.0]);
     assert_eq!(DOLPHIN_TAIL_FIN[0].size, [10.0, 1.0, 6.0]);
+    assert_eq!(DOLPHIN_TAIL_FIN[0].tex, [19.0, 20.0]);
     assert_eq!(DOLPHIN_HEAD[0].size, [8.0, 7.0, 6.0]);
+    assert_eq!(DOLPHIN_HEAD[0].tex, [0.0, 0.0]);
     assert_eq!(DOLPHIN_NOSE[0].size, [2.0, 2.0, 4.0]);
+    assert_eq!(DOLPHIN_NOSE[0].tex, [0.0, 13.0]);
+
+    // The side fins share one 1×4×7 box and `texOffs(48, 20)`; only the left fin's UV is mirrored.
+    assert_eq!(DOLPHIN_LEFT_FIN[0].size, [1.0, 4.0, 7.0]);
+    assert_eq!(DOLPHIN_LEFT_FIN[0].tex, [48.0, 20.0]);
+    assert!(DOLPHIN_LEFT_FIN[0].mirror);
+    assert_eq!(DOLPHIN_RIGHT_FIN[0].size, [1.0, 4.0, 7.0]);
+    assert_eq!(DOLPHIN_RIGHT_FIN[0].tex, [48.0, 20.0]);
+    assert!(!DOLPHIN_RIGHT_FIN[0].mirror);
 
     // The fins' compound bind rotations and the tail's bind pitch.
     assert_eq!(
@@ -135,23 +160,6 @@ fn dolphin_texture_ref_matches_vanilla_renderer() {
             }
         ]
     );
-}
-
-#[test]
-fn dolphin_textured_cubes_match_vanilla_body_layer_uvs() {
-    // Vanilla `DolphinModel.createBodyLayer` texOffs (atlas 64×64); no `CubeDeformation`, so each
-    // `uv_size` matches the box `size`. The left fin is the mirrored twin of the right fin.
-    assert_eq!(DOLPHIN_TEXTURED_BODY[0].tex, [22.0, 0.0]);
-    assert_eq!(DOLPHIN_TEXTURED_BODY[0].uv_size, [8.0, 7.0, 13.0]);
-    assert_eq!(DOLPHIN_TEXTURED_BACK_FIN[0].tex, [51.0, 0.0]);
-    assert_eq!(DOLPHIN_TEXTURED_LEFT_FIN[0].tex, [48.0, 20.0]);
-    assert!(DOLPHIN_TEXTURED_LEFT_FIN[0].mirror);
-    assert_eq!(DOLPHIN_TEXTURED_RIGHT_FIN[0].tex, [48.0, 20.0]);
-    assert!(!DOLPHIN_TEXTURED_RIGHT_FIN[0].mirror);
-    assert_eq!(DOLPHIN_TEXTURED_TAIL[0].tex, [0.0, 19.0]);
-    assert_eq!(DOLPHIN_TEXTURED_TAIL_FIN[0].tex, [19.0, 20.0]);
-    assert_eq!(DOLPHIN_TEXTURED_HEAD[0].tex, [0.0, 0.0]);
-    assert_eq!(DOLPHIN_TEXTURED_NOSE[0].tex, [0.0, 13.0]);
 }
 
 #[test]
