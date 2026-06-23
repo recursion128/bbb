@@ -1,6 +1,5 @@
 use super::{
-    apply_head_look, bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc,
-    ModelPartDesc, FOX_ORANGE,
+    apply_head_look, model_cube as cube, ModelCubeDesc, PartPose, FOX_ORANGE, PART_POSE_ZERO,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -18,66 +17,122 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // faceplant `FoxRenderer.setupRotations` pitch is deferred too.
 
 // `head` cubes: the 8×6×6 skull, the two 2×2×1 ears, and the 4×2×3 snout.
-const FOX_HEAD_CUBES: [ModelCubeDesc; 1] = [cube([-3.0, -2.0, -5.0], [8.0, 6.0, 6.0], FOX_ORANGE)];
-const FOX_RIGHT_EAR_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const FOX_HEAD_CUBES: [ModelCubeDesc; 1] =
+    [cube([-3.0, -2.0, -5.0], [8.0, 6.0, 6.0], FOX_ORANGE)];
+pub(in crate::entity_models) const FOX_RIGHT_EAR_CUBES: [ModelCubeDesc; 1] =
     [cube([-3.0, -4.0, -4.0], [2.0, 2.0, 1.0], FOX_ORANGE)];
-const FOX_LEFT_EAR_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const FOX_LEFT_EAR_CUBES: [ModelCubeDesc; 1] =
     [cube([3.0, -4.0, -4.0], [2.0, 2.0, 1.0], FOX_ORANGE)];
-const FOX_NOSE_CUBES: [ModelCubeDesc; 1] = [cube([-1.0, 2.01, -8.0], [4.0, 2.0, 3.0], FOX_ORANGE)];
+pub(in crate::entity_models) const FOX_NOSE_CUBES: [ModelCubeDesc; 1] =
+    [cube([-1.0, 2.01, -8.0], [4.0, 2.0, 3.0], FOX_ORANGE)];
 
 // `body`: the 6×11×6 trunk (pitched onto its belly).
-const FOX_BODY_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const FOX_BODY_CUBES: [ModelCubeDesc; 1] =
     [cube([-3.0, 3.999, -3.5], [6.0, 11.0, 6.0], FOX_ORANGE)];
 
 // `tail`: the 4×9×5 brush.
-const FOX_TAIL_CUBES: [ModelCubeDesc; 1] = [cube([2.0, 0.0, -1.0], [4.0, 9.0, 5.0], FOX_ORANGE)];
+pub(in crate::entity_models) const FOX_TAIL_CUBES: [ModelCubeDesc; 1] =
+    [cube([2.0, 0.0, -1.0], [4.0, 9.0, 5.0], FOX_ORANGE)];
 
 // The shared leg box (all four reuse it), inflated by the vanilla `CubeDeformation(0.001)` fudge
 // (min -= 0.001, size += 0.002) and built off-center at `+2` X.
-const FOX_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const FOX_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
     [1.999, 0.499, -1.001],
     [2.002, 6.002, 2.002],
     FOX_ORANGE,
 )];
 
-// `head` children: the two ears and the snout, all at the `PartPose.ZERO` head origin.
-const FOX_HEAD_CHILDREN: [ModelPartDesc; 3] = [
-    part([0.0, 0.0, 0.0], &FOX_RIGHT_EAR_CUBES, &[]),
-    part([0.0, 0.0, 0.0], &FOX_LEFT_EAR_CUBES, &[]),
-    part([0.0, 0.0, 0.0], &FOX_NOSE_CUBES, &[]),
-];
+/// Vanilla `AdultFoxModel.createBodyLayer` rest-pose hierarchy (`addOrReplaceChild` order): `head`
+/// (with ears + snout), `body` (pitched `π/2`, with the tail), then the right-hind / left-hind /
+/// right-front / left-front legs. Ten cubes.
+/// `head` part pose: `PartPose.offset(-1, 16.5, -3)`.
+pub(in crate::entity_models) const FOX_HEAD_POSE: PartPose = PartPose {
+    offset: [-1.0, 16.5, -3.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// The two ears and the snout all sit at the `PartPose.ZERO` head origin.
+pub(in crate::entity_models) const FOX_HEAD_CHILD_POSE: PartPose = PART_POSE_ZERO;
+/// `body` part pose: `PartPose.offsetAndRotation(0, 16, -6, π/2, 0, 0)`.
+pub(in crate::entity_models) const FOX_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 16.0, -6.0],
+    rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+};
+/// `tail` part pose: `PartPose.offsetAndRotation(-4, 15, -1, -0.05235988, 0, 0)`.
+pub(in crate::entity_models) const FOX_TAIL_POSE: PartPose = PartPose {
+    offset: [-4.0, 15.0, -1.0],
+    rotation: [-0.05235988, 0.0, 0.0],
+};
+/// `right_hind_leg` part pose: `PartPose.offset(-5, 17.5, 7)`.
+pub(in crate::entity_models) const FOX_RIGHT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [-5.0, 17.5, 7.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_hind_leg` part pose: `PartPose.offset(-1, 17.5, 7)`.
+pub(in crate::entity_models) const FOX_LEFT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [-1.0, 17.5, 7.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_front_leg` part pose: `PartPose.offset(-5, 17.5, 0)`.
+pub(in crate::entity_models) const FOX_RIGHT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [-5.0, 17.5, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_front_leg` part pose: `PartPose.offset(-1, 17.5, 0)`.
+pub(in crate::entity_models) const FOX_LEFT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [-1.0, 17.5, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-// `body` child: the tail, pitched back `-0.05235988`.
-const FOX_BODY_CHILDREN: [ModelPartDesc; 1] = [rpart(
-    [-4.0, 15.0, -1.0],
-    [-0.05235988, 0.0, 0.0],
-    &FOX_TAIL_CUBES,
-    &[],
-)];
-
-/// Vanilla `AdultFoxModel.createBodyLayer` rest-pose hierarchy (`addOrReplaceChild` order): `head` (0,
-/// with ears + snout), `body` (1, pitched `π/2`, with the tail), then the right-hind / left-hind /
-/// right-front / left-front legs (2..=5). Ten cubes.
-pub(in crate::entity_models) const FOX_PARTS: [ModelPartDesc; 6] = [
-    part([-1.0, 16.5, -3.0], &FOX_HEAD_CUBES, &FOX_HEAD_CHILDREN),
-    rpart(
-        [0.0, 16.0, -6.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+/// Builds the adult fox's six named root parts under a synthetic root: the cube-bearing `head`
+/// (parenting `right_ear`/`left_ear`/`nose`), the pitched `body` (parenting the `tail`), and the four
+/// legs, in the vanilla `addOrReplaceChild` order.
+fn fox_root() -> ModelPart {
+    let head = ModelPart::colored(
+        FOX_HEAD_POSE,
+        &FOX_HEAD_CUBES,
+        vec![
+            ModelPart::leaf_colored(FOX_HEAD_CHILD_POSE, &FOX_RIGHT_EAR_CUBES),
+            ModelPart::leaf_colored(FOX_HEAD_CHILD_POSE, &FOX_LEFT_EAR_CUBES),
+            ModelPart::leaf_colored(FOX_HEAD_CHILD_POSE, &FOX_NOSE_CUBES),
+        ],
+    );
+    let body = ModelPart::colored(
+        FOX_BODY_POSE,
         &FOX_BODY_CUBES,
-        &FOX_BODY_CHILDREN,
-    ),
-    part([-5.0, 17.5, 7.0], &FOX_LEG_CUBES, &[]),
-    part([-1.0, 17.5, 7.0], &FOX_LEG_CUBES, &[]),
-    part([-5.0, 17.5, 0.0], &FOX_LEG_CUBES, &[]),
-    part([-1.0, 17.5, 0.0], &FOX_LEG_CUBES, &[]),
-];
+        vec![ModelPart::leaf_colored(FOX_TAIL_POSE, &FOX_TAIL_CUBES)],
+    );
+    ModelPart::new(
+        PART_POSE_ZERO,
+        Vec::new(),
+        vec![
+            ("head", head),
+            ("body", body),
+            (
+                "right_hind_leg",
+                ModelPart::leaf_colored(FOX_RIGHT_HIND_LEG_POSE, &FOX_LEG_CUBES),
+            ),
+            (
+                "left_hind_leg",
+                ModelPart::leaf_colored(FOX_LEFT_HIND_LEG_POSE, &FOX_LEG_CUBES),
+            ),
+            (
+                "right_front_leg",
+                ModelPart::leaf_colored(FOX_RIGHT_FRONT_LEG_POSE, &FOX_LEG_CUBES),
+            ),
+            (
+                "left_front_leg",
+                ModelPart::leaf_colored(FOX_LEFT_FRONT_LEG_POSE, &FOX_LEG_CUBES),
+            ),
+        ],
+    )
+}
 
 // Vanilla `BabyFoxModel.createBodyLayer` (atlas 32×32). Flatter layout than the adult — the head bakes
 // the ears and snout as cubes (no child parts), the body has no `π/2` pitch, and the root child order is
 // head / four legs / body (the body still parenting the tail).
 
 // `head` cubes: the 6×5×5 skull, the 2×2×2 snout, and the two 2×2×1 ears.
-const BABY_FOX_HEAD_CUBES: [ModelCubeDesc; 4] = [
+pub(in crate::entity_models) const BABY_FOX_HEAD_CUBES: [ModelCubeDesc; 4] = [
     cube([-3.0, -2.125, -5.125], [6.0, 5.0, 5.0], FOX_ORANGE),
     cube([-1.0, 0.875, -7.125], [2.0, 2.0, 2.0], FOX_ORANGE),
     cube([-3.0, -4.125, -4.125], [2.0, 2.0, 1.0], FOX_ORANGE),
@@ -85,54 +140,101 @@ const BABY_FOX_HEAD_CUBES: [ModelCubeDesc; 4] = [
 ];
 
 // The shared 2×2×2 baby leg box.
-const BABY_FOX_LEG_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_FOX_LEG_CUBES: [ModelCubeDesc; 1] =
     [cube([-1.0, 0.0, -1.0], [2.0, 2.0, 2.0], FOX_ORANGE)];
 
 // `body`: the 5×4×6 trunk.
-const BABY_FOX_BODY_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_FOX_BODY_CUBES: [ModelCubeDesc; 1] =
     [cube([-2.5, -2.0, -3.0], [5.0, 4.0, 6.0], FOX_ORANGE)];
 
 // `tail`: the 3×3×6 brush.
-const BABY_FOX_TAIL_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_FOX_TAIL_CUBES: [ModelCubeDesc; 1] =
     [cube([-1.5, -1.48, -1.0], [3.0, 3.0, 6.0], FOX_ORANGE)];
 
-// `body` child: the tail (no bind pitch on the baby).
-const BABY_FOX_BODY_CHILDREN: [ModelPartDesc; 1] =
-    [part([0.0, -0.5, 3.0], &BABY_FOX_TAIL_CUBES, &[])];
+/// Vanilla `BabyFoxModel.createBodyLayer` rest-pose hierarchy (`addOrReplaceChild` order): `head`
+/// (ears + snout baked in), the right-hind / left-hind / right-front / left-front legs, then the
+/// `body` (with the tail). Ten cubes.
+/// Baby `head` part pose: `PartPose.offset(0, 18.125, 0.125)`.
+pub(in crate::entity_models) const BABY_FOX_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 18.125, 0.125],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `right_hind_leg` part pose: `PartPose.offset(-1.5, 22, 4)`.
+pub(in crate::entity_models) const BABY_FOX_RIGHT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [-1.5, 22.0, 4.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `left_hind_leg` part pose: `PartPose.offset(1.5, 22, 4)`.
+pub(in crate::entity_models) const BABY_FOX_LEFT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [1.5, 22.0, 4.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `right_front_leg` part pose: `PartPose.offset(-1.5, 22, 0)`.
+pub(in crate::entity_models) const BABY_FOX_RIGHT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [-1.5, 22.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `left_front_leg` part pose: `PartPose.offset(1.5, 22, 0)`.
+pub(in crate::entity_models) const BABY_FOX_LEFT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [1.5, 22.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `body` part pose: `PartPose.offset(0, 20, 2)`.
+pub(in crate::entity_models) const BABY_FOX_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 20.0, 2.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `tail` part pose: `PartPose.offset(0, -0.5, 3)` (no bind pitch on the baby).
+pub(in crate::entity_models) const BABY_FOX_TAIL_POSE: PartPose = PartPose {
+    offset: [0.0, -0.5, 3.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-/// Vanilla `BabyFoxModel.createBodyLayer` rest-pose hierarchy (`addOrReplaceChild` order): `head` (0,
-/// ears + snout baked in), the right-hind / left-hind / right-front / left-front legs (1..=4), then the
-/// `body` (5, with the tail). Ten cubes.
-pub(in crate::entity_models) const BABY_FOX_PARTS: [ModelPartDesc; 6] = [
-    part([0.0, 18.125, 0.125], &BABY_FOX_HEAD_CUBES, &[]),
-    part([-1.5, 22.0, 4.0], &BABY_FOX_LEG_CUBES, &[]),
-    part([1.5, 22.0, 4.0], &BABY_FOX_LEG_CUBES, &[]),
-    part([-1.5, 22.0, 0.0], &BABY_FOX_LEG_CUBES, &[]),
-    part([1.5, 22.0, 0.0], &BABY_FOX_LEG_CUBES, &[]),
-    part(
-        [0.0, 20.0, 2.0],
+/// Builds the baby fox's six named root parts under a synthetic root: the `head` (ears + snout baked
+/// in as cubes), the four legs, then the `body` (parenting the `tail`), in the vanilla
+/// `addOrReplaceChild` order.
+fn baby_fox_root() -> ModelPart {
+    let body = ModelPart::colored(
+        BABY_FOX_BODY_POSE,
         &BABY_FOX_BODY_CUBES,
-        &BABY_FOX_BODY_CHILDREN,
-    ),
-];
-
-/// The `head` is the first root part in both the adult and baby layouts; `FoxModel.setupAnim` sets its
-/// `xRot/yRot` from the look.
-const FOX_HEAD_PART_INDEX: usize = 0;
-
-/// Selects the baked fox part tree for `baby`.
-fn fox_parts(baby: bool) -> &'static [ModelPartDesc] {
-    if baby {
-        &BABY_FOX_PARTS
-    } else {
-        &FOX_PARTS
-    }
+        vec![ModelPart::leaf_colored(
+            BABY_FOX_TAIL_POSE,
+            &BABY_FOX_TAIL_CUBES,
+        )],
+    );
+    ModelPart::new(
+        PART_POSE_ZERO,
+        Vec::new(),
+        vec![
+            (
+                "head",
+                ModelPart::leaf_colored(BABY_FOX_HEAD_POSE, &BABY_FOX_HEAD_CUBES),
+            ),
+            (
+                "right_hind_leg",
+                ModelPart::leaf_colored(BABY_FOX_RIGHT_HIND_LEG_POSE, &BABY_FOX_LEG_CUBES),
+            ),
+            (
+                "left_hind_leg",
+                ModelPart::leaf_colored(BABY_FOX_LEFT_HIND_LEG_POSE, &BABY_FOX_LEG_CUBES),
+            ),
+            (
+                "right_front_leg",
+                ModelPart::leaf_colored(BABY_FOX_RIGHT_FRONT_LEG_POSE, &BABY_FOX_LEG_CUBES),
+            ),
+            (
+                "left_front_leg",
+                ModelPart::leaf_colored(BABY_FOX_LEFT_FRONT_LEG_POSE, &BABY_FOX_LEG_CUBES),
+            ),
+            ("body", body),
+        ],
+    )
 }
 
-/// Mutable fox model, mirroring vanilla `AdultFoxModel` / `BabyFoxModel`. The root parts hang off a
-/// synthetic root, built from the baked [`FOX_PARTS`] / [`BABY_FOX_PARTS`] geometry for the selected
-/// `baby` layout. Colored-only: `setup_anim` runs the head look ([`apply_head_look`], the head is part 0
-/// in both layouts); the walk swing, head roll, and every fox pose stay deferred.
+/// Mutable fox model, mirroring vanilla `AdultFoxModel` / `BabyFoxModel`. The named root parts hang off
+/// a synthetic root, built from the baked colored geometry for the selected `baby` layout. Colored-only:
+/// `setup_anim` runs the head look ([`apply_head_look`] on `child_mut("head")`, the head leads both
+/// layouts); the walk swing, head roll, and every fox pose stay deferred.
 pub(in crate::entity_models) struct FoxModel {
     root: ModelPart,
 }
@@ -140,7 +242,7 @@ pub(in crate::entity_models) struct FoxModel {
 impl FoxModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
         Self {
-            root: ModelPart::root_from_colored_descs(fox_parts(baby)),
+            root: if baby { baby_fox_root() } else { fox_root() },
         }
     }
 }
@@ -158,7 +260,7 @@ impl EntityModel for FoxModel {
         // Vanilla `FoxModel.setupAnim` sets `head.xRot/yRot` from the look while the fox is not sleeping
         // / faceplanted / crouching — none of which bbb projects, so the look applies every frame.
         apply_head_look(
-            self.root.child_at_mut(FOX_HEAD_PART_INDEX),
+            self.root.child_mut("head"),
             instance.render_state.head_yaw,
             instance.render_state.head_pitch,
         );
