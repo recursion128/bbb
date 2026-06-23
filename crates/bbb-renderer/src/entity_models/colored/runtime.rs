@@ -372,7 +372,12 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Villager { baby } => {
                 if !skip_texture_backed_entities {
-                    emit_villager_model(&mut mesh, *instance, baby);
+                    let transform = if baby {
+                        entity_model_root_transform(*instance)
+                    } else {
+                        villager_adult_model_root_transform(*instance)
+                    };
+                    VillagerModel::new(baby).prepare_and_render(&mut mesh, instance, transform);
                 }
             }
             EntityModelKind::WanderingTrader => {
@@ -3059,40 +3064,6 @@ fn sheep_colored_head_parts(
         head.pose = sheep_head_pose(head.pose, baby, head_eat, head_yaw, head_pitch);
     }
     Cow::Owned(parts)
-}
-
-fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    let (parts, transform): (&[ModelPartDesc], _) = if baby {
-        (&BABY_VILLAGER_PARTS, entity_model_root_transform(instance))
-    } else {
-        (
-            &ADULT_VILLAGER_PARTS,
-            villager_adult_model_root_transform(instance),
-        )
-    };
-    // `VillagerModel.setupAnim` swings the legs `cos(pos * 0.6662 [+ π]) * 1.4 *
-    // speed * 0.5` (half the `HumanoidModel` amplitude, no riding branch) after the
-    // head look. The combined `arms` part and the unhappy head shake are deferred.
-    let parts = half_amplitude_limb_swing_parts(
-        villager_colored_head_look_parts(parts, villager_head_part_index(baby), instance),
-        villager_leg_part_indices(baby),
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    emit_model_parts(mesh, &parts, transform);
-}
-
-/// The right/left leg part indices in the villager body layers. The adult layer
-/// lists the combined `arms` part at slot `2` then the legs at `[3, 4]`; the baby
-/// layer reorders the parts and lists the legs at `[1, 2]`.
-/// [`half_amplitude_leg_swing_pose`] resolves each leg's phase from its offset, so
-/// only the slot positions differ.
-fn villager_leg_part_indices(baby: bool) -> [usize; 2] {
-    if baby {
-        [1, 2]
-    } else {
-        [3, 4]
-    }
 }
 
 /// Applies the vanilla `VillagerModel`/`IllagerModel`/`WitchModel.setupAnim` head

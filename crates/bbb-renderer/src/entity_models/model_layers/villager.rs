@@ -1,6 +1,7 @@
 use super::{
-    apply_half_amplitude_leg_swing, apply_head_look, ModelCubeDesc, ModelPartDesc, PartPose,
-    TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO, VILLAGER_ROBE,
+    apply_half_amplitude_leg_swing, apply_head_look, villager_head_part_index, ModelCubeDesc,
+    ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
+    VILLAGER_ROBE,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -619,6 +620,73 @@ pub(in crate::entity_models) const BABY_VILLAGER_TEXTURED_PARTS: [TexturedModelP
 
 /// Adult villager-layer leg part indices (head/body/nose occupy `0`/`1`/`2`, then the two legs).
 const ADULT_VILLAGER_LEG_PART_INDICES: [usize; 2] = [3, 4];
+
+/// Baby villager-layer leg part indices. `BabyVillagerModel.createBodyModel` reorders the parts
+/// (arms/legs/head/body), listing the two legs at `[1, 2]`.
+const BABY_VILLAGER_LEG_PART_INDICES: [usize; 2] = [1, 2];
+
+/// Selects the colored ([`ADULT_VILLAGER_PARTS`]/[`BABY_VILLAGER_PARTS`]) and textured
+/// ([`ADULT_VILLAGER_TEXTURED_PARTS`]/[`BABY_VILLAGER_TEXTURED_PARTS`]) const trees for a
+/// villager by `baby`, zipped into the unified tree by [`VillagerModel::new`].
+pub(in crate::entity_models) fn villager_part_trees(
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&BABY_VILLAGER_PARTS, &BABY_VILLAGER_TEXTURED_PARTS)
+    } else {
+        (&ADULT_VILLAGER_PARTS, &ADULT_VILLAGER_TEXTURED_PARTS)
+    }
+}
+
+/// Mutable villager model, mirroring vanilla `VillagerModel`/`BabyVillagerModel`. The unified tree
+/// is zipped from the baked colored and textured trees selected by `baby`
+/// ([`villager_part_trees`]). `setup_anim` looks the head ([`apply_head_look`] at
+/// [`villager_head_part_index`]) and swings the legs at the villager-family half amplitude
+/// ([`apply_half_amplitude_leg_swing`]). The combined `arms` part and the unhappy head shake defer.
+pub(in crate::entity_models) struct VillagerModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl VillagerModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let (colored, textured) = villager_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for VillagerModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(villager_head_part_index(self.baby)),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        let leg_indices = if self.baby {
+            BABY_VILLAGER_LEG_PART_INDICES
+        } else {
+            ADULT_VILLAGER_LEG_PART_INDICES
+        };
+        apply_half_amplitude_leg_swing(
+            &mut self.root,
+            leg_indices,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+    }
+}
 
 /// Mutable wandering trader model, mirroring vanilla `WanderingTraderRenderer`, which reuses the adult
 /// `VillagerModel` layer. The unified tree is zipped from the baked colored ([`ADULT_VILLAGER_PARTS`])

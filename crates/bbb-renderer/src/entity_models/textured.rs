@@ -42,15 +42,14 @@ use super::{
         strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
         strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
         strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
-        vex_moving_arm_z_bob, villager_head_part_index, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
-        CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, IronGolemModel,
-        MagmaCubeModel, MinecartModel, PigModel, PolarBearModel, RavagerModel, SalmonModel,
-        SilverfishModel, SkeletonModel, SnowGolemModel, WanderingTraderModel, WitchModel,
-        ZombieModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
+        wolf_tail_swing_pose, zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel,
+        CodModel, CowModel, CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel,
+        IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PolarBearModel, RavagerModel,
+        SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel, VillagerModel,
+        WanderingTraderModel, WitchModel, ZombieModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE,
+        ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
+        ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
         BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
@@ -2129,62 +2128,6 @@ fn emit_humanoid_textured_passes(
     }
 }
 
-/// Right/left leg part indices in the adult villager / witch / wandering-trader
-/// textured layers: the combined `arms` part is at slot `2`, then the legs at
-/// `[3, 4]`.
-const VILLAGER_ADULT_LEG_PART_INDICES: [usize; 2] = [3, 4];
-
-/// Right/left leg part indices in the baby villager textured layer, which reorders
-/// the parts and lists the legs at `[1, 2]`.
-const VILLAGER_BABY_LEG_PART_INDICES: [usize; 2] = [1, 2];
-
-/// Emits a `VillagerModel`/`WanderingTraderModel` family entity's textured
-/// layer passes, applying the vanilla head look ([`head_look_pose`]) to the head
-/// part at `head_index` and the half-amplitude leg swing
-/// ([`half_amplitude_leg_swing_pose`]) to the two leg parts at `leg_indices`. The
-/// static parts are reused unchanged while both the head is level/aligned and the
-/// legs are at rest. The villager unhappy head shake is deferred. The witch shares
-/// this family's body layer but bobs its nose continuously, so it has its own
-/// emitter ([`emit_witch_textured_model`]) rather than this shared path.
-#[allow(clippy::too_many_arguments)]
-fn emit_villager_family_textured_passes(
-    meshes: &mut EntityModelTexturedMeshes,
-    passes: Vec<EntityModelLayerPass>,
-    head_index: usize,
-    leg_indices: [usize; 2],
-    transform: Mat4,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    for pass in passes {
-        if head_resting && legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-                }
-            }
-            if !legs_resting {
-                for index in leg_indices {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose =
-                            half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-        }
-    }
-}
-
 fn emit_creeper_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -3220,25 +3163,26 @@ fn emit_villager_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `VillagerModel` tree drives both render paths; `setup_anim` looks the head and
+    // swings the legs at the villager-family half amplitude once.
     let transform = if baby {
         entity_model_root_transform(instance)
     } else {
         villager_adult_model_root_transform(instance)
     };
-    let leg_indices = if baby {
-        VILLAGER_BABY_LEG_PART_INDICES
-    } else {
-        VILLAGER_ADULT_LEG_PART_INDICES
-    };
-    emit_villager_family_textured_passes(
-        meshes,
-        villager_textured_layer_passes(baby),
-        villager_head_part_index(baby),
-        leg_indices,
-        transform,
-        instance,
-        atlas,
-    );
+    let mut model = VillagerModel::new(baby);
+    model.prepare(&instance);
+    for pass in villager_textured_layer_passes(baby) {
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
+    }
 }
 
 fn emit_wandering_trader_textured_model(
