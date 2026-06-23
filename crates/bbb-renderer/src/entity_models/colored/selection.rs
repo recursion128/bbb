@@ -87,17 +87,6 @@ pub(in crate::entity_models) fn chicken_model_parts(
     }
 }
 
-pub(in crate::entity_models) fn pig_model_parts(
-    variant: PigModelVariant,
-    baby: bool,
-) -> &'static [ModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_PIG_PARTS,
-        (PigModelVariant::Cold, false) => &COLD_PIG_PARTS,
-        (_, false) => &ADULT_PIG_PARTS,
-    }
-}
-
 pub(in crate::entity_models) fn cow_model_parts(
     variant: CowModelVariant,
     baby: bool,

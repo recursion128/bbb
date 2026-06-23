@@ -110,19 +110,19 @@ fn pig_cold_adult_model_parts_match_vanilla_26_1_body_layer() {
     }
 
     assert_eq!(
-        pig_model_parts(PigModelVariant::Temperate, false),
+        pig_part_trees(PigModelVariant::Temperate, false).0,
         ADULT_PIG_PARTS.as_slice()
     );
     assert_eq!(
-        pig_model_parts(PigModelVariant::Warm, false),
+        pig_part_trees(PigModelVariant::Warm, false).0,
         ADULT_PIG_PARTS.as_slice()
     );
     assert_eq!(
-        pig_model_parts(PigModelVariant::Cold, false),
+        pig_part_trees(PigModelVariant::Cold, false).0,
         COLD_PIG_PARTS.as_slice()
     );
     assert_eq!(
-        pig_model_parts(PigModelVariant::Cold, true),
+        pig_part_trees(PigModelVariant::Cold, true).0,
         BABY_PIG_PARTS.as_slice()
     );
 }

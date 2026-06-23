@@ -15,7 +15,7 @@ use super::mounts::{
 };
 use super::selection::{
     chicken_model_parts, cow_model_parts, hoglin_model_color, humanoid_model_color,
-    pig_model_parts, piglin_model_color, quadruped_model_color,
+    piglin_model_color, quadruped_model_color,
 };
 use super::transforms::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
@@ -71,7 +71,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Pig { variant, baby } => {
                 if !skip_texture_backed_entities {
-                    emit_pig_model(&mut mesh, *instance, variant, baby);
+                    PigModel::new(variant, baby).prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Player { slim, .. } => {
@@ -3568,7 +3572,11 @@ fn emit_quadruped_model(
     baby: bool,
 ) {
     if family == QuadrupedModelFamily::Pig {
-        emit_pig_model(mesh, instance, PigModelVariant::Temperate, baby);
+        PigModel::new(PigModelVariant::Temperate, baby).prepare_and_render(
+            mesh,
+            &instance,
+            entity_model_root_transform(instance),
+        );
         return;
     }
 
@@ -3684,27 +3692,6 @@ pub(in crate::entity_models) fn quadruped_leg_x_rotations(
     let in_phase = phase.cos() * 1.4 * limb_swing_amount;
     let out_of_phase = (phase + std::f32::consts::PI).cos() * 1.4 * limb_swing_amount;
     [in_phase, out_of_phase, out_of_phase, in_phase]
-}
-
-fn emit_pig_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    variant: PigModelVariant,
-    baby: bool,
-) {
-    let parts = colored_head_look_parts(
-        pig_model_parts(variant, baby),
-        pig_head_part_index(baby),
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    );
-    let parts = quadruped_limb_swing_parts(
-        parts,
-        QUADRUPED_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

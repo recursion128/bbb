@@ -1,7 +1,10 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    PIG_COLD_FUR, PIG_PINK,
+    apply_head_look, apply_quadruped_leg_swing, pig_head_part_index, ModelCubeDesc, ModelPartDesc,
+    PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, PIG_COLD_FUR, PIG_PINK,
 };
+use crate::entity_models::catalog::PigModelVariant;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_PIG: &str = "minecraft:pig#main";
 pub(in crate::entity_models) const MODEL_LAYER_PIG_BABY: &str = "minecraft:pig_baby#main";
@@ -439,3 +442,64 @@ pub(in crate::entity_models) const BABY_PIG_PARTS: [ModelPartDesc; 6] = [
         children: &[],
     },
 ];
+
+/// Quadruped leg part indices in the pig body layers (head and body occupy `0`/`1` in either order;
+/// the swing resolves each leg's phase from its offset, so the adult/baby ordering does not matter).
+const PIG_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
+/// Selects the unified pig part-tree pair (colored + textured) for `variant`/`baby`, mirroring the
+/// vanilla layer choice: cold pigs carry their fur layer, babies their squat layout.
+pub(in crate::entity_models) fn pig_part_trees(
+    variant: PigModelVariant,
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    match (variant, baby) {
+        (_, true) => (&BABY_PIG_PARTS, &BABY_PIG_TEXTURED_PARTS),
+        (PigModelVariant::Cold, false) => (&COLD_PIG_PARTS, &COLD_PIG_TEXTURED_PARTS),
+        (_, false) => (&ADULT_PIG_PARTS, &ADULT_PIG_TEXTURED_PARTS),
+    }
+}
+
+/// Mutable pig model, mirroring vanilla `PigModel` (a `QuadrupedModel`). The unified tree is zipped
+/// from the baked colored and textured trees for the selected `variant`/`baby` layout
+/// ([`pig_part_trees`]). `setup_anim` looks the head ([`apply_head_look`] at [`pig_head_part_index`])
+/// and swings the four legs ([`apply_quadruped_leg_swing`]).
+pub(in crate::entity_models) struct PigModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl PigModel {
+    pub(in crate::entity_models) fn new(variant: PigModelVariant, baby: bool) -> Self {
+        let (colored, textured) = pig_part_trees(variant, baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for PigModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(pig_head_part_index(self.baby)),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_quadruped_leg_swing(
+            &mut self.root,
+            PIG_LEG_PART_INDICES,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+    }
+}
