@@ -2,6 +2,8 @@ use super::{
     bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, PartPose, WARDEN_BODY,
     WARDEN_TENDRIL,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `WardenModel.createBodyLayer` (atlas 128×128). The mesh root holds one `bone` part
 // at `offset(0, 24, 0)` parenting the body and the two legs; `body` parents the two ribcage
@@ -208,4 +210,86 @@ pub(in crate::entity_models) fn warden_tendril_x_rot(
 ) -> f32 {
     let factor = ((age_in_ticks as f64 * 2.25).cos() * std::f64::consts::PI * 0.1) as f32;
     tendril_animation * factor
+}
+
+/// Mutable warden model, mirroring vanilla `WardenModel`. The cubeless `bone` root (parenting the
+/// body and two legs; `body` parents the ribcages, head, and two arms; `head` parents the two
+/// tendrils) hangs off a synthetic root, built from the baked [`WARDEN_PARTS`] geometry.
+/// Colored-only: `setup_anim` reproduces the four non-keyframe motions — the head look, the idle
+/// wobble, the walk swing, and the tendril sway (the attack / sonic-boom / dig / emerge / roar
+/// keyframes stay deferred).
+pub(in crate::entity_models) struct WardenModel {
+    root: ModelPart,
+}
+
+impl WardenModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(&WARDEN_PARTS),
+        }
+    }
+}
+
+impl EntityModel for WardenModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `WardenModel.setupAnim` composes four non-keyframe motions: the head look
+        // ([`warden_head_pose`]), the always-on idle wobble ([`warden_idle_body_pose`] on the body,
+        // folded into the head pose), the walk swing ([`warden_walk_pose`], ADDED via
+        // [`warden_add_x_z_rot`] onto the look/idle composition — addition is commutative, preserving
+        // the vanilla order), and the tendril sway ([`warden_tendril_x_rot`]). At `walkSpeed = 0` the
+        // walk adds nothing; the idle wobble and tendril sway advance every frame off `ageInTicks`.
+        let head_yaw = instance.render_state.head_yaw;
+        let head_pitch = instance.render_state.head_pitch;
+        let age = instance.render_state.age_in_ticks;
+        let walk = warden_walk_pose(
+            instance.render_state.walk_animation_pos,
+            instance.render_state.walk_animation_speed,
+        );
+        let tendril_x = warden_tendril_x_rot(instance.render_state.tendril_animation, age);
+
+        let bone = self.root.child_at_mut(0);
+        {
+            let body = bone.child_at_mut(WARDEN_BODY_BONE_CHILD_INDEX);
+            body.pose = warden_add_x_z_rot(
+                warden_idle_body_pose(body.pose, age),
+                walk.body_x_rot,
+                walk.body_z_rot,
+            );
+
+            {
+                let head = body.child_at_mut(WARDEN_HEAD_BODY_CHILD_INDEX);
+                head.pose = warden_add_x_z_rot(
+                    warden_head_pose(head.pose, head_yaw, head_pitch, age),
+                    walk.head_x_rot,
+                    walk.head_z_rot,
+                );
+
+                // The two tendrils sway their `xRot` off the pulse (left `+`, right `-`).
+                let right = head.child_at_mut(WARDEN_RIGHT_TENDRIL_HEAD_CHILD_INDEX);
+                right.pose = warden_add_x_z_rot(right.pose, -tendril_x, 0.0);
+                let left = head.child_at_mut(WARDEN_LEFT_TENDRIL_HEAD_CHILD_INDEX);
+                left.pose = warden_add_x_z_rot(left.pose, tendril_x, 0.0);
+            }
+
+            // The two arms swing their `xRot` with the walk; the ribcages hold.
+            let right_arm = body.child_at_mut(WARDEN_RIGHT_ARM_BODY_CHILD_INDEX);
+            right_arm.pose = warden_add_x_z_rot(right_arm.pose, walk.right_arm_x_rot, 0.0);
+            let left_arm = body.child_at_mut(WARDEN_LEFT_ARM_BODY_CHILD_INDEX);
+            left_arm.pose = warden_add_x_z_rot(left_arm.pose, walk.left_arm_x_rot, 0.0);
+        }
+
+        // The two legs swing their `xRot` with the walk.
+        let right_leg = bone.child_at_mut(WARDEN_RIGHT_LEG_BONE_CHILD_INDEX);
+        right_leg.pose = warden_add_x_z_rot(right_leg.pose, walk.right_leg_x_rot, 0.0);
+        let left_leg = bone.child_at_mut(WARDEN_LEFT_LEG_BONE_CHILD_INDEX);
+        left_leg.pose = warden_add_x_z_rot(left_leg.pose, walk.left_leg_x_rot, 0.0);
+    }
 }
