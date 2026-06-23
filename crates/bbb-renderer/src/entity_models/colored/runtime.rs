@@ -783,121 +783,17 @@ fn emit_strider_baby_model(mesh: &mut EntityModelMesh, instance: EntityModelInst
 }
 
 fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    // Vanilla `QuadrupedModel.setupAnim` (head look + the diagonal leg swing) plus
-    // `TurtleModel.setupAnim`: on land the turtle adds a `yRot` walk swing to the legs, in
-    // water it paddles (hind `xRot` / front `zRot`). `isOnLand = !isInWater && onGround` is
-    // projected from the real water + ground state. The legs and head/body are direct children
-    // of the root, so each is posed from the root transform. When the adult turtle carries an egg
-    // (`hasEgg`), `AdultTurtleModel.setupAnim` shows the `egg_belly` overlay shell and drops the
-    // whole model `root.y--` by one unit. The egg-laying leg amplitude (`isLayingEgg`) stays
-    // deferred. Turtle uses `LivingEntityRenderer.setupRotations`.
-    let pos = instance.render_state.walk_animation_pos;
-    let speed = instance.render_state.walk_animation_speed;
-    let on_land = !instance.render_state.in_water && instance.render_state.on_ground;
-    // Only the adult model carries the egg belly; the baby model class has no such part.
+    // The unified `TurtleModel` tree drives both render paths; `setup_anim` tracks the head look and
+    // swings the legs (`TurtleModel.setupAnim` land walk / water paddle), and shows the adult
+    // `egg_belly` overlay when `hasEgg`. When the adult carries an egg, vanilla also drops the whole
+    // model `root.y--`; that lives in the root transform here. Turtle uses
+    // `LivingEntityRenderer.setupRotations`.
     let has_egg = !baby && instance.render_state.turtle_has_egg;
-    // The egg-laying front-leg amplitude lives in the shared `TurtleModel` (adult + baby).
-    let laying = instance.render_state.turtle_laying_egg;
     let mut root = entity_model_root_transform(instance);
     if has_egg {
-        // Vanilla `root.y--`: a model-local one-unit drop applied to every part (egg and all).
         root *= part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE);
     }
-    let head_pitch = instance.render_state.head_pitch.to_radians();
-    let head_yaw = instance.render_state.head_yaw.to_radians();
-
-    let (head_cubes, head_pose, body_cubes, body_pose, legs): (_, _, _, _, [_; 4]) = if baby {
-        (
-            &TURTLE_BABY_HEAD[..],
-            TURTLE_BABY_HEAD_POSE,
-            &TURTLE_BABY_BODY[..],
-            TURTLE_BABY_BODY_POSE,
-            [
-                (
-                    &TURTLE_BABY_RIGHT_HIND_LEG[..],
-                    TURTLE_BABY_RIGHT_HIND_LEG_POSE,
-                    false,
-                    true,
-                ),
-                (
-                    &TURTLE_BABY_LEFT_HIND_LEG[..],
-                    TURTLE_BABY_LEFT_HIND_LEG_POSE,
-                    false,
-                    false,
-                ),
-                (
-                    &TURTLE_BABY_RIGHT_FRONT_LEG[..],
-                    TURTLE_BABY_RIGHT_FRONT_LEG_POSE,
-                    true,
-                    true,
-                ),
-                (
-                    &TURTLE_BABY_LEFT_FRONT_LEG[..],
-                    TURTLE_BABY_LEFT_FRONT_LEG_POSE,
-                    true,
-                    false,
-                ),
-            ],
-        )
-    } else {
-        (
-            &TURTLE_HEAD[..],
-            TURTLE_HEAD_POSE,
-            &TURTLE_BODY[..],
-            TURTLE_BODY_POSE,
-            [
-                (
-                    &TURTLE_RIGHT_HIND_LEG[..],
-                    TURTLE_RIGHT_HIND_LEG_POSE,
-                    false,
-                    true,
-                ),
-                (
-                    &TURTLE_LEFT_HIND_LEG[..],
-                    TURTLE_LEFT_HIND_LEG_POSE,
-                    false,
-                    false,
-                ),
-                (
-                    &TURTLE_RIGHT_FRONT_LEG[..],
-                    TURTLE_RIGHT_FRONT_LEG_POSE,
-                    true,
-                    true,
-                ),
-                (
-                    &TURTLE_LEFT_FRONT_LEG[..],
-                    TURTLE_LEFT_FRONT_LEG_POSE,
-                    true,
-                    false,
-                ),
-            ],
-        )
-    };
-
-    // Head tracks the look; the body holds its fixed shell tilt.
-    let head_pose = PartPose {
-        offset: head_pose.offset,
-        rotation: [head_pitch, head_yaw, 0.0],
-    };
-    emit_model_cubes_at_pose(mesh, root, head_pose, head_cubes);
-    emit_model_cubes_at_pose(mesh, root, body_pose, body_cubes);
-    // The `egg_belly` overlay shell shares the body pose; only the adult model has it (the
-    // projection clears `hasEgg` for babies).
-    if has_egg {
-        emit_model_cubes_at_pose(mesh, root, TURTLE_BODY_POSE, &TURTLE_EGG_BELLY);
-    }
-
-    for (cubes, leg_pose, front, right) in legs {
-        emit_model_cubes_at_pose(
-            mesh,
-            root,
-            PartPose {
-                offset: leg_pose.offset,
-                rotation: turtle_leg_rotation(pos, speed, on_land, front, right, laying),
-            },
-            cubes,
-        );
-    }
+    TurtleModel::new(baby).prepare_and_render(mesh, &instance, root);
 }
 
 fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

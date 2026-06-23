@@ -1,4 +1,9 @@
-use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, TURTLE_GREEN, TURTLE_SHELL};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    TURTLE_GREEN, TURTLE_SHELL,
+};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `AdultTurtleModel.createBodyLayer` (atlas 128×64). The head, body (shell +
 // belly), and four legs are direct children of the mesh root; the `egg_belly` overlay shell (one
@@ -362,3 +367,225 @@ pub(in crate::entity_models) const TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG: [Texture
         tex: [8.0, 7.0],
         mirror: false,
     }];
+
+// Colored adult turtle tree: head, body, the `egg_belly` overlay (toggled by `hasEgg`), then the four
+// legs (right/left hind, right/left front) — all direct children of the root, in the emit order.
+// Mirrors vanilla `AdultTurtleModel.createBodyLayer`. Zipped with the textured tree by `TurtleModel`.
+const TURTLE_PARTS: [ModelPartDesc; 7] = [
+    ModelPartDesc {
+        pose: TURTLE_HEAD_POSE,
+        cubes: &TURTLE_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_BODY_POSE,
+        cubes: &TURTLE_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_BODY_POSE,
+        cubes: &TURTLE_EGG_BELLY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_RIGHT_HIND_LEG_POSE,
+        cubes: &TURTLE_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_LEFT_HIND_LEG_POSE,
+        cubes: &TURTLE_LEFT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_RIGHT_FRONT_LEG_POSE,
+        cubes: &TURTLE_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_LEFT_FRONT_LEG_POSE,
+        cubes: &TURTLE_LEFT_FRONT_LEG,
+        children: &[],
+    },
+];
+const TURTLE_TEXTURED_PARTS: [TexturedModelPartDesc; 7] = [
+    TexturedModelPartDesc {
+        pose: TURTLE_HEAD_POSE,
+        cubes: &TURTLE_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_BODY_POSE,
+        cubes: &TURTLE_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_BODY_POSE,
+        cubes: &TURTLE_TEXTURED_EGG_BELLY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_RIGHT_HIND_LEG_POSE,
+        cubes: &TURTLE_TEXTURED_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_LEFT_HIND_LEG_POSE,
+        cubes: &TURTLE_TEXTURED_LEFT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_RIGHT_FRONT_LEG_POSE,
+        cubes: &TURTLE_TEXTURED_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_LEFT_FRONT_LEG_POSE,
+        cubes: &TURTLE_TEXTURED_LEFT_FRONT_LEG,
+        children: &[],
+    },
+];
+
+// Colored baby turtle tree: head, body, then the four legs (no egg belly — `BabyTurtleModel` has no
+// such part). Mirrors vanilla `BabyTurtleModel.createBodyLayer`.
+const TURTLE_BABY_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: TURTLE_BABY_HEAD_POSE,
+        cubes: &TURTLE_BABY_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_BABY_BODY_POSE,
+        cubes: &TURTLE_BABY_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_BABY_RIGHT_HIND_LEG_POSE,
+        cubes: &TURTLE_BABY_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_BABY_LEFT_HIND_LEG_POSE,
+        cubes: &TURTLE_BABY_LEFT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_BABY_RIGHT_FRONT_LEG_POSE,
+        cubes: &TURTLE_BABY_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: TURTLE_BABY_LEFT_FRONT_LEG_POSE,
+        cubes: &TURTLE_BABY_LEFT_FRONT_LEG,
+        children: &[],
+    },
+];
+const TURTLE_BABY_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: TURTLE_BABY_HEAD_POSE,
+        cubes: &TURTLE_BABY_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_BABY_BODY_POSE,
+        cubes: &TURTLE_BABY_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_BABY_RIGHT_HIND_LEG_POSE,
+        cubes: &TURTLE_BABY_TEXTURED_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_BABY_LEFT_HIND_LEG_POSE,
+        cubes: &TURTLE_BABY_TEXTURED_LEFT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_BABY_RIGHT_FRONT_LEG_POSE,
+        cubes: &TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: TURTLE_BABY_LEFT_FRONT_LEG_POSE,
+        cubes: &TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG,
+        children: &[],
+    },
+];
+
+/// Selects the colored and textured const trees for an adult or baby turtle, zipped into the unified
+/// tree by [`TurtleModel::new`].
+fn turtle_part_trees(baby: bool) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&TURTLE_BABY_PARTS, &TURTLE_BABY_TEXTURED_PARTS)
+    } else {
+        (&TURTLE_PARTS, &TURTLE_TEXTURED_PARTS)
+    }
+}
+
+/// The four turtle leg children, in tree order `[right hind, left hind, right front, left front]`,
+/// with each leg's `(front, right)` flags for [`turtle_leg_rotation`].
+const TURTLE_LEG_FLAGS: [(bool, bool); 4] =
+    [(false, true), (false, false), (true, true), (true, false)];
+
+/// Applies the vanilla `QuadrupedModel.setupAnim` head look plus `TurtleModel.setupAnim` leg swing to
+/// the unified tree: the head tracks the look, the body holds its fixed shell tilt, the legs swing
+/// (the land `yRot` walk swing or the water hind-`xRot`/front-`zRot` paddle), and the adult `egg_belly`
+/// overlay is shown only when `hasEgg`. The `root.y--` egg drop lives in the root transform.
+fn apply_turtle_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+    let pos = instance.render_state.walk_animation_pos;
+    let speed = instance.render_state.walk_animation_speed;
+    let on_land = !instance.render_state.in_water && instance.render_state.on_ground;
+    let has_egg = !baby && instance.render_state.turtle_has_egg;
+    let laying = instance.render_state.turtle_laying_egg;
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+
+    root.child_at_mut(0).pose.rotation = [head_pitch, head_yaw, 0.0];
+
+    // The adult tree carries the `egg_belly` at index 2 (toggled by `hasEgg`); the legs follow it, so
+    // the baby (no egg belly) starts its legs one index earlier.
+    let leg_base = if baby {
+        2
+    } else {
+        root.child_at_mut(2).visible = has_egg;
+        3
+    };
+    for (i, &(front, right)) in TURTLE_LEG_FLAGS.iter().enumerate() {
+        root.child_at_mut(leg_base + i).pose.rotation =
+            turtle_leg_rotation(pos, speed, on_land, front, right, laying);
+    }
+}
+
+/// Mutable turtle model, mirroring vanilla `AdultTurtleModel` / `BabyTurtleModel` (a `QuadrupedModel`).
+/// The unified tree is zipped from the const trees selected by `baby` ([`turtle_part_trees`]);
+/// `setup_anim` runs [`apply_turtle_anim`]. The same posed tree drives the colored fallback and the
+/// cutout textured layer; the `root.y--` egg drop and the adult/baby texture live outside the model.
+pub(in crate::entity_models) struct TurtleModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl TurtleModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let (colored, textured) = turtle_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for TurtleModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_turtle_anim(&mut self.root, self.baby, instance);
+    }
+}
