@@ -329,7 +329,8 @@ When an agent does any of the following, update this file in the same slice:
       `z += speed * 2 * ageScale` shift (body tail child, body subtree hand-emitted; the
       baby horse `getTailXRotOffset = −π/2` also overrides the layer rest angle and
       `ageScale = 0.5`), colored path; the baby donkey/mule nested legs and forced
-      head pitch, the camel's sit/dash-entangled gait, and the tail's `ageInTicks` yRot wag
+      head pitch, the camel's textured/baby walk and sit/dash-entangled gait (the colored
+      adult/husk `CAMEL_WALK` is now reproduced), and the tail's `ageInTicks` yRot wag
       stay deferred). The remaining
       slices consume them
       in the other model families' `setupAnim` (fish; other birds; etc., plus
@@ -960,10 +961,17 @@ When an agent does any of the following, update this file in the same slice:
       PNG atlas upload/bind/sample path, and the `CamelModel.applyHeadRotation`
       clamped head yaw/pitch tracking applied to the body-nested head (`yRot` clamped
       to [-30, 30], `xRot` to [-25, 45] degrees) on both the colored and textured
-      paths; saddle equipment layers, the `CamelModel.setupAnim` keyframe
-      walk/sit/standup/idle/dash animations and the `jumpCooldown` extra-pitch head
-      boost (which would require the deferred `KeyframeAnimation` framework and the
-      un-projected jump-cooldown state), and lighting remain unsupported
+      paths; the adult/husk `CamelModel.setupAnim` walk (`CamelAnimation.CAMEL_WALK`,
+      the looping 1.5 s cycle sampled via `applyWalk(walkAnimationPos, walkAnimationSpeed,
+      2.0, 2.5)`) is reproduced on the COLORED path — the `root` channel rolls the whole
+      model, the four legs swing (rotation + position), the head pitch ADDS onto the
+      clamped look, the two ears flap, and the tail swishes (a still camel samples
+      amplitude 0, collapsing to the bind pose plus the head look); the TEXTURED walk and
+      the baby walk (`CamelBabyAnimation.CAMEL_BABY_WALK`, a different cycle/topology)
+      stay deferred. Saddle equipment layers, the `CamelModel.setupAnim`
+      sit/standup/idle/dash keyframe animations and the `jumpCooldown` extra-pitch head
+      boost (the dash/idle/sit animations need their un-projected `AnimationState`s and
+      the jump-cooldown state), and lighting remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader

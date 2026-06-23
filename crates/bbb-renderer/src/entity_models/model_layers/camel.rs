@@ -1,3 +1,7 @@
+use super::super::keyframe::{
+    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
+    BoneAnimation, Keyframe, KeyframeInterpolation,
+};
 use super::{
     ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, CAMEL_TAN,
 };
@@ -641,3 +645,182 @@ pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_PARTS: [TexturedModelPart
         children: &[],
     },
 ];
+
+// ----- `CamelAnimation.CAMEL_WALK` (the adult walk; length 1.5s, looping) -----
+//
+// `CamelModel.setupAnim` samples it via `applyWalk(walkAnimationPos, walkAnimationSpeed, 2.0, 2.5)`.
+// The `root` channel rolls the whole model (a CatmullRom z-sway applied at the entity root), the four
+// legs swing (rotation + position), the `head` adds a small pitch onto the clamped look, the two ears
+// flap (z-roll), and the `tail` swishes. All keyframes are CatmullRom except the two `left_hind_leg`
+// closing keyframes. The baby (`CamelBabyAnimation.CAMEL_BABY_WALK`, a different cycle/topology) stays
+// deferred. The adult `head`/leg/ear/tail bone names line up with the colored and textured layers.
+
+const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
+const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
+
+const CAMEL_WALK_ROOT_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 2.5), CATMULLROM),
+    keyframe(1.0, degree_vec(0.0, 0.0, -2.5), CATMULLROM),
+    keyframe(1.5, degree_vec(0.0, 0.0, 2.5), CATMULLROM),
+];
+const CAMEL_WALK_HEAD_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(-2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.75, degree_vec(2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.125, degree_vec(-2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(2.5, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_RIGHT_FRONT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.75, degree_vec(-22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_RIGHT_FRONT_LEG_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4583, pos_vec(0.0, 4.0, 0.0), CATMULLROM),
+    keyframe(0.75, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_LEFT_FRONT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(-22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.75, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(-22.5, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_LEFT_FRONT_LEG_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.75, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.2083, pos_vec(0.0, 4.0, 0.0), CATMULLROM),
+    keyframe(1.5, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_LEFT_HIND_LEG_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(-20.4, 0.0, 0.0), CATMULLROM),
+    keyframe(0.75, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.375, degree_vec(-22.5, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(-20.4, 0.0, 0.0), LINEAR),
+];
+const CAMEL_WALK_LEFT_HIND_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, -0.21, 0.0), CATMULLROM),
+    keyframe(0.75, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0833, pos_vec(0.0, 4.0, 0.0), CATMULLROM),
+    keyframe(1.375, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, -0.21, 0.0), LINEAR),
+];
+const CAMEL_WALK_RIGHT_HIND_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.625, degree_vec(-22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_RIGHT_HIND_LEG_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, pos_vec(0.0, 4.0, 0.0), CATMULLROM),
+    keyframe(0.625, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_LEFT_EAR_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+    keyframe(0.75, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.125, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+    keyframe(1.5, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_RIGHT_EAR_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+    keyframe(0.75, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.125, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+    keyframe(1.5, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_WALK_TAIL_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(15.94102, -8.42106, 20.94102), CATMULLROM),
+    keyframe(0.75, degree_vec(15.94102, 8.42106, -20.94102), CATMULLROM),
+    keyframe(1.5, degree_vec(15.94102, -8.42106, 20.94102), CATMULLROM),
+];
+
+const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes,
+    }
+}
+const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Position,
+        keyframes,
+    }
+}
+
+const CAMEL_WALK_ROOT_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_WALK_ROOT_ROT)];
+const CAMEL_WALK_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_WALK_HEAD_ROT)];
+const CAMEL_WALK_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_WALK_RIGHT_FRONT_LEG_ROT),
+    pos(&CAMEL_WALK_RIGHT_FRONT_LEG_POS),
+];
+const CAMEL_WALK_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_WALK_LEFT_FRONT_LEG_ROT),
+    pos(&CAMEL_WALK_LEFT_FRONT_LEG_POS),
+];
+const CAMEL_WALK_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_WALK_LEFT_HIND_LEG_ROT),
+    pos(&CAMEL_WALK_LEFT_HIND_LEG_POS),
+];
+const CAMEL_WALK_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_WALK_RIGHT_HIND_LEG_ROT),
+    pos(&CAMEL_WALK_RIGHT_HIND_LEG_POS),
+];
+const CAMEL_WALK_LEFT_EAR_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_WALK_LEFT_EAR_ROT)];
+const CAMEL_WALK_RIGHT_EAR_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_WALK_RIGHT_EAR_ROT)];
+const CAMEL_WALK_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_WALK_TAIL_ROT)];
+
+const CAMEL_WALK_BONES: [BoneAnimation; 9] = [
+    BoneAnimation {
+        bone: "root",
+        channels: &CAMEL_WALK_ROOT_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &CAMEL_WALK_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &CAMEL_WALK_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &CAMEL_WALK_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &CAMEL_WALK_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &CAMEL_WALK_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_ear",
+        channels: &CAMEL_WALK_LEFT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_ear",
+        channels: &CAMEL_WALK_RIGHT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &CAMEL_WALK_TAIL_CHANNELS,
+    },
+];
+
+/// Vanilla `CamelAnimation.CAMEL_WALK`: the looping 1.5s adult walk cycle, sampled by
+/// `CamelModel.setupAnim` via `applyWalk(walkAnimationPos, walkAnimationSpeed, 2.0, 2.5)`. The `root`
+/// channel rolls the whole model, the `head` pitch ADDS onto the clamped look, and the legs / ears /
+/// tail swing. Mostly CatmullRom (the two closing `left_hind_leg` keyframes are Linear).
+pub(in crate::entity_models) const CAMEL_WALK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 1.5,
+    looping: true,
+    bones: &CAMEL_WALK_BONES,
+};
+
+/// Vanilla `CamelModel.applyWalk(..., 2.0F, 2.5F)` factors (`MAX_WALK_ANIMATION_SPEED` drives the
+/// sample time, `WALK_ANIMATION_SCALE_FACTOR` the amplitude).
+pub(in crate::entity_models) const CAMEL_WALK_SPEED_FACTOR: f32 = 2.0;
+pub(in crate::entity_models) const CAMEL_WALK_SCALE_FACTOR: f32 = 2.5;

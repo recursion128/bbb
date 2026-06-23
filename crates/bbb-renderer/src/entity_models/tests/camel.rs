@@ -417,6 +417,88 @@ fn camel_head_look_turns_only_the_nested_head_subtree() {
 }
 
 #[test]
+fn camel_walk_animation_matches_vanilla_definition() {
+    // Vanilla `CamelAnimation.CAMEL_WALK`: 1.5 s looping, animating the root (whole-model roll), the
+    // head, the four legs (rotation + position), the two ears, and the tail — nine bones, 51 keyframes.
+    assert_eq!(CAMEL_WALK.length_seconds, 1.5);
+    assert!(CAMEL_WALK.looping);
+    assert_eq!(CAMEL_WALK.bones.len(), 9);
+    let keyframes: usize = CAMEL_WALK
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 51);
+
+    // The root rolls the whole model: `degreeVec(0, 0, 2.5)` at t=0.
+    let (_, root_rot) = sample_bone_offsets(&CAMEL_WALK, "root", 0.0, 1.0);
+    assert!((root_rot[2] - 2.5_f32.to_radians()).abs() < 1.0e-4);
+
+    // The front legs start a half-cycle apart: right `+22.5°`, left `-22.5°` at t=0.
+    let (_, rfl_rot) = sample_bone_offsets(&CAMEL_WALK, "right_front_leg", 0.0, 1.0);
+    let (_, lfl_rot) = sample_bone_offsets(&CAMEL_WALK, "left_front_leg", 0.0, 1.0);
+    assert!((rfl_rot[0] - 22.5_f32.to_radians()).abs() < 1.0e-4);
+    assert!((lfl_rot[0] - (-22.5_f32).to_radians()).abs() < 1.0e-4);
+}
+
+#[test]
+fn camel_walk_moves_the_whole_model_and_composes_with_the_look() {
+    // A still adult camel (walk speed 0) samples the cycle at amplitude 0, collapsing to the bind pose;
+    // a walking camel samples CAMEL_WALK — and the `root` roll turns the entire model, so the body and
+    // legs move too. The vertex count is preserved.
+    let still = entity_model_mesh(&[EntityModelInstance::camel(
+        720,
+        [0.0, 64.0, 0.0],
+        0.0,
+        CamelModelFamily::Camel,
+        false,
+    )]);
+    let walking = entity_model_mesh(&[EntityModelInstance::camel(
+        721,
+        [0.0, 64.0, 0.0],
+        0.0,
+        CamelModelFamily::Camel,
+        false,
+    )
+    .with_walk_animation(5.0, 1.0)]);
+    assert_eq!(still.vertices.len(), walking.vertices.len());
+    assert_ne!(
+        still.vertices, walking.vertices,
+        "the walking camel rolls its whole body and swings its legs"
+    );
+
+    // The head walk pitch ADDS onto the clamped look, so a walking + looking camel differs from one
+    // that only walks ONLY across the nested head subtree [72, 192); the body, tail, and legs share the
+    // same walk (they don't depend on the head look).
+    let head = ADULT_CAMEL_HEAD_VERTEX_RANGE;
+    let walking_looking = entity_model_mesh(&[EntityModelInstance::camel(
+        722,
+        [0.0, 64.0, 0.0],
+        0.0,
+        CamelModelFamily::Camel,
+        false,
+    )
+    .with_walk_animation(5.0, 1.0)
+    .with_head_look(40.0, -20.0)]);
+    assert_ne!(
+        walking.vertices[head.clone()],
+        walking_looking.vertices[head.clone()],
+        "the look composes onto the walking head"
+    );
+    assert_eq!(
+        walking.vertices[..head.start],
+        walking_looking.vertices[..head.start],
+        "the body/hump/tail share the same walk regardless of the look"
+    );
+    assert_eq!(
+        walking.vertices[head.end..],
+        walking_looking.vertices[head.end..],
+        "the legs share the same walk regardless of the look"
+    );
+}
+
+#[test]
 fn camel_head_look_clamps_to_vanilla_range() {
     // Vanilla `CamelModel.applyHeadRotation`: `yRot = clamp(yRot, -30, 30)`,
     // `xRot = clamp(xRot, -25, 45)`, in degrees. Inside the range the angle passes through.

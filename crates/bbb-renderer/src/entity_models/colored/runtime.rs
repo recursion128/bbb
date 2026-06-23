@@ -1573,6 +1573,113 @@ pub(in crate::entity_models::colored) fn emit_model_parts_with_color_and_head_lo
     }
 }
 
+/// Hand-walks the adult camel's colored mesh through [`CAMEL_WALK`], composing the walk onto the
+/// clamped head look. Vanilla `CamelModel.setupAnim` samples the walk via
+/// `applyWalk(walkAnimationPos, walkAnimationSpeed, 2.0, 2.5)`: the `root` channel rolls the whole
+/// model, the four legs swing (rotation + position), the `head` adds a pitch onto the look, the two
+/// ears flap, and the tail swishes. A still camel samples amplitude 0, collapsing to the bind pose
+/// plus the head look. The husk shares the adult mesh, so this serves both families.
+pub(in crate::entity_models::colored) fn emit_camel_adult_walk_colored(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    transform: Mat4,
+    color: [f32; 4],
+    head_yaw: f32,
+    head_pitch: f32,
+) {
+    let (seconds, scale) = keyframe_walk_sample(
+        &CAMEL_WALK,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+        CAMEL_WALK_SPEED_FACTOR,
+        CAMEL_WALK_SCALE_FACTOR,
+    );
+    let animated = |bone: &str, bind: PartPose| {
+        let (position, rotation) = sample_bone_offsets(&CAMEL_WALK, bone, seconds, scale);
+        keyframe_animated_pose(bind, position, rotation)
+    };
+
+    // `root` rolls the whole model: it has no bind offset/rotation, so the z-sway is applied straight
+    // at the entity root transform.
+    let root_bind = PartPose {
+        offset: [0.0, 0.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let root_t = transform * part_pose_transform(animated("root", root_bind));
+
+    // `body` (root child 0) is not animated; it carries the hump, tail, and head.
+    let body = &ADULT_CAMEL_PARTS[0];
+    let body_t = root_t * part_pose_transform(body.pose);
+    for cube in body.cubes {
+        emit_model_cube_with_color(mesh, body_t, *cube, color);
+    }
+
+    // `hump` (body child 0) is not animated.
+    emit_model_part_with_color(mesh, &body.children[0], body_t, color);
+
+    // `tail` (body child 1): the walk swish.
+    let tail = &body.children[1];
+    emit_model_part_with_color(
+        mesh,
+        &ModelPartDesc {
+            pose: animated("tail", tail.pose),
+            ..*tail
+        },
+        body_t,
+        color,
+    );
+
+    // `head` (body child 2): the clamped look (set) plus the walk pitch (added). No head position
+    // channel, so the bind offset is kept.
+    let head = &body.children[2];
+    let (_, head_walk_rot) = sample_bone_offsets(&CAMEL_WALK, "head", seconds, scale);
+    let head_pose = PartPose {
+        offset: head.pose.offset,
+        rotation: [
+            head_pitch.to_radians() + head_walk_rot[0],
+            head_yaw.to_radians() + head_walk_rot[1],
+            head.pose.rotation[2] + head_walk_rot[2],
+        ],
+    };
+    let head_t = body_t * part_pose_transform(head_pose);
+    for cube in head.cubes {
+        emit_model_cube_with_color(mesh, head_t, *cube, color);
+    }
+
+    // The two ears (head children 0/1): the walk z-roll flap.
+    for (index, bone) in [(0, "left_ear"), (1, "right_ear")] {
+        let ear = &head.children[index];
+        emit_model_part_with_color(
+            mesh,
+            &ModelPartDesc {
+                pose: animated(bone, ear.pose),
+                ..*ear
+            },
+            head_t,
+            color,
+        );
+    }
+
+    // The four legs (root children 1..=4): the walk rotation + position.
+    for (index, bone) in [
+        (1, "left_hind_leg"),
+        (2, "right_hind_leg"),
+        (3, "left_front_leg"),
+        (4, "right_front_leg"),
+    ] {
+        let leg = &ADULT_CAMEL_PARTS[index];
+        emit_model_part_with_color(
+            mesh,
+            &ModelPartDesc {
+                pose: animated(bone, leg.pose),
+                ..*leg
+            },
+            root_t,
+            color,
+        );
+    }
+}
+
 fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `CreakingModel` is a nested hierarchy (`root` → upper_body/legs, upper_body →
     // head/body/arms). `setupAnim` sets `head.xRot/yRot` from the plain look, then (while `canMove`)
