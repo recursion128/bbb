@@ -65,6 +65,21 @@ impl ModelCube {
         }
     }
 
+    /// A textured-only cube (an overlay layer with no colored debug variant — the tropical fish
+    /// pattern, the slime outer shell, …): the geometry/UV come from the textured desc and the
+    /// `color` is an unused placeholder because [`ModelPart::render_colored`] is never called for a
+    /// textured-only model.
+    fn from_textured_desc(desc: &TexturedModelCubeDesc) -> Self {
+        Self {
+            min: desc.min,
+            size: desc.size,
+            color: [0.0, 0.0, 0.0, 0.0],
+            uv_size: desc.uv_size,
+            tex: desc.tex,
+            mirror: desc.mirror,
+        }
+    }
+
     fn colored_desc(&self) -> ModelCubeDesc {
         ModelCubeDesc {
             min: self.min,
@@ -215,6 +230,62 @@ impl ModelPart {
                 (
                     INDEX_CHILD_NAMES[index],
                     ModelPart::from_descs(colored_part, textured_part),
+                )
+            })
+            .collect();
+        Self {
+            pose: super::geometry::PART_POSE_ZERO,
+            default_pose: super::geometry::PART_POSE_ZERO,
+            cubes: Vec::new(),
+            children,
+            visible: true,
+        }
+    }
+
+    /// Builds a textured-only [`ModelPart`] subtree from a [`TexturedModelPartDesc`] tree, for an
+    /// overlay layer that has no colored debug variant (the tropical fish pattern, the slime outer
+    /// shell, …). Each cube's colored color is an unused placeholder; only [`ModelPart::render_textured`]
+    /// is ever called on the result. Children are addressed positionally (named by index).
+    pub(in crate::entity_models) fn from_textured_desc(textured: &TexturedModelPartDesc) -> Self {
+        let cubes = textured
+            .cubes
+            .iter()
+            .map(ModelCube::from_textured_desc)
+            .collect();
+        let children = textured
+            .children
+            .iter()
+            .enumerate()
+            .map(|(index, child)| {
+                (
+                    INDEX_CHILD_NAMES[index],
+                    ModelPart::from_textured_desc(child),
+                )
+            })
+            .collect();
+        Self {
+            pose: textured.pose,
+            default_pose: textured.pose,
+            cubes,
+            children,
+            visible: true,
+        }
+    }
+
+    /// Builds a textured-only root [`ModelPart`] over a flat list of sibling [`TexturedModelPartDesc`]
+    /// trees — the textured counterpart of [`ModelPart::root_from_descs`] for an overlay layer with no
+    /// colored variant. The siblings hang off a synthetic identity root, addressed positionally via
+    /// [`ModelPart::child_at_mut`].
+    pub(in crate::entity_models) fn root_from_textured_descs(
+        textured: &[TexturedModelPartDesc],
+    ) -> Self {
+        let children = textured
+            .iter()
+            .enumerate()
+            .map(|(index, part)| {
+                (
+                    INDEX_CHILD_NAMES[index],
+                    ModelPart::from_textured_desc(part),
                 )
             })
             .collect();

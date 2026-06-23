@@ -34,14 +34,14 @@ use super::{
         pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, skeleton_head_part_index,
         strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
         strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
-        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
-        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, BlazeModel,
-        CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel,
-        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
-        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PigModel, PiglinModel,
-        PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel,
-        SilverfishModel, SkeletonModel, SnowGolemModel, SpiderModel, SquidModel, VillagerModel,
+        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, turtle_leg_rotation,
+        vex_left_wing_y_rot, vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles,
+        wolf_tail_part_index, wolf_tail_swing_pose, BlazeModel, CamelWalkLayout, ChickenModel,
+        CodModel, CowModel, CreeperModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
+        HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
+        MinecartModel, PigModel, PiglinModel, PlayerModel, PolarBearModel, RavagerModel,
+        SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SnowGolemModel,
+        SpiderModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
         WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
         ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
         ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
@@ -93,8 +93,8 @@ use super::{
         STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE, STRIDER_TEXTURED_LEFT_TOP_BRISTLE,
         STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE, STRIDER_TEXTURED_RIGHT_LEG,
         STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE, STRIDER_TEXTURED_RIGHT_TOP_BRISTLE,
-        STRIDER_TEXTURE_REF, TROPICAL_FISH_TAIL_PART_INDEX, TURTLE_BABY_BODY_POSE,
-        TURTLE_BABY_HEAD_POSE, TURTLE_BABY_LEFT_FRONT_LEG_POSE, TURTLE_BABY_LEFT_HIND_LEG_POSE,
+        STRIDER_TEXTURE_REF, TURTLE_BABY_BODY_POSE, TURTLE_BABY_HEAD_POSE,
+        TURTLE_BABY_LEFT_FRONT_LEG_POSE, TURTLE_BABY_LEFT_HIND_LEG_POSE,
         TURTLE_BABY_RIGHT_FRONT_LEG_POSE, TURTLE_BABY_RIGHT_HIND_LEG_POSE,
         TURTLE_BABY_TEXTURED_BODY, TURTLE_BABY_TEXTURED_HEAD, TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG,
         TURTLE_BABY_TEXTURED_LEFT_HIND_LEG, TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG,
@@ -751,13 +751,13 @@ fn emit_salmon_textured_model(
     }
 }
 
-/// The textured tropical fish base layer plus the `TropicalFishPatternLayer` overlay. The
-/// parts are static apart from the tail, which is swayed by the vanilla
-/// `TropicalFish{Small,Large}Model.setupAnim`; the swim wiggle, out-of-water flop, and
-/// small/large body shape live in [`tropical_fish_model_root_transform`] and the per-shape
-/// pass. The base body is tinted by `getModelTint` = `getBaseColor().getTextureDiffuseColor()`,
-/// and the pattern overlay (the body inflated by `FISH_PATTERN_DEFORMATION`) by
-/// `getPatternColor().getTextureDiffuseColor()`.
+/// The textured tropical fish base layer plus the `TropicalFishPatternLayer` overlay. The unified
+/// [`TropicalFishModel`] (base body) and [`TropicalFishPatternModel`] (the overlay, inflated by
+/// `FISH_PATTERN_DEFORMATION`) trees both run the shared `TropicalFish{Small,Large}Model.setupAnim`
+/// tail sway; the swim wiggle, out-of-water flop, and small/large body shape live in
+/// [`tropical_fish_model_root_transform`]. Each pass routes to the base body (tinted by `getModelTint`
+/// = `getBaseColor().getTextureDiffuseColor()`) or the pattern overlay (tinted by
+/// `getPatternColor().getTextureDiffuseColor()`), in the pre-sorted layer order.
 #[allow(clippy::too_many_arguments)]
 fn emit_tropical_fish_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
@@ -770,14 +770,24 @@ fn emit_tropical_fish_textured_model(
 ) {
     let in_water = instance.render_state.in_water;
     let transform = tropical_fish_model_root_transform(instance, in_water);
-    let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
+    let mut body = TropicalFishModel::new(shape);
+    body.prepare(&instance);
+    let mut overlay = TropicalFishPatternModel::new(shape);
+    overlay.prepare(&instance);
     for pass in tropical_fish_textured_layer_passes(shape, base_color, pattern, pattern_color) {
-        if tail_yrot == 0.0 {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        let root = if pass.kind == layers::EntityModelLayerKind::TropicalFishPattern {
+            overlay.root()
         } else {
-            let mut parts = pass.parts.to_vec();
-            parts[TROPICAL_FISH_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+            body.root()
+        };
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            root.render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }

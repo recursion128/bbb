@@ -9,6 +9,8 @@ use super::{
     TROPICAL_FISH_STRIPEY_PATTERN_TEXTURE_REF, TROPICAL_FISH_SUNSTREAK_PATTERN_TEXTURE_REF,
 };
 use crate::entity_models::catalog::{TropicalFishModelShape, TropicalFishPattern};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 use crate::entity_models::EntityModelTextureRef;
 
 // Vanilla 26.1 `TropicalFishSmallModel.createBodyLayer` (kob-style body, atlas 32×32,
@@ -570,5 +572,97 @@ pub(in crate::entity_models) fn tropical_fish_pattern_texture_ref(
         TropicalFishPattern::Blockfish => TROPICAL_FISH_BLOCKFISH_PATTERN_TEXTURE_REF,
         TropicalFishPattern::Betty => TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
         TropicalFishPattern::Clayfish => TROPICAL_FISH_CLAYFISH_PATTERN_TEXTURE_REF,
+    }
+}
+
+/// Selects the colored and textured base-body const trees for a tropical fish shape: the small (kob)
+/// or large (flopper) body layer, zipped into [`TropicalFishModel`]'s unified tree.
+pub(in crate::entity_models) fn tropical_fish_body_part_trees(
+    shape: TropicalFishModelShape,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    match shape {
+        TropicalFishModelShape::Small => (
+            &TROPICAL_FISH_SMALL_PARTS,
+            &TROPICAL_FISH_SMALL_TEXTURED_PARTS,
+        ),
+        TropicalFishModelShape::Large => (
+            &TROPICAL_FISH_LARGE_PARTS,
+            &TROPICAL_FISH_LARGE_TEXTURED_PARTS,
+        ),
+    }
+}
+
+/// Applies the vanilla `TropicalFish{Small,Large}Model.setupAnim` tail sway to a unified tree: the
+/// tail child's `yRot` is set to [`tropical_fish_tail_yrot`] (absolute, like vanilla); every other
+/// part stays at the bind pose. Shared by the base body and the pattern overlay so the overlay sways
+/// with the body. The body shape, swim wiggle, and out-of-water flop live in the root transform.
+fn apply_tropical_fish_tail_sway(root: &mut ModelPart, instance: &EntityModelInstance) {
+    let in_water = instance.render_state.in_water;
+    let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
+    root.child_at_mut(TROPICAL_FISH_TAIL_PART_INDEX)
+        .pose
+        .rotation[1] = tail_yrot;
+}
+
+/// Mutable tropical fish base-body model, mirroring vanilla `TropicalFishSmallModel` /
+/// `TropicalFishLargeModel`. The unified tree is zipped from the body const trees selected by `shape`
+/// ([`tropical_fish_body_part_trees`]); `setup_anim` runs the shared [`apply_tropical_fish_tail_sway`].
+/// The colored fallback recolors the whole body with the base color's diffuse tint; the textured base
+/// layer renders it tinted by the same color (`getModelTint`).
+pub(in crate::entity_models) struct TropicalFishModel {
+    root: ModelPart,
+}
+
+impl TropicalFishModel {
+    pub(in crate::entity_models) fn new(shape: TropicalFishModelShape) -> Self {
+        let (colored, textured) = tropical_fish_body_part_trees(shape);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+        }
+    }
+}
+
+impl EntityModel for TropicalFishModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_tropical_fish_tail_sway(&mut self.root, instance);
+    }
+}
+
+/// Mutable tropical fish pattern-overlay model, mirroring vanilla `TropicalFishPatternLayer`. The
+/// overlay is the body mesh inflated by `FISH_PATTERN_DEFORMATION`, with no colored debug variant, so
+/// the tree is built textured-only ([`tropical_fish_pattern_textured_parts`]); `setup_anim` runs the
+/// same [`apply_tropical_fish_tail_sway`] so the pattern sways with the body. Rendered only on the
+/// textured path, tinted by the pattern color's diffuse tint.
+pub(in crate::entity_models) struct TropicalFishPatternModel {
+    root: ModelPart,
+}
+
+impl TropicalFishPatternModel {
+    pub(in crate::entity_models) fn new(shape: TropicalFishModelShape) -> Self {
+        Self {
+            root: ModelPart::root_from_textured_descs(tropical_fish_pattern_textured_parts(shape)),
+        }
+    }
+}
+
+impl EntityModel for TropicalFishPatternModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_tropical_fish_tail_sway(&mut self.root, instance);
     }
 }

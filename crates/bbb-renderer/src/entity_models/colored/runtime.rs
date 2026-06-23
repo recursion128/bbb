@@ -2349,17 +2349,17 @@ fn emit_tropical_fish_model(
 ) {
     // Vanilla `TropicalFish{Small,Large}Model.setupAnim` sways only the tail (`yRot`); the
     // swim wiggle and out-of-water flop live in `tropical_fish_model_root_transform`. The
-    // kob-style small body and flopper-style large body differ only in geometry. The body is
-    // tinted by the vanilla `getModelTint` = `getBaseColor().getTextureDiffuseColor()`.
+    // kob-style small body and flopper-style large body differ only in geometry. The colored
+    // fallback recolors the whole body with the vanilla `getModelTint` =
+    // `getBaseColor().getTextureDiffuseColor()` (the pattern overlay is textured-only).
     let in_water = instance.render_state.in_water;
     let root = tropical_fish_model_root_transform(instance, in_water);
-    let tail_yrot = tropical_fish_tail_yrot(instance.render_state.age_in_ticks, in_water);
-    let mut parts = match shape {
-        TropicalFishModelShape::Small => TROPICAL_FISH_SMALL_PARTS.to_vec(),
-        TropicalFishModelShape::Large => TROPICAL_FISH_LARGE_PARTS.to_vec(),
-    };
-    parts[TROPICAL_FISH_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
-    emit_model_parts_with_color(mesh, &parts, root, base_color.texture_diffuse_color());
+    TropicalFishModel::new(shape).prepare_and_render_with_color(
+        mesh,
+        &instance,
+        root,
+        base_color.texture_diffuse_color(),
+    );
 }
 
 fn emit_squid_model(
