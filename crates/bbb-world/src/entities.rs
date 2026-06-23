@@ -456,6 +456,11 @@ pub struct EntityModelSourceState {
     /// (closed/bind pose) for every non-shulker entity and for a shut shulker.
     #[serde(default)]
     pub shulker_peek: f32,
+    /// Vanilla `WardenRenderState.tendrilAnimation` (`Warden.getTendrilAnimation(partialTick)`):
+    /// the lerped tendril pulse (`0..=1`) that drives `WardenModel.animateTendrils`. `0.0` for
+    /// every non-warden entity and for a warden whose tendrils are at rest.
+    #[serde(default)]
+    pub tendril_animation: f32,
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that sways the model's legs/arms. `0.0` for a standing entity, every

@@ -86,6 +86,11 @@ pub struct EntityRenderState {
     /// peek)·π)·8` (plus an `ageInTicks` bob above `0.5`) and a `lid.yRot` twist above `0.3`.
     /// `0.0` (closed/bind pose, `lid.y = 24`) for every non-shulker and a shut shulker.
     pub shulker_peek: f32,
+    /// Vanilla `WardenRenderState.tendrilAnimation` (`Warden.getTendrilAnimation`, lerped): the
+    /// `0..=1` tendril pulse that `WardenModel.animateTendrils` swings the two antennae by —
+    /// `leftTendril.xRot = tendrilAnimation · cos(ageInTicks · 2.25) · π · 0.1`, the right negated.
+    /// `0.0` (bind pose, antennae still) for every non-warden and a warden at rest.
+    pub tendril_animation: f32,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
@@ -251,6 +256,7 @@ impl EntityRenderState {
             white_overlay_progress: 0.0,
             creeper_swelling: 0.0,
             shulker_peek: 0.0,
+            tendril_animation: 0.0,
             auto_spin_age_ticks: None,
             upside_down_height: None,
             sleeping: None,
@@ -367,6 +373,11 @@ impl EntityModelInstance {
 
     pub fn with_shulker_peek(mut self, shulker_peek: f32) -> Self {
         self.render_state.shulker_peek = shulker_peek;
+        self
+    }
+
+    pub fn with_tendril_animation(mut self, tendril_animation: f32) -> Self {
+        self.render_state.tendril_animation = tendril_animation;
         self
     }
 
@@ -1369,6 +1380,7 @@ mod tests {
                 white_overlay_progress: 0.0,
                 creeper_swelling: 0.0,
                 shulker_peek: 0.0,
+                tendril_animation: 0.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,

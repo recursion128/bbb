@@ -236,3 +236,45 @@ fn warden_walk_swings_the_legs_and_arms_off_walk_state() {
         "the legs swing with the walk"
     );
 }
+
+#[test]
+fn warden_tendril_x_rot_matches_vanilla_animate_tendrils() {
+    // Vanilla `WardenModel.animateTendrils`:
+    //   tendrilXRot = tendrilAnimation · (float)(cos(ageInTicks · 2.25) · π · 0.1)
+    // The `cos·π·0.1` factor is evaluated in double precision before the `(float)` cast.
+    let age = 7.0_f32;
+    let tendril = 0.6_f32;
+    let expected = tendril * ((age as f64 * 2.25).cos() * std::f64::consts::PI * 0.1) as f32;
+    assert!((warden_tendril_x_rot(tendril, age) - expected).abs() < 1.0e-7);
+    // A resting warden (`tendrilAnimation = 0`) adds no sway, whatever the age.
+    assert_eq!(warden_tendril_x_rot(0.0, age), 0.0);
+}
+
+#[test]
+fn warden_tendrils_sway_with_the_tendril_pulse() {
+    // Vanilla `WardenModel.animateTendrils` swings the two head tendrils' `xRot` by
+    // `tendrilAnimation·cos(ageInTicks·2.25)·π·0.1` (left `+`, right `−`). The tendrils are the
+    // head's two children, vertices `[96, 144)`; the head box `[72, 96)`, the body/ribcages
+    // `[0, 72)`, and the arms/legs `[144, 240)` hold when the look/idle/walk are unchanged. A
+    // resting warden (`tendrilAnimation = 0`) leaves the tendrils at bind.
+    let rest = EntityModelInstance::warden(930, [0.0, 64.0, 0.0], 0.0);
+    let pulsing = rest.with_tendril_animation(0.7);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let pulsing_mesh = entity_model_mesh(&[pulsing]);
+    assert_eq!(rest_mesh.vertices.len(), pulsing_mesh.vertices.len());
+    assert_ne!(
+        rest_mesh.vertices[96..144],
+        pulsing_mesh.vertices[96..144],
+        "the two tendrils sway with the pulse"
+    );
+    assert_eq!(
+        rest_mesh.vertices[..96],
+        pulsing_mesh.vertices[..96],
+        "the body, ribcages, and head box hold"
+    );
+    assert_eq!(
+        rest_mesh.vertices[144..],
+        pulsing_mesh.vertices[144..],
+        "the arms and legs hold"
+    );
+}

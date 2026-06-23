@@ -609,6 +609,9 @@ impl EntityStore {
             has_red_overlay: client_animations.animations.has_red_overlay(),
             death_time: client_animations.animations.death_time(partial_ticks),
             creeper_swelling: client_animations.animations.creeper_swelling(partial_ticks),
+            tendril_animation: client_animations
+                .animations
+                .warden_tendril_animation(partial_ticks),
             walk_animation_position: client_animations
                 .animations
                 .walk_animation_position(partial_ticks),

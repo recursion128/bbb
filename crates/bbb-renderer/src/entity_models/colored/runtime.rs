@@ -1804,15 +1804,16 @@ fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 
 fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `WardenModel` is a nested hierarchy (`bone` → body/legs, body → ribcages/head/arms,
-    // head → tendrils). Three non-keyframe `setupAnim` motions are reproduced: the head look
+    // head → tendrils). Four non-keyframe `setupAnim` motions are reproduced: the head look
     // (`animateHeadLookTarget` sets `head.xRot/yRot` from the look angles, so the head and its
     // tendrils track the target), the always-on idle wobble (`animateIdlePose` rolls the body
-    // `±0.025` and the head `±0.06` off `ageInTicks`), and the walk (`animateWalk` swings the head,
-    // body, two legs, and two arms off `walkAnimationPos/Speed`). The walk offsets ADD onto the
-    // look/idle composition — addition is commutative, so applying them after the look/idle pass
-    // through `warden_add_x_z_rot` preserves the vanilla order. The tendril sway (`animateTendrils`,
-    // gated by the un-projected `tendrilAnimation`) and the attack / sonic-boom / digging / emerge /
-    // roar / sniff keyframe animations stay deferred. Warden uses `LivingEntityRenderer.setupRotations`.
+    // `±0.025` and the head `±0.06` off `ageInTicks`), the walk (`animateWalk` swings the head,
+    // body, two legs, and two arms off `walkAnimationPos/Speed`), and the tendril sway
+    // (`animateTendrils` swings the two head tendrils off the projected `tendrilAnimation` pulse and
+    // `ageInTicks`). The walk offsets ADD onto the look/idle composition — addition is commutative,
+    // so applying them after the look/idle pass through `warden_add_x_z_rot` preserves the vanilla
+    // order. The attack / sonic-boom / digging / emerge / roar / sniff keyframe animations stay
+    // deferred. Warden uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
@@ -1838,14 +1839,38 @@ fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
     for cube in body.cubes {
         emit_model_cube(mesh, body_t, *cube);
     }
+    let tendril_x = warden_tendril_x_rot(instance.render_state.tendril_animation, age);
     for (index, child) in body.children.iter().enumerate() {
-        let pose = if index == WARDEN_HEAD_BODY_CHILD_INDEX {
-            warden_add_x_z_rot(
+        if index == WARDEN_HEAD_BODY_CHILD_INDEX {
+            // The head takes the look + idle + walk roll; its two tendrils then sway their `xRot`
+            // off the tendril pulse (`leftTendril += tendrilXRot`, `rightTendril -= tendrilXRot`),
+            // so the head subtree is hand-walked to re-pose the tendrils under the moved head.
+            let head_pose = warden_add_x_z_rot(
                 warden_head_pose(child.pose, head_yaw, head_pitch, age),
                 walk.head_x_rot,
                 walk.head_z_rot,
-            )
-        } else if index == WARDEN_RIGHT_ARM_BODY_CHILD_INDEX {
+            );
+            let head_t = body_t * part_pose_transform(head_pose);
+            for cube in child.cubes {
+                emit_model_cube(mesh, head_t, *cube);
+            }
+            for (tendril_index, tendril) in child.children.iter().enumerate() {
+                let x_rot = if tendril_index == WARDEN_RIGHT_TENDRIL_HEAD_CHILD_INDEX {
+                    -tendril_x
+                } else if tendril_index == WARDEN_LEFT_TENDRIL_HEAD_CHILD_INDEX {
+                    tendril_x
+                } else {
+                    0.0
+                };
+                let tendril_posed = ModelPartDesc {
+                    pose: warden_add_x_z_rot(tendril.pose, x_rot, 0.0),
+                    ..*tendril
+                };
+                emit_model_part(mesh, &tendril_posed, head_t);
+            }
+            continue;
+        }
+        let pose = if index == WARDEN_RIGHT_ARM_BODY_CHILD_INDEX {
             warden_add_x_z_rot(child.pose, walk.right_arm_x_rot, 0.0)
         } else if index == WARDEN_LEFT_ARM_BODY_CHILD_INDEX {
             warden_add_x_z_rot(child.pose, walk.left_arm_x_rot, 0.0)

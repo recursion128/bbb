@@ -14,6 +14,7 @@ const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
 const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
+const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
 /// Vanilla `FlyingAnimal` implementors (`Bee`, `Parrot`): their
 /// `LivingEntity.calculateEntityAnimation` measures the full 3-D travel distance
 /// (`calculateEntityAnimation(this instanceof FlyingAnimal)`), so the limb-swing
@@ -57,6 +58,12 @@ const SHEEP_EAT_ANIMATION_TICKS: i32 = 40;
 /// Vanilla `Sheep.handleEntityEvent` triggers the eat-grass animation on event
 /// id `10` (`EntityEvent.EAT_GRASS`).
 const SHEEP_EAT_GRASS_EVENT_ID: i8 = 10;
+/// Vanilla `Warden`: the client decrements `tendrilAnimation` from `10` toward
+/// `0` each tick; `getTendrilAnimation` divides the lerped value by `10`.
+const WARDEN_TENDRIL_ANIMATION_TICKS: i32 = 10;
+/// Vanilla `Warden.handleEntityEvent` resets `tendrilAnimation` to `10` on event
+/// id `61` (a received vibration signal).
+const WARDEN_TENDRIL_EVENT_ID: i8 = 61;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -76,6 +83,8 @@ pub struct EntityClientAnimationState {
     pub death: Option<DeathAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creeper_swell: Option<CreeperSwellAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warden_tendril: Option<WardenTendrilAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
 }
@@ -136,6 +145,20 @@ pub struct ShulkerPeekAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SheepEatAnimationState {
     pub eat_animation_tick: i32,
+}
+
+/// Canonical client-side warden tendril animation, mirroring vanilla
+/// `Warden.tendrilAnimation`/`tendrilAnimationO`. Entity event `61` resets
+/// `current` to [`WARDEN_TENDRIL_ANIMATION_TICKS`]; each client tick saves the
+/// previous value and decrements `current` toward `0`. `getTendrilAnimation`
+/// lerps the pair and divides by `10`, driving the renderer
+/// `WardenModel.animateTendrils` antenna sway.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WardenTendrilAnimationState {
+    /// Vanilla `Warden.tendrilAnimationO`.
+    pub previous: i32,
+    /// Vanilla `Warden.tendrilAnimation`.
+    pub current: i32,
 }
 
 /// Canonical client-side limb-swing accumulator, mirroring vanilla
@@ -323,6 +346,30 @@ impl SheepEatAnimationState {
     }
 }
 
+impl WardenTendrilAnimationState {
+    /// Vanilla `Warden.tick` client branch: `tendrilAnimationO = tendrilAnimation;
+    /// if (tendrilAnimation > 0) tendrilAnimation--`.
+    fn advance_client_tick(&mut self) {
+        self.previous = self.current;
+        if self.current > 0 {
+            self.current -= 1;
+        }
+    }
+
+    /// Whether the tendril pulse has fully settled at rest so the state can be
+    /// dropped (both the lerp endpoints are back to zero).
+    fn is_settled(&self) -> bool {
+        self.previous == 0 && self.current == 0
+    }
+
+    /// Vanilla `Warden.getTendrilAnimation(partialTick)`:
+    /// `lerp(partialTick, tendrilAnimationO, tendrilAnimation) / 10`.
+    fn tendril_animation(self, partial_tick: f32) -> f32 {
+        let lerped = self.previous as f32 + partial_tick * (self.current - self.previous) as f32;
+        lerped / WARDEN_TENDRIL_ANIMATION_TICKS as f32
+    }
+}
+
 impl CreeperSwellAnimationState {
     fn set_swell_dir(&mut self, swell_dir: i32) {
         self.swell_dir = swell_dir;
@@ -458,6 +505,18 @@ impl EntityClientAnimationState {
             self.sheep_eat = Some(SheepEatAnimationState {
                 eat_animation_tick: SHEEP_EAT_ANIMATION_TICKS,
             });
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
+            && event_id == WARDEN_TENDRIL_EVENT_ID
+        {
+            // Vanilla `Warden.handleEntityEvent(61)`: `tendrilAnimation = 10`. Only
+            // `tendrilAnimation` (`current`) is set; `tendrilAnimationO` (`previous`)
+            // is untouched, so the lerp fades in from the prior frame.
+            self.warden_tendril
+                .get_or_insert(WardenTendrilAnimationState {
+                    previous: 0,
+                    current: 0,
+                })
+                .current = WARDEN_TENDRIL_ANIMATION_TICKS;
         }
     }
 
@@ -465,6 +524,14 @@ impl EntityClientAnimationState {
     /// projection. Returns `0` when the sheep is not currently eating.
     pub fn sheep_eat_animation_tick(&self) -> i32 {
         self.sheep_eat.map_or(0, |state| state.eat_animation_tick)
+    }
+
+    /// Vanilla `Warden.getTendrilAnimation(partialTick)`, exposed for the renderer
+    /// `WardenModel.animateTendrils` sway. Returns `0.0` when the entity is not a
+    /// warden with an active tendril pulse.
+    pub fn warden_tendril_animation(&self, partial_tick: f32) -> f32 {
+        self.warden_tendril
+            .map_or(0.0, |state| state.tendril_animation(partial_tick))
     }
 
     /// Vanilla `Creeper.getSwelling(partialTick)`, exposed for the renderer white
@@ -584,6 +651,14 @@ impl EntityClientAnimationState {
             VANILLA_ENTITY_TYPE_SHULKER_ID => {
                 if let Some(peek) = self.shulker_peek.as_mut() {
                     peek.advance_client_tick();
+                }
+            }
+            VANILLA_ENTITY_TYPE_WARDEN_ID => {
+                if let Some(tendril) = self.warden_tendril.as_mut() {
+                    tendril.advance_client_tick();
+                    if tendril.is_settled() {
+                        self.warden_tendril = None;
+                    }
                 }
             }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => self

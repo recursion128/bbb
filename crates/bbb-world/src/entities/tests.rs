@@ -5384,6 +5384,68 @@ fn sheep_eat_grass_event_drives_client_animation_tick() {
 }
 
 #[test]
+fn warden_tendril_event_drives_client_animation_pulse() {
+    const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let tendril = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .tendril_animation
+    };
+
+    // A warden at rest reports no tendril pulse.
+    assert_eq!(tendril(&store, 80, 1.0), 0.0);
+
+    // Vanilla Warden.handleEntityEvent: event 61 resets tendrilAnimation to 10. Vanilla
+    // getTendrilAnimation lerps (tendrilAnimationO, tendrilAnimation) / 10, so right after the
+    // event the lerp fades from the previous 0 (partialTick 0) to the new 10 (partialTick 1).
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 80,
+        event_id: 61,
+    }));
+    assert!((tendril(&store, 80, 0.0) - 0.0).abs() < 1.0e-6);
+    assert!((tendril(&store, 80, 0.5) - 0.5).abs() < 1.0e-6);
+    assert!((tendril(&store, 80, 1.0) - 1.0).abs() < 1.0e-6);
+
+    // Vanilla Warden.tick decrements tendrilAnimation once per client tick (lerp endpoint = current).
+    store.advance_entity_client_animations(1);
+    assert!((tendril(&store, 80, 1.0) - 0.9).abs() < 1.0e-6);
+    store.advance_entity_client_animations(9);
+    assert!((tendril(&store, 80, 1.0) - 0.0).abs() < 1.0e-6);
+    // It settles at 0 and stays there.
+    store.advance_entity_client_animations(5);
+    assert!((tendril(&store, 80, 1.0) - 0.0).abs() < 1.0e-6);
+
+    // Only event 61 starts the pulse; other warden events do not.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 80,
+        event_id: 4,
+    }));
+    assert_eq!(tendril(&store, 80, 1.0), 0.0);
+
+    // Event 61 on a non-warden entity never starts the tendril pulse.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 81,
+        event_id: 61,
+    }));
+    assert_eq!(tendril(&store, 81, 1.0), 0.0);
+}
+
+#[test]
 fn probes_entity_status_from_world_store() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity(123));

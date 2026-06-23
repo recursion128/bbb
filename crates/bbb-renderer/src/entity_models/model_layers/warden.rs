@@ -5,12 +5,13 @@ use super::{
 
 // Vanilla 26.1 `WardenModel.createBodyLayer` (atlas 128×128). The mesh root holds one `bone` part
 // at `offset(0, 24, 0)` parenting the body and the two legs; `body` parents the two ribcage
-// planes, the head (which parents the two tendril planes), and the two arms. Three non-keyframe
+// planes, the head (which parents the two tendril planes), and the two arms. Four non-keyframe
 // `WardenModel.setupAnim` motions are reproduced ([`warden_head_pose`] / [`warden_idle_body_pose`] /
-// [`warden_walk_pose`]): the head look (`animateHeadLookTarget`), the always-on idle wobble
-// (`animateIdlePose`), and the walk (`animateWalk`, which swings the head, body, legs, and arms off
-// `walkAnimationPos/Speed` and composes additively onto the look/idle pose via
-// [`warden_add_x_z_rot`]). The tendril sway (`animateTendrils`) and the attack / sonic-boom /
+// [`warden_walk_pose`] / [`warden_tendril_x_rot`]): the head look (`animateHeadLookTarget`), the
+// always-on idle wobble (`animateIdlePose`), the walk (`animateWalk`, which swings the head, body,
+// legs, and arms off `walkAnimationPos/Speed` and composes additively onto the look/idle pose via
+// [`warden_add_x_z_rot`]), and the tendril sway (`animateTendrils`, which swings the two head
+// tendrils off the projected `tendrilAnimation` pulse and `ageInTicks`). The attack / sonic-boom /
 // digging / emerge / roar / sniff keyframe animations stay deferred. The four emissive overlay
 // layers (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed path are deferred.
 
@@ -89,6 +90,12 @@ pub(in crate::entity_models) const WARDEN_LEFT_LEG_BONE_CHILD_INDEX: usize = 2;
 /// (`x = 13`).
 pub(in crate::entity_models) const WARDEN_RIGHT_ARM_BODY_CHILD_INDEX: usize = 3;
 pub(in crate::entity_models) const WARDEN_LEFT_ARM_BODY_CHILD_INDEX: usize = 4;
+
+/// The two tendrils hang off the `head`; `animateTendrils` sways each tendril's `xRot`. Vanilla
+/// order (`createBodyLayer`): right tendril (`x = -8`) then left tendril (`x = 8`). Vanilla sets
+/// `leftTendril.xRot = +tendrilXRot`, `rightTendril.xRot = -tendrilXRot`.
+pub(in crate::entity_models) const WARDEN_RIGHT_TENDRIL_HEAD_CHILD_INDEX: usize = 0;
+pub(in crate::entity_models) const WARDEN_LEFT_TENDRIL_HEAD_CHILD_INDEX: usize = 1;
 
 /// Vanilla `WardenModel.animateIdlePose` body roll: with `s = ageInTicks·0.1`, the body adds
 /// `xRot += 0.025·cos(s)` and `zRot += 0.025·sin(s)` onto its bind pose. Always on (no gating
@@ -187,4 +194,18 @@ pub(in crate::entity_models) fn warden_add_x_z_rot(
             base.rotation[2] + z_rot,
         ],
     }
+}
+
+/// Vanilla `WardenModel.animateTendrils`: the magnitude of the tendril `xRot` sway,
+/// `tendrilXRot = tendrilAnimation · cos(ageInTicks · 2.25) · π · 0.1`. The left tendril takes
+/// `+tendrilXRot` and the right takes `-tendrilXRot`. `tendrilAnimation` is the projected `0..=1`
+/// pulse (`Warden.getTendrilAnimation`), so a resting warden (`tendrilAnimation = 0`) holds its
+/// antennae at bind. Vanilla computes the `cos·π·0.1` factor in double precision before the
+/// `(float)` cast, which this mirrors.
+pub(in crate::entity_models) fn warden_tendril_x_rot(
+    tendril_animation: f32,
+    age_in_ticks: f32,
+) -> f32 {
+    let factor = ((age_in_ticks as f64 * 2.25).cos() * std::f64::consts::PI * 0.1) as f32;
+    tendril_animation * factor
 }

@@ -435,6 +435,7 @@ fn entity_model_instance(
         ))
         .with_creeper_swelling(source.creeper_swelling)
         .with_shulker_peek(source.shulker_peek)
+        .with_tendril_animation(source.tendril_animation)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1733,6 +1734,35 @@ mod tests {
         assert_eq!(
             mid[0].render_state.head_eat,
             SheepHeadEatPose::from_eat_tick(20, 0.0)
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_warden_tendril_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            94,
+            VANILLA_ENTITY_TYPE_WARDEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        // A warden at rest projects no tendril pulse, so WardenModel.animateTendrils holds at bind.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(resting[0].render_state.tendril_animation, 0.0);
+
+        // Vanilla Warden.handleEntityEvent(61) resets tendrilAnimation to 10; getTendrilAnimation
+        // lerps (tendrilAnimationO, tendrilAnimation) / 10. After three client ticks the pair is
+        // (8, 7), so at partialTick 1.0 the projected pulse is 7/10.
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 94,
+            event_id: 61,
+        }));
+        world.advance_entity_client_animations(3);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(
+            instances[0].render_state.tendril_animation,
+            7.0 / 10.0,
+            "the projected tendril pulse drives the WardenModel.animateTendrils antenna sway"
         );
     }
 
@@ -4504,10 +4534,11 @@ mod tests {
 
     #[test]
     fn entity_model_kind_maps_warden_to_real_model() {
-        // The warden was a placeholder bounds box; it now resolves to the real `WardenModel` at its
-        // rest pose. The head look, walk, idle wobble, tendril sway, and the attack / sonic-boom /
-        // digging / emerge / roar / sniff keyframe animations — plus the four emissive overlay
-        // layers — are deferred entity-side state, so no synced data is read.
+        // The warden was a placeholder bounds box; it now resolves to the real `WardenModel`. The
+        // head look, walk, idle wobble, and tendril sway are driven by projected render state (age,
+        // walk, head look, and the event-driven tendril pulse), not by this kind mapping; the attack
+        // / sonic-boom / digging / emerge / roar / sniff keyframe animations and the four emissive
+        // overlay layers stay deferred. The kind mapping itself reads no synced data.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WARDEN_ID, &[]),
             EntityModelKind::Warden
