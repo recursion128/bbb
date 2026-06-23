@@ -106,6 +106,12 @@ pub(in crate::entity_models) const PARROT_PARTS: [ModelPartDesc; 7] = [
     ),
 ];
 
+/// The `head` is the fifth sibling in the part tree (body, tail, left_wing, right_wing, head,
+/// left_leg, right_leg). `ParrotModel.setupAnim` sets `head.xRot/yRot` from the look angles before
+/// the per-pose switch, so the head look applies at every pose the renderer projects (STANDING and
+/// SITTING); only the un-projected PARTY pose would overwrite it.
+pub(in crate::entity_models) const PARROT_HEAD_PART_INDEX: usize = 4;
+
 /// Vanilla `ParrotModel.prepare(SITTING)` applied to the bind-pose part tree (part order body,
 /// tail, left_wing, right_wing, head, left_leg, right_leg): every part raises `y += 1.9`, the legs
 /// fold `xRot += π/2`, the tail pitches `xRot += π/6`, and the wings tuck to `zRot = ±0.0873` (set,

@@ -82,8 +82,45 @@ fn parrot_sitting_pose_matches_vanilla_prepare() {
     // legs (5 left, 6 right): xRot = -0.0299 + π/2.
     assert!((sitting[5].pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
     assert!((sitting[6].pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
-    // The head (index 4) only translates (the look pose stays deferred), no rotation change.
+    // `prepare(SITTING)` only translates the head (index 4); the look rotation is applied later in
+    // `emit_parrot_model`, so the pose helper itself leaves the head rotation at bind.
     assert_eq!(sitting[4].pose.rotation, PARROT_PARTS[4].pose.rotation);
+}
+
+#[test]
+fn parrot_head_look_turns_only_the_head_subtree() {
+    // Vanilla `ParrotModel.setupAnim` sets `head.xRot/yRot` from the look angles before the
+    // per-pose switch, so the head and its beak/crest children turn while the body, tail, wings,
+    // and legs hold. Depth-first emit order: body/tail/wings `[0, 96)`, the head plus its four
+    // children `[96, 216)`, then the two legs `[216, 264)`. Only the head subtree moves.
+    let rest = EntityModelInstance::parrot(990, [0.0, 64.0, 0.0], 0.0);
+    let looked = rest.with_head_look(35.0, -25.0);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let looked_mesh = entity_model_mesh(&[looked]);
+    assert_eq!(rest_mesh.vertices.len(), looked_mesh.vertices.len());
+    assert_eq!(
+        rest_mesh.vertices[..96],
+        looked_mesh.vertices[..96],
+        "the body, tail, and wings stay put"
+    );
+    assert_ne!(
+        rest_mesh.vertices[96..216],
+        looked_mesh.vertices[96..216],
+        "the head and its beak/crest children turn"
+    );
+    assert_eq!(
+        rest_mesh.vertices[216..],
+        looked_mesh.vertices[216..],
+        "the legs stay put"
+    );
+
+    // The head look also applies on the sitting perch — only the un-projected PARTY pose would
+    // overwrite it. The perched head is raised but still turns.
+    let sit_rest = entity_model_mesh(&[rest.with_parrot_sitting(true)]);
+    let sit_looked = entity_model_mesh(&[looked.with_parrot_sitting(true)]);
+    assert_eq!(sit_rest.vertices[..96], sit_looked.vertices[..96]);
+    assert_ne!(sit_rest.vertices[96..216], sit_looked.vertices[96..216]);
+    assert_eq!(sit_rest.vertices[216..], sit_looked.vertices[216..]);
 }
 
 #[test]

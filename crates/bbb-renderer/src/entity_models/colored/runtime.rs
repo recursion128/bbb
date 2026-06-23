@@ -1678,15 +1678,23 @@ fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 
 fn emit_parrot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `ParrotModel` is seven static sibling parts (body, tail, wings, head with its beak /
-    // crest children, legs) at their baked rest poses. The SITTING perch pose is now projected:
+    // crest children, legs) at their baked rest poses. The SITTING perch pose is projected:
     // `Parrot.isInSittingPose()` (the synced `TamableAnimal.DATA_FLAGS_ID` sitting bit) runs
     // `prepare(SITTING)`, which raises every part `y += 1.9`, folds the legs (`xRot += π/2`),
     // pitches the tail (`xRot += π/6`), and tucks the wings (`zRot = ±0.0873`); the `setupAnim`
-    // `SITTING` branch then adds nothing more. The head look, the STANDING/FLYING leg+wing+tail
-    // walk swing / flap bob, and the PARTY dance stay deferred. Parrot uses a plain
-    // `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+    // `SITTING` branch then adds nothing more. `setupAnim` also sets `head.xRot/yRot` from the look
+    // angles before the per-pose switch, so the head look applies at both projected poses (STANDING
+    // and SITTING) — reproduced here on the top-level head part. The STANDING/FLYING leg+wing+tail
+    // walk swing / flap bob (the wing flap and body bob need the un-projected `flapAngle`) and the
+    // PARTY dance stay deferred. Parrot uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    let parts = parrot_pose_parts(instance.render_state.parrot_sitting);
+    let mut parts = parrot_pose_parts(instance.render_state.parrot_sitting);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    if !head_look_at_rest(head_yaw, head_pitch) {
+        parts[PARROT_HEAD_PART_INDEX].pose =
+            head_look_pose(parts[PARROT_HEAD_PART_INDEX].pose, head_yaw, head_pitch);
+    }
     emit_model_parts(mesh, &parts, root);
 }
 
