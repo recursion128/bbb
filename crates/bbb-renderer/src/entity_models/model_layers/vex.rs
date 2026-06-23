@@ -90,6 +90,15 @@ pub(in crate::entity_models) const VEX_ARM_REST_Z_ROT: f32 = std::f32::consts::P
 pub(in crate::entity_models) const VEX_WING_X_ROT: f32 = 0.471_238_88;
 pub(in crate::entity_models) const VEX_WING_Z_ROT: f32 = 0.471_238_88;
 
+/// Vanilla `VexModel.setArmsCharging` (both hands empty) arm pitch: `xRot = -1.2217305` for
+/// both arms while the vex is charging an attack.
+pub(in crate::entity_models) const VEX_ARM_CHARGING_X_ROT: f32 = -1.221_730_5;
+/// Charging arm yaw magnitude: `rightArm.yRot = π/12`, `leftArm.yRot = -π/12`.
+pub(in crate::entity_models) const VEX_ARM_CHARGING_Y_ROT: f32 = std::f32::consts::PI / 12.0;
+/// Charging arm roll base: `rightArm.zRot = -0.47123888 - bob`, `leftArm.zRot = 0.47123888 +
+/// bob` (`bob` is the shared `vex_moving_arm_z_bob`).
+pub(in crate::entity_models) const VEX_ARM_CHARGING_Z_ROT: f32 = 0.471_238_88;
+
 /// Vanilla `VexModel.setupAnim` arm bob: `movingArmZBob = cos(ageInTicks · 5.5°) · 0.1`,
 /// added to the right arm's `zRot` and subtracted from the left's.
 pub(in crate::entity_models) fn vex_moving_arm_z_bob(age_in_ticks: f32) -> f32 {

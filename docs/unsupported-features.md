@@ -1343,17 +1343,22 @@ When an agent does any of the following, update this file in the same slice:
       `CubeDeformation(-0.2)`), with the two arms (`texOffs(23, 0)`/`texOffs(23, 6)`, 2×4×2
       inset by `CubeDeformation(-0.1)`) and the two zero-thickness `0×5×8` wings
       (`texOffs(16, 14)`, the left wing's UV mirrored) parented under the body so the body
-      tilt carries them; the non-charging `VexModel.setupAnim` idle pose (head look
-      `yRot`/`xRot`, arms at `±(π/5 + cos(ageInTicks · 5.5°) · 0.1)` z-roll, body tilt
-      `π/20`, and the wing flap `leftWing.yRot = 1.0995574 + cos(ageInTicks · 45.836624°) ·
-      16.2°` mirrored on the right wing with both wings pitched/rolled `0.47123888`), driven
-      by the projected head yaw/pitch and `age_in_ticks`, under the standard
-      `LivingEntityRenderer.setupRotations`. The textured base layer draws the
-      `textures/entity/illager/vex.png` atlas reference into the translucent mesh
-      (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
-      hierarchy as the colored path. The charging pose (`isCharging` texture swap to
-      `vex_charging.png`, the charging arm poses and held items) and the constant full-bright
-      `getBlockLightLevel` (→ 15) glow, lighting, and overlay remain unsupported
+      tilt carries them; the full `VexModel.setupAnim` pose (head look `yRot`/`xRot`, idle
+      arms at `±(π/5 + cos(ageInTicks · 5.5°) · 0.1)` z-roll, idle body tilt `π/20`, and the
+      wing flap `leftWing.yRot = 1.0995574 + cos(ageInTicks · 45.836624°) · 16.2°` mirrored on
+      the right wing with both wings pitched/rolled `0.47123888`), driven by the projected head
+      yaw/pitch and `age_in_ticks`, under the standard `LivingEntityRenderer.setupRotations`.
+      The charging pose is now projected: `Vex.isCharging` (the synced `DATA_FLAGS_ID & 1`, data
+      id `16`, gated to the vex type by `vanilla_is_vex` → `vex_charging`) levels the body
+      (`xRot = 0`) and runs `setArmsCharging`'s both-hands-empty branch — both arms pitch to
+      `xRot = -1.2217305`, yaw to `±π/12`, and roll to `∓0.47123888 ∓ bob` — on both render
+      paths. The textured base layer draws the `textures/entity/illager/vex.png` atlas reference
+      into the translucent mesh (`RenderTypes::entityTranslucent`), hand-emitted through the same
+      animated body→arm/wing hierarchy as the colored path. The `isCharging` texture swap to
+      `vex_charging.png`, the held-item charging arm variant (`xRot = π·7/6` per hand, which
+      needs held-item presence projected — equipment is world-level only today), and the
+      constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and overlay remain
+      unsupported
     - allay entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `2` to the real `AllayModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `AllayModel.createBodyLayer()`

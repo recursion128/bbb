@@ -18,7 +18,7 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman,
+    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_vex,
     vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, vanilla_render_scale,
     vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, VANILLA_POSE_CROUCHING_ID,
     VANILLA_POSE_SLEEPING_ID,
@@ -72,6 +72,14 @@ const VANILLA_BEE_FLAGS_DATA_ID: u8 = 17;
 /// Vanilla `Bee.FLAG_HAS_STUNG` (4): the `DATA_FLAGS_ID` bit set once the bee has stung and
 /// lost its stinger (`Bee.hasStung`).
 const BEE_FLAG_HAS_STUNG: i8 = 4;
+
+/// Vanilla `Vex.DATA_FLAGS_ID` data id (16): the byte holding the vex flags, the first own
+/// `Vex` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
+const VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
+
+/// Vanilla `Vex.FLAG_IS_CHARGING` (1): the `DATA_FLAGS_ID` bit set while the vex charges an
+/// attack (`Vex.isCharging`).
+const VEX_FLAG_IS_CHARGING: i8 = 1;
 
 /// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
@@ -497,6 +505,15 @@ impl EntityStore {
                 .unwrap_or(0)
                 & BEE_FLAG_HAS_STUNG
                 == 0;
+        // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
+        // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). Only the vex
+        // defines that flags byte, so the projection is gated to it and defaults to idle.
+        let vex_charging = vanilla_is_vex(identity.entity_type_id)
+            && self
+                .metadata_byte(id, VANILLA_VEX_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+                & VEX_FLAG_IS_CHARGING
+                != 0;
         // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
@@ -555,6 +572,7 @@ impl EntityStore {
             enderman_creepy,
             bat_resting,
             bee_has_stinger,
+            vex_charging,
             is_crouching,
             is_auto_spin_attack,
             is_upside_down,

@@ -59,6 +59,51 @@ fn vex_setup_anim_constants_and_curves_match_vanilla() {
     let expected_age =
         1.099_557_4 + (age * 45.836_624_f32.to_radians()).cos() * 16.2_f32.to_radians();
     assert!((vex_left_wing_y_rot(age) - expected_age).abs() < 1.0e-6);
+
+    // Charging (both hands empty, `VexModel.setArmsCharging`): both arms pitch to
+    // `xRot = -1.2217305`, yaw to `±π/12`, and roll to `∓0.47123888 ∓ bob`.
+    assert!((VEX_ARM_CHARGING_X_ROT - (-1.221_730_5)).abs() < 1.0e-6);
+    assert!((VEX_ARM_CHARGING_Y_ROT - std::f32::consts::PI / 12.0).abs() < 1.0e-6);
+    assert!((VEX_ARM_CHARGING_Z_ROT - 0.471_238_88).abs() < 1.0e-6);
+}
+
+#[test]
+fn vex_charging_levels_the_body_and_raises_the_arms() {
+    // Vanilla `VexModel.setupAnim`: `if (isCharging) { body.xRot = 0; setArmsCharging(...) }`.
+    // The idle pose tilts the body `π/20` and rolls the arms to `±π/5`; charging levels the
+    // body and pitches the arms to `-1.2217305`, so the posed mesh must differ from idle while
+    // keeping the same vertex count (only rotations change). Compared at the same age so the
+    // bob and wing flap are identical between the two — the difference is purely the charge.
+    let idle = EntityModelInstance::vex(960, [0.0, 64.0, 0.0], 0.0);
+    let charging = idle.with_vex_charging(true);
+    let idle_mesh = entity_model_mesh(&[idle]);
+    let charging_mesh = entity_model_mesh(&[charging]);
+    assert_eq!(idle_mesh.vertices.len(), charging_mesh.vertices.len());
+    assert_ne!(
+        idle_mesh.vertices, charging_mesh.vertices,
+        "charging levels the body and raises the arms"
+    );
+
+    // An idle vex with `with_vex_charging(false)` is identical to the default idle (the default
+    // render state is not-charging), confirming the flag is what flips the pose.
+    let still_idle = entity_model_mesh(&[idle.with_vex_charging(false)]);
+    assert_eq!(idle_mesh.vertices, still_idle.vertices);
+}
+
+#[test]
+fn vex_textured_charging_levels_the_body_and_raises_the_arms() {
+    let (atlas, _) = build_entity_model_texture_atlas(&vex_texture_images()).unwrap();
+    let idle = EntityModelInstance::vex(961, [0.0, 64.0, 0.0], 0.0);
+    let idle_mesh = entity_model_textured_meshes(&[idle], &atlas);
+    let charging_mesh = entity_model_textured_meshes(&[idle.with_vex_charging(true)], &atlas);
+    assert_eq!(
+        idle_mesh.translucent.vertices.len(),
+        charging_mesh.translucent.vertices.len()
+    );
+    assert_ne!(
+        idle_mesh.translucent.vertices, charging_mesh.translucent.vertices,
+        "charging levels the body and raises the arms on the textured path too"
+    );
 }
 
 #[test]

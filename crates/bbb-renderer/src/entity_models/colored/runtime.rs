@@ -550,12 +550,15 @@ fn emit_silverfish_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
 }
 
 fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `VexModel.setupAnim` (non-charging idle): the head tracks the look angles, the
-    // arms hold `±π/5` with a small `ageInTicks` z-bob, the body tilts `π/20`, and the wings
-    // flap on `ageInTicks`. The arms and wings hang under the body, so the body tilt carries
-    // them; the hierarchy is walked by hand. The charging pose and held-item arms are
-    // deferred entity-side state. Vex uses the standard `LivingEntityRenderer.setupRotations`.
+    // Vanilla `VexModel.setupAnim`: the head tracks the look angles and the wings flap on
+    // `ageInTicks`. While idle the arms hold `±π/5` with a small `ageInTicks` z-bob and the
+    // body tilts `π/20`; while `Vex.isCharging` the body levels (`xRot = 0`) and
+    // `setArmsCharging` raises both arms (the both-hands-empty branch — held items are not
+    // projected, so the held-item arm variant `xRot = π·7/6` stays deferred). The arms and
+    // wings hang under the body, so the body tilt carries them; the hierarchy is walked by
+    // hand. Vex uses the standard `LivingEntityRenderer.setupRotations`.
     let age = instance.render_state.age_in_ticks;
+    let charging = instance.render_state.vex_charging;
     let root = entity_model_root_transform(instance) * part_pose_transform(VEX_ROOT_POSE);
 
     // Head (child of root) tracks the look yaw/pitch.
@@ -569,21 +572,41 @@ fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     };
     emit_model_cubes_at_pose(mesh, root, head_pose, &VEX_HEAD);
 
-    // Body (child of root) holds the idle tilt and carries the arms and wings.
+    // Body (child of root) levels while charging, else holds the idle tilt; it carries the
+    // arms and wings.
     let body_pose = PartPose {
         offset: VEX_BODY_POSE.offset,
-        rotation: [VEX_BODY_X_ROT, 0.0, 0.0],
+        rotation: [if charging { 0.0 } else { VEX_BODY_X_ROT }, 0.0, 0.0],
     };
     let body_t = root * part_pose_transform(body_pose);
     emit_model_cubes_at_pose(mesh, root, body_pose, &VEX_BODY);
 
     let bob = vex_moving_arm_z_bob(age);
+    let (right_arm_rot, left_arm_rot) = if charging {
+        (
+            [
+                VEX_ARM_CHARGING_X_ROT,
+                VEX_ARM_CHARGING_Y_ROT,
+                -VEX_ARM_CHARGING_Z_ROT - bob,
+            ],
+            [
+                VEX_ARM_CHARGING_X_ROT,
+                -VEX_ARM_CHARGING_Y_ROT,
+                VEX_ARM_CHARGING_Z_ROT + bob,
+            ],
+        )
+    } else {
+        (
+            [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],
+            [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)],
+        )
+    };
     emit_model_cubes_at_pose(
         mesh,
         body_t,
         PartPose {
             offset: VEX_RIGHT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],
+            rotation: right_arm_rot,
         },
         &VEX_RIGHT_ARM,
     );
@@ -592,7 +615,7 @@ fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
         body_t,
         PartPose {
             offset: VEX_LEFT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)],
+            rotation: left_arm_rot,
         },
         &VEX_LEFT_ARM,
     );

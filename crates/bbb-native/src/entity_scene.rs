@@ -389,6 +389,7 @@ fn entity_model_instance(
             &source.data_values,
             game_time,
         ))
+        .with_vex_charging(source.vex_charging)
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
@@ -2005,6 +2006,60 @@ mod tests {
             )],
         }));
         assert!(resting(&world, 95));
+    }
+
+    #[test]
+    fn entity_model_instances_project_vex_charging() {
+        // Vanilla Vex.DATA_FLAGS_ID (16, BYTE) and the FLAG_IS_CHARGING bit (1).
+        const VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
+        const VEX_FLAG_IS_CHARGING: i8 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            97,
+            VANILLA_ENTITY_TYPE_VEX_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // A bat reuses data id 16 for its OWN resting flag — used below to prove the vex
+        // charging projection is gated to the vex and never leaks onto another type.
+        world.apply_add_entity(protocol_add_entity(
+            98,
+            VANILLA_ENTITY_TYPE_BAT_ID,
+            [2.0, 64.0, -2.0],
+        ));
+
+        let charging = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .vex_charging
+        };
+
+        // An idle vex projects vex_charging = false.
+        assert!(!charging(&world, 97));
+
+        // Setting Vex.isCharging (DATA_FLAGS_ID & 1) projects through to the charging pose.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 97,
+            values: vec![protocol_byte_data(
+                VANILLA_VEX_FLAGS_DATA_ID,
+                VEX_FLAG_IS_CHARGING
+            )],
+        }));
+        assert!(charging(&world, 97));
+
+        // The same flag byte set on a non-vex (bat) does NOT project vex_charging — the
+        // derivation is gated to vanilla_is_vex.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 98,
+            values: vec![protocol_byte_data(
+                VANILLA_VEX_FLAGS_DATA_ID,
+                VEX_FLAG_IS_CHARGING
+            )],
+        }));
+        assert!(!charging(&world, 98));
     }
 
     #[test]

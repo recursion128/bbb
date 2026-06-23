@@ -114,11 +114,12 @@ use super::{
         TURTLE_RIGHT_FRONT_LEG_POSE, TURTLE_RIGHT_HIND_LEG_POSE, TURTLE_TEXTURED_BODY,
         TURTLE_TEXTURED_HEAD, TURTLE_TEXTURED_LEFT_FRONT_LEG, TURTLE_TEXTURED_LEFT_HIND_LEG,
         TURTLE_TEXTURED_RIGHT_FRONT_LEG, TURTLE_TEXTURED_RIGHT_HIND_LEG, TURTLE_TEXTURE_REF,
-        VEX_ARM_REST_Z_ROT, VEX_BODY_POSE, VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE,
-        VEX_LEFT_WING_POSE, VEX_RIGHT_ARM_POSE, VEX_RIGHT_WING_POSE, VEX_ROOT_POSE,
-        VEX_TEXTURED_BODY, VEX_TEXTURED_HEAD, VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING,
-        VEX_TEXTURED_RIGHT_ARM, VEX_TEXTURED_RIGHT_WING, VEX_TEXTURE_REF, VEX_WING_X_ROT,
-        VEX_WING_Z_ROT, WITCH_NOSE_CHILD_INDEX,
+        VEX_ARM_CHARGING_X_ROT, VEX_ARM_CHARGING_Y_ROT, VEX_ARM_CHARGING_Z_ROT, VEX_ARM_REST_Z_ROT,
+        VEX_BODY_POSE, VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE, VEX_LEFT_WING_POSE,
+        VEX_RIGHT_ARM_POSE, VEX_RIGHT_WING_POSE, VEX_ROOT_POSE, VEX_TEXTURED_BODY,
+        VEX_TEXTURED_HEAD, VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING, VEX_TEXTURED_RIGHT_ARM,
+        VEX_TEXTURED_RIGHT_WING, VEX_TEXTURE_REF, VEX_WING_X_ROT, VEX_WING_Z_ROT,
+        WITCH_NOSE_CHILD_INDEX,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
@@ -696,6 +697,7 @@ fn emit_vex_textured_model(
     };
     let uv = entry.uv;
     let age = instance.render_state.age_in_ticks;
+    let charging = instance.render_state.vex_charging;
     let root = entity_model_root_transform(instance) * part_pose_transform(VEX_ROOT_POSE);
     let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Translucent);
 
@@ -717,10 +719,13 @@ fn emit_vex_textured_model(
         uv,
     );
 
-    // Body (child of root) holds the idle tilt and carries the arms and wings.
+    // Body (child of root) levels while charging, else holds the idle tilt; it carries the
+    // arms and wings. While `Vex.isCharging`, `setArmsCharging` raises both arms (the
+    // both-hands-empty branch — held items are not projected, so the held-item arm variant
+    // `xRot = π·7/6` stays deferred).
     let body_pose = PartPose {
         offset: VEX_BODY_POSE.offset,
-        rotation: [VEX_BODY_X_ROT, 0.0, 0.0],
+        rotation: [if charging { 0.0 } else { VEX_BODY_X_ROT }, 0.0, 0.0],
     };
     let body_t = root * part_pose_transform(body_pose);
     emit_textured_cubes_at_pose(
@@ -733,12 +738,31 @@ fn emit_vex_textured_model(
     );
 
     let bob = vex_moving_arm_z_bob(age);
+    let (right_arm_rot, left_arm_rot) = if charging {
+        (
+            [
+                VEX_ARM_CHARGING_X_ROT,
+                VEX_ARM_CHARGING_Y_ROT,
+                -VEX_ARM_CHARGING_Z_ROT - bob,
+            ],
+            [
+                VEX_ARM_CHARGING_X_ROT,
+                -VEX_ARM_CHARGING_Y_ROT,
+                VEX_ARM_CHARGING_Z_ROT + bob,
+            ],
+        )
+    } else {
+        (
+            [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],
+            [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)],
+        )
+    };
     emit_textured_cubes_at_pose(
         mesh,
         body_t,
         PartPose {
             offset: VEX_RIGHT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],
+            rotation: right_arm_rot,
         },
         &VEX_TEXTURED_RIGHT_ARM,
         VEX_TEXTURE_REF,
@@ -749,7 +773,7 @@ fn emit_vex_textured_model(
         body_t,
         PartPose {
             offset: VEX_LEFT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)],
+            rotation: left_arm_rot,
         },
         &VEX_TEXTURED_LEFT_ARM,
         VEX_TEXTURE_REF,

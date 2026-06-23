@@ -147,6 +147,11 @@ pub struct EntityRenderState {
     /// `BeeModel.bobUpAndDown`, so its body, front/back legs and antennae hold still (the wing
     /// flap continues). `false` for every other entity and for a calm bee.
     pub bee_angry: bool,
+    /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
+    /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
+    /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
+    /// The held-item arm variant (`xRot = π·7/6`) stays deferred pending held-item projection.
+    pub vex_charging: bool,
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -224,6 +229,7 @@ impl EntityRenderState {
             bat_resting: false,
             bee_has_stinger: true,
             bee_angry: false,
+            vex_charging: false,
             is_crouching: false,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
@@ -401,6 +407,11 @@ impl EntityModelInstance {
 
     pub fn with_bee_angry(mut self, bee_angry: bool) -> Self {
         self.render_state.bee_angry = bee_angry;
+        self
+    }
+
+    pub fn with_vex_charging(mut self, vex_charging: bool) -> Self {
+        self.render_state.vex_charging = vex_charging;
         self
     }
 
@@ -1282,6 +1293,7 @@ mod tests {
                 bat_resting: false,
                 bee_has_stinger: true,
                 bee_angry: false,
+                vex_charging: false,
                 is_crouching: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,

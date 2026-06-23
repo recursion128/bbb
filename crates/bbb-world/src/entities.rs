@@ -353,6 +353,12 @@ pub struct EntityModelSourceState {
     /// not stung still has its stinger; every other entity is unaffected).
     #[serde(default = "entity_model_source_default_true")]
     pub bee_has_stinger: bool,
+    /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
+    /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
+    /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex
+    /// ([`vanilla_is_vex`](crate::entities::dimensions)); `false` for every other entity.
+    #[serde(default)]
+    pub vex_charging: bool,
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Entity.isCrouching`, the synced
     /// `Pose.CROUCHING`): a sneaking player, whose `HumanoidModel.setupAnim` leans the body,
     /// drops the head, tucks the legs and tilts the arms. Projected only for the player (the
