@@ -1222,8 +1222,13 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Fox { baby }, position, y_rot)
     }
 
-    pub fn nautilus(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Nautilus, position, y_rot)
+    pub fn nautilus(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Nautilus { baby },
+            position,
+            y_rot,
+        )
     }
 
     #[cfg(test)]

@@ -920,15 +920,13 @@ fn fox_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityMo
     }
 }
 
-/// Vanilla `NautilusRenderer` (an `AgeableMobRenderer`) picks `NautilusModel` for an adult and the
-/// distinct `createBabyBodyLayer` mesh for a baby. The adult renders through the dedicated
-/// [`EntityModelKind::Nautilus`]; the baby still falls back to the horse-shaped proxy until its body
-/// layer is modeled (the zombie nautilus, a separate `ZombieNautilusModel`, keeps the proxy too).
+/// Vanilla `NautilusRenderer` (an `AgeableMobRenderer`) picks `NautilusModel.createBodyMesh` for an
+/// adult and the smaller `createBabyBodyLayer` for a baby; both render through the dedicated
+/// [`EntityModelKind::Nautilus`] (`baby` selecting the layout). The zombie nautilus, a separate
+/// `ZombieNautilusModel` with a coral layer, keeps the horse-shaped proxy for now.
 fn nautilus_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
-    if ageable_baby(values) {
-        quadruped(QuadrupedModelFamily::Horse, true)
-    } else {
-        EntityModelKind::Nautilus
+    EntityModelKind::Nautilus {
+        baby: ageable_baby(values),
     }
 }
 
@@ -5499,18 +5497,19 @@ mod tests {
                 baby: false
             }
         );
-        // The adult nautilus renders through its dedicated `NautilusModel`; the baby (a distinct
-        // `createBabyBodyLayer` mesh) and the zombie nautilus (a separate model) keep the horse proxy.
+        // The nautilus (adult and baby) renders through its dedicated `NautilusModel`
+        // (`createBodyMesh` / `createBabyBodyLayer`); only the zombie nautilus (a separate model with a
+        // coral layer) keeps the horse proxy.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
-            EntityModelKind::Nautilus
+            EntityModelKind::Nautilus { baby: false }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_NAUTILUS_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            quadruped(QuadrupedModelFamily::Horse, true)
+            EntityModelKind::Nautilus { baby: true }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),

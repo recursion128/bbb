@@ -299,11 +299,14 @@ pub enum EntityModelKind {
     Fox {
         baby: bool,
     },
-    /// `NautilusModel` (a custom `EntityModel`, the new rideable nautilus) at its `createBodyMesh` rest
-    /// pose. The `setupAnim` body look — clamped to ±10° — is reproduced; the looping
-    /// `NautilusAnimation.SWIMMING` keyframe undulation, the variant textures, the saddle / armor / coral
-    /// layers, and the distinct baby `createBabyBodyLayer` mesh are deferred.
-    Nautilus,
+    /// `NautilusModel` (a custom `EntityModel`, the new rideable nautilus) at its `createBodyMesh` /
+    /// `createBabyBodyLayer` rest pose (`baby` selects the smaller hatchling geometry, the same
+    /// `root → shell + body → mouths` structure). The `setupAnim` body look — clamped to ±10° — is
+    /// reproduced; the looping `NautilusAnimation.SWIMMING` keyframe undulation, the variant textures,
+    /// and the saddle / armor / coral layers are deferred.
+    Nautilus {
+        baby: bool,
+    },
     /// `AdultRabbitModel` / `BabyRabbitModel` at their `createBodyLayer` rest pose (`baby` selects the
     /// baby body layout — a deeper `_r1`-nested hierarchy whose head is `body`'s third child).
     /// `RabbitModel.setupAnim` turns the head by the look angles (reproduced). The looping
