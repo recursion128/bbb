@@ -81,7 +81,12 @@ fn adult_rabbit_geometry_matches_vanilla_26_1_body_layer() {
 fn rabbit_mesh_uses_vanilla_body_layer_geometry() {
     // 9 cubes → 54 faces / 216 vertices / 324 indices, all in the one rabbit brown tint (the
     // per-face directional shading varies the brightness, so the unshaded face carries the tint).
-    let rabbit = entity_model_mesh(&[EntityModelInstance::rabbit(700, [0.0, 64.0, 0.0], 0.0)]);
+    let rabbit = entity_model_mesh(&[EntityModelInstance::rabbit(
+        700,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
     assert_eq!(rabbit.opaque_faces, 54);
     assert_eq!(rabbit.vertices.len(), 216);
     assert_eq!(rabbit.indices.len(), 324);
@@ -95,7 +100,12 @@ fn rabbit_mesh_uses_vanilla_body_layer_geometry() {
 fn rabbit_mesh_matches_on_both_render_paths() {
     // The rabbit is a colored-only entity, so the texture-skipping colored runtime path emits the
     // exact same mesh as the full path (unlike the texture-backed wolf proxy it replaced).
-    let instances = [EntityModelInstance::rabbit(701, [0.0, 64.0, 0.0], 0.0)];
+    let instances = [EntityModelInstance::rabbit(
+        701,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )];
     let full = entity_model_mesh(&instances);
     let colored = entity_model_colored_runtime_mesh(&instances);
     assert_eq!(full.vertices, colored.vertices);
@@ -108,7 +118,7 @@ fn rabbit_head_look_turns_only_the_head_subtree() {
     // head's baked 0.3927 pitch, since vanilla assigns rather than adds). The head is `body`'s
     // second child, so only the head and its two ears turn. Pre-order emit: body/tail `[0, 48)`,
     // the head plus its two ears `[48, 120)`, then the front legs and haunches `[120, 216)`.
-    let rest = EntityModelInstance::rabbit(702, [0.0, 64.0, 0.0], 0.0);
+    let rest = EntityModelInstance::rabbit(702, [0.0, 64.0, 0.0], 0.0, false);
     let looked = rest.with_head_look(35.0, -25.0);
     let rest_mesh = entity_model_mesh(&[rest]);
     let looked_mesh = entity_model_mesh(&[looked]);
@@ -137,6 +147,96 @@ fn rabbit_head_look_turns_only_the_head_subtree() {
 }
 
 #[test]
-fn rabbit_exposes_stable_model_key() {
-    assert_eq!(EntityModelKind::Rabbit.model_key(), "rabbit");
+fn baby_rabbit_geometry_matches_vanilla_26_1_body_layer() {
+    // Vanilla `BabyRabbitModel.createBodyLayer` (atlas 32×32): a deeper `_r1`-nested layout. The
+    // cubeless `body` pivot parents body_r1 (0), tail (1), head (2), frontlegs (3); the head is `body`'s
+    // THIRD child (unlike the adult's second).
+    assert_eq!(BABY_RABBIT_PARTS.len(), 2);
+    let body = &BABY_RABBIT_PARTS[0];
+    assert_eq!(body.pose.offset, [0.0, 23.0, 1.6]);
+    assert!(body.cubes.is_empty());
+    assert_eq!(body.children.len(), 4);
+
+    // `body_r1` (pitched -0.5236): the 4×3×6 trunk.
+    let body_r1 = &body.children[0];
+    assert_eq!(body_r1.pose.rotation, [-0.5236, 0.0, 0.0]);
+    assert_eq!(body_r1.cubes[0].size, [4.0, 3.0, 6.0]);
+
+    // `tail` (cubeless) parents the pitched `tail_r1`.
+    let tail_r1 = &body.children[1].children[0];
+    assert_eq!(tail_r1.pose.rotation, [-0.5236, 0.0, 0.0]);
+    assert_eq!(tail_r1.cubes[0].size, [3.0, 3.0, 3.0]);
+
+    // `head` (index 2): the 5×4×4 skull parenting the two 2×4×1 ears.
+    let head = &body.children[2];
+    assert_eq!(head.pose.offset, [0.0, -5.0, -2.6]);
+    assert_eq!(head.cubes[0].size, [5.0, 4.0, 4.0]);
+    assert_eq!(head.children.len(), 2);
+    assert_eq!(head.children[0].pose.offset, [-1.5, -3.5, -0.5]);
+    assert_eq!(head.children[0].cubes[0].size, [2.0, 4.0, 1.0]);
+
+    // `frontlegs` (cubeless) → each front leg (cubeless, pitched 0.3927) → its `_r1` cube.
+    let front_legs = &body.children[3];
+    assert!(front_legs.cubes.is_empty());
+    let left_front_leg = &front_legs.children[0];
+    assert_eq!(left_front_leg.pose.offset, [1.0, 1.0, -0.5]);
+    assert_eq!(left_front_leg.pose.rotation, [0.3927, 0.0, 0.0]);
+    assert_eq!(
+        left_front_leg.children[0].pose.rotation,
+        [-0.3927, 0.0, 0.0]
+    );
+    assert_eq!(left_front_leg.children[0].cubes[0].size, [1.0, 3.0, 1.0]);
+
+    // `backlegs` (cubeless) → each hind leg (cubeless, yawed π) → its yawed haunch.
+    let back_legs = &BABY_RABBIT_PARTS[1];
+    assert_eq!(back_legs.pose.offset, [0.0, 23.0, 2.0]);
+    let left_hind = &back_legs.children[0];
+    assert_eq!(left_hind.pose.rotation, [0.0, 3.1416, 0.0]);
+    let left_haunch = &left_hind.children[0];
+    assert_eq!(left_haunch.pose.rotation, [0.0, -0.7854, 0.0]);
+    assert_eq!(left_haunch.cubes[0].size, [2.0, 1.0, 3.0]);
+
+    // Nine cubes.
+    assert_eq!(count_cubes(&BABY_RABBIT_PARTS), 9);
+}
+
+#[test]
+fn baby_rabbit_mesh_and_head_look() {
+    // The baby has the same pre-order cube layout as the adult (body/tail `[0, 48)`, head + ears
+    // `[48, 120)`, legs + haunches `[120, 216)`), so the head look isolates the head subtree, and the
+    // baby mesh is more compact than the adult.
+    let rest = EntityModelInstance::rabbit(710, [0.0, 64.0, 0.0], 0.0, true);
+    let baby = entity_model_mesh(&[rest]);
+    assert_eq!(baby.vertices.len(), 216);
+    assert!(baby
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(RABBIT_BROWN, 1.0)));
+
+    let looked = entity_model_mesh(&[rest.with_head_look(35.0, -25.0)]);
+    assert_eq!(baby.vertices[..48], looked.vertices[..48]);
+    assert_ne!(baby.vertices[48..120], looked.vertices[48..120]);
+    assert_eq!(baby.vertices[120..], looked.vertices[120..]);
+
+    let adult = entity_model_mesh(&[EntityModelInstance::rabbit(
+        711,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    let (adult_min, adult_max) = mesh_extents(&adult);
+    let (baby_min, baby_max) = mesh_extents(&baby);
+    assert!((baby_max[2] - baby_min[2]) < (adult_max[2] - adult_min[2]));
+}
+
+#[test]
+fn rabbit_exposes_stable_model_keys() {
+    assert_eq!(
+        EntityModelKind::Rabbit { baby: false }.model_key(),
+        "rabbit"
+    );
+    assert_eq!(
+        EntityModelKind::Rabbit { baby: true }.model_key(),
+        "rabbit_baby"
+    );
 }

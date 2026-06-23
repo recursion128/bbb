@@ -882,14 +882,11 @@ fn quadruped(family: QuadrupedModelFamily, baby: bool) -> EntityModelKind {
     EntityModelKind::Quadruped { family, baby }
 }
 
-/// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby.
-/// The adult renders through the dedicated [`EntityModelKind::Rabbit`]; the baby (which has its own
-/// nested-pivot mesh) still falls back to the wolf-shaped proxy until its body layer is modeled.
+/// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby; both
+/// render through the dedicated [`EntityModelKind::Rabbit`] (`baby` selecting the body layout).
 fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
-    if ageable_baby(values) {
-        quadruped(QuadrupedModelFamily::Wolf, true)
-    } else {
-        EntityModelKind::Rabbit
+    EntityModelKind::Rabbit {
+        baby: ageable_baby(values),
     }
 }
 
@@ -5038,18 +5035,17 @@ mod tests {
             ),
             EntityModelKind::Fox { baby: true }
         );
-        // The adult rabbit renders through its dedicated `AdultRabbitModel`; the baby (whose own
-        // nested-pivot mesh is not yet modeled) still falls back to the wolf-shaped proxy.
+        // The rabbit (adult and baby) renders through its dedicated `AdultRabbitModel` / `BabyRabbitModel`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_RABBIT_ID, &[]),
-            EntityModelKind::Rabbit
+            EntityModelKind::Rabbit { baby: false }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_RABBIT_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            quadruped(QuadrupedModelFamily::Wolf, true)
+            EntityModelKind::Rabbit { baby: true }
         );
     }
 

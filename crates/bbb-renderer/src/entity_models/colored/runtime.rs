@@ -555,8 +555,8 @@ fn entity_model_mesh_with_options(
                     entity_model_root_transform(*instance),
                 );
             }
-            EntityModelKind::Rabbit => {
-                RabbitModel::new().prepare_and_render(
+            EntityModelKind::Rabbit { baby } => {
+                RabbitModel::new(baby).prepare_and_render(
                     &mut mesh,
                     instance,
                     entity_model_root_transform(*instance),

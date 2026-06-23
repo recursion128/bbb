@@ -301,12 +301,14 @@ pub enum EntityModelKind {
     /// `NautilusAnimation.SWIMMING` keyframe undulation, the variant textures, the saddle / armor / coral
     /// layers, and the distinct baby `createBabyBodyLayer` mesh are deferred.
     Nautilus,
-    /// `AdultRabbitModel` at its `createBodyLayer` rest pose (the `body`/`backlegs` roots, the head
-    /// nested under `body`). `RabbitModel.setupAnim` turns the head by the look angles (reproduced).
-    /// The looping `RabbitAnimation.HOP` and `IDLE_HEAD_TILT` keyframe animations need un-projected
-    /// `AnimationState`s, and the seven `Rabbit.Variant` textures and the `BabyRabbitModel` body
-    /// layer (still rendered through the `Quadruped`/`Wolf` proxy) are deferred.
-    Rabbit,
+    /// `AdultRabbitModel` / `BabyRabbitModel` at their `createBodyLayer` rest pose (`baby` selects the
+    /// baby body layout — a deeper `_r1`-nested hierarchy whose head is `body`'s third child).
+    /// `RabbitModel.setupAnim` turns the head by the look angles (reproduced). The looping
+    /// `RabbitAnimation.HOP` / `BabyRabbitAnimation` and `IDLE_HEAD_TILT` keyframe animations need
+    /// un-projected `AnimationState`s, and the seven `Rabbit.Variant` textures are deferred.
+    Rabbit {
+        baby: bool,
+    },
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
