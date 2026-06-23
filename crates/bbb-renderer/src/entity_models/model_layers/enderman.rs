@@ -1,7 +1,10 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    ENDERMAN_DARK, PART_POSE_ZERO,
+    apply_head_look, enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
+    head_first_part_index, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc, ENDERMAN_DARK, PART_POSE_ZERO,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_ENDERMAN: &str = "minecraft:enderman#main";
 
@@ -40,20 +43,6 @@ pub(in crate::entity_models) const ENDERMAN_HEAD_CHILDREN: [ModelPartDesc; 1] = 
     cubes: &ENDERMAN_HAT,
     children: &[],
 }];
-
-/// Vanilla `EndermanModel.setupAnim` `isCreepy` branch: the head is dropped `y -= 5` while
-/// the hat (this child) is raised `y += 5`, so the outer head layer keeps its world
-/// position as the inner head opens downward into the screech pose. Swapped in for
-/// [`ENDERMAN_HEAD_CHILDREN`] when the enderman is creepy.
-pub(in crate::entity_models) const ENDERMAN_HEAD_CHILDREN_CREEPY: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 5.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ENDERMAN_HAT,
-        children: &[],
-    }];
 
 // Vanilla 26.1 EndermanModel.createBodyLayer().
 pub(in crate::entity_models) const ENDERMAN_PARTS: [ModelPartDesc; 6] = [
@@ -132,18 +121,6 @@ pub(in crate::entity_models) const ENDERMAN_TEXTURED_HEAD_CHILDREN: [TexturedMod
         children: &[],
     }];
 
-/// Vanilla `EndermanModel.setupAnim` `isCreepy` hat raise (`y += 5`), the textured
-/// counterpart to [`ENDERMAN_HEAD_CHILDREN_CREEPY`].
-pub(in crate::entity_models) const ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY: [TexturedModelPartDesc;
-    1] = [TexturedModelPartDesc {
-    pose: PartPose {
-        offset: [0.0, 5.0, 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    },
-    cubes: &ENDERMAN_TEXTURED_HAT,
-    children: &[],
-}];
-
 pub(in crate::entity_models) const ENDERMAN_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
     [TexturedModelCubeDesc {
         min: [-4.0, 0.0, -2.0],
@@ -221,3 +198,66 @@ pub(in crate::entity_models) const ENDERMAN_TEXTURED_PARTS: [TexturedModelPartDe
         children: &[],
     },
 ];
+
+/// Mutable enderman model, mirroring vanilla `EndermanModel extends HumanoidModel`. The unified tree
+/// is zipped from the colored ([`ENDERMAN_PARTS`]) and textured ([`ENDERMAN_TEXTURED_PARTS`]) const
+/// trees. `setup_anim` looks the head (part `0`), then applies the inherited arm/leg swing halved and
+/// clamped to `[-0.4, 0.4]` ([`enderman_arm_swing_pose`] at `[2, 3]`, [`enderman_leg_swing_pose`] at
+/// `[4, 5]`). Carrying a block overrides both arms ([`enderman_carried_arm_pose`]); the creepy stare
+/// drops the head `y -= 5` and raises its hat child `y += 5` (vanilla's `isCreepy` branch), so the
+/// outer head layer holds its world position as the inner head opens downward. Both the base and
+/// eyes textured passes read this one posed tree.
+pub(in crate::entity_models) struct EndermanModel {
+    root: ModelPart,
+}
+
+impl EndermanModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&ENDERMAN_PARTS, &ENDERMAN_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for EndermanModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(head_first_part_index()),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        let limb_swing = render_state.walk_animation_pos;
+        let limb_swing_amount = render_state.walk_animation_speed;
+        for index in [2, 3] {
+            let arm = self.root.child_at_mut(index);
+            arm.pose = enderman_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+        }
+        for index in [4, 5] {
+            let leg = self.root.child_at_mut(index);
+            leg.pose = enderman_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+        }
+        // Carrying a block overrides the arm swing entirely (held out front).
+        if render_state.enderman_carrying {
+            for index in [2, 3] {
+                let arm = self.root.child_at_mut(index);
+                arm.pose = enderman_carried_arm_pose(arm.pose);
+            }
+        }
+        // The creepy stare drops the head and raises its hat child to keep the outer layer in place.
+        if render_state.enderman_creepy {
+            let head = self.root.child_at_mut(head_first_part_index());
+            head.pose.offset[1] -= 5.0;
+            let hat = head.child_at_mut(0);
+            hat.pose.offset[1] += 5.0;
+        }
+    }
+}

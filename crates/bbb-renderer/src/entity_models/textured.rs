@@ -27,7 +27,6 @@ use super::{
         allay_wing_rest_x_rot, apply_wolf_sitting_pose, armor_stand_textured_cube,
         bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot, bee_bone_y_delta,
         bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look, dolphin_wave,
-        enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
         head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
         humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
         parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
@@ -39,7 +38,7 @@ use super::{
         strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
         tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
         wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel,
+        BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel,
         EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
         IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PigModel, PiglinModel,
         PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel,
@@ -74,12 +73,12 @@ use super::{
         DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
         DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
         DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
-        DOLPHIN_TEXTURE_REF, ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, PHANTOM_BODY_POSE,
-        PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE,
-        PHANTOM_LEFT_WING_BASE_POSE, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE,
-        PHANTOM_LEFT_WING_TIP_POSE, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE,
-        PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
-        PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        DOLPHIN_TEXTURE_REF, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
+        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
+        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
+        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
+        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
+        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PUFFERFISH_TEXTURE_REF, SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE,
         STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X,
@@ -2122,60 +2121,21 @@ fn emit_enderman_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `EndermanModel extends HumanoidModel`: full head look, then the inherited
-    // arm and leg swing halved and clamped to `[-0.4, 0.4]`
-    // (`enderman_arm_swing_pose`/`enderman_leg_swing_pose`, arms at [2, 3], legs at
-    // [4, 5]). Carrying a block then overrides both arms (`enderman_carried_arm_pose`),
-    // and the creepy stare drops the head `y -= 5` while raising its hat child `y += 5`
-    // (`ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY`).
-    let head_index = head_first_part_index();
+    // The unified `EndermanModel` tree drives both render paths; `setup_anim` looks the head, swings
+    // the clamped arms/legs, overrides the arms when carrying a block, and applies the creepy
+    // head/hat shift. Both the base and eyes passes read this one posed tree.
     let transform = entity_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let carrying = instance.render_state.enderman_carrying;
-    let creepy = instance.render_state.enderman_creepy;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    let mut model = EndermanModel::new();
+    model.prepare(&instance);
     for pass in enderman_textured_layer_passes() {
-        if head_resting && limbs_resting && !carrying && !creepy {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-                }
-            }
-            if !limbs_resting {
-                for index in HUMANOID_ARM_PART_INDICES {
-                    if let Some(arm) = parts.get_mut(index) {
-                        arm.pose = enderman_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-                for index in HUMANOID_LEG_PART_INDICES {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose = enderman_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-            // Carrying a block overrides the arm swing entirely (held out front).
-            if carrying {
-                for index in HUMANOID_ARM_PART_INDICES {
-                    if let Some(arm) = parts.get_mut(index) {
-                        arm.pose = enderman_carried_arm_pose(arm.pose);
-                    }
-                }
-            }
-            // The creepy stare drops the head and raises the hat into the screech pose.
-            if creepy {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose.offset[1] -= 5.0;
-                    head.children = &ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY;
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }

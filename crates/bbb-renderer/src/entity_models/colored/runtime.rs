@@ -3101,54 +3101,10 @@ fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
 }
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `EndermanModel extends HumanoidModel`: `setupAnim` runs `super.setupAnim`
-    // (the inherited arm and leg swing) then halves and clamps both the arms and the
-    // legs to `[-0.4, 0.4]` (`enderman_arm_swing_pose`/`enderman_leg_swing_pose`). Arms
-    // are at [2, 3], legs at [4, 5]. Carrying a block then *overrides* both arms
-    // (`enderman_carried_arm_pose`, held out front), and the creepy stare drops the head
-    // `y -= 5` while raising its hat child `y += 5` (`ENDERMAN_HEAD_CHILDREN_CREEPY`).
-    let mut parts = enderman_limb_swing_parts(
-        head_first_colored_head_look_parts(&ENDERMAN_PARTS, instance),
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    )
-    .into_owned();
-    if instance.render_state.enderman_carrying {
-        for index in HUMANOID_ARM_PART_INDICES {
-            parts[index].pose = enderman_carried_arm_pose(parts[index].pose);
-        }
-    }
-    if instance.render_state.enderman_creepy {
-        let head = &mut parts[head_first_part_index()];
-        head.pose.offset[1] -= 5.0;
-        head.children = &ENDERMAN_HEAD_CHILDREN_CREEPY;
-    }
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
-}
-
-/// Applies the vanilla `EndermanModel.setupAnim` arm and leg swing
-/// ([`enderman_arm_swing_pose`]/[`enderman_leg_swing_pose`]: the inherited
-/// `HumanoidModel` swing, halved and clamped to `[-0.4, 0.4]`) to a colored enderman
-/// layer's two arm parts at `[2, 3]` and two leg parts at `[4, 5]`. Borrows the static
-/// parts unchanged at rest (`walkAnimationSpeed == 0`).
-fn enderman_limb_swing_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    limb_swing: f32,
-    limb_swing_amount: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    if limb_swing_at_rest(limb_swing_amount) {
-        return parts;
-    }
-    let mut owned = parts.into_owned();
-    for index in HUMANOID_ARM_PART_INDICES {
-        owned[index].pose =
-            enderman_arm_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
-    }
-    for index in HUMANOID_LEG_PART_INDICES {
-        owned[index].pose =
-            enderman_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
-    }
-    Cow::Owned(owned)
+    // The unified `EndermanModel` tree drives both render paths; `setup_anim` looks the head, swings
+    // the clamped arms/legs, overrides the arms when carrying a block, and applies the creepy
+    // head/hat shift.
+    EndermanModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
 }
 
 /// Applies the vanilla `setupAnim` head look to a standalone head-first colored

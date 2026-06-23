@@ -522,34 +522,6 @@ fn enderman_carried_arm_pose_matches_vanilla_setup_anim() {
 }
 
 #[test]
-fn enderman_creepy_hat_child_raises_to_match_head_drop() {
-    // Vanilla EndermanModel.setupAnim isCreepy branch raises the hat child y += 5 while the
-    // emit drops the head y -= 5, so the outer head layer keeps its world position as the
-    // inner head opens downward. The creepy hat child differs from the rest hat only by the
-    // +5 y offset and is otherwise the same cube (colored and textured).
-    assert_eq!(
-        ENDERMAN_HEAD_CHILDREN_CREEPY[0].pose.offset,
-        [0.0, 5.0, 0.0]
-    );
-    assert_eq!(
-        ENDERMAN_HEAD_CHILDREN_CREEPY[0].pose.rotation,
-        [0.0, 0.0, 0.0]
-    );
-    assert_eq!(
-        ENDERMAN_HEAD_CHILDREN_CREEPY[0].cubes,
-        ENDERMAN_HEAD_CHILDREN[0].cubes
-    );
-    assert_eq!(
-        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY[0].pose.offset,
-        [0.0, 5.0, 0.0]
-    );
-    assert_eq!(
-        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY[0].cubes,
-        ENDERMAN_TEXTURED_HEAD_CHILDREN[0].cubes
-    );
-}
-
-#[test]
 fn enderman_holds_its_arms_out_when_carrying_a_block() {
     // Carrying a block sets both arms to xRot = -0.5 (held out front), overriding the swing
     // and leaving the head, body and legs untouched. The colored parts emit head(0)+hat(1)+
