@@ -1,87 +1,74 @@
 use super::*;
 
-#[test]
-fn salmon_model_parts_match_vanilla_26_1_body_layer() {
-    // Vanilla `SalmonModel.createBodyLayer` (atlas 32×32): body front (top fin child),
-    // body back (tail fin + top fin children), head, then the two side fins (zRot ±π/4).
-    assert_eq!(SALMON_PARTS.len(), 5);
+use crate::entity_models::model::ModelCube;
 
-    assert_part_tree(
-        &SALMON_PARTS[0],
-        [0.0, 20.0, -7.2],
-        [0.0, 0.0, 0.0],
-        SALMON_BODY_FRONT.as_slice(),
-        &SALMON_BODY_FRONT_CHILDREN,
-    );
+#[test]
+fn salmon_model_cubes_and_poses_match_vanilla_26_1_body_layer() {
+    // Vanilla `SalmonModel.createBodyLayer` (atlas 32×32): body front (top fin child),
+    // body back (tail fin + top fin children), head, then the two side fins (zRot ±π/4). Each
+    // unified cube carries the colored tint (`SALMON_RED`) and the textured UV; `CubeDeformation.NONE`,
+    // so each `uv_size` equals the geometry size and no cube mirrors (the right fin keeps its negative
+    // `texOffs(-4, 0)` U origin).
+    let frac_pi_4 = std::f32::consts::FRAC_PI_4;
+
+    // body front at (0, 20, -7.2), texOffs(0, 0), carrying the forward top fin at (0, -4.5, 5).
+    assert_eq!(SALMON_BODY_FRONT_POSE.offset, [0.0, 20.0, -7.2]);
+    assert_eq!(SALMON_BODY_FRONT_POSE.rotation, [0.0, 0.0, 0.0]);
     assert_eq!(
         SALMON_BODY_FRONT[0],
-        ModelCubeDesc {
-            min: [-1.5, -2.5, 0.0],
-            size: [3.0, 5.0, 8.0],
-            color: SALMON_RED,
-        }
+        ModelCube::new(
+            [-1.5, -2.5, 0.0],
+            [3.0, 5.0, 8.0],
+            SALMON_RED,
+            [3.0, 5.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-
-    // The back body segment is index `SALMON_BODY_BACK_PART_INDEX`; it sits 0.8 forward and
-    // carries the swaying tail + rear top fin.
-    assert_eq!(SALMON_BODY_BACK_PART_INDEX, 1);
-    assert_part_tree(
-        &SALMON_PARTS[1],
-        [0.0, 20.0, 0.8],
-        [0.0, 0.0, 0.0],
-        SALMON_BODY_BACK.as_slice(),
-        &SALMON_BODY_BACK_CHILDREN,
-    );
-    assert_eq!(SALMON_PARTS[1].children.len(), 2);
-    // back_fin (zero-thickness plane) at +8 Z, then the rear top fin at -4.5 Y / -1 Z.
-    assert_part(
-        &SALMON_PARTS[1].children[0],
-        [0.0, 0.0, 8.0],
-        [0.0, 0.0, 0.0],
-        SALMON_BACK_FIN.as_slice(),
-    );
-    assert_eq!(SALMON_BACK_FIN[0].size, [0.0, 5.0, 6.0]);
-    assert_part(
-        &SALMON_PARTS[1].children[1],
-        [0.0, -4.5, -1.0],
-        [0.0, 0.0, 0.0],
-        SALMON_TOP_BACK_FIN.as_slice(),
-    );
-    assert_eq!(SALMON_TOP_BACK_FIN[0].size, [0.0, 2.0, 4.0]);
-
-    // The front body carries the forward top fin.
-    assert_eq!(SALMON_PARTS[0].children.len(), 1);
-    assert_part(
-        &SALMON_PARTS[0].children[0],
-        [0.0, -4.5, 5.0],
-        [0.0, 0.0, 0.0],
-        SALMON_TOP_FRONT_FIN.as_slice(),
-    );
+    assert_eq!(SALMON_TOP_FRONT_FIN_POSE.offset, [0.0, -4.5, 5.0]);
     assert_eq!(SALMON_TOP_FRONT_FIN[0].size, [0.0, 2.0, 3.0]);
+    assert_eq!(SALMON_TOP_FRONT_FIN[0].tex, [2.0, 1.0]);
 
-    assert_part(
-        &SALMON_PARTS[2],
-        [0.0, 20.0, -7.2],
-        [0.0, 0.0, 0.0],
-        SALMON_HEAD.as_slice(),
-    );
+    // The back body segment sits 0.8 forward (texOffs(0, 13)) and carries the swaying tail +
+    // rear top fin: back_fin (zero-thickness plane) at +8 Z, then the rear top fin at -4.5 Y / -1 Z.
+    assert_eq!(SALMON_BODY_BACK_POSE.offset, [0.0, 20.0, 0.8]);
+    assert_eq!(SALMON_BODY_BACK[0].tex, [0.0, 13.0]);
+    assert_eq!(SALMON_BACK_FIN_POSE.offset, [0.0, 0.0, 8.0]);
+    assert_eq!(SALMON_BACK_FIN[0].size, [0.0, 5.0, 6.0]);
+    assert_eq!(SALMON_BACK_FIN[0].tex, [20.0, 10.0]);
+    assert_eq!(SALMON_TOP_BACK_FIN_POSE.offset, [0.0, -4.5, -1.0]);
+    assert_eq!(SALMON_TOP_BACK_FIN[0].size, [0.0, 2.0, 4.0]);
+    assert_eq!(SALMON_TOP_BACK_FIN[0].tex, [0.0, 2.0]);
+
+    // Head at (0, 20, -7.2), texOffs(22, 0).
+    assert_eq!(SALMON_HEAD_POSE.offset, [0.0, 20.0, -7.2]);
     assert_eq!(SALMON_HEAD[0].size, [2.0, 4.0, 3.0]);
+    assert_eq!(SALMON_HEAD[0].tex, [22.0, 0.0]);
 
-    // Side fins: zero-height planes rotated ±π/4 about Z.
-    assert_part(
-        &SALMON_PARTS[3],
-        [-1.5, 21.5, -7.2],
-        [0.0, 0.0, -std::f32::consts::FRAC_PI_4],
-        SALMON_RIGHT_FIN.as_slice(),
-    );
-    assert_part(
-        &SALMON_PARTS[4],
-        [1.5, 21.5, -7.2],
-        [0.0, 0.0, std::f32::consts::FRAC_PI_4],
-        SALMON_LEFT_FIN.as_slice(),
-    );
+    // Side fins: zero-height planes rotated ±π/4 about Z; the right fin keeps texOffs(-4, 0).
+    assert_eq!(SALMON_RIGHT_FIN_POSE.offset, [-1.5, 21.5, -7.2]);
+    assert_eq!(SALMON_RIGHT_FIN_POSE.rotation, [0.0, 0.0, -frac_pi_4]);
     assert_eq!(SALMON_RIGHT_FIN[0].size, [2.0, 0.0, 2.0]);
+    assert_eq!(SALMON_RIGHT_FIN[0].tex, [-4.0, 0.0]);
+    assert_eq!(SALMON_LEFT_FIN_POSE.offset, [1.5, 21.5, -7.2]);
+    assert_eq!(SALMON_LEFT_FIN_POSE.rotation, [0.0, 0.0, frac_pi_4]);
     assert_eq!(SALMON_LEFT_FIN[0].size, [2.0, 0.0, 2.0]);
+    assert_eq!(SALMON_LEFT_FIN[0].tex, [0.0, 0.0]);
+
+    // No cube mirrors and `uv_size` equals the geometry size.
+    for cube in [
+        SALMON_BODY_FRONT[0],
+        SALMON_BODY_BACK[0],
+        SALMON_HEAD[0],
+        SALMON_BACK_FIN[0],
+        SALMON_TOP_FRONT_FIN[0],
+        SALMON_TOP_BACK_FIN[0],
+        SALMON_RIGHT_FIN[0],
+        SALMON_LEFT_FIN[0],
+    ] {
+        assert!(!cube.mirror);
+        assert_eq!(cube.uv_size, cube.size);
+    }
 }
 
 #[test]
@@ -278,38 +265,9 @@ fn salmon_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].kind, EntityModelLayerKind::SalmonBase);
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, SALMON_TEXTURE_REF);
-        assert_eq!(passes[0].parts, SALMON_TEXTURED_PARTS.as_slice());
+        assert!(passes[0].parts.is_empty());
         assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     }
-
-    // The textured parts mirror the colored poses, including the nested fin children, so
-    // the `setupAnim` body-back sway re-poses the same subtree in both paths.
-    for (colored, textured) in SALMON_PARTS.iter().zip(SALMON_TEXTURED_PARTS.iter()) {
-        assert_eq!(colored.pose, textured.pose);
-    }
-    assert_eq!(
-        SALMON_TEXTURED_PARTS[SALMON_BODY_BACK_PART_INDEX]
-            .children
-            .len(),
-        2
-    );
-    assert_eq!(
-        SALMON_TEXTURED_PARTS[SALMON_BODY_BACK_PART_INDEX].children[0].pose,
-        SALMON_BODY_BACK_CHILDREN[0].pose
-    );
-    assert_eq!(
-        SALMON_TEXTURED_PARTS[0].children[0].pose,
-        SALMON_BODY_FRONT_CHILDREN[0].pose
-    );
-    // No cube mirrors and `uv_size` equals the geometry size (`CubeDeformation.NONE`); the
-    // right fin keeps its negative `texOffs(-4, 0)` U origin.
-    assert!(!SALMON_TEXTURED_BODY_FRONT[0].mirror);
-    assert_eq!(
-        SALMON_TEXTURED_BODY_FRONT[0].uv_size,
-        SALMON_TEXTURED_BODY_FRONT[0].size
-    );
-    assert_eq!(SALMON_TEXTURED_RIGHT_FIN[0].tex, [-4.0, 0.0]);
-    assert_eq!(SALMON_TEXTURED_BODY_BACK[0].tex, [0.0, 13.0]);
 }
 
 #[test]

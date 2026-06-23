@@ -1,139 +1,125 @@
-use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    SALMON_RED,
-};
+use super::{PartPose, PART_POSE_ZERO, SALMON_RED};
 use crate::entity_models::catalog::SalmonModelSize;
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
-// Vanilla 26.1 `SalmonModel.createBodyLayer` (atlas 32×32). The body is split into a
-// front and back segment (the back sways), each carrying a flat top fin; the back also
-// carries the flat tail fin. The side fins are zero-thickness planes.
-pub(in crate::entity_models) const SALMON_BODY_FRONT: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, -2.5, 0.0],
-    size: [3.0, 5.0, 8.0],
-    color: SALMON_RED,
-}];
+use std::f32::consts::FRAC_PI_4;
 
-pub(in crate::entity_models) const SALMON_BODY_BACK: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, -2.5, 0.0],
-    size: [3.0, 5.0, 8.0],
-    color: SALMON_RED,
-}];
+// Vanilla 26.1 `SalmonModel.createBodyLayer` (atlas 32×32). The body is split into a front and back
+// segment (the back sways), each carrying a flat top fin; the back also carries the flat tail fin. The
+// side fins are zero-thickness planes. `CubeDeformation.NONE`, so each `uv_size` equals the geometry
+// size, and no cube mirrors. Each unified cube carries both render paths' data: the colored debug tint
+// (`SALMON_RED`) and the textured `uv_size` / `texOffs` (the right fin keeps its negative
+// `texOffs(-4, 0)` U origin).
+pub(in crate::entity_models) const SALMON_BODY_FRONT: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, -2.5, 0.0],
+    [3.0, 5.0, 8.0],
+    SALMON_RED,
+    [3.0, 5.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -2.0, -3.0],
-    size: [2.0, 4.0, 3.0],
-    color: SALMON_RED,
-}];
+pub(in crate::entity_models) const SALMON_BODY_BACK: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, -2.5, 0.0],
+    [3.0, 5.0, 8.0],
+    SALMON_RED,
+    [3.0, 5.0, 8.0],
+    [0.0, 13.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_BACK_FIN: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -2.5, 0.0],
-    size: [0.0, 5.0, 6.0],
-    color: SALMON_RED,
-}];
+pub(in crate::entity_models) const SALMON_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -2.0, -3.0],
+    [2.0, 4.0, 3.0],
+    SALMON_RED,
+    [2.0, 4.0, 3.0],
+    [22.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_TOP_FRONT_FIN: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [0.0, 2.0, 3.0],
-    color: SALMON_RED,
-}];
+pub(in crate::entity_models) const SALMON_BACK_FIN: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -2.5, 0.0],
+    [0.0, 5.0, 6.0],
+    SALMON_RED,
+    [0.0, 5.0, 6.0],
+    [20.0, 10.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_TOP_BACK_FIN: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [0.0, 2.0, 4.0],
-    color: SALMON_RED,
-}];
+pub(in crate::entity_models) const SALMON_TOP_FRONT_FIN: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [0.0, 2.0, 3.0],
+    SALMON_RED,
+    [0.0, 2.0, 3.0],
+    [2.0, 1.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_RIGHT_FIN: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, 0.0],
-    size: [2.0, 0.0, 2.0],
-    color: SALMON_RED,
-}];
+pub(in crate::entity_models) const SALMON_TOP_BACK_FIN: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [0.0, 2.0, 4.0],
+    SALMON_RED,
+    [0.0, 2.0, 4.0],
+    [0.0, 2.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_LEFT_FIN: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [2.0, 0.0, 2.0],
-    color: SALMON_RED,
-}];
+pub(in crate::entity_models) const SALMON_RIGHT_FIN: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, 0.0],
+    [2.0, 0.0, 2.0],
+    SALMON_RED,
+    [2.0, 0.0, 2.0],
+    [-4.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_BODY_FRONT_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, -4.5, 5.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SALMON_TOP_FRONT_FIN,
-        children: &[],
-    }];
+pub(in crate::entity_models) const SALMON_LEFT_FIN: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [2.0, 0.0, 2.0],
+    SALMON_RED,
+    [2.0, 0.0, 2.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SALMON_BODY_BACK_CHILDREN: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 0.0, 8.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SALMON_BACK_FIN,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, -4.5, -1.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SALMON_TOP_BACK_FIN,
-        children: &[],
-    },
-];
+// Root-part poses (vanilla `SalmonModel.createBodyLayer` root order): body front, body back (swayed by
+// `setupAnim`), head, right fin (`zRot = -π/4`), left fin (`zRot = π/4`).
+pub(in crate::entity_models) const SALMON_BODY_FRONT_POSE: PartPose = PartPose {
+    offset: [0.0, 20.0, -7.2],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const SALMON_BODY_BACK_POSE: PartPose = PartPose {
+    offset: [0.0, 20.0, 0.8],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const SALMON_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 20.0, -7.2],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const SALMON_RIGHT_FIN_POSE: PartPose = PartPose {
+    offset: [-1.5, 21.5, -7.2],
+    rotation: [0.0, 0.0, -FRAC_PI_4],
+};
+pub(in crate::entity_models) const SALMON_LEFT_FIN_POSE: PartPose = PartPose {
+    offset: [1.5, 21.5, -7.2],
+    rotation: [0.0, 0.0, FRAC_PI_4],
+};
 
-/// Vanilla `SalmonModel.createBodyLayer` root part order: body front (top fin child),
-/// body back (tail + top fin children, swayed by `setupAnim`), head, right fin
-/// (`zRot = -π/4`), left fin (`zRot = π/4`). The body back is index
-/// [`SALMON_BODY_BACK_PART_INDEX`].
-pub(in crate::entity_models) const SALMON_PARTS: [ModelPartDesc; 5] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 20.0, -7.2],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SALMON_BODY_FRONT,
-        children: &SALMON_BODY_FRONT_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 20.0, 0.8],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SALMON_BODY_BACK,
-        children: &SALMON_BODY_BACK_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 20.0, -7.2],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SALMON_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-1.5, 21.5, -7.2],
-            rotation: [0.0, 0.0, -std::f32::consts::FRAC_PI_4],
-        },
-        cubes: &SALMON_RIGHT_FIN,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [1.5, 21.5, -7.2],
-            rotation: [0.0, 0.0, std::f32::consts::FRAC_PI_4],
-        },
-        cubes: &SALMON_LEFT_FIN,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const SALMON_BODY_BACK_PART_INDEX: usize = 1;
+// Fin child poses: the forward top fin hangs off the front body; the tail fin and rear top fin hang
+// off the back body (so they sway with it).
+pub(in crate::entity_models) const SALMON_TOP_FRONT_FIN_POSE: PartPose = PartPose {
+    offset: [0.0, -4.5, 5.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const SALMON_BACK_FIN_POSE: PartPose = PartPose {
+    offset: [0.0, 0.0, 8.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const SALMON_TOP_BACK_FIN_POSE: PartPose = PartPose {
+    offset: [0.0, -4.5, -1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
 /// Vanilla `SalmonModel`/`SalmonRenderer` swim multipliers: a salmon in water uses
 /// `(amplitude 1.0, angle 1.0)`; a beached salmon thrashes harder and faster
@@ -170,146 +156,58 @@ pub(in crate::entity_models) fn salmon_model_layer(size: SalmonModelSize) -> &'s
     }
 }
 
-// Textured counterparts of the salmon cubes (atlas 32×32). `CubeDeformation.NONE`, so each
-// `uv_size` equals the geometry size, and no cube mirrors. The UV origins mirror vanilla
-// `SalmonModel.createBodyLayer`'s `texOffs` (the right fin keeps its negative
-// `texOffs(-4, 0)` U origin).
-pub(in crate::entity_models) const SALMON_TEXTURED_BODY_FRONT: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, -2.5, 0.0],
-        size: [3.0, 5.0, 8.0],
-        uv_size: [3.0, 5.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_BODY_BACK: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, -2.5, 0.0],
-        size: [3.0, 5.0, 8.0],
-        uv_size: [3.0, 5.0, 8.0],
-        tex: [0.0, 13.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, -2.0, -3.0],
-        size: [2.0, 4.0, 3.0],
-        uv_size: [2.0, 4.0, 3.0],
-        tex: [22.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_BACK_FIN: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, -2.5, 0.0],
-        size: [0.0, 5.0, 6.0],
-        uv_size: [0.0, 5.0, 6.0],
-        tex: [20.0, 10.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_TOP_FRONT_FIN: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [0.0, 2.0, 3.0],
-        uv_size: [0.0, 2.0, 3.0],
-        tex: [2.0, 1.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_TOP_BACK_FIN: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [0.0, 2.0, 4.0],
-        uv_size: [0.0, 2.0, 4.0],
-        tex: [0.0, 2.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_RIGHT_FIN: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 0.0, 0.0],
-        size: [2.0, 0.0, 2.0],
-        uv_size: [2.0, 0.0, 2.0],
-        tex: [-4.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_LEFT_FIN: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [2.0, 0.0, 2.0],
-        uv_size: [2.0, 0.0, 2.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_BODY_FRONT_CHILDREN: [TexturedModelPartDesc; 1] =
-    [TexturedModelPartDesc {
-        pose: SALMON_BODY_FRONT_CHILDREN[0].pose,
-        cubes: &SALMON_TEXTURED_TOP_FRONT_FIN,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const SALMON_TEXTURED_BODY_BACK_CHILDREN: [TexturedModelPartDesc; 2] = [
-    TexturedModelPartDesc {
-        pose: SALMON_BODY_BACK_CHILDREN[0].pose,
-        cubes: &SALMON_TEXTURED_BACK_FIN,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: SALMON_BODY_BACK_CHILDREN[1].pose,
-        cubes: &SALMON_TEXTURED_TOP_BACK_FIN,
-        children: &[],
-    },
-];
-
-/// Textured salmon parts mirroring [`SALMON_PARTS`]: body front (top fin child), body
-/// back (tail fin + rear top fin children, swayed by `setupAnim`), head, right fin, left
-/// fin. The body back is index [`SALMON_BODY_BACK_PART_INDEX`].
-pub(in crate::entity_models) const SALMON_TEXTURED_PARTS: [TexturedModelPartDesc; 5] = [
-    TexturedModelPartDesc {
-        pose: SALMON_PARTS[0].pose,
-        cubes: &SALMON_TEXTURED_BODY_FRONT,
-        children: &SALMON_TEXTURED_BODY_FRONT_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: SALMON_PARTS[1].pose,
-        cubes: &SALMON_TEXTURED_BODY_BACK,
-        children: &SALMON_TEXTURED_BODY_BACK_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: SALMON_PARTS[2].pose,
-        cubes: &SALMON_TEXTURED_HEAD,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: SALMON_PARTS[3].pose,
-        cubes: &SALMON_TEXTURED_RIGHT_FIN,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: SALMON_PARTS[4].pose,
-        cubes: &SALMON_TEXTURED_LEFT_FIN,
-        children: &[],
-    },
-];
-
-/// Mutable salmon model, mirroring vanilla `SalmonModel`. The unified tree is zipped from the baked
-/// colored ([`SALMON_PARTS`]) and textured ([`SALMON_TEXTURED_PARTS`]) trees, so one tree drives both
-/// render paths. `setup_anim` sways only the back body segment (which carries the tail and rear top
-/// fin); the swim wiggle, out-of-water flop, and small/medium/large mesh scale live in the salmon
-/// root transform.
+/// Mutable salmon model, mirroring vanilla `SalmonModel`. The unified tree is built once with the
+/// vanilla `SalmonModel.createBodyLayer` child names: `body_front` (carrying `top_front_fin`),
+/// `body_back` (carrying `back_fin` + `top_back_fin`, swayed by `setupAnim`), `head`, `right_fin`,
+/// `left_fin`. The same tree drives both render paths. `setup_anim` sways only the back body segment
+/// (which carries the tail and rear top fin); the swim wiggle, out-of-water flop, and
+/// small/medium/large mesh scale live in the salmon root transform.
 pub(in crate::entity_models) struct SalmonModel {
     root: ModelPart,
 }
 
 impl SalmonModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let body_front = ModelPart::new(
+            SALMON_BODY_FRONT_POSE,
+            SALMON_BODY_FRONT.to_vec(),
+            vec![(
+                "top_front_fin",
+                ModelPart::leaf(SALMON_TOP_FRONT_FIN_POSE, SALMON_TOP_FRONT_FIN.to_vec()),
+            )],
+        );
+        let body_back = ModelPart::new(
+            SALMON_BODY_BACK_POSE,
+            SALMON_BODY_BACK.to_vec(),
+            vec![
+                (
+                    "back_fin",
+                    ModelPart::leaf(SALMON_BACK_FIN_POSE, SALMON_BACK_FIN.to_vec()),
+                ),
+                (
+                    "top_back_fin",
+                    ModelPart::leaf(SALMON_TOP_BACK_FIN_POSE, SALMON_TOP_BACK_FIN.to_vec()),
+                ),
+            ],
+        );
+        let children: Vec<(&'static str, ModelPart)> = vec![
+            ("body_front", body_front),
+            ("body_back", body_back),
+            (
+                "head",
+                ModelPart::leaf(SALMON_HEAD_POSE, SALMON_HEAD.to_vec()),
+            ),
+            (
+                "right_fin",
+                ModelPart::leaf(SALMON_RIGHT_FIN_POSE, SALMON_RIGHT_FIN.to_vec()),
+            ),
+            (
+                "left_fin",
+                ModelPart::leaf(SALMON_LEFT_FIN_POSE, SALMON_LEFT_FIN.to_vec()),
+            ),
+        ];
         Self {
-            root: ModelPart::root_from_descs(&SALMON_PARTS, &SALMON_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }
@@ -330,9 +228,6 @@ impl EntityModel for SalmonModel {
             instance.render_state.age_in_ticks,
             instance.render_state.in_water,
         );
-        self.root
-            .child_at_mut(SALMON_BODY_BACK_PART_INDEX)
-            .pose
-            .rotation[1] = body_back_yrot;
+        self.root.child_mut("body_back").pose.rotation[1] = body_back_yrot;
     }
 }

@@ -165,7 +165,7 @@ pub(in crate::entity_models) fn salmon_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: salmon_model_layer(size),
         texture: SALMON_TEXTURE_REF,
-        parts: &SALMON_TEXTURED_PARTS,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
