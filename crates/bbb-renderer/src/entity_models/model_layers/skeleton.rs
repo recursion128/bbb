@@ -1,7 +1,9 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_walk, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_SKELETON: &str = "minecraft:skeleton#main";
 pub(in crate::entity_models) const MODEL_LAYER_STRAY: &str = "minecraft:stray#main";
@@ -845,3 +847,46 @@ pub(in crate::entity_models) const PARCHED_TEXTURED_PARTS: [TexturedModelPartDes
         children: &[],
     },
 ];
+
+/// Mutable plain-skeleton model, mirroring vanilla `SkeletonModel` (the base `HumanoidModel`). The
+/// unified tree is zipped from the baked colored ([`SKELETON_PARTS`]) and textured
+/// ([`SKELETON_TEXTURED_PARTS`]) trees: child 0 is the head, child 1 the body, children 2/3 the
+/// right/left arm, children 4/5 the right/left leg. `setup_anim` looks the head ([`apply_head_look`])
+/// then runs the shared humanoid arm + leg walk swing ([`apply_humanoid_walk`]). The bow-aiming arm
+/// pose and the stray/bogged clothing and wither-skeleton variants are handled separately.
+pub(in crate::entity_models) struct SkeletonModel {
+    root: ModelPart,
+}
+
+impl SkeletonModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&SKELETON_PARTS, &SKELETON_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SkeletonModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(0),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_humanoid_walk(
+            &mut self.root,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+            render_state.age_in_ticks,
+        );
+    }
+}

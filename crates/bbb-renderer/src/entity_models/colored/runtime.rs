@@ -334,7 +334,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Skeleton => {
                 if !skip_texture_backed_entities {
-                    emit_skeleton_model(&mut mesh, *instance);
+                    SkeletonModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::SkeletonVariant { family } => {
@@ -2740,14 +2744,6 @@ fn hoglin_limb_swing_parts(
         owned[index].pose = hoglin_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
     }
     Cow::Owned(owned)
-}
-
-fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    emit_model_parts(
-        mesh,
-        &skeleton_colored_posed_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
-        entity_model_root_transform(instance),
-    );
 }
 
 fn emit_skeleton_variant_model(
