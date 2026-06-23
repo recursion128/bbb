@@ -1,7 +1,7 @@
 use super::{
-    degree_vec, inflate_textured_cube, keyframe, pos_vec, AnimationChannel, AnimationDefinition,
-    AnimationTarget, BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, ModelPartDesc,
-    PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
+    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
+    BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
 };
 
 pub(super) const CHICKEN_WHITE: [f32; 4] = [0.94, 0.94, 0.86, 1.0];

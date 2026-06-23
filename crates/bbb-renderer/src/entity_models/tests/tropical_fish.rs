@@ -1,119 +1,96 @@
 use super::*;
 
-#[test]
-fn tropical_fish_small_parts_match_vanilla_26_1_body_layer() {
-    // Vanilla `TropicalFishSmallModel.createBodyLayer` (kob body, atlas 32×32): body, tail,
-    // right fin (`yRot = π/4`), left fin (`yRot = -π/4`), top fin.
-    assert_eq!(TROPICAL_FISH_SMALL_PARTS.len(), 5);
+use crate::entity_models::model::ModelCube;
 
-    assert_part(
-        &TROPICAL_FISH_SMALL_PARTS[0],
-        [0.0, 22.0, 0.0],
-        [0.0, 0.0, 0.0],
-        TROPICAL_FISH_SMALL_BODY.as_slice(),
-    );
+#[test]
+fn tropical_fish_small_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `TropicalFishSmallModel.createBodyLayer` (kob body, atlas 32×32,
+    // `CubeDeformation.NONE`, so each `uv_size` equals the geometry size): body, tail, right fin
+    // (`yRot = π/4`), left fin (`yRot = -π/4`), top fin. Each unified cube carries the colored tint
+    // (`TROPICAL_FISH_ORANGE`) and the textured UV in one struct.
     assert_eq!(
         TROPICAL_FISH_SMALL_BODY[0],
-        ModelCubeDesc {
-            min: [-1.0, -1.5, -3.0],
-            size: [2.0, 3.0, 6.0],
-            color: TROPICAL_FISH_ORANGE,
-        }
+        ModelCube::new(
+            [-1.0, -1.5, -3.0],
+            [2.0, 3.0, 6.0],
+            TROPICAL_FISH_ORANGE,
+            [2.0, 3.0, 6.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-
-    // The tail is index `TROPICAL_FISH_TAIL_PART_INDEX`; it is a zero-thickness plane.
-    assert_eq!(TROPICAL_FISH_TAIL_PART_INDEX, 1);
-    assert_part(
-        &TROPICAL_FISH_SMALL_PARTS[1],
-        [0.0, 22.0, 3.0],
-        [0.0, 0.0, 0.0],
-        TROPICAL_FISH_SMALL_TAIL.as_slice(),
-    );
+    // The tail is a zero-thickness plane keeping its negative `texOffs` V origin.
     assert_eq!(TROPICAL_FISH_SMALL_TAIL[0].size, [0.0, 3.0, 6.0]);
-
-    // The side fins splay ±π/4 about Y (not Z like cod/salmon).
-    assert_part(
-        &TROPICAL_FISH_SMALL_PARTS[2],
-        [-1.0, 22.5, 0.0],
-        [0.0, std::f32::consts::FRAC_PI_4, 0.0],
-        TROPICAL_FISH_SMALL_RIGHT_FIN.as_slice(),
-    );
-    assert_part(
-        &TROPICAL_FISH_SMALL_PARTS[3],
-        [1.0, 22.5, 0.0],
-        [0.0, -std::f32::consts::FRAC_PI_4, 0.0],
-        TROPICAL_FISH_SMALL_LEFT_FIN.as_slice(),
-    );
+    assert_eq!(TROPICAL_FISH_SMALL_TAIL[0].tex, [22.0, -6.0]);
+    // The side fins are zero-thickness planes flat in Z.
     assert_eq!(TROPICAL_FISH_SMALL_RIGHT_FIN[0].size, [2.0, 2.0, 0.0]);
-
-    assert_part(
-        &TROPICAL_FISH_SMALL_PARTS[4],
-        [0.0, 20.5, -3.0],
-        [0.0, 0.0, 0.0],
-        TROPICAL_FISH_SMALL_TOP_FIN.as_slice(),
-    );
     assert_eq!(TROPICAL_FISH_SMALL_TOP_FIN[0].size, [0.0, 3.0, 6.0]);
+    assert_eq!(TROPICAL_FISH_SMALL_TOP_FIN[0].tex, [10.0, -5.0]);
 }
 
 #[test]
-fn tropical_fish_large_parts_match_vanilla_26_1_body_layer() {
-    // Vanilla `TropicalFishLargeModel.createBodyLayer` (flopper body, atlas 32×32): body,
-    // tail, right fin, left fin, top fin, bottom fin.
-    assert_eq!(TROPICAL_FISH_LARGE_PARTS.len(), 6);
-
-    assert_part(
-        &TROPICAL_FISH_LARGE_PARTS[0],
-        [0.0, 19.0, 0.0],
-        [0.0, 0.0, 0.0],
-        TROPICAL_FISH_LARGE_BODY.as_slice(),
+fn tropical_fish_small_part_poses_match_vanilla() {
+    // The side fins splay ±π/4 about Y (not Z like cod/salmon); the tail is swayed by `setupAnim`.
+    assert_close3(TROPICAL_FISH_SMALL_BODY_POSE.offset, [0.0, 22.0, 0.0]);
+    assert_eq!(TROPICAL_FISH_SMALL_BODY_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_close3(TROPICAL_FISH_SMALL_TAIL_POSE.offset, [0.0, 22.0, 3.0]);
+    assert_eq!(TROPICAL_FISH_SMALL_TAIL_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_close3(TROPICAL_FISH_SMALL_RIGHT_FIN_POSE.offset, [-1.0, 22.5, 0.0]);
+    assert_close3(
+        TROPICAL_FISH_SMALL_RIGHT_FIN_POSE.rotation,
+        [0.0, std::f32::consts::FRAC_PI_4, 0.0],
     );
+    assert_close3(TROPICAL_FISH_SMALL_LEFT_FIN_POSE.offset, [1.0, 22.5, 0.0]);
+    assert_close3(
+        TROPICAL_FISH_SMALL_LEFT_FIN_POSE.rotation,
+        [0.0, -std::f32::consts::FRAC_PI_4, 0.0],
+    );
+    assert_close3(TROPICAL_FISH_SMALL_TOP_FIN_POSE.offset, [0.0, 20.5, -3.0]);
+    assert_eq!(TROPICAL_FISH_SMALL_TOP_FIN_POSE.rotation, [0.0, 0.0, 0.0]);
+}
+
+#[test]
+fn tropical_fish_large_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `TropicalFishLargeModel.createBodyLayer` (flopper body, atlas 32×32): body, tail,
+    // right fin, left fin, top fin, bottom fin.
     assert_eq!(
         TROPICAL_FISH_LARGE_BODY[0],
-        ModelCubeDesc {
-            min: [-1.0, -3.0, -3.0],
-            size: [2.0, 6.0, 6.0],
-            color: TROPICAL_FISH_ORANGE,
-        }
-    );
-
-    assert_eq!(TROPICAL_FISH_TAIL_PART_INDEX, 1);
-    assert_part(
-        &TROPICAL_FISH_LARGE_PARTS[1],
-        [0.0, 19.0, 3.0],
-        [0.0, 0.0, 0.0],
-        TROPICAL_FISH_LARGE_TAIL.as_slice(),
+        ModelCube::new(
+            [-1.0, -3.0, -3.0],
+            [2.0, 6.0, 6.0],
+            TROPICAL_FISH_ORANGE,
+            [2.0, 6.0, 6.0],
+            [0.0, 20.0],
+            false,
+        )
     );
     assert_eq!(TROPICAL_FISH_LARGE_TAIL[0].size, [0.0, 6.0, 5.0]);
-
-    assert_part(
-        &TROPICAL_FISH_LARGE_PARTS[2],
-        [-1.0, 20.0, 0.0],
-        [0.0, std::f32::consts::FRAC_PI_4, 0.0],
-        TROPICAL_FISH_LARGE_RIGHT_FIN.as_slice(),
-    );
-    assert_part(
-        &TROPICAL_FISH_LARGE_PARTS[3],
-        [1.0, 20.0, 0.0],
-        [0.0, -std::f32::consts::FRAC_PI_4, 0.0],
-        TROPICAL_FISH_LARGE_LEFT_FIN.as_slice(),
-    );
-
-    assert_part(
-        &TROPICAL_FISH_LARGE_PARTS[4],
-        [0.0, 16.0, -3.0],
-        [0.0, 0.0, 0.0],
-        TROPICAL_FISH_LARGE_TOP_FIN.as_slice(),
-    );
+    assert_eq!(TROPICAL_FISH_LARGE_TAIL[0].tex, [21.0, 16.0]);
     assert_eq!(TROPICAL_FISH_LARGE_TOP_FIN[0].size, [0.0, 4.0, 6.0]);
-
     // The bottom fin is unique to the large (flopper) body.
-    assert_part(
-        &TROPICAL_FISH_LARGE_PARTS[5],
-        [0.0, 22.0, -3.0],
-        [0.0, 0.0, 0.0],
-        TROPICAL_FISH_LARGE_BOTTOM_FIN.as_slice(),
-    );
     assert_eq!(TROPICAL_FISH_LARGE_BOTTOM_FIN[0].size, [0.0, 4.0, 6.0]);
+    assert_eq!(TROPICAL_FISH_LARGE_BOTTOM_FIN[0].tex, [20.0, 21.0]);
+}
+
+#[test]
+fn tropical_fish_large_part_poses_match_vanilla() {
+    assert_close3(TROPICAL_FISH_LARGE_BODY_POSE.offset, [0.0, 19.0, 0.0]);
+    assert_close3(TROPICAL_FISH_LARGE_TAIL_POSE.offset, [0.0, 19.0, 3.0]);
+    assert_close3(TROPICAL_FISH_LARGE_RIGHT_FIN_POSE.offset, [-1.0, 20.0, 0.0]);
+    assert_close3(
+        TROPICAL_FISH_LARGE_RIGHT_FIN_POSE.rotation,
+        [0.0, std::f32::consts::FRAC_PI_4, 0.0],
+    );
+    assert_close3(TROPICAL_FISH_LARGE_LEFT_FIN_POSE.offset, [1.0, 20.0, 0.0]);
+    assert_close3(
+        TROPICAL_FISH_LARGE_LEFT_FIN_POSE.rotation,
+        [0.0, -std::f32::consts::FRAC_PI_4, 0.0],
+    );
+    assert_close3(TROPICAL_FISH_LARGE_TOP_FIN_POSE.offset, [0.0, 16.0, -3.0]);
+    assert_close3(
+        TROPICAL_FISH_LARGE_BOTTOM_FIN_POSE.offset,
+        [0.0, 22.0, -3.0],
+    );
 }
 
 #[test]
@@ -320,27 +297,24 @@ fn tropical_fish_texture_ref_matches_vanilla_renderer() {
 fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
     // Each body shape renders a cutout base layer (`#main`) plus the `TropicalFishPatternLayer`
     // overlay (`#pattern`, the body mesh inflated by `FISH_PATTERN_DEFORMATION`). The base is
-    // tinted by `getModelTint = state.baseColor`, the overlay by `state.patternColor`.
-    for (shape, layer, texture, parts, pattern, pattern_layer, pattern_texture, pattern_parts) in [
+    // tinted by `getModelTint = state.baseColor`, the overlay by `state.patternColor`. The vestigial
+    // `parts` slices are nulled — emit builds the unified model and renders its tree.
+    for (shape, layer, texture, pattern, pattern_layer, pattern_texture) in [
         (
             TropicalFishModelShape::Small,
             "minecraft:tropical_fish_small#main",
             TROPICAL_FISH_SMALL_TEXTURE_REF,
-            TROPICAL_FISH_SMALL_TEXTURED_PARTS.as_slice(),
             TropicalFishPattern::Brinely,
             "minecraft:tropical_fish_small#pattern",
             TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
-            TROPICAL_FISH_SMALL_PATTERN_PARTS.as_slice(),
         ),
         (
             TropicalFishModelShape::Large,
             "minecraft:tropical_fish_large#main",
             TROPICAL_FISH_LARGE_TEXTURE_REF,
-            TROPICAL_FISH_LARGE_TEXTURED_PARTS.as_slice(),
             TropicalFishPattern::Betty,
             "minecraft:tropical_fish_large#pattern",
             TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
-            TROPICAL_FISH_LARGE_PATTERN_PARTS.as_slice(),
         ),
     ] {
         let passes = tropical_fish_textured_layer_passes(
@@ -354,7 +328,7 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].kind, EntityModelLayerKind::TropicalFishBase);
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, texture);
-        assert_eq!(passes[0].parts, parts);
+        assert!(passes[0].parts.is_empty());
         // `getModelTint = state.baseColor`: the base layer is tinted by the base dye's diffuse
         // color, not left white.
         assert_eq!(
@@ -366,35 +340,22 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[1].kind, EntityModelLayerKind::TropicalFishPattern);
         assert_eq!(passes[1].model_layer, pattern_layer);
         assert_eq!(passes[1].texture, pattern_texture);
-        assert_eq!(passes[1].parts, pattern_parts);
+        assert!(passes[1].parts.is_empty());
         // The overlay is tinted by the pattern dye's diffuse color and drawn after the base.
         assert_eq!(passes[1].tint, EntityDyeColor::Cyan.texture_diffuse_color());
         assert_eq!(passes[1].submit_sequence, 1);
         assert!(passes[1].collector_order > passes[0].collector_order);
     }
 
-    // The textured parts mirror the colored poses (so the tail sway re-poses the same
-    // index), and the base layer uses `CubeDeformation.NONE` (no mirror, `uv_size == size`).
-    for (colored, textured) in TROPICAL_FISH_SMALL_PARTS
-        .iter()
-        .zip(TROPICAL_FISH_SMALL_TEXTURED_PARTS.iter())
-    {
-        assert_eq!(colored.pose, textured.pose);
-    }
-    for (colored, textured) in TROPICAL_FISH_LARGE_PARTS
-        .iter()
-        .zip(TROPICAL_FISH_LARGE_TEXTURED_PARTS.iter())
-    {
-        assert_eq!(colored.pose, textured.pose);
-    }
-    assert!(!TROPICAL_FISH_SMALL_TEXTURED_BODY[0].mirror);
+    // The base layer uses `CubeDeformation.NONE` (no mirror, `uv_size == size`).
+    assert!(!TROPICAL_FISH_SMALL_BODY[0].mirror);
     assert_eq!(
-        TROPICAL_FISH_SMALL_TEXTURED_BODY[0].uv_size,
-        TROPICAL_FISH_SMALL_TEXTURED_BODY[0].size
+        TROPICAL_FISH_SMALL_BODY[0].uv_size,
+        TROPICAL_FISH_SMALL_BODY[0].size
     );
     // The small tail/top fin keep their negative `texOffs` V origins.
-    assert_eq!(TROPICAL_FISH_SMALL_TEXTURED_TAIL[0].tex, [22.0, -6.0]);
-    assert_eq!(TROPICAL_FISH_SMALL_TEXTURED_TOP_FIN[0].tex, [10.0, -5.0]);
+    assert_eq!(TROPICAL_FISH_SMALL_TAIL[0].tex, [22.0, -6.0]);
+    assert_eq!(TROPICAL_FISH_SMALL_TOP_FIN[0].tex, [10.0, -5.0]);
 }
 
 #[test]
@@ -586,24 +547,34 @@ fn tropical_fish_pattern_geometry_inflates_base_by_fish_pattern_deformation() {
     // keeping the base box for UVs and the same `texOffs`/mirror.
     assert_eq!(FISH_PATTERN_DEFORMATION, 0.008);
     let g = FISH_PATTERN_DEFORMATION;
-    let base_cubes = TROPICAL_FISH_SMALL_TEXTURED_PARTS
-        .iter()
-        .flat_map(|part| part.cubes)
-        .chain(
-            TROPICAL_FISH_LARGE_TEXTURED_PARTS
-                .iter()
-                .flat_map(|part| part.cubes),
-        );
-    let pattern_cubes = TROPICAL_FISH_SMALL_PATTERN_PARTS
-        .iter()
-        .flat_map(|part| part.cubes)
-        .chain(
-            TROPICAL_FISH_LARGE_PATTERN_PARTS
-                .iter()
-                .flat_map(|part| part.cubes),
-        );
+    let base_cubes = [
+        TROPICAL_FISH_SMALL_BODY[0],
+        TROPICAL_FISH_SMALL_TAIL[0],
+        TROPICAL_FISH_SMALL_RIGHT_FIN[0],
+        TROPICAL_FISH_SMALL_LEFT_FIN[0],
+        TROPICAL_FISH_SMALL_TOP_FIN[0],
+        TROPICAL_FISH_LARGE_BODY[0],
+        TROPICAL_FISH_LARGE_TAIL[0],
+        TROPICAL_FISH_LARGE_RIGHT_FIN[0],
+        TROPICAL_FISH_LARGE_LEFT_FIN[0],
+        TROPICAL_FISH_LARGE_TOP_FIN[0],
+        TROPICAL_FISH_LARGE_BOTTOM_FIN[0],
+    ];
+    let pattern_cubes = [
+        TROPICAL_FISH_SMALL_PATTERN_BODY[0],
+        TROPICAL_FISH_SMALL_PATTERN_TAIL[0],
+        TROPICAL_FISH_SMALL_PATTERN_RIGHT_FIN[0],
+        TROPICAL_FISH_SMALL_PATTERN_LEFT_FIN[0],
+        TROPICAL_FISH_SMALL_PATTERN_TOP_FIN[0],
+        TROPICAL_FISH_LARGE_PATTERN_BODY[0],
+        TROPICAL_FISH_LARGE_PATTERN_TAIL[0],
+        TROPICAL_FISH_LARGE_PATTERN_RIGHT_FIN[0],
+        TROPICAL_FISH_LARGE_PATTERN_LEFT_FIN[0],
+        TROPICAL_FISH_LARGE_PATTERN_TOP_FIN[0],
+        TROPICAL_FISH_LARGE_PATTERN_BOTTOM_FIN[0],
+    ];
     let mut count = 0;
-    for (base, pattern) in base_cubes.zip(pattern_cubes) {
+    for (base, pattern) in base_cubes.iter().zip(pattern_cubes.iter()) {
         for axis in 0..3 {
             assert!((pattern.min[axis] - (base.min[axis] - g)).abs() < 1.0e-7);
             assert!((pattern.size[axis] - (base.size[axis] + 2.0 * g)).abs() < 1.0e-7);
