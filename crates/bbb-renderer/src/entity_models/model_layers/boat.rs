@@ -1,9 +1,10 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, BOAT_WOOD,
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    BOAT_WOOD, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::BoatModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_ACACIA_BOAT: &str = "minecraft:boat/acacia#main";
 pub(in crate::entity_models) const MODEL_LAYER_ACACIA_CHEST_BOAT: &str =
@@ -516,10 +517,32 @@ pub(in crate::entity_models) const RAFT_CHEST_TEXTURED_PARTS: [TexturedModelPart
     },
 ];
 
-/// Selects the colored common / chest part lists and the matching textured combined tree for a boat or
-/// raft, with or without a chest. The bamboo family is the raft; every other family is the plain boat.
-/// The textured chest trees ([`BOAT_CHEST_TEXTURED_PARTS`] / [`RAFT_CHEST_TEXTURED_PARTS`]) already
-/// concatenate the common and chest parts, so they zip 1:1 with the chained colored parts.
+/// Vanilla `BoatModel.createBodyModel` child names, in the `BOAT_COMMON_PARTS` order: the hull
+/// `bottom`, the `back`/`front` end caps, the `right`/`left` sides, then the two paddles.
+const BOAT_COMMON_NAMES: [&str; 7] = [
+    "bottom",
+    "back",
+    "front",
+    "right",
+    "left",
+    "left_paddle",
+    "right_paddle",
+];
+
+/// Vanilla `RaftModel.createBodyModel` child names, in the `RAFT_COMMON_PARTS` order: the raft
+/// `bottom` and the two paddles.
+const RAFT_COMMON_NAMES: [&str; 3] = ["bottom", "left_paddle", "right_paddle"];
+
+/// Vanilla chest-boat / chest-raft extra child names, in the `BOAT_CHEST_PARTS` / `RAFT_CHEST_PARTS`
+/// order: the chest `bottom`, `lid`, and `lock`.
+const BOAT_CHEST_NAMES: [&str; 3] = ["chest_bottom", "chest_lid", "chest_lock"];
+
+/// Selects the colored common / chest part lists, their vanilla child names, and the matching textured
+/// combined tree for a boat or raft, with or without a chest. The bamboo family is the raft; every other
+/// family is the plain boat. The textured chest trees ([`BOAT_CHEST_TEXTURED_PARTS`] /
+/// [`RAFT_CHEST_TEXTURED_PARTS`]) already concatenate the common and chest parts, so they zip 1:1 with
+/// the chained colored parts and names.
+#[allow(clippy::type_complexity)]
 fn boat_part_trees(
     family: BoatModelFamily,
     chest: bool,
@@ -527,47 +550,92 @@ fn boat_part_trees(
     &'static [ModelPartDesc],
     &'static [ModelPartDesc],
     &'static [TexturedModelPartDesc],
+    &'static [&'static str],
+    &'static [&'static str],
 ) {
     let raft = family == BoatModelFamily::Bamboo;
+    let (common_names, chest_names): (&[&str], &[&str]) = if raft {
+        (&RAFT_COMMON_NAMES, &BOAT_CHEST_NAMES)
+    } else {
+        (&BOAT_COMMON_NAMES, &BOAT_CHEST_NAMES)
+    };
     match (raft, chest) {
-        (true, false) => (&RAFT_COMMON_PARTS, &[], &RAFT_TEXTURED_PARTS),
+        (true, false) => (
+            &RAFT_COMMON_PARTS,
+            &[],
+            &RAFT_TEXTURED_PARTS,
+            common_names,
+            &[],
+        ),
         (true, true) => (
             &RAFT_COMMON_PARTS,
             &RAFT_CHEST_PARTS,
             &RAFT_CHEST_TEXTURED_PARTS,
+            common_names,
+            chest_names,
         ),
-        (false, false) => (&BOAT_COMMON_PARTS, &[], &BOAT_TEXTURED_PARTS),
+        (false, false) => (
+            &BOAT_COMMON_PARTS,
+            &[],
+            &BOAT_TEXTURED_PARTS,
+            common_names,
+            &[],
+        ),
         (false, true) => (
             &BOAT_COMMON_PARTS,
             &BOAT_CHEST_PARTS,
             &BOAT_CHEST_TEXTURED_PARTS,
+            common_names,
+            chest_names,
         ),
     }
 }
 
 /// Mutable boat model, mirroring vanilla `BoatModel` / `RaftModel` (+ their chest variants). The flat
 /// parts (hull pieces, the two paddles, and — with a chest — the chest bottom/lid/lock) hang off a
-/// synthetic root; each unified cube takes its geometry/color from the colored part and its UV from the
-/// matching textured part, so one tree drives both render paths. The two hull sides share the colored
-/// `BOAT_SIDE` box but carry distinct left/right UVs. `new` selects the boat / raft / chest tree; the
-/// boat has no per-frame animation (the vanilla paddle swing is deferred entity-side state), so
-/// `setup_anim` is a no-op. The colored fallback uses the baked wood color; the textured path uses the
-/// per-family boat texture.
+/// synthetic root as named children ([`BOAT_COMMON_NAMES`] / [`RAFT_COMMON_NAMES`] + [`BOAT_CHEST_NAMES`]);
+/// each unified cube takes its geometry/color from the colored part and its UV from the matching textured
+/// part, so one tree drives both render paths. The two hull sides share the colored `BOAT_SIDE` box but
+/// carry distinct left/right UVs. `new` selects the boat / raft / chest tree; the boat has no per-frame
+/// animation (the vanilla paddle swing is deferred entity-side state), so `setup_anim` is a no-op. The
+/// colored fallback uses the baked wood color; the textured path uses the per-family boat texture.
 pub(in crate::entity_models) struct BoatModel {
     root: ModelPart,
 }
 
 impl BoatModel {
     pub(in crate::entity_models) fn new(family: BoatModelFamily, chest: bool) -> Self {
-        let (colored_common, colored_chest, textured) = boat_part_trees(family, chest);
+        let (colored_common, colored_chest, textured, common_names, chest_names) =
+            boat_part_trees(family, chest);
         let children = colored_common
             .iter()
             .chain(colored_chest.iter())
             .zip(textured.iter())
-            .map(|(colored, textured)| ModelPart::from_descs(colored, textured))
+            .zip(common_names.iter().chain(chest_names.iter()))
+            .map(|((colored, textured), &name)| {
+                // Each unified cube takes its geometry/color from the colored cube and its UV from the
+                // paired textured cube (the two trees share structure and bind poses).
+                debug_assert_eq!(colored.cubes.len(), textured.cubes.len());
+                let cubes = colored
+                    .cubes
+                    .iter()
+                    .zip(textured.cubes.iter())
+                    .map(|(colored_cube, textured_cube)| {
+                        ModelCube::new(
+                            colored_cube.min,
+                            colored_cube.size,
+                            colored_cube.color,
+                            textured_cube.uv_size,
+                            textured_cube.tex,
+                            textured_cube.mirror,
+                        )
+                    })
+                    .collect();
+                (name, ModelPart::leaf(colored.pose, cubes))
+            })
             .collect();
         Self {
-            root: ModelPart::root_from_parts(children),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }

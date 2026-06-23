@@ -3,7 +3,6 @@ use glam::Mat4;
 use super::geometry::{
     emit_model_cube, emit_textured_model_cube, part_pose_transform, EntityModelMesh,
     EntityModelTexturedMesh, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
-    TexturedModelPartDesc,
 };
 use super::instances::EntityModelInstance;
 use super::{EntityModelTextureRef, EntityModelUvRect};
@@ -169,7 +168,7 @@ impl ModelPart {
     /// `children` — the named-children counterpart of [`ModelPart::colored`], for a colored-only model
     /// whose cube-bearing parent (head, body, …) parents children that `setup_anim` addresses by name
     /// (the frog's `body` arms, the sniffer's `head` ears, the warden's `body` head and `head`
-    /// tendrils, …). Pairs with [`ModelPart::child_mut`] instead of positional `child_at_mut`.
+    /// tendrils, …). Pairs with [`ModelPart::child_mut`] rather than positional index addressing.
     pub(in crate::entity_models) fn colored_named(
         pose: PartPose,
         cubes: &[ModelCubeDesc],
@@ -179,61 +178,6 @@ impl ModelPart {
             pose,
             default_pose: pose,
             cubes: cubes.iter().map(ModelCube::from_colored_desc).collect(),
-            children,
-            visible: true,
-        }
-    }
-
-    /// Builds a unified [`ModelPart`] subtree by zipping a colored [`ModelPartDesc`] tree with its
-    /// matching textured [`TexturedModelPartDesc`] tree (the two share structure and bind poses; the
-    /// textured tree reuses the colored poses). Each unified cube takes its geometry/color from the
-    /// colored cube and its UV from the paired textured cube. This lets a dual-path entity reuse its
-    /// existing baked cube consts verbatim while collapsing its two hand-walked `emit_*` functions
-    /// into one mutable tree driven by a single `setup_anim`. Children are named by index. Panics if
-    /// the two trees disagree in shape.
-    pub(in crate::entity_models) fn from_descs(
-        colored: &ModelPartDesc,
-        textured: &TexturedModelPartDesc,
-    ) -> Self {
-        assert_eq!(
-            colored.cubes.len(),
-            textured.cubes.len(),
-            "colored/textured cube counts diverge"
-        );
-        assert_eq!(
-            colored.children.len(),
-            textured.children.len(),
-            "colored/textured child counts diverge"
-        );
-        let cubes = colored
-            .cubes
-            .iter()
-            .zip(textured.cubes.iter())
-            .map(|(colored_cube, textured_cube)| ModelCube {
-                min: colored_cube.min,
-                size: colored_cube.size,
-                color: colored_cube.color,
-                uv_size: textured_cube.uv_size,
-                tex: textured_cube.tex,
-                mirror: textured_cube.mirror,
-            })
-            .collect();
-        let children = colored
-            .children
-            .iter()
-            .zip(textured.children.iter())
-            .enumerate()
-            .map(|(index, (colored_child, textured_child))| {
-                (
-                    INDEX_CHILD_NAMES[index],
-                    ModelPart::from_descs(colored_child, textured_child),
-                )
-            })
-            .collect();
-        Self {
-            pose: colored.pose,
-            default_pose: colored.pose,
-            cubes,
             children,
             visible: true,
         }
@@ -277,24 +221,6 @@ impl ModelPart {
             .iter()
             .enumerate()
             .map(|(index, part)| (INDEX_CHILD_NAMES[index], ModelPart::from_colored_desc(part)))
-            .collect();
-        Self {
-            pose: super::geometry::PART_POSE_ZERO,
-            default_pose: super::geometry::PART_POSE_ZERO,
-            cubes: Vec::new(),
-            children,
-            visible: true,
-        }
-    }
-
-    /// Builds a synthetic identity root over a flat list of already-built sibling parts, named by
-    /// index. For a model whose parts are computed at construction rather than declared as `&'static`
-    /// descs.
-    pub(in crate::entity_models) fn root_from_parts(children: Vec<ModelPart>) -> Self {
-        let children = children
-            .into_iter()
-            .enumerate()
-            .map(|(index, part)| (INDEX_CHILD_NAMES[index], part))
             .collect();
         Self {
             pose: super::geometry::PART_POSE_ZERO,
