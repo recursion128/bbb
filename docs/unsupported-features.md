@@ -1651,8 +1651,11 @@ When an agent does any of the following, update this file in the same slice:
       stay drawn (adult 10×10×10 ball / baby 6×6×6 + `CubeDeformation(0.3)` ball; six cubes rolled up). Only
       the steady `SCARED` state is server-derivable (its `shouldHideInShell` is `true` for every tick); the
       tick-gated `ROLLING` / `UNROLLING` transitions and the `inStateTicks`-driven smooth roll-out / roll-up
-      / peek keyframe scrunch stay deferred (treated as not rolled up), along with the clamped head look
-      (`head.xRot/yRot`) and the `applyWalk` leg sway. The texture-backed path remains unsupported (this is a
+      / peek keyframe scrunch stay deferred (treated as not rolled up). While NOT hiding, the clamped head
+      look is reproduced: `setupAnim` clamps the projected look to vanilla's bounds (pitch `head.xRot` to
+      [-22.5, 25], yaw `head.yRot` to [-32.5, 32.5] degrees) and turns the body-nested head pivot so the
+      snout and both ears inherit the turn; the look is skipped while hiding (the head is balled up). The
+      `applyWalk` leg sway stays deferred. The texture-backed path remains unsupported (this is a
       colored-first slice; the colored debug path approximates the armored body/legs with one brown tint and
       the soft head/ears/tail with a tan tint)
     - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /

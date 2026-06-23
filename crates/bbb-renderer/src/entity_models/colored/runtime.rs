@@ -1766,15 +1766,15 @@ fn emit_armadillo_model(
     baby: bool,
     rolled_up: bool,
 ) {
-    // Vanilla `AdultArmadilloModel`/`BabyArmadilloModel` are static nested hierarchies at rest
-    // (root → body/legs, body → tail/head, head → ears). When `isHidingInShell` (the synced
-    // `ArmadilloState.SCARED`), `setupAnim` hides the body cubes (`skipDraw`), the tail, and both
-    // hind legs and shows the shell-ball `cube` — the head, ears, and front legs stay drawn — so
-    // the rolled-up part tree is emitted instead. The clamped head look, `applyWalk`, and the
-    // roll-out / roll-up / peek keyframe transition animations stay deferred, so the non-hiding
-    // pose is the bind pose. The baby flag (synced `AgeableMob.DATA_BABY_ID`) selects the baby
-    // body layer, as in the vanilla `AgeableMobRenderer`. Armadillo uses
-    // `LivingEntityRenderer.setupRotations`.
+    // Vanilla `AdultArmadilloModel`/`BabyArmadilloModel` are nested hierarchies (root → body/legs,
+    // body → tail/head, head → ears). When `isHidingInShell` (the synced `ArmadilloState.SCARED`),
+    // `setupAnim` hides the body cubes (`skipDraw`), the tail, and both hind legs and shows the
+    // shell-ball `cube` — the head, ears, and front legs stay drawn — so the rolled-up part tree is
+    // emitted instead, with no head look. While NOT hiding, `setupAnim` sets the clamped head look
+    // (`head.xRot/yRot` clamped to [-22.5, 25] / [-32.5, 32.5]) on the body-nested head pivot. The
+    // `applyWalk` leg sway and the roll-out / roll-up / peek keyframe transition animations stay
+    // deferred. The baby flag (synced `AgeableMob.DATA_BABY_ID`) selects the baby body layer, as in
+    // the vanilla `AgeableMobRenderer`. Armadillo uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     let parts: &[ModelPartDesc] = match (baby, rolled_up) {
         (false, false) => &ADULT_ARMADILLO_PARTS,
@@ -1782,7 +1782,26 @@ fn emit_armadillo_model(
         (false, true) => &ADULT_ARMADILLO_ROLLED_PARTS,
         (true, true) => &BABY_ARMADILLO_ROLLED_PARTS,
     };
-    emit_model_parts(mesh, parts, root);
+    if rolled_up {
+        emit_model_parts(mesh, parts, root);
+        return;
+    }
+    let (head_yaw, head_pitch) = armadillo_clamped_head_look(
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    );
+    if head_look_at_rest(head_yaw, head_pitch) {
+        emit_model_parts(mesh, parts, root);
+    } else {
+        emit_model_parts_with_head_look(
+            mesh,
+            parts,
+            root,
+            ARMADILLO_HEAD_PART_PATH,
+            head_yaw,
+            head_pitch,
+        );
+    }
 }
 
 fn emit_axolotl_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {

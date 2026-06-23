@@ -11,10 +11,10 @@ use super::{
 // topology. The `isHidingInShell` visibility swap is now projected (see
 // `ADULT_ARMADILLO_ROLLED_PARTS` / `BABY_ARMADILLO_ROLLED_PARTS`): the synced
 // `Armadillo.ArmadilloState.SCARED` shows the shell-ball `cube` and hides the body cubes, tail,
-// and hind legs. The clamped head look, the `applyWalk` leg sway, and the roll-out / roll-up /
+// and hind legs. While not hiding, the clamped head look ([`armadillo_clamped_head_look`]) is
+// reproduced on the body-nested head pivot. The `applyWalk` leg sway and the roll-out / roll-up /
 // peek keyframe transition animations (ROLLING/UNROLLING, gated on the un-synced `inStateTicks`)
-// stay deferred, so the non-hiding pose renders at its rest pose. The texture-backed path is
-// deferred.
+// stay deferred. The texture-backed path is deferred.
 
 // ----- Adult -----
 
@@ -174,6 +174,25 @@ const BABY_BODY_CHILDREN: [ModelPartDesc; 2] = [
     part([0.0, 0.0, 3.4], &[], &BABY_TAIL_CHILDREN),
     part([0.0, 0.0, -3.2], &[], &BABY_HEAD_CHILDREN),
 ];
+
+/// Child-index path from either armadillo part array to the `head` pivot: body (`0`) → head (child
+/// `1`, after the tail). The same path holds for the adult and baby non-hiding layers; the head look
+/// re-poses the pivot so the head cube and ear planes inherit the turn. (Only used in the non-hiding
+/// pose — `setupAnim` skips the look while `isHidingInShell`.)
+pub(in crate::entity_models) const ARMADILLO_HEAD_PART_PATH: &[usize] = &[0, 1];
+
+/// Vanilla `ArmadilloModel.setupAnim` head look (only while not hiding): the pitch (`xRot`) clamps to
+/// [-22.5, 25] and the yaw (`yRot`) to [-32.5, 32.5] degrees before `head.xRot/yRot` are set.
+/// Returns the clamped `(yaw, pitch)` in degrees.
+pub(in crate::entity_models) fn armadillo_clamped_head_look(
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
+) -> (f32, f32) {
+    (
+        head_yaw_deg.clamp(-32.5, 32.5),
+        head_pitch_deg.clamp(-22.5, 25.0),
+    )
+}
 
 // The baby front legs carry vanilla's swapped X origins (right at +1.5, left at -1.5).
 pub(in crate::entity_models) const BABY_ARMADILLO_PARTS: [ModelPartDesc; 5] = [

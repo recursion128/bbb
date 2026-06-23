@@ -224,3 +224,52 @@ fn armadillo_mesh_selects_adult_or_baby_body_layer() {
         "baby z-span {baby_span} should be smaller than adult {adult_span}"
     );
 }
+
+#[test]
+fn armadillo_clamps_the_head_look_to_vanilla_bounds() {
+    // Vanilla `ArmadilloModel.setupAnim` (not hiding) clamps the look: pitch (`xRot`) to [-22.5, 25]
+    // and yaw (`yRot`) to [-32.5, 32.5] degrees before assigning `head.xRot/yRot`.
+    assert_eq!(armadillo_clamped_head_look(50.0, 40.0), (32.5, 25.0));
+    assert_eq!(armadillo_clamped_head_look(-50.0, -40.0), (-32.5, -22.5));
+    assert_eq!(armadillo_clamped_head_look(10.0, 5.0), (10.0, 5.0));
+}
+
+#[test]
+fn armadillo_head_follows_the_clamped_look_while_not_hiding() {
+    // The head pivot is `body` (root child 0) → `head` (child 1, after the tail). Emitted depth-first,
+    // the body's two cubes are vertices [0, 48), the tail [48, 72), then the head subtree — head cube
+    // and the two ear planes — is [72, 144), and the four legs are [144, 240). A non-zero look (above
+    // the clamp on yaw) re-poses only the head subtree; the body, tail, and legs stay at bind.
+    let base = EntityModelInstance::armadillo(74, [0.0, 64.0, 0.0], 0.0, false, false);
+    let rest = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(35.0, -20.0)]);
+    assert_eq!(rest.vertices.len(), looking.vertices.len());
+    assert_ne!(
+        rest.vertices[72..144],
+        looking.vertices[72..144],
+        "the head, snout, and ears turn with the look"
+    );
+    assert_eq!(
+        rest.vertices[..72],
+        looking.vertices[..72],
+        "the body and tail stay at bind"
+    );
+    assert_eq!(
+        rest.vertices[144..],
+        looking.vertices[144..],
+        "the four legs stay at bind"
+    );
+}
+
+#[test]
+fn armadillo_ignores_the_look_while_hiding_in_shell() {
+    // While `isHidingInShell`, `setupAnim` skips the head look entirely (the head is balled up), so a
+    // rolled-up armadillo renders identically regardless of the look angles.
+    let base = EntityModelInstance::armadillo(75, [0.0, 64.0, 0.0], 0.0, false, true);
+    let rolled = entity_model_mesh(&[base]);
+    let rolled_looking = entity_model_mesh(&[base.with_head_look(35.0, -20.0)]);
+    assert_eq!(
+        rolled.vertices, rolled_looking.vertices,
+        "the rolled-up armadillo ignores the look"
+    );
+}
