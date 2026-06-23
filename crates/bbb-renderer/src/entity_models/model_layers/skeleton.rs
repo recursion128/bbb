@@ -1,8 +1,7 @@
 use super::{
-    apply_head_look, apply_humanoid_walk, apply_humanoid_walk_named, PartPose,
-    TexturedModelPartDesc, PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_walk_named, bogged_clothing_root, stray_clothing_root,
+    PartPose, PART_POSE_ZERO,
 };
-use super::{parched_head_part_index, skeleton_head_part_index};
 use crate::entity_models::catalog::SkeletonModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
@@ -485,19 +484,6 @@ fn skeleton_tree(family: Option<SkeletonModelFamily>) -> ModelPart {
     }
 }
 
-/// The head-part index for a skeleton family: the parched body layer lists the body first (head at 1),
-/// every other family lists the head first (0). Retained because the textured-only
-/// [`SkeletonClothingModel`] addresses its head positionally; the base [`SkeletonModel`] resolves the
-/// head by name.
-pub(in crate::entity_models) fn skeleton_family_head_index(
-    family: Option<SkeletonModelFamily>,
-) -> usize {
-    match family {
-        Some(SkeletonModelFamily::Parched) => parched_head_part_index(),
-        _ => skeleton_head_part_index(),
-    }
-}
-
 /// Mutable skeleton model, mirroring vanilla `SkeletonModel` (the base `HumanoidModel`) and its
 /// stray / parched / bogged / wither-skeleton variants. The unified tree is built for the selected
 /// family ([`skeleton_tree`]) with the vanilla child names. `setup_anim` runs the shared
@@ -542,24 +528,20 @@ impl EntityModel for SkeletonModel {
 }
 
 /// Mutable textured-only skeleton clothing overlay (the stray frost layer / bogged mushroom layer): an
-/// inflated overlay built from its `&'static` textured parts (the genuine reader of the clothing
-/// layer-pass geometry) and posed by the SAME shared `HumanoidModel.setupAnim` as the base body, so the
-/// overlay tracks the limbs. The clothing parts are index-addressed (`HumanoidModel` layout, head
-/// first), so it keeps the index-based head look + [`apply_humanoid_walk`]. It has no colored variant.
+/// inflated `HumanoidModel`-shaped overlay built as a named-children tree (`stray_clothing_root` /
+/// `bogged_clothing_root`) and posed by the SAME shared `HumanoidModel.setupAnim` as the base body, so
+/// the overlay tracks the limbs. It has no colored variant.
 pub(in crate::entity_models) struct SkeletonClothingModel {
     root: ModelPart,
-    head_index: usize,
 }
 
 impl SkeletonClothingModel {
-    pub(in crate::entity_models) fn new(
-        parts: &'static [TexturedModelPartDesc],
-        head_index: usize,
-    ) -> Self {
-        Self {
-            root: ModelPart::root_from_textured_descs(parts),
-            head_index,
-        }
+    pub(in crate::entity_models) fn new(family: Option<SkeletonModelFamily>) -> Self {
+        let root = match family {
+            Some(SkeletonModelFamily::Bogged { .. }) => bogged_clothing_root(),
+            _ => stray_clothing_root(),
+        };
+        Self { root }
     }
 }
 
@@ -575,11 +557,11 @@ impl EntityModel for SkeletonClothingModel {
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
         apply_head_look(
-            self.root.child_at_mut(self.head_index),
+            self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_humanoid_walk(
+        apply_humanoid_walk_named(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

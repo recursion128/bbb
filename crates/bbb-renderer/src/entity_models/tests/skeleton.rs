@@ -160,9 +160,8 @@ fn skeleton_texture_refs_match_vanilla_renderers() {
 
 #[test]
 fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
-    // The base body geometry comes from the unified `SkeletonModel` tree, so the base pass parts are
-    // vestigial (`&[]`). The clothing pass keeps its parts — the genuine geometry the textured-only
-    // `SkeletonClothingModel` is built from.
+    // Both the base body and the clothing overlay come from unified model trees, so every layer-pass
+    // `parts` field is vestigial (`&[]`).
     let base = skeleton_textured_layer_passes(None);
     assert_eq!(base.len(), 1);
     assert_eq!(base[0].kind, EntityModelLayerKind::SkeletonBase);
@@ -183,8 +182,7 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(stray[1].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(stray[1].model_layer, MODEL_LAYER_STRAY_OUTER_LAYER);
     assert_eq!(stray[1].texture, STRAY_OVERLAY_TEXTURE_REF);
-    // The clothing pass parts are NOT nulled — they feed `SkeletonClothingModel`.
-    assert_eq!(stray[1].parts, STRAY_OUTER_TEXTURED_PARTS.as_slice());
+    assert!(stray[1].parts.is_empty());
     assert_eq!(stray[1].visibility, EntityModelLayerVisibility::All);
     assert_eq!(stray[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((stray[1].collector_order, stray[1].submit_sequence), (1, 1));
@@ -210,7 +208,7 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(bogged[1].kind, EntityModelLayerKind::SkeletonClothing);
     assert_eq!(bogged[1].model_layer, MODEL_LAYER_BOGGED_OUTER_LAYER);
     assert_eq!(bogged[1].texture, BOGGED_OVERLAY_TEXTURE_REF);
-    assert_eq!(bogged[1].parts, BOGGED_OUTER_TEXTURED_PARTS.as_slice());
+    assert!(bogged[1].parts.is_empty());
     assert_eq!(
         (bogged[1].collector_order, bogged[1].submit_sequence),
         (1, 1)
@@ -220,10 +218,7 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
         skeleton_textured_layer_passes(Some(SkeletonModelFamily::Bogged { sheared: true }));
     assert_eq!(sheared_bogged.len(), 2);
     assert!(sheared_bogged[0].parts.is_empty());
-    assert_eq!(
-        sheared_bogged[1].parts,
-        BOGGED_OUTER_TEXTURED_PARTS.as_slice()
-    );
+    assert!(sheared_bogged[1].parts.is_empty());
 }
 
 #[test]
@@ -301,56 +296,57 @@ fn skeleton_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(BOGGED_HEAD[0].tex, [0.0, 0.0]);
     assert_eq!(BOGGED_HAT[0].tex, [32.0, 0.0]);
 
+    // The stray/bogged clothing overlay is now a textured-only named-children `ModelCube` tree; the
+    // geometry/UV are asserted on the per-part cube consts and the shared limb pose consts.
     assert_eq!(
-        STRAY_OUTER_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.25, -8.25, -4.25],
-            size: [8.5, 8.5, 8.5],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
+        STRAY_OUTER_HEAD,
+        ModelCube::new(
+            [-4.25, -8.25, -4.25],
+            [8.5, 8.5, 8.5],
+            [0.0, 0.0, 0.0, 0.0],
+            [8.0, 8.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
-        STRAY_OUTER_TEXTURED_HAT[0],
-        TexturedModelCubeDesc {
-            min: [-4.75, -8.75, -4.75],
-            size: [9.5, 9.5, 9.5],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [32.0, 0.0],
-            mirror: false,
-        }
+        STRAY_OUTER_HAT,
+        ModelCube::new(
+            [-4.75, -8.75, -4.75],
+            [9.5, 9.5, 9.5],
+            [0.0, 0.0, 0.0, 0.0],
+            [8.0, 8.0, 8.0],
+            [32.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(STRAY_OUTER_TEXTURED_BODY[0].min, [-4.25, -0.25, -2.25]);
-    assert_eq!(STRAY_OUTER_TEXTURED_BODY[0].size, [8.5, 12.5, 4.5]);
-    assert_eq!(STRAY_OUTER_TEXTURED_RIGHT_ARM[0].tex, [40.0, 16.0]);
-    assert_eq!(STRAY_OUTER_TEXTURED_RIGHT_ARM[0].size, [4.5, 12.5, 4.5]);
-    assert!(STRAY_OUTER_TEXTURED_LEFT_ARM[0].mirror);
-    assert_eq!(STRAY_OUTER_TEXTURED_RIGHT_LEG[0].tex, [0.0, 16.0]);
-    assert_eq!(STRAY_OUTER_TEXTURED_PARTS[4].pose.offset, [-1.9, 12.0, 0.0]);
-    assert_eq!(
-        STRAY_OUTER_TEXTURED_PARTS[0].children,
-        STRAY_OUTER_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
+    assert_eq!(STRAY_OUTER_BODY.min, [-4.25, -0.25, -2.25]);
+    assert_eq!(STRAY_OUTER_BODY.size, [8.5, 12.5, 4.5]);
+    assert_eq!(STRAY_OUTER_RIGHT_ARM.tex, [40.0, 16.0]);
+    assert_eq!(STRAY_OUTER_RIGHT_ARM.size, [4.5, 12.5, 4.5]);
+    assert!(STRAY_OUTER_LEFT_ARM.mirror);
+    assert_eq!(STRAY_OUTER_RIGHT_LEG.tex, [0.0, 16.0]);
+    assert_eq!(CLOTHING_RIGHT_LEG_POSE.offset, [-1.9, 12.0, 0.0]);
 
     assert_eq!(
-        BOGGED_OUTER_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.2, -8.2, -4.2],
-            size: [8.4, 8.4, 8.4],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
+        BOGGED_OUTER_HEAD,
+        ModelCube::new(
+            [-4.2, -8.2, -4.2],
+            [8.4, 8.4, 8.4],
+            [0.0, 0.0, 0.0, 0.0],
+            [8.0, 8.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(BOGGED_OUTER_TEXTURED_HAT[0].min, [-4.7, -8.7, -4.7]);
-    assert_eq!(BOGGED_OUTER_TEXTURED_HAT[0].size, [9.4, 9.4, 9.4]);
-    assert_eq!(BOGGED_OUTER_TEXTURED_BODY[0].min, [-4.2, -0.2, -2.2]);
-    assert_eq!(BOGGED_OUTER_TEXTURED_BODY[0].size, [8.4, 12.4, 4.4]);
-    assert_eq!(BOGGED_OUTER_TEXTURED_RIGHT_ARM[0].min, [-3.2, -2.2, -2.2]);
-    assert_eq!(BOGGED_OUTER_TEXTURED_RIGHT_ARM[0].size, [4.4, 12.4, 4.4]);
-    assert!(BOGGED_OUTER_TEXTURED_LEFT_ARM[0].mirror);
-    assert_eq!(BOGGED_OUTER_TEXTURED_PARTS[5].pose.offset, [1.9, 12.0, 0.0]);
+    assert_eq!(BOGGED_OUTER_HAT.min, [-4.7, -8.7, -4.7]);
+    assert_eq!(BOGGED_OUTER_HAT.size, [9.4, 9.4, 9.4]);
+    assert_eq!(BOGGED_OUTER_BODY.min, [-4.2, -0.2, -2.2]);
+    assert_eq!(BOGGED_OUTER_BODY.size, [8.4, 12.4, 4.4]);
+    assert_eq!(BOGGED_OUTER_RIGHT_ARM.min, [-3.2, -2.2, -2.2]);
+    assert_eq!(BOGGED_OUTER_RIGHT_ARM.size, [4.4, 12.4, 4.4]);
+    assert!(BOGGED_OUTER_LEFT_ARM.mirror);
+    assert_eq!(CLOTHING_LEFT_LEG_POSE.offset, [1.9, 12.0, 0.0]);
 }
 
 #[test]

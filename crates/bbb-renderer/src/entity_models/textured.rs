@@ -20,20 +20,19 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        skeleton_family_head_index, AllayModel, ArmorStandModel, BatModel, BeeModel, BlazeModel,
-        BoatModel, BreezeModel, CamelModel, ChickenModel, CodModel, CowModel, CreeperModel,
-        DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel,
-        HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel,
-        PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel, PufferfishModel,
-        RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel,
-        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel,
-        SpiderModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
-        TurtleModel, VexModel, VillagerModel, WanderingTraderModel, WitchModel, WolfModel,
-        ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
-        BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF,
-        COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
-        STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
-        TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+        AllayModel, ArmorStandModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel,
+        CamelModel, ChickenModel, CodModel, CowModel, CreeperModel, DolphinModel, EndermanModel,
+        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
+        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel, PigModel,
+        PiglinModel, PlayerModel, PolarBearModel, PufferfishModel, RavagerModel, SalmonModel,
+        SheepFurModel, SheepModel, SilverfishModel, SkeletonClothingModel, SkeletonModel,
+        SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel,
+        TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
+        WanderingTraderModel, WitchModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF,
+        BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
+        DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
+        TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
@@ -1729,7 +1728,6 @@ fn emit_skeleton_textured_model(
     } else {
         entity_model_root_transform(instance)
     };
-    let head_index = skeleton_family_head_index(family);
     let mut base = SkeletonModel::new(family);
     base.prepare(&instance);
     for pass in skeleton_textured_layer_passes(family) {
@@ -1738,7 +1736,7 @@ fn emit_skeleton_textured_model(
         };
         let mesh = meshes.mesh_mut(pass.render_type);
         if matches!(pass.kind, EntityModelLayerKind::SkeletonClothing) {
-            let mut clothing = SkeletonClothingModel::new(pass.parts, head_index);
+            let mut clothing = SkeletonClothingModel::new(family);
             clothing.prepare(&instance);
             clothing
                 .root()

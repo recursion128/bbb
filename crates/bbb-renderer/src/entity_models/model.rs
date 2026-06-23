@@ -71,6 +71,7 @@ impl ModelCube {
     /// pattern, the slime outer shell, …): the geometry/UV come from the textured desc and the
     /// `color` is an unused placeholder because [`ModelPart::render_colored`] is never called for a
     /// textured-only model.
+    #[allow(dead_code)]
     fn from_textured_desc(desc: &TexturedModelCubeDesc) -> Self {
         Self {
             min: desc.min,
@@ -293,6 +294,7 @@ impl ModelPart {
     /// overlay layer that has no colored debug variant (the tropical fish pattern, the slime outer
     /// shell, …). Each cube's colored color is an unused placeholder; only [`ModelPart::render_textured`]
     /// is ever called on the result. Children are addressed positionally (named by index).
+    #[allow(dead_code)]
     pub(in crate::entity_models) fn from_textured_desc(textured: &TexturedModelPartDesc) -> Self {
         let cubes = textured
             .cubes
@@ -323,6 +325,7 @@ impl ModelPart {
     /// trees — the textured counterpart of [`ModelPart::root_from_descs`] for an overlay layer with no
     /// colored variant. The siblings hang off a synthetic identity root, addressed positionally via
     /// [`ModelPart::child_at_mut`].
+    #[allow(dead_code)]
     pub(in crate::entity_models) fn root_from_textured_descs(
         textured: &[TexturedModelPartDesc],
     ) -> Self {

@@ -11,13 +11,18 @@ pub(in crate::entity_models) const fn head_first_part_index() -> usize {
 }
 
 /// `SkeletonModel` head-part index. The skeleton, stray, wither-skeleton, and
-/// bogged body layers list the head first.
+/// bogged body layers list the head first. Retained only as the reference the head-look unit test
+/// asserts the skeleton-family head-first layout against (every skeleton model now resolves the head
+/// by name); removed once the textured clothing overlay stopped addressing its head positionally.
+#[cfg(test)]
 pub(in crate::entity_models) const fn skeleton_head_part_index() -> usize {
     0
 }
 
 /// Parched-skeleton head-part index. The parched body layer lists the body
-/// first, so the head is second.
+/// first, so the head is second. Retained only as the head-look unit test reference (see
+/// [`skeleton_head_part_index`]).
+#[cfg(test)]
 pub(in crate::entity_models) const fn parched_head_part_index() -> usize {
     1
 }
@@ -243,6 +248,10 @@ pub(in crate::entity_models) fn humanoid_arm_bob_pose(
 /// ([`humanoid_arm_swing_pose`]) only while moving (`walkAnimationSpeed != 0`), but the arms ALWAYS carry
 /// the continuous idle bob ([`humanoid_arm_bob_pose`], driven by `ageInTicks`), so the arms are re-posed
 /// every frame. Head look and any held-item/crouch overrides are applied separately by the caller.
+///
+/// Now that the skeleton clothing overlay builds a named tree, nothing addresses humanoid limbs
+/// positionally; this index variant is retained for one commit (replaced by `apply_humanoid_walk_named`).
+#[allow(dead_code)]
 pub(in crate::entity_models) fn apply_humanoid_walk(
     root: &mut ModelPart,
     walk_animation_pos: f32,

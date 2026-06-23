@@ -936,9 +936,9 @@ pub(in crate::entity_models) fn goat_textured_layer_passes(
 pub(in crate::entity_models) fn skeleton_textured_layer_passes(
     family: Option<SkeletonModelFamily>,
 ) -> Vec<EntityModelLayerPass> {
-    // The base body geometry comes from the unified `SkeletonModel` tree, so the base layer-pass
-    // parts are vestigial (`&[]`). The clothing pass below keeps its parts — they are the genuine
-    // geometry source the textured-only `SkeletonClothingModel` is built from.
+    // Both the base body and the clothing overlay come from unified model trees (the base
+    // `SkeletonModel` and the textured-only `SkeletonClothingModel`), so the layer-pass parts are
+    // vestigial (`&[]`).
     let mut passes = vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SkeletonBase,
         render_type: EntityModelLayerRenderType::Cutout,
@@ -950,13 +950,13 @@ pub(in crate::entity_models) fn skeleton_textured_layer_passes(
         collector_order: 0,
         submit_sequence: 0,
     }];
-    if let Some((model_layer, texture, parts)) = skeleton_clothing_layer_pass_parts(family) {
+    if let Some((model_layer, texture)) = skeleton_clothing_layer_pass(family) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SkeletonClothing,
             render_type: EntityModelLayerRenderType::Cutout,
             model_layer,
             texture,
-            parts,
+            parts: &[],
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 1,
@@ -1092,24 +1092,16 @@ fn skeleton_texture_ref(family: Option<SkeletonModelFamily>) -> EntityModelTextu
     }
 }
 
-fn skeleton_clothing_layer_pass_parts(
+fn skeleton_clothing_layer_pass(
     family: Option<SkeletonModelFamily>,
-) -> Option<(
-    &'static str,
-    EntityModelTextureRef,
-    &'static [TexturedModelPartDesc],
-)> {
+) -> Option<(&'static str, EntityModelTextureRef)> {
     match family {
-        Some(SkeletonModelFamily::Stray) => Some((
-            MODEL_LAYER_STRAY_OUTER_LAYER,
-            STRAY_OVERLAY_TEXTURE_REF,
-            &STRAY_OUTER_TEXTURED_PARTS,
-        )),
-        Some(SkeletonModelFamily::Bogged { .. }) => Some((
-            MODEL_LAYER_BOGGED_OUTER_LAYER,
-            BOGGED_OVERLAY_TEXTURE_REF,
-            &BOGGED_OUTER_TEXTURED_PARTS,
-        )),
+        Some(SkeletonModelFamily::Stray) => {
+            Some((MODEL_LAYER_STRAY_OUTER_LAYER, STRAY_OVERLAY_TEXTURE_REF))
+        }
+        Some(SkeletonModelFamily::Bogged { .. }) => {
+            Some((MODEL_LAYER_BOGGED_OUTER_LAYER, BOGGED_OVERLAY_TEXTURE_REF))
+        }
         None | Some(SkeletonModelFamily::Parched) | Some(SkeletonModelFamily::WitherSkeleton) => {
             None
         }
