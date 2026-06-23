@@ -1486,21 +1486,11 @@ fn emit_pufferfish_model(
     instance: EntityModelInstance,
     puff_state: i32,
 ) {
-    // Vanilla picks the small/mid/big model by puff state; each wiggles its two fins on
-    // `ageInTicks` (the rest are static). The body bob lives in the root transform.
+    // The unified `PufferfishModel` tree drives both render paths; `new` picks the small/mid/big parts
+    // by puff state and `setup_anim` wiggles its two fins on `ageInTicks`. The body bob lives in the
+    // pufferfish root transform.
     let root = pufferfish_model_root_transform(instance);
-    let (parts, fins) = pufferfish_parts(puff_state);
-    let fin_z = pufferfish_right_fin_z_rot(instance.render_state.age_in_ticks);
-    for (index, part) in parts.iter().enumerate() {
-        let pose = if index == fins[0] {
-            pufferfish_fin_pose(part.pose(), fin_z)
-        } else if index == fins[1] {
-            pufferfish_fin_pose(part.pose(), -fin_z)
-        } else {
-            part.pose()
-        };
-        emit_model_cubes_at_pose(mesh, root, pose, &[part.colored_cube()]);
-    }
+    PufferfishModel::new(puff_state).prepare_and_render(mesh, &instance, root);
 }
 
 fn emit_tropical_fish_model(

@@ -1,4 +1,6 @@
-use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc};
+use super::PartPose;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // The pufferfish fallback paints its body and fins a sandy yellow.
 pub(in crate::entity_models) const PUFFERFISH_YELLOW: [f32; 4] = [0.93, 0.80, 0.22, 1.0];
@@ -23,22 +25,17 @@ impl PufferfishPart {
         }
     }
 
-    pub(in crate::entity_models) fn colored_cube(&self) -> ModelCubeDesc {
-        ModelCubeDesc {
-            min: self.min,
-            size: self.size,
-            color: PUFFERFISH_YELLOW,
-        }
-    }
-
-    pub(in crate::entity_models) fn textured_cube(&self) -> TexturedModelCubeDesc {
-        TexturedModelCubeDesc {
-            min: self.min,
-            size: self.size,
-            uv_size: self.size,
-            tex: self.tex,
-            mirror: false,
-        }
+    /// The unified [`ModelCube`] for this part: a single never-mirrored box whose colored tint is the
+    /// sandy [`PUFFERFISH_YELLOW`] and whose `uv_size` equals `size` (vanilla `CubeDeformation.NONE`).
+    pub(in crate::entity_models) fn model_cube(&self) -> ModelCube {
+        ModelCube::new(
+            self.min,
+            self.size,
+            PUFFERFISH_YELLOW,
+            self.size,
+            self.tex,
+            false,
+        )
     }
 }
 
@@ -315,5 +312,50 @@ pub(in crate::entity_models) fn pufferfish_fin_pose(base: PartPose, z_rot: f32) 
     PartPose {
         offset: base.offset,
         rotation: [base.rotation[0], base.rotation[1], z_rot],
+    }
+}
+
+/// Mutable pufferfish model, mirroring vanilla `PufferfishSmallModel`/`MidModel`/`BigModel`. The puff
+/// state picks one of the three flat part lists ([`pufferfish_parts`]); each part hangs off a synthetic
+/// root carrying its single cube (both render paths' data), so one tree drives the colored fallback and
+/// the cutout textured layer. `setup_anim` wiggles the two `ageInTicks`-driven fins; the body bob lives
+/// in the pufferfish root transform.
+pub(in crate::entity_models) struct PufferfishModel {
+    root: ModelPart,
+    fins: [usize; 2],
+}
+
+impl PufferfishModel {
+    pub(in crate::entity_models) fn new(puff_state: i32) -> Self {
+        let (parts, fins) = pufferfish_parts(puff_state);
+        let children = parts
+            .iter()
+            .map(|part| ModelPart::leaf(part.pose(), vec![part.model_cube()]))
+            .collect();
+        Self {
+            root: ModelPart::root_from_parts(children),
+            fins,
+        }
+    }
+}
+
+impl EntityModel for PufferfishModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `setupAnim` wiggles the two fins on `ageInTicks`: the right fin takes `zRot`, the
+        // left its negation, set absolutely over the zeroed rest `zRot` (offset / `xRot` / `yRot`
+        // preserved).
+        let fin_z = pufferfish_right_fin_z_rot(instance.render_state.age_in_ticks);
+        let right = self.root.child_at_mut(self.fins[0]);
+        right.pose = pufferfish_fin_pose(right.pose, fin_z);
+        let left = self.root.child_at_mut(self.fins[1]);
+        left.pose = pufferfish_fin_pose(left.pose, -fin_z);
     }
 }

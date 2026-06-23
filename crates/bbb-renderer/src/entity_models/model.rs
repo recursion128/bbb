@@ -298,6 +298,25 @@ impl ModelPart {
         }
     }
 
+    /// Builds a synthetic identity root over a flat list of already-built sibling parts, named by
+    /// index for positional [`ModelPart::child_at_mut`] access. The runtime counterpart of
+    /// [`ModelPart::root_from_descs`] for a model whose parts are computed at construction (the
+    /// pufferfish puff states pick one of three part lists) rather than declared as `&'static` descs.
+    pub(in crate::entity_models) fn root_from_parts(children: Vec<ModelPart>) -> Self {
+        let children = children
+            .into_iter()
+            .enumerate()
+            .map(|(index, part)| (INDEX_CHILD_NAMES[index], part))
+            .collect();
+        Self {
+            pose: super::geometry::PART_POSE_ZERO,
+            default_pose: super::geometry::PART_POSE_ZERO,
+            cubes: Vec::new(),
+            children,
+            visible: true,
+        }
+    }
+
     /// Vanilla `ModelPart.getChild` by position: a mutable handle to the `index`-th direct child.
     /// Pairs with the entities' existing `*_PART_INDEX` constants. Panics if out of range.
     pub(in crate::entity_models) fn child_at_mut(&mut self, index: usize) -> &mut ModelPart {

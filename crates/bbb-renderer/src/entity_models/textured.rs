@@ -25,21 +25,20 @@ use super::{
         apply_wolf_sitting_pose, armor_stand_textured_cube, camel_clamped_head_look,
         head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
         humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
-        parched_head_part_index, pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
-        quadruped_leg_swing_pose, skeleton_head_part_index, wolf_angry_tail_pose,
-        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, BatModel,
-        BeeModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
-        CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
-        HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
-        MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
-        RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel,
-        TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
-        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
-        ALLAY_TEXTURE_REF, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_CAMEL_WALK_LAYOUT, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF,
-        BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
-        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
+        parched_head_part_index, quadruped_leg_swing_pose, skeleton_head_part_index,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        AllayModel, BatModel, BeeModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel,
+        CodModel, CowModel, CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel,
+        GoatModel, HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel,
+        MagmaCubeModel, MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel,
+        PolarBearModel, PufferfishModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel,
+        SilverfishModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel,
+        SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel, TurtleModel,
+        VexModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel,
+        ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS,
+        ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF,
+        BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR,
+        COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
         SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
         TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
     },
@@ -1698,32 +1697,22 @@ fn emit_pufferfish_textured_model(
     puff_state: i32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla picks the small/mid/big model by puff state; each wiggles its two fins on
-    // `ageInTicks`. A single cutout pass over `pufferfish.png` (no eyes layer).
+    // The unified `PufferfishModel` tree drives both render paths; `new` picks the small/mid/big parts
+    // by puff state and `setup_anim` wiggles its two fins on `ageInTicks`. A single cutout pass over
+    // `pufferfish.png` (no eyes layer).
     let Some(entry) = entity_model_texture_atlas_entry(atlas, PUFFERFISH_TEXTURE_REF) else {
         return;
     };
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
-    let root = pufferfish_model_root_transform(instance);
-    let (parts, fins) = pufferfish_parts(puff_state);
-    let fin_z = pufferfish_right_fin_z_rot(instance.render_state.age_in_ticks);
-    for (index, part) in parts.iter().enumerate() {
-        let pose = if index == fins[0] {
-            pufferfish_fin_pose(part.pose(), fin_z)
-        } else if index == fins[1] {
-            pufferfish_fin_pose(part.pose(), -fin_z)
-        } else {
-            part.pose()
-        };
-        emit_textured_model_cube(
-            mesh,
-            root * part_pose_transform(pose),
-            part.textured_cube(),
-            PUFFERFISH_TEXTURE_REF,
-            entry.uv,
-            [1.0, 1.0, 1.0, 1.0],
-        );
-    }
+    let transform = pufferfish_model_root_transform(instance);
+    let mut model = PufferfishModel::new(puff_state);
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+        transform,
+        PUFFERFISH_TEXTURE_REF,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+    );
 }
 
 fn emit_polar_bear_textured_model(
