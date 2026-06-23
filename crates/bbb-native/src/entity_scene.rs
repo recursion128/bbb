@@ -242,6 +242,8 @@ const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 /// Vanilla `Turtle.HAS_EGG` data id (18): the synced boolean, the turtle's first own accessor
 /// after `AgeableMob.DATA_BABY_ID` (16) and `AGE_LOCKED` (17).
 const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
+/// Vanilla `Turtle.LAYING_EGG` data id (19): the synced boolean declared right after `HAS_EGG`.
+const TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
 /// `TamableAnimal` `DATA_FLAGS_ID` sitting bit (`isInSittingPose()` reads `& 1`).
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
@@ -420,6 +422,10 @@ fn entity_model_instance(
             &source.data_values,
         ))
         .with_turtle_has_egg(turtle_has_egg(source.entity_type_id, &source.data_values))
+        .with_turtle_laying_egg(turtle_laying_egg(
+            source.entity_type_id,
+            &source.data_values,
+        ))
         .with_creeper_swelling(source.creeper_swelling)
         .with_shulker_peek(source.shulker_peek)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
@@ -1057,6 +1063,17 @@ fn turtle_has_egg(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDa
     entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
         && !ageable_baby(values)
         && entity_data_bool(values, TURTLE_HAS_EGG_DATA_ID, false)
+}
+
+/// Vanilla `TurtleRenderState.isLayingEgg = Turtle.isLayingEgg()` (the synced `LAYING_EGG`
+/// boolean, id 19). The egg-laying front-leg amplitude lives in the shared `TurtleModel`, so —
+/// unlike `hasEgg` — babies are NOT excluded; the projection is only gated to the turtle type.
+fn turtle_laying_egg(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
+        && entity_data_bool(values, TURTLE_LAYING_EGG_DATA_ID, false)
 }
 
 fn donkey_model_kind(
@@ -2240,6 +2257,66 @@ mod tests {
             values: vec![protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true)],
         }));
         assert!(!has_egg(&world, 142));
+    }
+
+    #[test]
+    fn entity_model_instances_project_turtle_laying_egg() {
+        // Vanilla Turtle.LAYING_EGG (BOOLEAN data id 19) and TurtleRenderer.extractRenderState:
+        // state.isLayingEgg = entity.isLayingEgg(). Unlike hasEgg, this is NOT baby-gated (the
+        // egg-laying amplitude lives in the shared TurtleModel).
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            150,
+            VANILLA_ENTITY_TYPE_TURTLE_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // A baby turtle (lays too), plus a non-turtle (bat) used to prove the type gating.
+        world.apply_add_entity(protocol_add_entity(
+            151,
+            VANILLA_ENTITY_TYPE_TURTLE_ID,
+            [2.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            152,
+            VANILLA_ENTITY_TYPE_BAT_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let laying = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .turtle_laying_egg
+        };
+
+        // A turtle that is not laying projects turtle_laying_egg = false.
+        assert!(!laying(&world, 150));
+
+        // Setting Turtle.LAYING_EGG (data id 19) projects through.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 150,
+            values: vec![protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true)],
+        }));
+        assert!(laying(&world, 150));
+
+        // A baby turtle DOES lay (no baby exclusion, unlike hasEgg).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 151,
+            values: vec![
+                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true),
+            ],
+        }));
+        assert!(laying(&world, 151));
+
+        // The same flag on a non-turtle (bat) does NOT project turtle_laying_egg.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 152,
+            values: vec![protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true)],
+        }));
+        assert!(!laying(&world, 152));
     }
 
     #[test]

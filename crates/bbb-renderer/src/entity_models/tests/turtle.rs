@@ -162,11 +162,15 @@ fn turtle_setup_anim_curves_match_vanilla() {
     assert!((turtle_quadruped_leg_x_rot(pos, speed, false) - expected_phase0).abs() < 1.0e-6);
     assert!((turtle_quadruped_leg_x_rot(pos, speed, true) - expected_phasepi).abs() < 1.0e-6);
 
-    // Land yaw swing: front weight 8, hind weight 3, right negated.
+    // Land yaw swing (not laying): front weight 8, hind weight 3, right negated.
     let swing = (pos * 5.0).cos();
-    assert!((turtle_land_leg_y_rot(pos, speed, true, false) - swing * 8.0 * speed).abs() < 1.0e-6);
     assert!(
-        (turtle_land_leg_y_rot(pos, speed, false, true) - -(swing * 3.0 * speed)).abs() < 1.0e-6
+        (turtle_land_leg_y_rot(pos, speed, true, false, false) - swing * 8.0 * speed).abs()
+            < 1.0e-6
+    );
+    assert!(
+        (turtle_land_leg_y_rot(pos, speed, false, true, false) - -(swing * 3.0 * speed)).abs()
+            < 1.0e-6
     );
 
     // Water paddle swing.
@@ -175,19 +179,95 @@ fn turtle_setup_anim_curves_match_vanilla() {
 
     // Combined per-leg rotation: on land the quadruped xRot remains and the yRot is added; in
     // water the hind xRot is the paddle swing and the front legs add it on zRot.
-    let right_hind_land = turtle_leg_rotation(pos, speed, true, false, true);
+    let right_hind_land = turtle_leg_rotation(pos, speed, true, false, true, false);
     assert!((right_hind_land[0] - turtle_quadruped_leg_x_rot(pos, speed, false)).abs() < 1.0e-6);
-    assert!((right_hind_land[1] - turtle_land_leg_y_rot(pos, speed, false, true)).abs() < 1.0e-6);
+    assert!(
+        (right_hind_land[1] - turtle_land_leg_y_rot(pos, speed, false, true, false)).abs() < 1.0e-6
+    );
     assert_eq!(right_hind_land[2], 0.0);
 
-    let right_hind_water = turtle_leg_rotation(pos, speed, false, false, true);
+    let right_hind_water = turtle_leg_rotation(pos, speed, false, false, true, false);
     assert!((right_hind_water[0] - water).abs() < 1.0e-6);
     assert_eq!(right_hind_water[1], 0.0);
     assert_eq!(right_hind_water[2], 0.0);
 
-    let right_front_water = turtle_leg_rotation(pos, speed, false, true, true);
+    let right_front_water = turtle_leg_rotation(pos, speed, false, true, true, false);
     assert!((right_front_water[0] - turtle_quadruped_leg_x_rot(pos, speed, true)).abs() < 1.0e-6);
     assert!((right_front_water[2] - -water).abs() < 1.0e-6);
+}
+
+#[test]
+fn turtle_laying_egg_amplifies_front_legs() {
+    // Vanilla `TurtleModel.setupAnim` land branch with `isLayingEgg`:
+    //   layEgg = 4, layEggAmplitude = 2;
+    //   frontSwing = cos(layEgg · pos · 5); rightFront.yRot = -frontSwing · 8 · speed · 2.
+    // The hind legs (cos(pos · 5) · 3 · speed) and the water branch are unaffected.
+    let (pos, speed) = (3.0_f32, 0.7_f32);
+
+    let front_swing_laying = (4.0 * pos * 5.0).cos();
+    let expected_right_front = -front_swing_laying * 8.0 * speed * 2.0;
+    let expected_left_front = front_swing_laying * 8.0 * speed * 2.0;
+    assert!(
+        (turtle_land_leg_y_rot(pos, speed, true, true, true) - expected_right_front).abs() < 1.0e-6
+    );
+    assert!(
+        (turtle_land_leg_y_rot(pos, speed, true, false, true) - expected_left_front).abs() < 1.0e-6
+    );
+
+    // Hind legs are identical whether laying or not.
+    assert_eq!(
+        turtle_land_leg_y_rot(pos, speed, false, true, true),
+        turtle_land_leg_y_rot(pos, speed, false, true, false)
+    );
+    assert_eq!(
+        turtle_land_leg_y_rot(pos, speed, false, false, true),
+        turtle_land_leg_y_rot(pos, speed, false, false, false)
+    );
+
+    // The laying flag only touches the land yaw slot — the quadruped xRot is unchanged, zRot 0.
+    let right_front_land = turtle_leg_rotation(pos, speed, true, true, true, true);
+    assert!((right_front_land[0] - turtle_quadruped_leg_x_rot(pos, speed, true)).abs() < 1.0e-6);
+    assert!((right_front_land[1] - expected_right_front).abs() < 1.0e-6);
+    assert_eq!(right_front_land[2], 0.0);
+
+    // The water branch ignores laying entirely (layEgg only applies on land).
+    assert_eq!(
+        turtle_leg_rotation(pos, speed, false, true, true, true),
+        turtle_leg_rotation(pos, speed, false, true, true, false)
+    );
+}
+
+#[test]
+fn turtle_laying_egg_animates_front_legs_through_the_mesh() {
+    // A laying turtle walking on land poses its front legs differently (amplified yaw swing).
+    let base = EntityModelInstance::turtle(680, [0.0, 64.0, 0.0], 0.0, false)
+        .with_walk_animation(3.0, 0.7)
+        .with_on_ground(true)
+        .with_in_water(false);
+    let plain = entity_model_mesh(&[base]);
+    let laying = entity_model_mesh(&[base.with_turtle_laying_egg(true)]);
+    assert_eq!(plain.vertices.len(), laying.vertices.len());
+    assert_ne!(
+        plain.vertices, laying.vertices,
+        "laying amplifies the front-leg land swing"
+    );
+
+    // The amplitude lives in the shared `TurtleModel`, so baby turtles lay too.
+    let baby = EntityModelInstance::turtle(681, [0.0, 64.0, 0.0], 0.0, true)
+        .with_walk_animation(3.0, 0.7)
+        .with_on_ground(true)
+        .with_in_water(false);
+    assert_ne!(
+        entity_model_mesh(&[baby]).vertices,
+        entity_model_mesh(&[baby.with_turtle_laying_egg(true)]).vertices,
+    );
+
+    // In water the laying flag has no effect (vanilla applies `layEgg` only on land).
+    let swimming = base.with_on_ground(false).with_in_water(true);
+    assert_eq!(
+        entity_model_mesh(&[swimming]).vertices,
+        entity_model_mesh(&[swimming.with_turtle_laying_egg(true)]).vertices,
+    );
 }
 
 #[test]

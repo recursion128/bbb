@@ -174,20 +174,27 @@ pub(in crate::entity_models) fn turtle_quadruped_leg_x_rot(
     (pos * 0.6662 + phase).cos() * 1.4 * speed
 }
 
-/// Vanilla `TurtleModel.setupAnim` land leg yaw swing: `leg.yRot = ±cos(pos·5)·weight·speed`
-/// with `weight = 8` (front) / `3` (hind) and the sign negated for the right legs. The
-/// egg-laying `layEgg`/`layEggAmplitude` multipliers (both `1` when not laying) are deferred
-/// entity-side state, so this assumes the not-laying pose.
+/// Vanilla `TurtleModel.setupAnim` land leg yaw swing. The hind legs swing
+/// `±cos(pos·5)·3·speed`; the front legs swing `±cos(layEgg·pos·5)·8·speed·layEggAmplitude`,
+/// where a turtle that `isLayingEgg` sets `layEgg = 4` (the front legs paddle four times faster)
+/// and `layEggAmplitude = 2` (twice as wide) to mime digging the nest, while the hind legs are
+/// untouched. Both multipliers are `1` when not laying, recovering the plain walk. The sign is
+/// negated for the right legs.
 pub(in crate::entity_models) fn turtle_land_leg_y_rot(
     pos: f32,
     speed: f32,
     front: bool,
     right: bool,
+    laying: bool,
 ) -> f32 {
-    let swing = (pos * 5.0).cos();
-    let weight = if front { 8.0 } else { 3.0 };
     let sign = if right { -1.0 } else { 1.0 };
-    sign * swing * weight * speed
+    if front {
+        let lay_egg = if laying { 4.0 } else { 1.0 };
+        let lay_amplitude = if laying { 2.0 } else { 1.0 };
+        sign * (lay_egg * pos * 5.0).cos() * 8.0 * speed * lay_amplitude
+    } else {
+        sign * (pos * 5.0).cos() * 3.0 * speed
+    }
 }
 
 /// Vanilla `TurtleModel.setupAnim` water paddle swing: `swing = cos(pos·0.6662·0.6)·0.5·speed`.
@@ -198,18 +205,24 @@ pub(in crate::entity_models) fn turtle_water_swing(pos: f32, speed: f32) -> f32 
 
 /// The full per-leg rotation `[xRot, yRot, zRot]` for one turtle leg, composing the
 /// `QuadrupedModel` base swing with the `TurtleModel` land/water branch. `front`/`right`
-/// identify the leg; `on_land` selects the branch (`!isInWater && onGround`).
+/// identify the leg; `on_land` selects the branch (`!isInWater && onGround`); `laying` applies
+/// the egg-laying front-leg amplitude (land branch only, matching vanilla).
 pub(in crate::entity_models) fn turtle_leg_rotation(
     pos: f32,
     speed: f32,
     on_land: bool,
     front: bool,
     right: bool,
+    laying: bool,
 ) -> [f32; 3] {
     let base_x = turtle_quadruped_leg_x_rot(pos, speed, front == right);
     if on_land {
         // Land: the quadruped `xRot` swing remains and the turtle adds the `yRot` walk swing.
-        [base_x, turtle_land_leg_y_rot(pos, speed, front, right), 0.0]
+        [
+            base_x,
+            turtle_land_leg_y_rot(pos, speed, front, right, laying),
+            0.0,
+        ]
     } else {
         // Water: the hind legs' `xRot` is replaced by the paddle swing; the front legs keep the
         // quadruped `xRot` and add the paddle swing on `zRot`.

@@ -1434,8 +1434,13 @@ When an agent does any of the following, update this file in the same slice:
       pose) is drawn on both paths and the whole model is shifted by `this.root.y--`, gated on the
       synced `Turtle.HAS_EGG` boolean (data id 18) and cleared for babies (`hasEgg = !isBaby() &&
       hasEgg()`), with native projection + renderer tests proving the cube count, the root shift,
-      and the baby exclusion. The egg-laying leg amplitude (`isLayingEgg`, the
-      `layEgg`/`layEggAmplitude` multipliers) remains unsupported
+      and the baby exclusion. While a turtle `isLayingEgg` (synced `Turtle.LAYING_EGG` boolean,
+      data id 19), the shared `TurtleModel.setupAnim` land branch quadruples the front legs' yaw
+      frequency (`layEgg = 4`) and doubles their amplitude (`layEggAmplitude = 2`) to mime digging
+      the nest, leaving the hind legs and the water paddle untouched; this is applied on both
+      paths for adults and babies alike (the amplitude lives in the base model, so it is NOT
+      baby-gated), with tests pinning the exact `cos(4·pos·5)·8·speed·2` front-leg curve. The
+      turtle is now fully aligned with vanilla 26.1
     - bat entities are wired end to end on both render paths off the real vanilla 26.1
       `BatModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `10` to the
       new `EntityModelKind::Bat`, replacing the former placeholder box. Renderer-owned vanilla

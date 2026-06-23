@@ -1146,6 +1146,8 @@ fn emit_turtle_textured_model(
     let on_land = !instance.render_state.in_water && instance.render_state.on_ground;
     // Only the adult model carries the egg belly; the baby model class has no such part.
     let has_egg = !baby && instance.render_state.turtle_has_egg;
+    // The egg-laying front-leg amplitude lives in the shared `TurtleModel` (adult + baby).
+    let laying = instance.render_state.turtle_laying_egg;
     let mut root = entity_model_root_transform(instance);
     if has_egg {
         // Vanilla `root.y--`: a model-local one-unit drop applied to every part (egg and all).
@@ -1249,7 +1251,7 @@ fn emit_turtle_textured_model(
             root,
             PartPose {
                 offset: leg_pose.offset,
-                rotation: turtle_leg_rotation(pos, speed, on_land, front, right),
+                rotation: turtle_leg_rotation(pos, speed, on_land, front, right, laying),
             },
             cubes,
             texture,

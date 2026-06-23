@@ -189,6 +189,12 @@ pub struct EntityRenderState {
     /// overlay cube and drops the whole model `root.y--` by one unit. `false` for a turtle
     /// without an egg, every baby turtle, and every non-turtle entity.
     pub turtle_has_egg: bool,
+    /// Vanilla `TurtleRenderState.isLayingEgg` (the synced `Turtle.LAYING_EGG` boolean): a
+    /// nesting turtle, whose shared `TurtleModel.setupAnim` quadruples the front legs' land yaw
+    /// frequency (`layEgg = 4`) and doubles their amplitude (`layEggAmplitude = 2`) to mime
+    /// digging. `false` for a turtle that is not laying and every non-turtle entity. Applies to
+    /// adults and babies alike (the amplitude lives in the base model).
+    pub turtle_laying_egg: bool,
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
@@ -259,6 +265,7 @@ impl EntityRenderState {
             wolf_sitting: false,
             parrot_sitting: false,
             turtle_has_egg: false,
+            turtle_laying_egg: false,
             squid_tentacle_angle: 0.0,
             squid_x_body_rot: 0.0,
             squid_z_body_rot: 0.0,
@@ -468,6 +475,11 @@ impl EntityModelInstance {
 
     pub fn with_turtle_has_egg(mut self, turtle_has_egg: bool) -> Self {
         self.render_state.turtle_has_egg = turtle_has_egg;
+        self
+    }
+
+    pub fn with_turtle_laying_egg(mut self, turtle_laying_egg: bool) -> Self {
+        self.render_state.turtle_laying_egg = turtle_laying_egg;
         self
     }
 
@@ -1353,6 +1365,7 @@ mod tests {
                 wolf_sitting: false,
                 parrot_sitting: false,
                 turtle_has_egg: false,
+                turtle_laying_egg: false,
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
