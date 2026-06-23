@@ -1,35 +1,54 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn allay_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `AllayModel.createBodyLayer` (atlas 32×32). Head is a plain 5³ box.
+    // Vanilla `AllayModel.createBodyLayer` (atlas 32×32). Head is a plain 5³ box. Each unified cube
+    // carries both the colored geometry/tint and the textured `uv_size` / `texOffs` / `mirror`.
     assert_eq!(
         ALLAY_HEAD[0],
-        ModelCubeDesc {
-            min: [-2.5, -5.0, -2.5],
-            size: [5.0, 5.0, 5.0],
-            color: ALLAY_BLUE,
-        }
+        ModelCube::new(
+            [-2.5, -5.0, -2.5],
+            [5.0, 5.0, 5.0],
+            ALLAY_BLUE,
+            [5.0, 5.0, 5.0],
+            [0.0, 0.0],
+            false,
+        )
     );
 
     // Body: the plain `texOffs(0, 10)` 3×4×2 box plus the `texOffs(0, 16)` 3×5×2 box inset by
-    // `CubeDeformation(-0.2)` (min +0.2, size -0.4).
+    // `CubeDeformation(-0.2)` (min +0.2, size -0.4); the inset cube keeps the 3×5×2 base uv_size.
     assert_eq!(ALLAY_BODY.len(), 2);
     assert_eq!(ALLAY_BODY[0].min, [-1.5, 0.0, -1.0]);
     assert_eq!(ALLAY_BODY[0].size, [3.0, 4.0, 2.0]);
+    assert_eq!(ALLAY_BODY[0].tex, [0.0, 10.0]);
+    assert_eq!(ALLAY_BODY[0].uv_size, [3.0, 4.0, 2.0]);
     assert_eq!(ALLAY_BODY[1].min, [-1.3, 0.2, -0.8]);
     assert_eq!(ALLAY_BODY[1].size, [2.6, 4.6, 1.6]);
+    assert_eq!(ALLAY_BODY[1].tex, [0.0, 16.0]);
+    assert_eq!(ALLAY_BODY[1].uv_size, [3.0, 5.0, 2.0]);
 
-    // Arms: 1×4×2 boxes inset by `CubeDeformation(-0.01)` (min +0.01, size -0.02). The right and
-    // left arms differ only in their box origin (`-0.75` vs `-0.25`).
+    // Arms: 1×4×2 boxes inset by `CubeDeformation(-0.01)` (min +0.01, size -0.02), uv_size keeps the
+    // 1×4×2 base box. The right and left arms differ in their box origin (`-0.75` vs `-0.25`) and
+    // `texOffs(23, 0)` / `texOffs(23, 6)`.
     assert_eq!(ALLAY_RIGHT_ARM[0].min, [-0.74, -0.49, -0.99]);
     assert_eq!(ALLAY_RIGHT_ARM[0].size, [0.98, 3.98, 1.98]);
+    assert_eq!(ALLAY_RIGHT_ARM[0].uv_size, [1.0, 4.0, 2.0]);
+    assert_eq!(ALLAY_RIGHT_ARM[0].tex, [23.0, 0.0]);
     assert_eq!(ALLAY_LEFT_ARM[0].min, [-0.24, -0.49, -0.99]);
     assert_eq!(ALLAY_LEFT_ARM[0].size, [0.98, 3.98, 1.98]);
+    assert_eq!(ALLAY_LEFT_ARM[0].uv_size, [1.0, 4.0, 2.0]);
+    assert_eq!(ALLAY_LEFT_ARM[0].tex, [23.0, 6.0]);
 
-    // Wings: zero-thickness 0×5×8 planes whose box starts at y=1.
+    // Wings: zero-thickness 0×5×8 planes whose box starts at y=1, both `texOffs(16, 14)` with NO
+    // mirror (unlike the vex).
     assert_eq!(ALLAY_WING[0].min, [0.0, 1.0, 0.0]);
     assert_eq!(ALLAY_WING[0].size, [0.0, 5.0, 8.0]);
+    assert_eq!(ALLAY_WING[0].uv_size, [0.0, 5.0, 8.0]);
+    assert_eq!(ALLAY_WING[0].tex, [16.0, 14.0]);
+    assert!(!ALLAY_WING[0].mirror);
 
     // Part offsets: the model root sits at +23.5, head at -3.99, body at -4.0, arms ±1.75,
     // wings ±0.5 and forward 0.6.
@@ -153,31 +172,6 @@ fn allay_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         })
     );
-}
-
-#[test]
-fn allay_textured_cubes_match_vanilla_body_layer_uvs() {
-    // The textured cubes mirror the colored geometry. `CubeDeformation` inflates the box but
-    // the `uv_size` keeps the BASE box, exactly as vanilla bakes it.
-    assert_eq!(ALLAY_TEXTURED_HEAD[0].size, [5.0, 5.0, 5.0]);
-    assert_eq!(ALLAY_TEXTURED_HEAD[0].uv_size, [5.0, 5.0, 5.0]);
-    assert_eq!(ALLAY_TEXTURED_HEAD[0].tex, [0.0, 0.0]);
-
-    assert_eq!(ALLAY_TEXTURED_BODY[0].tex, [0.0, 10.0]);
-    assert_eq!(ALLAY_TEXTURED_BODY[0].uv_size, [3.0, 4.0, 2.0]);
-    assert_eq!(ALLAY_TEXTURED_BODY[1].tex, [0.0, 16.0]);
-    assert_eq!(ALLAY_TEXTURED_BODY[1].size, [2.6, 4.6, 1.6]);
-    assert_eq!(ALLAY_TEXTURED_BODY[1].uv_size, [3.0, 5.0, 2.0]);
-
-    // Arms: `texOffs(23, 0)` / `texOffs(23, 6)`, 1×4×2 base box inset by `CubeDeformation(-0.01)`.
-    assert_eq!(ALLAY_TEXTURED_RIGHT_ARM[0].tex, [23.0, 0.0]);
-    assert_eq!(ALLAY_TEXTURED_RIGHT_ARM[0].uv_size, [1.0, 4.0, 2.0]);
-    assert_eq!(ALLAY_TEXTURED_LEFT_ARM[0].tex, [23.0, 6.0]);
-    assert_eq!(ALLAY_TEXTURED_LEFT_ARM[0].uv_size, [1.0, 4.0, 2.0]);
-
-    // Both wings share `texOffs(16, 14)` with NO mirror (unlike the vex).
-    assert_eq!(ALLAY_TEXTURED_WING[0].tex, [16.0, 14.0]);
-    assert!(!ALLAY_TEXTURED_WING[0].mirror);
 }
 
 #[test]
