@@ -25,6 +25,7 @@ mod enderman;
 mod endermite;
 mod equine;
 mod evoker_fangs;
+mod feline;
 mod frog;
 mod ghast;
 mod giant;

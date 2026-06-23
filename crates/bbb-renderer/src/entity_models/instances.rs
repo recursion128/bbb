@@ -1209,6 +1209,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Panda, position, y_rot)
     }
 
+    pub fn feline(entity_id: i32, position: [f32; 3], y_rot: f32, cat: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Feline { cat }, position, y_rot)
+    }
+
     #[cfg(test)]
     pub fn polar_bear_standing(
         entity_id: i32,

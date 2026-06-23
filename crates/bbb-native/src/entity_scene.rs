@@ -689,9 +689,11 @@ fn entity_model_kind_with_time_and_registries(
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
-        VANILLA_ENTITY_TYPE_CAT_ID | VANILLA_ENTITY_TYPE_OCELOT_ID | VANILLA_ENTITY_TYPE_FOX_ID => {
+        VANILLA_ENTITY_TYPE_FOX_ID => {
             quadruped(QuadrupedModelFamily::Wolf, ageable_baby(data_values))
         }
+        VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true),
+        VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false),
         VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(data_values),
         VANILLA_ENTITY_TYPE_MINECART_ID
         | VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
@@ -900,6 +902,22 @@ fn panda_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entity
         quadruped(QuadrupedModelFamily::Cow, true)
     } else {
         EntityModelKind::Panda
+    }
+}
+
+/// Vanilla `CatRenderer` / `OcelotRenderer` (both `AgeableMobRenderer`s) pick `AdultCatModel` /
+/// `AdultOcelotModel` (the shared `AdultFelineModel` mesh, the cat scaled 0.8) for an adult and the
+/// distinct `BabyFelineModel` mesh for a baby. The adult renders through the dedicated
+/// [`EntityModelKind::Feline`] (`cat` selecting the 0.8 scale); the baby still falls back to the
+/// wolf-shaped proxy until its body layer is modeled.
+fn feline_model_kind(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    cat: bool,
+) -> EntityModelKind {
+    if ageable_baby(values) {
+        quadruped(QuadrupedModelFamily::Wolf, true)
+    } else {
+        EntityModelKind::Feline { cat }
     }
 }
 
@@ -4974,8 +4992,25 @@ mod tests {
                 collar_color: None,
             }
         );
+        // The adult cat and ocelot render through the shared `AdultFelineModel` (cat scaled 0.8); the
+        // fox keeps the wolf proxy, and every feline baby (a distinct `BabyFelineModel` mesh) does too.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[]),
+            EntityModelKind::Feline { cat: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_OCELOT_ID, &[]),
+            EntityModelKind::Feline { cat: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            quadruped(QuadrupedModelFamily::Wolf, true)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_FOX_ID, &[]),
             quadruped(QuadrupedModelFamily::Wolf, false)
         );
         // The adult rabbit renders through its dedicated `AdultRabbitModel`; the baby (whose own

@@ -276,6 +276,16 @@ pub enum EntityModelKind {
     /// reads un-projected `PandaRenderState` state and stays deferred, as do the gene-driven textures
     /// and the baby `MeshTransformer` scale.
     Panda,
+    /// `AdultFelineModel` at its `createBodyMesh` rest pose, shared by the ocelot (`cat = false`,
+    /// unscaled) and the cat (`cat = true`, the same mesh scaled 0.8 by `AdultCatModel.CAT_TRANSFORMER`
+    /// in the root transform). The shared `setupAnim` head look and the standing `tail2` droop
+    /// (`xRot = 1.7278761`) are reproduced; the bespoke walk leg swing / tail wobble and every feline
+    /// pose (`isCrouching`, `isSprinting`, `isSitting`, `lieDownAmount`, `relaxStateOneAmount`) read
+    /// un-projected `FelineRenderState` state and stay deferred, as do the cat-breed / ocelot textures,
+    /// the cat collar layer, and the baby `BabyFelineModel` mesh.
+    Feline {
+        cat: bool,
+    },
     /// `AdultRabbitModel` at its `createBodyLayer` rest pose (the `body`/`backlegs` roots, the head
     /// nested under `body`). `RabbitModel.setupAnim` turns the head by the look angles (reproduced).
     /// The looping `RabbitAnimation.HOP` and `IDLE_HEAD_TILT` keyframe animations need un-projected

@@ -2057,6 +2057,27 @@ When an agent does any of the following, update this file in the same slice:
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred
       entity lighting
+    - adult cat and ocelot entities as renderer-owned vanilla 26.1 `AdultFelineModel.createBodyMesh()`
+      geometry on the colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type
+      ids `21` (cat) and `91` (ocelot) out of the cat/ocelot/fox wolf-shaped quadruped proxy — both adults
+      map to the new `EntityModelKind::Feline` (the `cat` flag selecting the cat layer's 0.8
+      `MeshTransformer.scaling` via the root transform, the ocelot unscaled), replacing the wolf-shaped
+      stand-in with the real feline mesh (the fox keeps the wolf proxy — `FoxModel` is a distinct non-feline
+      mesh — and every feline baby, a distinct `BabyFelineModel`, stays on the proxy too, both documented
+      follow-ups). The static rest-pose hierarchy is emitted directly (atlas 64×32, `CubeDeformation.NONE`):
+      eight root parts — the `head` at `offset(0, 15, -9)` (the 5×4×5 skull, the 3×2×2 nose, and the two
+      1×1×2 ears), the `body` at `offset(0, 12, -10)` pitched `π/2` (the 4×16×6 trunk), the two tail
+      segments (`tail1` pitched `0.9`, `tail2` deflated by the vanilla `CubeDeformation(-0.02)`), and the
+      four legs (hind 2×6×2, front 2×10×2) — eleven cubes. The shared `AdultFelineModel.setupAnim` head
+      look (`head.xRot/yRot` set from the projected `head_yaw/head_pitch`, turning only the head) is
+      reproduced, as is the not-sitting standing tail droop (`tail2.xRot = 1.7278761`, a real change from
+      the bind that the deferred walk wobble would add onto). Everything else stays deferred: the bespoke
+      feline walk leg swing (its own mirrored phase and amplitude-1.0 formula, distinct from the
+      `QuadrupedModel` `1.4` rule) and the `tail2` walk wobble, plus the `isCrouching` / `isSprinting` /
+      `isSitting` / `lieDownAmount` / `relaxStateOneAmount` poses, all reading un-projected
+      `FelineRenderState` fields. The cat-breed / ocelot textures, the cat collar layer, and the
+      `BabyFelineModel` body layer live on the deferred texture-backed / baby paths, so the colored debug
+      path renders one tan tint. The texture-backed path remains unsupported (this is a colored-first slice)
     - adult panda entities as renderer-owned vanilla 26.1 `PandaModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type id `96` out
       of the mooshroom/panda cow-shaped quadruped proxy — the adult maps to the new

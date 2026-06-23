@@ -533,6 +533,14 @@ fn entity_model_mesh_with_options(
                     entity_model_root_transform(*instance),
                 );
             }
+            EntityModelKind::Feline { cat } => {
+                let transform = if cat {
+                    mesh_transformer_scaled_model_root_transform(*instance, FELINE_CAT_SCALE)
+                } else {
+                    entity_model_root_transform(*instance)
+                };
+                FelineModel::new().prepare_and_render(&mut mesh, instance, transform);
+            }
             EntityModelKind::Rabbit => {
                 RabbitModel::new().prepare_and_render(
                     &mut mesh,
