@@ -1,81 +1,41 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`. The hat/jacket deformed cubes inflate their geometry but keep the
+    // base box as `uv_size`.
     assert_eq!(
         ADULT_VILLAGER_HAT[0],
-        ModelCubeDesc {
-            min: [-4.51, -10.51, -4.51],
-            size: [9.02, 11.02, 9.02],
-            color: VILLAGER_ROBE,
-        }
+        ModelCube::new(
+            [-4.51, -10.51, -4.51],
+            [9.02, 11.02, 9.02],
+            VILLAGER_ROBE,
+            [8.0, 10.0, 8.0],
+            [32.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         ADULT_VILLAGER_JACKET[0],
-        ModelCubeDesc {
-            min: [-4.5, -0.5, -3.5],
-            size: [9.0, 21.0, 7.0],
-            color: VILLAGER_ROBE,
-        }
+        ModelCube::new(
+            [-4.5, -0.5, -3.5],
+            [9.0, 21.0, 7.0],
+            VILLAGER_ROBE,
+            [8.0, 20.0, 6.0],
+            [0.0, 38.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_VILLAGER_PARTS.len(), 5);
-    assert_part_tree(
-        &ADULT_VILLAGER_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_VILLAGER_HEAD.as_slice(),
-        ADULT_VILLAGER_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_VILLAGER_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_VILLAGER_HAT.as_slice(),
-        ADULT_VILLAGER_HAT_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_VILLAGER_HAT_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [-std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_VILLAGER_HAT_RIM.as_slice(),
-    );
-    assert_part(
-        &ADULT_VILLAGER_HEAD_CHILDREN[1],
-        [0.0, -2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_VILLAGER_NOSE.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_VILLAGER_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_VILLAGER_BODY.as_slice(),
-        ADULT_VILLAGER_BODY_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_VILLAGER_BODY_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_VILLAGER_JACKET.as_slice(),
-    );
-    assert_part(
-        &ADULT_VILLAGER_PARTS[2],
-        [0.0, 3.0, -1.0],
-        [-0.75, 0.0, 0.0],
-        ADULT_VILLAGER_ARMS.as_slice(),
-    );
-    assert_part(
-        &ADULT_VILLAGER_PARTS[3],
-        [-2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_VILLAGER_LEG.as_slice(),
-    );
-    assert_part(
-        &ADULT_VILLAGER_PARTS[4],
-        [2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_VILLAGER_LEG.as_slice(),
-    );
+    assert_eq!(ADULT_VILLAGER_HEAD[0].size, [8.0, 10.0, 8.0]);
+    assert_eq!(ADULT_VILLAGER_BODY[0].size, [8.0, 12.0, 6.0]);
+    assert_eq!(ADULT_VILLAGER_ARMS[1].tex, [44.0, 22.0]);
+    assert!(ADULT_VILLAGER_ARMS[1].mirror);
+    assert_eq!(ADULT_VILLAGER_RIGHT_LEG[0].size, [4.0, 12.0, 4.0]);
+    assert!(!ADULT_VILLAGER_RIGHT_LEG[0].mirror);
+    assert!(ADULT_VILLAGER_LEFT_LEG[0].mirror);
 }
 
 #[test]
@@ -110,94 +70,52 @@ fn villager_baby_model_parts_match_vanilla_26_1_body_layer() {
     assert_eq!(
         BABY_VILLAGER_RIGHT_HAND,
         [
-            ModelCubeDesc {
-                min: [-1.0, -2.4925, -1.8401],
-                size: [2.0, 4.0, 2.0],
-                color: VILLAGER_ROBE,
-            },
-            ModelCubeDesc {
-                min: [5.0, -2.4925, -1.8401],
-                size: [2.0, 4.0, 2.0],
-                color: VILLAGER_ROBE,
-            },
+            ModelCube::new(
+                [-1.0, -2.4925, -1.8401],
+                [2.0, 4.0, 2.0],
+                VILLAGER_ROBE,
+                [2.0, 4.0, 2.0],
+                [36.0, 15.0],
+                false,
+            ),
+            ModelCube::new(
+                [5.0, -2.4925, -1.8401],
+                [2.0, 4.0, 2.0],
+                VILLAGER_ROBE,
+                [2.0, 4.0, 2.0],
+                [16.0, 15.0],
+                false,
+            ),
         ]
     );
     assert_eq!(
         BABY_VILLAGER_BB_MAIN[0],
-        ModelCubeDesc {
-            min: [-2.7, -8.2, -1.7],
-            size: [4.4, 6.4, 3.4],
-            color: VILLAGER_ROBE,
-        }
+        ModelCube::new(
+            [-2.7, -8.2, -1.7],
+            [4.4, 6.4, 3.4],
+            VILLAGER_ROBE,
+            [4.0, 6.0, 3.0],
+            [16.0, 21.0],
+            false,
+        )
     );
-    assert_eq!(BABY_VILLAGER_PARTS.len(), 6);
-    assert_part_tree(
-        &BABY_VILLAGER_PARTS[0],
-        [0.0, 17.5, 0.0],
-        [0.0, 0.0, 0.0],
-        &[],
-        BABY_VILLAGER_ARMS_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_ARMS_CHILDREN[0],
-        [-3.0, 1.4025, -0.9599],
-        [-1.0472, 0.0, 0.0],
-        BABY_VILLAGER_RIGHT_HAND.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_ARMS_CHILDREN[1],
-        [0.0, 0.9024, -1.8175],
-        [-1.0472, 0.0, 0.0],
-        BABY_VILLAGER_MIDDLE_ARM.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_PARTS[1],
-        [-1.0, 21.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_LEG.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_PARTS[2],
-        [1.0, 21.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_LEG.as_slice(),
-    );
-    assert_part_tree(
-        &BABY_VILLAGER_PARTS[3],
-        [0.0, 16.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_HEAD.as_slice(),
-        BABY_VILLAGER_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_HEAD_CHILDREN[0],
-        [0.0, -4.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_HAT.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_HEAD_CHILDREN[1],
-        [0.0, -4.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_HAT_RIM.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_HEAD_CHILDREN[2],
-        [0.0, -2.0, -4.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_NOSE.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_PARTS[4],
-        [0.0, 18.75, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_BODY.as_slice(),
-    );
-    assert_part(
-        &BABY_VILLAGER_PARTS[5],
-        [0.5, 24.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_VILLAGER_BB_MAIN.as_slice(),
+    // The baby `createBodyModel` lists the parts in a different order (arms container, legs, head,
+    // body, bb_main); the unified tree preserves that render order under the vanilla child names. The
+    // baby head/body/leg cubes carry the textured UV sources.
+    assert_eq!(BABY_VILLAGER_HEAD[0].size, [8.0, 8.0, 7.0]);
+    assert_eq!(BABY_VILLAGER_BODY[0].size, [4.0, 5.0, 3.0]);
+    assert_eq!(BABY_VILLAGER_RIGHT_LEG[0].tex, [8.0, 23.0]);
+    assert_eq!(BABY_VILLAGER_LEFT_LEG[0].tex, [0.0, 23.0]);
+    assert_eq!(
+        BABY_VILLAGER_HAT[0],
+        ModelCube::new(
+            [-4.3, -4.3, -3.8],
+            [8.6, 8.6, 7.6],
+            VILLAGER_ROBE,
+            [8.0, 8.0, 7.0],
+            [0.0, 30.0],
+            false,
+        )
     );
 }
 
@@ -283,7 +201,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(adult[0].model_layer, MODEL_LAYER_VILLAGER);
     assert_eq!(adult[0].texture, VILLAGER_TEXTURE_REF);
-    assert_eq!(adult[0].parts, ADULT_VILLAGER_TEXTURED_PARTS.as_slice());
+    assert!(adult[0].parts.is_empty());
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
@@ -293,7 +211,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(baby[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(baby[0].model_layer, MODEL_LAYER_VILLAGER_BABY);
     assert_eq!(baby[0].texture, VILLAGER_BABY_TEXTURE_REF);
-    assert_eq!(baby[0].parts, BABY_VILLAGER_TEXTURED_PARTS.as_slice());
+    assert!(baby[0].parts.is_empty());
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(baby[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((baby[0].collector_order, baby[0].submit_sequence), (0, 0));
@@ -303,7 +221,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(trader[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(trader[0].model_layer, MODEL_LAYER_WANDERING_TRADER);
     assert_eq!(trader[0].texture, WANDERING_TRADER_TEXTURE_REF);
-    assert_eq!(trader[0].parts, ADULT_VILLAGER_TEXTURED_PARTS.as_slice());
+    assert!(trader[0].parts.is_empty());
     assert_eq!(trader[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(trader[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -324,91 +242,43 @@ fn villager_textured_model_parts_match_vanilla_tex_offs_sources() {
     assert_eq!(VILLAGER_BABY_TEXTURE_REF.size, [64, 64]);
     assert_eq!(WANDERING_TRADER_TEXTURE_REF.size, [64, 64]);
 
-    assert_eq!(
-        ADULT_VILLAGER_TEXTURED_HAT[0],
-        TexturedModelCubeDesc {
-            min: [-4.51, -10.51, -4.51],
-            size: [9.02, 11.02, 9.02],
-            uv_size: [8.0, 10.0, 8.0],
-            tex: [32.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_VILLAGER_TEXTURED_JACKET[0],
-        TexturedModelCubeDesc {
-            min: [-4.5, -0.5, -3.5],
-            size: [9.0, 21.0, 7.0],
-            uv_size: [8.0, 20.0, 6.0],
-            tex: [0.0, 38.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(ADULT_VILLAGER_TEXTURED_ARMS[1].tex, [44.0, 22.0]);
-    assert!(ADULT_VILLAGER_TEXTURED_ARMS[1].mirror);
-    assert!(ADULT_VILLAGER_TEXTURED_LEFT_LEG[0].mirror);
-    assert_eq!(
-        ADULT_VILLAGER_TEXTURED_PARTS[0].children,
-        ADULT_VILLAGER_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
-    assert_eq!(
-        ADULT_VILLAGER_TEXTURED_HEAD_CHILDREN[0].children,
-        ADULT_VILLAGER_TEXTURED_HAT_CHILDREN.as_slice()
-    );
-    assert_eq!(
-        ADULT_VILLAGER_TEXTURED_PARTS[4].pose,
-        ADULT_VILLAGER_PARTS[4].pose
-    );
+    // The unified cubes carry the textured UV sources (`uv_size`/`texOffs`/`mirror`) merged into the
+    // colored geometry.
+    assert_eq!(ADULT_VILLAGER_HAT[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(ADULT_VILLAGER_HAT[0].tex, [32.0, 0.0]);
+    assert_eq!(ADULT_VILLAGER_JACKET[0].uv_size, [8.0, 20.0, 6.0]);
+    assert_eq!(ADULT_VILLAGER_JACKET[0].tex, [0.0, 38.0]);
+    assert_eq!(ADULT_VILLAGER_ARMS[1].tex, [44.0, 22.0]);
+    assert!(ADULT_VILLAGER_ARMS[1].mirror);
+    assert!(ADULT_VILLAGER_LEFT_LEG[0].mirror);
 
     assert_eq!(
-        BABY_VILLAGER_TEXTURED_RIGHT_HAND,
+        BABY_VILLAGER_RIGHT_HAND,
         [
-            TexturedModelCubeDesc {
-                min: [-1.0, -2.4925, -1.8401],
-                size: [2.0, 4.0, 2.0],
-                uv_size: [2.0, 4.0, 2.0],
-                tex: [36.0, 15.0],
-                mirror: false,
-            },
-            TexturedModelCubeDesc {
-                min: [5.0, -2.4925, -1.8401],
-                size: [2.0, 4.0, 2.0],
-                uv_size: [2.0, 4.0, 2.0],
-                tex: [16.0, 15.0],
-                mirror: false,
-            },
+            ModelCube::new(
+                [-1.0, -2.4925, -1.8401],
+                [2.0, 4.0, 2.0],
+                VILLAGER_ROBE,
+                [2.0, 4.0, 2.0],
+                [36.0, 15.0],
+                false,
+            ),
+            ModelCube::new(
+                [5.0, -2.4925, -1.8401],
+                [2.0, 4.0, 2.0],
+                VILLAGER_ROBE,
+                [2.0, 4.0, 2.0],
+                [16.0, 15.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(BABY_VILLAGER_TEXTURED_RIGHT_LEG[0].tex, [8.0, 23.0]);
-    assert_eq!(BABY_VILLAGER_TEXTURED_LEFT_LEG[0].tex, [0.0, 23.0]);
-    assert_eq!(
-        BABY_VILLAGER_TEXTURED_HAT[0],
-        TexturedModelCubeDesc {
-            min: [-4.3, -4.3, -3.8],
-            size: [8.6, 8.6, 7.6],
-            uv_size: [8.0, 8.0, 7.0],
-            tex: [0.0, 30.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        BABY_VILLAGER_TEXTURED_BB_MAIN[0],
-        TexturedModelCubeDesc {
-            min: [-2.7, -8.2, -1.7],
-            size: [4.4, 6.4, 3.4],
-            uv_size: [4.0, 6.0, 3.0],
-            tex: [16.0, 21.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        BABY_VILLAGER_TEXTURED_PARTS[0].children,
-        BABY_VILLAGER_TEXTURED_ARMS_CHILDREN.as_slice()
-    );
-    assert_eq!(
-        BABY_VILLAGER_TEXTURED_PARTS[3].children,
-        BABY_VILLAGER_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
+    assert_eq!(BABY_VILLAGER_RIGHT_LEG[0].tex, [8.0, 23.0]);
+    assert_eq!(BABY_VILLAGER_LEFT_LEG[0].tex, [0.0, 23.0]);
+    assert_eq!(BABY_VILLAGER_HAT[0].uv_size, [8.0, 8.0, 7.0]);
+    assert_eq!(BABY_VILLAGER_HAT[0].tex, [0.0, 30.0]);
+    assert_eq!(BABY_VILLAGER_BB_MAIN[0].uv_size, [4.0, 6.0, 3.0]);
+    assert_eq!(BABY_VILLAGER_BB_MAIN[0].tex, [16.0, 21.0]);
 }
 
 #[test]

@@ -42,14 +42,6 @@ fn head_part_indices_match_vanilla_body_layers() {
     assert_eq!(villager_head_part_index(false), 0);
     assert_eq!(villager_head_part_index(true), 3);
     assert_eq!(
-        ADULT_VILLAGER_PARTS[villager_head_part_index(false)].cubes,
-        ADULT_VILLAGER_HEAD.as_slice()
-    );
-    assert_eq!(
-        BABY_VILLAGER_PARTS[villager_head_part_index(true)].cubes,
-        BABY_VILLAGER_HEAD.as_slice()
-    );
-    assert_eq!(
         WITCH_PARTS[villager_head_part_index(false)].cubes,
         WITCH_HEAD.as_slice()
     );

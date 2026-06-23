@@ -786,11 +786,7 @@ pub(in crate::entity_models) fn villager_textured_layer_passes(
         } else {
             VILLAGER_TEXTURE_REF
         },
-        parts: if baby {
-            &BABY_VILLAGER_TEXTURED_PARTS
-        } else {
-            &ADULT_VILLAGER_TEXTURED_PARTS
-        },
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -805,7 +801,7 @@ pub(in crate::entity_models) fn wandering_trader_textured_layer_passes() -> Vec<
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_WANDERING_TRADER,
         texture: WANDERING_TRADER_TEXTURE_REF,
-        parts: &ADULT_VILLAGER_TEXTURED_PARTS,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
