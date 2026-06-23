@@ -81,6 +81,11 @@ pub struct EntityRenderState {
     /// primes to explode. `0.0` for every non-creeper entity and a creeper at rest, where
     /// the swell scale is the identity.
     pub creeper_swelling: f32,
+    /// Vanilla `ShulkerRenderState.peekAmount` (`Shulker.getClientPeekAmount`, lerped): the
+    /// client peek that `ShulkerModel.setupAnim` opens the lid by — `lid.y = 16 + sin((0.5 +
+    /// peek)·π)·8` (plus an `ageInTicks` bob above `0.5`) and a `lid.yRot` twist above `0.3`.
+    /// `0.0` (closed/bind pose, `lid.y = 24`) for every non-shulker and a shut shulker.
+    pub shulker_peek: f32,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
@@ -216,6 +221,7 @@ impl EntityRenderState {
             has_red_overlay: false,
             white_overlay_progress: 0.0,
             creeper_swelling: 0.0,
+            shulker_peek: 0.0,
             auto_spin_age_ticks: None,
             upside_down_height: None,
             sleeping: None,
@@ -322,6 +328,11 @@ impl EntityModelInstance {
 
     pub fn with_creeper_swelling(mut self, creeper_swelling: f32) -> Self {
         self.render_state.creeper_swelling = creeper_swelling;
+        self
+    }
+
+    pub fn with_shulker_peek(mut self, shulker_peek: f32) -> Self {
+        self.render_state.shulker_peek = shulker_peek;
         self
     }
 
@@ -1280,6 +1291,7 @@ mod tests {
                 has_red_overlay: false,
                 white_overlay_progress: 0.0,
                 creeper_swelling: 0.0,
+                shulker_peek: 0.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,

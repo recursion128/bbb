@@ -367,6 +367,13 @@ impl ShulkerPeekAnimationState {
             (self.current_peek_amount + SHULKER_PEEK_PER_TICK).clamp(0.0, self.target_peek_amount)
         };
     }
+
+    /// Vanilla `Shulker.getClientPeekAmount(partialTick)` =
+    /// `Mth.lerp(partialTick, currentPeekAmountO, currentPeekAmount)`.
+    fn peek_amount(self, partial_tick: f32) -> f32 {
+        self.previous_peek_amount
+            + partial_tick * (self.current_peek_amount - self.previous_peek_amount)
+    }
 }
 
 impl EntityClientAnimationState {
@@ -465,6 +472,14 @@ impl EntityClientAnimationState {
     pub fn creeper_swelling(&self, partial_tick: f32) -> f32 {
         self.creeper_swell
             .map_or(0.0, |state| state.swelling(partial_tick))
+    }
+
+    /// Vanilla `Shulker.getClientPeekAmount(partialTick)`, exposed for the renderer
+    /// `ShulkerModel.setupAnim` lid open/close. Returns `0.0` (the closed/bind pose) when
+    /// the entity is not a shulker or its lid is shut.
+    pub fn shulker_peek_amount(&self, partial_tick: f32) -> f32 {
+        self.shulker_peek
+            .map_or(0.0, |state| state.peek_amount(partial_tick))
     }
 
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],

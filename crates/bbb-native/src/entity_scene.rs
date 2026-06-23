@@ -398,6 +398,7 @@ fn entity_model_instance(
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
         .with_creeper_swelling(source.creeper_swelling)
+        .with_shulker_peek(source.shulker_peek)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1719,6 +1720,50 @@ mod tests {
         let standing = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
         assert_eq!(standing[0].render_state.polar_bear_stand_scale, 0.5 / 6.0);
         assert_eq!(standing[1].render_state.polar_bear_stand_scale, 0.0);
+    }
+
+    #[test]
+    fn entity_model_instances_project_shulker_peek() {
+        // Vanilla Shulker.DATA_PEEK_ID (17, BYTE), a 0..=100 percentage; the client peek state
+        // advances 0.05/tick toward raw·0.01 and the render state reads the partial-tick lerp
+        // `Shulker.getClientPeekAmount` (`Mth.lerp(partialTick, currentPeekAmountO, current)`).
+        const VANILLA_SHULKER_PEEK_DATA_ID: u8 = 17;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            82,
+            VANILLA_ENTITY_TYPE_SHULKER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            83,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let peek = |world: &WorldStore, id: i32, partial: f32| {
+            entity_model_instances_from_world_at_partial_tick(world, partial)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .shulker_peek
+        };
+
+        // A closed shulker and every other entity carry a zero peek (the closed/bind pose).
+        assert_eq!(peek(&world, 82, 1.0), 0.0);
+        assert_eq!(peek(&world, 83, 1.0), 0.0);
+
+        // Open the lid fully (raw 100 → target 1.0), then advance one tick: the client peek steps
+        // 0.05 from 0. At partial-tick 0.5 the render state lerps `0 + 0.5·(0.05 − 0) = 0.025`.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 82,
+            values: vec![protocol_byte_data(VANILLA_SHULKER_PEEK_DATA_ID, 100)],
+        }));
+        world.advance_entity_client_animations(1);
+        assert!((peek(&world, 82, 0.5) - 0.025).abs() < 1.0e-6);
+        // The chicken has no peek state, so it stays at the closed/bind pose.
+        assert_eq!(peek(&world, 83, 0.5), 0.0);
     }
 
     #[test]

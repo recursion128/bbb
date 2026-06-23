@@ -450,6 +450,12 @@ pub struct EntityModelSourceState {
     /// every non-creeper entity and for a creeper at rest.
     #[serde(default)]
     pub creeper_swelling: f32,
+    /// Vanilla `ShulkerRenderState.peekAmount` (`Shulker.getClientPeekAmount(partialTick)`):
+    /// the lerped client peek that drives `ShulkerModel.setupAnim`'s lid open/close
+    /// (`lid.y = 16 + sin((0.5 + peek)·π)·8`, plus the `lid.yRot` twist above `0.3`). `0.0`
+    /// (closed/bind pose) for every non-shulker entity and for a shut shulker.
+    #[serde(default)]
+    pub shulker_peek: f32,
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that sways the model's legs/arms. `0.0` for a standing entity, every

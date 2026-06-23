@@ -1656,13 +1656,17 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed path remains unsupported (this is a colored-first slice)
     - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to the new
-      `EntityModelKind::Shulker`, replacing the former placeholder bounds box. The static closed rest-pose
-      hierarchy is emitted directly (atlas 64×64): three sibling root parts — the 16×12×16 lid and the
-      16×8×16 base (both at `offset(0, 24, 0)`), and the 6×6×6 head at `offset(0, 12, 0)` — three cubes.
-      The closed pose equals the bind pose: `ShulkerModel.setupAnim` resets the lid to
-      `y = 16 + sin((0.5 + peekAmount) * π) * 8`, which is exactly `24` at `peekAmount = 0`, so the peek
-      open/close (`lid.setPos` + the `lid.yRot` wobble) and the head look (`head.xRot/yRot`) are deferred.
-      The `ShulkerRenderer.setupRotations` attach-face rotation (`attachFace.getOpposite().getRotation()`,
+      `EntityModelKind::Shulker`, replacing the former placeholder bounds box. The hierarchy is emitted
+      (atlas 64×64): three sibling root parts — the 16×12×16 lid and the 16×8×16 base (both at
+      `offset(0, 24, 0)`), and the 6×6×6 head at `offset(0, 12, 0)` — three cubes. The lid peek open/close
+      is now projected: `Shulker.getClientPeekAmount(partialTick)` (the synced `DATA_PEEK_ID` byte 17 fed
+      through the existing client peek state machine, lerped per partial tick → `shulker_peek`) drives
+      `ShulkerModel.setupAnim`'s `lid.y = 16 + sin((0.5 + peek)·π)·8` (plus the `sin(ageInTicks·0.1)·0.7`
+      open-lid bob once past half-open) and the `lid.yRot = (−1 + sin(bs))⁴ · π · 0.125` twist above
+      `peek > 0.3`; at `peek = 0` the lid sits back at its `y = 24` bind offset, so the closed pose equals
+      the bind pose. The head look (`head.xRot/yRot`) stays deferred — its non-standard
+      `(yHeadRot − 180 − yBodyRot)` formula needs the entity-side head yaw the native scene does not
+      project. The `ShulkerRenderer.setupRotations` attach-face rotation (`attachFace.getOpposite().getRotation()`,
       the identity for a floor shulker) and the `bodyRot + 180` body-yaw inversion read the entity-side
       `attachFace`/yaw state, which the native scene does not yet project, so the floor rest pose is emitted
       (the geometry is exact; only the wall/ceiling attach orientation is deferred). The sixteen dye-color

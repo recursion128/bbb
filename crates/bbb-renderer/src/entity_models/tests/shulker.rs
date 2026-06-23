@@ -33,6 +33,50 @@ fn shulker_geometry_matches_vanilla_26_1_body_layer() {
 }
 
 #[test]
+fn shulker_lid_pose_matches_vanilla_setup_anim() {
+    use std::f32::consts::PI;
+
+    // Closed (peek 0): `bs = 0.5π`, `sin(bs) = 1` → `lid.y = 16 + 8 = 24` (the bind offset), and
+    // `peek ≤ 0.3` keeps `lid.yRot = 0`. The closed pose equals the bind pose.
+    let (lid_y, lid_yrot) = shulker_lid_pose(0.0, 17.0);
+    assert!((lid_y - 24.0).abs() < 1.0e-5);
+    assert_eq!(lid_yrot, 0.0);
+
+    // Fully open (peek 1): `bs = 1.5π`, `sin(bs) = -1` → `lid.y = 16 - 8 = 8` (the bob `extra` is
+    // `sin(age·0.1)·0.7`, which is `0` at age 0). `q = -1 + (-1) = -2`, so
+    // `lid.yRot = (-2)⁴ · π · 0.125 = 16 · π · 0.125 = 2π`.
+    let (lid_y, lid_yrot) = shulker_lid_pose(1.0, 0.0);
+    assert!((lid_y - 8.0).abs() < 1.0e-5);
+    assert!((lid_yrot - 2.0 * PI).abs() < 1.0e-5);
+
+    // The `lid.yRot` twist switches on strictly above `peek = 0.3` (vanilla `peekAmount > 0.3F`).
+    assert_eq!(shulker_lid_pose(0.3, 0.0).1, 0.0);
+    assert_ne!(shulker_lid_pose(0.4, 0.0).1, 0.0);
+
+    // The open-lid bob `sin(age·0.1)·0.7` only applies past half-open (`bs > π`, i.e. `peek > 0.5`):
+    // at `peek = 0.6` the lid Y moves with age; at `peek = 0.4` it does not.
+    assert_ne!(shulker_lid_pose(0.6, 0.0).0, shulker_lid_pose(0.6, 15.0).0);
+    assert_eq!(shulker_lid_pose(0.4, 0.0).0, shulker_lid_pose(0.4, 15.0).0);
+}
+
+#[test]
+fn shulker_lid_opens_with_projected_peek() {
+    // A closed shulker (peek 0) equals the bind-pose mesh; opening the lid (peek > 0) re-poses
+    // the lid only, so the mesh differs while keeping the same 3-cube vertex count.
+    let closed = EntityModelInstance::shulker(1121, [0.0, 64.0, 0.0], 0.0);
+    let closed_mesh = entity_model_mesh(&[closed]);
+    let default_mesh = entity_model_mesh(&[closed.with_shulker_peek(0.0)]);
+    assert_eq!(closed_mesh.vertices, default_mesh.vertices);
+
+    let open_mesh = entity_model_mesh(&[closed.with_shulker_peek(1.0)]);
+    assert_eq!(closed_mesh.vertices.len(), open_mesh.vertices.len());
+    assert_ne!(
+        closed_mesh.vertices, open_mesh.vertices,
+        "opening the lid re-poses the shulker lid"
+    );
+}
+
+#[test]
 fn shulker_mesh_uses_vanilla_body_layer_geometry() {
     // 3 cubes → 18 faces / 72 vertices / 108 indices; the shell carries the shell tint and the head
     // carries its own yellow tint.

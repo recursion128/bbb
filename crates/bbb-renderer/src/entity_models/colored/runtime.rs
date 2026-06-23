@@ -1522,12 +1522,23 @@ fn emit_parrot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
 }
 
 fn emit_shulker_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `ShulkerModel` is three static sibling parts (lid, base, head) at rest; the closed
-    // pose equals the bind pose. The peek open/close, the head look, and the
-    // `ShulkerRenderer.setupRotations` attach-face rotation / body-yaw inversion are deferred, so
-    // the bind-pose part tree is emitted directly at the floor rest pose.
+    // Vanilla `ShulkerModel.setupAnim`: the lid (part 0) opens with the synced peek while the
+    // base and head hold still. With `bs = (0.5 + peek)·π` the lid rises to
+    // `y = 16 + sin(bs)·8` (plus an `sin(ageInTicks·0.1)·0.7` bob once `bs > π`, i.e. the lid is
+    // past half-open) and twists `lid.yRot = (−1 + sin(bs))⁴ · π · 0.125` once `peek > 0.3`. At
+    // `peek = 0` the lid sits back at its `y = 24` bind offset, so the closed pose equals the
+    // bind pose. The head look (`head.xRot/yRot`) and the `ShulkerRenderer.setupRotations`
+    // attach-face rotation / body-yaw inversion read entity-side state the native scene does not
+    // project, so they stay deferred and the floor rest orientation is used.
+    let (lid_y, lid_yrot) = shulker_lid_pose(
+        instance.render_state.shulker_peek,
+        instance.render_state.age_in_ticks,
+    );
+    let mut parts = SHULKER_PARTS.to_vec();
+    parts[0].pose.offset[1] = lid_y;
+    parts[0].pose.rotation[1] = lid_yrot;
     let root = entity_model_root_transform(instance);
-    emit_model_parts(mesh, &SHULKER_PARTS, root);
+    emit_model_parts(mesh, &parts, root);
 }
 
 fn emit_wither_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

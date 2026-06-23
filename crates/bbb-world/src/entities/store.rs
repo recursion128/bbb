@@ -585,6 +585,12 @@ impl EntityStore {
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),
+            // Vanilla `Shulker.getClientPeekAmount(partialTick)`: the lerped client peek that
+            // drives `ShulkerModel.setupAnim`'s lid open/close. `0.0` (closed/bind pose) for
+            // every non-shulker (only the shulker is given a peek animation state).
+            shulker_peek: client_animations
+                .animations
+                .shulker_peek_amount(partial_ticks),
             // Spatial light is sampled by the WorldStore aggregation, which owns
             // the chunk light data; the per-entity source defaults to full bright.
             light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
