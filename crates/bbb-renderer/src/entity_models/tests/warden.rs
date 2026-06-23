@@ -155,3 +155,84 @@ fn warden_idle_wobble_sways_the_body_subtree_off_age() {
         "the legs hold"
     );
 }
+
+#[test]
+fn warden_walk_pose_matches_vanilla_animate_walk() {
+    use std::f32::consts::{FRAC_PI_2, PI};
+    // Vanilla `WardenModel.animateWalk(animationPos, animationSpeed)`:
+    //   speedModifier        = min(0.5, 3·animationSpeed)
+    //   adjustedPos          = animationPos·0.8662
+    //   speedModifierWithMin = min(0.35, speedModifier)
+    //   head.zRot += 0.3·sin(adjustedPos)·speedModifier
+    //   head.xRot += 1.2·cos(adjustedPos + π/2)·speedModifierWithMin
+    //   body.zRot  = 0.1·sin(adjustedPos)·speedModifier
+    //   body.xRot  = 1.0·cos(adjustedPos)·speedModifierWithMin
+    //   leftLeg.xRot  = 1.0·cos(adjustedPos)·speedModifier
+    //   rightLeg.xRot = 1.0·cos(adjustedPos + π)·speedModifier
+    //   leftArm.xRot  = -(0.8·cos(adjustedPos)·speedModifier)
+    //   rightArm.xRot = -(0.8·sin(adjustedPos)·speedModifier)
+    // `animationSpeed = 0.2` makes `3·0.2 = 0.6` clamp to `speedModifier = 0.5`, which in turn clamps
+    // to `speedModifierWithMin = 0.35`, exercising both `min`s.
+    let walk_pos = 3.0_f32;
+    let walk_speed = 0.2_f32;
+    let speed = (3.0 * walk_speed).min(0.5);
+    let speed_with_min = speed.min(0.35);
+    let adjusted = walk_pos * 0.8662;
+    let cos = adjusted.cos();
+    let sin = adjusted.sin();
+    let pose = warden_walk_pose(walk_pos, walk_speed);
+    assert!((pose.head_x_rot - 1.2 * (adjusted + FRAC_PI_2).cos() * speed_with_min).abs() < 1.0e-6);
+    assert!((pose.head_z_rot - 0.3 * sin * speed).abs() < 1.0e-6);
+    assert!((pose.body_x_rot - cos * speed_with_min).abs() < 1.0e-6);
+    assert!((pose.body_z_rot - 0.1 * sin * speed).abs() < 1.0e-6);
+    assert!((pose.left_leg_x_rot - cos * speed).abs() < 1.0e-6);
+    assert!((pose.right_leg_x_rot - (adjusted + PI).cos() * speed).abs() < 1.0e-6);
+    assert!((pose.left_arm_x_rot - -(0.8 * cos * speed)).abs() < 1.0e-6);
+    assert!((pose.right_arm_x_rot - -(0.8 * sin * speed)).abs() < 1.0e-6);
+
+    // A standing warden (`animationSpeed = 0`) zeroes every term, so it adds nothing on top of the
+    // look/idle pose.
+    let still = warden_walk_pose(7.5, 0.0);
+    assert_eq!(
+        [
+            still.head_x_rot,
+            still.head_z_rot,
+            still.body_x_rot,
+            still.body_z_rot,
+            still.left_leg_x_rot,
+            still.right_leg_x_rot,
+            still.left_arm_x_rot,
+            still.right_arm_x_rot
+        ],
+        [0.0; 8]
+    );
+}
+
+#[test]
+fn warden_walk_swings_the_legs_and_arms_off_walk_state() {
+    // `animateWalk` is the only `setupAnim` motion that reaches the legs (hung off the `bone`, not
+    // the body), so a walking warden re-poses the legs `[192, 240)` the idle wobble leaves alone, and
+    // also swings the arms `[144, 192)`. A standing warden (`walkSpeed = 0`) adds nothing, matching
+    // the look/idle-only rest. All three share the default `ageInTicks = 0`, so the idle wobble is
+    // identical and only the walk differs.
+    let rest = EntityModelInstance::warden(923, [0.0, 64.0, 0.0], 0.0);
+    let standing = rest.with_walk_animation(0.0, 0.0);
+    let walking = rest.with_walk_animation(4.0, 0.8);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let standing_mesh = entity_model_mesh(&[standing]);
+    let walking_mesh = entity_model_mesh(&[walking]);
+    assert_eq!(
+        rest_mesh.vertices, standing_mesh.vertices,
+        "walkSpeed 0 adds no walk"
+    );
+    assert_ne!(
+        rest_mesh.vertices[144..192],
+        walking_mesh.vertices[144..192],
+        "the arms swing with the walk"
+    );
+    assert_ne!(
+        rest_mesh.vertices[192..],
+        walking_mesh.vertices[192..],
+        "the legs swing with the walk"
+    );
+}

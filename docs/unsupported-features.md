@@ -1635,13 +1635,17 @@ When an agent does any of the following, update this file in the same slice:
       parents the two 9×21×0 ribcage planes, the head (16×16×10 skull) and the two mirrored 8×28×8
       arms; the head parents the two 16×16×0 tendril planes — ten cubes. Two non-keyframe motions are
       reproduced: the head look (`WardenModel.animateHeadLookTarget` sets `head.xRot/yRot` from the
-      projected `head_pitch/head_yaw`, so the body-nested head and its two tendrils track the look target)
-      and the always-on idle wobble (`animateIdlePose` rolls the body `xRot/zRot += 0.025·cos/sin(age·0.1)`
+      projected `head_pitch/head_yaw`, so the body-nested head and its two tendrils track the look target),
+      the always-on idle wobble (`animateIdlePose` rolls the body `xRot/zRot += 0.025·cos/sin(age·0.1)`
       and the head `xRot/zRot += 0.06·sin/cos(age·0.1)` off the projected `age_in_ticks`, hand-walking the
-      `bone → body → head` spine so the body roll carries its subtree). The remaining `WardenModel.setupAnim`
-      motion is deferred: the walk (`animateWalk`), the tendril sway (`animateTendrils`, gated by the
-      un-projected `tendrilAnimation` heart-rate float), and the attack / sonic-boom / digging / emerging /
-      roar / sniff keyframe animations. The four emissive overlay layers
+      `bone → body → head` spine so the body roll carries its subtree), and the walk (`animateWalk` swings
+      the head, body, two legs, and two arms off the projected `walk_animation_pos/speed` — `speedModifier
+      = min(0.5, 3·speed)`, `adjustedPos = pos·0.8662` — via `warden_walk_pose`, applied as an additive
+      `xRot/zRot` layer over the look/idle pose since the three motions compose additively, with tests
+      pinning the sampled offsets against the vanilla arithmetic and that walking swings the otherwise-still
+      legs and arms). The remaining `WardenModel.setupAnim` motion is deferred: the tendril sway
+      (`animateTendrils`, gated by the un-projected `tendrilAnimation` heart-rate float), and the attack /
+      sonic-boom / digging / emerging / roar / sniff keyframe animations. The four emissive overlay layers
       (`WardenEmissiveLayer` for the tendrils, heart, bioluminescent spots, and pulsating spots, each
       keyed off the danger/heartbeat/anger animation state) are deferred. The texture-backed path
       remains unsupported (this is a colored-first slice; the colored debug path approximates the body

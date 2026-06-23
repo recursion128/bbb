@@ -5,12 +5,14 @@ use super::{
 
 // Vanilla 26.1 `WardenModel.createBodyLayer` (atlas 128×128). The mesh root holds one `bone` part
 // at `offset(0, 24, 0)` parenting the body and the two legs; `body` parents the two ribcage
-// planes, the head (which parents the two tendril planes), and the two arms. Two non-keyframe
-// `WardenModel.setupAnim` motions are reproduced ([`warden_head_pose`] / [`warden_idle_body_pose`]):
-// the head look (`animateHeadLookTarget`) and the always-on idle wobble (`animateIdlePose`). The
-// walk (`animateWalk`), the tendril sway (`animateTendrils`), and the attack / sonic-boom / digging
-// / emerge / roar / sniff keyframe animations stay deferred. The four emissive overlay layers
-// (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed path are deferred.
+// planes, the head (which parents the two tendril planes), and the two arms. Three non-keyframe
+// `WardenModel.setupAnim` motions are reproduced ([`warden_head_pose`] / [`warden_idle_body_pose`] /
+// [`warden_walk_pose`]): the head look (`animateHeadLookTarget`), the always-on idle wobble
+// (`animateIdlePose`), and the walk (`animateWalk`, which swings the head, body, legs, and arms off
+// `walkAnimationPos/Speed` and composes additively onto the look/idle pose via
+// [`warden_add_x_z_rot`]). The tendril sway (`animateTendrils`) and the attack / sonic-boom /
+// digging / emerge / roar / sniff keyframe animations stay deferred. The four emissive overlay
+// layers (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed path are deferred.
 
 // `body`: one 18×21×11 box.
 const WARDEN_BODY_CUBES: [ModelCubeDesc; 1] =
@@ -77,6 +79,17 @@ pub(in crate::entity_models) const WARDEN_PARTS: [ModelPartDesc; 1] =
 pub(in crate::entity_models) const WARDEN_BODY_BONE_CHILD_INDEX: usize = 0;
 pub(in crate::entity_models) const WARDEN_HEAD_BODY_CHILD_INDEX: usize = 2;
 
+/// The two legs hang directly off the `bone` (after the body at child `0`); `animateWalk` swings
+/// each leg's `xRot`. Vanilla order: right leg (`x = -5.9`) then left leg (`x = 5.9`).
+pub(in crate::entity_models) const WARDEN_RIGHT_LEG_BONE_CHILD_INDEX: usize = 1;
+pub(in crate::entity_models) const WARDEN_LEFT_LEG_BONE_CHILD_INDEX: usize = 2;
+
+/// The two arms hang off the `body` (after the two ribcages at `0`/`1` and the head at `2`);
+/// `animateWalk` swings each arm's `xRot`. Vanilla order: right arm (`x = -13`) then left arm
+/// (`x = 13`).
+pub(in crate::entity_models) const WARDEN_RIGHT_ARM_BODY_CHILD_INDEX: usize = 3;
+pub(in crate::entity_models) const WARDEN_LEFT_ARM_BODY_CHILD_INDEX: usize = 4;
+
 /// Vanilla `WardenModel.animateIdlePose` body roll: with `s = ageInTicks·0.1`, the body adds
 /// `xRot += 0.025·cos(s)` and `zRot += 0.025·sin(s)` onto its bind pose. Always on (no gating
 /// state), so every warden sways gently. Mirrors the head roll in [`warden_head_pose`].
@@ -97,9 +110,9 @@ pub(in crate::entity_models) fn warden_idle_body_pose(
 
 /// Vanilla `WardenModel` head pose: `animateHeadLookTarget` first sets `head.xRot = xRot·π/180`,
 /// `head.yRot = yRot·π/180` (overwriting the bind), then `animateIdlePose` adds the always-on roll
-/// `head.xRot += 0.06·sin(s)`, `head.zRot += 0.06·cos(s)` with `s = ageInTicks·0.1`. (The walk pose
-/// would add further to `head.xRot/zRot`, but the walk is deferred.) The base `head.zRot` is the
-/// bind `0`, so the idle roll lands on `base.rotation[2]`.
+/// `head.xRot += 0.06·sin(s)`, `head.zRot += 0.06·cos(s)` with `s = ageInTicks·0.1`. The walk
+/// ([`warden_walk_pose`]) then adds further to `head.xRot/zRot` via [`warden_add_x_z_rot`]. The base
+/// `head.zRot` is the bind `0`, so the idle roll lands on `base.rotation[2]`.
 pub(in crate::entity_models) fn warden_head_pose(
     base: PartPose,
     head_yaw_deg: f32,
@@ -113,6 +126,65 @@ pub(in crate::entity_models) fn warden_head_pose(
             head_pitch_deg.to_radians() + 0.06 * s.sin(),
             head_yaw_deg.to_radians(),
             base.rotation[2] + 0.06 * s.cos(),
+        ],
+    }
+}
+
+/// The per-bone `xRot`/`zRot` offsets produced by vanilla `WardenModel.animateWalk(walkPos,
+/// walkSpeed)`. Every term derives from `speedModifier = min(0.5, 3·walkSpeed)`,
+/// `speedModifierWithMin = min(0.35, speedModifier)`, and `adjustedPos = walkPos·0.8662`. The head
+/// and body offsets ADD onto the look/idle composition (vanilla uses `+=` on the head and SETs the
+/// body, whose bind rotation is zero); the legs and arms are SET from their zero bind rotation.
+/// `animateWalk` ends with `resetArmPoses`, which restores the arms' bind position and `yRot`, so
+/// only the arm `xRot` moves. Because all of these compose additively onto a zero/known base, the
+/// warden emit applies them through [`warden_add_x_z_rot`] after the look/idle pass — addition is
+/// commutative, so the vanilla order (look → walk → idle) is preserved.
+pub(in crate::entity_models) struct WardenWalkPose {
+    pub(in crate::entity_models) head_x_rot: f32,
+    pub(in crate::entity_models) head_z_rot: f32,
+    pub(in crate::entity_models) body_x_rot: f32,
+    pub(in crate::entity_models) body_z_rot: f32,
+    pub(in crate::entity_models) left_leg_x_rot: f32,
+    pub(in crate::entity_models) right_leg_x_rot: f32,
+    pub(in crate::entity_models) left_arm_x_rot: f32,
+    pub(in crate::entity_models) right_arm_x_rot: f32,
+}
+
+/// Samples vanilla `WardenModel.animateWalk` into a [`WardenWalkPose`]. At `walkSpeed = 0` every
+/// term is zero, so a standing warden adds nothing on top of the look/idle pose.
+pub(in crate::entity_models) fn warden_walk_pose(walk_pos: f32, walk_speed: f32) -> WardenWalkPose {
+    use std::f32::consts::{FRAC_PI_2, PI};
+    let speed = (3.0 * walk_speed).min(0.5);
+    let speed_with_min = speed.min(0.35);
+    let adjusted_pos = walk_pos * 0.8662;
+    let cos = adjusted_pos.cos();
+    let sin = adjusted_pos.sin();
+    WardenWalkPose {
+        head_x_rot: 1.2 * (adjusted_pos + FRAC_PI_2).cos() * speed_with_min,
+        head_z_rot: 0.3 * sin * speed,
+        body_x_rot: 1.0 * cos * speed_with_min,
+        body_z_rot: 0.1 * sin * speed,
+        left_leg_x_rot: 1.0 * cos * speed,
+        right_leg_x_rot: 1.0 * (adjusted_pos + PI).cos() * speed,
+        left_arm_x_rot: -(0.8 * cos * speed),
+        right_arm_x_rot: -(0.8 * sin * speed),
+    }
+}
+
+/// Adds `x_rot`/`z_rot` onto a pose's `rotation[0]`/`rotation[2]`, leaving `rotation[1]` (yRot) and
+/// the offset untouched. The warden's [`warden_walk_pose`] offsets compose this way onto every
+/// animated bone (the head/body after their look/idle pass, the legs/arms over their bind pose).
+pub(in crate::entity_models) fn warden_add_x_z_rot(
+    base: PartPose,
+    x_rot: f32,
+    z_rot: f32,
+) -> PartPose {
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            base.rotation[0] + x_rot,
+            base.rotation[1],
+            base.rotation[2] + z_rot,
         ],
     }
 }
