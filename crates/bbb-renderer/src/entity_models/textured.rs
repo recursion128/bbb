@@ -33,12 +33,12 @@ use super::{
         strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, turtle_leg_rotation,
         wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        AllayModel, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel,
-        DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel,
-        HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel,
-        PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel, RavagerModel,
-        SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SlimeModel,
-        SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, TropicalFishModel,
+        AllayModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
+        CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
+        HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
+        MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
+        RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel,
+        SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, TropicalFishModel,
         TropicalFishPatternModel, VexModel, VillagerModel, WanderingTraderModel, WitchModel,
         ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
@@ -58,9 +58,7 @@ use super::{
         BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
         BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
         BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
-        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_BODY_POSE,
-        BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE,
-        BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF,
+        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF,
         CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
         DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
         SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
@@ -1595,61 +1593,21 @@ fn emit_breeze_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let texture = BREEZE_TEXTURE_REF;
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+    // The unified `BreezeModel` tree drives both render paths; `setup_anim` samples the looping
+    // `BreezeAnimation.IDLE`. The base body draws into the translucent mesh (vanilla `BreezeModel`
+    // uses `RenderTypes::entityTranslucent`).
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, BREEZE_TEXTURE_REF) else {
         return;
     };
-    let uv = entry.uv;
-
-    // Mirror the colored `emit_breeze_model`: sample the looping `BreezeAnimation.IDLE` from
-    // `age_in_ticks` and walk the body→head/rods hierarchy by hand. The base body draws into the
-    // translucent mesh (vanilla `BreezeModel` uses `RenderTypes::entityTranslucent`).
-    let seconds = keyframe_elapsed_seconds(&BREEZE_IDLE, instance.render_state.age_in_ticks * 0.05);
-    let sample = |bone: &str| sample_bone_offsets(&BREEZE_IDLE, bone, seconds, 1.0);
-    let root = entity_model_root_transform(instance);
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Translucent);
-
-    // Body pivot (root child): no IDLE channel, identity bind pose.
-    let body_t = root * part_pose_transform(BREEZE_BODY_POSE);
-
-    // Head (body child): the IDLE position bob (CATMULLROM).
-    let (head_pos, _) = sample("head");
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        keyframe_textured_pose(BREEZE_HEAD_POSE, head_pos, [0.0; 3]),
-        &BREEZE_TEXTURED_HEAD,
-        texture,
-        uv,
-    );
-
-    // Rods pivot (body child): the IDLE yaw spin plus the position bob, carrying the three rods.
-    let (rods_pos, rods_rot) = sample("rods");
-    let rods_t =
-        body_t * part_pose_transform(keyframe_textured_pose(BREEZE_RODS_POSE, rods_pos, rods_rot));
-    emit_textured_cubes_at_pose(
-        mesh,
-        rods_t,
-        BREEZE_ROD_1_POSE,
-        &BREEZE_TEXTURED_ROD,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        rods_t,
-        BREEZE_ROD_2_POSE,
-        &BREEZE_TEXTURED_ROD,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        rods_t,
-        BREEZE_ROD_3_POSE,
-        &BREEZE_TEXTURED_ROD,
-        texture,
-        uv,
+    let transform = entity_model_root_transform(instance);
+    let mut model = BreezeModel::new();
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Translucent),
+        transform,
+        BREEZE_TEXTURE_REF,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
     );
 }
 

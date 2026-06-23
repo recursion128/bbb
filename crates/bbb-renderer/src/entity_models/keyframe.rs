@@ -206,3 +206,24 @@ pub(in crate::entity_models) fn sample_bone_offsets(
     }
     (position, rotation)
 }
+
+/// Combine a bind pose with the keyframe position/rotation offsets (vanilla `ModelPart::offsetPos` /
+/// `offsetRotation` add to the bind pose). Shared by the keyframe-animated entities' `setup_anim`.
+pub(in crate::entity_models) fn keyframe_animated_pose(
+    bind: super::geometry::PartPose,
+    position: [f32; 3],
+    rotation: [f32; 3],
+) -> super::geometry::PartPose {
+    super::geometry::PartPose {
+        offset: [
+            bind.offset[0] + position[0],
+            bind.offset[1] + position[1],
+            bind.offset[2] + position[2],
+        ],
+        rotation: [
+            bind.rotation[0] + rotation[0],
+            bind.rotation[1] + rotation[1],
+            bind.rotation[2] + rotation[2],
+        ],
+    }
+}

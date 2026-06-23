@@ -900,23 +900,6 @@ fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     }
 }
 
-/// Combine a bind pose with the keyframe position/rotation offsets (vanilla `ModelPart::offsetPos`
-/// / `offsetRotation` add to the bind pose). Shared by the keyframe-animated entities.
-fn keyframe_animated_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
-    PartPose {
-        offset: [
-            bind.offset[0] + position[0],
-            bind.offset[1] + position[1],
-            bind.offset[2] + position[2],
-        ],
-        rotation: [
-            bind.rotation[0] + rotation[0],
-            bind.rotation[1] + rotation[1],
-            bind.rotation[2] + rotation[2],
-        ],
-    }
-}
-
 fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `BatModel.setupAnim` applies the keyframe `BatAnimation.BAT_FLYING` wing flap /
     // body bob, driven by the entity's `flyAnimationState`. The state's exact start tick is
@@ -1202,42 +1185,12 @@ fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
 }
 
 fn emit_breeze_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `BreezeModel.setupAnim` applies the looping `BreezeAnimation.IDLE` to the base body.
-    // The idle `AnimationState` runs continuously, so the looping definition is sampled from
-    // `age_in_ticks` (the exact start tick is deferred entity-side data, imperceptible for a
-    // continuous idle). The translucent wind layer, the emissive eyes, and the
-    // shoot/slide/inhale/jump action animations are deferred entity-side state. The head and the
-    // three rods hang under the `body` pivot, so the hierarchy is walked by hand. Breeze uses
-    // `LivingEntityRenderer.setupRotations`.
-    let seconds = keyframe_elapsed_seconds(&BREEZE_IDLE, instance.render_state.age_in_ticks * 0.05);
-    let sample = |bone: &str| sample_bone_offsets(&BREEZE_IDLE, bone, seconds, 1.0);
-    let root = entity_model_root_transform(instance);
-
-    // Body pivot (root child): no IDLE channel, so it holds its identity bind pose.
-    let body_t = root * part_pose_transform(BREEZE_BODY_POSE);
-
-    // Head (body child): the IDLE position bob (CATMULLROM).
-    let (head_pos, _) = sample("head");
-    emit_model_cubes_at_pose(
-        mesh,
-        body_t,
-        keyframe_animated_pose(BREEZE_HEAD_POSE, head_pos, [0.0; 3]),
-        &BREEZE_HEAD,
-    );
-
-    // Rods pivot (body child): the IDLE yaw spin plus the position bob, carrying the three rods at
-    // their fixed bind poses.
-    let (rods_pos, rods_rot) = sample("rods");
-    let rods_t =
-        body_t * part_pose_transform(keyframe_animated_pose(BREEZE_RODS_POSE, rods_pos, rods_rot));
-    emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_1_POSE, &BREEZE_ROD);
-    emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_2_POSE, &BREEZE_ROD);
-    emit_model_cubes_at_pose(mesh, rods_t, BREEZE_ROD_3_POSE, &BREEZE_ROD);
+    // The unified `BreezeModel` tree drives both render paths; `setup_anim` samples the looping
+    // `BreezeAnimation.IDLE` from `age_in_ticks` (head bob + rods spin). The translucent wind layer,
+    // the emissive eyes, and the shoot/slide/inhale/jump action animations are deferred entity-side
+    // state. Breeze uses `LivingEntityRenderer.setupRotations`.
+    BreezeModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
 }
-
-/// The bind pose of the dolphin `body` part with the `DolphinModel.setupAnim` rotations applied:
-/// the body steers by the look pitch/yaw, and while moving it adds the swim tilt. Returns the
-/// animated body pose plus the tail and tail-fin pitches (which also depend on the move state).
 
 fn emit_dolphin_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
     // The unified `DolphinModel` tree drives both render paths; `setup_anim` steers the body by the
