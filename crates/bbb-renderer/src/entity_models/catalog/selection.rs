@@ -183,6 +183,8 @@ impl EntityModelKind {
                 family: SkeletonModelFamily::Bogged { .. },
             } => "bogged",
             Self::Cow { variant, baby } => cow_model_key(variant, baby),
+            Self::Mooshroom { baby: false } => "mooshroom",
+            Self::Mooshroom { baby: true } => "mooshroom_baby",
             Self::Sheep {
                 baby,
                 sheared,

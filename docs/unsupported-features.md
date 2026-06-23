@@ -2131,6 +2131,24 @@ When an agent does any of the following, update this file in the same slice:
       render scale. The cat-breed / ocelot textures and the cat collar layer live on the deferred
       texture-backed path, so the colored debug path renders one tan tint. The texture-backed path remains
       unsupported (this is a colored-first slice)
+    - mooshroom entities (adult and baby) as renderer-owned vanilla 26.1 cow-body geometry on the colored
+      path: the native entity scene (`entity_scene.rs`) now maps vanilla type id `86` (adult and baby) to
+      the new `EntityModelKind::Mooshroom` (`baby` selecting the layout), replacing the generic six-cube
+      quadruped stand-in with the real cow body. This was the last entity still on the generic
+      `EntityModelKind::Quadruped` proxy, so the native entity scene no longer emits it at all — every
+      vanilla entity type now resolves to a dedicated vanilla model (the renderer keeps the generic
+      quadruped path for its own tests). Vanilla `MushroomCowRenderer` renders the mooshroom with the
+      shared `CowModel` /
+      `BabyCowModel` mesh (`ModelLayers.MOOSHROOM` bakes to the same temperate `cowBodyLayer` as
+      `ModelLayers.COW`, `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so the mooshroom reuses
+      the dedicated temperate-cow geometry directly — ten cubes (the head with horns / muzzle, the pitched
+      body, four legs) for the adult, the smaller `BabyCowModel` layout for the baby, with the shared
+      `QuadrupedModel` head look and leg swing already reproduced by the cow path. Because the mushroom
+      block-model layer (`MushroomCowMushroomLayer`, drawn through the block renderer) and the red/brown
+      mooshroom body textures are deferred, the mooshroom is rendered as a colored-only slice (so, unlike
+      the graduated cow, it renders on both the full and colored runtime paths) — the colored debug path
+      shows the cow-brown body tint. The mushroom layer and texture-backed path remain unsupported (this
+      is a colored-first slice)
     - panda entities (adult and baby) as renderer-owned vanilla 26.1 `PandaModel.createBodyLayer()` /
       `BabyPandaModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `96` out of the mooshroom/panda cow-shaped quadruped

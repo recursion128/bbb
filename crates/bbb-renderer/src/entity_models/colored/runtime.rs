@@ -441,6 +441,17 @@ fn entity_model_mesh_with_options(
                     );
                 }
             }
+            EntityModelKind::Mooshroom { baby } => {
+                // The mooshroom shares the temperate `CowModel` / `BabyCowModel` body. It is a
+                // colored-only slice (the mushroom block-model layer and red/brown textures are
+                // deferred), so unlike the graduated `Cow` it renders on both paths, replacing the
+                // generic quadruped stand-in with the real cow body.
+                CowModel::new(CowModelVariant::Temperate, baby).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
+            }
             EntityModelKind::Sheep {
                 baby,
                 sheared,

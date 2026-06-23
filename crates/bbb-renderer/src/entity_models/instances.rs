@@ -974,6 +974,15 @@ impl EntityModelInstance {
         Self::cow_variant(entity_id, position, y_rot, CowModelVariant::Temperate, baby)
     }
 
+    pub fn mooshroom(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Mooshroom { baby },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn cow_variant(
         entity_id: i32,
         position: [f32; 3],

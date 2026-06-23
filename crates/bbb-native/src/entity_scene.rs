@@ -5,10 +5,10 @@ use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
     DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SalmonModelSize,
-    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize, SelectionBox, SelectionOutline,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -643,9 +643,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
         VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, pig_variants),
         VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, cow_variants),
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID => {
-            quadruped(QuadrupedModelFamily::Cow, ageable_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID => mooshroom_model_kind(data_values),
         VANILLA_ENTITY_TYPE_PANDA_ID => panda_model_kind(data_values),
         VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer,
         VANILLA_ENTITY_TYPE_RAVAGER_ID => EntityModelKind::Ravager,
@@ -876,10 +874,6 @@ fn humanoid(family: HumanoidModelFamily, baby: bool) -> EntityModelKind {
     EntityModelKind::Humanoid { family, baby }
 }
 
-fn quadruped(family: QuadrupedModelFamily, baby: bool) -> EntityModelKind {
-    EntityModelKind::Quadruped { family, baby }
-}
-
 /// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby; both
 /// render through the dedicated [`EntityModelKind::Rabbit`] (`baby` selecting the body layout).
 fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
@@ -967,6 +961,17 @@ fn cow_model_kind(
 ) -> EntityModelKind {
     EntityModelKind::Cow {
         variant: cow_model_variant(values, variants),
+        baby: ageable_baby(values),
+    }
+}
+
+/// Vanilla `MushroomCowRenderer` (an `AgeableMobRenderer`) renders the mooshroom with the shared
+/// `CowModel` / `BabyCowModel` body (`ModelLayers.MOOSHROOM` bakes to the temperate `cowBodyLayer`,
+/// `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so it maps to the dedicated
+/// [`EntityModelKind::Mooshroom`] (`baby` selecting the layout) — the real cow body instead of the
+/// generic quadruped stand-in. The mushroom block-model layer and red/brown textures stay deferred.
+fn mooshroom_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    EntityModelKind::Mooshroom {
         baby: ageable_baby(values),
     }
 }
@@ -4220,9 +4225,18 @@ mod tests {
                 age_ticks: 0.0,
             }
         );
+        // The mooshroom shares the cow body, so it renders through the dedicated `Mooshroom` model
+        // (the real cow mesh) rather than the generic quadruped stand-in — adult and baby alike.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
-            quadruped(QuadrupedModelFamily::Cow, false)
+            EntityModelKind::Mooshroom { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Mooshroom { baby: true }
         );
     }
 
@@ -4519,10 +4533,6 @@ mod tests {
                 right_horn: false,
             }
         );
-        assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
-            quadruped(QuadrupedModelFamily::Cow, false)
-        );
     }
 
     #[test]
@@ -4560,10 +4570,6 @@ mod tests {
                 family: HoglinModelFamily::Zoglin,
                 baby: true,
             }
-        );
-        assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
-            quadruped(QuadrupedModelFamily::Cow, false)
         );
     }
 
