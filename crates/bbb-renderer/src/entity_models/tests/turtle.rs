@@ -1,22 +1,44 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn turtle_adult_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `AdultTurtleModel.createBodyLayer` (atlas 128×64).
-    assert_eq!(TURTLE_HEAD[0].min, [-3.0, -1.0, -3.0]);
-    assert_eq!(TURTLE_HEAD[0].size, [6.0, 5.0, 6.0]);
+    // Vanilla `AdultTurtleModel.createBodyLayer` (atlas 128×64). Each unified cube carries both the
+    // colored geometry/tint and the textured `uv_size` / `texOffs` / `mirror`.
+    assert_eq!(
+        TURTLE_HEAD[0],
+        ModelCube::new(
+            [-3.0, -1.0, -3.0],
+            [6.0, 5.0, 6.0],
+            TURTLE_GREEN,
+            [6.0, 5.0, 6.0],
+            [3.0, 0.0],
+            false,
+        )
+    );
 
     // Body: the `texOffs(7, 37)` shell box plus the `texOffs(31, 1)` belly box.
     assert_eq!(TURTLE_BODY.len(), 2);
     assert_eq!(TURTLE_BODY[0].min, [-9.5, 3.0, -10.0]);
     assert_eq!(TURTLE_BODY[0].size, [19.0, 20.0, 6.0]);
+    assert_eq!(TURTLE_BODY[0].tex, [7.0, 37.0]);
+    assert_eq!(TURTLE_BODY[0].uv_size, [19.0, 20.0, 6.0]);
     assert_eq!(TURTLE_BODY[1].min, [-5.5, 3.0, -13.0]);
     assert_eq!(TURTLE_BODY[1].size, [11.0, 18.0, 3.0]);
+    assert_eq!(TURTLE_BODY[1].tex, [31.0, 1.0]);
+    assert_eq!(TURTLE_BODY[1].uv_size, [11.0, 18.0, 3.0]);
 
+    // Legs: hind `texOffs(1, 23)` / `texOffs(1, 12)`, front `texOffs(27, 30)` / `texOffs(27, 24)`.
     assert_eq!(TURTLE_RIGHT_HIND_LEG[0].size, [4.0, 1.0, 10.0]);
+    assert_eq!(TURTLE_RIGHT_HIND_LEG[0].tex, [1.0, 23.0]);
+    assert_eq!(TURTLE_LEFT_HIND_LEG[0].tex, [1.0, 12.0]);
     assert_eq!(TURTLE_RIGHT_FRONT_LEG[0].min, [-13.0, 0.0, -2.0]);
     assert_eq!(TURTLE_RIGHT_FRONT_LEG[0].size, [13.0, 1.0, 5.0]);
+    assert_eq!(TURTLE_RIGHT_FRONT_LEG[0].tex, [27.0, 30.0]);
     assert_eq!(TURTLE_LEFT_FRONT_LEG[0].min, [0.0, 0.0, -2.0]);
+    assert_eq!(TURTLE_LEFT_FRONT_LEG[0].tex, [27.0, 24.0]);
+    assert!(!TURTLE_HEAD[0].mirror);
 
     // Offsets; the body carries the fixed `Rx(π/2)` shell tilt.
     assert_eq!(TURTLE_HEAD_POSE.offset, [0.0, 19.0, -10.0]);
@@ -30,14 +52,22 @@ fn turtle_adult_geometry_matches_vanilla_26_1_body_layer() {
 
 #[test]
 fn turtle_baby_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `BabyTurtleModel.createBodyLayer` (atlas 16×16).
+    // Vanilla `BabyTurtleModel.createBodyLayer` (atlas 16×16): body `texOffs(0, 0)`, head
+    // `texOffs(0, 6)`, the hind legs use the vanilla negative `texOffs(-1, …)`, the front legs
+    // `texOffs(8, …)`.
     assert_eq!(TURTLE_BABY_BODY[0].min, [-2.0, -1.0, -2.0]);
     assert_eq!(TURTLE_BABY_BODY[0].size, [4.0, 2.0, 4.0]);
+    assert_eq!(TURTLE_BABY_BODY[0].tex, [0.0, 0.0]);
     assert_eq!(TURTLE_BABY_HEAD[0].size, [3.0, 3.0, 3.0]);
+    assert_eq!(TURTLE_BABY_HEAD[0].tex, [0.0, 6.0]);
 
     // Baby legs are zero-height `2×0×1` planes.
     assert_eq!(TURTLE_BABY_RIGHT_HIND_LEG[0].size, [2.0, 0.0, 1.0]);
+    assert_eq!(TURTLE_BABY_RIGHT_HIND_LEG[0].tex, [-1.0, 0.0]);
+    assert_eq!(TURTLE_BABY_LEFT_HIND_LEG[0].tex, [-1.0, 1.0]);
+    assert_eq!(TURTLE_BABY_RIGHT_FRONT_LEG[0].tex, [8.0, 6.0]);
     assert_eq!(TURTLE_BABY_LEFT_FRONT_LEG[0].size, [2.0, 0.0, 1.0]);
+    assert_eq!(TURTLE_BABY_LEFT_FRONT_LEG[0].tex, [8.0, 7.0]);
 
     assert_eq!(TURTLE_BABY_HEAD_POSE.offset, [0.0, 22.9, -1.0]);
     assert_eq!(TURTLE_BABY_BODY_POSE.offset, [0.0, 22.9, 1.0]);
@@ -54,12 +84,9 @@ fn turtle_egg_belly_geometry_matches_vanilla_26_1() {
     assert_eq!(TURTLE_EGG_BELLY[0].min, [-4.5, 3.0, -14.0]);
     assert_eq!(TURTLE_EGG_BELLY[0].size, [9.0, 18.0, 1.0]);
     assert_eq!(TURTLE_EGG_BELLY[0].color, TURTLE_SHELL);
-
-    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].tex, [70.0, 33.0]);
-    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].min, [-4.5, 3.0, -14.0]);
-    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].size, [9.0, 18.0, 1.0]);
-    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].uv_size, [9.0, 18.0, 1.0]);
-    assert!(!TURTLE_TEXTURED_EGG_BELLY[0].mirror);
+    assert_eq!(TURTLE_EGG_BELLY[0].tex, [70.0, 33.0]);
+    assert_eq!(TURTLE_EGG_BELLY[0].uv_size, [9.0, 18.0, 1.0]);
+    assert!(!TURTLE_EGG_BELLY[0].mirror);
 
     // `setupAnim` does `this.root.y--` while the egg belly is visible.
     assert_eq!(TURTLE_EGG_ROOT_DROP_POSE.offset, [0.0, -1.0, 0.0]);
@@ -378,30 +405,6 @@ fn turtle_texture_refs_match_vanilla_renderer() {
             size: [16, 16],
         })
     );
-}
-
-#[test]
-fn turtle_textured_cubes_match_vanilla_body_layer_uvs() {
-    // Adult (atlas 128×64): head `texOffs(3, 0)`, shell `texOffs(7, 37)`, belly `texOffs(31, 1)`,
-    // hind legs `texOffs(1, 23)` / `texOffs(1, 12)`, front legs `texOffs(27, 30)` / `texOffs(27, 24)`.
-    assert_eq!(TURTLE_TEXTURED_HEAD[0].tex, [3.0, 0.0]);
-    assert_eq!(TURTLE_TEXTURED_HEAD[0].uv_size, [6.0, 5.0, 6.0]);
-    assert_eq!(TURTLE_TEXTURED_BODY[0].tex, [7.0, 37.0]);
-    assert_eq!(TURTLE_TEXTURED_BODY[1].tex, [31.0, 1.0]);
-    assert_eq!(TURTLE_TEXTURED_RIGHT_HIND_LEG[0].tex, [1.0, 23.0]);
-    assert_eq!(TURTLE_TEXTURED_LEFT_HIND_LEG[0].tex, [1.0, 12.0]);
-    assert_eq!(TURTLE_TEXTURED_RIGHT_FRONT_LEG[0].tex, [27.0, 30.0]);
-    assert_eq!(TURTLE_TEXTURED_LEFT_FRONT_LEG[0].tex, [27.0, 24.0]);
-    assert!(!TURTLE_TEXTURED_HEAD[0].mirror);
-
-    // Baby (atlas 16×16): body `texOffs(0, 0)`, head `texOffs(0, 6)`, the hind legs use the
-    // vanilla negative `texOffs(-1, …)`, the front legs `texOffs(8, …)`.
-    assert_eq!(TURTLE_BABY_TEXTURED_BODY[0].tex, [0.0, 0.0]);
-    assert_eq!(TURTLE_BABY_TEXTURED_HEAD[0].tex, [0.0, 6.0]);
-    assert_eq!(TURTLE_BABY_TEXTURED_RIGHT_HIND_LEG[0].tex, [-1.0, 0.0]);
-    assert_eq!(TURTLE_BABY_TEXTURED_LEFT_HIND_LEG[0].tex, [-1.0, 1.0]);
-    assert_eq!(TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG[0].tex, [8.0, 6.0]);
-    assert_eq!(TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG[0].tex, [8.0, 7.0]);
 }
 
 #[test]
