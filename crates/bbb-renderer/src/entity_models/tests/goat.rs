@@ -310,10 +310,6 @@ fn goat_textured_model_parts_match_vanilla_model_layer_uv_sources() {
         ADULT_GOAT_TEXTURED_PARTS[ADULT_GOAT_HEAD_INDEX].children,
         ADULT_GOAT_TEXTURED_HEAD_CHILDREN.as_slice()
     );
-    assert_eq!(
-        ADULT_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS,
-        [ADULT_GOAT_TEXTURED_NOSE_PART]
-    );
 
     assert_eq!(BABY_GOAT_TEXTURED_LEFT_HIND_LEG[0].tex, [29.0, 12.0]);
     assert_eq!(BABY_GOAT_TEXTURED_RIGHT_HIND_LEG[0].tex, [21.0, 12.0]);
@@ -326,14 +322,6 @@ fn goat_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert!(BABY_GOAT_TEXTURED_RIGHT_EAR[0].mirror);
     assert!(!BABY_GOAT_TEXTURED_LEFT_EAR[0].mirror);
     assert_eq!(BABY_GOAT_TEXTURED_HEAD_MAIN[0].tex, [0.0, 0.0]);
-    assert_eq!(
-        BABY_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS,
-        [
-            BABY_GOAT_TEXTURED_RIGHT_EAR_PART,
-            BABY_GOAT_TEXTURED_LEFT_EAR_PART,
-            BABY_GOAT_TEXTURED_HEAD_MAIN_PART,
-        ]
-    );
     assert_eq!(
         BABY_GOAT_TEXTURED_PARTS[BABY_GOAT_HEAD_INDEX].children,
         BABY_GOAT_TEXTURED_HEAD_CHILDREN.as_slice()

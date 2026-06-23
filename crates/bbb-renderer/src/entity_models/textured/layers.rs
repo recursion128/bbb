@@ -1286,43 +1286,6 @@ fn goat_textured_model_parts(baby: bool) -> &'static [TexturedModelPartDesc; 6] 
     }
 }
 
-pub(super) fn goat_visible_textured_model_parts(
-    baby: bool,
-    left_horn: bool,
-    right_horn: bool,
-) -> [TexturedModelPartDesc; 6] {
-    let mut parts = *goat_textured_model_parts(baby);
-    let head_index = if baby {
-        BABY_GOAT_HEAD_INDEX
-    } else {
-        ADULT_GOAT_HEAD_INDEX
-    };
-    parts[head_index].children = if baby {
-        baby_goat_head_children(left_horn, right_horn)
-    } else {
-        adult_goat_head_children(left_horn, right_horn)
-    };
-    parts
-}
-
-fn adult_goat_head_children(left_horn: bool, right_horn: bool) -> &'static [TexturedModelPartDesc] {
-    match (left_horn, right_horn) {
-        (true, true) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN.as_slice(),
-        (true, false) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN_LEFT_ONLY.as_slice(),
-        (false, true) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN_RIGHT_ONLY.as_slice(),
-        (false, false) => ADULT_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS.as_slice(),
-    }
-}
-
-fn baby_goat_head_children(left_horn: bool, right_horn: bool) -> &'static [TexturedModelPartDesc] {
-    match (left_horn, right_horn) {
-        (true, true) => BABY_GOAT_TEXTURED_HEAD_CHILDREN.as_slice(),
-        (true, false) => BABY_GOAT_TEXTURED_HEAD_CHILDREN_LEFT_ONLY.as_slice(),
-        (false, true) => BABY_GOAT_TEXTURED_HEAD_CHILDREN_RIGHT_ONLY.as_slice(),
-        (false, false) => BABY_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS.as_slice(),
-    }
-}
-
 fn skeleton_model_layer(family: Option<SkeletonModelFamily>) -> &'static str {
     match family {
         None => MODEL_LAYER_SKELETON,

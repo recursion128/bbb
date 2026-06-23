@@ -46,40 +46,40 @@ use super::{
         vex_moving_arm_z_bob, villager_head_part_index, wolf_angry_tail_pose,
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
-        CreeperModel, EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel,
-        MinecartModel, PigModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel,
-        SnowGolemModel, WanderingTraderModel, WitchModel, ZombieModel, ADULT_CAMEL_WALK_LAYOUT,
-        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
+        CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, IronGolemModel,
+        MagmaCubeModel, MinecartModel, PigModel, RavagerModel, SalmonModel, SilverfishModel,
+        SkeletonModel, SnowGolemModel, WanderingTraderModel, WitchModel, ZombieModel,
+        ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
         ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
         ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
         ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
-        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
-        BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
-        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
-        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
-        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
-        BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
-        BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
-        BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
-        BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE,
-        BEE_BABY_TEXTURED_BACK_LEGS, BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE,
-        BEE_BABY_TEXTURED_FRONT_LEGS, BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS,
-        BEE_BABY_TEXTURED_RIGHT_WING, BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF,
-        BEE_BACK_LEGS_POSE, BEE_BODY_POSE, BEE_BONE_POSE, BEE_FRONT_LEGS_POSE,
-        BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE, BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT,
-        BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
-        BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
-        BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
-        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_BODY_POSE,
-        BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE,
-        BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF,
-        CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
-        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE,
-        DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT,
-        DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
-        DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
-        DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
-        DOLPHIN_TEXTURE_REF, ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE,
+        BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE,
+        BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE,
+        BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD,
+        BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING, BAT_TEXTURED_LEFT_WING_TIP,
+        BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING, BAT_TEXTURED_RIGHT_WING_TIP,
+        BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE, BEE_BABY_BONE_POSE,
+        BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE, BEE_BABY_MIDDLE_LEGS_POSE,
+        BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE, BEE_BABY_TEXTURED_BACK_LEGS,
+        BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE, BEE_BABY_TEXTURED_FRONT_LEGS,
+        BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS, BEE_BABY_TEXTURED_RIGHT_WING,
+        BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF, BEE_BACK_LEGS_POSE, BEE_BODY_POSE,
+        BEE_BONE_POSE, BEE_FRONT_LEGS_POSE, BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE,
+        BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT, BEE_RIGHT_ANTENNA_POSE,
+        BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS, BEE_TEXTURED_BODY,
+        BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA, BEE_TEXTURED_LEFT_WING,
+        BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA, BEE_TEXTURED_RIGHT_WING,
+        BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE,
+        BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE,
+        BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR,
+        CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE,
+        DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE, DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE,
+        DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT, DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE,
+        DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY, DOLPHIN_TEXTURED_HEAD,
+        DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE, DOLPHIN_TEXTURED_RIGHT_FIN,
+        DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN, DOLPHIN_TEXTURE_REF,
+        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
         HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
         PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
@@ -128,6 +128,7 @@ use glam::Mat4;
 
 mod layers;
 
+use layers::player_visible_textured_model_parts;
 pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
     chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
@@ -145,7 +146,6 @@ pub(super) use layers::{
     witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
 };
-use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
 pub(super) use layers::{EntityModelLayerKind, EntityModelLayerVisibility};
 
@@ -3498,42 +3498,21 @@ fn emit_goat_textured_model(
     right_horn: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `GoatModel` tree drives both render paths; `setup_anim` looks the head, swings the
+    // four legs, and toggles each horn child's visibility from the `left_horn`/`right_horn` flags.
     let transform = entity_model_root_transform(instance);
-    let head_index = if baby {
-        BABY_GOAT_HEAD_INDEX
-    } else {
-        ADULT_GOAT_HEAD_INDEX
-    };
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    // All passes share one visibility-filtered part array (like the player), so the
-    // head look and the `QuadrupedModel` leg swing are applied once to the head and
-    // four leg parts before emitting every pass. The adult layer lists the legs at
-    // [2, 3, 4, 5], the baby layer at [0, 1, 2, 3].
-    let leg_indices: [usize; 4] = if baby { [0, 1, 2, 3] } else { [2, 3, 4, 5] };
-    let mut visible_parts = goat_visible_textured_model_parts(baby, left_horn, right_horn);
-    if !head_look_at_rest(head_yaw, head_pitch) {
-        if let Some(head) = visible_parts.get_mut(head_index) {
-            head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-        }
-    }
-    if !limb_swing_at_rest(limb_swing_amount) {
-        for index in leg_indices {
-            if let Some(leg) = visible_parts.get_mut(index) {
-                leg.pose = quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-            }
-        }
-    }
+    let mut model = GoatModel::new(baby, left_horn, right_horn);
+    model.prepare(&instance);
     for pass in goat_textured_layer_passes(baby) {
-        emit_textured_layer_pass_with_parts(
-            meshes,
-            &pass,
-            visible_parts.as_slice(),
-            transform,
-            atlas,
-        );
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
     }
 }
 

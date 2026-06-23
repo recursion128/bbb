@@ -419,7 +419,11 @@ fn entity_model_mesh_with_options(
                 right_horn,
             } => {
                 if !skip_texture_backed_entities {
-                    emit_goat_model(&mut mesh, *instance, baby, left_horn, right_horn);
+                    GoatModel::new(baby, left_horn, right_horn).prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::PolarBear { baby } => {
@@ -3234,112 +3238,6 @@ fn wolf_leg_part_indices(baby: bool) -> [usize; 4] {
         [2, 3, 4, 5]
     } else {
         [3, 4, 5, 6]
-    }
-}
-
-fn emit_goat_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    baby: bool,
-    left_horn: bool,
-    right_horn: bool,
-) {
-    let (parts, head_index, left_horn_child_index, right_horn_child_index): (
-        &[ModelPartDesc],
-        usize,
-        usize,
-        usize,
-    ) = if baby {
-        (
-            &BABY_GOAT_PARTS,
-            BABY_GOAT_HEAD_INDEX,
-            BABY_GOAT_LEFT_HORN_CHILD_INDEX,
-            BABY_GOAT_RIGHT_HORN_CHILD_INDEX,
-        )
-    } else {
-        (
-            &ADULT_GOAT_PARTS,
-            ADULT_GOAT_HEAD_INDEX,
-            ADULT_GOAT_LEFT_HORN_CHILD_INDEX,
-            ADULT_GOAT_RIGHT_HORN_CHILD_INDEX,
-        )
-    };
-    let transform = entity_model_root_transform(instance);
-    // Vanilla `GoatModel extends QuadrupedModel`: `setupAnim` runs `super.setupAnim`
-    // (the `QuadrupedModel` leg swing) before its horn visibility and ramming head
-    // override, so the four legs swing. Pre-pose the legs (the swing touches only the
-    // leg parts, leaving the head for `emit_goat_parts` to look at). The ramming head
-    // tilt is a deferred event animation.
-    let posed = quadruped_limb_swing_parts(
-        Cow::Borrowed(parts),
-        goat_leg_part_indices(baby),
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    emit_goat_parts(
-        mesh,
-        &posed,
-        transform,
-        head_index,
-        left_horn_child_index,
-        right_horn_child_index,
-        left_horn,
-        right_horn,
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    );
-}
-
-/// The four leg part indices in the goat body layers. The adult layer lists the
-/// head and body at `0`/`1` then the legs at `[2, 3, 4, 5]`; the baby layer lists
-/// the legs first at `[0, 1, 2, 3]` (head at `5`). [`quadruped_leg_swing_pose`]
-/// resolves each leg's phase from its offset, so only the slot positions differ.
-fn goat_leg_part_indices(baby: bool) -> [usize; 4] {
-    if baby {
-        [0, 1, 2, 3]
-    } else {
-        [2, 3, 4, 5]
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn emit_goat_parts(
-    mesh: &mut EntityModelMesh,
-    parts: &[ModelPartDesc],
-    parent_transform: Mat4,
-    head_index: usize,
-    left_horn_child_index: usize,
-    right_horn_child_index: usize,
-    left_horn: bool,
-    right_horn: bool,
-    head_yaw: f32,
-    head_pitch: f32,
-) {
-    let head = &parts[head_index];
-    // Vanilla GoatModel extends QuadrupedModel: the head look (set by the super
-    // setupAnim) survives because the ramming override only fires when the goat
-    // is actively ramming, which is an untracked event animation.
-    let head_pose = if head_look_at_rest(head_yaw, head_pitch) {
-        head.pose
-    } else {
-        head_look_pose(head.pose, head_yaw, head_pitch)
-    };
-    let head_transform = parent_transform * part_pose_transform(head_pose);
-    for cube in head.cubes {
-        emit_model_cube(mesh, head_transform, *cube);
-    }
-    for (index, child) in head.children.iter().enumerate() {
-        if (index == left_horn_child_index && !left_horn)
-            || (index == right_horn_child_index && !right_horn)
-        {
-            continue;
-        }
-        emit_model_part(mesh, child, head_transform);
-    }
-    for (index, part) in parts.iter().enumerate() {
-        if index != head_index {
-            emit_model_part(mesh, part, parent_transform);
-        }
     }
 }
 

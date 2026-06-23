@@ -1,7 +1,10 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    GOAT_BEARD, GOAT_HORN, GOAT_WHITE, PART_POSE_ZERO,
+    apply_head_look, apply_quadruped_leg_swing, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, GOAT_BEARD, GOAT_HORN, GOAT_WHITE,
+    PART_POSE_ZERO,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_GOAT: &str = "minecraft:goat#main";
 pub(in crate::entity_models) const MODEL_LAYER_GOAT_BABY: &str = "minecraft:goat_baby#main";
@@ -445,21 +448,6 @@ pub(in crate::entity_models) const ADULT_GOAT_TEXTURED_HEAD_CHILDREN: [TexturedM
     ADULT_GOAT_TEXTURED_NOSE_PART,
 ];
 
-pub(in crate::entity_models) const ADULT_GOAT_TEXTURED_HEAD_CHILDREN_LEFT_ONLY:
-    [TexturedModelPartDesc; 2] = [
-    ADULT_GOAT_TEXTURED_LEFT_HORN_PART,
-    ADULT_GOAT_TEXTURED_NOSE_PART,
-];
-
-pub(in crate::entity_models) const ADULT_GOAT_TEXTURED_HEAD_CHILDREN_RIGHT_ONLY:
-    [TexturedModelPartDesc; 2] = [
-    ADULT_GOAT_TEXTURED_RIGHT_HORN_PART,
-    ADULT_GOAT_TEXTURED_NOSE_PART,
-];
-
-pub(in crate::entity_models) const ADULT_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS:
-    [TexturedModelPartDesc; 1] = [ADULT_GOAT_TEXTURED_NOSE_PART];
-
 pub(in crate::entity_models) const ADULT_GOAT_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
     TexturedModelPartDesc {
         pose: ADULT_GOAT_PARTS[0].pose,
@@ -643,29 +631,6 @@ pub(in crate::entity_models) const BABY_GOAT_TEXTURED_HEAD_CHILDREN: [TexturedMo
     BABY_GOAT_TEXTURED_HEAD_MAIN_PART,
 ];
 
-pub(in crate::entity_models) const BABY_GOAT_TEXTURED_HEAD_CHILDREN_LEFT_ONLY:
-    [TexturedModelPartDesc; 4] = [
-    BABY_GOAT_TEXTURED_LEFT_HORN_PART,
-    BABY_GOAT_TEXTURED_RIGHT_EAR_PART,
-    BABY_GOAT_TEXTURED_LEFT_EAR_PART,
-    BABY_GOAT_TEXTURED_HEAD_MAIN_PART,
-];
-
-pub(in crate::entity_models) const BABY_GOAT_TEXTURED_HEAD_CHILDREN_RIGHT_ONLY:
-    [TexturedModelPartDesc; 4] = [
-    BABY_GOAT_TEXTURED_RIGHT_HORN_PART,
-    BABY_GOAT_TEXTURED_RIGHT_EAR_PART,
-    BABY_GOAT_TEXTURED_LEFT_EAR_PART,
-    BABY_GOAT_TEXTURED_HEAD_MAIN_PART,
-];
-
-pub(in crate::entity_models) const BABY_GOAT_TEXTURED_HEAD_CHILDREN_NO_HORNS:
-    [TexturedModelPartDesc; 3] = [
-    BABY_GOAT_TEXTURED_RIGHT_EAR_PART,
-    BABY_GOAT_TEXTURED_LEFT_EAR_PART,
-    BABY_GOAT_TEXTURED_HEAD_MAIN_PART,
-];
-
 pub(in crate::entity_models) const BABY_GOAT_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
     TexturedModelPartDesc {
         pose: BABY_GOAT_PARTS[0].pose,
@@ -698,3 +663,93 @@ pub(in crate::entity_models) const BABY_GOAT_TEXTURED_PARTS: [TexturedModelPartD
         children: &BABY_GOAT_TEXTURED_HEAD_CHILDREN,
     },
 ];
+
+/// Per-`baby` goat layout: the head part index, the head's left/right horn child indices, and the
+/// four leg part indices (the swing resolves each leg's phase from its offset, so order is free).
+struct GoatLayout {
+    head_index: usize,
+    left_horn_child: usize,
+    right_horn_child: usize,
+    leg_indices: [usize; 4],
+}
+
+const fn goat_layout(baby: bool) -> GoatLayout {
+    if baby {
+        GoatLayout {
+            head_index: BABY_GOAT_HEAD_INDEX,
+            left_horn_child: BABY_GOAT_LEFT_HORN_CHILD_INDEX,
+            right_horn_child: BABY_GOAT_RIGHT_HORN_CHILD_INDEX,
+            leg_indices: [0, 1, 2, 3],
+        }
+    } else {
+        GoatLayout {
+            head_index: ADULT_GOAT_HEAD_INDEX,
+            left_horn_child: ADULT_GOAT_LEFT_HORN_CHILD_INDEX,
+            right_horn_child: ADULT_GOAT_RIGHT_HORN_CHILD_INDEX,
+            leg_indices: [2, 3, 4, 5],
+        }
+    }
+}
+
+/// Selects the unified goat part-tree pair (colored + textured) for `baby`.
+fn goat_part_trees(baby: bool) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&BABY_GOAT_PARTS, &BABY_GOAT_TEXTURED_PARTS)
+    } else {
+        (&ADULT_GOAT_PARTS, &ADULT_GOAT_TEXTURED_PARTS)
+    }
+}
+
+/// Mutable goat model, mirroring vanilla `GoatModel` (a `QuadrupedModel`). The unified tree is zipped
+/// from the baked colored and textured trees for the selected `baby` layout ([`goat_part_trees`]).
+/// `setup_anim` looks the head ([`apply_head_look`]), swings the four legs ([`apply_quadruped_leg_swing`]),
+/// and toggles each horn (a head child) via the [`ModelPart::visible`] flag from the `left_horn`/
+/// `right_horn` flags — vanilla hides the screaming-goat-only horns a polled goat lacks. The ramming
+/// head tilt is a deferred event animation.
+pub(in crate::entity_models) struct GoatModel {
+    root: ModelPart,
+    baby: bool,
+    left_horn: bool,
+    right_horn: bool,
+}
+
+impl GoatModel {
+    pub(in crate::entity_models) fn new(baby: bool, left_horn: bool, right_horn: bool) -> Self {
+        let (colored, textured) = goat_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+            left_horn,
+            right_horn,
+        }
+    }
+}
+
+impl EntityModel for GoatModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        let layout = goat_layout(self.baby);
+        apply_head_look(
+            self.root.child_at_mut(layout.head_index),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_quadruped_leg_swing(
+            &mut self.root,
+            layout.leg_indices,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+        let head = self.root.child_at_mut(layout.head_index);
+        head.child_at_mut(layout.left_horn_child).visible = self.left_horn;
+        head.child_at_mut(layout.right_horn_child).visible = self.right_horn;
+    }
+}
