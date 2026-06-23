@@ -38,18 +38,17 @@ use super::{
         phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, piglin_ear_flap_pose,
         piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
         polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, ravager_head_child_index,
-        ravager_leg_swing_pose, ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index,
-        sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose, spider_leg_swing_roles,
-        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
-        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
-        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
-        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
-        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose,
+        spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
+        strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
+        strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
+        strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
+        vex_moving_arm_z_bob, villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, CreeperModel,
         EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel, MinecartModel,
-        SalmonModel, SilverfishModel, SnowGolemModel, ADULT_CAMEL_WALK_LAYOUT,
+        RavagerModel, SalmonModel, SilverfishModel, SnowGolemModel, ADULT_CAMEL_WALK_LAYOUT,
         ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
         ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
         ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
@@ -89,9 +88,9 @@ use super::{
         PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
-        RAVAGER_TEXTURED_NECK_CHILDREN, SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE,
-        STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X,
-        STRIDER_BABY_LEG_BASE_Y, STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
+        SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
+        STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y,
+        STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
         STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
         STRIDER_BABY_TEXTURED_FRONT_BRISTLE, STRIDER_BABY_TEXTURED_LEFT_LEG,
         STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE, STRIDER_BABY_TEXTURED_RIGHT_LEG,
@@ -3254,73 +3253,22 @@ fn emit_ravager_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `RavagerModel` tree drives both render paths; `setup_anim` swings the four legs and
+    // looks the head (nested under the neck, so its horn/mouth descendants inherit the look). The
+    // neck/mouth attack/stun/roar poses are deferred.
     let transform = entity_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    // Vanilla `RavagerModel.setupAnim` swings the four legs `cos(pos * 0.6662 [+ π]) *
-    // 0.4 * speed` (legs at [2, 3, 4, 5]); the neck (part 0) is untouched by the swing.
-    let leg_indices: [usize; 4] = [2, 3, 4, 5];
+    let mut model = RavagerModel::new();
+    model.prepare(&instance);
     for pass in ravager_textured_layer_passes() {
-        if head_resting && legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
-        }
-        let mut parts = pass.parts.to_vec();
-        if !legs_resting {
-            for index in leg_indices {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = ravager_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        if head_resting {
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-            continue;
-        }
-        // Vanilla nests the ravager head inside the neck (`neck.getChild("head")`).
-        // The neck's children list is static, so emit the neck subtree by hand,
-        // applying the look to the head child (its horn/mouth children inherit it).
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let mesh = meshes.mesh_mut(pass.render_type);
-        let neck = &parts[ravager_neck_part_index()];
-        let neck_transform = transform * part_pose_transform(neck.pose);
-        for cube in neck.cubes {
-            emit_textured_model_cube(
-                mesh,
-                neck_transform,
-                *cube,
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
                 pass.texture,
                 entry.uv,
                 pass.tint,
             );
         }
-        let head = RAVAGER_TEXTURED_NECK_CHILDREN[ravager_head_child_index()];
-        let looked_head = TexturedModelPartDesc {
-            pose: head_look_pose(head.pose, head_yaw, head_pitch),
-            ..head
-        };
-        emit_textured_model_parts(
-            mesh,
-            &[looked_head],
-            neck_transform,
-            pass.texture,
-            entry.uv,
-            pass.tint,
-        );
-        emit_textured_model_parts(
-            mesh,
-            &parts[ravager_neck_part_index() + 1..],
-            transform,
-            pass.texture,
-            entry.uv,
-            pass.tint,
-        );
     }
 }
 
