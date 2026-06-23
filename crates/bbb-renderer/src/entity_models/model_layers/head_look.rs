@@ -64,22 +64,6 @@ pub(in crate::entity_models) const fn parched_head_part_index() -> usize {
     1
 }
 
-/// `HoglinModel` head-part index. The adult body layer lists the body first (head
-/// second); the baby body layer lists the head first.
-pub(in crate::entity_models) const fn hoglin_head_part_index(baby: bool) -> usize {
-    if baby {
-        0
-    } else {
-        1
-    }
-}
-
-/// Indices of the right and left ears within the hoglin head's children (both the adult
-/// and baby layers list the right ear first, then the left, then — for the adult — the
-/// two horns).
-pub(in crate::entity_models) const HOGLIN_RIGHT_EAR_CHILD_INDEX: usize = 0;
-pub(in crate::entity_models) const HOGLIN_LEFT_EAR_CHILD_INDEX: usize = 1;
-
 /// Vanilla `HoglinModel.setupAnim` ear sway for one ear: `rightEar.zRot = -2π/9 -
 /// walkAnimationSpeed * sin(walkAnimationPos)`, `leftEar.zRot = +2π/9 + walkAnimationSpeed
 /// * sin(walkAnimationPos)`. Vanilla writes the absolute angle from the literal `2π/9`, so

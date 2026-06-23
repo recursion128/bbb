@@ -817,34 +817,18 @@ pub(in crate::entity_models) fn hoglin_textured_layer_passes(
     family: HoglinModelFamily,
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
-    let (model_layer, texture, parts) = match (family, baby) {
-        (HoglinModelFamily::Hoglin, false) => (
-            MODEL_LAYER_HOGLIN,
-            HOGLIN_TEXTURE_REF,
-            ADULT_HOGLIN_TEXTURED_PARTS.as_slice(),
-        ),
-        (HoglinModelFamily::Hoglin, true) => (
-            MODEL_LAYER_HOGLIN_BABY,
-            HOGLIN_BABY_TEXTURE_REF,
-            BABY_HOGLIN_TEXTURED_PARTS.as_slice(),
-        ),
-        (HoglinModelFamily::Zoglin, false) => (
-            MODEL_LAYER_ZOGLIN,
-            ZOGLIN_TEXTURE_REF,
-            ADULT_HOGLIN_TEXTURED_PARTS.as_slice(),
-        ),
-        (HoglinModelFamily::Zoglin, true) => (
-            MODEL_LAYER_ZOGLIN_BABY,
-            ZOGLIN_BABY_TEXTURE_REF,
-            BABY_HOGLIN_TEXTURED_PARTS.as_slice(),
-        ),
+    let (model_layer, texture) = match (family, baby) {
+        (HoglinModelFamily::Hoglin, false) => (MODEL_LAYER_HOGLIN, HOGLIN_TEXTURE_REF),
+        (HoglinModelFamily::Hoglin, true) => (MODEL_LAYER_HOGLIN_BABY, HOGLIN_BABY_TEXTURE_REF),
+        (HoglinModelFamily::Zoglin, false) => (MODEL_LAYER_ZOGLIN, ZOGLIN_TEXTURE_REF),
+        (HoglinModelFamily::Zoglin, true) => (MODEL_LAYER_ZOGLIN_BABY, ZOGLIN_BABY_TEXTURE_REF),
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::HoglinBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

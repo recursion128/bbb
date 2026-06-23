@@ -1,140 +1,83 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn hoglin_model_parts_match_vanilla_26_1_body_layers() {
-    assert_eq!(ADULT_HOGLIN_PARTS.len(), 6);
-    assert_part_tree(
-        &ADULT_HOGLIN_PARTS[0],
-        [0.0, 7.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_HOGLIN_BODY.as_slice(),
-        ADULT_HOGLIN_BODY_CHILDREN.as_slice(),
+fn hoglin_adult_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `HoglinModel.createBodyLayer`: the body (parenting the mane) and the head (parenting
+    // the two ears + two horns) plus four legs. Each unified cube carries the colored tint
+    // (`HOGLIN_RED`) and the textured `uv_size`/`texOffs`/`mirror` in one struct; the mane keeps its
+    // inflated colored geometry against the base textured `uv_size`.
+    assert_eq!(
+        ADULT_HOGLIN_BODY[0],
+        ModelCube::new(
+            [-8.0, -7.0, -13.0],
+            [16.0, 14.0, 26.0],
+            HOGLIN_RED,
+            [16.0, 14.0, 26.0],
+            [1.0, 1.0],
+            false,
+        )
     );
     assert_eq!(
         ADULT_HOGLIN_MANE[0],
-        ModelCubeDesc {
-            min: [-0.001, -0.001, -9.001],
-            size: [0.002, 10.002, 19.002],
-            color: HOGLIN_RED,
-        }
+        ModelCube::new(
+            [-0.001, -0.001, -9.001],
+            [0.002, 10.002, 19.002],
+            HOGLIN_RED,
+            [0.0, 10.0, 19.0],
+            [90.0, 33.0],
+            false,
+        )
     );
-    assert_part(
-        &ADULT_HOGLIN_BODY_CHILDREN[0],
-        [0.0, -14.0, -7.0],
-        [0.0, 0.0, 0.0],
-        ADULT_HOGLIN_MANE.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_HOGLIN_PARTS[1],
-        [0.0, 2.0, -12.0],
-        [HOGLIN_HEAD_X_ROT, 0.0, 0.0],
-        ADULT_HOGLIN_HEAD.as_slice(),
-        ADULT_HOGLIN_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_HOGLIN_HEAD_CHILDREN[0],
-        [-6.0, -2.0, -3.0],
-        [0.0, 0.0, -HOGLIN_EAR_Z_ROT],
-        ADULT_HOGLIN_RIGHT_EAR.as_slice(),
-    );
-    assert_part(
-        &ADULT_HOGLIN_HEAD_CHILDREN[1],
-        [6.0, -2.0, -3.0],
-        [0.0, 0.0, HOGLIN_EAR_Z_ROT],
-        ADULT_HOGLIN_LEFT_EAR.as_slice(),
-    );
-    assert_part(
-        &ADULT_HOGLIN_HEAD_CHILDREN[2],
-        [-7.0, 2.0, -12.0],
-        [0.0, 0.0, 0.0],
-        ADULT_HOGLIN_HORN.as_slice(),
-    );
-    assert_part(
-        &ADULT_HOGLIN_HEAD_CHILDREN[3],
-        [7.0, 2.0, -12.0],
-        [0.0, 0.0, 0.0],
-        ADULT_HOGLIN_HORN.as_slice(),
-    );
-    for (part, expected_offset, expected_cubes) in [
-        (
-            &ADULT_HOGLIN_PARTS[2],
-            [-4.0, 10.0, -8.5],
-            ADULT_HOGLIN_FRONT_LEG.as_slice(),
-        ),
-        (
-            &ADULT_HOGLIN_PARTS[3],
-            [4.0, 10.0, -8.5],
-            ADULT_HOGLIN_FRONT_LEG.as_slice(),
-        ),
-        (
-            &ADULT_HOGLIN_PARTS[4],
-            [-5.0, 13.0, 10.0],
-            ADULT_HOGLIN_HIND_LEG.as_slice(),
-        ),
-        (
-            &ADULT_HOGLIN_PARTS[5],
-            [5.0, 13.0, 10.0],
-            ADULT_HOGLIN_HIND_LEG.as_slice(),
-        ),
+    assert_eq!(ADULT_HOGLIN_HEAD[0].tex, [61.0, 1.0]);
+    assert_eq!(ADULT_HOGLIN_RIGHT_EAR[0].tex, [1.0, 1.0]);
+    assert_eq!(ADULT_HOGLIN_LEFT_EAR[0].tex, [1.0, 6.0]);
+    assert_eq!(ADULT_HOGLIN_RIGHT_HORN[0].tex, [10.0, 13.0]);
+    assert_eq!(ADULT_HOGLIN_LEFT_HORN[0].tex, [1.0, 13.0]);
+    assert_eq!(ADULT_HOGLIN_RIGHT_FRONT_LEG[0].tex, [66.0, 42.0]);
+    assert_eq!(ADULT_HOGLIN_LEFT_FRONT_LEG[0].tex, [41.0, 42.0]);
+    assert_eq!(ADULT_HOGLIN_RIGHT_HIND_LEG[0].tex, [21.0, 45.0]);
+    assert_eq!(ADULT_HOGLIN_LEFT_HIND_LEG[0].tex, [0.0, 45.0]);
+    // Every adult cube tints with `HOGLIN_RED`.
+    for cube in [
+        ADULT_HOGLIN_BODY[0],
+        ADULT_HOGLIN_HEAD[0],
+        ADULT_HOGLIN_RIGHT_FRONT_LEG[0],
+        ADULT_HOGLIN_LEFT_HIND_LEG[0],
     ] {
-        assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        assert_eq!(cube.color, HOGLIN_RED);
     }
+}
 
-    assert_eq!(BABY_HOGLIN_PARTS.len(), 6);
-    assert_part_tree(
-        &BABY_HOGLIN_PARTS[0],
-        [0.0, 13.0, -7.0],
-        [BABY_HOGLIN_HEAD_X_ROT, 0.0, 0.0],
-        BABY_HOGLIN_HEAD.as_slice(),
-        BABY_HOGLIN_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_HOGLIN_HEAD_CHILDREN[0],
-        [-5.0, -1.0, -1.5],
-        [0.0, 0.0, -BABY_HOGLIN_EAR_Z_ROT],
-        BABY_HOGLIN_RIGHT_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_HOGLIN_HEAD_CHILDREN[1],
-        [5.0, -1.0, -1.5],
-        [0.0, 0.0, BABY_HOGLIN_EAR_Z_ROT],
-        BABY_HOGLIN_LEFT_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_HOGLIN_PARTS[1],
-        [0.0, 24.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_HOGLIN_BODY.as_slice(),
-    );
+#[test]
+fn hoglin_baby_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `BabyHoglinModel.createBodyLayer`: the head (parenting only the two ears) plus the body
+    // and four legs. The body cubes are inflated (the colored geometry keeps the inflated box against
+    // the base textured `uv_size`); the left ear is mirrored.
     assert_eq!(
         BABY_HOGLIN_BODY[0],
-        ModelCubeDesc {
-            min: [-4.02, -14.02, -7.02],
-            size: [8.04, 8.04, 14.04],
-            color: HOGLIN_RED,
-        }
+        ModelCube::new(
+            [-4.02, -14.02, -7.02],
+            [8.04, 8.04, 14.04],
+            HOGLIN_RED,
+            [8.0, 8.0, 14.0],
+            [0.0, 16.0],
+            false,
+        )
     );
-    assert_eq!(
-        BABY_HOGLIN_BODY[1],
-        ModelCubeDesc {
-            min: [-0.02, -18.02, -8.02],
-            size: [0.04, 6.04, 11.04],
-            color: HOGLIN_RED,
-        }
-    );
-    for (part, expected_offset) in [
-        (&BABY_HOGLIN_PARTS[2], [-2.5, 18.0, 4.5]),
-        (&BABY_HOGLIN_PARTS[3], [2.5, 18.0, 4.5]),
-        (&BABY_HOGLIN_PARTS[4], [-2.5, 18.0, -4.5]),
-        (&BABY_HOGLIN_PARTS[5], [2.5, 18.0, -4.5]),
-    ] {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_HOGLIN_LEG.as_slice(),
-        );
-    }
+    assert_eq!(BABY_HOGLIN_BODY[1].uv_size, [0.0, 6.0, 11.0]);
+    assert_eq!(BABY_HOGLIN_BODY[1].tex, [24.0, 39.0]);
+    assert_eq!(BABY_HOGLIN_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(BABY_HOGLIN_HEAD[1].tex, [44.0, 29.0]);
+    assert_eq!(BABY_HOGLIN_HEAD[2].tex, [52.0, 29.0]);
+    assert_eq!(BABY_HOGLIN_RIGHT_EAR[0].tex, [32.0, 5.0]);
+    assert_eq!(BABY_HOGLIN_LEFT_EAR[0].tex, [32.0, 0.0]);
+    assert!(BABY_HOGLIN_LEFT_EAR[0].mirror);
+    assert_eq!(BABY_HOGLIN_RIGHT_HIND_LEG[0].tex, [0.0, 47.0]);
+    assert_eq!(BABY_HOGLIN_LEFT_HIND_LEG[0].tex, [12.0, 47.0]);
+    assert_eq!(BABY_HOGLIN_RIGHT_FRONT_LEG[0].tex, [0.0, 38.0]);
+    assert_eq!(BABY_HOGLIN_LEFT_FRONT_LEG[0].tex, [12.0, 38.0]);
 }
 
 #[test]
@@ -275,39 +218,36 @@ fn hoglin_textured_layer_passes_match_vanilla_renderer_model_choice() {
             false,
             MODEL_LAYER_HOGLIN,
             HOGLIN_TEXTURE_REF,
-            ADULT_HOGLIN_TEXTURED_PARTS.as_slice(),
         ),
         (
             HoglinModelFamily::Hoglin,
             true,
             MODEL_LAYER_HOGLIN_BABY,
             HOGLIN_BABY_TEXTURE_REF,
-            BABY_HOGLIN_TEXTURED_PARTS.as_slice(),
         ),
         (
             HoglinModelFamily::Zoglin,
             false,
             MODEL_LAYER_ZOGLIN,
             ZOGLIN_TEXTURE_REF,
-            ADULT_HOGLIN_TEXTURED_PARTS.as_slice(),
         ),
         (
             HoglinModelFamily::Zoglin,
             true,
             MODEL_LAYER_ZOGLIN_BABY,
             ZOGLIN_BABY_TEXTURE_REF,
-            BABY_HOGLIN_TEXTURED_PARTS.as_slice(),
         ),
     ];
 
-    for (family, baby, model_layer, texture, parts) in cases {
+    for (family, baby, model_layer, texture) in cases {
         let passes = hoglin_textured_layer_passes(family, baby);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::HoglinBase);
         assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
-        assert_eq!(passes[0].parts, parts);
+        // The vestigial `parts` slice is nulled; emit builds `HoglinModel::new(baby)` and renders it.
+        assert!(passes[0].parts.is_empty());
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
         assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(
@@ -318,77 +258,11 @@ fn hoglin_textured_layer_passes_match_vanilla_renderer_model_choice() {
 }
 
 #[test]
-fn hoglin_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+fn hoglin_model_layers_match_vanilla() {
     assert_eq!(MODEL_LAYER_HOGLIN, "minecraft:hoglin#main");
     assert_eq!(MODEL_LAYER_HOGLIN_BABY, "minecraft:hoglin_baby#main");
     assert_eq!(MODEL_LAYER_ZOGLIN, "minecraft:zoglin#main");
     assert_eq!(MODEL_LAYER_ZOGLIN_BABY, "minecraft:zoglin_baby#main");
-    assert_eq!(ADULT_HOGLIN_TEXTURED_PARTS.len(), 6);
-    assert_eq!(BABY_HOGLIN_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        ADULT_HOGLIN_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-8.0, -7.0, -13.0],
-            size: [16.0, 14.0, 26.0],
-            uv_size: [16.0, 14.0, 26.0],
-            tex: [1.0, 1.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_HOGLIN_TEXTURED_MANE[0],
-        TexturedModelCubeDesc {
-            min: [-0.001, -0.001, -9.001],
-            size: [0.002, 10.002, 19.002],
-            uv_size: [0.0, 10.0, 19.0],
-            tex: [90.0, 33.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(ADULT_HOGLIN_TEXTURED_HEAD[0].tex, [61.0, 1.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_RIGHT_EAR[0].tex, [1.0, 1.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_LEFT_EAR[0].tex, [1.0, 6.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_RIGHT_HORN[0].tex, [10.0, 13.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_LEFT_HORN[0].tex, [1.0, 13.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_RIGHT_FRONT_LEG[0].tex, [66.0, 42.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_LEFT_FRONT_LEG[0].tex, [41.0, 42.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_RIGHT_HIND_LEG[0].tex, [21.0, 45.0]);
-    assert_eq!(ADULT_HOGLIN_TEXTURED_LEFT_HIND_LEG[0].tex, [0.0, 45.0]);
-    assert_eq!(
-        ADULT_HOGLIN_TEXTURED_PARTS[0].pose,
-        ADULT_HOGLIN_PARTS[0].pose
-    );
-    assert_eq!(
-        ADULT_HOGLIN_TEXTURED_BODY_CHILDREN[0].pose,
-        ADULT_HOGLIN_BODY_CHILDREN[0].pose
-    );
-    assert_eq!(
-        ADULT_HOGLIN_TEXTURED_HEAD_CHILDREN[3].pose,
-        ADULT_HOGLIN_HEAD_CHILDREN[3].pose
-    );
-
-    assert_eq!(BABY_HOGLIN_TEXTURED_HEAD[0].tex, [0.0, 0.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_HEAD[1].tex, [44.0, 29.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_HEAD[2].tex, [52.0, 29.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_BODY[0].tex, [0.0, 16.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_BODY[0].uv_size, [8.0, 8.0, 14.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_BODY[1].tex, [24.0, 39.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_BODY[1].uv_size, [0.0, 6.0, 11.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_RIGHT_EAR[0].tex, [32.0, 5.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_LEFT_EAR[0].tex, [32.0, 0.0]);
-    assert!(BABY_HOGLIN_TEXTURED_LEFT_EAR[0].mirror);
-    assert_eq!(BABY_HOGLIN_TEXTURED_RIGHT_HIND_LEG[0].tex, [0.0, 47.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_LEFT_HIND_LEG[0].tex, [12.0, 47.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_RIGHT_FRONT_LEG[0].tex, [0.0, 38.0]);
-    assert_eq!(BABY_HOGLIN_TEXTURED_LEFT_FRONT_LEG[0].tex, [12.0, 38.0]);
-    assert_eq!(
-        BABY_HOGLIN_TEXTURED_PARTS[0].pose,
-        BABY_HOGLIN_PARTS[0].pose
-    );
-    assert_eq!(
-        BABY_HOGLIN_TEXTURED_HEAD_CHILDREN[1].pose,
-        BABY_HOGLIN_HEAD_CHILDREN[1].pose
-    );
 }
 
 #[test]
@@ -501,11 +375,27 @@ fn hoglin_leg_swing_pose_matches_vanilla_formula() {
     // Vanilla HoglinModel.setupAnim: rightFrontLeg.xRot = cos(pos) * 1.2 * speed,
     // leftFrontLeg.xRot = cos(pos + π) * 1.2 * speed, rightHindLeg = leftFrontLeg,
     // leftHindLeg = rightFrontLeg. The amplitude is 1.2 (not the QuadrupedModel 1.4)
-    // and there is NO 0.6662 frequency factor. ADULT_HOGLIN_PARTS lists rightFront at
-    // index 2 (offset x = -4, z = -8.5, so x*z > 0 -> in phase) and leftFront at index
-    // 3 (x = 4, z = -8.5, x*z < 0 -> out of phase).
-    let right_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[2].pose, 0.0, 1.0);
-    let left_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[3].pose, 0.0, 1.0);
+    // and there is NO 0.6662 frequency factor. The right-front leg sits at offset
+    // x = -4, z = -8.5 (x*z > 0 -> in phase) and the left-front at x = 4, z = -8.5
+    // (x*z < 0 -> out of phase).
+    let right_front_pose = PartPose {
+        offset: [-4.0, 10.0, -8.5],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let left_front_pose = PartPose {
+        offset: [4.0, 10.0, -8.5],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let right_hind_pose = PartPose {
+        offset: [-5.0, 13.0, 10.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let left_hind_pose = PartPose {
+        offset: [5.0, 13.0, 10.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let right_front = hoglin_leg_swing_pose(right_front_pose, 0.0, 1.0);
+    let left_front = hoglin_leg_swing_pose(left_front_pose, 0.0, 1.0);
     assert!(
         (right_front.rotation[0] - 1.2).abs() < 1e-6,
         "right front in phase at amplitude 1.2: {}",
@@ -516,16 +406,16 @@ fn hoglin_leg_swing_pose_matches_vanilla_formula() {
         "left front out of phase at amplitude 1.2: {}",
         left_front.rotation[0]
     );
-    // The diagonal pair: right hind (index 4, x*z < 0) matches left front, and left
-    // hind (index 5, x*z > 0) matches right front.
-    let right_hind = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[4].pose, 0.0, 1.0);
-    let left_hind = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[5].pose, 0.0, 1.0);
+    // The diagonal pair: right hind (x*z < 0) matches left front, and left hind (x*z > 0)
+    // matches right front.
+    let right_hind = hoglin_leg_swing_pose(right_hind_pose, 0.0, 1.0);
+    let left_hind = hoglin_leg_swing_pose(left_hind_pose, 0.0, 1.0);
     assert!((right_hind.rotation[0] - left_front.rotation[0]).abs() < 1e-6);
     assert!((left_hind.rotation[0] - right_front.rotation[0]).abs() < 1e-6);
 
     // A general (pos, speed) reproduces cos(pos [+ π]) * 1.2 * speed, with no 0.6662.
-    let right_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[2].pose, 1.5, 0.5);
-    let left_front = hoglin_leg_swing_pose(ADULT_HOGLIN_PARTS[3].pose, 1.5, 0.5);
+    let right_front = hoglin_leg_swing_pose(right_front_pose, 1.5, 0.5);
+    let left_front = hoglin_leg_swing_pose(left_front_pose, 1.5, 0.5);
     assert!((right_front.rotation[0] - 1.5_f32.cos() * 1.2 * 0.5).abs() < 1e-6);
     assert!(
         (left_front.rotation[0] - (1.5_f32 + std::f32::consts::PI).cos() * 1.2 * 0.5).abs() < 1e-6
@@ -669,11 +559,16 @@ fn hoglin_texture_images() -> Vec<EntityModelTextureImage> {
 #[test]
 fn hoglin_ear_sway_pose_matches_vanilla_formula() {
     // Vanilla HoglinModel.setupAnim: rightEar.zRot = -2π/9 - speed * sin(pos),
-    // leftEar.zRot = +2π/9 + speed * sin(pos). The adult ear poses rest at ∓2π/9
-    // (right = ADULT_HOGLIN_HEAD_CHILDREN[0], left = [1]), so the sway adds ∓speed *
-    // sin(pos) onto each; only zRot changes.
-    let right = ADULT_HOGLIN_HEAD_CHILDREN[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose;
-    let left = ADULT_HOGLIN_HEAD_CHILDREN[HOGLIN_LEFT_EAR_CHILD_INDEX].pose;
+    // leftEar.zRot = +2π/9 + speed * sin(pos). The adult ear poses rest at ∓2π/9, so the
+    // sway adds ∓speed * sin(pos) onto each; only zRot changes.
+    let right = PartPose {
+        offset: [-6.0, -2.0, -3.0],
+        rotation: [0.0, 0.0, -HOGLIN_EAR_Z_ROT],
+    };
+    let left = PartPose {
+        offset: [6.0, -2.0, -3.0],
+        rotation: [0.0, 0.0, HOGLIN_EAR_Z_ROT],
+    };
     let ear_z = std::f32::consts::PI * 2.0 / 9.0;
     assert!(
         (right.rotation[2] + ear_z).abs() < 1e-6,
@@ -719,8 +614,14 @@ fn hoglin_ear_sway_pose_matches_vanilla_formula() {
     // The baby ear poses rest at a wider angle (±BABY_HOGLIN_EAR_Z_ROT), but vanilla writes
     // the absolute from the literal 2π/9, so hoglin_ear_sway_pose ignores the base angle and
     // overrides the baby ears to ±2π/9 (± the sway).
-    let baby_right = BABY_HOGLIN_HEAD_CHILDREN[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose;
-    let baby_left = BABY_HOGLIN_HEAD_CHILDREN[HOGLIN_LEFT_EAR_CHILD_INDEX].pose;
+    let baby_right = PartPose {
+        offset: [-5.0, -1.0, -1.5],
+        rotation: [0.0, 0.0, -BABY_HOGLIN_EAR_Z_ROT],
+    };
+    let baby_left = PartPose {
+        offset: [5.0, -1.0, -1.5],
+        rotation: [0.0, 0.0, BABY_HOGLIN_EAR_Z_ROT],
+    };
     assert!(
         (baby_right.rotation[2] + BABY_HOGLIN_EAR_Z_ROT).abs() < 1e-6
             && (BABY_HOGLIN_EAR_Z_ROT - ear_z).abs() > 1e-3,

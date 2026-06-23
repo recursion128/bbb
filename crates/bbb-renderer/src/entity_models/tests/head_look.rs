@@ -90,19 +90,9 @@ fn head_part_indices_match_vanilla_body_layers() {
         SNOW_GOLEM_HEAD.as_slice()
     );
 
-    // The adult hoglin layer lists the body first (head second); the baby hoglin
-    // layer lists the head first. (The polar bear now builds a named-children tree,
-    // so its head look resolves the `head` child by name rather than an index.)
-    assert_eq!(hoglin_head_part_index(false), 1);
-    assert_eq!(hoglin_head_part_index(true), 0);
-    assert_eq!(
-        ADULT_HOGLIN_PARTS[hoglin_head_part_index(false)].cubes,
-        ADULT_HOGLIN_HEAD.as_slice()
-    );
-    assert_eq!(
-        BABY_HOGLIN_PARTS[hoglin_head_part_index(true)].cubes,
-        BABY_HOGLIN_HEAD.as_slice()
-    );
+    // (The hoglin now builds a named-children tree, so its head look resolves the `head`
+    // child by name rather than an index — the adult layer lists the body first, the baby
+    // layer lists the head first, but both name the head `head`.)
 
     // The ravager nests its head inside the neck: neck is part 0, the head is the
     // neck's first (only) child.
