@@ -2,6 +2,8 @@ use super::{
     bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc, ModelPartDesc,
     AXOLOTL_BODY, AXOLOTL_GILLS,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `AdultAxolotlModel` (atlas 64×64) / `BabyAxolotlModel` (atlas 32×32)
 // `createBodyLayer`. The axolotl is one of the `AgeableMobRenderer` two-model entities: the synced
@@ -167,3 +169,48 @@ const BABY_AXOLOTL_ROOT_CHILDREN: [ModelPartDesc; 1] = [part(
 
 pub(in crate::entity_models) const BABY_AXOLOTL_PARTS: [ModelPartDesc; 1] =
     [part([0.0, 24.0, 0.0], &[], &BABY_AXOLOTL_ROOT_CHILDREN)];
+
+/// Mutable axolotl model, mirroring vanilla `AdultAxolotlModel` / `BabyAxolotlModel`. The single
+/// `body` root (with its nested hierarchy) hangs off a synthetic root, built from the baked
+/// adult/baby [`ADULT_AXOLOTL_PARTS`] / [`BABY_AXOLOTL_PARTS`] geometry selected at construction.
+/// Colored-only: `setup_anim` turns the adult body toward the look yaw (the blended procedural
+/// sways, the mirror-leg copy, and the baby keyframe animations stay deferred).
+pub(in crate::entity_models) struct AxolotlModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl AxolotlModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let parts: &[ModelPartDesc] = if baby {
+            &BABY_AXOLOTL_PARTS
+        } else {
+            &ADULT_AXOLOTL_PARTS
+        };
+        Self {
+            root: ModelPart::root_from_colored_descs(parts),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for AxolotlModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `AdultAxolotlModel.setupAnim` turns the whole body toward the look target
+        // (`body.yRot += yRot·π/180`) unconditionally before the factor-blended sways; that body yaw
+        // is `+=` onto the bind, so it collapses to the bind pose at a level gaze. The baby model
+        // never applies it (its keyframe swims stay deferred), so only the adult body turns.
+        if !self.baby {
+            self.root.child_at_mut(0).pose.rotation[1] +=
+                instance.render_state.head_yaw.to_radians();
+        }
+    }
+}

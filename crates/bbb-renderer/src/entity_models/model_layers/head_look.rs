@@ -150,10 +150,10 @@ pub(in crate::entity_models) fn head_look_at_rest(head_yaw_deg: f32, head_pitch_
     head_yaw_deg == 0.0 && head_pitch_deg == 0.0
 }
 
-/// True when a yaw-only head has no turn, so callers (e.g. the hoglin, whose
-/// `head.xRot` is the fixed headbutt-resting tilt rather than a look pitch) can
-/// borrow the static parts unchanged instead of cloning to apply
-/// [`head_look_yaw_pose`].
+/// True when a yaw-only head has no turn. The yaw-only head models now set their head yaw through
+/// `setup_anim` directly (a `+=` that is identity at a level gaze), so this rest check is retained
+/// only as the reference the head-look unit test asserts against.
+#[cfg(test)]
 pub(in crate::entity_models) fn head_yaw_at_rest(head_yaw_deg: f32) -> bool {
     head_yaw_deg == 0.0
 }

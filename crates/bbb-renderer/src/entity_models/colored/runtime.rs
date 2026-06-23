@@ -227,7 +227,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Axolotl { baby } => {
                 // Colored-only so far (no texture-backed axolotl yet), so this arm always emits.
-                emit_axolotl_model(&mut mesh, *instance, baby);
+                AxolotlModel::new(baby).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Tadpole => {
                 // Colored-only so far (no texture-backed tadpole yet), so this arm always emits.
@@ -1172,31 +1176,6 @@ fn emit_armadillo_walk(
             root,
         );
     }
-}
-
-fn emit_axolotl_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    // Vanilla `AdultAxolotlModel`/`BabyAxolotlModel` are nested hierarchies rooted at the `body`
-    // part. `AdultAxolotlModel.setupAnim` first turns the whole body toward the look target —
-    // `body.yRot += yRot·π/180` — unconditionally, before the factor-blended swimming / hovering /
-    // crawling / lay-still / play-dead sways; that body yaw is reproduced here on the adult root
-    // body. The blended procedural sways, the mirror-leg copy, and the baby keyframe animations stay
-    // deferred. The baby flag (synced `AgeableMob.DATA_BABY_ID`) selects the baby body layer, as in
-    // the vanilla `AgeableMobRenderer`. Axolotl uses `AgeableMobRenderer`/
-    // `LivingEntityRenderer.setupRotations`.
-    let root = entity_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    if baby || head_yaw_at_rest(head_yaw) {
-        let parts: &[ModelPartDesc] = if baby {
-            &BABY_AXOLOTL_PARTS
-        } else {
-            &ADULT_AXOLOTL_PARTS
-        };
-        emit_model_parts(mesh, parts, root);
-        return;
-    }
-    let mut parts = ADULT_AXOLOTL_PARTS.to_vec();
-    parts[0].pose.rotation[1] += head_yaw.to_radians();
-    emit_model_parts(mesh, &parts, root);
 }
 
 fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
