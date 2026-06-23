@@ -709,6 +709,17 @@ impl EntityStore {
     }
 
     pub(crate) fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
+        self.item_stacks_for_entity_types(&[VANILLA_ENTITY_TYPE_ITEM_ID])
+    }
+
+    /// Collects the `DATA_ITEM_STACK` carried by every entity whose type id is in `type_ids`. Used both
+    /// for the dropped `item` entity (rendered as an item-sprite billboard) and for the thrown-item
+    /// projectiles (snowball, egg, ender pearl, potions, …) that vanilla's `ThrownItemRenderer` draws as
+    /// the same item sprite. The data id is shared (`VANILLA_ITEM_ENTITY_STACK_DATA_ID = 8`).
+    pub(crate) fn item_stacks_for_entity_types(
+        &self,
+        type_ids: &[i32],
+    ) -> Vec<ItemEntityStackState> {
         let mut items = Vec::new();
         for id in &self.order {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
@@ -717,7 +728,7 @@ impl EntityStore {
             let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
                 continue;
             };
-            if identity.entity_type_id != VANILLA_ENTITY_TYPE_ITEM_ID {
+            if !type_ids.contains(&identity.entity_type_id) {
                 continue;
             }
             let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {

@@ -169,6 +169,21 @@ const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
 const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
+
+/// The thrown-item projectiles whose vanilla `ThrownItemRenderer` draws a camera-facing item sprite at
+/// unit scale (`scale = 1.0`), so they render through the item-entity billboard layer rather than the 3D
+/// model scene (see [`crate::item_entities::thrown_item_projectile_billboards_from_world`]). The
+/// `ThrownItemRenderer` fireball pair (`fireball` ×3.0, `small_fireball` ×0.75) needs a per-billboard
+/// scale and stays a placeholder for now.
+pub(crate) const THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS: &[i32] = &[
+    VANILLA_ENTITY_TYPE_EGG_ID,
+    VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
+    VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
+    VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+    VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+    VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
+    VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+];
 const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
@@ -707,13 +722,12 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => {
             placeholder("todo_dragon_fireball_bounds", 1.0, 1.0, 1.0)
         }
-        VANILLA_ENTITY_TYPE_EGG_ID | VANILLA_ENTITY_TYPE_SNOWBALL_ID => {
-            placeholder("todo_thrown_item_projectile_bounds", 0.25, 0.25, 0.25)
-        }
+        // Thrown-item projectiles (vanilla `ThrownItemRenderer`) render as a camera-facing item sprite,
+        // emitted by the item-entity billboard layer (`thrown_item_projectile_billboards_from_world`),
+        // so the 3D model scene draws nothing for them.
+        VANILLA_ENTITY_TYPE_EGG_ID | VANILLA_ENTITY_TYPE_SNOWBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => EntityModelKind::EnderDragon,
-        VANILLA_ENTITY_TYPE_ENDER_PEARL_ID => {
-            placeholder("todo_ender_pearl_bounds", 0.25, 0.25, 0.25)
-        }
+        VANILLA_ENTITY_TYPE_ENDER_PEARL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID => boat(BoatModelFamily::Acacia, false),
         VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID => boat(BoatModelFamily::Acacia, true),
         VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID => boat(BoatModelFamily::Bamboo, false),
@@ -759,17 +773,15 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => EntityModelKind::EndCrystal,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => EntityModelKind::EvokerFangs,
+        // Thrown bottles/potions also render as item sprites via the billboard layer (see above).
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
         | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID
-        | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID => {
-            placeholder("todo_thrown_bottle_bounds", 0.25, 0.25, 0.25)
-        }
+        | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
             placeholder("todo_experience_orb_bounds", 0.5, 0.5, 0.5)
         }
-        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID => {
-            placeholder("todo_eye_of_ender_bounds", 0.25, 0.25, 0.25)
-        }
+        // The eye of ender also renders as an item sprite via the billboard layer (see above).
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             placeholder("todo_falling_block_bounds", 0.98, 0.98, 0.98)
         }
@@ -4807,6 +4819,20 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_TRIDENT_ID, &[]),
             EntityModelKind::Trident
         );
+    }
+
+    #[test]
+    fn entity_model_kind_skips_thrown_item_projectiles_for_the_billboard_layer() {
+        // The thrown-item projectiles (vanilla `ThrownItemRenderer`) render as a camera-facing item
+        // sprite via the item-entity billboard layer, so the 3D model scene draws nothing for them — the
+        // model kind is `NoRender` rather than the former placeholder box.
+        for &type_id in THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS {
+            assert_eq!(
+                entity_model_kind(type_id, &[]),
+                EntityModelKind::NoRender,
+                "thrown-item projectile type {type_id} should be NoRender",
+            );
+        }
     }
 
     #[test]

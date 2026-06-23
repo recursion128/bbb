@@ -1,9 +1,14 @@
 use bbb_renderer::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
 use bbb_world::{ItemEntityStackState, WorldStore};
 
+use crate::entity_scene::THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS;
 use crate::item_runtime::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
 
-const ITEM_ENTITY_BILLBOARD_Y_OFFSET: f32 = 0.25;
+/// Vanilla `ItemEntityRenderer` lifts the dropped item sprite to sit above the entity's ground
+/// position; the thrown-item projectiles (`ThrownItemRenderer`) render centered on the entity, so they
+/// use no offset.
+const DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET: f32 = 0.25;
+const THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET: f32 = 0.0;
 
 pub(crate) fn item_entity_billboards_from_world(
     world: &WorldStore,
@@ -13,24 +18,39 @@ pub(crate) fn item_entity_billboards_from_world(
         return Vec::new();
     };
 
-    world
-        .item_entity_stacks()
+    let dropped = world.item_entity_stacks().into_iter().filter_map(|state| {
+        let icon = item_runtime.icon_for_stack(&state.stack)?;
+        Some(item_entity_billboard_from_icon(
+            &state,
+            icon,
+            DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
+        ))
+    });
+    // Thrown-item projectiles (snowball, egg, ender pearl, potions, …) render the same item sprite via
+    // vanilla `ThrownItemRenderer`, so they share the billboard layer (centered on the entity).
+    let thrown = world
+        .item_stacks_for_entity_types(THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS)
         .into_iter()
         .filter_map(|state| {
             let icon = item_runtime.icon_for_stack(&state.stack)?;
-            Some(item_entity_billboard_from_icon(&state, icon))
-        })
-        .collect()
+            Some(item_entity_billboard_from_icon(
+                &state,
+                icon,
+                THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
+            ))
+        });
+    dropped.chain(thrown).collect()
 }
 
 fn item_entity_billboard_from_icon(
     state: &ItemEntityStackState,
     icon: ItemAtlasIcon,
+    y_offset: f32,
 ) -> ItemEntityBillboard {
     ItemEntityBillboard {
         position: [
             state.position.x as f32,
-            state.position.y as f32 + ITEM_ENTITY_BILLBOARD_Y_OFFSET,
+            state.position.y as f32 + y_offset,
             state.position.z as f32,
         ],
         layers: icon
@@ -100,8 +120,10 @@ mod tests {
             ],
         };
 
-        let billboard = item_entity_billboard_from_icon(&state, icon);
+        let billboard =
+            item_entity_billboard_from_icon(&state, icon, DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET);
 
+        // The dropped item is lifted 0.25 above its ground position.
         assert_eq!(billboard.position, [1.5, 64.25, -2.25]);
         assert_eq!(billboard.layers.len(), 2);
         assert_eq!(
@@ -124,5 +146,42 @@ mod tests {
                 [1.0, 1.0, 1.0, 0.5],
             )
         );
+    }
+
+    #[test]
+    fn thrown_item_projectile_billboard_is_centered_on_the_entity() {
+        // Unlike the dropped item, a thrown-item projectile (`ThrownItemRenderer`) renders centered on
+        // the entity position, with no lift offset.
+        let state = ItemEntityStackState {
+            entity_id: 9,
+            position: EntityVec3 {
+                x: 2.0,
+                y: 70.5,
+                z: -4.0,
+            },
+            stack: ItemStackSummary {
+                item_id: Some(11),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        };
+        let icon = ItemAtlasIcon {
+            layers: vec![ItemAtlasIconLayer {
+                uv: ItemAtlasUvRect {
+                    min: [0.0, 0.0],
+                    max: [0.25, 0.25],
+                },
+                tint: [1.0, 1.0, 1.0, 1.0],
+            }],
+        };
+
+        let billboard = item_entity_billboard_from_icon(
+            &state,
+            icon,
+            THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
+        );
+
+        assert_eq!(billboard.position, [2.0, 70.5, -4.0]);
+        assert_eq!(billboard.layers.len(), 1);
     }
 }

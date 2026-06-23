@@ -777,6 +777,14 @@ impl WorldStore {
         self.entities.item_entity_stacks()
     }
 
+    /// Collects the `DATA_ITEM_STACK` carried by every entity whose type id is in `type_ids`. The
+    /// thrown-item projectiles (snowball, egg, ender pearl, potions, …) that vanilla's
+    /// `ThrownItemRenderer` draws as an item sprite share the dropped item's data layout, so this feeds
+    /// the same billboard path. The caller (which owns the vanilla type ids) passes the projectile set.
+    pub fn item_stacks_for_entity_types(&self, type_ids: &[i32]) -> Vec<ItemEntityStackState> {
+        self.entities.item_stacks_for_entity_types(type_ids)
+    }
+
     pub fn local_player_id(&self) -> Option<i32> {
         self.local_player_id
     }
