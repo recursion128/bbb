@@ -358,6 +358,26 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
     }
 }
 
+/// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose, applied to a humanoid
+/// model root (head `0`, body `1`, arms `[2, 3]`, legs `[4, 5]`): the body leans forward and drops
+/// ([`humanoid_crouch_body_pose`]), the head drops with it, the arms tilt forward and ride down, and
+/// the legs tuck back. Applied after the walk swing and idle bob (the arm tilt accumulates onto the
+/// swung/bobbed pose), so callers run it last and only while crouching.
+pub(in crate::entity_models) fn apply_humanoid_crouch(root: &mut ModelPart) {
+    let head = root.child_at_mut(0);
+    head.pose = humanoid_crouch_head_pose(head.pose);
+    let body = root.child_at_mut(1);
+    body.pose = humanoid_crouch_body_pose(body.pose);
+    for index in [2, 3] {
+        let arm = root.child_at_mut(index);
+        arm.pose = humanoid_crouch_arm_pose(arm.pose);
+    }
+    for index in [4, 5] {
+        let leg = root.child_at_mut(index);
+        leg.pose = humanoid_crouch_leg_pose(leg.pose);
+    }
+}
+
 /// Vanilla `HumanoidModel.setupAnim` leg swing only, applied to a model root's legs at `[4, 5]`
 /// ([`humanoid_leg_swing_pose`]). A no-op while at rest. Used by the zombie family, whose arms are
 /// overridden with the held-out [`apply_zombie_arms_held_out`] pose instead of the humanoid arm swing.

@@ -30,21 +30,20 @@ use super::{
         enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
         head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
         head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_crouch_arm_pose,
-        humanoid_crouch_body_pose, humanoid_crouch_head_pose, humanoid_crouch_leg_pose,
-        humanoid_leg_swing_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
-        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
-        piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index, pufferfish_fin_pose,
-        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose,
-        spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
-        strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
-        strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
-        strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
-        vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel,
-        CodModel, CowModel, CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel,
-        IllagerModel, IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PolarBearModel,
+        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
+        limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
+        phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, piglin_ear_flap_pose,
+        piglin_head_part_index, pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
+        quadruped_leg_swing_pose, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
+        skeleton_head_part_index, spider_leg_swing_pose, spider_leg_swing_roles,
+        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
+        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
+        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
+        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
+        CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, IllagerModel,
+        IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PlayerModel, PolarBearModel,
         RavagerModel, SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel, VillagerModel,
         WanderingTraderModel, WitchModel, ZombieModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE,
         ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
@@ -124,8 +123,6 @@ use super::{
 use glam::Mat4;
 
 mod layers;
-
-use layers::player_visible_textured_model_parts;
 pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
     chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
@@ -2069,9 +2066,6 @@ const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
 /// `HumanoidModel` arm part indices (head/body at `0`/`1`, arms at `[2, 3]`).
 const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
 
-/// The `HumanoidModel` body part index (`head` is `0`, `body` is `1`).
-const HUMANOID_BODY_PART_INDEX: usize = 1;
-
 /// Emits the skeleton family's textured layer passes, applying the vanilla
 /// `HumanoidModel.setupAnim` head look ([`head_look_pose`]) to the head part at
 /// `head_index`, the leg swing ([`humanoid_leg_swing_pose`]) to the two leg parts at
@@ -3156,73 +3150,25 @@ fn emit_player_textured_model(
     parts: PlayerModelPartVisibility,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `PlayerModel` tree drives both render paths; `setup_anim` looks the head, runs the
+    // inherited `HumanoidModel` walk swing + idle arm bob, and applies the crouch sneaking pose. The
+    // six skin overlay parts (hat/jacket/sleeves/pants) are toggled by the player's part visibility
+    // after `prepare` (the colored fallback shows every overlay). Held-item/attack/swim arm poses,
+    // the cape, and the elytra defer.
     let transform = player_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    // All passes share one visibility-filtered part array, so the head look and
-    // the inherited `HumanoidModel` leg swing are applied once to the head and leg
-    // parts before emitting every pass (the pants children ride the leg parts).
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let mut visible_parts = player_visible_textured_model_parts(slim, parts);
-    if !head_look_at_rest(head_yaw, head_pitch) {
-        if let Some(head) = visible_parts.get_mut(player_head_part_index()) {
-            head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-        }
-    }
-    if !limb_swing_at_rest(limb_swing_amount) {
-        for index in HUMANOID_LEG_PART_INDICES {
-            if let Some(leg) = visible_parts.get_mut(index) {
-                leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-            }
-        }
-        // `PlayerModel` inherits the `HumanoidModel` arm swing (its `setupAnim` only
-        // toggles visibility), so the arms counter-swing too; the sleeve children ride
-        // the arm parts. Held-item/attack/crouch/swim arm poses still defer.
-        for index in HUMANOID_ARM_PART_INDICES {
-            if let Some(arm) = visible_parts.get_mut(index) {
-                arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
-            }
-        }
-    }
-    // The inherited `HumanoidModel.setupAnim` idle arm bob (`humanoid_arm_bob_pose`) rides
-    // on top of the swing every frame, so it is applied unconditionally — even a standing
-    // player's arms bob with `ageInTicks`.
-    for index in HUMANOID_ARM_PART_INDICES {
-        if let Some(arm) = visible_parts.get_mut(index) {
-            arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
-        }
-    }
-    // The `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose: lean the body, drop
-    // the head, tilt the arms and tuck the legs (the hat/jacket/sleeve/pants children ride the
-    // shifted parts). Applied after the swing/bob, exactly as vanilla does.
-    if instance.render_state.is_crouching {
-        if let Some(head) = visible_parts.get_mut(player_head_part_index()) {
-            head.pose = humanoid_crouch_head_pose(head.pose);
-        }
-        if let Some(body) = visible_parts.get_mut(HUMANOID_BODY_PART_INDEX) {
-            body.pose = humanoid_crouch_body_pose(body.pose);
-        }
-        for index in HUMANOID_ARM_PART_INDICES {
-            if let Some(arm) = visible_parts.get_mut(index) {
-                arm.pose = humanoid_crouch_arm_pose(arm.pose);
-            }
-        }
-        for index in HUMANOID_LEG_PART_INDICES {
-            if let Some(leg) = visible_parts.get_mut(index) {
-                leg.pose = humanoid_crouch_leg_pose(leg.pose);
-            }
-        }
-    }
+    let mut model = PlayerModel::new(slim);
+    model.prepare(&instance);
+    model.apply_part_visibility(parts);
     for pass in player_textured_layer_passes(slim, parts) {
-        emit_textured_layer_pass_with_parts(
-            meshes,
-            &pass,
-            visible_parts.as_slice(),
-            transform,
-            atlas,
-        );
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
     }
 }
 

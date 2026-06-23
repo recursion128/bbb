@@ -1096,59 +1096,6 @@ fn player_textured_model_parts(slim: bool) -> &'static [TexturedModelPartDesc] {
     }
 }
 
-pub(super) fn player_visible_textured_model_parts(
-    slim: bool,
-    parts: PlayerModelPartVisibility,
-) -> [TexturedModelPartDesc; 6] {
-    let source = player_textured_model_parts(slim);
-    [
-        TexturedModelPartDesc {
-            children: if parts.hat { source[0].children } else { &[] },
-            ..source[0]
-        },
-        TexturedModelPartDesc {
-            children: if parts.jacket {
-                source[1].children
-            } else {
-                &[]
-            },
-            ..source[1]
-        },
-        TexturedModelPartDesc {
-            children: if parts.right_sleeve {
-                source[2].children
-            } else {
-                &[]
-            },
-            ..source[2]
-        },
-        TexturedModelPartDesc {
-            children: if parts.left_sleeve {
-                source[3].children
-            } else {
-                &[]
-            },
-            ..source[3]
-        },
-        TexturedModelPartDesc {
-            children: if parts.right_pants {
-                source[4].children
-            } else {
-                &[]
-            },
-            ..source[4]
-        },
-        TexturedModelPartDesc {
-            children: if parts.left_pants {
-                source[5].children
-            } else {
-                &[]
-            },
-            ..source[5]
-        },
-    ]
-}
-
 fn chicken_model_layer(variant: ChickenModelVariant, baby: bool) -> &'static str {
     match (variant, baby) {
         (_, true) => MODEL_LAYER_CHICKEN_BABY,
