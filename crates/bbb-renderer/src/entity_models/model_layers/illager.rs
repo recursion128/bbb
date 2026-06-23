@@ -1,486 +1,240 @@
 use super::{
-    apply_half_amplitude_leg_swing, apply_head_look, humanoid_arm_swing_pose,
-    villager_head_part_index, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
-    TexturedModelPartDesc, ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
+    apply_half_amplitude_leg_swing_named, apply_head_look, humanoid_arm_swing_pose, PartPose,
+    ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_EVOKER: &str = "minecraft:evoker#main";
 pub(in crate::entity_models) const MODEL_LAYER_ILLUSIONER: &str = "minecraft:illusioner#main";
 pub(in crate::entity_models) const MODEL_LAYER_PILLAGER: &str = "minecraft:pillager#main";
 pub(in crate::entity_models) const MODEL_LAYER_VINDICATOR: &str = "minecraft:vindicator#main";
 
-pub(in crate::entity_models) const ILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, -10.0, -4.0],
-    size: [8.0, 10.0, 8.0],
-    color: ILLAGER_ROBE,
-}];
-
-pub(in crate::entity_models) const ILLAGER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.45, -10.45, -4.45],
-    size: [8.9, 12.9, 8.9],
-    color: ILLAGER_HAT_COLOR,
-}];
-
-pub(in crate::entity_models) const ILLAGER_NOSE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -1.0, -6.0],
-    size: [2.0, 4.0, 2.0],
-    color: ILLAGER_ROBE,
-}];
-
-pub(in crate::entity_models) const ILLAGER_BODY: [ModelCubeDesc; 2] = [
-    ModelCubeDesc {
-        min: [-4.0, 0.0, -3.0],
-        size: [8.0, 12.0, 6.0],
-        color: ILLAGER_ROBE,
-    },
-    ModelCubeDesc {
-        min: [-4.5, -0.5, -3.5],
-        size: [9.0, 21.0, 7.0],
-        color: ILLAGER_ROBE,
-    },
-];
-
-pub(in crate::entity_models) const ILLAGER_CROSSED_ARMS: [ModelCubeDesc; 2] = [
-    ModelCubeDesc {
-        min: [-8.0, -2.0, -2.0],
-        size: [4.0, 8.0, 4.0],
-        color: ILLAGER_ROBE,
-    },
-    ModelCubeDesc {
-        min: [-4.0, 2.0, -2.0],
-        size: [8.0, 4.0, 4.0],
-        color: ILLAGER_ROBE,
-    },
-];
-
-pub(in crate::entity_models) const ILLAGER_LEFT_SHOULDER: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [4.0, -2.0, -2.0],
-    size: [4.0, 8.0, 4.0],
-    color: ILLAGER_ROBE,
-}];
-
-pub(in crate::entity_models) const ILLAGER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -2.0],
-    size: [4.0, 12.0, 4.0],
-    color: ILLAGER_ROBE,
-}];
-
-pub(in crate::entity_models) const ILLAGER_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, -2.0, -2.0],
-    size: [4.0, 12.0, 4.0],
-    color: ILLAGER_ROBE,
-}];
-
-pub(in crate::entity_models) const ILLAGER_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -2.0, -2.0],
-    size: [4.0, 12.0, 4.0],
-    color: ILLAGER_ROBE,
-}];
-
-pub(in crate::entity_models) const ILLAGER_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: PartPose {
-        offset: [0.0, -2.0, 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    },
-    cubes: &ILLAGER_NOSE,
-    children: &[],
-}];
-
-pub(in crate::entity_models) const ILLAGER_HEAD_WITH_HAT_CHILDREN: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_HAT,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, -2.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_NOSE,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const ILLAGER_CROSSED_ARM_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_LEFT_SHOULDER,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const ILLAGER_CROSSED_ARM_PART: ModelPartDesc = ModelPartDesc {
-    pose: PartPose {
-        offset: [0.0, 3.0, -1.0],
-        rotation: [-0.75, 0.0, 0.0],
-    },
-    cubes: &ILLAGER_CROSSED_ARMS,
-    children: &ILLAGER_CROSSED_ARM_CHILDREN,
-};
-
-pub(in crate::entity_models) const ILLAGER_RIGHT_ARM_PART: ModelPartDesc = ModelPartDesc {
-    pose: PartPose {
-        offset: [-5.0, 2.0, 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    },
-    cubes: &ILLAGER_RIGHT_ARM,
-    children: &[],
-};
-
-pub(in crate::entity_models) const ILLAGER_LEFT_ARM_PART: ModelPartDesc = ModelPartDesc {
-    pose: PartPose {
-        offset: [5.0, 2.0, 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    },
-    cubes: &ILLAGER_LEFT_ARM,
-    children: &[],
-};
-
-// Vanilla 26.1 IllagerModel.createBodyLayer(), with LayerDefinitions'
-// MeshTransformer.scaling(0.9375F) applied by the emitter root transform.
-pub(in crate::entity_models) const ILLAGER_SHARED_CROSSED_PARTS: [ModelPartDesc; 5] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_HEAD,
-        children: &ILLAGER_HEAD_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_BODY,
-        children: &[],
-    },
-    ILLAGER_CROSSED_ARM_PART,
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const ILLAGER_SHARED_UNCROSSED_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_HEAD,
-        children: &ILLAGER_HEAD_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-    ILLAGER_RIGHT_ARM_PART,
-    ILLAGER_LEFT_ARM_PART,
-];
-
-// The illusioner's spellcasting layout: the same uncrossed (separate-arm) body as the shared
-// uncrossed parts, but keeping the illusioner's hatted head. Used when `isCastingSpell` hides the
-// crossed `arms` part and raises the two separate arms.
-pub(in crate::entity_models) const ILLAGER_ILLUSIONER_UNCROSSED_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_HEAD,
-        children: &ILLAGER_HEAD_WITH_HAT_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-    ILLAGER_RIGHT_ARM_PART,
-    ILLAGER_LEFT_ARM_PART,
-];
-
-pub(in crate::entity_models) const ILLAGER_ILLUSIONER_PARTS: [ModelPartDesc; 5] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_HEAD,
-        children: &ILLAGER_HEAD_WITH_HAT_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ILLAGER_BODY,
-        children: &[],
-    },
-    ILLAGER_CROSSED_ARM_PART,
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ILLAGER_LEG,
-        children: &[],
-    },
-];
-
-// Textured `IllagerModel.createBodyLayer` (64x64 UVs). The deformed cubes (the hat, the body's
-// robe overlay) inflate their geometry but keep the base box as `uv_size`, exactly like
-// `CubeDeformation` in vanilla `addBox`. The geometry (min/size) matches the colored cubes above,
-// so both render paths share the same mesh.
-const fn illager_textured_cube(
-    min: [f32; 3],
-    size: [f32; 3],
-    uv_size: [f32; 3],
-    tex: [f32; 2],
-    mirror: bool,
-) -> TexturedModelCubeDesc {
-    TexturedModelCubeDesc {
-        min,
-        size,
-        uv_size,
-        tex,
-        mirror,
-    }
-}
-
-const fn illager_textured_part(
-    offset: [f32; 3],
-    cubes: &'static [TexturedModelCubeDesc],
-    children: &'static [TexturedModelPartDesc],
-) -> TexturedModelPartDesc {
-    TexturedModelPartDesc {
-        pose: PartPose {
-            offset,
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes,
-        children,
-    }
-}
-
-const ILLAGER_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+// Vanilla 26.1 IllagerModel.createBodyLayer(), with LayerDefinitions' MeshTransformer.scaling(0.9375F)
+// applied by the emitter root transform. The deformed cubes (the hat, the body's robe overlay) inflate
+// their geometry but keep the base box as `uv_size`, exactly like `CubeDeformation` in vanilla `addBox`.
+// Each cube carries both render paths' data: the colored debug tint and the textured `uv_size`/`texOffs`/
+// `mirror`.
+pub(in crate::entity_models) const ILLAGER_HEAD: [ModelCube; 1] = [ModelCube::new(
     [-4.0, -10.0, -4.0],
     [8.0, 10.0, 8.0],
+    ILLAGER_ROBE,
     [8.0, 10.0, 8.0],
     [0.0, 0.0],
     false,
 )];
-const ILLAGER_TEXTURED_HAT: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_HAT: [ModelCube; 1] = [ModelCube::new(
     [-4.45, -10.45, -4.45],
     [8.9, 12.9, 8.9],
+    ILLAGER_HAT_COLOR,
     [8.0, 12.0, 8.0],
     [32.0, 0.0],
     false,
 )];
-const ILLAGER_TEXTURED_NOSE: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_NOSE: [ModelCube; 1] = [ModelCube::new(
     [-1.0, -1.0, -6.0],
     [2.0, 4.0, 2.0],
+    ILLAGER_ROBE,
     [2.0, 4.0, 2.0],
     [24.0, 0.0],
     false,
 )];
-const ILLAGER_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
-    illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_BODY: [ModelCube; 2] = [
+    ModelCube::new(
         [-4.0, 0.0, -3.0],
         [8.0, 12.0, 6.0],
+        ILLAGER_ROBE,
         [8.0, 12.0, 6.0],
         [16.0, 20.0],
         false,
     ),
-    illager_textured_cube(
+    ModelCube::new(
         [-4.5, -0.5, -3.5],
         [9.0, 21.0, 7.0],
+        ILLAGER_ROBE,
         [8.0, 20.0, 6.0],
         [0.0, 38.0],
         false,
     ),
 ];
-const ILLAGER_TEXTURED_CROSSED_ARMS: [TexturedModelCubeDesc; 2] = [
-    illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_CROSSED_ARMS: [ModelCube; 2] = [
+    ModelCube::new(
         [-8.0, -2.0, -2.0],
         [4.0, 8.0, 4.0],
+        ILLAGER_ROBE,
         [4.0, 8.0, 4.0],
         [44.0, 22.0],
         false,
     ),
-    illager_textured_cube(
+    ModelCube::new(
         [-4.0, 2.0, -2.0],
         [8.0, 4.0, 4.0],
+        ILLAGER_ROBE,
         [8.0, 4.0, 4.0],
         [40.0, 38.0],
         false,
     ),
 ];
-const ILLAGER_TEXTURED_LEFT_SHOULDER: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_LEFT_SHOULDER: [ModelCube; 1] = [ModelCube::new(
     [4.0, -2.0, -2.0],
     [4.0, 8.0, 4.0],
+    ILLAGER_ROBE,
     [4.0, 8.0, 4.0],
     [44.0, 22.0],
     true,
 )];
-const ILLAGER_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_RIGHT_LEG: [ModelCube; 1] = [ModelCube::new(
     [-2.0, 0.0, -2.0],
     [4.0, 12.0, 4.0],
+    ILLAGER_ROBE,
     [4.0, 12.0, 4.0],
     [0.0, 22.0],
     false,
 )];
-const ILLAGER_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_LEFT_LEG: [ModelCube; 1] = [ModelCube::new(
     [-2.0, 0.0, -2.0],
     [4.0, 12.0, 4.0],
+    ILLAGER_ROBE,
     [4.0, 12.0, 4.0],
     [0.0, 22.0],
     true,
 )];
-const ILLAGER_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_RIGHT_ARM: [ModelCube; 1] = [ModelCube::new(
     [-3.0, -2.0, -2.0],
     [4.0, 12.0, 4.0],
+    ILLAGER_ROBE,
     [4.0, 12.0, 4.0],
     [40.0, 46.0],
     false,
 )];
-const ILLAGER_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] = [illager_textured_cube(
+
+pub(in crate::entity_models) const ILLAGER_LEFT_ARM: [ModelCube; 1] = [ModelCube::new(
     [-1.0, -2.0, -2.0],
     [4.0, 12.0, 4.0],
+    ILLAGER_ROBE,
     [4.0, 12.0, 4.0],
     [40.0, 46.0],
     true,
 )];
 
-const ILLAGER_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 1] = [illager_textured_part(
-    [0.0, -2.0, 0.0],
-    &ILLAGER_TEXTURED_NOSE,
-    &[],
-)];
-const ILLAGER_TEXTURED_HEAD_WITH_HAT_CHILDREN: [TexturedModelPartDesc; 2] = [
-    illager_textured_part([0.0, 0.0, 0.0], &ILLAGER_TEXTURED_HAT, &[]),
-    illager_textured_part([0.0, -2.0, 0.0], &ILLAGER_TEXTURED_NOSE, &[]),
-];
-const ILLAGER_TEXTURED_CROSSED_ARM_CHILDREN: [TexturedModelPartDesc; 1] = [illager_textured_part(
-    [0.0, 0.0, 0.0],
-    &ILLAGER_TEXTURED_LEFT_SHOULDER,
-    &[],
-)];
-const ILLAGER_TEXTURED_CROSSED_ARM_PART: TexturedModelPartDesc = TexturedModelPartDesc {
-    pose: PartPose {
-        offset: [0.0, 3.0, -1.0],
-        rotation: [-0.75, 0.0, 0.0],
-    },
-    cubes: &ILLAGER_TEXTURED_CROSSED_ARMS,
-    children: &ILLAGER_TEXTURED_CROSSED_ARM_CHILDREN,
-};
-const ILLAGER_TEXTURED_RIGHT_ARM_PART: TexturedModelPartDesc = TexturedModelPartDesc {
-    pose: PartPose {
-        offset: [-5.0, 2.0, 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    },
-    cubes: &ILLAGER_TEXTURED_RIGHT_ARM,
-    children: &[],
-};
-const ILLAGER_TEXTURED_LEFT_ARM_PART: TexturedModelPartDesc = TexturedModelPartDesc {
-    pose: PartPose {
-        offset: [5.0, 2.0, 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    },
-    cubes: &ILLAGER_TEXTURED_LEFT_ARM,
-    children: &[],
+/// The crossed `arms` part pose (folded forward, vanilla `IllagerModel.createBodyLayer`).
+pub(in crate::entity_models) const ILLAGER_CROSSED_ARM_POSE: PartPose = PartPose {
+    offset: [0.0, 3.0, -1.0],
+    rotation: [-0.75, 0.0, 0.0],
 };
 
-pub(in crate::entity_models) const ILLAGER_TEXTURED_CROSSED_PARTS: [TexturedModelPartDesc; 5] = [
-    illager_textured_part(
-        [0.0, 0.0, 0.0],
-        &ILLAGER_TEXTURED_HEAD,
-        &ILLAGER_TEXTURED_HEAD_CHILDREN,
-    ),
-    illager_textured_part([0.0, 0.0, 0.0], &ILLAGER_TEXTURED_BODY, &[]),
-    ILLAGER_TEXTURED_CROSSED_ARM_PART,
-    illager_textured_part([-2.0, 12.0, 0.0], &ILLAGER_TEXTURED_RIGHT_LEG, &[]),
-    illager_textured_part([2.0, 12.0, 0.0], &ILLAGER_TEXTURED_LEFT_LEG, &[]),
-];
+/// The nose child part pose (under the head).
+pub(in crate::entity_models) const ILLAGER_NOSE_POSE: PartPose = PartPose {
+    offset: [0.0, -2.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-pub(in crate::entity_models) const ILLAGER_TEXTURED_ILLUSIONER_PARTS: [TexturedModelPartDesc; 5] = [
-    illager_textured_part(
-        [0.0, 0.0, 0.0],
-        &ILLAGER_TEXTURED_HEAD,
-        &ILLAGER_TEXTURED_HEAD_WITH_HAT_CHILDREN,
-    ),
-    illager_textured_part([0.0, 0.0, 0.0], &ILLAGER_TEXTURED_BODY, &[]),
-    ILLAGER_TEXTURED_CROSSED_ARM_PART,
-    illager_textured_part([-2.0, 12.0, 0.0], &ILLAGER_TEXTURED_RIGHT_LEG, &[]),
-    illager_textured_part([2.0, 12.0, 0.0], &ILLAGER_TEXTURED_LEFT_LEG, &[]),
-];
+/// The right/left leg part poses.
+pub(in crate::entity_models) const ILLAGER_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-2.0, 12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const ILLAGER_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [2.0, 12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-pub(in crate::entity_models) const ILLAGER_TEXTURED_UNCROSSED_PARTS: [TexturedModelPartDesc; 6] = [
-    illager_textured_part(
-        [0.0, 0.0, 0.0],
-        &ILLAGER_TEXTURED_HEAD,
-        &ILLAGER_TEXTURED_HEAD_CHILDREN,
-    ),
-    illager_textured_part([0.0, 0.0, 0.0], &ILLAGER_TEXTURED_BODY, &[]),
-    illager_textured_part([-2.0, 12.0, 0.0], &ILLAGER_TEXTURED_RIGHT_LEG, &[]),
-    illager_textured_part([2.0, 12.0, 0.0], &ILLAGER_TEXTURED_LEFT_LEG, &[]),
-    ILLAGER_TEXTURED_RIGHT_ARM_PART,
-    ILLAGER_TEXTURED_LEFT_ARM_PART,
-];
+/// The separate (uncrossed) right/left arm part poses.
+pub(in crate::entity_models) const ILLAGER_RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-5.0, 2.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const ILLAGER_LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [5.0, 2.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-// The illusioner's textured spellcasting layout: the uncrossed (separate-arm) body with the
-// illusioner's hatted head. Mirrors `ILLAGER_ILLUSIONER_UNCROSSED_PARTS` on the textured path.
-pub(in crate::entity_models) const ILLAGER_TEXTURED_ILLUSIONER_UNCROSSED_PARTS:
-    [TexturedModelPartDesc; 6] = [
-    illager_textured_part(
-        [0.0, 0.0, 0.0],
-        &ILLAGER_TEXTURED_HEAD,
-        &ILLAGER_TEXTURED_HEAD_WITH_HAT_CHILDREN,
-    ),
-    illager_textured_part([0.0, 0.0, 0.0], &ILLAGER_TEXTURED_BODY, &[]),
-    illager_textured_part([-2.0, 12.0, 0.0], &ILLAGER_TEXTURED_RIGHT_LEG, &[]),
-    illager_textured_part([2.0, 12.0, 0.0], &ILLAGER_TEXTURED_LEFT_LEG, &[]),
-    ILLAGER_TEXTURED_RIGHT_ARM_PART,
-    ILLAGER_TEXTURED_LEFT_ARM_PART,
-];
+/// Builds a leaf part at `pose` carrying `cubes`.
+fn leaf(pose: PartPose, cubes: &[ModelCube]) -> ModelPart {
+    ModelPart::leaf(pose, cubes.to_vec())
+}
+
+/// Builds the illager `head` part. The illusioner keeps its hat (re-enabled in vanilla via
+/// `getHat().visible = true`); the others list only the nose. Both list the nose as a head child.
+fn head(hatted: bool) -> ModelPart {
+    let mut children = Vec::new();
+    if hatted {
+        children.push(("hat", leaf(PART_POSE_ZERO, &ILLAGER_HAT)));
+    }
+    children.push(("nose", leaf(ILLAGER_NOSE_POSE, &ILLAGER_NOSE)));
+    ModelPart::new(PART_POSE_ZERO, ILLAGER_HEAD.to_vec(), children)
+}
+
+/// Builds the illager `body` part (carrying the robe overlay cube as a second cube, no children).
+fn body() -> ModelPart {
+    leaf(PART_POSE_ZERO, &ILLAGER_BODY)
+}
+
+/// Builds the crossed `arms` part: the folded arms cube parents the left shoulder.
+fn crossed_arms() -> ModelPart {
+    ModelPart::new(
+        ILLAGER_CROSSED_ARM_POSE,
+        ILLAGER_CROSSED_ARMS.to_vec(),
+        vec![(
+            "left_shoulder",
+            leaf(PART_POSE_ZERO, &ILLAGER_LEFT_SHOULDER),
+        )],
+    )
+}
+
+/// Builds the two named leg children in vanilla declaration order.
+fn legs() -> Vec<(&'static str, ModelPart)> {
+    vec![
+        (
+            "right_leg",
+            leaf(ILLAGER_RIGHT_LEG_POSE, &ILLAGER_RIGHT_LEG),
+        ),
+        ("left_leg", leaf(ILLAGER_LEFT_LEG_POSE, &ILLAGER_LEFT_LEG)),
+    ]
+}
+
+/// Builds the two named separate-arm children in vanilla declaration order.
+fn arms() -> Vec<(&'static str, ModelPart)> {
+    vec![
+        (
+            "right_arm",
+            leaf(ILLAGER_RIGHT_ARM_POSE, &ILLAGER_RIGHT_ARM),
+        ),
+        ("left_arm", leaf(ILLAGER_LEFT_ARM_POSE, &ILLAGER_LEFT_ARM)),
+    ]
+}
+
+/// Builds the unified illager tree for `family`/`spellcasting`, mirroring the vanilla layer choice
+/// with the vanilla `IllagerModel` child names. The idle crossed layout lists `head`, `body`, the
+/// folded `arms`, then the legs; the uncrossed (pillager / spellcasting) layout lists `head`, `body`,
+/// the legs, then the separate `right_arm`/`left_arm`. The illusioner keeps its hatted head in both.
+/// Vanilla declaration order is preserved so the colored render order stays byte-identical, while the
+/// head look, leg swing, and arm poses resolve their parts by name.
+fn illager_tree(family: IllagerModelFamily, spellcasting: bool) -> ModelPart {
+    let hatted = matches!(family, IllagerModelFamily::Illusioner);
+    // The idle crossed layout applies to the evoker/vindicator/illusioner that are not spell-casting;
+    // the pillager (and any spell-casting evoker/illusioner) use the uncrossed separate-arm layout.
+    let crossed = !spellcasting && !matches!(family, IllagerModelFamily::Pillager);
+    let mut children: Vec<(&'static str, ModelPart)> =
+        vec![("head", head(hatted)), ("body", body())];
+    if crossed {
+        children.push(("arms", crossed_arms()));
+        children.extend(legs());
+    } else {
+        children.extend(legs());
+        children.extend(arms());
+    }
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
 
 /// Vanilla `IllagerModel.setupAnim` SPELLCASTING arm pose for one separate arm. The arm holds its
 /// base offset (`rightArm.x = -5`/`leftArm.x = 5`, `z = 0` — both already the bind offset), pitches
@@ -506,19 +260,6 @@ pub(in crate::entity_models) fn illager_spellcast_arm_pose(
     }
 }
 
-/// Right/left leg part indices in an illager body layer. The crossed-arms layouts (idle
-/// evoker/vindicator/illusioner) carry the combined crossed `arms` part at slot `2` and list the
-/// legs at `[3, 4]`; the uncrossed pillager / spellcasting layout lists the legs at `[2, 3]` before
-/// its two separate arms at `[4, 5]`. [`half_amplitude_leg_swing_pose`] resolves each leg's phase
-/// from its offset, so only the slot positions differ.
-fn illager_leg_part_indices(crossed: bool) -> [usize; 2] {
-    if crossed {
-        [3, 4]
-    } else {
-        [2, 3]
-    }
-}
-
 /// Whether an illager is mid spell-cast — only the evoker and illusioner cast, and only then do they
 /// swap from the static crossed `arms` layout to the uncrossed separate-arm layout.
 fn illager_is_spellcasting(instance: &EntityModelInstance, family: IllagerModelFamily) -> bool {
@@ -529,48 +270,12 @@ fn illager_is_spellcasting(instance: &EntityModelInstance, family: IllagerModelF
         )
 }
 
-/// Selects the colored and textured const trees for an illager by `family` and whether it is mid
-/// spell-cast. Idle evoker/vindicator show the static crossed `arms` layout; the pillager (and any
-/// spellcasting evoker/illusioner) use the uncrossed separate-arm layout. The illusioner keeps its
-/// hatted head in both. Zipped into the unified tree by [`IllagerModel::new`].
-pub(in crate::entity_models) fn illager_part_trees(
-    family: IllagerModelFamily,
-    spellcasting: bool,
-) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
-    if spellcasting {
-        return match family {
-            IllagerModelFamily::Illusioner => (
-                &ILLAGER_ILLUSIONER_UNCROSSED_PARTS,
-                &ILLAGER_TEXTURED_ILLUSIONER_UNCROSSED_PARTS,
-            ),
-            _ => (
-                &ILLAGER_SHARED_UNCROSSED_PARTS,
-                &ILLAGER_TEXTURED_UNCROSSED_PARTS,
-            ),
-        };
-    }
-    match family {
-        IllagerModelFamily::Evoker | IllagerModelFamily::Vindicator => (
-            &ILLAGER_SHARED_CROSSED_PARTS,
-            &ILLAGER_TEXTURED_CROSSED_PARTS,
-        ),
-        IllagerModelFamily::Illusioner => (
-            &ILLAGER_ILLUSIONER_PARTS,
-            &ILLAGER_TEXTURED_ILLUSIONER_PARTS,
-        ),
-        IllagerModelFamily::Pillager => (
-            &ILLAGER_SHARED_UNCROSSED_PARTS,
-            &ILLAGER_TEXTURED_UNCROSSED_PARTS,
-        ),
-    }
-}
-
 /// Mutable illager model, mirroring vanilla `IllagerModel`/`SpellcasterIllagerModel` shared by the
-/// evoker, vindicator, illusioner, and pillager. The unified tree is zipped from the colored and
-/// textured const trees selected by `family`/`spellcasting` ([`illager_part_trees`]). `setup_anim`
-/// looks the head ([`apply_head_look`]) and swings the legs at the villager-family half amplitude
-/// ([`apply_half_amplitude_leg_swing`]); the pillager additionally swings its separate arms at the
-/// `HumanoidModel` amplitude ([`humanoid_arm_swing_pose`]), while a spellcasting evoker/illusioner
+/// evoker, vindicator, illusioner, and pillager. The unified tree is built for `family`/`spellcasting`
+/// with the vanilla child names. `setup_anim` looks the head ([`apply_head_look`] on `head`) and swings
+/// the legs at the villager-family half amplitude ([`apply_half_amplitude_leg_swing_named`]); the
+/// pillager additionally swings its separate arms at the `HumanoidModel` amplitude
+/// ([`humanoid_arm_swing_pose`] on `right_arm`/`left_arm`), while a spellcasting evoker/illusioner
 /// instead raises both arms into the `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). The
 /// attack/bow/crossbow/celebrate arm overrides and the riding sit pose defer.
 pub(in crate::entity_models) struct IllagerModel {
@@ -585,9 +290,8 @@ impl IllagerModel {
         family: IllagerModelFamily,
     ) -> Self {
         let spellcasting = illager_is_spellcasting(instance, family);
-        let (colored, textured) = illager_part_trees(family, spellcasting);
         Self {
-            root: ModelPart::root_from_descs(colored, textured),
+            root: illager_tree(family, spellcasting),
             family,
             spellcasting,
         }
@@ -606,34 +310,26 @@ impl EntityModel for IllagerModel {
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
         apply_head_look(
-            self.root.child_at_mut(villager_head_part_index(false)),
+            self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
         );
         let limb_swing = render_state.walk_animation_pos;
         let limb_swing_amount = render_state.walk_animation_speed;
-        // The idle crossed-arms layout (evoker/vindicator/illusioner) lists the legs at `[3, 4]`; the
-        // uncrossed pillager / spellcasting layout lists them at `[2, 3]`.
-        let crossed = !self.spellcasting && !matches!(self.family, IllagerModelFamily::Pillager);
-        apply_half_amplitude_leg_swing(
-            &mut self.root,
-            illager_leg_part_indices(crossed),
-            limb_swing,
-            limb_swing_amount,
-        );
+        apply_half_amplitude_leg_swing_named(&mut self.root, limb_swing, limb_swing_amount);
         if self.spellcasting {
-            // Vanilla overwrites both separate arms' rotations with the spellcasting pose (arms
-            // `[4, 5]` are right then left), so it overrides even at rest.
+            // Vanilla overwrites both separate arms' rotations with the spellcasting pose, so it
+            // overrides even at rest.
             let age = render_state.age_in_ticks;
-            let right = self.root.child_at_mut(4);
+            let right = self.root.child_mut("right_arm");
             right.pose = illager_spellcast_arm_pose(right.pose, age, true);
-            let left = self.root.child_at_mut(5);
+            let left = self.root.child_mut("left_arm");
             left.pose = illager_spellcast_arm_pose(left.pose, age, false);
         } else if matches!(self.family, IllagerModelFamily::Pillager) {
-            // Only the pillager renders the uncrossed (separate, swinging) arms at `[4, 5]`; the
-            // idle evoker/vindicator/illusioner show the static crossed `arms` part instead.
-            for index in [4, 5] {
-                let arm = self.root.child_at_mut(index);
+            // Only the pillager renders the uncrossed (separate, swinging) arms; the idle
+            // evoker/vindicator/illusioner show the static crossed `arms` part instead.
+            for name in ["right_arm", "left_arm"] {
+                let arm = self.root.child_mut(name);
                 arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
             }
         }

@@ -1,99 +1,55 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn illager_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`. The hat / body robe overlay deformed cubes inflate their geometry
+    // but keep the base box as `uv_size`.
     assert_eq!(
         ILLAGER_HEAD[0],
-        ModelCubeDesc {
-            min: [-4.0, -10.0, -4.0],
-            size: [8.0, 10.0, 8.0],
-            color: ILLAGER_ROBE,
-        }
+        ModelCube::new(
+            [-4.0, -10.0, -4.0],
+            [8.0, 10.0, 8.0],
+            ILLAGER_ROBE,
+            [8.0, 10.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         ILLAGER_HAT[0],
-        ModelCubeDesc {
-            min: [-4.45, -10.45, -4.45],
-            size: [8.9, 12.9, 8.9],
-            color: ILLAGER_HAT_COLOR,
-        }
+        ModelCube::new(
+            [-4.45, -10.45, -4.45],
+            [8.9, 12.9, 8.9],
+            ILLAGER_HAT_COLOR,
+            [8.0, 12.0, 8.0],
+            [32.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         ILLAGER_BODY[1],
-        ModelCubeDesc {
-            min: [-4.5, -0.5, -3.5],
-            size: [9.0, 21.0, 7.0],
-            color: ILLAGER_ROBE,
-        }
+        ModelCube::new(
+            [-4.5, -0.5, -3.5],
+            [9.0, 21.0, 7.0],
+            ILLAGER_ROBE,
+            [8.0, 20.0, 6.0],
+            [0.0, 38.0],
+            false,
+        )
     );
-
-    assert_eq!(ILLAGER_SHARED_CROSSED_PARTS.len(), 5);
-    assert_part_tree(
-        &ILLAGER_SHARED_CROSSED_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_HEAD.as_slice(),
-        ILLAGER_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ILLAGER_HEAD_CHILDREN[0],
-        [0.0, -2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_NOSE.as_slice(),
-    );
-    assert_part(
-        &ILLAGER_SHARED_CROSSED_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_BODY.as_slice(),
-    );
-    assert_part_tree(
-        &ILLAGER_SHARED_CROSSED_PARTS[2],
-        [0.0, 3.0, -1.0],
-        [-0.75, 0.0, 0.0],
-        ILLAGER_CROSSED_ARMS.as_slice(),
-        ILLAGER_CROSSED_ARM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ILLAGER_CROSSED_ARM_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_LEFT_SHOULDER.as_slice(),
-    );
-
-    assert_eq!(ILLAGER_SHARED_UNCROSSED_PARTS.len(), 6);
-    assert_part(
-        &ILLAGER_SHARED_UNCROSSED_PARTS[4],
-        [-5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_RIGHT_ARM.as_slice(),
-    );
-    assert_part(
-        &ILLAGER_SHARED_UNCROSSED_PARTS[5],
-        [5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_LEFT_ARM.as_slice(),
-    );
-
-    assert_part_tree(
-        &ILLAGER_ILLUSIONER_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_HEAD.as_slice(),
-        ILLAGER_HEAD_WITH_HAT_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ILLAGER_HEAD_WITH_HAT_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_HAT.as_slice(),
-    );
-    assert_part(
-        &ILLAGER_HEAD_WITH_HAT_CHILDREN[1],
-        [0.0, -2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ILLAGER_NOSE.as_slice(),
-    );
+    assert_eq!(ILLAGER_NOSE[0].tex, [24.0, 0.0]);
+    assert_eq!(ILLAGER_CROSSED_ARMS[0].tex, [44.0, 22.0]);
+    assert_eq!(ILLAGER_CROSSED_ARMS[1].tex, [40.0, 38.0]);
+    assert!(ILLAGER_LEFT_SHOULDER[0].mirror);
+    assert_eq!(ILLAGER_RIGHT_LEG[0].size, [4.0, 12.0, 4.0]);
+    assert!(!ILLAGER_RIGHT_LEG[0].mirror);
+    assert!(ILLAGER_LEFT_LEG[0].mirror);
+    assert_eq!(ILLAGER_RIGHT_ARM[0].tex, [40.0, 46.0]);
+    assert!(!ILLAGER_RIGHT_ARM[0].mirror);
+    assert!(ILLAGER_LEFT_ARM[0].mirror);
 }
 
 #[test]
@@ -318,39 +274,33 @@ fn illager_textured_parts_match_vanilla_body_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_PILLAGER, "minecraft:pillager#main");
     assert_eq!(MODEL_LAYER_VINDICATOR, "minecraft:vindicator#main");
 
-    // Crossed (evoker/vindicator) layout: head + nose, body (2 cubes), crossed arms + left
-    // shoulder, two legs. Vanilla `IllagerModel.createBodyLayer` UVs (64x64).
-    let crossed = &ILLAGER_TEXTURED_CROSSED_PARTS;
-    assert_eq!(crossed.len(), 5);
-    assert_eq!(crossed[0].cubes[0].tex, [0.0, 0.0]); // head texOffs(0, 0)
-    assert_eq!(crossed[0].cubes[0].uv_size, [8.0, 10.0, 8.0]);
-    assert_eq!(crossed[0].children[0].cubes[0].tex, [24.0, 0.0]); // nose texOffs(24, 0)
-    assert_eq!(crossed[1].cubes[0].tex, [16.0, 20.0]); // body texOffs(16, 20)
-    assert_eq!(crossed[1].cubes[1].tex, [0.0, 38.0]); // robe overlay texOffs(0, 38)
-    assert_eq!(crossed[1].cubes[1].uv_size, [8.0, 20.0, 6.0]); // base box, not the 0.5 inflation
-    assert_eq!(crossed[2].cubes[0].tex, [44.0, 22.0]); // arms texOffs(44, 22)
-    assert_eq!(crossed[2].cubes[1].tex, [40.0, 38.0]); // arms texOffs(40, 38)
-    assert_eq!(crossed[2].children[0].cubes[0].tex, [44.0, 22.0]); // left shoulder mirror
-    assert!(crossed[2].children[0].cubes[0].mirror);
-    assert_eq!(crossed[3].cubes[0].tex, [0.0, 22.0]); // right leg texOffs(0, 22)
-    assert!(!crossed[3].cubes[0].mirror);
-    assert_eq!(crossed[4].cubes[0].tex, [0.0, 22.0]); // left leg mirror
-    assert!(crossed[4].cubes[0].mirror);
+    // The unified cubes carry the textured UV sources (`uv_size`/`texOffs`/`mirror`) merged into the
+    // colored geometry. Vanilla `IllagerModel.createBodyLayer` UVs (64x64).
+    assert_eq!(ILLAGER_HEAD[0].tex, [0.0, 0.0]); // head texOffs(0, 0)
+    assert_eq!(ILLAGER_HEAD[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(ILLAGER_NOSE[0].tex, [24.0, 0.0]); // nose texOffs(24, 0)
+    assert_eq!(ILLAGER_BODY[0].tex, [16.0, 20.0]); // body texOffs(16, 20)
+    assert_eq!(ILLAGER_BODY[1].tex, [0.0, 38.0]); // robe overlay texOffs(0, 38)
+    assert_eq!(ILLAGER_BODY[1].uv_size, [8.0, 20.0, 6.0]); // base box, not the 0.5 inflation
+    assert_eq!(ILLAGER_CROSSED_ARMS[0].tex, [44.0, 22.0]); // arms texOffs(44, 22)
+    assert_eq!(ILLAGER_CROSSED_ARMS[1].tex, [40.0, 38.0]); // arms texOffs(40, 38)
+    assert_eq!(ILLAGER_LEFT_SHOULDER[0].tex, [44.0, 22.0]); // left shoulder mirror
+    assert!(ILLAGER_LEFT_SHOULDER[0].mirror);
+    assert_eq!(ILLAGER_RIGHT_LEG[0].tex, [0.0, 22.0]); // right leg texOffs(0, 22)
+    assert!(!ILLAGER_RIGHT_LEG[0].mirror);
+    assert_eq!(ILLAGER_LEFT_LEG[0].tex, [0.0, 22.0]); // left leg mirror
+    assert!(ILLAGER_LEFT_LEG[0].mirror);
 
-    // Illusioner re-enables the head hat (`texOffs(32, 0)` over the base 8x12x8 box).
-    let illusioner = &ILLAGER_TEXTURED_ILLUSIONER_PARTS;
-    assert_eq!(illusioner[0].children[0].cubes[0].tex, [32.0, 0.0]);
-    assert_eq!(illusioner[0].children[0].cubes[0].uv_size, [8.0, 12.0, 8.0]);
-    assert_eq!(illusioner[0].children[0].cubes[0].size, [8.9, 12.9, 8.9]);
-    assert_eq!(illusioner[0].children[1].cubes[0].tex, [24.0, 0.0]); // nose
+    // The illusioner head hat: `texOffs(32, 0)` over the base 8x12x8 box, inflated geometry.
+    assert_eq!(ILLAGER_HAT[0].tex, [32.0, 0.0]);
+    assert_eq!(ILLAGER_HAT[0].uv_size, [8.0, 12.0, 8.0]);
+    assert_eq!(ILLAGER_HAT[0].size, [8.9, 12.9, 8.9]);
 
-    // Uncrossed (pillager) layout adds the two separate swinging arms at `texOffs(40, 46)`.
-    let uncrossed = &ILLAGER_TEXTURED_UNCROSSED_PARTS;
-    assert_eq!(uncrossed.len(), 6);
-    assert_eq!(uncrossed[4].cubes[0].tex, [40.0, 46.0]); // right arm
-    assert!(!uncrossed[4].cubes[0].mirror);
-    assert_eq!(uncrossed[5].cubes[0].tex, [40.0, 46.0]); // left arm mirror
-    assert!(uncrossed[5].cubes[0].mirror);
+    // The two separate swinging arms (pillager / spellcasting) at `texOffs(40, 46)`.
+    assert_eq!(ILLAGER_RIGHT_ARM[0].tex, [40.0, 46.0]);
+    assert!(!ILLAGER_RIGHT_ARM[0].mirror);
+    assert_eq!(ILLAGER_LEFT_ARM[0].tex, [40.0, 46.0]);
+    assert!(ILLAGER_LEFT_ARM[0].mirror);
 }
 
 #[test]
@@ -385,25 +335,9 @@ fn illager_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+        assert!(passes[0].parts.is_empty());
         assert!(entity_model_texture_refs().contains(&texture));
     }
-    // Evoker and vindicator share the crossed parts; illusioner has the hat; pillager uncrossed.
-    assert_eq!(
-        illager_textured_layer_passes(IllagerModelFamily::Evoker)[0].parts,
-        &ILLAGER_TEXTURED_CROSSED_PARTS
-    );
-    assert_eq!(
-        illager_textured_layer_passes(IllagerModelFamily::Vindicator)[0].parts,
-        &ILLAGER_TEXTURED_CROSSED_PARTS
-    );
-    assert_eq!(
-        illager_textured_layer_passes(IllagerModelFamily::Illusioner)[0].parts,
-        &ILLAGER_TEXTURED_ILLUSIONER_PARTS
-    );
-    assert_eq!(
-        illager_textured_layer_passes(IllagerModelFamily::Pillager)[0].parts,
-        &ILLAGER_TEXTURED_UNCROSSED_PARTS
-    );
     assert_eq!(
         illager_entity_texture_refs(),
         &[
@@ -510,18 +444,18 @@ fn illager_spellcast_arm_pose_matches_vanilla() {
     // Vanilla `IllagerModel.setupAnim` SPELLCASTING: `rightArm.x = -5` / `leftArm.x = 5`,
     // `z = 0` (both the bind offset), `xRot = cos(ageInTicks · 0.6662) · 0.25`, and
     // `zRot = ±3π/4` (right `+`, left `−`), `yRot = 0`. The offset is unchanged from the base.
-    let right = illager_spellcast_arm_pose(ILLAGER_RIGHT_ARM_PART.pose, 0.0, true);
+    let right = illager_spellcast_arm_pose(ILLAGER_RIGHT_ARM_POSE, 0.0, true);
     assert_eq!(right.offset, [-5.0, 2.0, 0.0]);
     assert!((right.rotation[0] - 0.25).abs() < 1.0e-6); // cos(0) * 0.25
     assert_eq!(right.rotation[1], 0.0);
     assert!((right.rotation[2] - PI * 3.0 / 4.0).abs() < 1.0e-6);
 
-    let left = illager_spellcast_arm_pose(ILLAGER_LEFT_ARM_PART.pose, 0.0, false);
+    let left = illager_spellcast_arm_pose(ILLAGER_LEFT_ARM_POSE, 0.0, false);
     assert_eq!(left.offset, [5.0, 2.0, 0.0]);
     assert!((left.rotation[2] - (-PI * 3.0 / 4.0)).abs() < 1.0e-6);
 
     // The arm pitch animates with `ageInTicks`.
-    let aged = illager_spellcast_arm_pose(ILLAGER_RIGHT_ARM_PART.pose, 5.0, true);
+    let aged = illager_spellcast_arm_pose(ILLAGER_RIGHT_ARM_POSE, 5.0, true);
     assert!((aged.rotation[0] - (5.0_f32 * 0.6662).cos() * 0.25).abs() < 1.0e-6);
 }
 

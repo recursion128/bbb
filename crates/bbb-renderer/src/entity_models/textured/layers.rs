@@ -626,34 +626,18 @@ pub(in crate::entity_models) fn illager_textured_layer_passes(
     // layer key and texture differ, plus per-renderer visibility: the pillager shows its separate
     // (swinging) arms, the evoker/vindicator show the static folded `arms` part, and the
     // illusioner additionally re-enables the head hat (`this.model.getHat().visible = true`).
-    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = match family {
-        IllagerModelFamily::Evoker => (
-            MODEL_LAYER_EVOKER,
-            EVOKER_TEXTURE_REF,
-            &ILLAGER_TEXTURED_CROSSED_PARTS,
-        ),
-        IllagerModelFamily::Vindicator => (
-            MODEL_LAYER_VINDICATOR,
-            VINDICATOR_TEXTURE_REF,
-            &ILLAGER_TEXTURED_CROSSED_PARTS,
-        ),
-        IllagerModelFamily::Illusioner => (
-            MODEL_LAYER_ILLUSIONER,
-            ILLUSIONER_TEXTURE_REF,
-            &ILLAGER_TEXTURED_ILLUSIONER_PARTS,
-        ),
-        IllagerModelFamily::Pillager => (
-            MODEL_LAYER_PILLAGER,
-            PILLAGER_TEXTURE_REF,
-            &ILLAGER_TEXTURED_UNCROSSED_PARTS,
-        ),
+    let (model_layer, texture) = match family {
+        IllagerModelFamily::Evoker => (MODEL_LAYER_EVOKER, EVOKER_TEXTURE_REF),
+        IllagerModelFamily::Vindicator => (MODEL_LAYER_VINDICATOR, VINDICATOR_TEXTURE_REF),
+        IllagerModelFamily::Illusioner => (MODEL_LAYER_ILLUSIONER, ILLUSIONER_TEXTURE_REF),
+        IllagerModelFamily::Pillager => (MODEL_LAYER_PILLAGER, PILLAGER_TEXTURE_REF),
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::IllagerBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

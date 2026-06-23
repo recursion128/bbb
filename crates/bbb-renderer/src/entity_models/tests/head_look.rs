@@ -45,10 +45,6 @@ fn head_part_indices_match_vanilla_body_layers() {
         WITCH_PARTS[villager_head_part_index(false)].cubes,
         WITCH_HEAD.as_slice()
     );
-    assert_eq!(
-        ILLAGER_SHARED_CROSSED_PARTS[villager_head_part_index(false)].cubes,
-        ILLAGER_HEAD.as_slice()
-    );
 
     // The wide and slim player layers both list the head first.
     assert_eq!(player_head_part_index(), 0);

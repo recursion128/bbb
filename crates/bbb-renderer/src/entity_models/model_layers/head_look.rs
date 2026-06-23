@@ -28,7 +28,11 @@ pub(in crate::entity_models) const fn piglin_head_part_index(baby_layout: bool) 
 /// Head-part index for the `VillagerModel`/`IllagerModel`/`WitchModel` family.
 /// The adult villager, wandering trader, witch, and illager body layers list the
 /// head first; the baby villager layout lists the arms container and legs first,
-/// so the head is at index 3. (Witch and illagers have no baby layout.)
+/// so the head is at index 3. (Witch and illagers have no baby layout.) The villager
+/// and illager now build named-children trees and resolve the head by name; this is
+/// retained only as the reference the head-look unit test asserts the witch's
+/// head-first layout against.
+#[cfg(test)]
 pub(in crate::entity_models) const fn villager_head_part_index(baby: bool) -> usize {
     if baby {
         3
