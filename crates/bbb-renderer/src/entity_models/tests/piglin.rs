@@ -1,175 +1,69 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn piglin_model_parts_match_vanilla_26_1_body_layers() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`. The piglin builds a named-children tree (`head` -> ears, `body`,
+    // the arms/legs with their sleeve/pants overlays), so the head look resolves the `head` child by
+    // name; the geometry is asserted on the per-part cube consts directly.
     assert_eq!(
         ADULT_PIGLIN_HEAD,
         [
-            ModelCubeDesc {
-                min: [-5.0, -8.0, -4.0],
-                size: [10.0, 8.0, 8.0],
-                color: PIGLIN_SKIN,
-            },
-            ModelCubeDesc {
-                min: [-2.0, -4.0, -5.0],
-                size: [4.0, 4.0, 1.0],
-                color: PIGLIN_SKIN,
-            },
-            ModelCubeDesc {
-                min: [2.0, -2.0, -5.0],
-                size: [1.0, 2.0, 1.0],
-                color: PIGLIN_SKIN,
-            },
-            ModelCubeDesc {
-                min: [-3.0, -2.0, -5.0],
-                size: [1.0, 2.0, 1.0],
-                color: PIGLIN_SKIN,
-            },
+            ModelCube::new(
+                [-5.0, -8.0, -4.0],
+                [10.0, 8.0, 8.0],
+                PIGLIN_SKIN,
+                [10.0, 8.0, 8.0],
+                [0.0, 0.0],
+                false,
+            ),
+            ModelCube::new(
+                [-2.0, -4.0, -5.0],
+                [4.0, 4.0, 1.0],
+                PIGLIN_SKIN,
+                [4.0, 4.0, 1.0],
+                [31.0, 1.0],
+                false,
+            ),
+            ModelCube::new(
+                [2.0, -2.0, -5.0],
+                [1.0, 2.0, 1.0],
+                PIGLIN_SKIN,
+                [1.0, 2.0, 1.0],
+                [2.0, 4.0],
+                false,
+            ),
+            ModelCube::new(
+                [-3.0, -2.0, -5.0],
+                [1.0, 2.0, 1.0],
+                PIGLIN_SKIN,
+                [1.0, 2.0, 1.0],
+                [2.0, 0.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(ADULT_PIGLIN_PARTS.len(), 6);
-    assert_part_tree(
-        &ADULT_PIGLIN_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_HEAD.as_slice(),
-        ADULT_PIGLIN_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_PIGLIN_HEAD_CHILDREN[0],
-        [4.5, -6.0, 0.0],
-        [0.0, 0.0, -std::f32::consts::FRAC_PI_6],
-        ADULT_PIGLIN_LEFT_EAR.as_slice(),
-    );
-    assert_part(
-        &ADULT_PIGLIN_HEAD_CHILDREN[1],
-        [-4.5, -6.0, 0.0],
-        [0.0, 0.0, std::f32::consts::FRAC_PI_6],
-        ADULT_PIGLIN_RIGHT_EAR.as_slice(),
-    );
-    assert_part(
-        &ADULT_PIGLIN_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_BODY.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_PIGLIN_PARTS[2],
-        [-5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_RIGHT_ARM.as_slice(),
-        ADULT_PIGLIN_RIGHT_ARM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_PIGLIN_RIGHT_ARM_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_RIGHT_SLEEVE.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_PIGLIN_PARTS[3],
-        [5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_LEFT_ARM.as_slice(),
-        ADULT_PIGLIN_LEFT_ARM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_PIGLIN_LEFT_ARM_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_LEFT_SLEEVE.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_PIGLIN_PARTS[4],
-        [-1.9, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_LEG.as_slice(),
-        ADULT_PIGLIN_LEG_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_PIGLIN_LEG_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_PANTS.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_PIGLIN_PARTS[5],
-        [1.9, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIGLIN_LEG.as_slice(),
-        ADULT_PIGLIN_LEG_CHILDREN.as_slice(),
-    );
+    // The adult ears, body, and the inflated sleeve/pants overlays (which keep the base box as
+    // `uv_size`).
+    assert_eq!(ADULT_PIGLIN_LEFT_EAR[0].size, [1.0, 5.0, 4.0]);
+    assert_eq!(ADULT_PIGLIN_RIGHT_EAR[0].size, [1.0, 5.0, 4.0]);
+    assert_eq!(ADULT_PIGLIN_BODY[0].size, [8.0, 12.0, 4.0]);
+    assert_eq!(ADULT_PIGLIN_RIGHT_ARM[0].size, [4.0, 12.0, 4.0]);
+    assert_eq!(ADULT_PIGLIN_RIGHT_SLEEVE[0].size, [4.5, 12.5, 4.5]);
+    assert_eq!(ADULT_PIGLIN_RIGHT_SLEEVE[0].uv_size, [4.0, 12.0, 4.0]);
+    assert_eq!(ADULT_PIGLIN_RIGHT_LEG[0].size, [4.0, 12.0, 4.0]);
+    assert_eq!(ADULT_PIGLIN_RIGHT_PANTS[0].size, [4.5, 12.5, 4.5]);
+    assert_eq!(ADULT_PIGLIN_RIGHT_PANTS[0].uv_size, [4.0, 12.0, 4.0]);
 
-    assert_eq!(BABY_PIGLIN_PARTS.len(), 6);
-    assert_part(
-        &BABY_PIGLIN_PARTS[0],
-        [0.0, 18.0, -0.5],
-        [0.0, 0.0, 0.0],
-        BABY_PIGLIN_BODY.as_slice(),
-    );
-    assert_part_tree(
-        &BABY_PIGLIN_PARTS[1],
-        [0.0, 15.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_PIGLIN_HEAD.as_slice(),
-        BABY_PIGLIN_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_PIGLIN_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        &[],
-    );
-    assert_part_tree(
-        &BABY_PIGLIN_HEAD_CHILDREN[1],
-        [4.2, -4.0, 0.0],
-        [0.0, 0.0, 0.0],
-        &[],
-        BABY_PIGLIN_LEFT_EAR_ROTATED_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_PIGLIN_LEFT_EAR_ROTATED_CHILDREN[0],
-        [1.0, 1.75, 0.0],
-        [0.0, 0.0, -0.6109],
-        BABY_PIGLIN_LEFT_EAR.as_slice(),
-    );
-    assert_part_tree(
-        &BABY_PIGLIN_HEAD_CHILDREN[2],
-        [-4.2, -4.0, 0.0],
-        [0.0, 0.0, 0.0],
-        &[],
-        BABY_PIGLIN_RIGHT_EAR_ROTATED_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_PIGLIN_RIGHT_EAR_ROTATED_CHILDREN[0],
-        [-1.0, 1.75, 0.0],
-        [0.0, 0.0, 0.6109],
-        BABY_PIGLIN_RIGHT_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_PIGLIN_PARTS[2],
-        [4.0, 15.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_PIGLIN_LEFT_ARM.as_slice(),
-    );
-    assert_part(
-        &BABY_PIGLIN_PARTS[3],
-        [-4.0, 15.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_PIGLIN_RIGHT_ARM.as_slice(),
-    );
-    assert_part(
-        &BABY_PIGLIN_PARTS[4],
-        [-1.5, 20.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_PIGLIN_LEG.as_slice(),
-    );
-    assert_part(
-        &BABY_PIGLIN_PARTS[5],
-        [1.5, 20.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_PIGLIN_LEG.as_slice(),
-    );
+    // The baby layout's smaller head/snout, ears, body, and the un-sleeved arms/legs.
+    assert_eq!(BABY_PIGLIN_HEAD[1].size, [9.0, 6.0, 7.0]);
+    assert_eq!(BABY_PIGLIN_LEFT_EAR[0].size, [1.0, 6.0, 4.0]);
+    assert_eq!(BABY_PIGLIN_RIGHT_EAR[0].size, [1.0, 6.0, 4.0]);
+    assert_eq!(BABY_PIGLIN_BODY[0].size, [6.0, 5.0, 3.0]);
+    assert_eq!(BABY_PIGLIN_LEFT_ARM[0].size, [2.0, 5.0, 3.0]);
+    assert_eq!(BABY_PIGLIN_RIGHT_LEG[0].size, [3.0, 4.0, 3.0]);
 }
 
 #[test]
@@ -634,43 +528,36 @@ fn piglin_textured_parts_match_vanilla_body_layer_uv_sources() {
     );
 
     // Adult: `AbstractPiglinModel.addHead` head/snout/nostril UVs + ears, the `texOffs(16, 16)`
-    // body (no jacket), and the shared `PlayerModel` wide arm/sleeve/leg/pants UVs.
-    let adult = &ADULT_PIGLIN_TEXTURED_PARTS;
-    assert_eq!(adult.len(), 6);
-    assert_eq!(adult[0].cubes[0].tex, [0.0, 0.0]); // head
-    assert_eq!(adult[0].cubes[0].uv_size, [10.0, 8.0, 8.0]);
-    assert_eq!(adult[0].cubes[1].tex, [31.0, 1.0]); // snout
-    assert_eq!(adult[0].cubes[2].tex, [2.0, 4.0]); // nostril
-    assert_eq!(adult[0].cubes[3].tex, [2.0, 0.0]); // nostril
-    assert_eq!(adult[0].children[0].cubes[0].tex, [51.0, 6.0]); // left ear
-    assert_eq!(adult[0].children[1].cubes[0].tex, [39.0, 6.0]); // right ear
-    assert_eq!(adult[1].cubes[0].tex, [16.0, 16.0]); // body
-    assert!(adult[1].children.is_empty()); // the piglin clears the jacket
-    assert_eq!(adult[2].cubes[0].tex, [40.0, 16.0]); // right arm
-    assert_eq!(adult[2].children[0].cubes[0].tex, [40.0, 32.0]); // right sleeve
-    assert_eq!(adult[3].cubes[0].tex, [32.0, 48.0]); // left arm
-    assert_eq!(adult[3].children[0].cubes[0].tex, [48.0, 48.0]); // left sleeve
-    assert_eq!(adult[4].cubes[0].tex, [0.0, 16.0]); // right leg
-    assert_eq!(adult[4].children[0].cubes[0].tex, [0.0, 32.0]); // right pants
-    assert_eq!(adult[5].cubes[0].tex, [16.0, 48.0]); // left leg
-    assert_eq!(adult[5].children[0].cubes[0].tex, [0.0, 48.0]); // left pants
+    // body (no jacket), and the shared `PlayerModel` wide arm/sleeve/leg/pants UVs. The unified
+    // cubes carry the `texOffs` on the `.tex` field.
+    assert_eq!(ADULT_PIGLIN_HEAD[0].tex, [0.0, 0.0]); // head
+    assert_eq!(ADULT_PIGLIN_HEAD[0].uv_size, [10.0, 8.0, 8.0]);
+    assert_eq!(ADULT_PIGLIN_HEAD[1].tex, [31.0, 1.0]); // snout
+    assert_eq!(ADULT_PIGLIN_HEAD[2].tex, [2.0, 4.0]); // nostril
+    assert_eq!(ADULT_PIGLIN_HEAD[3].tex, [2.0, 0.0]); // nostril
+    assert_eq!(ADULT_PIGLIN_LEFT_EAR[0].tex, [51.0, 6.0]); // left ear
+    assert_eq!(ADULT_PIGLIN_RIGHT_EAR[0].tex, [39.0, 6.0]); // right ear
+    assert_eq!(ADULT_PIGLIN_BODY[0].tex, [16.0, 16.0]); // body (no jacket)
+    assert_eq!(ADULT_PIGLIN_RIGHT_ARM[0].tex, [40.0, 16.0]); // right arm
+    assert_eq!(ADULT_PIGLIN_RIGHT_SLEEVE[0].tex, [40.0, 32.0]); // right sleeve
+    assert_eq!(ADULT_PIGLIN_LEFT_ARM[0].tex, [32.0, 48.0]); // left arm
+    assert_eq!(ADULT_PIGLIN_LEFT_SLEEVE[0].tex, [48.0, 48.0]); // left sleeve
+    assert_eq!(ADULT_PIGLIN_RIGHT_LEG[0].tex, [0.0, 16.0]); // right leg
+    assert_eq!(ADULT_PIGLIN_RIGHT_PANTS[0].tex, [0.0, 32.0]); // right pants
+    assert_eq!(ADULT_PIGLIN_LEFT_LEG[0].tex, [16.0, 48.0]); // left leg
+    assert_eq!(ADULT_PIGLIN_LEFT_PANTS[0].tex, [0.0, 48.0]); // left pants
 
-    // Baby: `BabyPiglinModel.createBodyLayer`. Body part 0, head part 1 with the empty hat plus
-    // two ear holders whose nested ear cubes carry the UVs.
-    let baby = &BABY_PIGLIN_TEXTURED_PARTS;
-    assert_eq!(baby.len(), 6);
-    assert_eq!(baby[0].cubes[0].tex, [0.0, 13.0]); // body
-    let baby_head = &baby[1];
-    assert_eq!(baby_head.cubes[0].tex, [21.0, 30.0]); // snout
-    assert_eq!(baby_head.cubes[1].tex, [0.0, 0.0]); // head
-    assert_eq!(baby_head.children.len(), 3);
-    assert!(baby_head.children[0].cubes.is_empty()); // empty hat
-    assert_eq!(baby_head.children[1].children[0].cubes[0].tex, [0.0, 21.0]); // left ear
-    assert_eq!(baby_head.children[2].children[0].cubes[0].tex, [18.0, 13.0]); // right ear
-    assert_eq!(baby[2].cubes[0].tex, [28.0, 13.0]); // left arm
-    assert_eq!(baby[3].cubes[0].tex, [10.0, 30.0]); // right arm
-    assert_eq!(baby[4].cubes[0].tex, [22.0, 23.0]); // right leg
-    assert_eq!(baby[5].cubes[0].tex, [10.0, 23.0]); // left leg
+    // Baby: `BabyPiglinModel.createBodyLayer`. The smaller body, the snout + head, the two flapping
+    // ears, and the un-sleeved arms/legs.
+    assert_eq!(BABY_PIGLIN_BODY[0].tex, [0.0, 13.0]); // body
+    assert_eq!(BABY_PIGLIN_HEAD[0].tex, [21.0, 30.0]); // snout
+    assert_eq!(BABY_PIGLIN_HEAD[1].tex, [0.0, 0.0]); // head
+    assert_eq!(BABY_PIGLIN_LEFT_EAR[0].tex, [0.0, 21.0]); // left ear
+    assert_eq!(BABY_PIGLIN_RIGHT_EAR[0].tex, [18.0, 13.0]); // right ear
+    assert_eq!(BABY_PIGLIN_LEFT_ARM[0].tex, [28.0, 13.0]); // left arm
+    assert_eq!(BABY_PIGLIN_RIGHT_ARM[0].tex, [10.0, 30.0]); // right arm
+    assert_eq!(BABY_PIGLIN_RIGHT_LEG[0].tex, [22.0, 23.0]); // right leg
+    assert_eq!(BABY_PIGLIN_LEFT_LEG[0].tex, [10.0, 23.0]); // left leg
 }
 
 #[test]
@@ -717,17 +604,13 @@ fn piglin_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
         assert!(entity_model_texture_refs().contains(&texture));
-        let expected_parts: &[_] = if baby_layout {
-            &BABY_PIGLIN_TEXTURED_PARTS
-        } else {
-            &ADULT_PIGLIN_TEXTURED_PARTS
-        };
-        assert_eq!(passes[0].parts, expected_parts);
+        // The unified `PiglinModel` tree drives the geometry, so the layer-pass parts are vestigial.
+        assert!(passes[0].parts.is_empty());
     }
     // The brute is never baby: its baby flag still selects the adult layer + brute texture.
     let brute_baby = piglin_textured_layer_passes(PiglinModelFamily::PiglinBrute, false);
     assert_eq!(brute_baby[0].texture, PIGLIN_BRUTE_TEXTURE_REF);
-    assert_eq!(brute_baby[0].parts, &ADULT_PIGLIN_TEXTURED_PARTS);
+    assert!(brute_baby[0].parts.is_empty());
     assert_eq!(
         piglin_entity_texture_refs(),
         &[

@@ -587,13 +587,8 @@ pub(in crate::entity_models) fn piglin_textured_layer_passes(
     // All piglin families share `AbstractPiglinModel` geometry (`AdultZombifiedPiglinModel` /
     // `BabyZombifiedPiglinModel` forward to the piglin layers, and the brute reuses the adult
     // layer); only the model layer key and texture differ. `baby_layout` selects the baby parts
-    // (the brute is never baby). The body part keeps the snouted head + ears; the held-vs-swung
-    // arms are decided by the emitter.
-    let parts: &'static [TexturedModelPartDesc] = if baby_layout {
-        &BABY_PIGLIN_TEXTURED_PARTS
-    } else {
-        &ADULT_PIGLIN_TEXTURED_PARTS
-    };
+    // (the brute is never baby) in the unified `PiglinModel` tree the emitter walks; the held-vs-swung
+    // arms are decided by the emitter, so the layer-pass geometry is vestigial (`&[]`).
     let (model_layer, texture) = match (family, baby_layout) {
         (PiglinModelFamily::Piglin, false) => (MODEL_LAYER_PIGLIN, PIGLIN_TEXTURE_REF),
         (PiglinModelFamily::Piglin, true) => (MODEL_LAYER_PIGLIN_BABY, PIGLIN_BABY_TEXTURE_REF),
@@ -611,7 +606,7 @@ pub(in crate::entity_models) fn piglin_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

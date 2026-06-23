@@ -12,19 +12,6 @@ pub(in crate::entity_models) const fn zombie_head_part_index(baby: bool) -> usiz
     }
 }
 
-/// `HumanoidModel` head-part index for the piglin family body layers (piglin,
-/// piglin brute, zombified piglin). The adult layer lists the head first; the
-/// baby layer lists the body first, so the head is second. `baby_layout` is
-/// whether the baby part layout is in use — a baby piglin *brute* still renders
-/// the adult layout.
-pub(in crate::entity_models) const fn piglin_head_part_index(baby_layout: bool) -> usize {
-    if baby_layout {
-        1
-    } else {
-        0
-    }
-}
-
 /// `PlayerModel` head-part index. The wide and slim player body layers list the
 /// head first; visibility filtering only toggles the overlay children, never the
 /// base part order.
@@ -346,6 +333,53 @@ pub(in crate::entity_models) fn apply_zombie_arms_held_out(
     for index in [2, 3] {
         let arm = root.child_at_mut(index);
         arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
+    }
+}
+
+/// Vanilla `HumanoidModel.setupAnim` arm + leg walk swing applied to a model root's named children
+/// (the named counterpart of [`apply_humanoid_walk`]). The legs (`right_leg`/`left_leg`) swing
+/// ([`humanoid_leg_swing_pose`]) and the arms (`right_arm`/`left_arm`) swing ([`humanoid_arm_swing_pose`])
+/// only while moving, but the arms ALWAYS carry the continuous idle bob ([`humanoid_arm_bob_pose`]). The
+/// swing/bob resolves each limb's phase from its own offset, so the names may be declared in any order
+/// (the baby layouts swap head/body but keep the same arm/leg names).
+pub(in crate::entity_models) fn apply_humanoid_walk_named(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+    age_in_ticks: f32,
+) {
+    let swinging = !limb_swing_at_rest(walk_animation_speed);
+    if swinging {
+        for name in ["right_leg", "left_leg"] {
+            let leg = root.child_mut(name);
+            leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
+        }
+    }
+    for name in ["right_arm", "left_arm"] {
+        let arm = root.child_mut(name);
+        let mut pose = arm.pose;
+        if swinging {
+            pose = humanoid_arm_swing_pose(pose, walk_animation_pos, walk_animation_speed);
+        }
+        arm.pose = humanoid_arm_bob_pose(pose, age_in_ticks);
+    }
+}
+
+/// Vanilla `HumanoidModel.setupAnim` leg swing only, applied to a model root's named leg children
+/// `right_leg`/`left_leg` ([`humanoid_leg_swing_pose`]). The named counterpart of
+/// [`apply_humanoid_leg_swing`]. A no-op while at rest. Used by the zombified piglin (and, once
+/// converted, the zombie family), whose arms are overridden by a held-out pose instead of swinging.
+pub(in crate::entity_models) fn apply_humanoid_leg_swing_named(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    for name in ["right_leg", "left_leg"] {
+        let leg = root.child_mut(name);
+        leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
     }
 }
 

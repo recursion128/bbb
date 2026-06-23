@@ -8,16 +8,9 @@ fn head_part_indices_match_vanilla_body_layers() {
     // resolves the `head` child by name rather than an index.)
     assert_eq!(zombie_head_part_index(false), 0);
     assert_eq!(zombie_head_part_index(true), 1);
-    assert_eq!(piglin_head_part_index(false), 0);
-    assert_eq!(piglin_head_part_index(true), 1);
-    assert_eq!(
-        ADULT_PIGLIN_PARTS[piglin_head_part_index(false)].cubes,
-        ADULT_PIGLIN_HEAD.as_slice()
-    );
-    assert_eq!(
-        BABY_PIGLIN_PARTS[piglin_head_part_index(true)].cubes,
-        BABY_PIGLIN_HEAD.as_slice()
-    );
+    // (The piglin now builds a named-children tree, so its head look resolves the `head`
+    // child by name rather than an index — the adult layer lists the head first, the baby
+    // layer lists the body first, but both name the head `head`.)
 
     // Skeleton/stray/wither/bogged list the head first; parched lists the body
     // first (head second). Tie the indices to the actual head parts so the
