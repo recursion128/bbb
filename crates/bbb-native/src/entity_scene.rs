@@ -900,17 +900,15 @@ fn panda_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entity
 
 /// Vanilla `CatRenderer` / `OcelotRenderer` (both `AgeableMobRenderer`s) pick `AdultCatModel` /
 /// `AdultOcelotModel` (the shared `AdultFelineModel` mesh, the cat scaled 0.8) for an adult and the
-/// distinct `BabyFelineModel` mesh for a baby. The adult renders through the dedicated
-/// [`EntityModelKind::Feline`] (`cat` selecting the 0.8 scale); the baby still falls back to the
-/// wolf-shaped proxy until its body layer is modeled.
+/// flatter `BabyFelineModel` mesh (unscaled for both breeds) for a baby. Both render through the
+/// dedicated [`EntityModelKind::Feline`] (`cat` selecting the breed/scale, `baby` selecting the layout).
 fn feline_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     cat: bool,
 ) -> EntityModelKind {
-    if ageable_baby(values) {
-        quadruped(QuadrupedModelFamily::Wolf, true)
-    } else {
-        EntityModelKind::Feline { cat }
+    EntityModelKind::Feline {
+        cat,
+        baby: ageable_baby(values),
     }
 }
 
@@ -5005,28 +5003,47 @@ mod tests {
             }
         );
         // The adult cat, ocelot, and fox render through their dedicated models (cat = the shared
-        // `AdultFelineModel` scaled 0.8, ocelot = the unscaled feline, fox = `AdultFoxModel`); every
-        // baby (each a distinct vanilla mesh) still falls back to the wolf-shaped proxy.
+        // `AdultFelineModel` scaled 0.8, ocelot = the unscaled feline, fox = `AdultFoxModel`); each baby
+        // now renders through its own dedicated vanilla mesh.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[]),
-            EntityModelKind::Feline { cat: true }
+            EntityModelKind::Feline {
+                cat: true,
+                baby: false
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_OCELOT_ID, &[]),
-            EntityModelKind::Feline { cat: false }
+            EntityModelKind::Feline {
+                cat: false,
+                baby: false
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_FOX_ID, &[]),
             EntityModelKind::Fox { baby: false }
         );
-        // The cat/ocelot babies keep the wolf proxy (distinct `BabyFelineModel` mesh), but the fox baby
-        // now renders through its own `BabyFoxModel` layout.
+        // The cat/ocelot babies now render through the dedicated `BabyFelineModel` layout, as does the
+        // fox baby through its own `BabyFoxModel`.
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_CAT_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            quadruped(QuadrupedModelFamily::Wolf, true)
+            EntityModelKind::Feline {
+                cat: true,
+                baby: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_OCELOT_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Feline {
+                cat: false,
+                baby: true
+            }
         );
         assert_eq!(
             entity_model_kind(

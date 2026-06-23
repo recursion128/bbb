@@ -278,15 +278,18 @@ pub enum EntityModelKind {
     Panda {
         baby: bool,
     },
-    /// `AdultFelineModel` at its `createBodyMesh` rest pose, shared by the ocelot (`cat = false`,
-    /// unscaled) and the cat (`cat = true`, the same mesh scaled 0.8 by `AdultCatModel.CAT_TRANSFORMER`
-    /// in the root transform). The shared `setupAnim` head look and the standing `tail2` droop
-    /// (`xRot = 1.7278761`) are reproduced; the bespoke walk leg swing / tail wobble and every feline
-    /// pose (`isCrouching`, `isSprinting`, `isSitting`, `lieDownAmount`, `relaxStateOneAmount`) read
-    /// un-projected `FelineRenderState` state and stay deferred, as do the cat-breed / ocelot textures,
-    /// the cat collar layer, and the baby `BabyFelineModel` mesh.
+    /// `AdultFelineModel` / `BabyFelineModel` at their `createBodyMesh` rest pose, shared by the ocelot
+    /// (`cat = false`) and the cat (`cat = true`). The adult cat scales the shared adult mesh 0.8 (via
+    /// `AdultCatModel.CAT_TRANSFORMER` in the root transform); the ocelot and both babies are unscaled.
+    /// `baby` selects the flatter `BabyFelineModel` layout. The shared `setupAnim` head look is
+    /// reproduced, plus the adult's standing `tail2` droop (`xRot = 1.7278761` — the baby's `tail2` is
+    /// cubeless, so vanilla's identical assignment is invisible). The bespoke walk leg swing / tail
+    /// wobble and every feline pose (`isCrouching`, `isSprinting`, `isSitting`, `lieDownAmount`,
+    /// `relaxStateOneAmount`) read un-projected `FelineRenderState` state and stay deferred, as do the
+    /// cat-breed / ocelot textures and the cat collar layer.
     Feline {
         cat: bool,
+        baby: bool,
     },
     /// `AdultFoxModel` / `BabyFoxModel` (custom `EntityModel`s) at their `createBodyLayer` rest pose
     /// (`baby` selects the baby body layout). The `setupAnim` head look is reproduced; the walk leg

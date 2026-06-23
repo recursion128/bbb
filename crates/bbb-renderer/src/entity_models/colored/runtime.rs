@@ -533,13 +533,15 @@ fn entity_model_mesh_with_options(
                     entity_model_root_transform(*instance),
                 );
             }
-            EntityModelKind::Feline { cat } => {
-                let transform = if cat {
+            EntityModelKind::Feline { cat, baby } => {
+                // Only the adult cat gets the 0.8 `CAT_TRANSFORMER` scale; the ocelot and both babies
+                // render the layer unscaled.
+                let transform = if cat && !baby {
                     mesh_transformer_scaled_model_root_transform(*instance, FELINE_CAT_SCALE)
                 } else {
                     entity_model_root_transform(*instance)
                 };
-                FelineModel::new().prepare_and_render(&mut mesh, instance, transform);
+                FelineModel::new(baby).prepare_and_render(&mut mesh, instance, transform);
             }
             EntityModelKind::Fox { baby } => {
                 FoxModel::new(baby).prepare_and_render(

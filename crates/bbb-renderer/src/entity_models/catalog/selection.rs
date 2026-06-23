@@ -258,8 +258,22 @@ impl EntityModelKind {
             Self::PolarBear { baby: true } => "polar_bear_baby",
             Self::Panda { baby: false } => "panda",
             Self::Panda { baby: true } => "panda_baby",
-            Self::Feline { cat: true } => "feline_cat",
-            Self::Feline { cat: false } => "feline_ocelot",
+            Self::Feline {
+                cat: true,
+                baby: false,
+            } => "feline_cat",
+            Self::Feline {
+                cat: false,
+                baby: false,
+            } => "feline_ocelot",
+            Self::Feline {
+                cat: true,
+                baby: true,
+            } => "feline_cat_baby",
+            Self::Feline {
+                cat: false,
+                baby: true,
+            } => "feline_ocelot_baby",
             Self::Fox { baby: false } => "fox",
             Self::Fox { baby: true } => "fox_baby",
             Self::Nautilus => "nautilus",

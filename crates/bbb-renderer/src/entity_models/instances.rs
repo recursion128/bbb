@@ -1209,8 +1209,13 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Panda { baby }, position, y_rot)
     }
 
-    pub fn feline(entity_id: i32, position: [f32; 3], y_rot: f32, cat: bool) -> Self {
-        Self::new(entity_id, EntityModelKind::Feline { cat }, position, y_rot)
+    pub fn feline(entity_id: i32, position: [f32; 3], y_rot: f32, cat: bool, baby: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Feline { cat, baby },
+            position,
+            y_rot,
+        )
     }
 
     pub fn fox(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
