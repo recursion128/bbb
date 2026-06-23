@@ -1429,9 +1429,13 @@ When an agent does any of the following, update this file in the same slice:
       `LivingEntityRenderer.setupRotations`. The textured base layer draws the
       `textures/entity/turtle/turtle.png` / `turtle_baby.png` atlas references into the cutout
       mesh (default `RenderTypes::entityCutout`), hand-emitted through the same animated
-      head/body/leg hierarchy as the colored path. The egg-laying leg amplitude (`isLayingEgg`,
-      the `layEgg`/`layEggAmplitude` multipliers) and the `egg_belly` overlay shell (`hasEgg`)
-      remain unsupported
+      head/body/leg hierarchy as the colored path. When the adult turtle carries an egg, the
+      `egg_belly` overlay shell (`AdultTurtleModel`'s `texOffs(70, 33)` 9×18×1 plane at the body
+      pose) is drawn on both paths and the whole model is shifted by `this.root.y--`, gated on the
+      synced `Turtle.HAS_EGG` boolean (data id 18) and cleared for babies (`hasEgg = !isBaby() &&
+      hasEgg()`), with native projection + renderer tests proving the cube count, the root shift,
+      and the baby exclusion. The egg-laying leg amplitude (`isLayingEgg`, the
+      `layEgg`/`layEggAmplitude` multipliers) remains unsupported
     - bat entities are wired end to end on both render paths off the real vanilla 26.1
       `BatModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `10` to the
       new `EntityModelKind::Bat`, replacing the former placeholder box. Renderer-owned vanilla

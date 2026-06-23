@@ -184,6 +184,11 @@ pub struct EntityRenderState {
     /// (`xRot += π/2`), pitches the tail (`xRot += π/6`), and tucks the wings (`zRot = ±0.0873`).
     /// `false` for a standing parrot and every non-parrot entity.
     pub parrot_sitting: bool,
+    /// Vanilla `TurtleRenderState.hasEgg` (`!isBaby() && Turtle.hasEgg()`, the synced `HAS_EGG`
+    /// boolean): a gravid adult turtle, whose `AdultTurtleModel.setupAnim` shows the `egg_belly`
+    /// overlay cube and drops the whole model `root.y--` by one unit. `false` for a turtle
+    /// without an egg, every baby turtle, and every non-turtle entity.
+    pub turtle_has_egg: bool,
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
@@ -253,6 +258,7 @@ impl EntityRenderState {
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
             parrot_sitting: false,
+            turtle_has_egg: false,
             squid_tentacle_angle: 0.0,
             squid_x_body_rot: 0.0,
             squid_z_body_rot: 0.0,
@@ -457,6 +463,11 @@ impl EntityModelInstance {
 
     pub fn with_parrot_sitting(mut self, parrot_sitting: bool) -> Self {
         self.render_state.parrot_sitting = parrot_sitting;
+        self
+    }
+
+    pub fn with_turtle_has_egg(mut self, turtle_has_egg: bool) -> Self {
+        self.render_state.turtle_has_egg = turtle_has_egg;
         self
     }
 
@@ -1341,6 +1352,7 @@ mod tests {
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 parrot_sitting: false,
+                turtle_has_egg: false,
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,

@@ -110,9 +110,10 @@ use super::{
         TURTLE_BABY_TEXTURED_BODY, TURTLE_BABY_TEXTURED_HEAD, TURTLE_BABY_TEXTURED_LEFT_FRONT_LEG,
         TURTLE_BABY_TEXTURED_LEFT_HIND_LEG, TURTLE_BABY_TEXTURED_RIGHT_FRONT_LEG,
         TURTLE_BABY_TEXTURED_RIGHT_HIND_LEG, TURTLE_BABY_TEXTURE_REF, TURTLE_BODY_POSE,
-        TURTLE_HEAD_POSE, TURTLE_LEFT_FRONT_LEG_POSE, TURTLE_LEFT_HIND_LEG_POSE,
-        TURTLE_RIGHT_FRONT_LEG_POSE, TURTLE_RIGHT_HIND_LEG_POSE, TURTLE_TEXTURED_BODY,
-        TURTLE_TEXTURED_HEAD, TURTLE_TEXTURED_LEFT_FRONT_LEG, TURTLE_TEXTURED_LEFT_HIND_LEG,
+        TURTLE_EGG_ROOT_DROP_POSE, TURTLE_HEAD_POSE, TURTLE_LEFT_FRONT_LEG_POSE,
+        TURTLE_LEFT_HIND_LEG_POSE, TURTLE_RIGHT_FRONT_LEG_POSE, TURTLE_RIGHT_HIND_LEG_POSE,
+        TURTLE_TEXTURED_BODY, TURTLE_TEXTURED_EGG_BELLY, TURTLE_TEXTURED_HEAD,
+        TURTLE_TEXTURED_LEFT_FRONT_LEG, TURTLE_TEXTURED_LEFT_HIND_LEG,
         TURTLE_TEXTURED_RIGHT_FRONT_LEG, TURTLE_TEXTURED_RIGHT_HIND_LEG, TURTLE_TEXTURE_REF,
         VEX_ARM_CHARGING_X_ROT, VEX_ARM_CHARGING_Y_ROT, VEX_ARM_CHARGING_Z_ROT, VEX_ARM_REST_Z_ROT,
         VEX_BODY_POSE, VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE, VEX_LEFT_WING_POSE,
@@ -1122,8 +1123,9 @@ fn emit_strider_textured_model(
 /// tilt, and the four legs walk (land) or paddle (water) per [`turtle_leg_rotation`], so the
 /// part list is animated per frame and emitted by hand exactly like the colored
 /// [`emit_turtle_model`]. Turtle uses the default `RenderTypes::entityCutout`, so it draws into
-/// the cutout mesh. The egg-laying leg amplitude and the `egg_belly` shell are deferred
-/// entity-side state.
+/// the cutout mesh. The adult `egg_belly` overlay shell + `root.y--` shift follow `hasEgg`; only
+/// `AdultTurtleModel` has them, so they are gated on `!baby` (the baby model has no egg belly).
+/// The egg-laying leg amplitude stays deferred entity-side state.
 fn emit_turtle_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1142,7 +1144,13 @@ fn emit_turtle_textured_model(
     let pos = instance.render_state.walk_animation_pos;
     let speed = instance.render_state.walk_animation_speed;
     let on_land = !instance.render_state.in_water && instance.render_state.on_ground;
-    let root = entity_model_root_transform(instance);
+    // Only the adult model carries the egg belly; the baby model class has no such part.
+    let has_egg = !baby && instance.render_state.turtle_has_egg;
+    let mut root = entity_model_root_transform(instance);
+    if has_egg {
+        // Vanilla `root.y--`: a model-local one-unit drop applied to every part (egg and all).
+        root *= part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE);
+    }
     let head_pitch = instance.render_state.head_pitch.to_radians();
     let head_yaw = instance.render_state.head_yaw.to_radians();
 
@@ -1222,6 +1230,18 @@ fn emit_turtle_textured_model(
     };
     emit_textured_cubes_at_pose(mesh, root, head_pose, head_cubes, texture, uv);
     emit_textured_cubes_at_pose(mesh, root, body_pose, body_cubes, texture, uv);
+    // The `egg_belly` overlay shell shares the body pose; only the adult model has it (the
+    // projection clears `hasEgg` for babies).
+    if has_egg {
+        emit_textured_cubes_at_pose(
+            mesh,
+            root,
+            TURTLE_BODY_POSE,
+            &TURTLE_TEXTURED_EGG_BELLY,
+            texture,
+            uv,
+        );
+    }
 
     for (cubes, leg_pose, front, right) in legs {
         emit_textured_cubes_at_pose(

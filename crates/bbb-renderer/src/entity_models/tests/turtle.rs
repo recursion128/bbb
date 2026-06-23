@@ -46,6 +46,113 @@ fn turtle_baby_geometry_matches_vanilla_26_1_body_layer() {
 }
 
 #[test]
+fn turtle_egg_belly_geometry_matches_vanilla_26_1() {
+    // Vanilla `AdultTurtleModel.createBodyLayer`: the `egg_belly` overlay shell is
+    // `texOffs(70, 33).addBox(-4.5, 3, -14, 9, 18, 1)` at the same `PartPose` as the body
+    // (`offsetAndRotation(0, 11, -10, π/2, 0, 0)`).
+    assert_eq!(TURTLE_EGG_BELLY.len(), 1);
+    assert_eq!(TURTLE_EGG_BELLY[0].min, [-4.5, 3.0, -14.0]);
+    assert_eq!(TURTLE_EGG_BELLY[0].size, [9.0, 18.0, 1.0]);
+    assert_eq!(TURTLE_EGG_BELLY[0].color, TURTLE_SHELL);
+
+    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].tex, [70.0, 33.0]);
+    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].min, [-4.5, 3.0, -14.0]);
+    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].size, [9.0, 18.0, 1.0]);
+    assert_eq!(TURTLE_TEXTURED_EGG_BELLY[0].uv_size, [9.0, 18.0, 1.0]);
+    assert!(!TURTLE_TEXTURED_EGG_BELLY[0].mirror);
+
+    // `setupAnim` does `this.root.y--` while the egg belly is visible.
+    assert_eq!(TURTLE_EGG_ROOT_DROP_POSE.offset, [0.0, -1.0, 0.0]);
+    assert_eq!(TURTLE_EGG_ROOT_DROP_POSE.rotation, [0.0, 0.0, 0.0]);
+}
+
+#[test]
+fn turtle_egg_belly_shows_and_drops_root_when_carrying_an_egg() {
+    let plain = entity_model_mesh(&[EntityModelInstance::turtle(
+        670,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    let egg = entity_model_mesh(&[
+        EntityModelInstance::turtle(670, [0.0, 64.0, 0.0], 0.0, false).with_turtle_has_egg(true),
+    ]);
+
+    // The `egg_belly` overlay shell is one extra cube: +6 faces / +24 vertices (eight cubes).
+    assert_eq!(egg.opaque_faces, plain.opaque_faces + 6);
+    assert_eq!(egg.vertices.len(), plain.vertices.len() + 24);
+    assert_eq!(egg.vertices.len(), 192);
+
+    // The model space is y-down (legs sit at a larger model y than the head), so the
+    // `scale(-1, -1, 1)` flip turns `root.y--` into a uniform world rise. The shell is the
+    // topmost part (the egg belly hangs below it), so its peak climbs by exactly the drop delta.
+    let top = |mesh: &EntityModelMesh| {
+        mesh.vertices
+            .iter()
+            .map(|vertex| vertex.position[1])
+            .fold(f32::NEG_INFINITY, f32::max)
+    };
+    let delta = top(&egg) - top(&plain);
+    assert!(delta > 1.0e-4, "root.y-- lifts the whole model");
+
+    // The shift is rigid: every plain (shared) vertex reappears in the egg mesh translated up by
+    // the same delta on Y, with X/Z unchanged. (The 24 leftover egg vertices are the new cube.)
+    for plain_vertex in &plain.vertices {
+        let [x, y, z] = plain_vertex.position;
+        let found = egg.vertices.iter().any(|egg_vertex| {
+            (egg_vertex.position[0] - x).abs() < 1.0e-4
+                && (egg_vertex.position[2] - z).abs() < 1.0e-4
+                && (egg_vertex.position[1] - (y + delta)).abs() < 1.0e-3
+        });
+        assert!(
+            found,
+            "every shared part shifts up by the same root.y-- delta"
+        );
+    }
+}
+
+#[test]
+fn turtle_baby_ignores_has_egg() {
+    // Only `AdultTurtleModel` has the egg belly; the projection clears `hasEgg` for babies, and
+    // the baby model has no egg-belly part regardless of the flag.
+    let baby = entity_model_mesh(&[EntityModelInstance::turtle(
+        671,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+    )]);
+    let baby_with_flag =
+        entity_model_mesh(&[
+            EntityModelInstance::turtle(671, [0.0, 64.0, 0.0], 0.0, true).with_turtle_has_egg(true),
+        ]);
+    assert_eq!(baby.vertices.len(), 144);
+    assert_eq!(baby.vertices, baby_with_flag.vertices);
+}
+
+#[test]
+fn turtle_textured_egg_belly_shows_when_carrying_an_egg() {
+    let (atlas, _) = build_entity_model_texture_atlas(&turtle_texture_images()).unwrap();
+
+    let plain = EntityModelInstance::turtle(752, [0.0, 64.0, 0.0], 0.0, false).with_on_ground(true);
+    let egg = plain.with_turtle_has_egg(true);
+    let plain_meshes = entity_model_textured_meshes(&[plain], &atlas);
+    let egg_meshes = entity_model_textured_meshes(&[egg], &atlas);
+
+    // The egg belly renders into the same cutout mesh: +6 faces / +24 vertices (eight cubes).
+    assert_eq!(
+        egg_meshes.cutout.cutout_faces,
+        plain_meshes.cutout.cutout_faces + 6
+    );
+    assert_eq!(
+        egg_meshes.cutout.vertices.len(),
+        plain_meshes.cutout.vertices.len() + 24
+    );
+    assert_eq!(egg_meshes.cutout.vertices.len(), 192);
+    assert!(egg_meshes.translucent.vertices.is_empty());
+    assert!(egg_meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn turtle_setup_anim_curves_match_vanilla() {
     let (pos, speed) = (3.0_f32, 0.7_f32);
 
@@ -86,7 +193,7 @@ fn turtle_setup_anim_curves_match_vanilla() {
 #[test]
 fn turtle_adult_mesh_uses_vanilla_body_layer_geometry() {
     // Seven cubes (head, shell, belly, four legs) → 42 faces / 168 vertices. The egg_belly
-    // shell is gated on the deferred `hasEgg` state and is not emitted.
+    // shell is gated on `hasEgg` and is not emitted for a turtle without an egg.
     let turtle = entity_model_mesh(&[EntityModelInstance::turtle(
         660,
         [0.0, 64.0, 0.0],

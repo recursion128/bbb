@@ -239,6 +239,9 @@ const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
+/// Vanilla `Turtle.HAS_EGG` data id (18): the synced boolean, the turtle's first own accessor
+/// after `AgeableMob.DATA_BABY_ID` (16) and `AGE_LOCKED` (17).
+const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
 /// `TamableAnimal` `DATA_FLAGS_ID` sitting bit (`isInSittingPose()` reads `& 1`).
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
@@ -416,6 +419,7 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
+        .with_turtle_has_egg(turtle_has_egg(source.entity_type_id, &source.data_values))
         .with_creeper_swelling(source.creeper_swelling)
         .with_shulker_peek(source.shulker_peek)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
@@ -1044,6 +1048,15 @@ fn illager_spellcasting(
     (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_ILLUSIONER_ID)
         && entity_data_byte(values, SPELLCASTER_ILLAGER_CASTING_DATA_ID, 0) > 0
+}
+
+/// Vanilla `TurtleRenderState.hasEgg = !isBaby() && Turtle.hasEgg()` (the synced `HAS_EGG`
+/// boolean, id 18). Only the adult turtle renders the `egg_belly` overlay shell, so the
+/// projection is gated to the turtle type and excludes babies (matching `extractRenderState`).
+fn turtle_has_egg(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
+        && !ageable_baby(values)
+        && entity_data_bool(values, TURTLE_HAS_EGG_DATA_ID, false)
 }
 
 fn donkey_model_kind(
@@ -2167,6 +2180,66 @@ mod tests {
             )],
         }));
         assert!(!charging(&world, 98));
+    }
+
+    #[test]
+    fn entity_model_instances_project_turtle_has_egg() {
+        // Vanilla Turtle.HAS_EGG (AgeableMob 16/17 then Turtle's BOOLEAN data id 18) and
+        // TurtleRenderer.extractRenderState: state.hasEgg = !entity.isBaby() && entity.hasEgg().
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            140,
+            VANILLA_ENTITY_TYPE_TURTLE_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // A second turtle (made a baby below), plus a non-turtle (bat) that reuses data id 18 for
+        // its own flag — used to prove the egg projection is gated to adult turtles.
+        world.apply_add_entity(protocol_add_entity(
+            141,
+            VANILLA_ENTITY_TYPE_TURTLE_ID,
+            [2.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            142,
+            VANILLA_ENTITY_TYPE_BAT_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let has_egg = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .turtle_has_egg
+        };
+
+        // An adult turtle without the flag projects turtle_has_egg = false.
+        assert!(!has_egg(&world, 140));
+
+        // Setting Turtle.HAS_EGG (data id 18) on the adult projects the egg belly.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 140,
+            values: vec![protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true)],
+        }));
+        assert!(has_egg(&world, 140));
+
+        // A baby turtle with HAS_EGG set stays false (gated on !isBaby()).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 141,
+            values: vec![
+                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true),
+            ],
+        }));
+        assert!(!has_egg(&world, 141));
+
+        // The same flag on a non-turtle (bat) does NOT project turtle_has_egg.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 142,
+            values: vec![protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true)],
+        }));
+        assert!(!has_egg(&world, 142));
     }
 
     #[test]

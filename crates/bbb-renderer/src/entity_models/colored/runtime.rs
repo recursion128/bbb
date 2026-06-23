@@ -912,13 +912,20 @@ fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     // `TurtleModel.setupAnim`: on land the turtle adds a `yRot` walk swing to the legs, in
     // water it paddles (hind `xRot` / front `zRot`). `isOnLand = !isInWater && onGround` is
     // projected from the real water + ground state. The legs and head/body are direct children
-    // of the root, so each is posed from the root transform. The egg-laying leg amplitude
-    // (`isLayingEgg`) and the `egg_belly` shell (`hasEgg`) are deferred entity-side state.
-    // Turtle uses `LivingEntityRenderer.setupRotations`.
+    // of the root, so each is posed from the root transform. When the adult turtle carries an egg
+    // (`hasEgg`), `AdultTurtleModel.setupAnim` shows the `egg_belly` overlay shell and drops the
+    // whole model `root.y--` by one unit. The egg-laying leg amplitude (`isLayingEgg`) stays
+    // deferred. Turtle uses `LivingEntityRenderer.setupRotations`.
     let pos = instance.render_state.walk_animation_pos;
     let speed = instance.render_state.walk_animation_speed;
     let on_land = !instance.render_state.in_water && instance.render_state.on_ground;
-    let root = entity_model_root_transform(instance);
+    // Only the adult model carries the egg belly; the baby model class has no such part.
+    let has_egg = !baby && instance.render_state.turtle_has_egg;
+    let mut root = entity_model_root_transform(instance);
+    if has_egg {
+        // Vanilla `root.y--`: a model-local one-unit drop applied to every part (egg and all).
+        root *= part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE);
+    }
     let head_pitch = instance.render_state.head_pitch.to_radians();
     let head_yaw = instance.render_state.head_yaw.to_radians();
 
@@ -997,6 +1004,11 @@ fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
     };
     emit_model_cubes_at_pose(mesh, root, head_pose, head_cubes);
     emit_model_cubes_at_pose(mesh, root, body_pose, body_cubes);
+    // The `egg_belly` overlay shell shares the body pose; only the adult model has it (the
+    // projection clears `hasEgg` for babies).
+    if has_egg {
+        emit_model_cubes_at_pose(mesh, root, TURTLE_BODY_POSE, &TURTLE_EGG_BELLY);
+    }
 
     for (cubes, leg_pose, front, right) in legs {
         emit_model_cubes_at_pose(

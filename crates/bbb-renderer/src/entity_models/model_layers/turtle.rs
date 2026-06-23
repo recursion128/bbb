@@ -1,10 +1,11 @@
 use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, TURTLE_GREEN, TURTLE_SHELL};
 
 // Vanilla 26.1 `AdultTurtleModel.createBodyLayer` (atlas 128×64). The head, body (shell +
-// belly), and four legs are direct children of the mesh root; the `egg_belly` overlay shell is
-// gated on the deferred `hasEgg` state and is not emitted. The legs are repositioned per frame
-// by `QuadrupedModel.setupAnim` + `TurtleModel.setupAnim`, so their poses are built from the
-// offset constants and the animation curves below.
+// belly), and four legs are direct children of the mesh root; the `egg_belly` overlay shell (one
+// extra cube at the body pose) is emitted when the synced `hasEgg` state is set, and vanilla then
+// drops the whole model `root.y--` by one unit. The legs are repositioned per frame by
+// `QuadrupedModel.setupAnim` + `TurtleModel.setupAnim`, so their poses are built from the offset
+// constants and the animation curves below.
 pub(in crate::entity_models) const TURTLE_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-3.0, -1.0, -3.0],
     size: [6.0, 5.0, 6.0],
@@ -25,6 +26,21 @@ pub(in crate::entity_models) const TURTLE_BODY: [ModelCubeDesc; 2] = [
         color: TURTLE_GREEN,
     },
 ];
+
+// `egg_belly` (`texOffs(70, 33)`): a thin 9×18×1 overlay shell shown only while `hasEgg`. It
+// shares the body's pose ([`TURTLE_BODY_POSE`], offset `[0, 11, -10]`, `Rx(π/2)`).
+pub(in crate::entity_models) const TURTLE_EGG_BELLY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, 3.0, -14.0],
+    size: [9.0, 18.0, 1.0],
+    color: TURTLE_SHELL,
+}];
+
+/// Vanilla `AdultTurtleModel.setupAnim` `root.y--`: the model-local one-unit drop applied to the
+/// whole turtle while the `egg_belly` is shown.
+pub(in crate::entity_models) const TURTLE_EGG_ROOT_DROP_POSE: PartPose = PartPose {
+    offset: [0.0, -1.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
 pub(in crate::entity_models) const TURTLE_RIGHT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-2.0, 0.0, 0.0],
@@ -232,6 +248,15 @@ pub(in crate::entity_models) const TURTLE_TEXTURED_BODY: [TexturedModelCubeDesc;
         mirror: false,
     },
 ];
+
+pub(in crate::entity_models) const TURTLE_TEXTURED_EGG_BELLY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.5, 3.0, -14.0],
+        size: [9.0, 18.0, 1.0],
+        uv_size: [9.0, 18.0, 1.0],
+        tex: [70.0, 33.0],
+        mirror: false,
+    }];
 
 pub(in crate::entity_models) const TURTLE_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] =
     [TexturedModelCubeDesc {
