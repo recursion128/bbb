@@ -1,6 +1,6 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use super::{PartPose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 use std::f32::consts::{FRAC_PI_2, PI};
 
 const PI_3_HALVES: f32 = PI * 1.5;
@@ -34,84 +34,62 @@ const MINECART_RIGHT_POSE: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
-const MINECART_BOTTOM_MIN: [f32; 3] = [-10.0, -8.0, -1.0];
-const MINECART_BOTTOM_SIZE: [f32; 3] = [20.0, 16.0, 2.0];
-const MINECART_WALL_MIN: [f32; 3] = [-8.0, -9.0, -1.0];
-const MINECART_WALL_SIZE: [f32; 3] = [16.0, 8.0, 2.0];
+// The floor `bottom` panel: `texOffs(0, 10)`, box(-10, -8, -1, 20x16x2). Each cube carries both
+// render paths' data: the colored debug tint (`MINECART_GRAY`) and the textured `uv_size` / `texOffs`.
+pub(in crate::entity_models) const MINECART_BOTTOM: [ModelCube; 1] = [ModelCube::new(
+    [-10.0, -8.0, -1.0],
+    [20.0, 16.0, 2.0],
+    MINECART_GRAY,
+    [20.0, 16.0, 2.0],
+    [0.0, 10.0],
+    false,
+)];
 
-const fn minecart_colored_part(pose: PartPose, cubes: &'static [ModelCubeDesc]) -> ModelPartDesc {
-    ModelPartDesc {
-        pose,
-        cubes,
-        children: &[],
-    }
-}
+// The four walls share one `texOffs(0, 0)` box(-8, -9, -1, 16x8x2), rotated to face out of each side.
+pub(in crate::entity_models) const MINECART_WALL: [ModelCube; 1] = [ModelCube::new(
+    [-8.0, -9.0, -1.0],
+    [16.0, 8.0, 2.0],
+    MINECART_GRAY,
+    [16.0, 8.0, 2.0],
+    [0.0, 0.0],
+    false,
+)];
 
-const MINECART_BOTTOM_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: MINECART_BOTTOM_MIN,
-    size: MINECART_BOTTOM_SIZE,
-    color: MINECART_GRAY,
-}];
-const MINECART_WALL_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: MINECART_WALL_MIN,
-    size: MINECART_WALL_SIZE,
-    color: MINECART_GRAY,
-}];
-
-pub(in crate::entity_models) const MINECART_PARTS: [ModelPartDesc; 5] = [
-    minecart_colored_part(MINECART_BOTTOM_POSE, &MINECART_BOTTOM_CUBE),
-    minecart_colored_part(MINECART_FRONT_POSE, &MINECART_WALL_CUBE),
-    minecart_colored_part(MINECART_BACK_POSE, &MINECART_WALL_CUBE),
-    minecart_colored_part(MINECART_LEFT_POSE, &MINECART_WALL_CUBE),
-    minecart_colored_part(MINECART_RIGHT_POSE, &MINECART_WALL_CUBE),
-];
-
-const fn minecart_textured_part(
-    pose: PartPose,
-    cubes: &'static [TexturedModelCubeDesc],
-) -> TexturedModelPartDesc {
-    TexturedModelPartDesc {
-        pose,
-        cubes,
-        children: &[],
-    }
-}
-
-const MINECART_TEXTURED_BOTTOM_CUBE: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
-    min: MINECART_BOTTOM_MIN,
-    size: MINECART_BOTTOM_SIZE,
-    uv_size: MINECART_BOTTOM_SIZE,
-    tex: [0.0, 10.0],
-    mirror: false,
-}];
-const MINECART_TEXTURED_WALL_CUBE: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
-    min: MINECART_WALL_MIN,
-    size: MINECART_WALL_SIZE,
-    uv_size: MINECART_WALL_SIZE,
-    tex: [0.0, 0.0],
-    mirror: false,
-}];
-
-pub(in crate::entity_models) const MINECART_TEXTURED_PARTS: [TexturedModelPartDesc; 5] = [
-    minecart_textured_part(MINECART_BOTTOM_POSE, &MINECART_TEXTURED_BOTTOM_CUBE),
-    minecart_textured_part(MINECART_FRONT_POSE, &MINECART_TEXTURED_WALL_CUBE),
-    minecart_textured_part(MINECART_BACK_POSE, &MINECART_TEXTURED_WALL_CUBE),
-    minecart_textured_part(MINECART_LEFT_POSE, &MINECART_TEXTURED_WALL_CUBE),
-    minecart_textured_part(MINECART_RIGHT_POSE, &MINECART_TEXTURED_WALL_CUBE),
-];
-
-/// Mutable minecart model, mirroring vanilla `MinecartModel`. The unified tree is zipped from the
-/// baked colored ([`MINECART_PARTS`]) and textured ([`MINECART_TEXTURED_PARTS`]) trees: the floor
-/// panel plus four boxed-in wall panels. Vanilla `MinecartModel` has no `setupAnim`, so `setup_anim`
-/// is a no-op — the cart is a static box rendered at its rest pose under the entity root transform.
+/// Mutable minecart model, mirroring vanilla `MinecartModel`. The unified tree is built once with the
+/// vanilla `MinecartModel.createBodyLayer` child names ("bottom" floor panel plus the four boxed-in
+/// "front"/"back"/"left"/"right" wall panels). Vanilla `MinecartModel` has no `setupAnim`, so
+/// `setup_anim` is a no-op — the cart is a static box rendered at its rest pose under the entity root
+/// transform.
 pub(in crate::entity_models) struct MinecartModel {
     root: ModelPart,
 }
 
 impl MinecartModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let children: Vec<(&'static str, ModelPart)> = vec![
+            (
+                "bottom",
+                ModelPart::leaf(MINECART_BOTTOM_POSE, MINECART_BOTTOM.to_vec()),
+            ),
+            (
+                "front",
+                ModelPart::leaf(MINECART_FRONT_POSE, MINECART_WALL.to_vec()),
+            ),
+            (
+                "back",
+                ModelPart::leaf(MINECART_BACK_POSE, MINECART_WALL.to_vec()),
+            ),
+            (
+                "left",
+                ModelPart::leaf(MINECART_LEFT_POSE, MINECART_WALL.to_vec()),
+            ),
+            (
+                "right",
+                ModelPart::leaf(MINECART_RIGHT_POSE, MINECART_WALL.to_vec()),
+            ),
+        ];
         Self {
-            root: ModelPart::root_from_descs(&MINECART_PARTS, &MINECART_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }

@@ -1,73 +1,38 @@
 use super::*;
-use std::f32::consts::{FRAC_PI_2, PI};
+
+use crate::entity_models::model::ModelCube;
 
 #[test]
-fn minecart_parts_match_vanilla_26_1_body_layer() {
+fn minecart_cubes_match_vanilla_26_1_body_layer() {
     // Vanilla MinecartModel.createBodyLayer(): a 20x16x2 floor panel laid flat plus four
-    // 16x8x2 wall panels boxed in. No setupAnim, so the cart is static.
-    assert_eq!(MINECART_PARTS.len(), 5);
-
-    // bottom: texOffs(0, 10), addBox(-10, -8, -1, 20, 16, 2), rotated 90deg on X and offset y 4.
-    assert_eq!(MINECART_PARTS[0].pose.offset, [0.0, 4.0, 0.0]);
-    assert_eq!(MINECART_PARTS[0].pose.rotation, [FRAC_PI_2, 0.0, 0.0]);
-    assert_eq!(MINECART_PARTS[0].cubes[0].min, [-10.0, -8.0, -1.0]);
-    assert_eq!(MINECART_PARTS[0].cubes[0].size, [20.0, 16.0, 2.0]);
-
-    // The four walls share one 16x8x2 box, rotated to face out of each side.
-    let wall_rotations = [
-        [0.0, PI * 1.5, 0.0],
-        [0.0, FRAC_PI_2, 0.0],
-        [0.0, PI, 0.0],
-        [0.0, 0.0, 0.0],
-    ];
-    let wall_offsets = [
-        [-9.0, 4.0, 0.0],
-        [9.0, 4.0, 0.0],
-        [0.0, 4.0, -7.0],
-        [0.0, 4.0, 7.0],
-    ];
-    for index in 0..4 {
-        let part = &MINECART_PARTS[index + 1];
-        assert_eq!(part.pose.offset, wall_offsets[index], "wall {index} offset");
-        assert_eq!(
-            part.pose.rotation, wall_rotations[index],
-            "wall {index} rot"
-        );
-        assert_eq!(part.cubes[0].min, [-8.0, -9.0, -1.0]);
-        assert_eq!(part.cubes[0].size, [16.0, 8.0, 2.0]);
-    }
-}
-
-#[test]
-fn minecart_textured_parts_match_vanilla_model_layer_uv_sources() {
-    assert_eq!(MODEL_LAYER_MINECART, "minecraft:minecart#main");
-    assert_eq!(MINECART_TEXTURE_REF.size, [64, 32]);
-    assert_eq!(MINECART_TEXTURED_PARTS.len(), 5);
-
-    // The floor samples texOffs(0, 10); every wall samples texOffs(0, 0). None are mirrored.
-    assert_eq!(MINECART_TEXTURED_PARTS[0].cubes[0].tex, [0.0, 10.0]);
+    // 16x8x2 wall panels boxed in. No setupAnim, so the cart is static. Each unified cube carries
+    // the colored tint (`MINECART_GRAY`) and the textured UV (`texOffs` / `uv_size` / `mirror`) in
+    // one struct.
+    //
+    // bottom: texOffs(0, 10), addBox(-10, -8, -1, 20, 16, 2). The floor samples texOffs(0, 10).
     assert_eq!(
-        MINECART_TEXTURED_PARTS[0].cubes[0].uv_size,
-        [20.0, 16.0, 2.0]
+        MINECART_BOTTOM[0],
+        ModelCube::new(
+            [-10.0, -8.0, -1.0],
+            [20.0, 16.0, 2.0],
+            MINECART_GRAY,
+            [20.0, 16.0, 2.0],
+            [0.0, 10.0],
+            false,
+        )
     );
-    assert!(!MINECART_TEXTURED_PARTS[0].cubes[0].mirror);
-    for index in 0..4 {
-        let part = &MINECART_TEXTURED_PARTS[index + 1];
-        assert_eq!(part.cubes[0].tex, [0.0, 0.0], "wall {index} texOffs");
-        assert_eq!(part.cubes[0].uv_size, [16.0, 8.0, 2.0]);
-        assert!(!part.cubes[0].mirror);
-    }
-    // The textured poses mirror the colored poses exactly.
-    for index in 0..5 {
-        assert_eq!(
-            MINECART_TEXTURED_PARTS[index].pose.offset,
-            MINECART_PARTS[index].pose.offset
-        );
-        assert_eq!(
-            MINECART_TEXTURED_PARTS[index].pose.rotation,
-            MINECART_PARTS[index].pose.rotation
-        );
-    }
+    // The four walls share one texOffs(0, 0) box(-8, -9, -1, 16x8x2), not mirrored.
+    assert_eq!(
+        MINECART_WALL[0],
+        ModelCube::new(
+            [-8.0, -9.0, -1.0],
+            [16.0, 8.0, 2.0],
+            MINECART_GRAY,
+            [16.0, 8.0, 2.0],
+            [0.0, 0.0],
+            false,
+        )
+    );
 }
 
 #[test]
@@ -78,7 +43,7 @@ fn minecart_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_MINECART);
     assert_eq!(passes[0].texture, MINECART_TEXTURE_REF);
-    assert_eq!(passes[0].parts, MINECART_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(

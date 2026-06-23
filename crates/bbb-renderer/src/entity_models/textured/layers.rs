@@ -445,7 +445,7 @@ pub(in crate::entity_models) fn minecart_textured_layer_passes() -> Vec<EntityMo
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_MINECART,
         texture: MINECART_TEXTURE_REF,
-        parts: &MINECART_TEXTURED_PARTS,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
