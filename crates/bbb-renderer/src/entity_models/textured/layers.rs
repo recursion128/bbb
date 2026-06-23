@@ -115,7 +115,7 @@ pub(in crate::entity_models) fn chicken_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: chicken_model_layer(variant, baby),
         texture: chicken_texture_ref(variant, baby),
-        parts: chicken_textured_model_parts(variant, baby),
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1091,17 +1091,6 @@ fn chicken_model_layer(variant: ChickenModelVariant, baby: bool) -> &'static str
         (_, true) => MODEL_LAYER_CHICKEN_BABY,
         (ChickenModelVariant::Cold, false) => MODEL_LAYER_COLD_CHICKEN,
         (_, false) => MODEL_LAYER_CHICKEN,
-    }
-}
-
-fn chicken_textured_model_parts(
-    variant: ChickenModelVariant,
-    baby: bool,
-) -> &'static [TexturedModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_CHICKEN_TEXTURED_PARTS,
-        (ChickenModelVariant::Cold, false) => &COLD_CHICKEN_TEXTURED_PARTS,
-        (_, false) => &ADULT_CHICKEN_TEXTURED_PARTS,
     }
 }
 

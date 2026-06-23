@@ -1,113 +1,63 @@
 use super::*;
 
-#[test]
-fn chicken_model_parts_match_vanilla_26_1_layers() {
-    assert_eq!(ADULT_CHICKEN_PARTS.len(), 6);
-    assert_part_tree(
-        &ADULT_CHICKEN_PARTS[0],
-        [0.0, 15.0, -4.0],
-        [0.0, 0.0, 0.0],
-        ADULT_CHICKEN_HEAD.as_slice(),
-        ADULT_CHICKEN_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_CHICKEN_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_CHICKEN_BEAK.as_slice(),
-    );
-    assert_part(
-        &ADULT_CHICKEN_HEAD_CHILDREN[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_CHICKEN_RED_THING.as_slice(),
-    );
-    assert_part(
-        &ADULT_CHICKEN_PARTS[1],
-        [0.0, 16.0, 0.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_CHICKEN_BODY.as_slice(),
-    );
-    assert_part(
-        &ADULT_CHICKEN_PARTS[2],
-        [-2.0, 19.0, 1.0],
-        [0.0, 0.0, 0.0],
-        ADULT_CHICKEN_LEG.as_slice(),
-    );
-    assert_part(
-        &ADULT_CHICKEN_PARTS[3],
-        [1.0, 19.0, 1.0],
-        [0.0, 0.0, 0.0],
-        ADULT_CHICKEN_LEG.as_slice(),
-    );
+use crate::entity_models::model::ModelCube;
 
-    assert_eq!(COLD_CHICKEN_PARTS.len(), 6);
-    assert_part_tree(
-        &COLD_CHICKEN_PARTS[0],
-        [0.0, 15.0, -4.0],
-        [0.0, 0.0, 0.0],
-        COLD_CHICKEN_HEAD.as_slice(),
-        ADULT_CHICKEN_HEAD_CHILDREN.as_slice(),
+#[test]
+fn chicken_model_cubes_and_poses_match_vanilla_26_1_layers() {
+    // Adult layout: head (offset (0, 15, -4)) carrying the beak + red_thing, body (FRAC_PI_2 pitch),
+    // then the right/left legs and wings.
+    assert_eq!(CHICKEN_HEAD_POSE.offset, [0.0, 15.0, -4.0]);
+    assert_eq!(CHICKEN_HEAD_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_eq!(ADULT_CHICKEN_HEAD[0].min, [-2.0, -6.0, -2.0]);
+    assert_eq!(ADULT_CHICKEN_HEAD[0].size, [4.0, 6.0, 3.0]);
+    assert_eq!(ADULT_CHICKEN_BEAK[0].min, [-2.0, -4.0, -4.0]);
+    assert_eq!(ADULT_CHICKEN_BEAK[0].size, [4.0, 2.0, 2.0]);
+    assert_eq!(ADULT_CHICKEN_RED_THING[0].min, [-1.0, -2.0, -3.0]);
+    assert_eq!(ADULT_CHICKEN_RED_THING[0].size, [2.0, 2.0, 2.0]);
+
+    assert_eq!(CHICKEN_BODY_POSE.offset, [0.0, 16.0, 0.0]);
+    assert_eq!(
+        CHICKEN_BODY_POSE.rotation,
+        [std::f32::consts::FRAC_PI_2, 0.0, 0.0]
     );
-    assert_part(
-        &COLD_CHICKEN_PARTS[1],
-        [0.0, 16.0, 0.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        COLD_CHICKEN_BODY.as_slice(),
-    );
+    assert_eq!(ADULT_CHICKEN_BODY[0].min, [-3.0, -4.0, -3.0]);
+    assert_eq!(ADULT_CHICKEN_BODY[0].size, [6.0, 8.0, 6.0]);
+
+    assert_eq!(CHICKEN_RIGHT_LEG_POSE.offset, [-2.0, 19.0, 1.0]);
+    assert_eq!(CHICKEN_LEFT_LEG_POSE.offset, [1.0, 19.0, 1.0]);
+    assert_eq!(ADULT_CHICKEN_LEG[0].size, [3.0, 5.0, 3.0]);
+
+    // Cold variant: the head and body carry an extra fluff cube tinted CHICKEN_WING.
+    assert_eq!(COLD_CHICKEN_HEAD.len(), 2);
     assert_eq!(
         COLD_CHICKEN_HEAD[1],
-        ModelCubeDesc {
-            min: [-3.0, -7.0, -2.015],
-            size: [6.0, 3.0, 4.0],
-            color: CHICKEN_WING,
-        }
+        ModelCube::new(
+            [-3.0, -7.0, -2.015],
+            [6.0, 3.0, 4.0],
+            CHICKEN_WING,
+            [6.0, 3.0, 4.0],
+            [44.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         COLD_CHICKEN_BODY[1],
-        ModelCubeDesc {
-            min: [0.0, 3.0, -1.0],
-            size: [0.0, 3.0, 5.0],
-            color: CHICKEN_WING,
-        }
+        ModelCube::new(
+            [0.0, 3.0, -1.0],
+            [0.0, 3.0, 5.0],
+            CHICKEN_WING,
+            [0.0, 3.0, 5.0],
+            [38.0, 9.0],
+            false,
+        )
     );
 
-    assert_eq!(BABY_CHICKEN_PARTS.len(), 5);
-    assert_part(
-        &BABY_CHICKEN_PARTS[0],
-        [0.0, 20.25, -1.25],
-        [0.0, 0.0, 0.0],
-        BABY_CHICKEN_BODY.as_slice(),
-    );
-    assert_part(
-        &BABY_CHICKEN_PARTS[1],
-        [1.0, 22.0, 0.5],
-        [0.0, 0.0, 0.0],
-        BABY_CHICKEN_LEFT_LEG.as_slice(),
-    );
-    assert_part(
-        &BABY_CHICKEN_PARTS[4],
-        [-2.0, 20.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_CHICKEN_LEFT_WING.as_slice(),
-    );
-
-    assert_eq!(
-        chicken_part_trees(ChickenModelVariant::Temperate, false).0,
-        ADULT_CHICKEN_PARTS.as_slice()
-    );
-    assert_eq!(
-        chicken_part_trees(ChickenModelVariant::Warm, false).0,
-        ADULT_CHICKEN_PARTS.as_slice()
-    );
-    assert_eq!(
-        chicken_part_trees(ChickenModelVariant::Cold, false).0,
-        COLD_CHICKEN_PARTS.as_slice()
-    );
-    assert_eq!(
-        chicken_part_trees(ChickenModelVariant::Cold, true).0,
-        BABY_CHICKEN_PARTS.as_slice()
-    );
+    // Baby layout: a squat body (beak baked in), then the legs and wings.
+    assert_eq!(BABY_CHICKEN_BODY_POSE.offset, [0.0, 20.25, -1.25]);
+    assert_eq!(BABY_CHICKEN_BODY[0].size, [4.0, 4.0, 4.0]);
+    assert_eq!(BABY_CHICKEN_LEFT_LEG_POSE.offset, [1.0, 22.0, 0.5]);
+    assert_eq!(BABY_CHICKEN_LEFT_WING_POSE.offset, [-2.0, 20.0, 0.0]);
+    assert_eq!(BABY_CHICKEN_LEFT_WING[0].size, [1.0, 0.0, 2.0]);
 }
 
 #[test]
@@ -250,10 +200,7 @@ fn chicken_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult_temperate[0].kind, EntityModelLayerKind::ChickenBase);
     assert_eq!(adult_temperate[0].model_layer, MODEL_LAYER_CHICKEN);
     assert_eq!(adult_temperate[0].texture, CHICKEN_TEMPERATE_TEXTURE_REF);
-    assert_eq!(
-        adult_temperate[0].parts,
-        ADULT_CHICKEN_TEXTURED_PARTS.as_slice()
-    );
+    assert!(adult_temperate[0].parts.is_empty());
     assert_eq!(adult_temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(adult_temperate[0].collector_order, 0);
     assert_eq!(adult_temperate[0].submit_sequence, 0);
@@ -261,94 +208,71 @@ fn chicken_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let adult_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, false);
     assert_eq!(adult_warm[0].model_layer, MODEL_LAYER_CHICKEN);
     assert_eq!(adult_warm[0].texture, CHICKEN_WARM_TEXTURE_REF);
-    assert_eq!(adult_warm[0].parts, ADULT_CHICKEN_TEXTURED_PARTS.as_slice());
+    assert!(adult_warm[0].parts.is_empty());
 
     let adult_cold = chicken_textured_layer_passes(ChickenModelVariant::Cold, false);
     assert_eq!(adult_cold[0].model_layer, MODEL_LAYER_COLD_CHICKEN);
     assert_eq!(adult_cold[0].texture, CHICKEN_COLD_TEXTURE_REF);
-    assert_eq!(adult_cold[0].parts, COLD_CHICKEN_TEXTURED_PARTS.as_slice());
+    assert!(adult_cold[0].parts.is_empty());
 
     let baby_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, true);
     assert_eq!(baby_warm[0].model_layer, MODEL_LAYER_CHICKEN_BABY);
     assert_eq!(baby_warm[0].texture, CHICKEN_WARM_BABY_TEXTURE_REF);
-    assert_eq!(baby_warm[0].parts, BABY_CHICKEN_TEXTURED_PARTS.as_slice());
+    assert!(baby_warm[0].parts.is_empty());
 }
 
 #[test]
-fn chicken_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+fn chicken_cubes_match_vanilla_model_layer_uv_sources() {
+    // Each unified cube carries the colored tint and the textured UV (`texOffs` / `uv_size`); no
+    // CubeDeformation, so `uv_size == size` and no cube mirrors.
     assert_eq!(MODEL_LAYER_CHICKEN, "minecraft:chicken#main");
     assert_eq!(MODEL_LAYER_CHICKEN_BABY, "minecraft:chicken_baby#main");
     assert_eq!(MODEL_LAYER_COLD_CHICKEN, "minecraft:cold_chicken#main");
     assert_eq!(
-        ADULT_CHICKEN_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, -6.0, -2.0],
-            size: [4.0, 6.0, 3.0],
-            uv_size: [4.0, 6.0, 3.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
+        ADULT_CHICKEN_HEAD[0],
+        ModelCube::new(
+            [-2.0, -6.0, -2.0],
+            [4.0, 6.0, 3.0],
+            CHICKEN_WHITE,
+            [4.0, 6.0, 3.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(
-        ADULT_CHICKEN_TEXTURED_BEAK[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, -4.0, -4.0],
-            size: [4.0, 2.0, 2.0],
-            uv_size: [4.0, 2.0, 2.0],
-            tex: [14.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_CHICKEN_TEXTURED_RED_THING[0],
-        TexturedModelCubeDesc {
-            min: [-1.0, -2.0, -3.0],
-            size: [2.0, 2.0, 2.0],
-            uv_size: [2.0, 2.0, 2.0],
-            tex: [14.0, 4.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        COLD_CHICKEN_TEXTURED_HEAD[1],
-        TexturedModelCubeDesc {
-            min: [-3.0, -7.0, -2.015],
-            size: [6.0, 3.0, 4.0],
-            uv_size: [6.0, 3.0, 4.0],
-            tex: [44.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        COLD_CHICKEN_TEXTURED_BODY[1],
-        TexturedModelCubeDesc {
-            min: [0.0, 3.0, -1.0],
-            size: [0.0, 3.0, 5.0],
-            uv_size: [0.0, 3.0, 5.0],
-            tex: [38.0, 9.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        BABY_CHICKEN_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, -2.25, -0.75],
-            size: [4.0, 4.0, 4.0],
-            uv_size: [4.0, 4.0, 4.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        BABY_CHICKEN_TEXTURED_RIGHT_LEG[1],
-        TexturedModelCubeDesc {
-            min: [-0.5, 2.0, -1.0],
-            size: [1.0, 0.0, 1.0],
-            uv_size: [1.0, 0.0, 1.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
+    assert_eq!(ADULT_CHICKEN_BEAK[0].tex, [14.0, 0.0]);
+    assert_eq!(ADULT_CHICKEN_RED_THING[0].tex, [14.0, 4.0]);
+    assert_eq!(ADULT_CHICKEN_BODY[0].tex, [0.0, 9.0]);
+    assert_eq!(COLD_CHICKEN_HEAD[1].tex, [44.0, 0.0]);
+    assert_eq!(COLD_CHICKEN_BODY[1].tex, [38.0, 9.0]);
+    assert_eq!(ADULT_CHICKEN_LEG[0].tex, [26.0, 0.0]);
+    assert_eq!(ADULT_CHICKEN_RIGHT_WING[0].tex, [24.0, 13.0]);
+    assert_eq!(ADULT_CHICKEN_LEFT_WING[0].tex, [24.0, 13.0]);
+    assert_eq!(BABY_CHICKEN_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(BABY_CHICKEN_BODY[1].tex, [10.0, 8.0]);
+    assert_eq!(BABY_CHICKEN_RIGHT_LEG[1].tex, [0.0, 0.0]);
+    assert_eq!(BABY_CHICKEN_LEFT_LEG[0].tex, [2.0, 2.0]);
+    assert_eq!(BABY_CHICKEN_RIGHT_WING[0].tex, [6.0, 8.0]);
+    assert_eq!(BABY_CHICKEN_LEFT_WING[0].tex, [4.0, 8.0]);
+    // uv_size mirrors the cube size and no cube mirrors, for every chicken cube.
+    for cube in ADULT_CHICKEN_HEAD
+        .iter()
+        .chain(ADULT_CHICKEN_BEAK.iter())
+        .chain(ADULT_CHICKEN_RED_THING.iter())
+        .chain(ADULT_CHICKEN_BODY.iter())
+        .chain(COLD_CHICKEN_HEAD.iter())
+        .chain(COLD_CHICKEN_BODY.iter())
+        .chain(ADULT_CHICKEN_LEG.iter())
+        .chain(ADULT_CHICKEN_RIGHT_WING.iter())
+        .chain(ADULT_CHICKEN_LEFT_WING.iter())
+        .chain(BABY_CHICKEN_BODY.iter())
+        .chain(BABY_CHICKEN_LEFT_LEG.iter())
+        .chain(BABY_CHICKEN_RIGHT_LEG.iter())
+        .chain(BABY_CHICKEN_RIGHT_WING.iter())
+        .chain(BABY_CHICKEN_LEFT_WING.iter())
+    {
+        assert_eq!(cube.uv_size, cube.size);
+        assert!(!cube.mirror);
+    }
 }
 
 #[test]
@@ -520,33 +444,34 @@ fn chicken_textured_mesh_swings_its_legs_when_walking() {
 #[test]
 fn chicken_leg_swing_matches_vanilla_humanoid_phase() {
     // Vanilla ChickenModel.setupAnim: rightLeg.xRot = cos(pos*0.6662)*1.4*speed,
-    // leftLeg.xRot = cos(pos*0.6662+π)*1.4*speed — the HumanoidModel phase. The adult and
-    // cold layers list the legs at [2, 3]; the headless baby layer at [1, 2]. The right
-    // leg (offset x < 0) is in phase, the left leg (x > 0) out of phase. Only xRot moves.
+    // leftLeg.xRot = cos(pos*0.6662+π)*1.4*speed — the HumanoidModel phase. The right leg
+    // (offset x < 0) is in phase, the left leg (x > 0) out of phase. Only xRot moves. The adult,
+    // cold, and headless-baby layers share the same phase logic (the adult legs sit at x = ±,
+    // the baby legs are swapped in x but the phase still follows the sign).
     let pos = 1.3_f32;
     let speed = 0.7_f32;
     let phase = pos * 0.6662;
-    for (parts, baby) in [
-        (ADULT_CHICKEN_PARTS.as_slice(), false),
-        (COLD_CHICKEN_PARTS.as_slice(), false),
-        (BABY_CHICKEN_PARTS.as_slice(), true),
-    ] {
-        for index in chicken_leg_part_indices(baby) {
-            let base = parts[index].pose;
-            let posed = humanoid_leg_swing_pose(base, pos, speed);
-            let expected = if base.offset[0] < 0.0 {
-                phase.cos() * 1.4 * speed
-            } else {
-                (phase + std::f32::consts::PI).cos() * 1.4 * speed
-            };
-            assert!(
-                (posed.rotation[0] - expected).abs() < 1e-6,
-                "leg {index} xRot"
-            );
-            assert_eq!(posed.offset, base.offset, "leg {index} offset");
-            assert_eq!(posed.rotation[1], base.rotation[1], "leg {index} yRot");
-            assert_eq!(posed.rotation[2], base.rotation[2], "leg {index} zRot");
-        }
+    let leg_poses = [
+        CHICKEN_RIGHT_LEG_POSE,
+        CHICKEN_LEFT_LEG_POSE,
+        BABY_CHICKEN_RIGHT_LEG_POSE,
+        BABY_CHICKEN_LEFT_LEG_POSE,
+    ];
+    for base in leg_poses {
+        let posed = humanoid_leg_swing_pose(base, pos, speed);
+        let expected = if base.offset[0] < 0.0 {
+            phase.cos() * 1.4 * speed
+        } else {
+            (phase + std::f32::consts::PI).cos() * 1.4 * speed
+        };
+        assert!(
+            (posed.rotation[0] - expected).abs() < 1e-6,
+            "leg at x {} xRot",
+            base.offset[0]
+        );
+        assert_eq!(posed.offset, base.offset, "leg offset");
+        assert_eq!(posed.rotation[1], base.rotation[1], "leg yRot");
+        assert_eq!(posed.rotation[2], base.rotation[2], "leg zRot");
     }
 }
 
