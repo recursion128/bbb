@@ -411,3 +411,63 @@ impl EntityModel for MagmaCubeModel {
 
     fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
 }
+
+/// Mutable slime inner-body model, mirroring vanilla `SlimeModel` (`ModelLayers.SLIME`,
+/// `createInnerBodyLayer`): the inner cube plus the two eyes and the mouth. The unified tree zips the
+/// first four colored [`SLIME_PARTS`] (the inner body, shared with the combined colored layout) with
+/// [`SLIME_INNER_TEXTURED_PARTS`]. Vanilla `SlimeModel.setupAnim` only stretches by the interpolated
+/// `squish`, which is server-authoritative state not on the render state, so `setup_anim` is a no-op
+/// (the model renders its rest pose); the per-size scale lives in `slime_model_root_transform`. The
+/// inner body is the opaque cutout pass; [`SlimeOuterModel`] is the translucent shell.
+pub(in crate::entity_models) struct SlimeModel {
+    root: ModelPart,
+}
+
+impl SlimeModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&SLIME_PARTS[0..4], &SLIME_INNER_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SlimeModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}
+
+/// Mutable slime outer-shell model, mirroring vanilla `SlimeModel`'s `ModelLayers.SLIME_OUTER`
+/// (`createOuterBodyLayer`): the single translucent 8³ shell cube. The unified tree zips the last
+/// colored [`SLIME_PARTS`] entry (the outer cube) with [`SLIME_OUTER_TEXTURED_PARTS`]; `setup_anim` is
+/// a no-op for the same reason as [`SlimeModel`]. Rendered on the translucent pass over the inner body
+/// (and in the colored fallback both layers draw, reproducing the combined `SLIME_PARTS` mesh).
+pub(in crate::entity_models) struct SlimeOuterModel {
+    root: ModelPart,
+}
+
+impl SlimeOuterModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&SLIME_PARTS[4..5], &SLIME_OUTER_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SlimeOuterModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}

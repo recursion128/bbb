@@ -572,11 +572,12 @@ fn entity_model_mesh_with_options(
 }
 
 fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
-    emit_model_parts(
-        mesh,
-        &SLIME_PARTS,
-        slime_model_root_transform(instance, size),
-    );
+    // The unified `SlimeModel` (inner body) and `SlimeOuterModel` (translucent shell) trees drive both
+    // render paths; both `setup_anim`s are no-ops (the squish stretch is deferred). The colored
+    // fallback draws both layers under one transform, reproducing the combined `SLIME_PARTS` mesh.
+    let transform = slime_model_root_transform(instance, size);
+    SlimeModel::new().prepare_and_render(mesh, &instance, transform);
+    SlimeOuterModel::new().prepare_and_render(mesh, &instance, transform);
 }
 
 fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

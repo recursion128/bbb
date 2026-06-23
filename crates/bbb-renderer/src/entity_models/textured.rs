@@ -40,17 +40,18 @@ use super::{
         CodModel, CowModel, CreeperModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
         HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
         MinecartModel, PigModel, PiglinModel, PlayerModel, PolarBearModel, RavagerModel,
-        SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SnowGolemModel,
-        SpiderModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
-        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
-        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
-        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
-        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
-        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
-        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
-        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
-        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SlimeModel,
+        SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, TropicalFishModel,
+        TropicalFishPatternModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
+        ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
+        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
+        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -2217,9 +2218,29 @@ fn emit_slime_textured_model(
     size: i32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `SlimeModel` (inner body, cutout) and `SlimeOuterModel` (shell, translucent) trees
+    // drive both render paths; both `setup_anim`s are no-ops. Each pass routes to the inner or outer
+    // root in the pre-sorted layer order.
     let transform = slime_model_root_transform(instance, size);
+    let mut inner = SlimeModel::new();
+    inner.prepare(&instance);
+    let mut outer = SlimeOuterModel::new();
+    outer.prepare(&instance);
     for pass in slime_textured_layer_passes() {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        let root = if pass.kind == layers::EntityModelLayerKind::SlimeOuter {
+            outer.root()
+        } else {
+            inner.root()
+        };
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            root.render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
     }
 }
 
