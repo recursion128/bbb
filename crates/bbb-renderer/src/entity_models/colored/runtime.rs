@@ -7,7 +7,7 @@ use super::super::catalog::{sheep_wool_render_color, *};
 use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
 use super::super::keyframe::*;
-use super::super::model::EntityModel;
+use super::super::model::{EntityModel, StaticModel};
 use super::super::model_layers::*;
 use super::armor_stand::emit_armor_stand_model;
 use super::mounts::{
@@ -277,24 +277,44 @@ fn entity_model_mesh_with_options(
                 emit_end_crystal_model(&mut mesh, *instance);
             }
             EntityModelKind::EvokerFangs => {
-                // Colored-only so far (no texture-backed evoker fangs yet), so this arm always emits.
-                emit_evoker_fangs_model(&mut mesh, *instance);
+                // Static (the bite open/close, base drop, and emerge scale are deferred); colored-only.
+                StaticModel::new(&EVOKER_FANGS_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    evoker_fangs_model_root_transform(*instance),
+                );
             }
             EntityModelKind::LeashKnot => {
-                // Colored-only so far (no texture-backed leash knot yet), so this arm always emits.
-                emit_leash_knot_model(&mut mesh, *instance);
+                // Static (vanilla `LeashKnotModel` has no `setupAnim`); colored-only.
+                StaticModel::new(&LEASH_KNOT_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    leash_knot_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Arrow => {
-                // Colored-only so far (no texture-backed arrow yet), so this arm always emits.
-                emit_arrow_model(&mut mesh, *instance);
+                // Static (the impact-shake wobble is deferred); colored-only.
+                StaticModel::new(&ARROW_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    arrow_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Trident => {
-                // Colored-only so far (no texture-backed trident yet), so this arm always emits.
-                emit_trident_model(&mut mesh, *instance);
+                // Static (vanilla `TridentModel` has no animation); colored-only.
+                StaticModel::new(&TRIDENT_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    trident_model_root_transform(*instance),
+                );
             }
             EntityModelKind::LlamaSpit => {
-                // Colored-only so far (no texture-backed llama spit yet), so this arm always emits.
-                emit_llama_spit_model(&mut mesh, *instance);
+                // Static (vanilla `LlamaSpitModel` has no `setupAnim`); colored-only.
+                StaticModel::new(&LLAMA_SPIT_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    llama_spit_model_root_transform(*instance),
+                );
             }
             EntityModelKind::ShulkerBullet => {
                 // Colored-only so far (no texture-backed shulker bullet yet), so this arm always emits.
@@ -1207,46 +1227,6 @@ fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     for cube in END_CRYSTAL_PARTS[3].cubes {
         emit_model_cube(mesh, core_t, *cube);
     }
-}
-
-fn emit_evoker_fangs_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `EvokerFangsModel` is the base block parenting the two jaws, whose bind rotations are
-    // the closed-jaw `biteProgress = 0` rest. The bite open/close, the base drop, and the emerge
-    // scale are deferred, so the bind-pose part tree is emitted at the `EvokerFangsRenderer`
-    // transform (`Ry(90 - yRot)` plus the standard flip and `-1.501` y-offset).
-    let root = evoker_fangs_model_root_transform(instance);
-    emit_model_parts(mesh, &EVOKER_FANGS_PARTS, root);
-}
-
-fn emit_leash_knot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `LeashKnotModel` is a single static knot box with no `setupAnim`, so the bind-pose
-    // part is emitted directly at the `LeashKnotRenderer` flip-only transform.
-    let root = leash_knot_model_root_transform(instance);
-    emit_model_parts(mesh, &LEASH_KNOT_PARTS, root);
-}
-
-fn emit_arrow_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `ArrowModel` is three static planes (the arrowhead plus the two crossed fletching
-    // planes). The impact-shake wobble is deferred, so the bind-pose part tree is emitted at the
-    // `ArrowRenderer` flight-oriented transform (`Ry(yRot - 90) · Rz(xRot) · scale(0.9)`).
-    let root = arrow_model_root_transform(instance);
-    emit_model_parts(mesh, &ARROW_PARTS, root);
-}
-
-fn emit_trident_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `TridentModel` is the pole parenting the crossguard and three spikes, with no
-    // animation, so the bind-pose part tree is emitted directly at the `ThrownTridentRenderer`
-    // flight-oriented transform (`Ry(yRot - 90) · Rz(xRot + 90)`).
-    let root = trident_model_root_transform(instance);
-    emit_model_parts(mesh, &TRIDENT_PARTS, root);
-}
-
-fn emit_llama_spit_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `LlamaSpitModel` is a single static cross of seven 2×2×2 boxes with no `setupAnim`, so
-    // the bind-pose part is emitted directly at the `LlamaSpitRenderer` flight-oriented transform
-    // (`translate(0, 0.15, 0) · Ry(yRot - 90) · Rz(xRot)`).
-    let root = llama_spit_model_root_transform(instance);
-    emit_model_parts(mesh, &LLAMA_SPIT_PARTS, root);
 }
 
 fn emit_shulker_bullet_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

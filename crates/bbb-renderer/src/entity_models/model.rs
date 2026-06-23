@@ -515,3 +515,32 @@ pub(in crate::entity_models) trait EntityModel {
             .render_colored_with_color(mesh, root_transform, color);
     }
 }
+
+/// A static [`EntityModel`] over a fixed colored part tree — an entity whose vanilla `setupAnim` is a
+/// no-op (the leash knot, the thrown trident, the llama spit, …) or whose animations are all
+/// deferred (the arrow wobble, the evoker-fangs bite), so it always renders at its bind pose. Built
+/// from the baked [`ModelPartDesc`] geometry; `setup_anim` does nothing. Each such entity passes its
+/// own `&'static X_PARTS` and its renderer's root transform at the colored call site.
+pub(in crate::entity_models) struct StaticModel {
+    root: ModelPart,
+}
+
+impl StaticModel {
+    pub(in crate::entity_models) fn new(parts: &[ModelPartDesc]) -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(parts),
+        }
+    }
+}
+
+impl EntityModel for StaticModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}
