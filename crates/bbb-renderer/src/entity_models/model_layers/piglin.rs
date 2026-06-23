@@ -1,7 +1,11 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_leg_swing, apply_humanoid_walk, piglin_ear_flap_pose,
+    piglin_head_part_index, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
+use crate::entity_models::catalog::PiglinModelFamily;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_PIGLIN: &str = "minecraft:piglin#main";
 pub(in crate::entity_models) const MODEL_LAYER_PIGLIN_BABY: &str = "minecraft:piglin_baby#main";
@@ -627,3 +631,120 @@ pub(in crate::entity_models) const BABY_PIGLIN_TEXTURED_PARTS: [TexturedModelPar
     piglin_textured_part([-1.5, 20.0, 0.0], &BABY_PIGLIN_TEXTURED_RIGHT_LEG, &[]),
     piglin_textured_part([1.5, 20.0, 0.0], &BABY_PIGLIN_TEXTURED_LEFT_LEG, &[]),
 ];
+
+/// Whether a piglin renders the baby layer. The brute reuses the adult model even as a baby, so only
+/// the (zombified) piglin uses the smaller baby layout. Drives the part tree, head index, ear
+/// children, and default ear angle.
+fn piglin_baby_layout(family: PiglinModelFamily, baby: bool) -> bool {
+    baby && family != PiglinModelFamily::PiglinBrute
+}
+
+/// Ear child indices `(left, right)` under the piglin head part. The adult/brute layout lists the two
+/// ears directly at `[0, 1]`; the baby layout lists the hat at `0` and the ear holders at `[1, 2]`.
+fn piglin_ear_child_indices(baby_layout: bool) -> (usize, usize) {
+    if baby_layout {
+        (1, 2)
+    } else {
+        (0, 1)
+    }
+}
+
+/// `AbstractPiglinModel.getDefaultEarAngleInDegrees()` (in radians): `5°` baby, `30°` adult/brute.
+fn piglin_default_ear_angle(baby_layout: bool) -> f32 {
+    if baby_layout {
+        PIGLIN_BABY_EAR_ANGLE
+    } else {
+        PIGLIN_ADULT_EAR_ANGLE
+    }
+}
+
+/// Selects the colored ([`ADULT_PIGLIN_PARTS`]/[`BABY_PIGLIN_PARTS`]) and textured
+/// ([`ADULT_PIGLIN_TEXTURED_PARTS`]/[`BABY_PIGLIN_TEXTURED_PARTS`]) const trees for a piglin by its
+/// [`piglin_baby_layout`], zipped into the unified tree by [`PiglinModel::new`].
+pub(in crate::entity_models) fn piglin_part_trees(
+    family: PiglinModelFamily,
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if piglin_baby_layout(family, baby) {
+        (&BABY_PIGLIN_PARTS, &BABY_PIGLIN_TEXTURED_PARTS)
+    } else {
+        (&ADULT_PIGLIN_PARTS, &ADULT_PIGLIN_TEXTURED_PARTS)
+    }
+}
+
+/// Mutable piglin model, mirroring vanilla `AbstractPiglinModel extends HumanoidModel` (the piglin,
+/// piglin brute, and zombified piglin). The unified tree is selected by `family`/`baby`
+/// ([`piglin_part_trees`]). `setup_anim` runs `super.setupAnim` — the head look ([`apply_head_look`])
+/// and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk`]) — except the zombified piglin
+/// keeps its arms at rest (the held-out `animateZombieArms` pose defers), so it swings only the legs
+/// ([`apply_humanoid_leg_swing`]); then it always flaps the two ears ([`piglin_ear_flap_pose`], head
+/// children). The family recolor/texture is supplied by the caller; the dance/attack/crossbow/admire
+/// arm poses and held items defer.
+pub(in crate::entity_models) struct PiglinModel {
+    root: ModelPart,
+    family: PiglinModelFamily,
+    baby_layout: bool,
+}
+
+impl PiglinModel {
+    pub(in crate::entity_models) fn new(family: PiglinModelFamily, baby: bool) -> Self {
+        let (colored, textured) = piglin_part_trees(family, baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            family,
+            baby_layout: piglin_baby_layout(family, baby),
+        }
+    }
+}
+
+impl EntityModel for PiglinModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        let limb_swing = render_state.walk_animation_pos;
+        let limb_swing_amount = render_state.walk_animation_speed;
+        let age_in_ticks = render_state.age_in_ticks;
+        let head_index = piglin_head_part_index(self.baby_layout);
+        apply_head_look(
+            self.root.child_at_mut(head_index),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        if self.family == PiglinModelFamily::ZombifiedPiglin {
+            // The zombified piglin's held-out arms (deferred) replace the inherited swing, so only the
+            // legs swing.
+            apply_humanoid_leg_swing(&mut self.root, limb_swing, limb_swing_amount);
+        } else {
+            apply_humanoid_walk(&mut self.root, limb_swing, limb_swing_amount, age_in_ticks);
+        }
+        // Flap the two ears (head children) every frame.
+        let (left_ear, right_ear) = piglin_ear_child_indices(self.baby_layout);
+        let default_ear_angle = piglin_default_ear_angle(self.baby_layout);
+        let head = self.root.child_at_mut(head_index);
+        let left = head.child_at_mut(left_ear);
+        left.pose = piglin_ear_flap_pose(
+            left.pose,
+            true,
+            default_ear_angle,
+            age_in_ticks,
+            limb_swing,
+            limb_swing_amount,
+        );
+        let right = head.child_at_mut(right_ear);
+        right.pose = piglin_ear_flap_pose(
+            right.pose,
+            false,
+            default_ear_angle,
+            age_in_ticks,
+            limb_swing,
+            limb_swing_amount,
+        );
+    }
+}

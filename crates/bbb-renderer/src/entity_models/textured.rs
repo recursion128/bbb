@@ -31,28 +31,28 @@ use super::{
         head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
         humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
         parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
-        phantom_wing_pose, phantom_wing_z_rot, piglin_ear_flap_pose, piglin_head_part_index,
-        pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
-        quadruped_leg_swing_pose, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
-        skeleton_head_part_index, spider_leg_swing_pose, spider_leg_swing_roles,
-        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
-        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
-        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
-        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
-        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel,
-        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
-        IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PlayerModel, PolarBearModel,
-        RavagerModel, SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel, VillagerModel,
-        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
-        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
-        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
-        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
-        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
-        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
-        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
-        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        phantom_wing_pose, phantom_wing_z_rot, pufferfish_fin_pose, pufferfish_parts,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
+        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose,
+        spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
+        strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
+        strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
+        strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
+        vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
+        wolf_tail_swing_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
+        CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel,
+        IllagerModel, IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PiglinModel,
+        PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel,
+        SnowGolemModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
+        ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
+        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
+        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -81,10 +81,9 @@ use super::{
         PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
         PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
-        PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
-        SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
-        STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y,
-        STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
+        PUFFERFISH_TEXTURE_REF, SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE,
+        STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X,
+        STRIDER_BABY_LEG_BASE_Y, STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
         STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
         STRIDER_BABY_TEXTURED_FRONT_BRISTLE, STRIDER_BABY_TEXTURED_LEFT_LEG,
         STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE, STRIDER_BABY_TEXTURED_RIGHT_LEG,
@@ -2611,102 +2610,23 @@ fn emit_piglin_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Mirrors the colored `emit_piglin_model`: `AbstractPiglinModel.setupAnim` runs the inherited
-    // head look + leg swing + arm counter-swing, then always flaps the ears (`piglin_ear_flap_pose`)
-    // — the ears are nested head children, so the head subtree is hand-emitted with the flapped
-    // ears (the hoglin pattern). The zombified piglin overwrites the arms with the held-out
-    // `animateZombieArms` pose (deferred), so it skips the arm swing; the brute is never baby.
-    // The dance/attack/crossbow/admire arm poses and the held items stay deferred.
+    // The unified `PiglinModel` tree drives both render paths; `setup_anim` runs the head look, the
+    // humanoid walk (legs only for the zombified piglin), and the ear flap (head children). `new`
+    // selects the adult/baby tree; the family chooses the texture. The brute is never baby. The
+    // dance/attack/crossbow/admire arm poses and held items defer.
     let baby_layout = baby && family != PiglinModelFamily::PiglinBrute;
-    let head_index = piglin_head_part_index(baby_layout);
-    let (left_ear, right_ear) = if baby_layout { (1, 2) } else { (0, 1) };
-    let default_ear_angle = if baby_layout {
-        PIGLIN_BABY_EAR_ANGLE
-    } else {
-        PIGLIN_ADULT_EAR_ANGLE
-    };
-    let swing_arms = family != PiglinModelFamily::ZombifiedPiglin;
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let age_in_ticks = instance.render_state.age_in_ticks;
     let transform = entity_model_root_transform(instance);
+    let mut model = PiglinModel::new(family, baby);
+    model.prepare(&instance);
     for pass in piglin_textured_layer_passes(family, baby_layout) {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let mut parts = pass.parts.to_vec();
-        if let Some(head) = parts.get_mut(head_index) {
-            head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-        }
-        for index in HUMANOID_LEG_PART_INDICES {
-            if let Some(leg) = parts.get_mut(index) {
-                leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-            }
-        }
-        if swing_arms {
-            // The inherited arm counter-swing plus the always-on `HumanoidModel.setupAnim`
-            // idle arm bob (`humanoid_arm_bob_pose`). The zombified piglin's deferred held-out
-            // arms carry their own bob, so this whole branch is skipped for it.
-            for index in HUMANOID_ARM_PART_INDICES {
-                if let Some(arm) = parts.get_mut(index) {
-                    let swung = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
-                    arm.pose = humanoid_arm_bob_pose(swung, age_in_ticks);
-                }
-            }
-        }
-        let mesh = meshes.mesh_mut(pass.render_type);
-        for (index, part) in parts.iter().enumerate() {
-            if index == head_index {
-                // The ears are nested head children, so emit the head cubes then the children
-                // with the flapped ear poses (vanilla flaps the ears every frame).
-                let head_transform = transform * part_pose_transform(part.pose);
-                for cube in part.cubes {
-                    emit_textured_model_cube(
-                        mesh,
-                        head_transform,
-                        *cube,
-                        pass.texture,
-                        entry.uv,
-                        pass.tint,
-                    );
-                }
-                let mut children = part.children.to_vec();
-                children[left_ear].pose = piglin_ear_flap_pose(
-                    children[left_ear].pose,
-                    true,
-                    default_ear_angle,
-                    age_in_ticks,
-                    limb_swing,
-                    limb_swing_amount,
-                );
-                children[right_ear].pose = piglin_ear_flap_pose(
-                    children[right_ear].pose,
-                    false,
-                    default_ear_angle,
-                    age_in_ticks,
-                    limb_swing,
-                    limb_swing_amount,
-                );
-                emit_textured_model_parts(
-                    mesh,
-                    &children,
-                    head_transform,
-                    pass.texture,
-                    entry.uv,
-                    pass.tint,
-                );
-            } else {
-                emit_textured_model_parts(
-                    mesh,
-                    std::slice::from_ref(part),
-                    transform,
-                    pass.texture,
-                    entry.uv,
-                    pass.tint,
-                );
-            }
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }
