@@ -28,7 +28,8 @@ use super::transforms::{
     salmon_model_root_transform, scaled_model_root_transform, shulker_bullet_model_root_transform,
     slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
     tropical_fish_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, GIANT_SCALE, HUSK_SCALE,
+    wind_charge_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
+    HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -248,6 +249,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::ShulkerBullet => {
                 // Colored-only so far (no texture-backed shulker bullet yet), so this arm always emits.
                 emit_shulker_bullet_model(&mut mesh, *instance);
+            }
+            EntityModelKind::WindCharge => {
+                // Colored-only so far (no texture-backed wind charge yet), so this arm always emits.
+                emit_wind_charge_model(&mut mesh, *instance);
             }
             EntityModelKind::EnderDragon => {
                 // Colored-only so far (no texture-backed ender dragon yet), so this arm always emits.
@@ -1682,6 +1687,15 @@ fn emit_shulker_bullet_model(mesh: &mut EntityModelMesh, instance: EntityModelIn
     // are deferred.
     let root = shulker_bullet_model_root_transform(instance);
     emit_model_parts(mesh, &SHULKER_BULLET_PARTS, root);
+}
+
+fn emit_wind_charge_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `WindChargeModel` is the `bone` root parenting the `wind` shell (a fixed `-π/4` bind
+    // rotation) and the `wind_charge` core. The bind-pose part tree is emitted at the position-only
+    // `WindChargeRenderer` transform; the `setupAnim` counter-rotation and the translucent scrolling
+    // texture are deferred.
+    let root = wind_charge_model_root_transform(instance);
+    emit_model_parts(mesh, &WIND_CHARGE_PARTS, root);
 }
 
 fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

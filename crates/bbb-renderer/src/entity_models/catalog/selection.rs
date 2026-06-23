@@ -99,6 +99,7 @@ impl EntityModelKind {
             Self::Trident => "trident",
             Self::LlamaSpit => "llama_spit",
             Self::ShulkerBullet => "shulker_bullet",
+            Self::WindCharge => "wind_charge",
             Self::EnderDragon => "ender_dragon",
             Self::NoRender => "no_render",
             Self::Phantom { .. } => "phantom",

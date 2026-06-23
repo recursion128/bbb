@@ -751,9 +751,7 @@ fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_BLAZE_ID => EntityModelKind::Blaze,
         VANILLA_ENTITY_TYPE_BREEZE_ID => EntityModelKind::Breeze,
-        VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => {
-            placeholder("todo_breeze_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
-        }
+        VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
         VANILLA_ENTITY_TYPE_COD_ID => EntityModelKind::Cod,
         VANILLA_ENTITY_TYPE_CREAKING_ID => EntityModelKind::Creaking,
@@ -866,9 +864,7 @@ fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex,
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,
-        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => {
-            placeholder("todo_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
-        }
+        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => {
             placeholder("todo_wither_skull_bounds", 0.3125, 0.3125, 0.3125)
@@ -4742,6 +4738,22 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, &[]),
             EntityModelKind::ShulkerBullet
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_wind_charges_to_real_model() {
+        // The wind charge and breeze wind charge were placeholder boxes; both share the real
+        // `WindChargeModel` (vanilla registers `WindChargeRenderer` for both). The counter-rotation,
+        // the scrolling translucent texture, and the texture-backed path are deferred entity-side
+        // state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, &[]),
+            EntityModelKind::WindCharge
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID, &[]),
+            EntityModelKind::WindCharge
         );
     }
 

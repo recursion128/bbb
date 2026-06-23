@@ -271,6 +271,16 @@ pub(in crate::entity_models) fn shulker_bullet_model_root_transform(
         * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
 }
 
+/// Vanilla `WindChargeRenderer`: a plain `EntityRenderer` whose `submit` applies no extra transform
+/// (no flip, scale, or y-offset), so the model renders at the entity position. The `bone` root sits
+/// at ZERO; the `wind`/`wind_charge` counter-rotation and the scrolling `breezeWind` translucent
+/// texture are deferred. Shared by the wind charge and breeze wind charge.
+pub(in crate::entity_models) fn wind_charge_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+}
+
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))

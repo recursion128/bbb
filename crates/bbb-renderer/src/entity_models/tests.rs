@@ -71,6 +71,7 @@ mod upside_down;
 mod vex;
 mod villager;
 mod warden;
+mod wind_charge;
 mod witch;
 mod wither;
 mod wolf;
