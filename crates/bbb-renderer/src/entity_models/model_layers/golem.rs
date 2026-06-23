@@ -1,6 +1,7 @@
 use super::{
-    apply_head_look, apply_iron_golem_walk, ModelCubeDesc, ModelPartDesc, PartPose,
-    TexturedModelCubeDesc, TexturedModelPartDesc, IRON_GOLEM_STONE, SNOW_GOLEM_WHITE,
+    apply_head_look, apply_iron_golem_walk, snow_golem_arm_pose, snow_golem_upper_body_pose,
+    snow_golem_upper_body_yrot, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc, IRON_GOLEM_STONE, SNOW_GOLEM_WHITE,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -392,5 +393,50 @@ impl EntityModel for IronGolemModel {
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
         );
+    }
+}
+
+/// Mutable snow golem model, mirroring vanilla `SnowGolemModel`. The unified tree is zipped from the
+/// baked colored ([`SNOW_GOLEM_PARTS`]) and textured ([`SNOW_GOLEM_TEXTURED_PARTS`]) trees: child 0 is
+/// the head, children 1/2 the left/right stick arm, child 3 the upper snow ball, child 4 the lower
+/// body. `setup_anim` looks the head ([`apply_head_look`]), twists the upper body by a quarter of the
+/// head yaw ([`snow_golem_upper_body_pose`]), and orbits the two arms around that twist
+/// ([`snow_golem_arm_pose`]). The arm orbit overwrites the body-layer `x`/`z` even at rest, so the
+/// tree is always re-posed.
+pub(in crate::entity_models) struct SnowGolemModel {
+    root: ModelPart,
+}
+
+impl SnowGolemModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&SNOW_GOLEM_PARTS, &SNOW_GOLEM_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SnowGolemModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        let upper_body_yrot = snow_golem_upper_body_yrot(render_state.head_yaw);
+        apply_head_look(
+            self.root.child_at_mut(SNOW_GOLEM_HEAD_PART_INDEX),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        let upper_body = self.root.child_at_mut(SNOW_GOLEM_UPPER_BODY_PART_INDEX);
+        upper_body.pose = snow_golem_upper_body_pose(upper_body.pose, upper_body_yrot);
+        let left_arm = self.root.child_at_mut(SNOW_GOLEM_LEFT_ARM_PART_INDEX);
+        left_arm.pose = snow_golem_arm_pose(left_arm.pose, upper_body_yrot, false);
+        let right_arm = self.root.child_at_mut(SNOW_GOLEM_RIGHT_ARM_PART_INDEX);
+        right_arm.pose = snow_golem_arm_pose(right_arm.pose, upper_body_yrot, true);
     }
 }

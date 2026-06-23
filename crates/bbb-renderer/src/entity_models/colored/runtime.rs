@@ -448,7 +448,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::SnowGolem => {
                 if !skip_texture_backed_entities {
-                    emit_snow_golem_model(&mut mesh, *instance);
+                    SnowGolemModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Witch => {
@@ -3920,35 +3924,6 @@ fn enderman_limb_swing_parts(
             enderman_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
     }
     Cow::Owned(owned)
-}
-
-fn emit_snow_golem_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `SnowGolemModel.setupAnim` looks the head, twists the middle snow ball by a
-    // quarter of the head yaw (`upperBody.yRot = headYaw * 0.25`), and orbits the two
-    // stick arms around that twist (`leftArm.yRot = upperBodyYRot`, `rightArm.yRot =
-    // upperBodyYRot + π`, with `x`/`z` recomputed from cos/sin). The arm orbit overwrites
-    // the body-layer `x`/`z` even at rest, so the parts are always rebuilt.
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let upper_body_yrot = snow_golem_upper_body_yrot(head_yaw);
-    let mut parts = SNOW_GOLEM_PARTS;
-    parts[SNOW_GOLEM_HEAD_PART_INDEX].pose =
-        head_look_pose(parts[SNOW_GOLEM_HEAD_PART_INDEX].pose, head_yaw, head_pitch);
-    parts[SNOW_GOLEM_UPPER_BODY_PART_INDEX].pose = snow_golem_upper_body_pose(
-        parts[SNOW_GOLEM_UPPER_BODY_PART_INDEX].pose,
-        upper_body_yrot,
-    );
-    parts[SNOW_GOLEM_LEFT_ARM_PART_INDEX].pose = snow_golem_arm_pose(
-        parts[SNOW_GOLEM_LEFT_ARM_PART_INDEX].pose,
-        upper_body_yrot,
-        false,
-    );
-    parts[SNOW_GOLEM_RIGHT_ARM_PART_INDEX].pose = snow_golem_arm_pose(
-        parts[SNOW_GOLEM_RIGHT_ARM_PART_INDEX].pose,
-        upper_body_yrot,
-        true,
-    );
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 /// Applies the vanilla `setupAnim` head look to a standalone head-first colored
