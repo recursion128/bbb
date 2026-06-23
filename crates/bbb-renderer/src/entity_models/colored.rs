@@ -11,7 +11,6 @@ pub(super) use runtime::entity_model_mesh;
 pub(super) use runtime::{
     humanoid_arm_swing_parts, humanoid_limb_swing_parts, quadruped_leg_x_rotations,
     quadruped_limb_swing_parts, HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
-    QUADRUPED_LEG_PART_INDICES,
 };
 pub(super) use transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,

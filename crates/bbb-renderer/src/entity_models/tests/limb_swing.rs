@@ -3,6 +3,11 @@ use super::*;
 use std::borrow::Cow;
 use std::f32::consts::PI;
 
+/// The four `QuadrupedModel` leg part indices (head/body at `0`/`1`, then the four legs), used to
+/// drive [`quadruped_limb_swing_parts`] in these tests. The production emitters now address the legs
+/// through the unified model's [`apply_quadruped_leg_swing`] animator.
+const QUADRUPED_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
 #[test]
 fn limb_swing_leg_rotations_match_vanilla_quadruped_setup_anim() {
     // Vanilla QuadrupedModel.setupAnim, leg part order [rightHind, leftHind,

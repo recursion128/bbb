@@ -1,7 +1,9 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    SHEEP_WOOL,
+    apply_quadruped_leg_swing, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc, SHEEP_WOOL,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const ADULT_SHEEP_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-3.0, -4.0, -6.0],
@@ -549,3 +551,127 @@ pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_PARTS: [TexturedModelPart
         children: &[],
     },
 ];
+
+/// The four leg part indices in every sheep body/wool layer (head/body at `0`/`1`, then the four
+/// legs). [`apply_quadruped_leg_swing`] resolves each leg's phase from its offset.
+const SHEEP_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
+/// Vanilla `SheepModel.setupAnim`: `super.setupAnim` (the `QuadrupedModel` leg swing) then the
+/// eat-grass head pose ([`sheep_head_pose`], folded with the head look). Shared by the body and fur
+/// layers — both move together. The head pose is skipped while fully at rest ([`sheep_head_at_rest`]),
+/// matching the static fast path of the hand-walked emitters.
+fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+    let render_state = &instance.render_state;
+    if !sheep_head_at_rest(
+        render_state.head_eat,
+        render_state.head_yaw,
+        render_state.head_pitch,
+    ) {
+        let head = root.child_at_mut(sheep_head_part_index(baby));
+        head.pose = sheep_head_pose(
+            head.pose,
+            baby,
+            render_state.head_eat,
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+    }
+    apply_quadruped_leg_swing(
+        root,
+        SHEEP_LEG_PART_INDICES,
+        render_state.walk_animation_pos,
+        render_state.walk_animation_speed,
+    );
+}
+
+/// Selects the colored ([`ADULT_SHEEP_PARTS`]/[`BABY_SHEEP_PARTS`]) and textured
+/// ([`ADULT_SHEEP_TEXTURED_PARTS`]/[`BABY_SHEEP_TEXTURED_PARTS`]) body const trees for a sheep by
+/// `baby`, zipped into the unified tree by [`SheepModel::new`].
+pub(in crate::entity_models) fn sheep_body_part_trees(
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&BABY_SHEEP_PARTS, &BABY_SHEEP_TEXTURED_PARTS)
+    } else {
+        (&ADULT_SHEEP_PARTS, &ADULT_SHEEP_TEXTURED_PARTS)
+    }
+}
+
+/// Selects the colored and textured fur (wool) const trees for a sheep. The adult fur is the fluffy
+/// [`ADULT_SHEEP_WOOL_PARTS`] layer; the baby reuses its body geometry (vanilla baby sheep has no
+/// separate fur layer), zipped into the unified tree by [`SheepFurModel::new`].
+pub(in crate::entity_models) fn sheep_fur_part_trees(
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&BABY_SHEEP_PARTS, &BABY_SHEEP_TEXTURED_PARTS)
+    } else {
+        (&ADULT_SHEEP_WOOL_PARTS, &ADULT_SHEEP_WOOL_TEXTURED_PARTS)
+    }
+}
+
+/// Mutable sheep body model, mirroring vanilla `SheepModel` (a `QuadrupedModel`). The unified tree is
+/// zipped from the body const trees selected by `baby` ([`sheep_body_part_trees`]); `setup_anim` runs
+/// the shared [`apply_sheep_anim`]. The base layer renders this with its texture (or baked colors);
+/// the dyed-undercoat layer renders the same tree recolored with the wool tint.
+pub(in crate::entity_models) struct SheepModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl SheepModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let (colored, textured) = sheep_body_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for SheepModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_sheep_anim(&mut self.root, self.baby, instance);
+    }
+}
+
+/// Mutable sheep fur model, mirroring vanilla `SheepFurModel`. The unified tree is zipped from the fur
+/// const trees selected by `baby` ([`sheep_fur_part_trees`]); `setup_anim` runs the same shared
+/// [`apply_sheep_anim`] so the wool moves with the body. Rendered with the wool tint (colored) or the
+/// wool texture (textured); skipped when sheared or invisible.
+pub(in crate::entity_models) struct SheepFurModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl SheepFurModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let (colored, textured) = sheep_fur_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for SheepFurModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_sheep_anim(&mut self.root, self.baby, instance);
+    }
+}

@@ -31,8 +31,7 @@ use super::{
         humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
         parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
         phantom_wing_pose, phantom_wing_z_rot, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, skeleton_head_part_index,
         squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
         strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
         strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
@@ -41,17 +40,17 @@ use super::{
         BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel,
         EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
         IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PigModel, PiglinModel,
-        PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel,
-        SnowGolemModel, SpiderModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
-        ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
-        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
-        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
-        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
-        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
-        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel,
+        SilverfishModel, SkeletonModel, SnowGolemModel, SpiderModel, VillagerModel,
+        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
+        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
+        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
+        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
+        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
+        BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
+        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
+        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
+        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -518,12 +517,6 @@ fn emit_pig_textured_model(
         }
     }
 }
-
-/// `QuadrupedModel` leg part indices in the cow and pig body layers (the head and
-/// body occupy slots `0`/`1` in either order). [`quadruped_leg_swing_pose`] resolves
-/// each leg's phase from its offset, so the differing leg order of the adult
-/// (hind-first) and baby (front-first) layers does not matter.
-const QUADRUPED_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
 
 fn emit_cow_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
@@ -2872,37 +2865,29 @@ fn emit_sheep_textured_model(
     age_ticks: f32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `SheepModel` (body) and `SheepFurModel` (wool) trees drive both render paths; both
+    // run the shared `SheepModel.setupAnim` (leg swing + eat-grass head pose). Each pass routes to the
+    // body tree (base + dyed undercoat) or the fur tree (wool), in the pre-sorted layer order; the
+    // wool tint and per-state visibility are baked into the passes.
     let transform = entity_model_root_transform(instance);
-    let head_eat = instance.render_state.head_eat;
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let head_index = sheep_head_part_index(baby);
-    let head_resting = sheep_head_at_rest(head_eat, head_yaw, head_pitch);
-    // Vanilla `SheepModel.setupAnim` runs `super.setupAnim` (the `QuadrupedModel` leg
-    // swing) before its eat-grass head pose, so every sheep layer (body and wool)
-    // swings its legs.
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let mut body = SheepModel::new(baby);
+    body.prepare(&instance);
+    let mut fur = SheepFurModel::new(baby);
+    fur.prepare(&instance);
     for pass in sheep_textured_layer_passes(baby, sheared, wool_color, invisible, jeb, age_ticks) {
-        if head_resting && legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        let root = if pass.kind == layers::EntityModelLayerKind::SheepWool {
+            fur.root()
         } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = sheep_head_pose(head.pose, baby, head_eat, head_yaw, head_pitch);
-                }
-            }
-            if !legs_resting {
-                for index in QUADRUPED_LEG_PART_INDICES {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose =
-                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+            body.root()
+        };
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            root.render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }

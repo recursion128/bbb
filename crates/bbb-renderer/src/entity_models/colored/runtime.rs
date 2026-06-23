@@ -2616,13 +2616,6 @@ fn skeleton_colored_posed_parts(
     )
 }
 
-/// Vanilla `QuadrupedModel` leg part indices in the cow and pig body layers: the
-/// head and body occupy slots `0` and `1` (in either order — the baby layers swap
-/// them), then the four legs. The variants order the legs differently (adult layers
-/// list them hind-first, baby layers front-first), so [`quadruped_limb_swing_parts`]
-/// resolves each leg's phase from its offset rather than its slot.
-pub(in crate::entity_models) const QUADRUPED_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
-
 /// Applies the vanilla `QuadrupedModel.setupAnim` leg swing
 /// ([`quadruped_leg_swing_pose`]) to a colored layer's four leg parts at
 /// `leg_indices`. Borrows the static parts unchanged at rest
@@ -2756,68 +2749,25 @@ fn emit_sheep_model(
     jeb: bool,
     age_ticks: f32,
 ) {
+    // The unified `SheepModel` (body) and `SheepFurModel` (wool) trees drive both render paths; both
+    // run the shared `SheepModel.setupAnim` (leg swing + eat-grass head pose). The colored fallback
+    // renders the body with baked colors, optionally recolors the body undercoat (non-white adult),
+    // then renders the wool tinted (unless sheared). Invisible sheep render the body only.
     let transform = entity_model_root_transform(instance);
-    let head_eat = instance.render_state.head_eat;
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    // Vanilla `SheepModel.setupAnim` runs `super.setupAnim` (the `QuadrupedModel`
-    // head look + leg swing) before its eat-grass head pose, so every sheep layer
-    // (body and wool) swings its legs. `sheep_colored_head_parts` poses the head;
-    // the leg swing is layered on top for each part set.
-    let posed = |parts: &'static [ModelPartDesc]| {
-        quadruped_limb_swing_parts(
-            sheep_colored_head_parts(parts, baby, head_eat, head_yaw, head_pitch),
-            QUADRUPED_LEG_PART_INDICES,
-            limb_swing,
-            limb_swing_amount,
-        )
-    };
-    let base_parts: &[ModelPartDesc] = if baby {
-        &BABY_SHEEP_PARTS
-    } else {
-        &ADULT_SHEEP_PARTS
-    };
-    emit_model_parts(mesh, &posed(base_parts), transform);
     let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
+    let mut body = SheepModel::new(baby);
+    body.prepare(&instance);
+    body.root().render_colored(mesh, transform);
     if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
-        emit_model_parts_with_color(
-            mesh,
-            &posed(&ADULT_SHEEP_PARTS),
-            transform,
-            wool_layer_color,
-        );
+        body.root()
+            .render_colored_with_color(mesh, transform, wool_layer_color);
     }
     if !invisible && !sheared {
-        let wool_parts: &[ModelPartDesc] = if baby {
-            &BABY_SHEEP_PARTS
-        } else {
-            &ADULT_SHEEP_WOOL_PARTS
-        };
-        emit_model_parts_with_color(mesh, &posed(wool_parts), transform, wool_layer_color);
+        let mut fur = SheepFurModel::new(baby);
+        fur.prepare(&instance);
+        fur.root()
+            .render_colored_with_color(mesh, transform, wool_layer_color);
     }
-}
-
-/// Applies the vanilla sheep head pose (eat-grass animation plus head look) to a
-/// colored body/wool layer's head part, borrowing the static parts unchanged
-/// while the head is fully at rest.
-fn sheep_colored_head_parts(
-    parts: &[ModelPartDesc],
-    baby: bool,
-    head_eat: SheepHeadEatPose,
-    head_yaw: f32,
-    head_pitch: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    if sheep_head_at_rest(head_eat, head_yaw, head_pitch) {
-        return Cow::Borrowed(parts);
-    }
-    let head_index = sheep_head_part_index(baby);
-    let mut parts = parts.to_vec();
-    if let Some(head) = parts.get_mut(head_index) {
-        head.pose = sheep_head_pose(head.pose, baby, head_eat, head_yaw, head_pitch);
-    }
-    Cow::Owned(parts)
 }
 
 fn emit_wolf_model(
