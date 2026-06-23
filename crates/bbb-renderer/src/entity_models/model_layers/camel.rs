@@ -3,309 +3,130 @@ use super::super::keyframe::{
     sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
     Keyframe, KeyframeInterpolation,
 };
-use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    CAMEL_TAN, PART_POSE_ZERO,
-};
+use super::{PartPose, CAMEL_TAN, PART_POSE_ZERO};
 use crate::entity_models::catalog::CamelModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
-pub(in crate::entity_models) const ADULT_CAMEL_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-7.5, -12.0, -23.5],
-    size: [15.0, 12.0, 27.0],
-    color: CAMEL_TAN,
-}];
+const fn camel_cube(min: [f32; 3], size: [f32; 3], tex: [f32; 2]) -> ModelCube {
+    // `CubeDeformation.NONE`, so `uv_size == size`; never mirrored. Each cube carries both render
+    // paths' data: the colored debug tint (`CAMEL_TAN`) and the textured `uv_size` / `texOffs`.
+    ModelCube::new(min, size, CAMEL_TAN, size, tex, false)
+}
 
-pub(in crate::entity_models) const ADULT_CAMEL_HUMP: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.5, -5.0, -5.5],
-    size: [9.0, 5.0, 11.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TAIL: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, 0.0],
-    size: [3.0, 14.0, 0.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const ADULT_CAMEL_HEAD: [ModelCubeDesc; 3] = [
-    ModelCubeDesc {
-        min: [-3.5, -7.0, -15.0],
-        size: [7.0, 8.0, 19.0],
-        color: CAMEL_TAN,
-    },
-    ModelCubeDesc {
-        min: [-3.5, -21.0, -15.0],
-        size: [7.0, 14.0, 7.0],
-        color: CAMEL_TAN,
-    },
-    ModelCubeDesc {
-        min: [-2.5, -21.0, -21.0],
-        size: [5.0, 5.0, 6.0],
-        color: CAMEL_TAN,
-    },
+// Vanilla 26.1 `AdultCamelModel.createBodyMesh` cubes (atlas 128×128). The tail is a zero-thickness
+// (depth 0) plane.
+pub(in crate::entity_models) const ADULT_CAMEL_BODY: [ModelCube; 1] = [camel_cube(
+    [-7.5, -12.0, -23.5],
+    [15.0, 12.0, 27.0],
+    [0.0, 25.0],
+)];
+pub(in crate::entity_models) const ADULT_CAMEL_HUMP: [ModelCube; 1] = [camel_cube(
+    [-4.5, -5.0, -5.5],
+    [9.0, 5.0, 11.0],
+    [74.0, 0.0],
+)];
+pub(in crate::entity_models) const ADULT_CAMEL_TAIL: [ModelCube; 1] =
+    [camel_cube([-1.5, 0.0, 0.0], [3.0, 14.0, 0.0], [122.0, 0.0])];
+pub(in crate::entity_models) const ADULT_CAMEL_HEAD: [ModelCube; 3] = [
+    camel_cube([-3.5, -7.0, -15.0], [7.0, 8.0, 19.0], [60.0, 24.0]),
+    camel_cube([-3.5, -21.0, -15.0], [7.0, 14.0, 7.0], [21.0, 0.0]),
+    camel_cube([-2.5, -21.0, -21.0], [5.0, 5.0, 6.0], [50.0, 0.0]),
 ];
+pub(in crate::entity_models) const ADULT_CAMEL_LEFT_EAR: [ModelCube; 1] =
+    [camel_cube([-0.5, 0.5, -1.0], [3.0, 1.0, 2.0], [45.0, 0.0])];
+pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_EAR: [ModelCube; 1] =
+    [camel_cube([-2.5, 0.5, -1.0], [3.0, 1.0, 2.0], [67.0, 0.0])];
+pub(in crate::entity_models) const ADULT_CAMEL_LEFT_HIND_LEG: [ModelCube; 1] = [camel_cube(
+    [-2.5, 2.0, -2.5],
+    [5.0, 21.0, 5.0],
+    [58.0, 16.0],
+)];
+pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_HIND_LEG: [ModelCube; 1] = [camel_cube(
+    [-2.5, 2.0, -2.5],
+    [5.0, 21.0, 5.0],
+    [94.0, 16.0],
+)];
+pub(in crate::entity_models) const ADULT_CAMEL_LEFT_FRONT_LEG: [ModelCube; 1] =
+    [camel_cube([-2.5, 2.0, -2.5], [5.0, 21.0, 5.0], [0.0, 0.0])];
+pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_FRONT_LEG: [ModelCube; 1] =
+    [camel_cube([-2.5, 2.0, -2.5], [5.0, 21.0, 5.0], [0.0, 26.0])];
 
-pub(in crate::entity_models) const ADULT_CAMEL_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-0.5, 0.5, -1.0],
-    size: [3.0, 1.0, 2.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.5, 0.5, -1.0],
-    size: [3.0, 1.0, 2.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const ADULT_CAMEL_LEFT_HIND_LEG: [ModelCubeDesc; 1] =
-    [ModelCubeDesc {
-        min: [-2.5, 2.0, -2.5],
-        size: [5.0, 21.0, 5.0],
-        color: CAMEL_TAN,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_HIND_LEG: [ModelCubeDesc; 1] =
-    [ModelCubeDesc {
-        min: [-2.5, 2.0, -2.5],
-        size: [5.0, 21.0, 5.0],
-        color: CAMEL_TAN,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_LEFT_FRONT_LEG: [ModelCubeDesc; 1] =
-    [ModelCubeDesc {
-        min: [-2.5, 2.0, -2.5],
-        size: [5.0, 21.0, 5.0],
-        color: CAMEL_TAN,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_FRONT_LEG: [ModelCubeDesc; 1] =
-    [ModelCubeDesc {
-        min: [-2.5, 2.0, -2.5],
-        size: [5.0, 21.0, 5.0],
-        color: CAMEL_TAN,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_HEAD_CHILDREN: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.5, -21.0, -9.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_LEFT_EAR,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.5, -21.0, -9.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_RIGHT_EAR,
-        children: &[],
-    },
+// Vanilla 26.1 `BabyCamelModel.createBodyLayer` cubes (atlas 64×64). Each leg has its own `texOffs`.
+pub(in crate::entity_models) const BABY_CAMEL_BODY: [ModelCube; 1] = [camel_cube(
+    [-4.5, -4.0, -8.0],
+    [9.0, 8.0, 16.0],
+    [0.0, 14.0],
+)];
+pub(in crate::entity_models) const BABY_CAMEL_TAIL: [ModelCube; 1] =
+    [camel_cube([-1.5, -0.5, 0.0], [3.0, 9.0, 0.0], [50.0, 38.0])];
+pub(in crate::entity_models) const BABY_CAMEL_HEAD: [ModelCube; 3] = [
+    camel_cube([-2.5, -3.0, -7.5], [5.0, 5.0, 7.0], [20.0, 0.0]),
+    camel_cube([-2.5, -12.0, -7.5], [5.0, 9.0, 5.0], [0.0, 0.0]),
+    camel_cube([-2.5, -12.0, -10.5], [5.0, 4.0, 3.0], [0.0, 14.0]),
 ];
+pub(in crate::entity_models) const BABY_CAMEL_RIGHT_EAR: [ModelCube; 1] =
+    [camel_cube([-3.0, -0.5, -1.0], [3.0, 1.0, 2.0], [37.0, 0.0])];
+pub(in crate::entity_models) const BABY_CAMEL_LEFT_EAR: [ModelCube; 1] =
+    [camel_cube([0.0, -0.5, -1.0], [3.0, 1.0, 2.0], [47.0, 0.0])];
+pub(in crate::entity_models) const BABY_CAMEL_RIGHT_FRONT_LEG: [ModelCube; 1] = [camel_cube(
+    [-1.5, -0.5, -1.5],
+    [3.0, 13.0, 3.0],
+    [36.0, 14.0],
+)];
+pub(in crate::entity_models) const BABY_CAMEL_LEFT_FRONT_LEG: [ModelCube; 1] = [camel_cube(
+    [-1.5, -0.5, -1.5],
+    [3.0, 13.0, 3.0],
+    [48.0, 14.0],
+)];
+pub(in crate::entity_models) const BABY_CAMEL_LEFT_HIND_LEG: [ModelCube; 1] = [camel_cube(
+    [-1.5, -0.5, -1.5],
+    [3.0, 13.0, 3.0],
+    [12.0, 38.0],
+)];
+pub(in crate::entity_models) const BABY_CAMEL_RIGHT_HIND_LEG: [ModelCube; 1] = [camel_cube(
+    [-1.5, -0.5, -1.5],
+    [3.0, 13.0, 3.0],
+    [0.0, 38.0],
+)];
 
-pub(in crate::entity_models) const ADULT_CAMEL_BODY_CHILDREN: [ModelPartDesc; 3] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, -12.0, -10.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_HUMP,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, -9.0, 3.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_TAIL,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, -3.0, -19.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_HEAD,
-        children: &ADULT_CAMEL_HEAD_CHILDREN,
-    },
-];
+const fn pose(offset: [f32; 3]) -> PartPose {
+    PartPose {
+        offset,
+        rotation: [0.0, 0.0, 0.0],
+    }
+}
 
-// Vanilla 26.1 ModelLayers.CAMEL: AdultCamelModel.createBodyLayer().
-pub(in crate::entity_models) const ADULT_CAMEL_PARTS: [ModelPartDesc; 5] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 4.0, 9.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_BODY,
-        children: &ADULT_CAMEL_BODY_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [4.9, 1.0, 9.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_LEFT_HIND_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-4.9, 1.0, 9.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_RIGHT_HIND_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [4.9, 1.0, -10.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_LEFT_FRONT_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-4.9, 1.0, -10.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_CAMEL_RIGHT_FRONT_LEG,
-        children: &[],
-    },
-];
+// Adult part poses (`AdultCamelModel.createBodyLayer`).
+pub(in crate::entity_models) const ADULT_CAMEL_BODY_POSE: PartPose = pose([0.0, 4.0, 9.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_HUMP_POSE: PartPose = pose([0.0, -12.0, -10.0]);
+pub(in crate::entity_models) const ADULT_CAMEL_TAIL_POSE: PartPose = pose([0.0, -9.0, 3.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_HEAD_POSE: PartPose = pose([0.0, -3.0, -19.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_LEFT_EAR_POSE: PartPose = pose([2.5, -21.0, -9.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_EAR_POSE: PartPose = pose([-2.5, -21.0, -9.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_LEFT_HIND_LEG_POSE: PartPose = pose([4.9, 1.0, 9.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_HIND_LEG_POSE: PartPose =
+    pose([-4.9, 1.0, 9.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_LEFT_FRONT_LEG_POSE: PartPose =
+    pose([4.9, 1.0, -10.5]);
+pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_FRONT_LEG_POSE: PartPose =
+    pose([-4.9, 1.0, -10.5]);
 
-pub(in crate::entity_models) const BABY_CAMEL_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.5, -4.0, -8.0],
-    size: [9.0, 8.0, 16.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const BABY_CAMEL_TAIL: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, -0.5, 0.0],
-    size: [3.0, 9.0, 0.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const BABY_CAMEL_HEAD: [ModelCubeDesc; 3] = [
-    ModelCubeDesc {
-        min: [-2.5, -3.0, -7.5],
-        size: [5.0, 5.0, 7.0],
-        color: CAMEL_TAN,
-    },
-    ModelCubeDesc {
-        min: [-2.5, -12.0, -7.5],
-        size: [5.0, 9.0, 5.0],
-        color: CAMEL_TAN,
-    },
-    ModelCubeDesc {
-        min: [-2.5, -12.0, -10.5],
-        size: [5.0, 4.0, 3.0],
-        color: CAMEL_TAN,
-    },
-];
-
-pub(in crate::entity_models) const BABY_CAMEL_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, -0.5, -1.0],
-    size: [3.0, 1.0, 2.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const BABY_CAMEL_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -0.5, -1.0],
-    size: [3.0, 1.0, 2.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const BABY_CAMEL_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, -0.5, -1.5],
-    size: [3.0, 13.0, 3.0],
-    color: CAMEL_TAN,
-}];
-
-pub(in crate::entity_models) const BABY_CAMEL_HEAD_CHILDREN: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.5, -11.0, -4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_RIGHT_EAR,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.5, -11.0, -4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_LEFT_EAR,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const BABY_CAMEL_BODY_CHILDREN: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, -1.5, 8.05],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_TAIL,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 1.0, -7.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_HEAD,
-        children: &BABY_CAMEL_HEAD_CHILDREN,
-    },
-];
-
-// Vanilla 26.1 ModelLayers.CAMEL_BABY: BabyCamelModel.createBodyLayer().
-pub(in crate::entity_models) const BABY_CAMEL_PARTS: [ModelPartDesc; 5] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 7.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_BODY,
-        children: &BABY_CAMEL_BODY_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-3.0, 11.5, -5.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [3.0, 11.5, -5.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [3.0, 11.5, 5.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-3.0, 11.5, 5.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_CAMEL_LEG,
-        children: &[],
-    },
-];
+// Baby part poses (`BabyCamelModel.createBodyLayer`).
+pub(in crate::entity_models) const BABY_CAMEL_BODY_POSE: PartPose = pose([0.0, 7.0, 0.0]);
+pub(in crate::entity_models) const BABY_CAMEL_TAIL_POSE: PartPose = pose([0.0, -1.5, 8.05]);
+pub(in crate::entity_models) const BABY_CAMEL_HEAD_POSE: PartPose = pose([0.0, 1.0, -7.5]);
+pub(in crate::entity_models) const BABY_CAMEL_RIGHT_EAR_POSE: PartPose = pose([-2.5, -11.0, -4.0]);
+pub(in crate::entity_models) const BABY_CAMEL_LEFT_EAR_POSE: PartPose = pose([2.5, -11.0, -4.0]);
+// Vanilla `BabyCamelModel` lists the four legs at these offsets, in the root-child order
+// right_front, left_front, left_hind, right_hind.
+pub(in crate::entity_models) const BABY_CAMEL_RIGHT_FRONT_LEG_POSE: PartPose =
+    pose([-3.0, 11.5, -5.5]);
+pub(in crate::entity_models) const BABY_CAMEL_LEFT_FRONT_LEG_POSE: PartPose =
+    pose([3.0, 11.5, -5.5]);
+pub(in crate::entity_models) const BABY_CAMEL_LEFT_HIND_LEG_POSE: PartPose = pose([3.0, 11.5, 5.5]);
+pub(in crate::entity_models) const BABY_CAMEL_RIGHT_HIND_LEG_POSE: PartPose =
+    pose([-3.0, 11.5, 5.5]);
 
 /// Vanilla `CamelModel.applyHeadRotation`: the net head look clamped to `yRot ∈ [-30, 30]` and
 /// `xRot ∈ [-25, 45]` (a camel turns its long neck only so far) before `head.yRot/xRot` are set from
@@ -327,323 +148,6 @@ pub(in crate::entity_models) fn camel_clamped_head_look(
 // texture differs, so it reuses the `camel#main` layer/parts.
 pub(in crate::entity_models) const MODEL_LAYER_CAMEL: &str = "minecraft:camel#main";
 pub(in crate::entity_models) const MODEL_LAYER_CAMEL_BABY: &str = "minecraft:camel_baby#main";
-
-// `AdultCamelModel.createBodyMesh` UVs, atlas 128×128. `CubeDeformation.NONE`, so every
-// `uv_size` equals the geometry size. The tail is a zero-thickness (depth 0) plane.
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-7.5, -12.0, -23.5],
-        size: [15.0, 12.0, 27.0],
-        uv_size: [15.0, 12.0, 27.0],
-        tex: [0.0, 25.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_HUMP: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.5, -5.0, -5.5],
-        size: [9.0, 5.0, 11.0],
-        uv_size: [9.0, 5.0, 11.0],
-        tex: [74.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_TAIL: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, 0.0, 0.0],
-        size: [3.0, 14.0, 0.0],
-        uv_size: [3.0, 14.0, 0.0],
-        tex: [122.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_HEAD: [TexturedModelCubeDesc; 3] = [
-    TexturedModelCubeDesc {
-        min: [-3.5, -7.0, -15.0],
-        size: [7.0, 8.0, 19.0],
-        uv_size: [7.0, 8.0, 19.0],
-        tex: [60.0, 24.0],
-        mirror: false,
-    },
-    TexturedModelCubeDesc {
-        min: [-3.5, -21.0, -15.0],
-        size: [7.0, 14.0, 7.0],
-        uv_size: [7.0, 14.0, 7.0],
-        tex: [21.0, 0.0],
-        mirror: false,
-    },
-    TexturedModelCubeDesc {
-        min: [-2.5, -21.0, -21.0],
-        size: [5.0, 5.0, 6.0],
-        uv_size: [5.0, 5.0, 6.0],
-        tex: [50.0, 0.0],
-        mirror: false,
-    },
-];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_LEFT_EAR: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-0.5, 0.5, -1.0],
-        size: [3.0, 1.0, 2.0],
-        uv_size: [3.0, 1.0, 2.0],
-        tex: [45.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_RIGHT_EAR: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, 0.5, -1.0],
-        size: [3.0, 1.0, 2.0],
-        uv_size: [3.0, 1.0, 2.0],
-        tex: [67.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, 2.0, -2.5],
-        size: [5.0, 21.0, 5.0],
-        uv_size: [5.0, 21.0, 5.0],
-        tex: [58.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, 2.0, -2.5],
-        size: [5.0, 21.0, 5.0],
-        uv_size: [5.0, 21.0, 5.0],
-        tex: [94.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, 2.0, -2.5],
-        size: [5.0, 21.0, 5.0],
-        uv_size: [5.0, 21.0, 5.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc;
-    1] = [TexturedModelCubeDesc {
-    min: [-2.5, 2.0, -2.5],
-    size: [5.0, 21.0, 5.0],
-    uv_size: [5.0, 21.0, 5.0],
-    tex: [0.0, 26.0],
-    mirror: false,
-}];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 2] = [
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_HEAD_CHILDREN[0].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_LEFT_EAR,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_HEAD_CHILDREN[1].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_RIGHT_EAR,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_BODY_CHILDREN: [TexturedModelPartDesc; 3] = [
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_BODY_CHILDREN[0].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_HUMP,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_BODY_CHILDREN[1].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_TAIL,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_BODY_CHILDREN[2].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_HEAD,
-        children: &ADULT_CAMEL_TEXTURED_HEAD_CHILDREN,
-    },
-];
-
-pub(in crate::entity_models) const ADULT_CAMEL_TEXTURED_PARTS: [TexturedModelPartDesc; 5] = [
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_PARTS[0].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_BODY,
-        children: &ADULT_CAMEL_TEXTURED_BODY_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_PARTS[1].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_LEFT_HIND_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_PARTS[2].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_RIGHT_HIND_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_PARTS[3].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_LEFT_FRONT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_CAMEL_PARTS[4].pose,
-        cubes: &ADULT_CAMEL_TEXTURED_RIGHT_FRONT_LEG,
-        children: &[],
-    },
-];
-
-// `BabyCamelModel.createBodyLayer` UVs, atlas 64×64. Each leg has its own `texOffs`.
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.5, -4.0, -8.0],
-        size: [9.0, 8.0, 16.0],
-        uv_size: [9.0, 8.0, 16.0],
-        tex: [0.0, 14.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_TAIL: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, -0.5, 0.0],
-        size: [3.0, 9.0, 0.0],
-        uv_size: [3.0, 9.0, 0.0],
-        tex: [50.0, 38.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_HEAD: [TexturedModelCubeDesc; 3] = [
-    TexturedModelCubeDesc {
-        min: [-2.5, -3.0, -7.5],
-        size: [5.0, 5.0, 7.0],
-        uv_size: [5.0, 5.0, 7.0],
-        tex: [20.0, 0.0],
-        mirror: false,
-    },
-    TexturedModelCubeDesc {
-        min: [-2.5, -12.0, -7.5],
-        size: [5.0, 9.0, 5.0],
-        uv_size: [5.0, 9.0, 5.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    },
-    TexturedModelCubeDesc {
-        min: [-2.5, -12.0, -10.5],
-        size: [5.0, 4.0, 3.0],
-        uv_size: [5.0, 4.0, 3.0],
-        tex: [0.0, 14.0],
-        mirror: false,
-    },
-];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_RIGHT_EAR: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.0, -0.5, -1.0],
-        size: [3.0, 1.0, 2.0],
-        uv_size: [3.0, 1.0, 2.0],
-        tex: [37.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_LEFT_EAR: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, -0.5, -1.0],
-        size: [3.0, 1.0, 2.0],
-        uv_size: [3.0, 1.0, 2.0],
-        tex: [47.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, -0.5, -1.5],
-        size: [3.0, 13.0, 3.0],
-        uv_size: [3.0, 13.0, 3.0],
-        tex: [36.0, 14.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, -0.5, -1.5],
-        size: [3.0, 13.0, 3.0],
-        uv_size: [3.0, 13.0, 3.0],
-        tex: [48.0, 14.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, -0.5, -1.5],
-        size: [3.0, 13.0, 3.0],
-        uv_size: [3.0, 13.0, 3.0],
-        tex: [12.0, 38.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, -0.5, -1.5],
-        size: [3.0, 13.0, 3.0],
-        uv_size: [3.0, 13.0, 3.0],
-        tex: [0.0, 38.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 2] = [
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_HEAD_CHILDREN[0].pose,
-        cubes: &BABY_CAMEL_TEXTURED_RIGHT_EAR,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_HEAD_CHILDREN[1].pose,
-        cubes: &BABY_CAMEL_TEXTURED_LEFT_EAR,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_BODY_CHILDREN: [TexturedModelPartDesc; 2] = [
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_BODY_CHILDREN[0].pose,
-        cubes: &BABY_CAMEL_TEXTURED_TAIL,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_BODY_CHILDREN[1].pose,
-        cubes: &BABY_CAMEL_TEXTURED_HEAD,
-        children: &BABY_CAMEL_TEXTURED_HEAD_CHILDREN,
-    },
-];
-
-pub(in crate::entity_models) const BABY_CAMEL_TEXTURED_PARTS: [TexturedModelPartDesc; 5] = [
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_PARTS[0].pose,
-        cubes: &BABY_CAMEL_TEXTURED_BODY,
-        children: &BABY_CAMEL_TEXTURED_BODY_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_PARTS[1].pose,
-        cubes: &BABY_CAMEL_TEXTURED_RIGHT_FRONT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_PARTS[2].pose,
-        cubes: &BABY_CAMEL_TEXTURED_LEFT_FRONT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_PARTS[3].pose,
-        cubes: &BABY_CAMEL_TEXTURED_LEFT_HIND_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_CAMEL_PARTS[4].pose,
-        cubes: &BABY_CAMEL_TEXTURED_RIGHT_HIND_LEG,
-        children: &[],
-    },
-];
 
 // ----- `CamelAnimation.CAMEL_WALK` (the adult walk; length 1.5s, looping) -----
 //
@@ -828,8 +332,9 @@ pub(in crate::entity_models) const CAMEL_WALK_SCALE_FACTOR: f32 = 2.5;
 // ----- `CamelBabyAnimation.CAMEL_BABY_WALK` (the baby walk; length 1.5s, looping) -----
 //
 // The baby walk animates the same nine bones as the adult plus a `body` position dip and a `head`
-// position nudge (the adult had neither). The baby leg/ear order differs from the adult (see
-// [`BABY_CAMEL_WALK_LAYOUT`]). Sampled like the adult via `applyWalk(..., 2.0, 2.5)`.
+// position nudge (the adult had neither). The baby leg/ear order differs from the adult, but the bone
+// names match, so the named-children tree drives both. Sampled like the adult via `applyWalk(..., 2.0,
+// 2.5)`.
 
 const CAMEL_BABY_WALK_ROOT_ROT: [Keyframe; 3] = [
     keyframe(0.0, degree_vec(0.0, 0.0, 2.5), LINEAR),
@@ -993,86 +498,184 @@ const CAMEL_BABY_WALK_BONES: [BoneAnimation; 10] = [
 
 /// Vanilla `CamelBabyAnimation.CAMEL_BABY_WALK`: the looping 1.5s baby walk cycle, sampled like the
 /// adult via `applyWalk(walkAnimationPos, walkAnimationSpeed, 2.0, 2.5)`. Adds a `body` y-dip and a
-/// `head` position nudge the adult lacks, and reorders the legs/ears (see [`BABY_CAMEL_WALK_LAYOUT`]).
+/// `head` position nudge the adult lacks, and reorders the legs/ears (but the bone names match the
+/// named-children tree).
 pub(in crate::entity_models) const CAMEL_BABY_WALK: AnimationDefinition = AnimationDefinition {
     length_seconds: 1.5,
     looping: true,
     bones: &CAMEL_BABY_WALK_BONES,
 };
 
-/// The per-variant camel walk layout (which body child is the head / tail, the head-child ear order,
-/// and the root-child leg order), so one hand-walk serves both the adult and the baby. The adult body
-/// lists `[hump, tail, head]`; the baby `[tail, head]`.
-pub(in crate::entity_models) struct CamelWalkLayout {
-    pub walk: &'static AnimationDefinition,
-    pub head_child: usize,
-    pub tail_child: usize,
-    pub ears: [(usize, &'static str); 2],
-    pub legs: [(usize, &'static str); 4],
+/// The camel walk bones that are positioned by leg/ear/tail keyframes (every animated bone except the
+/// `root` whole-model roll, the `body`, and the `head` — which are handled specially in `setup_anim`).
+const CAMEL_WALK_SWING_BONES: [&str; 7] = [
+    "left_hind_leg",
+    "right_hind_leg",
+    "left_front_leg",
+    "right_front_leg",
+    "left_ear",
+    "right_ear",
+    "tail",
+];
+
+/// Builds the adult camel tree (vanilla `AdultCamelModel.createBodyLayer`): the `body` carries
+/// `[hump, tail, head]`, the `head` carries `[left_ear, right_ear]`, and the four legs hang off the
+/// root in the order `[left_hind_leg, right_hind_leg, left_front_leg, right_front_leg]`.
+fn adult_camel_tree() -> ModelPart {
+    let head = ModelPart::new(
+        ADULT_CAMEL_HEAD_POSE,
+        ADULT_CAMEL_HEAD.to_vec(),
+        vec![
+            (
+                "left_ear",
+                ModelPart::leaf(ADULT_CAMEL_LEFT_EAR_POSE, ADULT_CAMEL_LEFT_EAR.to_vec()),
+            ),
+            (
+                "right_ear",
+                ModelPart::leaf(ADULT_CAMEL_RIGHT_EAR_POSE, ADULT_CAMEL_RIGHT_EAR.to_vec()),
+            ),
+        ],
+    );
+    let body = ModelPart::new(
+        ADULT_CAMEL_BODY_POSE,
+        ADULT_CAMEL_BODY.to_vec(),
+        vec![
+            (
+                "hump",
+                ModelPart::leaf(ADULT_CAMEL_HUMP_POSE, ADULT_CAMEL_HUMP.to_vec()),
+            ),
+            (
+                "tail",
+                ModelPart::leaf(ADULT_CAMEL_TAIL_POSE, ADULT_CAMEL_TAIL.to_vec()),
+            ),
+            ("head", head),
+        ],
+    );
+    let children: Vec<(&'static str, ModelPart)> = vec![
+        ("body", body),
+        (
+            "left_hind_leg",
+            ModelPart::leaf(
+                ADULT_CAMEL_LEFT_HIND_LEG_POSE,
+                ADULT_CAMEL_LEFT_HIND_LEG.to_vec(),
+            ),
+        ),
+        (
+            "right_hind_leg",
+            ModelPart::leaf(
+                ADULT_CAMEL_RIGHT_HIND_LEG_POSE,
+                ADULT_CAMEL_RIGHT_HIND_LEG.to_vec(),
+            ),
+        ),
+        (
+            "left_front_leg",
+            ModelPart::leaf(
+                ADULT_CAMEL_LEFT_FRONT_LEG_POSE,
+                ADULT_CAMEL_LEFT_FRONT_LEG.to_vec(),
+            ),
+        ),
+        (
+            "right_front_leg",
+            ModelPart::leaf(
+                ADULT_CAMEL_RIGHT_FRONT_LEG_POSE,
+                ADULT_CAMEL_RIGHT_FRONT_LEG.to_vec(),
+            ),
+        ),
+    ];
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
 }
 
-pub(in crate::entity_models) const ADULT_CAMEL_WALK_LAYOUT: CamelWalkLayout = CamelWalkLayout {
-    walk: &CAMEL_WALK,
-    head_child: 2,
-    tail_child: 1,
-    ears: [(0, "left_ear"), (1, "right_ear")],
-    legs: [
-        (1, "left_hind_leg"),
-        (2, "right_hind_leg"),
-        (3, "left_front_leg"),
-        (4, "right_front_leg"),
-    ],
-};
+/// Builds the baby camel tree (vanilla `BabyCamelModel.createBodyLayer`): the `body` carries
+/// `[tail, head]` (no hump), the `head` carries `[right_ear, left_ear]`, and the four legs hang off the
+/// root in the order `[right_front_leg, left_front_leg, left_hind_leg, right_hind_leg]`.
+fn baby_camel_tree() -> ModelPart {
+    let head = ModelPart::new(
+        BABY_CAMEL_HEAD_POSE,
+        BABY_CAMEL_HEAD.to_vec(),
+        vec![
+            (
+                "right_ear",
+                ModelPart::leaf(BABY_CAMEL_RIGHT_EAR_POSE, BABY_CAMEL_RIGHT_EAR.to_vec()),
+            ),
+            (
+                "left_ear",
+                ModelPart::leaf(BABY_CAMEL_LEFT_EAR_POSE, BABY_CAMEL_LEFT_EAR.to_vec()),
+            ),
+        ],
+    );
+    let body = ModelPart::new(
+        BABY_CAMEL_BODY_POSE,
+        BABY_CAMEL_BODY.to_vec(),
+        vec![
+            (
+                "tail",
+                ModelPart::leaf(BABY_CAMEL_TAIL_POSE, BABY_CAMEL_TAIL.to_vec()),
+            ),
+            ("head", head),
+        ],
+    );
+    let children: Vec<(&'static str, ModelPart)> = vec![
+        ("body", body),
+        (
+            "right_front_leg",
+            ModelPart::leaf(
+                BABY_CAMEL_RIGHT_FRONT_LEG_POSE,
+                BABY_CAMEL_RIGHT_FRONT_LEG.to_vec(),
+            ),
+        ),
+        (
+            "left_front_leg",
+            ModelPart::leaf(
+                BABY_CAMEL_LEFT_FRONT_LEG_POSE,
+                BABY_CAMEL_LEFT_FRONT_LEG.to_vec(),
+            ),
+        ),
+        (
+            "left_hind_leg",
+            ModelPart::leaf(
+                BABY_CAMEL_LEFT_HIND_LEG_POSE,
+                BABY_CAMEL_LEFT_HIND_LEG.to_vec(),
+            ),
+        ),
+        (
+            "right_hind_leg",
+            ModelPart::leaf(
+                BABY_CAMEL_RIGHT_HIND_LEG_POSE,
+                BABY_CAMEL_RIGHT_HIND_LEG.to_vec(),
+            ),
+        ),
+    ];
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
 
-pub(in crate::entity_models) const BABY_CAMEL_WALK_LAYOUT: CamelWalkLayout = CamelWalkLayout {
-    walk: &CAMEL_BABY_WALK,
-    head_child: 1,
-    tail_child: 0,
-    ears: [(0, "right_ear"), (1, "left_ear")],
-    legs: [
-        (1, "right_front_leg"),
-        (2, "left_front_leg"),
-        (3, "left_hind_leg"),
-        (4, "right_hind_leg"),
-    ],
-};
-
-/// Mutable camel model, mirroring vanilla `AdultCamelModel` / `BabyCamelModel`. The five root parts
-/// (body — carrying the hump/tail/head, the head carrying the two ears — and the four legs) are zipped
-/// from the colored and textured const trees selected by family/baby, so one tree drives both render
-/// paths. `new` picks the adult or baby tree and the matching [`CamelWalkLayout`] (the camel husk shares
-/// the adult mesh/walk); `setup_anim` clamps the head look ([`camel_clamped_head_look`]) and samples the
-/// looping walk keyframes (`applyWalk(..., 2.0, 2.5)`): the `root` rolls the model, the legs / ears /
-/// tail swing, the `head` pitch ADDS onto the clamped look, and the baby `body` dips. The colored
-/// fallback recolors the whole model with the family tint; the textured path uses the family texture.
+/// Mutable camel model, mirroring vanilla `AdultCamelModel` / `BabyCamelModel`. The unified tree is
+/// built once with the vanilla bone names: the `body` (carrying the `hump`/`tail`/`head`, the `head`
+/// carrying the two ears) plus the four legs hanging off the root. The leg/ear declaration order and
+/// the adult hump differ between variants, but the bone names match, so one named-children tree drives
+/// both render paths and both walks. `new` picks the adult or baby tree and the matching
+/// [`AnimationDefinition`] (the camel husk shares the adult mesh/walk); `setup_anim` clamps the head
+/// look ([`camel_clamped_head_look`]) and samples the looping walk keyframes (`applyWalk(..., 2.0,
+/// 2.5)`): the `root` rolls the model, the legs / ears / tail swing, the `head` pitch ADDS onto the
+/// clamped look, and the baby `body` dips. The colored fallback recolors the whole model with the
+/// family tint; the textured path uses the family texture.
 pub(in crate::entity_models) struct CamelModel {
     root: ModelPart,
-    layout: &'static CamelWalkLayout,
+    walk: &'static AnimationDefinition,
 }
 
 impl CamelModel {
     pub(in crate::entity_models) fn new(family: CamelModelFamily, baby: bool) -> Self {
         // The camel husk reuses the adult camel mesh/walk; only a real baby camel uses the baby layer.
-        let (colored, textured, layout): (
-            &[ModelPartDesc],
-            &[TexturedModelPartDesc],
-            &CamelWalkLayout,
-        ) = if family == CamelModelFamily::Camel && baby {
-            (
-                &BABY_CAMEL_PARTS,
-                &BABY_CAMEL_TEXTURED_PARTS,
-                &BABY_CAMEL_WALK_LAYOUT,
-            )
+        if family == CamelModelFamily::Camel && baby {
+            Self {
+                root: baby_camel_tree(),
+                walk: &CAMEL_BABY_WALK,
+            }
         } else {
-            (
-                &ADULT_CAMEL_PARTS,
-                &ADULT_CAMEL_TEXTURED_PARTS,
-                &ADULT_CAMEL_WALK_LAYOUT,
-            )
-        };
-        Self {
-            root: ModelPart::root_from_descs(colored, textured),
-            layout,
+            Self {
+                root: adult_camel_tree(),
+                walk: &CAMEL_WALK,
+            }
         }
     }
 }
@@ -1087,19 +690,19 @@ impl EntityModel for CamelModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        let layout = self.layout;
+        let walk = self.walk;
         let (head_yaw, head_pitch) = camel_clamped_head_look(
             instance.render_state.head_yaw,
             instance.render_state.head_pitch,
         );
         let (seconds, scale) = keyframe_walk_sample(
-            layout.walk,
+            walk,
             instance.render_state.walk_animation_pos,
             instance.render_state.walk_animation_speed,
             CAMEL_WALK_SPEED_FACTOR,
             CAMEL_WALK_SCALE_FACTOR,
         );
-        let sample = |bone: &str| sample_bone_offsets(layout.walk, bone, seconds, scale);
+        let sample = |bone: &str| sample_bone_offsets(walk, bone, seconds, scale);
 
         // `root` rolls the whole model: no bind offset/rotation, so the z-sway applies at the entity
         // root. The synthetic root part carries it.
@@ -1107,47 +710,40 @@ impl EntityModel for CamelModel {
         self.root.pose = keyframe_animated_pose(PART_POSE_ZERO, root_pos, root_rot);
 
         // `body` (root child 0): not animated on the adult; the baby walk dips it via a `body` channel.
-        {
-            let (body_pos, body_rot) = sample("body");
-            let (head_walk_pos, head_walk_rot) = sample("head");
-            let body = self.root.child_at_mut(0);
-            let body_bind = body.pose;
-            body.pose = keyframe_animated_pose(body_bind, body_pos, body_rot);
+        let (body_pos, body_rot) = sample("body");
+        let (head_walk_pos, head_walk_rot) = sample("head");
+        let body = self.root.child_mut("body");
+        let body_bind = body.pose;
+        body.pose = keyframe_animated_pose(body_bind, body_pos, body_rot);
 
-            // The head (clamped look + walk) carrying the two ears (walk), and the tail (walk swish).
-            // The adult hump is static, so it stays at its bind pose.
-            {
-                let head = body.child_at_mut(layout.head_child);
-                let head_bind = head.pose;
-                head.pose = PartPose {
-                    offset: [
-                        head_bind.offset[0] + head_walk_pos[0],
-                        head_bind.offset[1] + head_walk_pos[1],
-                        head_bind.offset[2] + head_walk_pos[2],
-                    ],
-                    rotation: [
-                        head_pitch.to_radians() + head_walk_rot[0],
-                        head_yaw.to_radians() + head_walk_rot[1],
-                        head_bind.rotation[2] + head_walk_rot[2],
-                    ],
-                };
-                for (ear_index, ear_bone) in layout.ears {
-                    let (ear_pos, ear_rot) = sample(ear_bone);
-                    let ear = head.child_at_mut(ear_index);
-                    ear.pose = keyframe_animated_pose(ear.pose, ear_pos, ear_rot);
-                }
+        // The head (clamped look + walk) carrying the two ears (walk swing handled below), and the tail
+        // (walk swish). The adult hump is static, so it stays at its bind pose.
+        let head = body.child_mut("head");
+        let head_bind = head.pose;
+        head.pose = PartPose {
+            offset: [
+                head_bind.offset[0] + head_walk_pos[0],
+                head_bind.offset[1] + head_walk_pos[1],
+                head_bind.offset[2] + head_walk_pos[2],
+            ],
+            rotation: [
+                head_pitch.to_radians() + head_walk_rot[0],
+                head_yaw.to_radians() + head_walk_rot[1],
+                head_bind.rotation[2] + head_walk_rot[2],
+            ],
+        };
+
+        // The two ears (head children), then the tail (body child) and the four legs (root children),
+        // all addressed by their vanilla bone name regardless of the per-variant declaration order.
+        for bone in CAMEL_WALK_SWING_BONES {
+            let (bone_pos, bone_rot) = sample(bone);
+            let part = match bone {
+                "left_ear" | "right_ear" => self.root.child_mut("body").child_mut("head"),
+                "tail" => self.root.child_mut("body"),
+                _ => &mut self.root,
             }
-
-            let (tail_pos, tail_rot) = sample("tail");
-            let tail = body.child_at_mut(layout.tail_child);
-            tail.pose = keyframe_animated_pose(tail.pose, tail_pos, tail_rot);
-        }
-
-        // The four legs (root children 1..=4): the walk rotation + position.
-        for (index, bone) in layout.legs {
-            let (leg_pos, leg_rot) = sample(bone);
-            let leg = self.root.child_at_mut(index);
-            leg.pose = keyframe_animated_pose(leg.pose, leg_pos, leg_rot);
+            .child_mut(bone);
+            part.pose = keyframe_animated_pose(part.pose, bone_pos, bone_rot);
         }
     }
 }

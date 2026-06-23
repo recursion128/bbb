@@ -221,7 +221,7 @@ pub(in crate::entity_models) fn camel_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: camel_model_layer(family, baby),
         texture: camel_texture_ref(family, baby),
-        parts: camel_textured_model_parts(family, baby),
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1120,17 +1120,6 @@ fn camel_model_layer(family: CamelModelFamily, baby: bool) -> &'static str {
         MODEL_LAYER_CAMEL_BABY
     } else {
         MODEL_LAYER_CAMEL
-    }
-}
-
-fn camel_textured_model_parts(
-    family: CamelModelFamily,
-    baby: bool,
-) -> &'static [TexturedModelPartDesc] {
-    if family == CamelModelFamily::Camel && baby {
-        &BABY_CAMEL_TEXTURED_PARTS
-    } else {
-        &ADULT_CAMEL_TEXTURED_PARTS
     }
 }
 

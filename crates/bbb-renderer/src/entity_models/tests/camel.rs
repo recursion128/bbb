@@ -1,132 +1,102 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn camel_model_parts_match_vanilla_26_1_body_layers() {
+fn camel_model_cubes_and_poses_match_vanilla_26_1_body_layers() {
+    // Adult `AdultCamelModel.createBodyLayer`: body carries [hump, tail, head], head carries
+    // [left_ear, right_ear], and the four legs hang off the root in the order
+    // [left_hind, right_hind, left_front, right_front]. The tail is a zero-thickness plane. Each
+    // unified cube carries the colored tint (`CAMEL_TAN`) and the textured UV.
     assert_eq!(
         ADULT_CAMEL_TAIL[0],
-        ModelCubeDesc {
-            min: [-1.5, 0.0, 0.0],
-            size: [3.0, 14.0, 0.0],
-            color: CAMEL_TAN,
-        }
+        ModelCube::new(
+            [-1.5, 0.0, 0.0],
+            [3.0, 14.0, 0.0],
+            CAMEL_TAN,
+            [3.0, 14.0, 0.0],
+            [122.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_CAMEL_PARTS.len(), 5);
-    assert_part_tree(
-        &ADULT_CAMEL_PARTS[0],
-        [0.0, 4.0, 9.5],
-        [0.0, 0.0, 0.0],
-        ADULT_CAMEL_BODY.as_slice(),
-        ADULT_CAMEL_BODY_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_CAMEL_BODY_CHILDREN[0],
-        [0.0, -12.0, -10.0],
-        [0.0, 0.0, 0.0],
-        ADULT_CAMEL_HUMP.as_slice(),
-    );
-    assert_part(
-        &ADULT_CAMEL_BODY_CHILDREN[1],
-        [0.0, -9.0, 3.5],
-        [0.0, 0.0, 0.0],
-        ADULT_CAMEL_TAIL.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_CAMEL_BODY_CHILDREN[2],
-        [0.0, -3.0, -19.5],
-        [0.0, 0.0, 0.0],
-        ADULT_CAMEL_HEAD.as_slice(),
-        ADULT_CAMEL_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_CAMEL_HEAD_CHILDREN[0],
-        [2.5, -21.0, -9.5],
-        [0.0, 0.0, 0.0],
-        ADULT_CAMEL_LEFT_EAR.as_slice(),
-    );
-    assert_part(
-        &ADULT_CAMEL_HEAD_CHILDREN[1],
-        [-2.5, -21.0, -9.5],
-        [0.0, 0.0, 0.0],
-        ADULT_CAMEL_RIGHT_EAR.as_slice(),
-    );
-    for (part, expected_offset, expected_cubes) in [
+    assert_eq!(ADULT_CAMEL_BODY_POSE.offset, [0.0, 4.0, 9.5]);
+    assert_eq!(ADULT_CAMEL_BODY[0].min, [-7.5, -12.0, -23.5]);
+    assert_eq!(ADULT_CAMEL_HUMP_POSE.offset, [0.0, -12.0, -10.0]);
+    assert_eq!(ADULT_CAMEL_TAIL_POSE.offset, [0.0, -9.0, 3.5]);
+    assert_eq!(ADULT_CAMEL_HEAD_POSE.offset, [0.0, -3.0, -19.5]);
+    assert_eq!(ADULT_CAMEL_HEAD.len(), 3);
+    assert_eq!(ADULT_CAMEL_LEFT_EAR_POSE.offset, [2.5, -21.0, -9.5]);
+    assert_eq!(ADULT_CAMEL_RIGHT_EAR_POSE.offset, [-2.5, -21.0, -9.5]);
+    for (pose, offset, cube) in [
         (
-            &ADULT_CAMEL_PARTS[1],
+            ADULT_CAMEL_LEFT_HIND_LEG_POSE,
             [4.9, 1.0, 9.5],
-            ADULT_CAMEL_LEFT_HIND_LEG.as_slice(),
+            ADULT_CAMEL_LEFT_HIND_LEG[0],
         ),
         (
-            &ADULT_CAMEL_PARTS[2],
+            ADULT_CAMEL_RIGHT_HIND_LEG_POSE,
             [-4.9, 1.0, 9.5],
-            ADULT_CAMEL_RIGHT_HIND_LEG.as_slice(),
+            ADULT_CAMEL_RIGHT_HIND_LEG[0],
         ),
         (
-            &ADULT_CAMEL_PARTS[3],
+            ADULT_CAMEL_LEFT_FRONT_LEG_POSE,
             [4.9, 1.0, -10.5],
-            ADULT_CAMEL_LEFT_FRONT_LEG.as_slice(),
+            ADULT_CAMEL_LEFT_FRONT_LEG[0],
         ),
         (
-            &ADULT_CAMEL_PARTS[4],
+            ADULT_CAMEL_RIGHT_FRONT_LEG_POSE,
             [-4.9, 1.0, -10.5],
-            ADULT_CAMEL_RIGHT_FRONT_LEG.as_slice(),
+            ADULT_CAMEL_RIGHT_FRONT_LEG[0],
         ),
     ] {
-        assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        assert_eq!(pose.offset, offset);
+        assert_eq!(cube.size, [5.0, 21.0, 5.0]);
     }
 
+    // Baby `BabyCamelModel.createBodyLayer`: body carries [tail, head], head carries
+    // [right_ear, left_ear], and the four legs hang off the root in the order
+    // [right_front, left_front, left_hind, right_hind].
     assert_eq!(
         BABY_CAMEL_TAIL[0],
-        ModelCubeDesc {
-            min: [-1.5, -0.5, 0.0],
-            size: [3.0, 9.0, 0.0],
-            color: CAMEL_TAN,
-        }
+        ModelCube::new(
+            [-1.5, -0.5, 0.0],
+            [3.0, 9.0, 0.0],
+            CAMEL_TAN,
+            [3.0, 9.0, 0.0],
+            [50.0, 38.0],
+            false,
+        )
     );
-    assert_eq!(BABY_CAMEL_PARTS.len(), 5);
-    assert_part_tree(
-        &BABY_CAMEL_PARTS[0],
-        [0.0, 7.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_CAMEL_BODY.as_slice(),
-        BABY_CAMEL_BODY_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_CAMEL_BODY_CHILDREN[0],
-        [0.0, -1.5, 8.05],
-        [0.0, 0.0, 0.0],
-        BABY_CAMEL_TAIL.as_slice(),
-    );
-    assert_part_tree(
-        &BABY_CAMEL_BODY_CHILDREN[1],
-        [0.0, 1.0, -7.5],
-        [0.0, 0.0, 0.0],
-        BABY_CAMEL_HEAD.as_slice(),
-        BABY_CAMEL_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_CAMEL_HEAD_CHILDREN[0],
-        [-2.5, -11.0, -4.0],
-        [0.0, 0.0, 0.0],
-        BABY_CAMEL_RIGHT_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_CAMEL_HEAD_CHILDREN[1],
-        [2.5, -11.0, -4.0],
-        [0.0, 0.0, 0.0],
-        BABY_CAMEL_LEFT_EAR.as_slice(),
-    );
-    for (part, expected_offset) in [
-        (&BABY_CAMEL_PARTS[1], [-3.0, 11.5, -5.5]),
-        (&BABY_CAMEL_PARTS[2], [3.0, 11.5, -5.5]),
-        (&BABY_CAMEL_PARTS[3], [3.0, 11.5, 5.5]),
-        (&BABY_CAMEL_PARTS[4], [-3.0, 11.5, 5.5]),
+    assert_eq!(BABY_CAMEL_BODY_POSE.offset, [0.0, 7.0, 0.0]);
+    assert_eq!(BABY_CAMEL_BODY[0].min, [-4.5, -4.0, -8.0]);
+    assert_eq!(BABY_CAMEL_TAIL_POSE.offset, [0.0, -1.5, 8.05]);
+    assert_eq!(BABY_CAMEL_HEAD_POSE.offset, [0.0, 1.0, -7.5]);
+    assert_eq!(BABY_CAMEL_RIGHT_EAR_POSE.offset, [-2.5, -11.0, -4.0]);
+    assert_eq!(BABY_CAMEL_LEFT_EAR_POSE.offset, [2.5, -11.0, -4.0]);
+    for (pose, offset, cube) in [
+        (
+            BABY_CAMEL_RIGHT_FRONT_LEG_POSE,
+            [-3.0, 11.5, -5.5],
+            BABY_CAMEL_RIGHT_FRONT_LEG[0],
+        ),
+        (
+            BABY_CAMEL_LEFT_FRONT_LEG_POSE,
+            [3.0, 11.5, -5.5],
+            BABY_CAMEL_LEFT_FRONT_LEG[0],
+        ),
+        (
+            BABY_CAMEL_LEFT_HIND_LEG_POSE,
+            [3.0, 11.5, 5.5],
+            BABY_CAMEL_LEFT_HIND_LEG[0],
+        ),
+        (
+            BABY_CAMEL_RIGHT_HIND_LEG_POSE,
+            [-3.0, 11.5, 5.5],
+            BABY_CAMEL_RIGHT_HIND_LEG[0],
+        ),
     ] {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_CAMEL_LEG.as_slice(),
-        );
+        assert_eq!(pose.offset, offset);
+        assert_eq!(cube.size, [3.0, 13.0, 3.0]);
     }
 }
 
@@ -233,88 +203,88 @@ fn camel_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult[0].kind, EntityModelLayerKind::CamelBase);
     assert_eq!(adult[0].model_layer, MODEL_LAYER_CAMEL);
     assert_eq!(adult[0].texture, CAMEL_TEXTURE_REF);
-    assert_eq!(adult[0].parts, ADULT_CAMEL_TEXTURED_PARTS.as_slice());
+    assert!(adult[0].parts.is_empty());
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
 
     let baby = camel_textured_layer_passes(CamelModelFamily::Camel, true);
     assert_eq!(baby[0].model_layer, MODEL_LAYER_CAMEL_BABY);
     assert_eq!(baby[0].texture, CAMEL_BABY_TEXTURE_REF);
-    assert_eq!(baby[0].parts, BABY_CAMEL_TEXTURED_PARTS.as_slice());
+    assert!(baby[0].parts.is_empty());
 
     // The camel husk shares the adult mesh/layer; only the texture differs, and it is
     // never a baby (the husk renderer is adult-only), so the age flag must not change it.
     let husk = camel_textured_layer_passes(CamelModelFamily::CamelHusk, false);
     assert_eq!(husk[0].model_layer, MODEL_LAYER_CAMEL);
     assert_eq!(husk[0].texture, CAMEL_HUSK_TEXTURE_REF);
-    assert_eq!(husk[0].parts, ADULT_CAMEL_TEXTURED_PARTS.as_slice());
+    assert!(husk[0].parts.is_empty());
     let husk_baby = camel_textured_layer_passes(CamelModelFamily::CamelHusk, true);
     assert_eq!(husk_baby[0].model_layer, MODEL_LAYER_CAMEL);
     assert_eq!(husk_baby[0].texture, CAMEL_HUSK_TEXTURE_REF);
-    assert_eq!(husk_baby[0].parts, ADULT_CAMEL_TEXTURED_PARTS.as_slice());
+    assert!(husk_baby[0].parts.is_empty());
 }
 
 #[test]
-fn camel_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+fn camel_cubes_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_CAMEL, "minecraft:camel#main");
     assert_eq!(MODEL_LAYER_CAMEL_BABY, "minecraft:camel_baby#main");
 
     // Adult `AdultCamelModel.createBodyMesh` (atlas 128×128): body, hump, the
     // zero-thickness tail plane, the three head cubes, the two ears, and four legs each
-    // with a distinct `texOffs`.
+    // with a distinct `texOffs`. Each unified cube carries the colored tint and the textured UV;
+    // `uv_size == size` and no cube mirrors.
     assert_eq!(
-        ADULT_CAMEL_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-7.5, -12.0, -23.5],
-            size: [15.0, 12.0, 27.0],
-            uv_size: [15.0, 12.0, 27.0],
-            tex: [0.0, 25.0],
-            mirror: false,
-        }
+        ADULT_CAMEL_BODY[0],
+        ModelCube::new(
+            [-7.5, -12.0, -23.5],
+            [15.0, 12.0, 27.0],
+            CAMEL_TAN,
+            [15.0, 12.0, 27.0],
+            [0.0, 25.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_CAMEL_TEXTURED_HUMP[0].tex, [74.0, 0.0]);
-    assert_eq!(
-        ADULT_CAMEL_TEXTURED_TAIL[0],
-        TexturedModelCubeDesc {
-            min: [-1.5, 0.0, 0.0],
-            size: [3.0, 14.0, 0.0],
-            uv_size: [3.0, 14.0, 0.0],
-            tex: [122.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(ADULT_CAMEL_TEXTURED_HEAD[0].tex, [60.0, 24.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_HEAD[1].tex, [21.0, 0.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_HEAD[2].tex, [50.0, 0.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_LEFT_EAR[0].tex, [45.0, 0.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_RIGHT_EAR[0].tex, [67.0, 0.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_LEFT_HIND_LEG[0].tex, [58.0, 16.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_RIGHT_HIND_LEG[0].tex, [94.0, 16.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_LEFT_FRONT_LEG[0].tex, [0.0, 0.0]);
-    assert_eq!(ADULT_CAMEL_TEXTURED_RIGHT_FRONT_LEG[0].tex, [0.0, 26.0]);
-
-    // Adult part tree: body carries hump/tail/head, head carries the two ears.
-    assert_eq!(ADULT_CAMEL_TEXTURED_PARTS.len(), 5);
-    assert_eq!(
-        ADULT_CAMEL_TEXTURED_PARTS[0].pose,
-        ADULT_CAMEL_PARTS[0].pose
-    );
-    assert_eq!(ADULT_CAMEL_TEXTURED_PARTS[0].children.len(), 3);
-    assert_eq!(ADULT_CAMEL_TEXTURED_BODY_CHILDREN[2].children.len(), 2);
+    assert_eq!(ADULT_CAMEL_HUMP[0].tex, [74.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_TAIL[0].tex, [122.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_HEAD[0].tex, [60.0, 24.0]);
+    assert_eq!(ADULT_CAMEL_HEAD[1].tex, [21.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_HEAD[2].tex, [50.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_LEFT_EAR[0].tex, [45.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_RIGHT_EAR[0].tex, [67.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_LEFT_HIND_LEG[0].tex, [58.0, 16.0]);
+    assert_eq!(ADULT_CAMEL_RIGHT_HIND_LEG[0].tex, [94.0, 16.0]);
+    assert_eq!(ADULT_CAMEL_LEFT_FRONT_LEG[0].tex, [0.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_RIGHT_FRONT_LEG[0].tex, [0.0, 26.0]);
 
     // Baby `BabyCamelModel.createBodyLayer` (atlas 64×64): four legs with distinct
     // `texOffs`, and the tail plane / head cubes at the baby offsets.
-    assert_eq!(BABY_CAMEL_TEXTURED_BODY[0].tex, [0.0, 14.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_TAIL[0].size, [3.0, 9.0, 0.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_HEAD[0].tex, [20.0, 0.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_HEAD[1].tex, [0.0, 0.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_HEAD[2].tex, [0.0, 14.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_RIGHT_FRONT_LEG[0].tex, [36.0, 14.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_LEFT_FRONT_LEG[0].tex, [48.0, 14.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_LEFT_HIND_LEG[0].tex, [12.0, 38.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_RIGHT_HIND_LEG[0].tex, [0.0, 38.0]);
-    assert_eq!(BABY_CAMEL_TEXTURED_PARTS.len(), 5);
-    assert_eq!(BABY_CAMEL_TEXTURED_PARTS[0].children.len(), 2);
+    assert_eq!(BABY_CAMEL_BODY[0].tex, [0.0, 14.0]);
+    assert_eq!(BABY_CAMEL_TAIL[0].size, [3.0, 9.0, 0.0]);
+    assert_eq!(BABY_CAMEL_HEAD[0].tex, [20.0, 0.0]);
+    assert_eq!(BABY_CAMEL_HEAD[1].tex, [0.0, 0.0]);
+    assert_eq!(BABY_CAMEL_HEAD[2].tex, [0.0, 14.0]);
+    assert_eq!(BABY_CAMEL_RIGHT_FRONT_LEG[0].tex, [36.0, 14.0]);
+    assert_eq!(BABY_CAMEL_LEFT_FRONT_LEG[0].tex, [48.0, 14.0]);
+    assert_eq!(BABY_CAMEL_LEFT_HIND_LEG[0].tex, [12.0, 38.0]);
+    assert_eq!(BABY_CAMEL_RIGHT_HIND_LEG[0].tex, [0.0, 38.0]);
+
+    // No cube mirrors and `uv_size` equals the geometry size, for every camel cube.
+    for cube in ADULT_CAMEL_BODY
+        .iter()
+        .chain(ADULT_CAMEL_HUMP.iter())
+        .chain(ADULT_CAMEL_TAIL.iter())
+        .chain(ADULT_CAMEL_HEAD.iter())
+        .chain(ADULT_CAMEL_LEFT_EAR.iter())
+        .chain(ADULT_CAMEL_RIGHT_EAR.iter())
+        .chain(ADULT_CAMEL_LEFT_HIND_LEG.iter())
+        .chain(BABY_CAMEL_BODY.iter())
+        .chain(BABY_CAMEL_TAIL.iter())
+        .chain(BABY_CAMEL_HEAD.iter())
+        .chain(BABY_CAMEL_RIGHT_FRONT_LEG.iter())
+    {
+        assert_eq!(cube.uv_size, cube.size);
+        assert!(!cube.mirror);
+    }
 }
 
 #[test]
