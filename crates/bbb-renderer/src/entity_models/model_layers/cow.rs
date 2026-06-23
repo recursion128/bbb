@@ -1,4 +1,10 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use super::{
+    apply_head_look, apply_quadruped_leg_swing, cow_head_part_index, ModelCubeDesc, ModelPartDesc,
+    PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+};
+use crate::entity_models::catalog::CowModelVariant;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const COW_BROWN: [f32; 4] = [0.38, 0.25, 0.18, 1.0];
 pub(in crate::entity_models) const COW_COLD_FUR: [f32; 4] = [0.70, 0.66, 0.58, 1.0];
@@ -780,3 +786,63 @@ pub(in crate::entity_models) const BABY_COW_TEXTURED_PARTS: [TexturedModelPartDe
         children: &[],
     },
 ];
+
+/// Quadruped leg part indices in the cow body layers (the swing resolves each leg's phase from its
+/// offset, so the adult/baby ordering does not matter).
+const COW_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
+/// Selects the unified cow part-tree pair (colored + textured) for `variant`/`baby`, mirroring the
+/// vanilla layer choice (temperate/warm/cold adult coats, or the baby layout).
+pub(in crate::entity_models) fn cow_part_trees(
+    variant: CowModelVariant,
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    match (variant, baby) {
+        (_, true) => (&BABY_COW_PARTS, &BABY_COW_TEXTURED_PARTS),
+        (CowModelVariant::Warm, false) => (&WARM_COW_PARTS, &WARM_COW_TEXTURED_PARTS),
+        (CowModelVariant::Cold, false) => (&COLD_COW_PARTS, &COLD_COW_TEXTURED_PARTS),
+        (CowModelVariant::Temperate, false) => (&ADULT_COW_PARTS, &ADULT_COW_TEXTURED_PARTS),
+    }
+}
+
+/// Mutable cow model, mirroring vanilla `CowModel` (a `QuadrupedModel`). The unified tree is zipped
+/// from the baked colored and textured trees for the selected `variant`/`baby` layout
+/// ([`cow_part_trees`]). `setup_anim` looks the head ([`apply_head_look`] at [`cow_head_part_index`],
+/// always part 0) and swings the four legs ([`apply_quadruped_leg_swing`]).
+pub(in crate::entity_models) struct CowModel {
+    root: ModelPart,
+}
+
+impl CowModel {
+    pub(in crate::entity_models) fn new(variant: CowModelVariant, baby: bool) -> Self {
+        let (colored, textured) = cow_part_trees(variant, baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+        }
+    }
+}
+
+impl EntityModel for CowModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(cow_head_part_index(false)),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_quadruped_leg_swing(
+            &mut self.root,
+            COW_LEG_PART_INDICES,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+    }
+}

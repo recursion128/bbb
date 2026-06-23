@@ -14,7 +14,7 @@ pub(super) use runtime::{
     QUADRUPED_LEG_PART_INDICES,
 };
 #[cfg(test)]
-pub(super) use selection::{chicken_model_parts, cow_model_parts};
+pub(super) use selection::chicken_model_parts;
 pub(super) use transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, cod_model_root_transform,
     creeper_model_root_transform, entity_model_root_transform, ghast_model_root_transform,

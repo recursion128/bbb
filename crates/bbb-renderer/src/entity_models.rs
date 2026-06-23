@@ -21,10 +21,10 @@ use colored::{
 };
 #[cfg(test)]
 use colored::{
-    chicken_model_parts, cow_model_parts, death_fall_factor, entity_flip_degrees,
-    entity_model_mesh, humanoid_arm_swing_parts, humanoid_limb_swing_parts,
-    quadruped_leg_x_rotations, quadruped_limb_swing_parts, HUMANOID_ARM_PART_INDICES,
-    HUMANOID_LEG_PART_INDICES, QUADRUPED_LEG_PART_INDICES,
+    chicken_model_parts, death_fall_factor, entity_flip_degrees, entity_model_mesh,
+    humanoid_arm_swing_parts, humanoid_limb_swing_parts, quadruped_leg_x_rotations,
+    quadruped_limb_swing_parts, HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
+    QUADRUPED_LEG_PART_INDICES,
 };
 use geometry::*;
 #[cfg(test)]

@@ -14,8 +14,8 @@ use super::mounts::{
     emit_undead_horse_model,
 };
 use super::selection::{
-    chicken_model_parts, cow_model_parts, hoglin_model_color, humanoid_model_color,
-    piglin_model_color, quadruped_model_color,
+    chicken_model_parts, hoglin_model_color, humanoid_model_color, piglin_model_color,
+    quadruped_model_color,
 };
 use super::transforms::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
@@ -356,7 +356,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Cow { variant, baby } => {
                 if !skip_texture_backed_entities {
-                    emit_cow_model(&mut mesh, *instance, variant, baby);
+                    CowModel::new(variant, baby).prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Sheep {
@@ -2809,27 +2813,6 @@ fn skeleton_colored_posed_parts(
 /// list them hind-first, baby layers front-first), so [`quadruped_limb_swing_parts`]
 /// resolves each leg's phase from its offset rather than its slot.
 pub(in crate::entity_models) const QUADRUPED_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
-
-fn emit_cow_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    variant: CowModelVariant,
-    baby: bool,
-) {
-    let parts = colored_head_look_parts(
-        cow_model_parts(variant, baby),
-        cow_head_part_index(baby),
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    );
-    let parts = quadruped_limb_swing_parts(
-        parts,
-        QUADRUPED_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
-}
 
 /// Applies the vanilla `QuadrupedModel.setupAnim` leg swing
 /// ([`quadruped_leg_swing_pose`]) to a colored layer's four leg parts at
