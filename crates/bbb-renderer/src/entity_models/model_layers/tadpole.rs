@@ -1,6 +1,8 @@
 use super::{
     bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, TADPOLE_BODY, TADPOLE_TAIL,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `TadpoleModel.createBodyLayer` (atlas 16×16). The mesh root holds two sibling parts:
 // a 3×2×3 body box at `offset(0, 22, -3)` and a 0×2×7 tail fin plane at `offset(0, 22, 0)`. The
@@ -31,4 +33,42 @@ pub(in crate::entity_models) const TADPOLE_TAIL_PART_INDEX: usize = 1;
 pub(in crate::entity_models) fn tadpole_tail_yrot(age_in_ticks: f32, in_water: bool) -> f32 {
     let amplitude = if in_water { 1.0 } else { 1.5 };
     -amplitude * 0.25 * (0.3 * age_in_ticks).sin()
+}
+
+/// Mutable tadpole model, mirroring vanilla `TadpoleModel`. Its two sibling parts hang off a
+/// synthetic root, each built from the baked [`TADPOLE_PARTS`] geometry. Colored-only (no textured
+/// path yet): `setup_anim` sways only the tail fin's yaw.
+pub(in crate::entity_models) struct TadpoleModel {
+    root: ModelPart,
+}
+
+impl TadpoleModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(&TADPOLE_PARTS),
+        }
+    }
+}
+
+impl EntityModel for TadpoleModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `TadpoleModel.setupAnim`: the tail fin's yaw sways ([`tadpole_tail_yrot`]); the
+        // body box holds still. The sway is an absolute set that collapses to the bind `yRot = 0` at
+        // `ageInTicks = 0`, so it applies every frame.
+        self.root
+            .child_at_mut(TADPOLE_TAIL_PART_INDEX)
+            .pose
+            .rotation[1] = tadpole_tail_yrot(
+            instance.render_state.age_in_ticks,
+            instance.render_state.in_water,
+        );
+    }
 }

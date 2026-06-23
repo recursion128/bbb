@@ -230,7 +230,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Tadpole => {
                 // Colored-only so far (no texture-backed tadpole yet), so this arm always emits.
-                emit_tadpole_model(&mut mesh, *instance);
+                TadpoleModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Parrot => {
                 // Colored-only so far (no texture-backed parrot yet), so this arm always emits.
@@ -1157,20 +1161,6 @@ fn emit_axolotl_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance,
     }
     let mut parts = ADULT_AXOLOTL_PARTS.to_vec();
     parts[0].pose.rotation[1] += head_yaw.to_radians();
-    emit_model_parts(mesh, &parts, root);
-}
-
-fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `TadpoleModel` is two static sibling parts (body box, tail fin). `setupAnim` sways
-    // only the tail fin's `yRot` ([`tadpole_tail_yrot`], from the projected `age_in_ticks` +
-    // `in_water`). Tadpole uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
-    let root = entity_model_root_transform(instance);
-    let tail_yrot = tadpole_tail_yrot(
-        instance.render_state.age_in_ticks,
-        instance.render_state.in_water,
-    );
-    let mut parts = TADPOLE_PARTS.to_vec();
-    parts[TADPOLE_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
     emit_model_parts(mesh, &parts, root);
 }
 
