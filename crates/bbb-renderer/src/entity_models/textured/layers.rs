@@ -431,7 +431,7 @@ pub(in crate::entity_models) fn happy_ghast_textured_layer_passes() -> Vec<Entit
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_HAPPY_GHAST,
         texture: HAPPY_GHAST_TEXTURE_REF,
-        parts: &HAPPY_GHAST_TEXTURED_PARTS,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

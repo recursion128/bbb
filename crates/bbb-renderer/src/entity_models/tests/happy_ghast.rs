@@ -1,65 +1,52 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn happy_ghast_parts_match_vanilla_26_1_body_layer() {
+fn happy_ghast_cubes_match_vanilla_26_1_body_layer() {
     // Vanilla HappyGhastModel.createBodyLayer(false, NONE): a 16x16x16 body at y 16 plus nine
     // tentacles parented under the body (body offset y 16 + tentacle offset y 7 = y 23), with
-    // hard-coded lengths.
-    assert_eq!(HAPPY_GHAST_PARTS.len(), 10);
+    // hard-coded lengths. Each unified cube carries the colored tint (`HAPPY_GHAST_CREAM`) and the
+    // textured UV (`texOffs(0, 0)`) in one struct.
     assert_eq!(
         HAPPY_GHAST_TENTACLE_LENGTHS,
         [5.0, 7.0, 4.0, 5.0, 5.0, 7.0, 8.0, 8.0, 5.0]
     );
-
-    assert_part(
-        &HAPPY_GHAST_PARTS[0],
-        [0.0, 16.0, 0.0],
-        [0.0, 0.0, 0.0],
-        HAPPY_GHAST_BODY_CUBE.as_slice(),
+    assert_eq!(
+        HAPPY_GHAST_BODY_CUBE[0],
+        ModelCube::new(
+            [-8.0, -8.0, -8.0],
+            [16.0, 16.0, 16.0],
+            HAPPY_GHAST_CREAM,
+            [16.0, 16.0, 16.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(HAPPY_GHAST_BODY_CUBE[0].min, [-8.0, -8.0, -8.0]);
-    assert_eq!(HAPPY_GHAST_BODY_CUBE[0].size, [16.0, 16.0, 16.0]);
-
-    for index in 0..9 {
-        let part = &HAPPY_GHAST_PARTS[index + 1];
-        assert_eq!(part.pose.offset, HAPPY_GHAST_TENTACLE_OFFSETS[index]);
-        assert_eq!(part.pose.offset[1], 23.0, "tentacle {index} world y");
-        assert_eq!(part.pose.rotation, [0.0, 0.0, 0.0]);
-        assert_eq!(part.cubes.len(), 1);
-        assert_eq!(part.cubes[0].min, [-1.0, 0.0, -1.0]);
-        assert_eq!(
-            part.cubes[0].size,
-            [2.0, HAPPY_GHAST_TENTACLE_LENGTHS[index], 2.0]
-        );
-    }
+    assert_close3(HAPPY_GHAST_BODY_POSE.offset, [0.0, 16.0, 0.0]);
+    assert_eq!(HAPPY_GHAST_BODY_POSE.rotation, [0.0, 0.0, 0.0]);
 }
 
 #[test]
-fn happy_ghast_textured_parts_match_vanilla_model_layer_uv_sources() {
-    assert_eq!(MODEL_LAYER_HAPPY_GHAST, "minecraft:happy_ghast#main");
-    assert_eq!(HAPPY_GHAST_TEXTURE_REF.size, [64, 64]);
-    assert_eq!(HAPPY_GHAST_TEXTURED_PARTS.len(), 10);
-    assert_eq!(
-        HAPPY_GHAST_TEXTURED_BODY_CUBE[0],
-        TexturedModelCubeDesc {
-            min: [-8.0, -8.0, -8.0],
-            size: [16.0, 16.0, 16.0],
-            uv_size: [16.0, 16.0, 16.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    // Vanilla reuses texOffs(0, 0) for every tentacle, so each samples the top-left region.
+fn happy_ghast_tentacle_ring_layout_matches_vanilla() {
+    // The nine tentacles hang at `HAPPY_GHAST_TENTACLE_OFFSETS[i]` (world y 23) with no bind
+    // rotation, each a `box(-1, 0, -1, 2, len, 2)` at `texOffs(0, 0)` (reused for the body and
+    // every tentacle). `uv_size == size` (no deformation).
     for index in 0..9 {
-        let part = &HAPPY_GHAST_TEXTURED_PARTS[index + 1];
-        assert_eq!(part.pose.offset, HAPPY_GHAST_TENTACLE_OFFSETS[index]);
-        assert_eq!(part.cubes[0].tex, [0.0, 0.0]);
+        let pose = happy_ghast_tentacle_pose(index);
+        assert_eq!(pose.offset, HAPPY_GHAST_TENTACLE_OFFSETS[index]);
+        assert_eq!(pose.offset[1], 23.0, "tentacle {index} world y");
+        assert_eq!(pose.rotation, [0.0, 0.0, 0.0]);
+        let cube = happy_ghast_tentacle_cube(index);
+        assert_eq!(cube.min, [-1.0, 0.0, -1.0]);
+        assert_eq!(cube.size, [2.0, HAPPY_GHAST_TENTACLE_LENGTHS[index], 2.0]);
         assert_eq!(
-            part.cubes[0].uv_size,
+            cube.uv_size,
             [2.0, HAPPY_GHAST_TENTACLE_LENGTHS[index], 2.0]
         );
+        assert_eq!(cube.tex, [0.0, 0.0]);
+        assert_eq!(cube.color, HAPPY_GHAST_CREAM);
     }
-    assert_eq!(HAPPY_GHAST_TEXTURED_PARTS[0].pose.offset, [0.0, 16.0, 0.0]);
 }
 
 #[test]
@@ -70,7 +57,8 @@ fn happy_ghast_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_HAPPY_GHAST);
     assert_eq!(passes[0].texture, HAPPY_GHAST_TEXTURE_REF);
-    assert_eq!(passes[0].parts, HAPPY_GHAST_TEXTURED_PARTS.as_slice());
+    // The vestigial `parts` slice is nulled; emit builds `HappyGhastModel::new()` and renders it.
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -89,6 +77,8 @@ fn happy_ghast_texture_ref_matches_vanilla_renderer() {
             size: [64, 64],
         })
     );
+    assert_eq!(HAPPY_GHAST_TEXTURE_REF.size, [64, 64]);
+    assert_eq!(MODEL_LAYER_HAPPY_GHAST, "minecraft:happy_ghast#main");
     assert!(entity_model_texture_refs().contains(&HAPPY_GHAST_TEXTURE_REF));
     assert_eq!(
         happy_ghast_entity_texture_refs(),

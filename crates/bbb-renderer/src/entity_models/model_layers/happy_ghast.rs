@@ -1,9 +1,6 @@
-use super::{
-    ghast_tentacle_x_rot, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
-    TexturedModelPartDesc,
-};
+use super::{ghast_tentacle_x_rot, PartPose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Happy ghasts are a warm cream jelly; the colored fallback paints every cube the same pale
 // cream so the silhouette reads even without the texture.
@@ -33,152 +30,91 @@ pub(in crate::entity_models) const HAPPY_GHAST_TENTACLE_OFFSETS: [[f32; 3]; 9] =
     [6.25, 23.0, 5.0],
 ];
 
-pub(in crate::entity_models) const HAPPY_GHAST_BODY_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-8.0, -8.0, -8.0],
-    size: [16.0, 16.0, 16.0],
-    color: HAPPY_GHAST_CREAM,
-}];
+/// Vanilla `HappyGhastModel.createBodyLayer` body cube: a 16×16×16 box at `texOffs(0, 0)`. The
+/// unified cube carries the colored tint (`HAPPY_GHAST_CREAM`) and the textured `uv_size`/`texOffs`
+/// in one struct.
+pub(in crate::entity_models) const HAPPY_GHAST_BODY_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-8.0, -8.0, -8.0],
+    [16.0, 16.0, 16.0],
+    HAPPY_GHAST_CREAM,
+    [16.0, 16.0, 16.0],
+    [0.0, 0.0],
+    false,
+)];
 
-const HAPPY_GHAST_TENTACLE_0: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(0)];
-const HAPPY_GHAST_TENTACLE_1: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(1)];
-const HAPPY_GHAST_TENTACLE_2: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(2)];
-const HAPPY_GHAST_TENTACLE_3: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(3)];
-const HAPPY_GHAST_TENTACLE_4: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(4)];
-const HAPPY_GHAST_TENTACLE_5: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(5)];
-const HAPPY_GHAST_TENTACLE_6: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(6)];
-const HAPPY_GHAST_TENTACLE_7: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(7)];
-const HAPPY_GHAST_TENTACLE_8: [ModelCubeDesc; 1] = [happy_ghast_tentacle_cube(8)];
+/// The happy ghast body pose: `PartPose.offset(0, 16, 0)`.
+pub(in crate::entity_models) const HAPPY_GHAST_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 16.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-const fn happy_ghast_tentacle_cube(index: usize) -> ModelCubeDesc {
-    ModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, HAPPY_GHAST_TENTACLE_LENGTHS[index], 2.0],
-        color: HAPPY_GHAST_CREAM,
-    }
-}
-
-const fn happy_ghast_tentacle_part(index: usize, cubes: &'static [ModelCubeDesc]) -> ModelPartDesc {
-    ModelPartDesc {
-        pose: PartPose {
-            offset: HAPPY_GHAST_TENTACLE_OFFSETS[index],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes,
-        children: &[],
-    }
-}
-
-// Vanilla 26.1 ModelLayers.HAPPY_GHAST: HappyGhastModel.createBodyLayer(false, NONE). The body
-// sits at y 16 and the nine tentacles hang from y 23; the whole layer is scaled 4.0x by
-// MeshTransformer.scaling at the model-root transform.
-pub(in crate::entity_models) const HAPPY_GHAST_PARTS: [ModelPartDesc; 10] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 16.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &HAPPY_GHAST_BODY_CUBE,
-        children: &[],
-    },
-    happy_ghast_tentacle_part(0, &HAPPY_GHAST_TENTACLE_0),
-    happy_ghast_tentacle_part(1, &HAPPY_GHAST_TENTACLE_1),
-    happy_ghast_tentacle_part(2, &HAPPY_GHAST_TENTACLE_2),
-    happy_ghast_tentacle_part(3, &HAPPY_GHAST_TENTACLE_3),
-    happy_ghast_tentacle_part(4, &HAPPY_GHAST_TENTACLE_4),
-    happy_ghast_tentacle_part(5, &HAPPY_GHAST_TENTACLE_5),
-    happy_ghast_tentacle_part(6, &HAPPY_GHAST_TENTACLE_6),
-    happy_ghast_tentacle_part(7, &HAPPY_GHAST_TENTACLE_7),
-    happy_ghast_tentacle_part(8, &HAPPY_GHAST_TENTACLE_8),
+/// Vanilla `HappyGhastModel.createBodyLayer` tentacle child names, in `tentacle0..tentacle8` order;
+/// `child_mut` needs `&'static` names, so the procedural ring draws its names from this const array.
+const HAPPY_GHAST_TENTACLE_NAMES: [&str; 9] = [
+    "tentacle0",
+    "tentacle1",
+    "tentacle2",
+    "tentacle3",
+    "tentacle4",
+    "tentacle5",
+    "tentacle6",
+    "tentacle7",
+    "tentacle8",
 ];
 
-pub(in crate::entity_models) const HAPPY_GHAST_TEXTURED_BODY_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-8.0, -8.0, -8.0],
-        size: [16.0, 16.0, 16.0],
-        uv_size: [16.0, 16.0, 16.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
+/// Bind cube of tentacle `i`: vanilla `addBox(-1, 0, -1, 2, len, 2)` at `texOffs(0, 0)` (reused for
+/// the body and every tentacle, so each samples the same top-left region of the 64×64 texture). The
+/// length comes from [`HAPPY_GHAST_TENTACLE_LENGTHS`]; `uv_size == size` (no deformation).
+pub(in crate::entity_models) fn happy_ghast_tentacle_cube(index: usize) -> ModelCube {
+    let len = HAPPY_GHAST_TENTACLE_LENGTHS[index];
+    ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, len, 2.0],
+        HAPPY_GHAST_CREAM,
+        [2.0, len, 2.0],
+        [0.0, 0.0],
+        false,
+    )
+}
 
-const HAPPY_GHAST_TEXTURED_TENTACLE_0: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(0)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_1: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(1)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_2: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(2)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_3: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(3)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_4: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(4)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_5: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(5)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_6: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(6)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_7: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(7)];
-const HAPPY_GHAST_TEXTURED_TENTACLE_8: [TexturedModelCubeDesc; 1] =
-    [happy_ghast_textured_tentacle_cube(8)];
-
-// Vanilla reuses `texOffs(0, 0)` for the body and every tentacle, so all of them sample the
-// same top-left region of the 64x64 texture.
-const fn happy_ghast_textured_tentacle_cube(index: usize) -> TexturedModelCubeDesc {
-    TexturedModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, HAPPY_GHAST_TENTACLE_LENGTHS[index], 2.0],
-        uv_size: [2.0, HAPPY_GHAST_TENTACLE_LENGTHS[index], 2.0],
-        tex: [0.0, 0.0],
-        mirror: false,
+/// Bind pose of tentacle `i`: vanilla `HappyGhastModel.createBodyLayer` hangs it at
+/// [`HAPPY_GHAST_TENTACLE_OFFSETS`]`[i]` (`y = 23.0`) with no rotation. The `xRot` wave is `0.4` at
+/// age 0 and overwritten each frame by `setup_anim`.
+pub(in crate::entity_models) fn happy_ghast_tentacle_pose(index: usize) -> PartPose {
+    PartPose {
+        offset: HAPPY_GHAST_TENTACLE_OFFSETS[index],
+        rotation: [0.0, 0.0, 0.0],
     }
 }
 
-const fn happy_ghast_textured_tentacle_part(
-    index: usize,
-    cubes: &'static [TexturedModelCubeDesc],
-) -> TexturedModelPartDesc {
-    TexturedModelPartDesc {
-        pose: PartPose {
-            offset: HAPPY_GHAST_TENTACLE_OFFSETS[index],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes,
-        children: &[],
-    }
-}
-
-pub(in crate::entity_models) const HAPPY_GHAST_TEXTURED_PARTS: [TexturedModelPartDesc; 10] = [
-    TexturedModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 16.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &HAPPY_GHAST_TEXTURED_BODY_CUBE,
-        children: &[],
-    },
-    happy_ghast_textured_tentacle_part(0, &HAPPY_GHAST_TEXTURED_TENTACLE_0),
-    happy_ghast_textured_tentacle_part(1, &HAPPY_GHAST_TEXTURED_TENTACLE_1),
-    happy_ghast_textured_tentacle_part(2, &HAPPY_GHAST_TEXTURED_TENTACLE_2),
-    happy_ghast_textured_tentacle_part(3, &HAPPY_GHAST_TEXTURED_TENTACLE_3),
-    happy_ghast_textured_tentacle_part(4, &HAPPY_GHAST_TEXTURED_TENTACLE_4),
-    happy_ghast_textured_tentacle_part(5, &HAPPY_GHAST_TEXTURED_TENTACLE_5),
-    happy_ghast_textured_tentacle_part(6, &HAPPY_GHAST_TEXTURED_TENTACLE_6),
-    happy_ghast_textured_tentacle_part(7, &HAPPY_GHAST_TEXTURED_TENTACLE_7),
-    happy_ghast_textured_tentacle_part(8, &HAPPY_GHAST_TEXTURED_TENTACLE_8),
-];
-
-/// Mutable happy ghast model, mirroring vanilla `HappyGhastModel`. The unified tree is zipped from the
-/// baked colored ([`HAPPY_GHAST_PARTS`]) and textured ([`HAPPY_GHAST_TEXTURED_PARTS`]) trees: child 0 is
-/// the body, children 1..=9 are the tentacles. `setup_anim` reuses `GhastModel.animateTentacles`
-/// verbatim ([`ghast_tentacle_x_rot`], never at rest). The harness body-item squeeze
-/// (`0.9375` scale when equipped) is deferred with the equipment layer, so an unharnessed happy ghast
-/// renders at full scale; the bob/scale lives in the root transform (`happy_ghast_model_root_transform`).
+/// Mutable happy ghast model, mirroring vanilla `HappyGhastModel`. The unified tree is built once
+/// with named children: `body` plus `tentacle0..tentacle8`. `setup_anim` reuses
+/// `GhastModel.animateTentacles` verbatim ([`ghast_tentacle_x_rot`], never at rest). The harness
+/// body-item squeeze (`0.9375` scale when equipped) is deferred with the equipment layer, so an
+/// unharnessed happy ghast renders at full scale; the bob/scale lives in the root transform
+/// (`happy_ghast_model_root_transform`).
 pub(in crate::entity_models) struct HappyGhastModel {
     root: ModelPart,
 }
 
 impl HappyGhastModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let mut children: Vec<(&'static str, ModelPart)> = Vec::with_capacity(10);
+        children.push((
+            "body",
+            ModelPart::leaf(HAPPY_GHAST_BODY_POSE, HAPPY_GHAST_BODY_CUBE.to_vec()),
+        ));
+        for (i, &name) in HAPPY_GHAST_TENTACLE_NAMES.iter().enumerate() {
+            children.push((
+                name,
+                ModelPart::leaf(
+                    happy_ghast_tentacle_pose(i),
+                    vec![happy_ghast_tentacle_cube(i)],
+                ),
+            ));
+        }
         Self {
-            root: ModelPart::root_from_descs(&HAPPY_GHAST_PARTS, &HAPPY_GHAST_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }
@@ -194,9 +130,8 @@ impl EntityModel for HappyGhastModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let age_in_ticks = instance.render_state.age_in_ticks;
-        for tentacle in 0..HAPPY_GHAST_TENTACLE_LENGTHS.len() {
-            self.root.child_at_mut(tentacle + 1).pose.rotation[0] =
-                ghast_tentacle_x_rot(tentacle, age_in_ticks);
+        for (i, &name) in HAPPY_GHAST_TENTACLE_NAMES.iter().enumerate() {
+            self.root.child_mut(name).pose.rotation[0] = ghast_tentacle_x_rot(i, age_in_ticks);
         }
     }
 }
