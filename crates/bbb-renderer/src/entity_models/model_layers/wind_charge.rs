@@ -1,6 +1,7 @@
+use std::f32::consts::FRAC_PI_4;
+
 use super::{
-    bind_part as part, bind_part_rot as part_rot, model_cube as cube, ModelCubeDesc, ModelPartDesc,
-    WIND_CHARGE_CORE, WIND_CHARGE_WIND,
+    model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, WIND_CHARGE_CORE, WIND_CHARGE_WIND,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -15,31 +16,20 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // flip/scale), both deferred, so the colored debug path renders the wind shell and core as opaque
 // tinted geometry with the counter-spin applied.
 
-const WIND_CHARGE_WIND_CUBES: [ModelCubeDesc; 2] = [
+pub(in crate::entity_models) const WIND_CHARGE_WIND_CUBES: [ModelCubeDesc; 2] = [
     cube([-4.0, -1.0, -4.0], [8.0, 2.0, 8.0], WIND_CHARGE_WIND),
     cube([-3.0, -2.0, -3.0], [6.0, 4.0, 6.0], WIND_CHARGE_WIND),
 ];
 
-const WIND_CHARGE_CORE_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WIND_CHARGE_CORE_CUBES: [ModelCubeDesc; 1] =
     [cube([-2.0, -2.0, -2.0], [4.0, 4.0, 4.0], WIND_CHARGE_CORE)];
 
-const WIND_CHARGE_BONE_CHILDREN: [ModelPartDesc; 2] = [
-    part_rot(
-        [0.0, 0.0, 0.0],
-        [0.0, -std::f32::consts::FRAC_PI_4, 0.0],
-        &WIND_CHARGE_WIND_CUBES,
-        &[],
-    ),
-    part([0.0, 0.0, 0.0], &WIND_CHARGE_CORE_CUBES, &[]),
-];
-
-pub(in crate::entity_models) const WIND_CHARGE_PARTS: [ModelPartDesc; 1] =
-    [part([0.0, 0.0, 0.0], &[], &WIND_CHARGE_BONE_CHILDREN)];
-
-/// The `bone`'s two children: the `wind` shell (`0`) spins `+age·16°` and the `wind_charge` core
-/// (`1`) counter-spins `-age·16°`.
-pub(in crate::entity_models) const WIND_CHARGE_WIND_CHILD_INDEX: usize = 0;
-pub(in crate::entity_models) const WIND_CHARGE_CORE_CHILD_INDEX: usize = 1;
+/// The `wind` shell's fixed `PartPose.offsetAndRotation(0, 0, 0, 0, -π/4, 0)` bind rotation; the
+/// `bone` root and `wind_charge` core both sit at `PartPose.ZERO`.
+pub(in crate::entity_models) const WIND_CHARGE_WIND_POSE: PartPose = PartPose {
+    offset: [0.0, 0.0, 0.0],
+    rotation: [0.0, -FRAC_PI_4, 0.0],
+};
 
 /// Vanilla `WindChargeModel.setupAnim` spin magnitude: `age·16°` in radians. The shell takes `+`
 /// this (a *set*, overwriting the -π/4 bind) and the core `-` this, so they counter-rotate. `16` is
@@ -49,17 +39,31 @@ pub(in crate::entity_models) fn wind_charge_spin_yrot(age_in_ticks: f32) -> f32 
 }
 
 /// Mutable wind charge model, mirroring vanilla `WindChargeModel`. The cubeless `bone` root parents
-/// the `wind` shell and `wind_charge` core, built from the baked [`WIND_CHARGE_PARTS`] geometry.
-/// Colored-only (the scrolling translucent texture is deferred): `setup_anim` counter-spins the two
-/// children off `ageInTicks`.
+/// the named `wind` shell and `wind_charge` core, built from the baked colored geometry. Colored-only
+/// (the scrolling translucent texture is deferred): `setup_anim` counter-spins the two children off
+/// `ageInTicks` via `child_mut`.
 pub(in crate::entity_models) struct WindChargeModel {
     root: ModelPart,
 }
 
 impl WindChargeModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let bone = ModelPart::new(
+            PART_POSE_ZERO,
+            Vec::new(),
+            vec![
+                (
+                    "wind",
+                    ModelPart::leaf_colored(WIND_CHARGE_WIND_POSE, &WIND_CHARGE_WIND_CUBES),
+                ),
+                (
+                    "wind_charge",
+                    ModelPart::leaf_colored(PART_POSE_ZERO, &WIND_CHARGE_CORE_CUBES),
+                ),
+            ],
+        );
         Self {
-            root: ModelPart::root_from_colored_descs(&WIND_CHARGE_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("bone", bone)]),
         }
     }
 }
@@ -78,12 +82,8 @@ impl EntityModel for WindChargeModel {
         // `-age·16°` ([`wind_charge_spin_yrot`]). Both are absolute sets — the shell's overwrites its
         // -π/4 bind — so they apply every frame (the spin is `0` at `ageInTicks = 0`).
         let spin = wind_charge_spin_yrot(instance.render_state.age_in_ticks);
-        let bone = self.root.child_at_mut(0);
-        bone.child_at_mut(WIND_CHARGE_WIND_CHILD_INDEX)
-            .pose
-            .rotation[1] = spin;
-        bone.child_at_mut(WIND_CHARGE_CORE_CHILD_INDEX)
-            .pose
-            .rotation[1] = -spin;
+        let bone = self.root.child_mut("bone");
+        bone.child_mut("wind").pose.rotation[1] = spin;
+        bone.child_mut("wind_charge").pose.rotation[1] = -spin;
     }
 }
