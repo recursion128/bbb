@@ -50,6 +50,7 @@ mod piglin;
 mod player;
 mod polar_bear;
 mod pufferfish;
+mod rabbit;
 mod ravager;
 mod salmon;
 mod scale;

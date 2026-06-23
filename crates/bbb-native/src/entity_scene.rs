@@ -688,12 +688,10 @@ fn entity_model_kind_with_time_and_registries(
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
-        VANILLA_ENTITY_TYPE_CAT_ID
-        | VANILLA_ENTITY_TYPE_OCELOT_ID
-        | VANILLA_ENTITY_TYPE_FOX_ID
-        | VANILLA_ENTITY_TYPE_RABBIT_ID => {
+        VANILLA_ENTITY_TYPE_CAT_ID | VANILLA_ENTITY_TYPE_OCELOT_ID | VANILLA_ENTITY_TYPE_FOX_ID => {
             quadruped(QuadrupedModelFamily::Wolf, ageable_baby(data_values))
         }
+        VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(data_values),
         VANILLA_ENTITY_TYPE_MINECART_ID
         | VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
         | VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID
@@ -880,6 +878,17 @@ fn humanoid(family: HumanoidModelFamily, baby: bool) -> EntityModelKind {
 
 fn quadruped(family: QuadrupedModelFamily, baby: bool) -> EntityModelKind {
     EntityModelKind::Quadruped { family, baby }
+}
+
+/// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby.
+/// The adult renders through the dedicated [`EntityModelKind::Rabbit`]; the baby (which has its own
+/// nested-pivot mesh) still falls back to the wolf-shaped proxy until its body layer is modeled.
+fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    if ageable_baby(values) {
+        quadruped(QuadrupedModelFamily::Wolf, true)
+    } else {
+        EntityModelKind::Rabbit
+    }
 }
 
 fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
@@ -4947,6 +4956,19 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[]),
             quadruped(QuadrupedModelFamily::Wolf, false)
+        );
+        // The adult rabbit renders through its dedicated `AdultRabbitModel`; the baby (whose own
+        // nested-pivot mesh is not yet modeled) still falls back to the wolf-shaped proxy.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_RABBIT_ID, &[]),
+            EntityModelKind::Rabbit
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_RABBIT_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            quadruped(QuadrupedModelFamily::Wolf, true)
         );
     }
 

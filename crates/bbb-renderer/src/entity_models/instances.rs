@@ -1201,6 +1201,10 @@ impl EntityModelInstance {
         )
     }
 
+    pub fn rabbit(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Rabbit, position, y_rot)
+    }
+
     #[cfg(test)]
     pub fn polar_bear_standing(
         entity_id: i32,

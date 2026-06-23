@@ -270,6 +270,12 @@ pub enum EntityModelKind {
     PolarBear {
         baby: bool,
     },
+    /// `AdultRabbitModel` at its `createBodyLayer` rest pose (the `body`/`backlegs` roots, the head
+    /// nested under `body`). `RabbitModel.setupAnim` turns the head by the look angles (reproduced).
+    /// The looping `RabbitAnimation.HOP` and `IDLE_HEAD_TILT` keyframe animations need un-projected
+    /// `AnimationState`s, and the seven `Rabbit.Variant` textures and the `BabyRabbitModel` body
+    /// layer (still rendered through the `Quadruped`/`Wolf` proxy) are deferred.
+    Rabbit,
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,

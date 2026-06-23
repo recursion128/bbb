@@ -256,6 +256,7 @@ impl EntityModelKind {
             Self::Goat { baby: true, .. } => "goat_baby",
             Self::PolarBear { baby: false } => "polar_bear",
             Self::PolarBear { baby: true } => "polar_bear_baby",
+            Self::Rabbit => "rabbit",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
