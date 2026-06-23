@@ -2057,6 +2057,26 @@ When an agent does any of the following, update this file in the same slice:
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred
       entity lighting
+    - adult fox entities as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` geometry on the
+      colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type id `54` out of the
+      cat/ocelot/fox wolf-shaped quadruped proxy — the adult maps to the new `EntityModelKind::Fox`,
+      replacing the wolf-shaped stand-in with the real fox mesh (the baby, a distinct `BabyFoxModel`, stays
+      on the wolf proxy as a documented follow-up). The static rest-pose hierarchy is emitted directly
+      (atlas 48×32): six root parts — the `head` at `offset(-1, 16.5, -3)` (the 8×6×6 skull, the two 2×2×1
+      ears, and the 4×2×3 snout, the ears/snout at the head origin), the `body` at `offset(0, 16, -6)`
+      pitched `π/2` (the 6×11×6 trunk) parenting the `tail` (the 4×9×5 brush pitched back `-0.05235988`),
+      and the four legs at `offset(±{5,1}, 17.5, {7,0})` (each the shared 2×6×2 box inflated by the vanilla
+      `CubeDeformation(0.001)` fudge and built off-center at `+2` X) — ten cubes. The `FoxModel.setupAnim`
+      head look (`head.xRot/yRot` set from the projected `head_yaw/head_pitch` while not sleeping /
+      faceplanted / crouching, turning only the head and its ears/snout) is reproduced. Everything else
+      stays deferred: the walk leg swing (the standard `cos·1.4·speed` but keyed left/right by part rather
+      than pivot sign — the fox's legs are all built at negative pivot X, so it cannot reuse the
+      `QuadrupedModel` `x·z` helper), the `headRollAngle` head tilt, and the `isCrouching` / `isSleeping` /
+      `isSitting` / `isPouncing` / `isFaceplanted` poses (with the pounce / faceplant
+      `FoxRenderer.setupRotations` pitch), all reading un-projected `FoxRenderState` state. The red/snow
+      `Fox.Variant` idle/sleeping textures, the held-item layer, and the `BabyFoxModel` mesh live on the
+      deferred texture-backed / baby paths, so the colored debug path renders one orange tint. The
+      texture-backed path remains unsupported (this is a colored-first slice)
     - adult cat and ocelot entities as renderer-owned vanilla 26.1 `AdultFelineModel.createBodyMesh()`
       geometry on the colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type
       ids `21` (cat) and `91` (ocelot) out of the cat/ocelot/fox wolf-shaped quadruped proxy — both adults

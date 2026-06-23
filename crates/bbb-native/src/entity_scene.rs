@@ -689,9 +689,7 @@ fn entity_model_kind_with_time_and_registries(
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
-        VANILLA_ENTITY_TYPE_FOX_ID => {
-            quadruped(QuadrupedModelFamily::Wolf, ageable_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
         VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true),
         VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false),
         VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(data_values),
@@ -918,6 +916,17 @@ fn feline_model_kind(
         quadruped(QuadrupedModelFamily::Wolf, true)
     } else {
         EntityModelKind::Feline { cat }
+    }
+}
+
+/// Vanilla `FoxRenderer` (an `AgeableMobRenderer`) picks `AdultFoxModel` for an adult and the distinct
+/// `BabyFoxModel` mesh for a baby. The adult renders through the dedicated [`EntityModelKind::Fox`]; the
+/// baby still falls back to the wolf-shaped proxy until its body layer is modeled.
+fn fox_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    if ageable_baby(values) {
+        quadruped(QuadrupedModelFamily::Wolf, true)
+    } else {
+        EntityModelKind::Fox
     }
 }
 
@@ -4992,8 +5001,9 @@ mod tests {
                 collar_color: None,
             }
         );
-        // The adult cat and ocelot render through the shared `AdultFelineModel` (cat scaled 0.8); the
-        // fox keeps the wolf proxy, and every feline baby (a distinct `BabyFelineModel` mesh) does too.
+        // The adult cat, ocelot, and fox render through their dedicated models (cat = the shared
+        // `AdultFelineModel` scaled 0.8, ocelot = the unscaled feline, fox = `AdultFoxModel`); every
+        // baby (each a distinct vanilla mesh) still falls back to the wolf-shaped proxy.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[]),
             EntityModelKind::Feline { cat: true }
@@ -5003,6 +5013,10 @@ mod tests {
             EntityModelKind::Feline { cat: false }
         );
         assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_FOX_ID, &[]),
+            EntityModelKind::Fox
+        );
+        assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_CAT_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
@@ -5010,8 +5024,11 @@ mod tests {
             quadruped(QuadrupedModelFamily::Wolf, true)
         );
         assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_FOX_ID, &[]),
-            quadruped(QuadrupedModelFamily::Wolf, false)
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_FOX_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            quadruped(QuadrupedModelFamily::Wolf, true)
         );
         // The adult rabbit renders through its dedicated `AdultRabbitModel`; the baby (whose own
         // nested-pivot mesh is not yet modeled) still falls back to the wolf-shaped proxy.

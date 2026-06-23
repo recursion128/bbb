@@ -286,6 +286,12 @@ pub enum EntityModelKind {
     Feline {
         cat: bool,
     },
+    /// `AdultFoxModel` (a custom `EntityModel`) at its `createBodyLayer` rest pose. The `setupAnim` head
+    /// look is reproduced; the walk leg swing, the `headRollAngle` tilt, and every fox pose
+    /// (`isCrouching`, `isSleeping`, `isSitting`, `isPouncing`, `isFaceplanted`) read un-projected
+    /// `FoxRenderState` state and stay deferred, as do the red/snow variant textures and the
+    /// `BabyFoxModel` mesh.
+    Fox,
     /// `AdultRabbitModel` at its `createBodyLayer` rest pose (the `body`/`backlegs` roots, the head
     /// nested under `body`). `RabbitModel.setupAnim` turns the head by the look angles (reproduced).
     /// The looping `RabbitAnimation.HOP` and `IDLE_HEAD_TILT` keyframe animations need un-projected
