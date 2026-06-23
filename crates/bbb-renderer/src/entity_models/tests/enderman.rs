@@ -1,78 +1,72 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
+// The bind poses of the enderman's two arms / two legs, mirrored from the model file so the
+// pose-math tests can exercise `enderman_*_swing_pose` without the deleted `ENDERMAN_PARTS` consts.
+const RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-5.0, -12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [5.0, -12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-2.0, -5.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [2.0, -5.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+
 #[test]
-fn enderman_model_parts_match_vanilla_26_1_body_layer() {
+fn enderman_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `EndermanModel.createBodyLayer` (atlas 64×32). Each unified cube carries the colored
+    // tint (`ENDERMAN_DARK`) and the textured UV; the hat's `uv_size` keeps the base 8×8×8 box though
+    // its geometry is the 7×7×7 inner box; the left arm/leg reuse their right `texOffs` mirrored.
     assert_eq!(
         ENDERMAN_HEAD[0],
-        ModelCubeDesc {
-            min: [-4.0, -8.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            color: ENDERMAN_DARK,
-        }
+        ModelCube::new(
+            [-4.0, -8.0, -4.0],
+            [8.0, 8.0, 8.0],
+            ENDERMAN_DARK,
+            [8.0, 8.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         ENDERMAN_HAT[0],
-        ModelCubeDesc {
-            min: [-3.5, -7.5, -3.5],
-            size: [7.0, 7.0, 7.0],
-            color: ENDERMAN_DARK,
-        }
+        ModelCube::new(
+            [-3.5, -7.5, -3.5],
+            [7.0, 7.0, 7.0],
+            ENDERMAN_DARK,
+            [8.0, 8.0, 8.0],
+            [0.0, 16.0],
+            false,
+        )
     );
     assert_eq!(
         ENDERMAN_BODY[0],
-        ModelCubeDesc {
-            min: [-4.0, 0.0, -2.0],
-            size: [8.0, 12.0, 4.0],
-            color: ENDERMAN_DARK,
-        }
+        ModelCube::new(
+            [-4.0, 0.0, -2.0],
+            [8.0, 12.0, 4.0],
+            ENDERMAN_DARK,
+            [8.0, 12.0, 4.0],
+            [32.0, 16.0],
+            false,
+        )
     );
-    assert_eq!(
-        ENDERMAN_ARM[0],
-        ModelCubeDesc {
-            min: [-1.0, -2.0, -1.0],
-            size: [2.0, 30.0, 2.0],
-            color: ENDERMAN_DARK,
-        }
-    );
-    assert_eq!(
-        ENDERMAN_LEG[0],
-        ModelCubeDesc {
-            min: [-1.0, 0.0, -1.0],
-            size: [2.0, 30.0, 2.0],
-            color: ENDERMAN_DARK,
-        }
-    );
-
-    assert_eq!(ENDERMAN_PARTS.len(), 6);
-    assert_part_tree(
-        &ENDERMAN_PARTS[0],
-        [0.0, -13.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ENDERMAN_HEAD.as_slice(),
-        ENDERMAN_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ENDERMAN_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ENDERMAN_HAT.as_slice(),
-    );
-    assert_part(
-        &ENDERMAN_PARTS[1],
-        [0.0, -14.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ENDERMAN_BODY.as_slice(),
-    );
-
-    let limb_specs = [
-        ([-5.0, -12.0, 0.0], ENDERMAN_ARM.as_slice()),
-        ([5.0, -12.0, 0.0], ENDERMAN_ARM.as_slice()),
-        ([-2.0, -5.0, 0.0], ENDERMAN_LEG.as_slice()),
-        ([2.0, -5.0, 0.0], ENDERMAN_LEG.as_slice()),
-    ];
-    for (part, (offset, cubes)) in ENDERMAN_PARTS[2..].iter().zip(limb_specs) {
-        assert_part(part, offset, [0.0, 0.0, 0.0], cubes);
-    }
+    assert_eq!(ENDERMAN_RIGHT_ARM[0].tex, [56.0, 0.0]);
+    assert!(!ENDERMAN_RIGHT_ARM[0].mirror);
+    assert_eq!(ENDERMAN_LEFT_ARM[0].tex, [56.0, 0.0]);
+    assert!(ENDERMAN_LEFT_ARM[0].mirror);
+    assert_eq!(ENDERMAN_RIGHT_LEG[0].size, [2.0, 30.0, 2.0]);
+    assert!(!ENDERMAN_RIGHT_LEG[0].mirror);
+    assert!(ENDERMAN_LEFT_LEG[0].mirror);
+    assert_close3(ENDERMAN_HEAD_POSE.offset, [0.0, -13.0, 0.0]);
 }
 
 #[test]
@@ -126,7 +120,8 @@ fn enderman_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_ENDERMAN);
     assert_eq!(passes[0].texture, ENDERMAN_TEXTURE_REF);
-    assert_eq!(passes[0].parts, ENDERMAN_TEXTURED_PARTS.as_slice());
+    // The vestigial `parts` slices are nulled; both passes read the unified `EndermanModel` tree.
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (passes[0].collector_order, passes[0].submit_sequence),
@@ -137,16 +132,13 @@ fn enderman_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].model_layer, MODEL_LAYER_ENDERMAN);
     assert_eq!(passes[1].texture, ENDERMAN_EYES_TEXTURE_REF);
-    assert_eq!(passes[1].parts, ENDERMAN_TEXTURED_PARTS.as_slice());
+    assert!(passes[1].parts.is_empty());
     assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (passes[1].collector_order, passes[1].submit_sequence),
         (1, 1)
     );
-}
 
-#[test]
-fn enderman_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_ENDERMAN, "minecraft:enderman#main");
     assert_eq!(
         ENDERMAN_EYES_TEXTURE_REF,
@@ -155,65 +147,6 @@ fn enderman_textured_model_parts_match_vanilla_model_layer_uv_sources() {
             size: [64, 32],
         }
     );
-    assert_eq!(ENDERMAN_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        ENDERMAN_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -8.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ENDERMAN_TEXTURED_HAT[0],
-        TexturedModelCubeDesc {
-            min: [-3.5, -7.5, -3.5],
-            size: [7.0, 7.0, 7.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ENDERMAN_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, 0.0, -2.0],
-            size: [8.0, 12.0, 4.0],
-            uv_size: [8.0, 12.0, 4.0],
-            tex: [32.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ENDERMAN_TEXTURED_RIGHT_ARM[0],
-        TexturedModelCubeDesc {
-            min: [-1.0, -2.0, -1.0],
-            size: [2.0, 30.0, 2.0],
-            uv_size: [2.0, 30.0, 2.0],
-            tex: [56.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ENDERMAN_TEXTURED_LEFT_ARM[0],
-        TexturedModelCubeDesc {
-            min: [-1.0, -2.0, -1.0],
-            size: [2.0, 30.0, 2.0],
-            uv_size: [2.0, 30.0, 2.0],
-            tex: [56.0, 0.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(ENDERMAN_TEXTURED_RIGHT_LEG[0].mirror, false);
-    assert_eq!(ENDERMAN_TEXTURED_LEFT_LEG[0].mirror, true);
-    assert_eq!(ENDERMAN_TEXTURED_PARTS[0].pose, ENDERMAN_PARTS[0].pose);
-    assert_eq!(
-        ENDERMAN_TEXTURED_PARTS[0].children,
-        ENDERMAN_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
-    assert_eq!(ENDERMAN_TEXTURED_PARTS[5].pose, ENDERMAN_PARTS[5].pose);
 }
 
 #[test]
@@ -292,11 +225,10 @@ fn enderman_textured_mesh_applies_head_look() {
 fn enderman_leg_swing_pose_halves_and_clamps_the_humanoid_swing() {
     // Vanilla EndermanModel.setupAnim: super.setupAnim sets leg.xRot =
     // cos(pos * 0.6662 [+ π]) * 1.4 * speed, then the enderman halves it (*= 0.5) and
-    // clamps it to [-0.4, 0.4]. ENDERMAN_PARTS lists the right leg at index 4 (x = -2,
-    // in phase) and the left at index 5 (x = +2, out of phase).
-    // At pos = 0, speed = 1: raw = cos(0) * 1.4 * 0.5 = 0.7, clamped to 0.4.
-    let right = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 0.0, 1.0);
-    let left = enderman_leg_swing_pose(ENDERMAN_PARTS[5].pose, 0.0, 1.0);
+    // clamps it to [-0.4, 0.4]. The right leg sits at x = -2 (in phase), the left at x = +2
+    // (out of phase). At pos = 0, speed = 1: raw = cos(0) * 1.4 * 0.5 = 0.7, clamped to 0.4.
+    let right = enderman_leg_swing_pose(RIGHT_LEG_POSE, 0.0, 1.0);
+    let left = enderman_leg_swing_pose(LEFT_LEG_POSE, 0.0, 1.0);
     assert!(
         (right.rotation[0] - 0.4).abs() < 1e-6,
         "right leg clamps to +0.4: {}",
@@ -310,7 +242,7 @@ fn enderman_leg_swing_pose_halves_and_clamps_the_humanoid_swing() {
 
     // A low speed stays inside the clamp window, showing the bare halving:
     // cos(0) * 1.4 * 0.3 * 0.5 = 0.21.
-    let right_slow = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 0.0, 0.3);
+    let right_slow = enderman_leg_swing_pose(RIGHT_LEG_POSE, 0.0, 0.3);
     assert!(
         (right_slow.rotation[0] - 1.4 * 0.3 * 0.5).abs() < 1e-6,
         "unclamped half amplitude: {}",
@@ -318,7 +250,7 @@ fn enderman_leg_swing_pose_halves_and_clamps_the_humanoid_swing() {
     );
     // A general (pos, speed) within the window: cos(pos * 0.6662) * 1.4 * speed * 0.5.
     let phase = 2.0_f32 * 0.6662;
-    let right_general = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 2.0, 0.3);
+    let right_general = enderman_leg_swing_pose(RIGHT_LEG_POSE, 2.0, 0.3);
     assert!((right_general.rotation[0] - phase.cos() * 1.4 * 0.3 * 0.5).abs() < 1e-6);
 }
 
@@ -327,13 +259,12 @@ fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
     // Vanilla EndermanModel.setupAnim: super.setupAnim sets arm.xRot =
     // cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5 (amplitude 1.0), then the enderman
     // halves it (*= 0.5) and clamps it to [-0.4, 0.4], exactly as it does the legs.
-    // ENDERMAN_PARTS lists the right arm at index 2 (x = -5, the out-of-phase + π side)
-    // and the left at index 3 (x = +5, in phase). The combined amplitude is
-    // 2.0 * 0.5 * 0.5 = 0.5, so unclamped arm.xRot = cos(angle) * speed * 0.5.
-    // At pos = 0, speed = 1: right raw = cos(π) * 0.5 = -0.5, clamped to -0.4; left raw
-    // = cos(0) * 0.5 = +0.5, clamped to +0.4.
-    let right = enderman_arm_swing_pose(ENDERMAN_PARTS[2].pose, 0.0, 1.0);
-    let left = enderman_arm_swing_pose(ENDERMAN_PARTS[3].pose, 0.0, 1.0);
+    // The right arm sits at x = -5 (the out-of-phase + π side) and the left at x = +5 (in
+    // phase). The combined amplitude is 2.0 * 0.5 * 0.5 = 0.5, so unclamped arm.xRot =
+    // cos(angle) * speed * 0.5. At pos = 0, speed = 1: right raw = cos(π) * 0.5 = -0.5,
+    // clamped to -0.4; left raw = cos(0) * 0.5 = +0.5, clamped to +0.4.
+    let right = enderman_arm_swing_pose(RIGHT_ARM_POSE, 0.0, 1.0);
+    let left = enderman_arm_swing_pose(LEFT_ARM_POSE, 0.0, 1.0);
     assert!(
         (right.rotation[0] + 0.4).abs() < 1e-6,
         "right arm clamps to -0.4: {}",
@@ -347,7 +278,7 @@ fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
 
     // A low speed stays inside the clamp window, showing the bare halving:
     // cos(π) * 1 * 0.5 * 0.3 = -0.15 (right), the opposite phase to the same-side leg.
-    let right_slow = enderman_arm_swing_pose(ENDERMAN_PARTS[2].pose, 0.0, 0.3);
+    let right_slow = enderman_arm_swing_pose(RIGHT_ARM_POSE, 0.0, 0.3);
     assert!(
         (right_slow.rotation[0] + 0.3 * 0.5).abs() < 1e-6,
         "unclamped half amplitude, out of phase: {}",
@@ -356,7 +287,7 @@ fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
     // A general (pos, speed) within the window: cos(pos * 0.6662 + π) * 2.0 * speed * 0.5
     // * 0.5 for the right arm; the arm's + π phase is the leg's negation.
     let phase = 2.0_f32 * 0.6662;
-    let right_general = enderman_arm_swing_pose(ENDERMAN_PARTS[2].pose, 2.0, 0.3);
+    let right_general = enderman_arm_swing_pose(RIGHT_ARM_POSE, 2.0, 0.3);
     assert!(
         (right_general.rotation[0] - (phase + std::f32::consts::PI).cos() * 2.0 * 0.3 * 0.5 * 0.5)
             .abs()
@@ -364,7 +295,7 @@ fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
     );
     // The arm and same-side leg counter-swing: the right arm (+ π) is the negation of
     // the right leg (in phase) at the same half amplitude.
-    let right_leg = enderman_leg_swing_pose(ENDERMAN_PARTS[4].pose, 2.0, 0.3);
+    let right_leg = enderman_leg_swing_pose(RIGHT_LEG_POSE, 2.0, 0.3);
     assert!((right_general.rotation[0] + right_leg.rotation[0] * (1.0 / 1.4)).abs() < 1e-6);
 }
 
@@ -511,12 +442,12 @@ fn enderman_textured_mesh_swings_arms_when_walking() {
 fn enderman_carried_arm_pose_matches_vanilla_setup_anim() {
     // Vanilla EndermanModel.setupAnim carried-block branch *sets* both arms to xRot = -0.5
     // (overriding the swing and its clamp) with zRot = +0.05 on the right arm (part offset
-    // x < 0) and -0.05 on the left; yRot and the bind offset are preserved. ENDERMAN_PARTS
-    // lists the right arm at index 2 (x = -5) and the left at index 3 (x = +5).
-    let right = enderman_carried_arm_pose(ENDERMAN_PARTS[2].pose);
-    let left = enderman_carried_arm_pose(ENDERMAN_PARTS[3].pose);
-    assert_eq!(right.offset, ENDERMAN_PARTS[2].pose.offset);
-    assert_eq!(left.offset, ENDERMAN_PARTS[3].pose.offset);
+    // x < 0) and -0.05 on the left; yRot and the bind offset are preserved. The right arm
+    // sits at x = -5 and the left at x = +5.
+    let right = enderman_carried_arm_pose(RIGHT_ARM_POSE);
+    let left = enderman_carried_arm_pose(LEFT_ARM_POSE);
+    assert_eq!(right.offset, RIGHT_ARM_POSE.offset);
+    assert_eq!(left.offset, LEFT_ARM_POSE.offset);
     assert_eq!(right.rotation, [-0.5, 0.0, 0.05]);
     assert_eq!(left.rotation, [-0.5, 0.0, -0.05]);
 }
