@@ -2057,6 +2057,25 @@ When an agent does any of the following, update this file in the same slice:
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred
       entity lighting
+    - adult rabbit entities as renderer-owned vanilla 26.1 `AdultRabbitModel.createBodyLayer()`
+      geometry on the colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type
+      id `108` out of the cat/ocelot/fox wolf-shaped quadruped proxy — the adult maps to the new
+      `EntityModelKind::Rabbit`, replacing the wolf-shaped stand-in with the real rabbit mesh (the baby,
+      whose `BabyRabbitModel` uses its own nested-pivot mesh, stays on the wolf proxy as a documented
+      follow-up — strictly better than today, where adult rabbits also rendered as wolves). The static
+      rest-pose hierarchy is emitted directly (atlas 64×64): two root parts — the `body` (an 8×6×10 torso
+      pitched `-0.3927` at `offset(0, 23, 4)`) parenting the 4×4×4 `tail`, the 5×5×5 `head` (pitched
+      `0.3927`, parenting the two 2×5×1 ears) and the cubeless `frontlegs` pivot (parenting the two 2×4×2
+      front legs, both pitched `0.3927`); and the cubeless `backlegs` pivot (at `offset(0, 23, 4)`,
+      parenting the two cubeless hind-leg pivots, each parenting a 2×1×6 `haunch` yawed `±0.3927`) — nine
+      cubes. The head look is reproduced: `RabbitModel.setupAnim` sets `head.yRot/xRot` from the projected
+      `head_yaw/head_pitch` (an assignment that overwrites the head's baked `0.3927` pitch, gated on the
+      idle-head-tilt `AnimationState` that bbb never starts, so the look applies every frame), turning only
+      the head and its two ears. The looping `RabbitAnimation.HOP` and `IDLE_HEAD_TILT` keyframe animations
+      need un-projected `AnimationState`s and stay deferred, so a resting rabbit renders at this bind pose
+      plus the head look. The `Rabbit.Variant` color/texture variants and the `BabyRabbitModel` body layer
+      live on the deferred texture-backed / baby paths, so the colored debug path renders one brown tint.
+      The texture-backed path remains unsupported (this is a colored-first slice)
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a
