@@ -1,4 +1,4 @@
-use super::PartPose;
+use super::{PartPose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -104,10 +104,22 @@ pub(in crate::entity_models) const PUFFERFISH_SMALL_PARTS: [PufferfishPart; 6] =
         [25.0, 0.0],
     ),
 ];
-pub(in crate::entity_models) const PUFFERFISH_SMALL_FIN_INDICES: [usize; 2] = [4, 5];
+
+/// Vanilla `PufferfishSmallModel.createBodyLayer` child names, in declaration order. The two
+/// pectoral fins (`right_fin`/`left_fin`) wiggle on `ageInTicks`; `child_mut` resolves them by name.
+pub(in crate::entity_models) const PUFFERFISH_SMALL_NAMES: [&str; 6] = [
+    "body",
+    "right_eye",
+    "left_eye",
+    "back_fin",
+    "right_fin",
+    "left_fin",
+];
+pub(in crate::entity_models) const PUFFERFISH_SMALL_FIN_NAMES: [&str; 2] =
+    ["right_fin", "left_fin"];
 
 // Vanilla 26.1 PufferfishMidModel.createBodyLayer (texture 32x32). The two blue fins
-// (`right_blue_fin`/`left_blue_fin`, indices 1/2) wiggle on `ageInTicks`.
+// (`right_blue_fin`/`left_blue_fin`) wiggle on `ageInTicks`.
 pub(in crate::entity_models) const PUFFERFISH_MID_PARTS: [PufferfishPart; 11] = [
     part(
         [0.0, 22.0, 0.0],
@@ -187,10 +199,27 @@ pub(in crate::entity_models) const PUFFERFISH_MID_PARTS: [PufferfishPart; 11] = 
         [17.0, 19.0],
     ),
 ];
-pub(in crate::entity_models) const PUFFERFISH_MID_FIN_INDICES: [usize; 2] = [1, 2];
+
+/// Vanilla `PufferfishMidModel.createBodyLayer` child names, in declaration order. The two blue fins
+/// (`right_blue_fin`/`left_blue_fin`) wiggle on `ageInTicks`; `child_mut` resolves them by name.
+pub(in crate::entity_models) const PUFFERFISH_MID_NAMES: [&str; 11] = [
+    "body",
+    "right_blue_fin",
+    "left_blue_fin",
+    "top_front_fin",
+    "top_back_fin",
+    "right_front_fin",
+    "right_back_fin",
+    "left_back_fin",
+    "left_front_fin",
+    "bottom_back_fin",
+    "bottom_front_fin",
+];
+pub(in crate::entity_models) const PUFFERFISH_MID_FIN_NAMES: [&str; 2] =
+    ["right_blue_fin", "left_blue_fin"];
 
 // Vanilla 26.1 PufferfishBigModel.createBodyLayer (texture 32x32). The two blue fins
-// (`right_blue_fin`/`left_blue_fin`, indices 1/2) wiggle on `ageInTicks`.
+// (`right_blue_fin`/`left_blue_fin`) wiggle on `ageInTicks`.
 pub(in crate::entity_models) const PUFFERFISH_BIG_PARTS: [PufferfishPart; 13] = [
     part(
         [0.0, 22.0, 0.0],
@@ -284,17 +313,52 @@ pub(in crate::entity_models) const PUFFERFISH_BIG_PARTS: [PufferfishPart; 13] = 
         [9.0, 17.0],
     ),
 ];
-pub(in crate::entity_models) const PUFFERFISH_BIG_FIN_INDICES: [usize; 2] = [1, 2];
 
-/// Returns the body-layer parts and the two `ageInTicks`-wiggling fin indices for a puff
-/// state (`0` small, `1` mid, `>=2` big — matching `PufferfishRenderer.submit`).
+/// Vanilla `PufferfishBigModel.createBodyLayer` child names, in declaration order. The two blue fins
+/// (`right_blue_fin`/`left_blue_fin`) wiggle on `ageInTicks`; `child_mut` resolves them by name.
+pub(in crate::entity_models) const PUFFERFISH_BIG_NAMES: [&str; 13] = [
+    "body",
+    "right_blue_fin",
+    "left_blue_fin",
+    "top_front_fin",
+    "top_middle_fin",
+    "top_back_fin",
+    "right_front_fin",
+    "left_front_fin",
+    "bottom_front_fin",
+    "bottom_middle_fin",
+    "bottom_back_fin",
+    "right_back_fin",
+    "left_back_fin",
+];
+pub(in crate::entity_models) const PUFFERFISH_BIG_FIN_NAMES: [&str; 2] =
+    ["right_blue_fin", "left_blue_fin"];
+
+/// Returns the body-layer parts, their vanilla child names, and the two `ageInTicks`-wiggling fin
+/// names for a puff state (`0` small, `1` mid, `>=2` big — matching `PufferfishRenderer.submit`).
 pub(in crate::entity_models) fn pufferfish_parts(
     puff_state: i32,
-) -> (&'static [PufferfishPart], [usize; 2]) {
+) -> (
+    &'static [PufferfishPart],
+    &'static [&'static str],
+    [&'static str; 2],
+) {
     match puff_state {
-        0 => (&PUFFERFISH_SMALL_PARTS, PUFFERFISH_SMALL_FIN_INDICES),
-        1 => (&PUFFERFISH_MID_PARTS, PUFFERFISH_MID_FIN_INDICES),
-        _ => (&PUFFERFISH_BIG_PARTS, PUFFERFISH_BIG_FIN_INDICES),
+        0 => (
+            &PUFFERFISH_SMALL_PARTS,
+            &PUFFERFISH_SMALL_NAMES,
+            PUFFERFISH_SMALL_FIN_NAMES,
+        ),
+        1 => (
+            &PUFFERFISH_MID_PARTS,
+            &PUFFERFISH_MID_NAMES,
+            PUFFERFISH_MID_FIN_NAMES,
+        ),
+        _ => (
+            &PUFFERFISH_BIG_PARTS,
+            &PUFFERFISH_BIG_NAMES,
+            PUFFERFISH_BIG_FIN_NAMES,
+        ),
     }
 }
 
@@ -317,23 +381,24 @@ pub(in crate::entity_models) fn pufferfish_fin_pose(base: PartPose, z_rot: f32) 
 
 /// Mutable pufferfish model, mirroring vanilla `PufferfishSmallModel`/`MidModel`/`BigModel`. The puff
 /// state picks one of the three flat part lists ([`pufferfish_parts`]); each part hangs off a synthetic
-/// root carrying its single cube (both render paths' data), so one tree drives the colored fallback and
-/// the cutout textured layer. `setup_anim` wiggles the two `ageInTicks`-driven fins; the body bob lives
-/// in the pufferfish root transform.
+/// root as a named child carrying its single cube (both render paths' data), so one tree drives the
+/// colored fallback and the cutout textured layer. `setup_anim` wiggles the two `ageInTicks`-driven
+/// fins by name; the body bob lives in the pufferfish root transform.
 pub(in crate::entity_models) struct PufferfishModel {
     root: ModelPart,
-    fins: [usize; 2],
+    fins: [&'static str; 2],
 }
 
 impl PufferfishModel {
     pub(in crate::entity_models) fn new(puff_state: i32) -> Self {
-        let (parts, fins) = pufferfish_parts(puff_state);
+        let (parts, names, fins) = pufferfish_parts(puff_state);
         let children = parts
             .iter()
-            .map(|part| ModelPart::leaf(part.pose(), vec![part.model_cube()]))
+            .zip(names.iter())
+            .map(|(part, &name)| (name, ModelPart::leaf(part.pose(), vec![part.model_cube()])))
             .collect();
         Self {
-            root: ModelPart::root_from_parts(children),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
             fins,
         }
     }
@@ -353,9 +418,9 @@ impl EntityModel for PufferfishModel {
         // left its negation, set absolutely over the zeroed rest `zRot` (offset / `xRot` / `yRot`
         // preserved).
         let fin_z = pufferfish_right_fin_z_rot(instance.render_state.age_in_ticks);
-        let right = self.root.child_at_mut(self.fins[0]);
+        let right = self.root.child_mut(self.fins[0]);
         right.pose = pufferfish_fin_pose(right.pose, fin_z);
-        let left = self.root.child_at_mut(self.fins[1]);
+        let left = self.root.child_mut(self.fins[1]);
         left.pose = pufferfish_fin_pose(left.pose, -fin_z);
     }
 }

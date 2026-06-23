@@ -66,7 +66,10 @@ fn pufferfish_small_parts_match_vanilla_26_1_body_layer() {
             ),
         ],
     );
-    assert_eq!(PUFFERFISH_SMALL_FIN_INDICES, [4, 5]);
+    // The pectoral fins are the fifth and sixth children (`right_fin`/`left_fin`), the two that
+    // `setup_anim` wiggles by name.
+    assert_eq!(PUFFERFISH_SMALL_NAMES[4..], ["right_fin", "left_fin"]);
+    assert_eq!(PUFFERFISH_SMALL_FIN_NAMES, ["right_fin", "left_fin"]);
 }
 
 #[test]
@@ -155,7 +158,16 @@ fn pufferfish_mid_parts_match_vanilla_26_1_body_layer() {
             ),
         ],
     );
-    assert_eq!(PUFFERFISH_MID_FIN_INDICES, [1, 2]);
+    // The blue fins are the second and third children (`right_blue_fin`/`left_blue_fin`), the two
+    // that `setup_anim` wiggles by name.
+    assert_eq!(
+        PUFFERFISH_MID_NAMES[1..3],
+        ["right_blue_fin", "left_blue_fin"]
+    );
+    assert_eq!(
+        PUFFERFISH_MID_FIN_NAMES,
+        ["right_blue_fin", "left_blue_fin"]
+    );
 }
 
 #[test]
@@ -258,7 +270,16 @@ fn pufferfish_big_parts_match_vanilla_26_1_body_layer() {
             ),
         ],
     );
-    assert_eq!(PUFFERFISH_BIG_FIN_INDICES, [1, 2]);
+    // The blue fins are the second and third children (`right_blue_fin`/`left_blue_fin`), the two
+    // that `setup_anim` wiggles by name.
+    assert_eq!(
+        PUFFERFISH_BIG_NAMES[1..3],
+        ["right_blue_fin", "left_blue_fin"]
+    );
+    assert_eq!(
+        PUFFERFISH_BIG_FIN_NAMES,
+        ["right_blue_fin", "left_blue_fin"]
+    );
 }
 
 #[test]
