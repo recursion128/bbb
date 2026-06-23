@@ -686,9 +686,7 @@ fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
-            quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => zombie_nautilus_model_kind(),
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
         VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
         VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true),
@@ -922,12 +920,21 @@ fn fox_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityMo
 
 /// Vanilla `NautilusRenderer` (an `AgeableMobRenderer`) picks `NautilusModel.createBodyMesh` for an
 /// adult and the smaller `createBabyBodyLayer` for a baby; both render through the dedicated
-/// [`EntityModelKind::Nautilus`] (`baby` selecting the layout). The zombie nautilus, a separate
-/// `ZombieNautilusModel` with a coral layer, keeps the horse-shaped proxy for now.
+/// [`EntityModelKind::Nautilus`] (`baby` selecting the layout). The zombie nautilus reuses the same
+/// adult body — see [`zombie_nautilus_model_kind`].
 fn nautilus_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
     EntityModelKind::Nautilus {
         baby: ageable_baby(values),
     }
+}
+
+/// Vanilla `ZombieNautilusRenderer` (a plain `MobRenderer`, so never a baby) renders the same
+/// `NautilusModel.createBodyLayer()` body as the living nautilus (`ModelLayers.ZOMBIE_NAUTILUS` bakes to
+/// it), so it shares the dedicated [`EntityModelKind::Nautilus`] adult body. The `WARM` coral variant (a
+/// distinct `ZombieNautilusCoralModel` mesh), the separate coral layer, and the armor / saddle equipment
+/// layers are deferred, so this replaces the horse-shaped proxy with the real nautilus body.
+fn zombie_nautilus_model_kind() -> EntityModelKind {
+    EntityModelKind::Nautilus { baby: false }
 }
 
 fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
@@ -5498,8 +5505,10 @@ mod tests {
             }
         );
         // The nautilus (adult and baby) renders through its dedicated `NautilusModel`
-        // (`createBodyMesh` / `createBabyBodyLayer`); only the zombie nautilus (a separate model with a
-        // coral layer) keeps the horse proxy.
+        // (`createBodyMesh` / `createBabyBodyLayer`). The zombie nautilus reuses the same adult nautilus
+        // body (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`), so it too maps
+        // to the dedicated model (always adult — it is a plain `MobRenderer`); only its coral layer /
+        // `WARM` coral variant stay deferred.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
             EntityModelKind::Nautilus { baby: false }
@@ -5513,7 +5522,15 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),
-            quadruped(QuadrupedModelFamily::Horse, false)
+            EntityModelKind::Nautilus { baby: false }
+        );
+        // The zombie nautilus is never a baby, so the baby flag in its metadata is ignored.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Nautilus { baby: false }
         );
     }
 
@@ -5620,10 +5637,6 @@ mod tests {
                 baby: false,
                 has_chest: false
             }
-        );
-        assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),
-            quadruped(QuadrupedModelFamily::Horse, false)
         );
     }
 

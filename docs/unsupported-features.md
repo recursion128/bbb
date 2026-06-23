@@ -2057,13 +2057,16 @@ When an agent does any of the following, update this file in the same slice:
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred
       entity lighting
-    - nautilus entities (adult and baby) as renderer-owned vanilla 26.1 `NautilusModel.createBodyMesh()` /
-      `createBabyBodyLayer()` geometry on the colored path: the native entity scene (`entity_scene.rs`)
-      now splits vanilla type id `88` out of the nautilus/zombie-nautilus horse-shaped quadruped proxy —
-      both adult and baby map to the new `EntityModelKind::Nautilus { baby }`, replacing the horse-shaped
-      stand-in with the real mesh of this new rideable mob (only the zombie nautilus, a separate
-      `ZombieNautilusModel` with a coral layer, stays on the horse proxy as a documented follow-up). The
-      adult rest-pose hierarchy is emitted directly (atlas 128×128): one cubeless `root` pivot at
+    - nautilus and zombie-nautilus entities as renderer-owned vanilla 26.1
+      `NautilusModel.createBodyMesh()` / `createBabyBodyLayer()` geometry on the colored path: the native
+      entity scene (`entity_scene.rs`) now splits vanilla type ids `88` (nautilus) and the zombie nautilus
+      out of the horse-shaped quadruped proxy — the living nautilus (adult and baby) maps to the new
+      `EntityModelKind::Nautilus { baby }`, and the zombie nautilus reuses the same adult body
+      (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`, a plain `MobRenderer` so
+      never a baby) → `Nautilus { baby: false }`, replacing the horse-shaped stand-in with the real mesh
+      of this new rideable mob. The zombie nautilus's `WARM` coral variant (a distinct
+      `ZombieNautilusCoralModel` mesh) and its separate coral layer stay deferred. The adult rest-pose
+      hierarchy is emitted directly (atlas 128×128): one cubeless `root` pivot at
       `offset(0, 29, -6)` parenting the `shell` at `offset(0, -13, 5)` (the 14×10×16 dome, the 14×8×20
       whorl, and a 14×8×0 rear fin plane) and the `body` at `offset(0, -8.5, 12.3)` (the 10×8×14 trunk
       plus its 10×8×0 fin plane), the body parenting the three mouth boxes (`upper_mouth` / `lower_mouth`
