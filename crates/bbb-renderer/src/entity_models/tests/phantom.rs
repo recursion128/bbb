@@ -47,35 +47,38 @@ fn phantom_parts_match_vanilla_26_1_body_layer() {
 }
 
 #[test]
-fn phantom_textured_parts_match_vanilla_model_layer_uv_sources() {
+fn phantom_cubes_match_vanilla_model_layer_uv_sources() {
+    // texture 64x64, no CubeDeformation. Each unified cube carries the colored tint (`PHANTOM_TEAL`)
+    // and the textured UV (`texOffs` / `mirror`); `uv_size` mirrors the cube size for every cube.
     assert_eq!(PHANTOM_TEXTURE_REF.size, [64, 64]);
-    // The nested tree: body parents the tail chain, both wing chains, and the head.
-    assert_eq!(PHANTOM_TEXTURED_PARTS.len(), 1);
-    let body = &PHANTOM_TEXTURED_PARTS[0];
-    assert_eq!(body.pose, PHANTOM_BODY_POSE);
-    assert_eq!(body.cubes[0], PHANTOM_BODY_TEXTURED_CUBE);
-    assert_eq!(body.children.len(), 4);
 
     // texOffs + mirror sources for every cube.
-    assert_eq!(PHANTOM_BODY_TEXTURED_CUBE.tex, [0.0, 8.0]);
-    assert!(!PHANTOM_BODY_TEXTURED_CUBE.mirror);
-    assert_eq!(PHANTOM_TAIL_BASE_TEXTURED_CUBE.tex, [3.0, 20.0]);
-    assert_eq!(PHANTOM_TAIL_TIP_TEXTURED_CUBE.tex, [4.0, 29.0]);
-    assert_eq!(PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE.tex, [23.0, 12.0]);
-    assert!(!PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE.mirror);
-    assert_eq!(PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE.tex, [16.0, 24.0]);
+    assert_eq!(PHANTOM_BODY_CUBE.tex, [0.0, 8.0]);
+    assert!(!PHANTOM_BODY_CUBE.mirror);
+    assert_eq!(PHANTOM_TAIL_BASE_CUBE.tex, [3.0, 20.0]);
+    assert_eq!(PHANTOM_TAIL_TIP_CUBE.tex, [4.0, 29.0]);
+    assert_eq!(PHANTOM_LEFT_WING_BASE_CUBE.tex, [23.0, 12.0]);
+    assert!(!PHANTOM_LEFT_WING_BASE_CUBE.mirror);
+    assert_eq!(PHANTOM_LEFT_WING_TIP_CUBE.tex, [16.0, 24.0]);
     // Right wing reuses the left texOffs, mirrored.
-    assert_eq!(PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE.tex, [23.0, 12.0]);
-    assert!(PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE.mirror);
-    assert_eq!(PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE.tex, [16.0, 24.0]);
-    assert!(PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE.mirror);
-    assert_eq!(PHANTOM_HEAD_TEXTURED_CUBE.tex, [0.0, 0.0]);
-    // uv_size mirrors the cube size for every textured cube.
-    assert_eq!(PHANTOM_BODY_TEXTURED_CUBE.uv_size, PHANTOM_BODY_CUBE.size);
-    assert_eq!(
-        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE.uv_size,
-        PHANTOM_RIGHT_WING_TIP_CUBE.size
-    );
+    assert_eq!(PHANTOM_RIGHT_WING_BASE_CUBE.tex, [23.0, 12.0]);
+    assert!(PHANTOM_RIGHT_WING_BASE_CUBE.mirror);
+    assert_eq!(PHANTOM_RIGHT_WING_TIP_CUBE.tex, [16.0, 24.0]);
+    assert!(PHANTOM_RIGHT_WING_TIP_CUBE.mirror);
+    assert_eq!(PHANTOM_HEAD_CUBE.tex, [0.0, 0.0]);
+    // uv_size mirrors the cube size for every cube.
+    for cube in [
+        PHANTOM_BODY_CUBE,
+        PHANTOM_TAIL_BASE_CUBE,
+        PHANTOM_TAIL_TIP_CUBE,
+        PHANTOM_LEFT_WING_BASE_CUBE,
+        PHANTOM_LEFT_WING_TIP_CUBE,
+        PHANTOM_RIGHT_WING_BASE_CUBE,
+        PHANTOM_RIGHT_WING_TIP_CUBE,
+        PHANTOM_HEAD_CUBE,
+    ] {
+        assert_eq!(cube.uv_size, cube.size);
+    }
 }
 
 #[test]
@@ -88,7 +91,7 @@ fn phantom_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_PHANTOM);
     assert_eq!(passes[0].texture, PHANTOM_TEXTURE_REF);
-    assert_eq!(passes[0].parts, PHANTOM_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -100,7 +103,7 @@ fn phantom_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].model_layer, MODEL_LAYER_PHANTOM);
     assert_eq!(passes[1].texture, PHANTOM_EYES_TEXTURE_REF);
-    assert_eq!(passes[1].parts, PHANTOM_TEXTURED_PARTS.as_slice());
+    assert!(passes[1].parts.is_empty());
     assert_eq!(
         (passes[1].collector_order, passes[1].submit_sequence),
         (1, 1)

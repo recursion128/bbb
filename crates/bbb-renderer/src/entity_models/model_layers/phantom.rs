@@ -1,6 +1,6 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use super::{PartPose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // The phantom fallback paints its body a dark End-blue teal.
 pub(in crate::entity_models) const PHANTOM_TEAL: [f32; 4] = [0.28, 0.42, 0.46, 1.0];
@@ -43,214 +43,129 @@ pub(in crate::entity_models) const PHANTOM_HEAD_POSE: PartPose = PartPose {
     rotation: [0.2, 0.0, 0.0],
 };
 
-pub(in crate::entity_models) const PHANTOM_BODY_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [-3.0, -2.0, -8.0],
-    size: [5.0, 3.0, 9.0],
-    color: PHANTOM_TEAL,
-};
-pub(in crate::entity_models) const PHANTOM_TAIL_BASE_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [-2.0, 0.0, 0.0],
-    size: [3.0, 2.0, 6.0],
-    color: PHANTOM_TEAL,
-};
-pub(in crate::entity_models) const PHANTOM_TAIL_TIP_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [-1.0, 0.0, 0.0],
-    size: [1.0, 1.0, 6.0],
-    color: PHANTOM_TEAL,
-};
-pub(in crate::entity_models) const PHANTOM_LEFT_WING_BASE_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [6.0, 2.0, 9.0],
-    color: PHANTOM_TEAL,
-};
-pub(in crate::entity_models) const PHANTOM_LEFT_WING_TIP_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [13.0, 1.0, 9.0],
-    color: PHANTOM_TEAL,
-};
-pub(in crate::entity_models) const PHANTOM_RIGHT_WING_BASE_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [-6.0, 0.0, 0.0],
-    size: [6.0, 2.0, 9.0],
-    color: PHANTOM_TEAL,
-};
-pub(in crate::entity_models) const PHANTOM_RIGHT_WING_TIP_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [-13.0, 0.0, 0.0],
-    size: [13.0, 1.0, 9.0],
-    color: PHANTOM_TEAL,
-};
-pub(in crate::entity_models) const PHANTOM_HEAD_CUBE: ModelCubeDesc = ModelCubeDesc {
-    min: [-4.0, -2.0, -5.0],
-    size: [7.0, 3.0, 5.0],
-    color: PHANTOM_TEAL,
-};
+// Vanilla 26.1 PhantomModel.createBodyLayer cubes (texture 64x64, no CubeDeformation). Each unified
+// cube carries both render paths' data: the colored debug tint (`PHANTOM_TEAL`) and the textured
+// `uv_size` / `texOffs` / `mirror`. `uv_size` equals the geometry size for every cube. Vanilla mirrors
+// the right-wing texOffs onto the negative-x boxes.
+pub(in crate::entity_models) const PHANTOM_BODY_CUBE: ModelCube = ModelCube::new(
+    [-3.0, -2.0, -8.0],
+    [5.0, 3.0, 9.0],
+    PHANTOM_TEAL,
+    [5.0, 3.0, 9.0],
+    [0.0, 8.0],
+    false,
+);
+pub(in crate::entity_models) const PHANTOM_TAIL_BASE_CUBE: ModelCube = ModelCube::new(
+    [-2.0, 0.0, 0.0],
+    [3.0, 2.0, 6.0],
+    PHANTOM_TEAL,
+    [3.0, 2.0, 6.0],
+    [3.0, 20.0],
+    false,
+);
+pub(in crate::entity_models) const PHANTOM_TAIL_TIP_CUBE: ModelCube = ModelCube::new(
+    [-1.0, 0.0, 0.0],
+    [1.0, 1.0, 6.0],
+    PHANTOM_TEAL,
+    [1.0, 1.0, 6.0],
+    [4.0, 29.0],
+    false,
+);
+pub(in crate::entity_models) const PHANTOM_LEFT_WING_BASE_CUBE: ModelCube = ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [6.0, 2.0, 9.0],
+    PHANTOM_TEAL,
+    [6.0, 2.0, 9.0],
+    [23.0, 12.0],
+    false,
+);
+pub(in crate::entity_models) const PHANTOM_LEFT_WING_TIP_CUBE: ModelCube = ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [13.0, 1.0, 9.0],
+    PHANTOM_TEAL,
+    [13.0, 1.0, 9.0],
+    [16.0, 24.0],
+    false,
+);
+pub(in crate::entity_models) const PHANTOM_RIGHT_WING_BASE_CUBE: ModelCube = ModelCube::new(
+    [-6.0, 0.0, 0.0],
+    [6.0, 2.0, 9.0],
+    PHANTOM_TEAL,
+    [6.0, 2.0, 9.0],
+    [23.0, 12.0],
+    true,
+);
+pub(in crate::entity_models) const PHANTOM_RIGHT_WING_TIP_CUBE: ModelCube = ModelCube::new(
+    [-13.0, 0.0, 0.0],
+    [13.0, 1.0, 9.0],
+    PHANTOM_TEAL,
+    [13.0, 1.0, 9.0],
+    [16.0, 24.0],
+    true,
+);
+pub(in crate::entity_models) const PHANTOM_HEAD_CUBE: ModelCube = ModelCube::new(
+    [-4.0, -2.0, -5.0],
+    [7.0, 3.0, 5.0],
+    PHANTOM_TEAL,
+    [7.0, 3.0, 5.0],
+    [0.0, 0.0],
+    false,
+);
 
-const fn phantom_textured_cube(
-    min: [f32; 3],
-    size: [f32; 3],
-    tex: [f32; 2],
-    mirror: bool,
-) -> TexturedModelCubeDesc {
-    TexturedModelCubeDesc {
-        min,
-        size,
-        uv_size: size,
-        tex,
-        mirror,
-    }
-}
-
-pub(in crate::entity_models) const PHANTOM_BODY_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([-3.0, -2.0, -8.0], [5.0, 3.0, 9.0], [0.0, 8.0], false);
-pub(in crate::entity_models) const PHANTOM_TAIL_BASE_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([-2.0, 0.0, 0.0], [3.0, 2.0, 6.0], [3.0, 20.0], false);
-pub(in crate::entity_models) const PHANTOM_TAIL_TIP_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([-1.0, 0.0, 0.0], [1.0, 1.0, 6.0], [4.0, 29.0], false);
-pub(in crate::entity_models) const PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([0.0, 0.0, 0.0], [6.0, 2.0, 9.0], [23.0, 12.0], false);
-pub(in crate::entity_models) const PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([0.0, 0.0, 0.0], [13.0, 1.0, 9.0], [16.0, 24.0], false);
-// Vanilla mirrors the right-wing texOffs onto the negative-x boxes.
-pub(in crate::entity_models) const PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([-6.0, 0.0, 0.0], [6.0, 2.0, 9.0], [23.0, 12.0], true);
-pub(in crate::entity_models) const PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([-13.0, 0.0, 0.0], [13.0, 1.0, 9.0], [16.0, 24.0], true);
-pub(in crate::entity_models) const PHANTOM_HEAD_TEXTURED_CUBE: TexturedModelCubeDesc =
-    phantom_textured_cube([-4.0, -2.0, -5.0], [7.0, 3.0, 5.0], [0.0, 0.0], false);
-
-const PHANTOM_TAIL_TIP_TEXTURED: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: PHANTOM_TAIL_TIP_POSE,
-    cubes: &[PHANTOM_TAIL_TIP_TEXTURED_CUBE],
-    children: &[],
-}];
-const PHANTOM_LEFT_WING_TIP_TEXTURED: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: PHANTOM_LEFT_WING_TIP_POSE,
-    cubes: &[PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE],
-    children: &[],
-}];
-const PHANTOM_RIGHT_WING_TIP_TEXTURED: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: PHANTOM_RIGHT_WING_TIP_POSE,
-    cubes: &[PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE],
-    children: &[],
-}];
-const PHANTOM_BODY_TEXTURED_CHILDREN: [TexturedModelPartDesc; 4] = [
-    TexturedModelPartDesc {
-        pose: PHANTOM_TAIL_BASE_POSE,
-        cubes: &[PHANTOM_TAIL_BASE_TEXTURED_CUBE],
-        children: &PHANTOM_TAIL_TIP_TEXTURED,
-    },
-    TexturedModelPartDesc {
-        pose: PHANTOM_LEFT_WING_BASE_POSE,
-        cubes: &[PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE],
-        children: &PHANTOM_LEFT_WING_TIP_TEXTURED,
-    },
-    TexturedModelPartDesc {
-        pose: PHANTOM_RIGHT_WING_BASE_POSE,
-        cubes: &[PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE],
-        children: &PHANTOM_RIGHT_WING_TIP_TEXTURED,
-    },
-    TexturedModelPartDesc {
-        pose: PHANTOM_HEAD_POSE,
-        cubes: &[PHANTOM_HEAD_TEXTURED_CUBE],
-        children: &[],
-    },
-];
-
-/// The phantom body layer as a nested tree (body parents the tail/wing chains and head),
-/// used for the layer-pass definition and tests. Emission re-poses the animated descendants
-/// by hand, so this static tree carries the rest pose.
-pub(in crate::entity_models) const PHANTOM_TEXTURED_PARTS: [TexturedModelPartDesc; 1] =
-    [TexturedModelPartDesc {
-        pose: PHANTOM_BODY_POSE,
-        cubes: &[PHANTOM_BODY_TEXTURED_CUBE],
-        children: &PHANTOM_BODY_TEXTURED_CHILDREN,
-    }];
-
-// Colored counterpart of `PHANTOM_TEXTURED_PARTS`: the same body → (tail/wing chains, head)
-// hierarchy, carrying the baked teal cubes. Zipped with the textured tree by `PhantomModel::new`.
-const PHANTOM_TAIL_TIP_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: PHANTOM_TAIL_TIP_POSE,
-    cubes: &[PHANTOM_TAIL_TIP_CUBE],
-    children: &[],
-}];
-const PHANTOM_LEFT_WING_TIP_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: PHANTOM_LEFT_WING_TIP_POSE,
-    cubes: &[PHANTOM_LEFT_WING_TIP_CUBE],
-    children: &[],
-}];
-const PHANTOM_RIGHT_WING_TIP_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: PHANTOM_RIGHT_WING_TIP_POSE,
-    cubes: &[PHANTOM_RIGHT_WING_TIP_CUBE],
-    children: &[],
-}];
-const PHANTOM_BODY_CHILDREN: [ModelPartDesc; 4] = [
-    ModelPartDesc {
-        pose: PHANTOM_TAIL_BASE_POSE,
-        cubes: &[PHANTOM_TAIL_BASE_CUBE],
-        children: &PHANTOM_TAIL_TIP_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PHANTOM_LEFT_WING_BASE_POSE,
-        cubes: &[PHANTOM_LEFT_WING_BASE_CUBE],
-        children: &PHANTOM_LEFT_WING_TIP_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PHANTOM_RIGHT_WING_BASE_POSE,
-        cubes: &[PHANTOM_RIGHT_WING_BASE_CUBE],
-        children: &PHANTOM_RIGHT_WING_TIP_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PHANTOM_HEAD_POSE,
-        cubes: &[PHANTOM_HEAD_CUBE],
-        children: &[],
-    },
-];
-pub(in crate::entity_models) const PHANTOM_PARTS: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: PHANTOM_BODY_POSE,
-    cubes: &[PHANTOM_BODY_CUBE],
-    children: &PHANTOM_BODY_CHILDREN,
-}];
-
-/// The phantom body's children, in `PHANTOM_BODY_CHILDREN` order: the tail chain, the two wing
-/// chains, then the head. The wings and tail are the animated chains ([`apply_phantom_flap`]).
-const PHANTOM_TAIL_CHILD_INDEX: usize = 0;
-const PHANTOM_LEFT_WING_CHILD_INDEX: usize = 1;
-const PHANTOM_RIGHT_WING_CHILD_INDEX: usize = 2;
-
-/// Applies the vanilla `PhantomModel.setupAnim` flap to the unified tree: each wing's base and tip
-/// `zRot` is set to ±[`phantom_wing_z_rot`] (left positive, right negated) and each tail segment's
-/// `xRot` to [`phantom_tail_x_rot`], overwriting the rest dihedral every frame. The head holds its
-/// rest tilt. The flap always advances (`flapTime` tracks `ageInTicks`), so this runs unconditionally.
-fn apply_phantom_flap(root: &mut ModelPart, flap_time: f32) {
-    let wing_z = phantom_wing_z_rot(flap_time);
-    let tail_x = phantom_tail_x_rot(flap_time);
-    let body = root.child_at_mut(0);
-
-    let tail_base = body.child_at_mut(PHANTOM_TAIL_CHILD_INDEX);
-    tail_base.pose = phantom_tail_pose(PHANTOM_TAIL_BASE_POSE, tail_x);
-    tail_base.child_at_mut(0).pose = phantom_tail_pose(PHANTOM_TAIL_TIP_POSE, tail_x);
-
-    let left_base = body.child_at_mut(PHANTOM_LEFT_WING_CHILD_INDEX);
-    left_base.pose = phantom_wing_pose(PHANTOM_LEFT_WING_BASE_POSE, wing_z);
-    left_base.child_at_mut(0).pose = phantom_wing_pose(PHANTOM_LEFT_WING_TIP_POSE, wing_z);
-
-    let right_base = body.child_at_mut(PHANTOM_RIGHT_WING_CHILD_INDEX);
-    right_base.pose = phantom_wing_pose(PHANTOM_RIGHT_WING_BASE_POSE, -wing_z);
-    right_base.child_at_mut(0).pose = phantom_wing_pose(PHANTOM_RIGHT_WING_TIP_POSE, -wing_z);
-}
-
-/// Mutable phantom model, mirroring vanilla `PhantomModel`. The unified tree is zipped from the body →
-/// (tail chain, two wing chains, head) hierarchy ([`PHANTOM_PARTS`] / [`PHANTOM_TEXTURED_PARTS`]);
-/// `setup_anim` runs [`apply_phantom_flap`] from `flapTime` (`id*3 + ageInTicks`). The same posed tree
-/// drives the colored fallback, the textured cutout base layer, and the emissive eyes overlay (both
-/// passes re-render the same tree). The size scale and body pitch live in the root transform.
+/// Mutable phantom model, mirroring vanilla `PhantomModel`. The unified tree is built once with named
+/// children: the `body` parents the `tail_base` (→ `tail_tip`) chain, the `left_wing_base`
+/// (→ `left_wing_tip`) and `right_wing_base` (→ `right_wing_tip`) chains, and the `head`. The same
+/// posed tree drives the colored fallback, the textured cutout base layer, and the emissive eyes
+/// overlay (both passes re-render the same tree). `setup_anim` flaps the wings and tail from `flapTime`
+/// (`id*3 + ageInTicks`); the size scale and body pitch live in the root transform.
 pub(in crate::entity_models) struct PhantomModel {
     root: ModelPart,
 }
 
 impl PhantomModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let tail_base = ModelPart::new(
+            PHANTOM_TAIL_BASE_POSE,
+            vec![PHANTOM_TAIL_BASE_CUBE],
+            vec![(
+                "tail_tip",
+                ModelPart::leaf(PHANTOM_TAIL_TIP_POSE, vec![PHANTOM_TAIL_TIP_CUBE]),
+            )],
+        );
+        let left_wing_base = ModelPart::new(
+            PHANTOM_LEFT_WING_BASE_POSE,
+            vec![PHANTOM_LEFT_WING_BASE_CUBE],
+            vec![(
+                "left_wing_tip",
+                ModelPart::leaf(PHANTOM_LEFT_WING_TIP_POSE, vec![PHANTOM_LEFT_WING_TIP_CUBE]),
+            )],
+        );
+        let right_wing_base = ModelPart::new(
+            PHANTOM_RIGHT_WING_BASE_POSE,
+            vec![PHANTOM_RIGHT_WING_BASE_CUBE],
+            vec![(
+                "right_wing_tip",
+                ModelPart::leaf(
+                    PHANTOM_RIGHT_WING_TIP_POSE,
+                    vec![PHANTOM_RIGHT_WING_TIP_CUBE],
+                ),
+            )],
+        );
+        let body = ModelPart::new(
+            PHANTOM_BODY_POSE,
+            vec![PHANTOM_BODY_CUBE],
+            vec![
+                ("tail_base", tail_base),
+                ("left_wing_base", left_wing_base),
+                ("right_wing_base", right_wing_base),
+                (
+                    "head",
+                    ModelPart::leaf(PHANTOM_HEAD_POSE, vec![PHANTOM_HEAD_CUBE]),
+                ),
+            ],
+        );
         Self {
-            root: ModelPart::root_from_descs(&PHANTOM_PARTS, &PHANTOM_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("body", body)]),
         }
     }
 }
@@ -265,8 +180,28 @@ impl EntityModel for PhantomModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `PhantomModel.setupAnim` flap: each wing's base and tip `zRot` is set to
+        // ±[`phantom_wing_z_rot`] (left positive, right negated) and each tail segment's `xRot` to
+        // [`phantom_tail_x_rot`], overwriting the rest dihedral every frame. The head holds its rest
+        // tilt. The flap always advances (`flapTime` tracks `ageInTicks`), so this runs unconditionally.
         let flap = phantom_flap_time(instance.entity_id, instance.render_state.age_in_ticks);
-        apply_phantom_flap(&mut self.root, flap);
+        let wing_z = phantom_wing_z_rot(flap);
+        let tail_x = phantom_tail_x_rot(flap);
+        let body = self.root.child_mut("body");
+
+        let tail_base = body.child_mut("tail_base");
+        tail_base.pose = phantom_tail_pose(PHANTOM_TAIL_BASE_POSE, tail_x);
+        tail_base.child_mut("tail_tip").pose = phantom_tail_pose(PHANTOM_TAIL_TIP_POSE, tail_x);
+
+        let left_base = body.child_mut("left_wing_base");
+        left_base.pose = phantom_wing_pose(PHANTOM_LEFT_WING_BASE_POSE, wing_z);
+        left_base.child_mut("left_wing_tip").pose =
+            phantom_wing_pose(PHANTOM_LEFT_WING_TIP_POSE, wing_z);
+
+        let right_base = body.child_mut("right_wing_base");
+        right_base.pose = phantom_wing_pose(PHANTOM_RIGHT_WING_BASE_POSE, -wing_z);
+        right_base.child_mut("right_wing_tip").pose =
+            phantom_wing_pose(PHANTOM_RIGHT_WING_TIP_POSE, -wing_z);
     }
 }
 
