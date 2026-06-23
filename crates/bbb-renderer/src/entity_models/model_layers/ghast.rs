@@ -1,4 +1,6 @@
 use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla ghasts are an off-white floating jelly; the colored fallback paints every cube the
 // same light grey-white.
@@ -154,4 +156,39 @@ pub(in crate::entity_models) const GHAST_TEXTURED_PARTS: [TexturedModelPartDesc;
 /// + i) + 0.4`, driven purely by `ageInTicks` (never at rest), so the tentacles always wave.
 pub(in crate::entity_models) fn ghast_tentacle_x_rot(index: usize, age_in_ticks: f32) -> f32 {
     0.2 * (age_in_ticks * 0.3 + index as f32).sin() + 0.4
+}
+
+/// Mutable ghast model, mirroring vanilla `GhastModel`. The unified tree is zipped from the baked
+/// colored ([`GHAST_PARTS`]) and textured ([`GHAST_TEXTURED_PARTS`]) trees: child 0 is the body,
+/// children 1..=9 are the tentacles. `setup_anim` waves every tentacle's `xRot` from `ageInTicks`
+/// ([`ghast_tentacle_x_rot`], never at rest). A ghast floats, so there is no walk swing or head look;
+/// the bob/scale lives in the root transform (`ghast_model_root_transform`).
+pub(in crate::entity_models) struct GhastModel {
+    root: ModelPart,
+}
+
+impl GhastModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&GHAST_PARTS, &GHAST_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for GhastModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let age_in_ticks = instance.render_state.age_in_ticks;
+        for tentacle in 0..GHAST_TENTACLE_LENGTHS.len() {
+            self.root.child_at_mut(tentacle + 1).pose.rotation[0] =
+                ghast_tentacle_x_rot(tentacle, age_in_ticks);
+        }
+    }
 }

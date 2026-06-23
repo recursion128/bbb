@@ -50,7 +50,7 @@ use super::{
         villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, EndermiteModel,
-        MagmaCubeModel, SalmonModel, SilverfishModel, ADULT_CAMEL_WALK_LAYOUT,
+        GhastModel, MagmaCubeModel, SalmonModel, SilverfishModel, ADULT_CAMEL_WALK_LAYOUT,
         ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
         ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
         ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
@@ -2499,17 +2499,21 @@ fn emit_ghast_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `GhastModel.setupAnim` waves the nine tentacles by `ageInTicks`
-    // (`tentacle.xRot = 0.2 * sin(ageInTicks * 0.3 + i) + 0.4`, never at rest), so the
-    // tentacles are always re-posed. The body is part 0; tentacles `i` are parts 1..=9.
-    let age_in_ticks = instance.render_state.age_in_ticks;
+    // The unified `GhastModel` tree drives both render paths; `setup_anim` waves the nine tentacles
+    // from `ageInTicks` once. The layer pass supplies the texture / render type / tint.
     let transform = ghast_model_root_transform(instance);
+    let mut model = GhastModel::new();
+    model.prepare(&instance);
     for pass in ghast_textured_layer_passes() {
-        let mut parts = pass.parts.to_vec();
-        for (tentacle, part) in parts.iter_mut().skip(1).enumerate() {
-            part.pose.rotation[0] = ghast_tentacle_x_rot(tentacle, age_in_ticks);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 

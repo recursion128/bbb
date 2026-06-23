@@ -115,7 +115,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Ghast => {
                 if !skip_texture_backed_entities {
-                    emit_ghast_model(&mut mesh, *instance);
+                    GhastModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        ghast_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::HappyGhast => {
@@ -510,18 +514,6 @@ fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, s
         &SLIME_PARTS,
         slime_model_root_transform(instance, size),
     );
-}
-
-fn emit_ghast_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `GhastModel.setupAnim` waves each of the nine tentacles by `ageInTicks`
-    // (`tentacle.xRot = 0.2 * sin(ageInTicks * 0.3 + i) + 0.4`, never at rest), so the
-    // tentacles are always re-posed. The body is part 0; tentacles `i` are parts 1..=9.
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let mut parts = GHAST_PARTS.to_vec();
-    for (tentacle, part) in parts.iter_mut().skip(1).enumerate() {
-        part.pose.rotation[0] = ghast_tentacle_x_rot(tentacle, age_in_ticks);
-    }
-    emit_model_parts(mesh, &parts, ghast_model_root_transform(instance));
 }
 
 fn emit_happy_ghast_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
