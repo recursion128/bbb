@@ -15,6 +15,14 @@ fn breeze_geometry_matches_vanilla_26_1_base_body_layer() {
     assert_eq!(BREEZE_ROD_1_POSE.rotation, [-2.7489, -1.0472, 3.1416]);
     assert_eq!(BREEZE_ROD_2_POSE.rotation, [-2.7489, 1.0472, 3.1416]);
     assert_eq!(BREEZE_ROD_3_POSE.rotation, [0.3927, 0.0, 0.0]);
+
+    // Each unified cube also carries the vanilla `BreezeModel.createBaseMesh` texOffs UV (atlas
+    // 32×32); no `CubeDeformation`, so each `uv_size` matches the box `size`.
+    assert_eq!(BREEZE_HEAD[0].tex, [4.0, 24.0]);
+    assert_eq!(BREEZE_HEAD[0].uv_size, [10.0, 3.0, 4.0]);
+    assert_eq!(BREEZE_HEAD[1].tex, [0.0, 0.0]);
+    assert_eq!(BREEZE_ROD[0].tex, [0.0, 17.0]);
+    assert!(!BREEZE_ROD[0].mirror);
 }
 
 #[test]
@@ -82,17 +90,6 @@ fn breeze_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         }]
     );
-}
-
-#[test]
-fn breeze_textured_cubes_match_vanilla_base_body_uvs() {
-    // Vanilla `BreezeModel.createBaseMesh` texOffs (atlas 32×32); no `CubeDeformation`, so each
-    // `uv_size` matches the box `size`.
-    assert_eq!(BREEZE_TEXTURED_HEAD[0].tex, [4.0, 24.0]);
-    assert_eq!(BREEZE_TEXTURED_HEAD[0].uv_size, [10.0, 3.0, 4.0]);
-    assert_eq!(BREEZE_TEXTURED_HEAD[1].tex, [0.0, 0.0]);
-    assert_eq!(BREEZE_TEXTURED_ROD[0].tex, [0.0, 17.0]);
-    assert!(!BREEZE_TEXTURED_ROD[0].mirror);
 }
 
 #[test]
