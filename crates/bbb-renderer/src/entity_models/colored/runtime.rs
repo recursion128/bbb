@@ -2463,51 +2463,38 @@ fn emit_zombie_variant_model(
     family: ZombieVariantModelFamily,
     baby: bool,
 ) {
-    let (parts, transform, color): (&[ModelPartDesc], _, _) = match (family, baby) {
-        (ZombieVariantModelFamily::Husk, false) => (
-            &ADULT_ZOMBIE_PARTS,
-            mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE),
-            HUSK_TAN,
-        ),
-        (ZombieVariantModelFamily::Husk, true) => (
-            &BABY_ZOMBIE_PARTS,
-            entity_model_root_transform(instance),
-            HUSK_TAN,
-        ),
-        (ZombieVariantModelFamily::Drowned, false) => (
-            &ADULT_ZOMBIE_PARTS,
-            entity_model_root_transform(instance),
-            DROWNED_BLUE,
-        ),
-        (ZombieVariantModelFamily::Drowned, true) => (
-            &BABY_ZOMBIE_PARTS,
-            entity_model_root_transform(instance),
-            DROWNED_BLUE,
-        ),
-        (ZombieVariantModelFamily::ZombieVillager, false) => (
-            &ADULT_ZOMBIE_VILLAGER_PARTS,
-            entity_model_root_transform(instance),
-            ZOMBIE_VILLAGER_ROBE,
-        ),
-        (ZombieVariantModelFamily::ZombieVillager, true) => (
-            &BABY_ZOMBIE_VILLAGER_PARTS,
-            entity_model_root_transform(instance),
-            ZOMBIE_VILLAGER_ROBE,
-        ),
-    };
-    let parts = humanoid_limb_swing_parts(
-        zombie_colored_head_look_parts(parts, instance, baby),
-        HUMANOID_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    let parts = zombie_arm_held_out_parts(
-        parts,
-        HUMANOID_ARM_PART_INDICES,
-        instance.render_state.is_aggressive,
-        instance.render_state.age_in_ticks,
-    );
-    emit_model_parts_with_color(mesh, &parts, transform, color);
+    // The unified `ZombieVariantModel` tree drives both render paths; `setup_anim` runs the shared
+    // `ZombieModel.setupAnim` (head look + leg swing + held-out arms). The colored fallback recolors
+    // the whole model with the family color (the textured path uses the family texture instead).
+    let color = zombie_variant_color(family);
+    let transform = zombie_variant_root_transform(instance, family, baby);
+    ZombieVariantModel::new(family, baby)
+        .prepare_and_render_with_color(mesh, &instance, transform, color);
+}
+
+/// The colored-fallback recolor for a zombie variant: the husk's tan, the drowned's blue, or the
+/// zombie villager's robe. The textured path uses the family texture instead of this override.
+fn zombie_variant_color(family: ZombieVariantModelFamily) -> [f32; 4] {
+    match family {
+        ZombieVariantModelFamily::Husk => HUSK_TAN,
+        ZombieVariantModelFamily::Drowned => DROWNED_BLUE,
+        ZombieVariantModelFamily::ZombieVillager => ZOMBIE_VILLAGER_ROBE,
+    }
+}
+
+/// The model→world transform for a zombie variant. Only the adult husk is scaled (vanilla
+/// `huskScale` 1.0625, a `MeshTransformer.scaling` baked by `HuskRenderer`); the baby husk, the
+/// drowned, and the zombie villager render at the unscaled humanoid root.
+fn zombie_variant_root_transform(
+    instance: EntityModelInstance,
+    family: ZombieVariantModelFamily,
+    baby: bool,
+) -> Mat4 {
+    if family == ZombieVariantModelFamily::Husk && !baby {
+        mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+    } else {
+        entity_model_root_transform(instance)
+    }
 }
 
 /// Applies the vanilla `HumanoidModel.setupAnim` head look to a zombie-family

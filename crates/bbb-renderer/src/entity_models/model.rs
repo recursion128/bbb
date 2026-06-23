@@ -272,6 +272,30 @@ impl ModelPart {
         }
     }
 
+    /// Walks the subtree like [`ModelPart::render_colored`], but overrides every cube's baked color
+    /// with `color` — the colored counterpart of a textured layer's runtime tint. Used by the
+    /// entities whose colored fallback recolors the whole model (the zombie variants, the squid, the
+    /// dyed sheep wool, …).
+    pub(in crate::entity_models) fn render_colored_with_color(
+        &self,
+        mesh: &mut EntityModelMesh,
+        parent_transform: Mat4,
+        color: [f32; 4],
+    ) {
+        if !self.visible {
+            return;
+        }
+        let transform = parent_transform * part_pose_transform(self.pose);
+        for cube in &self.cubes {
+            let mut desc = cube.colored_desc();
+            desc.color = color;
+            emit_model_cube(mesh, transform, desc);
+        }
+        for (_, child) in &self.children {
+            child.render_colored_with_color(mesh, transform, color);
+        }
+    }
+
     /// Walks the subtree, emitting every visible cube into the textured `mesh` with `texture` /
     /// `uv_rect` / `tint`. The textured counterpart of [`ModelPart::render_colored`], reading the
     /// same posed tree so one `setup_anim` drives both paths.
@@ -334,5 +358,20 @@ pub(in crate::entity_models) trait EntityModel {
     ) {
         self.prepare(instance);
         self.root().render_colored(mesh, root_transform);
+    }
+
+    /// Like [`EntityModel::prepare_and_render`], but recolors every cube with `color` — for the
+    /// entities whose colored fallback overrides the whole model with a single runtime color (the
+    /// recolored zombie variants, the squid, the dyed sheep wool, …) rather than its baked colors.
+    fn prepare_and_render_with_color(
+        &mut self,
+        mesh: &mut EntityModelMesh,
+        instance: &EntityModelInstance,
+        root_transform: Mat4,
+        color: [f32; 4],
+    ) {
+        self.prepare(instance);
+        self.root()
+            .render_colored_with_color(mesh, root_transform, color);
     }
 }

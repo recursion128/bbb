@@ -3,6 +3,7 @@ use super::{
     ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
     PART_POSE_ZERO,
 };
+use crate::entity_models::catalog::ZombieVariantModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
 
@@ -890,12 +891,30 @@ pub(in crate::entity_models) const BABY_ZOMBIE_VILLAGER_TEXTURED_PARTS: [Texture
     ),
 ];
 
+/// Vanilla `ZombieModel.setupAnim` (`super.setupAnim` then `AnimationUtils.animateZombieArms`),
+/// shared by the plain zombie and every zombie variant (husk, drowned, zombie villager): look the
+/// head ([`apply_head_look`] at [`zombie_head_part_index`]), run the humanoid leg swing
+/// ([`apply_humanoid_leg_swing`]), then override the arms with the held-out `animateZombieArms` pose
+/// ([`apply_zombie_arms_held_out`], `isAggressive`-driven).
+fn apply_zombie_family_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+    let render_state = &instance.render_state;
+    apply_head_look(
+        root.child_at_mut(zombie_head_part_index(baby)),
+        render_state.head_yaw,
+        render_state.head_pitch,
+    );
+    apply_humanoid_leg_swing(
+        root,
+        render_state.walk_animation_pos,
+        render_state.walk_animation_speed,
+    );
+    apply_zombie_arms_held_out(root, render_state.is_aggressive, render_state.age_in_ticks);
+}
+
 /// Mutable zombie model, mirroring vanilla `ZombieModel` (an `AbstractZombieModel` over `HumanoidModel`).
 /// The unified tree is zipped from the baked colored ([`ADULT_ZOMBIE_PARTS`]/[`BABY_ZOMBIE_PARTS`]) and
 /// textured ([`ADULT_ZOMBIE_TEXTURED_PARTS`]/[`BABY_ZOMBIE_TEXTURED_PARTS`]) trees for the selected
-/// `baby` layout. `setup_anim` looks the head ([`apply_head_look`] at [`zombie_head_part_index`]), runs
-/// the humanoid leg swing ([`apply_humanoid_leg_swing`]), then overrides the arms with the held-out
-/// `animateZombieArms` pose ([`apply_zombie_arms_held_out`], `isAggressive`-driven).
+/// `baby` layout. `setup_anim` runs the shared [`apply_zombie_family_anim`].
 pub(in crate::entity_models) struct ZombieModel {
     root: ModelPart,
     baby: bool,
@@ -922,21 +941,62 @@ impl EntityModel for ZombieModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        let render_state = &instance.render_state;
-        apply_head_look(
-            self.root.child_at_mut(zombie_head_part_index(self.baby)),
-            render_state.head_yaw,
-            render_state.head_pitch,
-        );
-        apply_humanoid_leg_swing(
-            &mut self.root,
-            render_state.walk_animation_pos,
-            render_state.walk_animation_speed,
-        );
-        apply_zombie_arms_held_out(
-            &mut self.root,
-            render_state.is_aggressive,
-            render_state.age_in_ticks,
-        );
+        apply_zombie_family_anim(&mut self.root, self.baby, instance);
+    }
+}
+
+/// Selects the colored and textured const trees for a zombie variant by `family`/`baby`: the husk
+/// and drowned reuse the plain zombie body ([`ADULT_ZOMBIE_PARTS`]/[`BABY_ZOMBIE_PARTS`]); the zombie
+/// villager uses its own robed layer ([`ADULT_ZOMBIE_VILLAGER_PARTS`]/[`BABY_ZOMBIE_VILLAGER_PARTS`]).
+/// Zipped into the unified tree by [`ZombieVariantModel::new`].
+pub(in crate::entity_models) fn zombie_variant_part_trees(
+    family: ZombieVariantModelFamily,
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    match (family, baby) {
+        (ZombieVariantModelFamily::ZombieVillager, false) => (
+            &ADULT_ZOMBIE_VILLAGER_PARTS,
+            &ADULT_ZOMBIE_VILLAGER_TEXTURED_PARTS,
+        ),
+        (ZombieVariantModelFamily::ZombieVillager, true) => (
+            &BABY_ZOMBIE_VILLAGER_PARTS,
+            &BABY_ZOMBIE_VILLAGER_TEXTURED_PARTS,
+        ),
+        (_, false) => (&ADULT_ZOMBIE_PARTS, &ADULT_ZOMBIE_TEXTURED_PARTS),
+        (_, true) => (&BABY_ZOMBIE_PARTS, &BABY_ZOMBIE_TEXTURED_PARTS),
+    }
+}
+
+/// Mutable zombie-variant model, mirroring vanilla `HuskRenderer`/`DrownedRenderer`/
+/// `ZombieVillagerRenderer` — all of which inherit `ZombieModel.setupAnim`. The unified tree is
+/// selected by `family`/`baby` ([`zombie_variant_part_trees`]); `setup_anim` runs the shared
+/// [`apply_zombie_family_anim`]. The per-family root scale (husk) and the colored recolor / textured
+/// texture are supplied by the caller; the drowned swim/outer layer and the profession overlays defer.
+pub(in crate::entity_models) struct ZombieVariantModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl ZombieVariantModel {
+    pub(in crate::entity_models) fn new(family: ZombieVariantModelFamily, baby: bool) -> Self {
+        let (colored, textured) = zombie_variant_part_trees(family, baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for ZombieVariantModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_zombie_family_anim(&mut self.root, self.baby, instance);
     }
 }
