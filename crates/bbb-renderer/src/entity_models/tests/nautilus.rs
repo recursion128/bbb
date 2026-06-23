@@ -1,51 +1,34 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn nautilus_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `NautilusModel.createBodyMesh` (atlas 128×128): one cubeless `root` pivot parenting the
-    // shell and the body (the body parenting the three mouths).
-    assert_eq!(NAUTILUS_PARTS.len(), 1);
-    let root = &NAUTILUS_PARTS[0];
-    assert_eq!(root.pose.offset, [0.0, 29.0, -6.0]);
-    assert!(root.cubes.is_empty());
-    assert_eq!(root.children.len(), 2);
+    // `shell` and the `body` (the body parenting the three mouths).
+    assert_eq!(NAUTILUS_ROOT_POSE.offset, [0.0, 29.0, -6.0]);
 
     // `shell` (offset (0, -13, 5)): the 14×10×16 dome, the 14×8×20 whorl, and a 14×8×0 fin plane.
-    let shell = &root.children[0];
-    assert_eq!(shell.pose.offset, [0.0, -13.0, 5.0]);
-    assert_eq!(shell.cubes.len(), 3);
-    assert_eq!(shell.cubes[0].min, [-7.0, -10.0, -7.0]);
-    assert_eq!(shell.cubes[0].size, [14.0, 10.0, 16.0]);
-    assert_eq!(shell.cubes[1].size, [14.0, 8.0, 20.0]);
-    assert_eq!(shell.cubes[2].size, [14.0, 8.0, 0.0]);
+    assert_eq!(NAUTILUS_SHELL_POSE.offset, [0.0, -13.0, 5.0]);
+    assert_eq!(NAUTILUS_SHELL_CUBES.len(), 3);
+    assert_eq!(NAUTILUS_SHELL_CUBES[0].min, [-7.0, -10.0, -7.0]);
+    assert_eq!(NAUTILUS_SHELL_CUBES[0].size, [14.0, 10.0, 16.0]);
+    assert_eq!(NAUTILUS_SHELL_CUBES[1].size, [14.0, 8.0, 20.0]);
+    assert_eq!(NAUTILUS_SHELL_CUBES[2].size, [14.0, 8.0, 0.0]);
 
     // `body` (offset (0, -8.5, 12.3)): the 10×8×14 trunk and a 10×8×0 fin plane, parenting the mouths.
-    let body = &root.children[1];
-    assert_eq!(body.pose.offset, [0.0, -8.5, 12.3]);
-    assert_eq!(body.cubes.len(), 2);
-    assert_eq!(body.cubes[0].min, [-5.0, -4.51, -3.0]);
-    assert_eq!(body.cubes[0].size, [10.0, 8.0, 14.0]);
-    assert_eq!(body.children.len(), 3);
+    assert_eq!(NAUTILUS_BODY_POSE.offset, [0.0, -8.5, 12.3]);
+    assert_eq!(NAUTILUS_BODY_CUBES.len(), 2);
+    assert_eq!(NAUTILUS_BODY_CUBES[0].min, [-5.0, -4.51, -3.0]);
+    assert_eq!(NAUTILUS_BODY_CUBES[0].size, [10.0, 8.0, 14.0]);
 
     // The three mouths; upper/lower deflated by the vanilla `CubeDeformation(-0.001)`, inner undeformed.
-    assert_eq!(body.children[0].pose.offset, [0.0, -2.51, 7.0]);
-    assert_eq!(body.children[0].cubes[0].min, [-4.999, -1.999, 0.001]);
-    assert_eq!(body.children[0].cubes[0].size, [9.998, 3.998, 3.998]);
-    assert_eq!(body.children[1].pose.offset, [0.0, -0.51, 7.5]);
-    assert_eq!(body.children[1].cubes[0].min, [-3.0, -2.0, -0.5]);
-    assert_eq!(body.children[1].cubes[0].size, [6.0, 4.0, 4.0]);
-    assert_eq!(body.children[2].pose.offset, [0.0, 1.49, 7.0]);
-    assert_eq!(body.children[2].cubes[0].min, [-4.999, -1.979, 0.001]);
-
-    // Eight cubes (shell 3, body 2, three mouths).
-    assert_eq!(count_cubes(&NAUTILUS_PARTS), 8);
+    assert_eq!(NAUTILUS_UPPER_MOUTH_POSE.offset, [0.0, -2.51, 7.0]);
+    assert_eq!(NAUTILUS_UPPER_MOUTH_CUBES[0].min, [-4.999, -1.999, 0.001]);
+    assert_eq!(NAUTILUS_UPPER_MOUTH_CUBES[0].size, [9.998, 3.998, 3.998]);
+    assert_eq!(NAUTILUS_INNER_MOUTH_POSE.offset, [0.0, -0.51, 7.5]);
+    assert_eq!(NAUTILUS_INNER_MOUTH_CUBES[0].min, [-3.0, -2.0, -0.5]);
+    assert_eq!(NAUTILUS_INNER_MOUTH_CUBES[0].size, [6.0, 4.0, 4.0]);
+    assert_eq!(NAUTILUS_LOWER_MOUTH_POSE.offset, [0.0, 1.49, 7.0]);
+    assert_eq!(NAUTILUS_LOWER_MOUTH_CUBES[0].min, [-4.999, -1.979, 0.001]);
 }
 
 #[test]
@@ -138,41 +121,40 @@ fn nautilus_body_look_is_clamped_to_ten_degrees() {
 fn baby_nautilus_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `NautilusModel.createBabyBodyLayer` (atlas 64×64): the same cubeless `root → shell + body
     // → three mouths` structure as the adult, in smaller hatchling proportions.
-    assert_eq!(BABY_NAUTILUS_PARTS.len(), 1);
-    let root = &BABY_NAUTILUS_PARTS[0];
-    assert_eq!(root.pose.offset, [-0.5, 28.0, -0.5]);
-    assert!(root.cubes.is_empty());
-    assert_eq!(root.children.len(), 2);
+    assert_eq!(BABY_NAUTILUS_ROOT_POSE.offset, [-0.5, 28.0, -0.5]);
 
     // `shell` (offset (3, -8, -2)): the 7×4×7 dome, the 7×4×9 whorl, and a 7×4×0 fin plane.
-    let shell = &root.children[0];
-    assert_eq!(shell.pose.offset, [3.0, -8.0, -2.0]);
-    assert_eq!(shell.cubes.len(), 3);
-    assert_eq!(shell.cubes[0].min, [-6.0, -4.0, -1.0]);
-    assert_eq!(shell.cubes[0].size, [7.0, 4.0, 7.0]);
-    assert_eq!(shell.cubes[1].size, [7.0, 4.0, 9.0]);
-    assert_eq!(shell.cubes[2].size, [7.0, 4.0, 0.0]);
+    assert_eq!(BABY_NAUTILUS_SHELL_POSE.offset, [3.0, -8.0, -2.0]);
+    assert_eq!(BABY_NAUTILUS_SHELL_CUBES.len(), 3);
+    assert_eq!(BABY_NAUTILUS_SHELL_CUBES[0].min, [-6.0, -4.0, -1.0]);
+    assert_eq!(BABY_NAUTILUS_SHELL_CUBES[0].size, [7.0, 4.0, 7.0]);
+    assert_eq!(BABY_NAUTILUS_SHELL_CUBES[1].size, [7.0, 4.0, 9.0]);
+    assert_eq!(BABY_NAUTILUS_SHELL_CUBES[2].size, [7.0, 4.0, 0.0]);
 
     // `body` (offset (0.5, -5, 3)): the 5×4×7 trunk and a 5×4×0 fin plane, parenting the mouths.
-    let body = &root.children[1];
-    assert_eq!(body.pose.offset, [0.5, -5.0, 3.0]);
-    assert_eq!(body.cubes.len(), 2);
-    assert_eq!(body.cubes[0].min, [-2.5, -3.01, -1.0]);
-    assert_eq!(body.cubes[0].size, [5.0, 4.0, 7.0]);
-    assert_eq!(body.children.len(), 3);
+    assert_eq!(BABY_NAUTILUS_BODY_POSE.offset, [0.5, -5.0, 3.0]);
+    assert_eq!(BABY_NAUTILUS_BODY_CUBES.len(), 2);
+    assert_eq!(BABY_NAUTILUS_BODY_CUBES[0].min, [-2.5, -3.01, -1.0]);
+    assert_eq!(BABY_NAUTILUS_BODY_CUBES[0].size, [5.0, 4.0, 7.0]);
 
     // The three mouths; upper/lower deflated by the vanilla `CubeDeformation(-0.001)`, inner undeformed.
-    assert_eq!(body.children[0].pose.offset, [0.0, -2.01, 3.9]);
-    assert_eq!(body.children[0].cubes[0].min, [-2.499, -0.999, 0.001]);
-    assert_eq!(body.children[0].cubes[0].size, [4.998, 1.998, 1.998]);
-    assert_eq!(body.children[1].pose.offset, [0.0, -1.01, 4.9]);
-    assert_eq!(body.children[1].cubes[0].min, [-1.5, -1.0, -1.0]);
-    assert_eq!(body.children[1].cubes[0].size, [3.0, 2.0, 2.0]);
-    assert_eq!(body.children[2].pose.offset, [0.0, -0.01, 3.9]);
-    assert_eq!(body.children[2].cubes[0].min, [-2.499, -0.999, 0.001]);
-
-    // Eight cubes (shell 3, body 2, three mouths) — the same count as the adult.
-    assert_eq!(count_cubes(&BABY_NAUTILUS_PARTS), 8);
+    assert_eq!(BABY_NAUTILUS_UPPER_MOUTH_POSE.offset, [0.0, -2.01, 3.9]);
+    assert_eq!(
+        BABY_NAUTILUS_UPPER_MOUTH_CUBES[0].min,
+        [-2.499, -0.999, 0.001]
+    );
+    assert_eq!(
+        BABY_NAUTILUS_UPPER_MOUTH_CUBES[0].size,
+        [4.998, 1.998, 1.998]
+    );
+    assert_eq!(BABY_NAUTILUS_INNER_MOUTH_POSE.offset, [0.0, -1.01, 4.9]);
+    assert_eq!(BABY_NAUTILUS_INNER_MOUTH_CUBES[0].min, [-1.5, -1.0, -1.0]);
+    assert_eq!(BABY_NAUTILUS_INNER_MOUTH_CUBES[0].size, [3.0, 2.0, 2.0]);
+    assert_eq!(BABY_NAUTILUS_LOWER_MOUTH_POSE.offset, [0.0, -0.01, 3.9]);
+    assert_eq!(
+        BABY_NAUTILUS_LOWER_MOUTH_CUBES[0].min,
+        [-2.499, -0.999, 0.001]
+    );
 }
 
 #[test]
