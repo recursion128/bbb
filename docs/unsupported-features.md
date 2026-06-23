@@ -1666,9 +1666,11 @@ When an agent does any of the following, update this file in the same slice:
       hierarchy is emitted directly (atlas 16×16): two sibling root parts — a 3×2×3 body box at
       `offset(0, 22, -3)` and a 0×2×7 tail fin plane at `offset(0, 22, 0)` — two cubes. The only
       `TadpoleModel.setupAnim` motion, the tail yaw sway (`tail.yRot = -amplitude * 0.25 *
-      sin(0.3 * ageInTicks)`, amplitude `1.0` in water / `1.5` on land), is deferred. The texture-backed
-      path remains unsupported (this is a colored-first slice; the colored debug path approximates the body
-      with one dark tint and the tail fin with a lighter tint)
+      sin(0.3 * ageInTicks)`, amplitude `1.0` in water / `1.5` on land), IS reproduced from the projected
+      `age_in_ticks` + `in_water` (mirroring the cod/salmon tail-fin sway), with a test pinning the exact
+      curve and that only the tail moves. The texture-backed path remains unsupported (this is a
+      colored-first slice; the colored debug path approximates the body with one dark tint and the tail fin
+      with a lighter tint)
     - parrot entities as renderer-owned vanilla 26.1 `ParrotModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `98` to the new
       `EntityModelKind::Parrot`, replacing the former placeholder bounds box. The static STANDING rest-pose

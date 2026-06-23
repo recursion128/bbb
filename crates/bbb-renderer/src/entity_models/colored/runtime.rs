@@ -1622,11 +1622,17 @@ fn emit_axolotl_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance,
 }
 
 fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `TadpoleModel` is two static sibling parts (body box, tail fin) at rest. The only
-    // animation — the tail yaw sway — is deferred, so the bind-pose part tree is emitted directly.
-    // Tadpole uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+    // Vanilla `TadpoleModel` is two static sibling parts (body box, tail fin). `setupAnim` sways
+    // only the tail fin's `yRot` ([`tadpole_tail_yrot`], from the projected `age_in_ticks` +
+    // `in_water`). Tadpole uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    emit_model_parts(mesh, &TADPOLE_PARTS, root);
+    let tail_yrot = tadpole_tail_yrot(
+        instance.render_state.age_in_ticks,
+        instance.render_state.in_water,
+    );
+    let mut parts = TADPOLE_PARTS.to_vec();
+    parts[TADPOLE_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
+    emit_model_parts(mesh, &parts, root);
 }
 
 fn emit_parrot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
