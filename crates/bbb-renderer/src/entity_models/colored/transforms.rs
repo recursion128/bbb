@@ -254,6 +254,23 @@ pub(in crate::entity_models) fn llama_spit_model_root_transform(
         * Mat4::from_rotation_z(instance.render_state.head_pitch.to_radians())
 }
 
+/// Vanilla `ShulkerBulletRenderer.submit` reduced to its non-animated parts: the constant
+/// `translate(0, 0.15, 0)` lift and the `scale(-0.5, -0.5, 0.5)` (the flip + half size), followed by
+/// the `ShulkerBulletModel.setupAnim` facing (`main.yRot = yRot`, `main.xRot = xRot`, here folded
+/// into the root since the single part sits at ZERO). The `ageInTicks`-driven tumble (`Ry(sin(t·0.1)·
+/// 180) · Rx(cos(t·0.1)·180) · Rz(sin(t·0.15)·360)`, applied before the scale) and the second
+/// translucent 1.5× outer-shell pass are deferred. The yaw/pitch are projected through `body_rot` /
+/// `head_pitch`.
+pub(in crate::entity_models) fn shulker_bullet_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0))
+        * Mat4::from_scale(Vec3::new(-0.5, -0.5, 0.5))
+        * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
+        * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
+}
+
 pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))

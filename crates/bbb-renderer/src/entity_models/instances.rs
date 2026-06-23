@@ -839,6 +839,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::LlamaSpit, position, y_rot)
     }
 
+    pub fn shulker_bullet(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::ShulkerBullet, position, y_rot)
+    }
+
     pub fn ender_dragon(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::EnderDragon, position, y_rot)
     }

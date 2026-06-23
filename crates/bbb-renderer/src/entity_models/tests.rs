@@ -54,6 +54,7 @@ mod salmon;
 mod scale;
 mod sheep;
 mod shulker;
+mod shulker_bullet;
 mod silverfish;
 mod skeleton;
 mod sleeping;

@@ -25,10 +25,10 @@ use super::transforms::{
     llama_spit_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
     player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
-    salmon_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
-    HUSK_SCALE,
+    salmon_model_root_transform, scaled_model_root_transform, shulker_bullet_model_root_transform,
+    slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
+    tropical_fish_model_root_transform, villager_adult_model_root_transform,
+    wither_skeleton_model_root_transform, GIANT_SCALE, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -244,6 +244,10 @@ fn entity_model_mesh_with_options(
             EntityModelKind::LlamaSpit => {
                 // Colored-only so far (no texture-backed llama spit yet), so this arm always emits.
                 emit_llama_spit_model(&mut mesh, *instance);
+            }
+            EntityModelKind::ShulkerBullet => {
+                // Colored-only so far (no texture-backed shulker bullet yet), so this arm always emits.
+                emit_shulker_bullet_model(&mut mesh, *instance);
             }
             EntityModelKind::EnderDragon => {
                 // Colored-only so far (no texture-backed ender dragon yet), so this arm always emits.
@@ -1669,6 +1673,15 @@ fn emit_llama_spit_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
     // (`translate(0, 0.15, 0) · Ry(yRot - 90) · Rz(xRot)`).
     let root = llama_spit_model_root_transform(instance);
     emit_model_parts(mesh, &LLAMA_SPIT_PARTS, root);
+}
+
+fn emit_shulker_bullet_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    // Vanilla `ShulkerBulletModel` is a single `main` part of three interlocking slabs. The geometry
+    // and the facing are emitted at the `ShulkerBulletRenderer` static transform (lift + flip/half
+    // scale + the `setupAnim` yaw/pitch); the age-driven tumble and the translucent outer-shell pass
+    // are deferred.
+    let root = shulker_bullet_model_root_transform(instance);
+    emit_model_parts(mesh, &SHULKER_BULLET_PARTS, root);
 }
 
 fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

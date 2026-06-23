@@ -833,9 +833,7 @@ fn entity_model_kind_with_time_and_registries(
             size: salmon_model_size(data_values),
         },
         VANILLA_ENTITY_TYPE_SHULKER_ID => EntityModelKind::Shulker,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
-            placeholder("todo_shulker_bullet_bounds", 0.3125, 0.3125, 0.3125)
-        }
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => EntityModelKind::ShulkerBullet,
         VANILLA_ENTITY_TYPE_SILVERFISH_ID => EntityModelKind::Silverfish,
         VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {
             size: slime_size(data_values),
@@ -4733,6 +4731,17 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, &[]),
             EntityModelKind::LlamaSpit
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_shulker_bullet_to_real_model() {
+        // The shulker bullet was a placeholder box; it now resolves to the real `ShulkerBulletModel`.
+        // Its facing comes from the projected yaw/pitch; the age-driven tumble and the translucent
+        // outer-shell pass are deferred entity-side state, so no synced data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, &[]),
+            EntityModelKind::ShulkerBullet
         );
     }
 

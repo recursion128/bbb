@@ -172,6 +172,10 @@ pub enum EntityModelKind {
     /// no `setupAnim`, so the geometry is complete; only the texture-backed path is deferred.
     /// `LlamaSpitRenderer` orients it along its flight.
     LlamaSpit,
+    /// `ShulkerBulletModel` — a single `main` part of three interlocking slabs. `setupAnim` orients
+    /// it by the bullet's facing (reproduced); the `ShulkerBulletRenderer` age-driven tumble, the
+    /// translucent outer-shell pass, and the texture-backed path are deferred.
+    ShulkerBullet,
     /// `EnderDragonModel` at its `createBodyLayer` straight bind layout (head + jaw, five neck and
     /// twelve tail segments, body with wings and four legs). The fully procedural `setupAnim` (the
     /// flight-history neck/tail placement, the wing flap, the jaw, the root bounce), the dying

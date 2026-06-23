@@ -1803,6 +1803,16 @@ When an agent does any of the following, update this file in the same slice:
       along its flight with `translate(0, 0.15, 0)` then `Ry(yRot - 90)` then `Rz(xRot)`, projected through
       the instance's `body_rot` / `head_pitch` and captured by `llama_spit_model_root_transform`. Only the
       texture-backed path is deferred, so the colored debug path renders the cross with one tint
+    - shulker bullet entities as renderer-owned vanilla 26.1 `ShulkerBulletModel.createBodyLayer()` geometry
+      on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `113` to the
+      new `EntityModelKind::ShulkerBullet`, replacing the former placeholder bounds box. The static `main`
+      part is emitted directly (atlas 64×32): three interlocking slabs (`texOffs(0, 0)` 8×8×2,
+      `texOffs(0, 10)` 2×8×8, `texOffs(20, 0)` 8×2×8). `ShulkerBulletModel.setupAnim` orients `main` by the
+      bullet's yaw/pitch — reproduced through the instance's `body_rot` / `head_pitch` — and the
+      `ShulkerBulletRenderer` constant `translate(0, 0.15, 0)` + `scale(-0.5, -0.5, 0.5)` are captured by
+      `shulker_bullet_model_root_transform`. The `ageInTicks`-driven tumble (`Ry(sin(t·0.1)·180) ·
+      Rx(cos(t·0.1)·180) · Rz(sin(t·0.15)·360)`), the second translucent 1.5× outer-shell pass, and the
+      texture-backed path are deferred, so the colored debug path renders the three slabs with one tint
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new
       `EntityModelKind::EnderDragon`, replacing the former placeholder bounds box. The straight bind layout
