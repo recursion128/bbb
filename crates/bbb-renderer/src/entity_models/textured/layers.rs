@@ -746,11 +746,7 @@ pub(in crate::entity_models) fn polar_bear_textured_layer_passes(
         } else {
             POLAR_BEAR_TEXTURE_REF
         },
-        parts: if baby {
-            &BABY_POLAR_BEAR_TEXTURED_PARTS
-        } else {
-            &ADULT_POLAR_BEAR_TEXTURED_PARTS
-        },
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

@@ -1,87 +1,42 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn polar_bear_model_parts_match_vanilla_26_1_body_layers() {
-    assert_eq!(ADULT_POLAR_BEAR_PARTS.len(), 6);
-    assert_part(
-        &ADULT_POLAR_BEAR_PARTS[0],
-        [0.0, 10.0, -16.0],
-        [0.0, 0.0, 0.0],
-        ADULT_POLAR_BEAR_HEAD.as_slice(),
-    );
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`.
     assert_eq!(
         ADULT_POLAR_BEAR_HEAD[1],
-        ModelCubeDesc {
-            min: [-2.5, 1.0, -6.0],
-            size: [5.0, 3.0, 3.0],
-            color: POLAR_BEAR_WHITE,
-        }
+        ModelCube::new(
+            [-2.5, 1.0, -6.0],
+            [5.0, 3.0, 3.0],
+            POLAR_BEAR_WHITE,
+            [5.0, 3.0, 3.0],
+            [0.0, 44.0],
+            false,
+        )
     );
-    assert_part(
-        &ADULT_POLAR_BEAR_PARTS[1],
-        [-2.0, 9.0, 12.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_POLAR_BEAR_BODY.as_slice(),
-    );
-    for (part, expected_offset, expected_cubes) in [
-        (
-            &ADULT_POLAR_BEAR_PARTS[2],
-            [-4.5, 14.0, 6.0],
-            ADULT_POLAR_BEAR_HIND_LEG.as_slice(),
-        ),
-        (
-            &ADULT_POLAR_BEAR_PARTS[3],
-            [4.5, 14.0, 6.0],
-            ADULT_POLAR_BEAR_HIND_LEG.as_slice(),
-        ),
-        (
-            &ADULT_POLAR_BEAR_PARTS[4],
-            [-3.5, 14.0, -8.0],
-            ADULT_POLAR_BEAR_FRONT_LEG.as_slice(),
-        ),
-        (
-            &ADULT_POLAR_BEAR_PARTS[5],
-            [3.5, 14.0, -8.0],
-            ADULT_POLAR_BEAR_FRONT_LEG.as_slice(),
-        ),
-    ] {
-        assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
-    }
+    // The right/left ear cubes mirror about the head.
+    assert!(!ADULT_POLAR_BEAR_HEAD[2].mirror);
+    assert!(ADULT_POLAR_BEAR_HEAD[3].mirror);
+    assert_eq!(ADULT_POLAR_BEAR_BODY[0].size, [14.0, 14.0, 11.0]);
+    assert_eq!(ADULT_POLAR_BEAR_HIND_LEG[0].size, [4.0, 10.0, 8.0]);
+    assert_eq!(ADULT_POLAR_BEAR_FRONT_LEG[0].size, [4.0, 10.0, 6.0]);
 
-    assert_eq!(BABY_POLAR_BEAR_PARTS.len(), 6);
-    assert_part(
-        &BABY_POLAR_BEAR_PARTS[0],
-        [0.0, 17.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_POLAR_BEAR_BODY.as_slice(),
-    );
-    assert_part(
-        &BABY_POLAR_BEAR_PARTS[1],
-        [0.0, 18.625, -5.75],
-        [0.0, 0.0, 0.0],
-        BABY_POLAR_BEAR_HEAD.as_slice(),
-    );
     assert_eq!(
         BABY_POLAR_BEAR_HEAD[1],
-        ModelCubeDesc {
-            min: [-2.0, 0.375, -6.25],
-            size: [4.0, 2.0, 2.0],
-            color: POLAR_BEAR_WHITE,
-        }
+        ModelCube::new(
+            [-2.0, 0.375, -6.25],
+            [4.0, 2.0, 2.0],
+            POLAR_BEAR_WHITE,
+            [4.0, 2.0, 2.0],
+            [20.0, 3.0],
+            false,
+        )
     );
-    for (part, expected_offset) in [
-        (&BABY_POLAR_BEAR_PARTS[2], [-2.5, 21.5, 4.5]),
-        (&BABY_POLAR_BEAR_PARTS[3], [2.5, 21.5, 4.5]),
-        (&BABY_POLAR_BEAR_PARTS[4], [-2.5, 21.5, -4.5]),
-        (&BABY_POLAR_BEAR_PARTS[5], [2.5, 21.5, -4.5]),
-    ] {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_POLAR_BEAR_LEG.as_slice(),
-        );
-    }
+    assert_eq!(BABY_POLAR_BEAR_BODY[0].size, [8.0, 7.0, 12.0]);
+    assert_eq!(BABY_POLAR_BEAR_RIGHT_HIND_LEG[0].size, [3.0, 3.0, 3.0]);
 }
 
 #[test]
@@ -168,7 +123,7 @@ fn polar_bear_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(adult[0].model_layer, MODEL_LAYER_POLAR_BEAR);
     assert_eq!(adult[0].texture, POLAR_BEAR_TEXTURE_REF);
-    assert_eq!(adult[0].parts, ADULT_POLAR_BEAR_TEXTURED_PARTS.as_slice());
+    assert!(adult[0].parts.is_empty());
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
@@ -179,7 +134,7 @@ fn polar_bear_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(baby[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(baby[0].model_layer, MODEL_LAYER_POLAR_BEAR_BABY);
     assert_eq!(baby[0].texture, POLAR_BEAR_BABY_TEXTURE_REF);
-    assert_eq!(baby[0].parts, BABY_POLAR_BEAR_TEXTURED_PARTS.as_slice());
+    assert!(baby[0].parts.is_empty());
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(baby[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((baby[0].collector_order, baby[0].submit_sequence), (0, 0));
@@ -187,57 +142,29 @@ fn polar_bear_textured_layer_passes_match_vanilla_renderer_model_choice() {
 
 #[test]
 fn polar_bear_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_POLAR_BEAR, "minecraft:polar_bear#main");
     assert_eq!(
         MODEL_LAYER_POLAR_BEAR_BABY,
         "minecraft:polar_bear_baby#main"
     );
-    assert_eq!(
-        ADULT_POLAR_BEAR_TEXTURED_HEAD[1],
-        TexturedModelCubeDesc {
-            min: [-2.5, 1.0, -6.0],
-            size: [5.0, 3.0, 3.0],
-            uv_size: [5.0, 3.0, 3.0],
-            tex: [0.0, 44.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_POLAR_BEAR_TEXTURED_HEAD[3],
-        TexturedModelCubeDesc {
-            min: [2.5, -4.0, -1.0],
-            size: [2.0, 2.0, 1.0],
-            uv_size: [2.0, 2.0, 1.0],
-            tex: [26.0, 0.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(ADULT_POLAR_BEAR_TEXTURED_BODY[0].tex, [0.0, 19.0]);
-    assert_eq!(ADULT_POLAR_BEAR_TEXTURED_BODY[1].tex, [39.0, 0.0]);
-    assert_eq!(ADULT_POLAR_BEAR_TEXTURED_HIND_LEG[0].tex, [50.0, 22.0]);
-    assert_eq!(ADULT_POLAR_BEAR_TEXTURED_FRONT_LEG[0].tex, [50.0, 40.0]);
-    assert_eq!(
-        ADULT_POLAR_BEAR_TEXTURED_PARTS[0].pose,
-        ADULT_POLAR_BEAR_PARTS[0].pose
-    );
-    assert_eq!(
-        ADULT_POLAR_BEAR_TEXTURED_PARTS[1].pose,
-        ADULT_POLAR_BEAR_PARTS[1].pose
-    );
+    assert_eq!(ADULT_POLAR_BEAR_HEAD[1].tex, [0.0, 44.0]);
+    assert_eq!(ADULT_POLAR_BEAR_HEAD[3].tex, [26.0, 0.0]);
+    assert!(ADULT_POLAR_BEAR_HEAD[3].mirror);
+    assert_eq!(ADULT_POLAR_BEAR_BODY[0].tex, [0.0, 19.0]);
+    assert_eq!(ADULT_POLAR_BEAR_BODY[1].tex, [39.0, 0.0]);
+    assert_eq!(ADULT_POLAR_BEAR_HIND_LEG[0].tex, [50.0, 22.0]);
+    assert_eq!(ADULT_POLAR_BEAR_FRONT_LEG[0].tex, [50.0, 40.0]);
 
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_BODY[0].tex, [0.0, 9.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_HEAD[0].tex, [0.0, 0.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_HEAD[1].tex, [20.0, 3.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_HEAD[2].tex, [20.0, 0.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_HEAD[3].tex, [26.0, 0.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_RIGHT_HIND_LEG[0].tex, [0.0, 34.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_LEFT_HIND_LEG[0].tex, [12.0, 34.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_RIGHT_FRONT_LEG[0].tex, [0.0, 28.0]);
-    assert_eq!(BABY_POLAR_BEAR_TEXTURED_LEFT_FRONT_LEG[0].tex, [12.0, 28.0]);
-    assert_eq!(
-        BABY_POLAR_BEAR_TEXTURED_PARTS[1].pose,
-        BABY_POLAR_BEAR_PARTS[1].pose
-    );
+    assert_eq!(BABY_POLAR_BEAR_BODY[0].tex, [0.0, 9.0]);
+    assert_eq!(BABY_POLAR_BEAR_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(BABY_POLAR_BEAR_HEAD[1].tex, [20.0, 3.0]);
+    assert_eq!(BABY_POLAR_BEAR_HEAD[2].tex, [20.0, 0.0]);
+    assert_eq!(BABY_POLAR_BEAR_HEAD[3].tex, [26.0, 0.0]);
+    assert_eq!(BABY_POLAR_BEAR_RIGHT_HIND_LEG[0].tex, [0.0, 34.0]);
+    assert_eq!(BABY_POLAR_BEAR_LEFT_HIND_LEG[0].tex, [12.0, 34.0]);
+    assert_eq!(BABY_POLAR_BEAR_RIGHT_FRONT_LEG[0].tex, [0.0, 28.0]);
+    assert_eq!(BABY_POLAR_BEAR_LEFT_FRONT_LEG[0].tex, [12.0, 28.0]);
 }
 
 #[test]
@@ -341,24 +268,16 @@ fn polar_bear_textured_meshes_apply_head_look() {
 }
 
 #[test]
-fn polar_bear_standing_part_roles_match_vanilla_layer_order() {
-    // Adult layer lists head first then body; baby layer lists body first.
+fn polar_bear_standing_part_roles_cover_the_reared_parts() {
+    // The rear-up moves the head, body, and both front legs (by name); the swing resolves these the
+    // same for the adult and baby layouts.
     assert_eq!(
-        polar_bear_standing_part_roles(false),
+        polar_bear_standing_part_roles(),
         [
-            (0, PolarBearStandPart::Head),
-            (1, PolarBearStandPart::Body),
-            (4, PolarBearStandPart::FrontLeg),
-            (5, PolarBearStandPart::FrontLeg),
-        ]
-    );
-    assert_eq!(
-        polar_bear_standing_part_roles(true),
-        [
-            (1, PolarBearStandPart::Head),
-            (0, PolarBearStandPart::Body),
-            (4, PolarBearStandPart::FrontLeg),
-            (5, PolarBearStandPart::FrontLeg),
+            ("head", PolarBearStandPart::Head),
+            ("body", PolarBearStandPart::Body),
+            ("right_front_leg", PolarBearStandPart::FrontLeg),
+            ("left_front_leg", PolarBearStandPart::FrontLeg),
         ]
     );
 }
@@ -367,41 +286,61 @@ fn polar_bear_standing_part_roles_match_vanilla_layer_order() {
 fn apply_polar_bear_standing_pose_matches_vanilla_setup_anim() {
     let pi = std::f32::consts::PI;
 
-    // Adult (ageScale 1.0) at standScale 1.0 (squared = 1.0).
-    let mut head = ADULT_POLAR_BEAR_PARTS[0].pose;
+    // Adult (ageScale 1.0) at standScale 1.0 (squared = 1.0). The bind poses are the vanilla
+    // `PolarBearModel.createBodyLayer` head/body/front-leg offsets.
+    let adult_head_pose = PartPose {
+        offset: [0.0, 10.0, -16.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let mut head = adult_head_pose;
     apply_polar_bear_standing_pose(&mut head, PolarBearStandPart::Head, false, 1.0);
     assert_eq!(head.offset, [0.0, 10.0 - 24.0, -16.0 + 13.0]);
     assert!((head.rotation[0] - pi * 0.15).abs() < 1e-6);
     assert_eq!([head.rotation[1], head.rotation[2]], [0.0, 0.0]);
 
-    let mut body = ADULT_POLAR_BEAR_PARTS[1].pose;
+    let mut body = PartPose {
+        offset: [-2.0, 9.0, 12.0],
+        rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+    };
     apply_polar_bear_standing_pose(&mut body, PolarBearStandPart::Body, false, 1.0);
     assert_eq!(body.offset, [-2.0, 9.0 + 2.0, 12.0]);
     assert!((body.rotation[0] - (std::f32::consts::FRAC_PI_2 - pi * 0.35)).abs() < 1e-6);
 
-    let mut front_leg = ADULT_POLAR_BEAR_PARTS[4].pose;
+    let mut front_leg = PartPose {
+        offset: [-3.5, 14.0, -8.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
     apply_polar_bear_standing_pose(&mut front_leg, PolarBearStandPart::FrontLeg, false, 1.0);
     assert_eq!(front_leg.offset, [-3.5, 14.0 - 20.0, -8.0 + 4.0]);
     assert!((front_leg.rotation[0] - (-pi * 0.45)).abs() < 1e-6);
 
     // standScale is squared: 0.5 -> 0.25 of the full delta.
-    let mut quarter_head = ADULT_POLAR_BEAR_PARTS[0].pose;
+    let mut quarter_head = adult_head_pose;
     apply_polar_bear_standing_pose(&mut quarter_head, PolarBearStandPart::Head, false, 0.5);
     assert_eq!(quarter_head.offset[1], 10.0 - 0.25 * 24.0);
 
     // Baby (ageScale 0.5) scales only the body/front-leg translation terms.
-    let mut baby_body = BABY_POLAR_BEAR_PARTS[0].pose;
+    let mut baby_body = PartPose {
+        offset: [0.0, 17.5, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
     apply_polar_bear_standing_pose(&mut baby_body, PolarBearStandPart::Body, true, 1.0);
     assert_eq!(baby_body.offset[1], 17.5 + 0.5 * 2.0);
 
-    let mut baby_front_leg = BABY_POLAR_BEAR_PARTS[4].pose;
+    let mut baby_front_leg = PartPose {
+        offset: [-2.5, 21.5, -4.5],
+        rotation: [0.0, 0.0, 0.0],
+    };
     apply_polar_bear_standing_pose(&mut baby_front_leg, PolarBearStandPart::FrontLeg, true, 1.0);
     assert_eq!(baby_front_leg.offset[1], 21.5 - 0.5 * 20.0);
     assert_eq!(baby_front_leg.offset[2], -4.5 + 0.5 * 4.0);
 
     // The head translation does not use ageScale, so the baby head moves the
     // same absolute amount as the adult head.
-    let mut baby_head = BABY_POLAR_BEAR_PARTS[1].pose;
+    let mut baby_head = PartPose {
+        offset: [0.0, 18.625, -5.75],
+        rotation: [0.0, 0.0, 0.0],
+    };
     apply_polar_bear_standing_pose(&mut baby_head, PolarBearStandPart::Head, true, 1.0);
     assert_eq!(baby_head.offset, [0.0, 18.625 - 24.0, -5.75 + 13.0]);
 }

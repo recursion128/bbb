@@ -64,16 +64,6 @@ pub(in crate::entity_models) const fn parched_head_part_index() -> usize {
     1
 }
 
-/// `PolarBearModel` head-part index. The adult body layer lists the head first;
-/// the baby body layer lists the body first, so the head is second.
-pub(in crate::entity_models) const fn polar_bear_head_part_index(baby: bool) -> usize {
-    if baby {
-        1
-    } else {
-        0
-    }
-}
-
 /// `HoglinModel` head-part index. The adult body layer lists the body first (head
 /// second); the baby body layer lists the head first.
 pub(in crate::entity_models) const fn hoglin_head_part_index(baby: bool) -> usize {
