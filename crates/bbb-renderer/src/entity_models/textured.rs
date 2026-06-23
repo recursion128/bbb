@@ -1,4 +1,3 @@
-use super::keyframe::{keyframe_walk_sample, sample_bone_offsets};
 use super::model::EntityModel;
 use super::{
     boat_model_root_transform,
@@ -14,20 +13,19 @@ use super::{
     cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
     entity_model_root_transform,
     geometry::{
-        emit_textured_model_cube, emit_textured_model_part, emit_textured_model_parts,
-        fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
-        EntityModelTexturedMesh, PartPose, TexturedModelPartDesc, PART_POSE_ZERO,
+        emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
+        part_pose_transform, EntityModelTexturedMesh, TexturedModelPartDesc,
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        apply_wolf_sitting_pose, camel_clamped_head_look, head_first_part_index, head_look_at_rest,
-        head_look_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
+        apply_wolf_sitting_pose, head_first_part_index, head_look_at_rest, head_look_pose,
+        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
         limb_swing_at_rest, parched_head_part_index, quadruped_leg_swing_pose,
         skeleton_head_part_index, wolf_angry_tail_pose, wolf_sitting_part_roles,
         wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, ArmorStandModel, BatModel,
-        BeeModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
+        BeeModel, BlazeModel, BreezeModel, CamelModel, ChickenModel, CodModel, CowModel,
         CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
         HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
         MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
@@ -35,12 +33,10 @@ use super::{
         SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel,
         StriderModel, TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel,
         VillagerModel, WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel,
-        ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
-        BABY_CAMEL_WALK_LAYOUT, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF,
-        BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
-        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
-        STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
-        TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+        ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF,
+        BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
+        DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
+        TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
@@ -487,141 +483,21 @@ fn emit_camel_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `CamelModel` tree drives both render paths; `new` selects the adult / baby / husk mesh
+    // and walk, and `setup_anim` clamps the head look and samples the walk (`root` roll, leg / ear / tail
+    // swing, `head` pitch added onto the look, baby `body` dip). The camel is a single cutout pass; the
+    // family / baby texture comes from the pass.
     let transform = entity_model_root_transform(instance);
-    let (head_yaw, head_pitch) = camel_clamped_head_look(
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    );
-    // The adult camel and the husk share the adult mesh/walk; the camel baby uses its own mesh/walk.
-    let layout = if family == CamelModelFamily::Camel && baby {
-        &BABY_CAMEL_WALK_LAYOUT
-    } else {
-        &ADULT_CAMEL_WALK_LAYOUT
-    };
-    emit_camel_walk_textured(
-        meshes, instance, transform, atlas, family, baby, layout, head_yaw, head_pitch,
-    );
-}
-
-/// Hand-walks the camel's textured passes through its walk ([`CamelWalkLayout::walk`]), composing the
-/// walk onto the clamped head look — the textured twin of the colored `emit_camel_walk_colored`. The
-/// `root` channel rolls the whole model, the four legs swing (rotation + position), the `head` adds a
-/// pitch (and, for the baby, a position nudge) onto the look, the two ears flap, the tail swishes, and
-/// the baby `body` dips. A still camel samples amplitude 0, collapsing to the bind pose plus the look.
-#[allow(clippy::too_many_arguments)]
-fn emit_camel_walk_textured(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    transform: Mat4,
-    atlas: &EntityModelTextureAtlasLayout,
-    family: CamelModelFamily,
-    baby: bool,
-    layout: &CamelWalkLayout,
-    head_yaw: f32,
-    head_pitch: f32,
-) {
-    let (seconds, scale) = keyframe_walk_sample(
-        layout.walk,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-        CAMEL_WALK_SPEED_FACTOR,
-        CAMEL_WALK_SCALE_FACTOR,
-    );
-    let sample = |bone: &str| sample_bone_offsets(layout.walk, bone, seconds, scale);
-    let (root_pos, root_rot) = sample("root");
-    let (body_pos, body_rot) = sample("body");
-    let (head_walk_pos, head_walk_rot) = sample("head");
-
+    let mut model = CamelModel::new(family, baby);
+    model.prepare(&instance);
     for pass in camel_textured_layer_passes(family, baby) {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let uv = entry.uv;
-        let texture = pass.texture;
-        let tint = pass.tint;
-        let parts = pass.parts;
-        let mesh = meshes.mesh_mut(pass.render_type);
-
-        // `root` rolls the whole model at the entity root.
-        let root_t = transform
-            * part_pose_transform(keyframe_textured_pose(PART_POSE_ZERO, root_pos, root_rot));
-
-        // `body` (root child 0): not animated on the adult; the baby walk dips it via a `body` channel.
-        let body = &parts[0];
-        let body_t =
-            root_t * part_pose_transform(keyframe_textured_pose(body.pose, body_pos, body_rot));
-        for cube in body.cubes {
-            emit_textured_model_cube(mesh, body_t, *cube, texture, uv, tint);
-        }
-
-        // The body's children: the head (clamped look + walk), the tail (walk swish), and — on the
-        // adult — the static hump, in declared order (preserving the depth-first emit order).
-        for (index, child) in body.children.iter().enumerate() {
-            if index == layout.head_child {
-                let head_pose = PartPose {
-                    offset: [
-                        child.pose.offset[0] + head_walk_pos[0],
-                        child.pose.offset[1] + head_walk_pos[1],
-                        child.pose.offset[2] + head_walk_pos[2],
-                    ],
-                    rotation: [
-                        head_pitch.to_radians() + head_walk_rot[0],
-                        head_yaw.to_radians() + head_walk_rot[1],
-                        child.pose.rotation[2] + head_walk_rot[2],
-                    ],
-                };
-                let head_t = body_t * part_pose_transform(head_pose);
-                for cube in child.cubes {
-                    emit_textured_model_cube(mesh, head_t, *cube, texture, uv, tint);
-                }
-                for (ear_index, ear_bone) in layout.ears {
-                    let ear = &child.children[ear_index];
-                    let (ear_pos, ear_rot) = sample(ear_bone);
-                    emit_textured_model_part(
-                        mesh,
-                        &TexturedModelPartDesc {
-                            pose: keyframe_textured_pose(ear.pose, ear_pos, ear_rot),
-                            ..*ear
-                        },
-                        head_t,
-                        texture,
-                        uv,
-                        tint,
-                    );
-                }
-            } else if index == layout.tail_child {
-                let (tail_pos, tail_rot) = sample("tail");
-                emit_textured_model_part(
-                    mesh,
-                    &TexturedModelPartDesc {
-                        pose: keyframe_textured_pose(child.pose, tail_pos, tail_rot),
-                        ..*child
-                    },
-                    body_t,
-                    texture,
-                    uv,
-                    tint,
-                );
-            } else {
-                // The adult hump (static).
-                emit_textured_model_part(mesh, child, body_t, texture, uv, tint);
-            }
-        }
-
-        // The four legs (root children 1..=4): the walk rotation + position.
-        for (index, bone) in layout.legs {
-            let (leg_pos, leg_rot) = sample(bone);
-            let leg = &parts[index];
-            emit_textured_model_part(
-                mesh,
-                &TexturedModelPartDesc {
-                    pose: keyframe_textured_pose(leg.pose, leg_pos, leg_rot),
-                    ..*leg
-                },
-                root_t,
-                texture,
-                uv,
-                tint,
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
             );
         }
     }
@@ -872,24 +748,6 @@ fn emit_turtle_textured_model(
         entry.uv,
         [1.0, 1.0, 1.0, 1.0],
     );
-}
-
-/// Combine a bind pose with the keyframe position/rotation offsets, mirroring the colored
-/// `keyframe_animated_pose` (vanilla `ModelPart::offsetPos` / `offsetRotation` add to the bind
-/// pose). Shared by the textured keyframe-animated entities.
-fn keyframe_textured_pose(bind: PartPose, position: [f32; 3], rotation: [f32; 3]) -> PartPose {
-    PartPose {
-        offset: [
-            bind.offset[0] + position[0],
-            bind.offset[1] + position[1],
-            bind.offset[2] + position[2],
-        ],
-        rotation: [
-            bind.rotation[0] + rotation[0],
-            bind.rotation[1] + rotation[1],
-            bind.rotation[2] + rotation[2],
-        ],
-    }
 }
 
 fn emit_bat_textured_model(

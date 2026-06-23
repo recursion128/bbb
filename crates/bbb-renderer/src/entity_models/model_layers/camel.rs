@@ -1,10 +1,15 @@
 use super::super::keyframe::{
-    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation,
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_walk_sample, pos_vec,
+    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
+    Keyframe, KeyframeInterpolation,
 };
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, CAMEL_TAN,
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    CAMEL_TAN, PART_POSE_ZERO,
 };
+use crate::entity_models::catalog::CamelModelFamily;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const ADULT_CAMEL_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-7.5, -12.0, -23.5],
@@ -1031,3 +1036,118 @@ pub(in crate::entity_models) const BABY_CAMEL_WALK_LAYOUT: CamelWalkLayout = Cam
         (4, "right_hind_leg"),
     ],
 };
+
+/// Mutable camel model, mirroring vanilla `AdultCamelModel` / `BabyCamelModel`. The five root parts
+/// (body — carrying the hump/tail/head, the head carrying the two ears — and the four legs) are zipped
+/// from the colored and textured const trees selected by family/baby, so one tree drives both render
+/// paths. `new` picks the adult or baby tree and the matching [`CamelWalkLayout`] (the camel husk shares
+/// the adult mesh/walk); `setup_anim` clamps the head look ([`camel_clamped_head_look`]) and samples the
+/// looping walk keyframes (`applyWalk(..., 2.0, 2.5)`): the `root` rolls the model, the legs / ears /
+/// tail swing, the `head` pitch ADDS onto the clamped look, and the baby `body` dips. The colored
+/// fallback recolors the whole model with the family tint; the textured path uses the family texture.
+pub(in crate::entity_models) struct CamelModel {
+    root: ModelPart,
+    layout: &'static CamelWalkLayout,
+}
+
+impl CamelModel {
+    pub(in crate::entity_models) fn new(family: CamelModelFamily, baby: bool) -> Self {
+        // The camel husk reuses the adult camel mesh/walk; only a real baby camel uses the baby layer.
+        let (colored, textured, layout): (
+            &[ModelPartDesc],
+            &[TexturedModelPartDesc],
+            &CamelWalkLayout,
+        ) = if family == CamelModelFamily::Camel && baby {
+            (
+                &BABY_CAMEL_PARTS,
+                &BABY_CAMEL_TEXTURED_PARTS,
+                &BABY_CAMEL_WALK_LAYOUT,
+            )
+        } else {
+            (
+                &ADULT_CAMEL_PARTS,
+                &ADULT_CAMEL_TEXTURED_PARTS,
+                &ADULT_CAMEL_WALK_LAYOUT,
+            )
+        };
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            layout,
+        }
+    }
+}
+
+impl EntityModel for CamelModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let layout = self.layout;
+        let (head_yaw, head_pitch) = camel_clamped_head_look(
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        );
+        let (seconds, scale) = keyframe_walk_sample(
+            layout.walk,
+            instance.render_state.walk_animation_pos,
+            instance.render_state.walk_animation_speed,
+            CAMEL_WALK_SPEED_FACTOR,
+            CAMEL_WALK_SCALE_FACTOR,
+        );
+        let sample = |bone: &str| sample_bone_offsets(layout.walk, bone, seconds, scale);
+
+        // `root` rolls the whole model: no bind offset/rotation, so the z-sway applies at the entity
+        // root. The synthetic root part carries it.
+        let (root_pos, root_rot) = sample("root");
+        self.root.pose = keyframe_animated_pose(PART_POSE_ZERO, root_pos, root_rot);
+
+        // `body` (root child 0): not animated on the adult; the baby walk dips it via a `body` channel.
+        {
+            let (body_pos, body_rot) = sample("body");
+            let (head_walk_pos, head_walk_rot) = sample("head");
+            let body = self.root.child_at_mut(0);
+            let body_bind = body.pose;
+            body.pose = keyframe_animated_pose(body_bind, body_pos, body_rot);
+
+            // The head (clamped look + walk) carrying the two ears (walk), and the tail (walk swish).
+            // The adult hump is static, so it stays at its bind pose.
+            {
+                let head = body.child_at_mut(layout.head_child);
+                let head_bind = head.pose;
+                head.pose = PartPose {
+                    offset: [
+                        head_bind.offset[0] + head_walk_pos[0],
+                        head_bind.offset[1] + head_walk_pos[1],
+                        head_bind.offset[2] + head_walk_pos[2],
+                    ],
+                    rotation: [
+                        head_pitch.to_radians() + head_walk_rot[0],
+                        head_yaw.to_radians() + head_walk_rot[1],
+                        head_bind.rotation[2] + head_walk_rot[2],
+                    ],
+                };
+                for (ear_index, ear_bone) in layout.ears {
+                    let (ear_pos, ear_rot) = sample(ear_bone);
+                    let ear = head.child_at_mut(ear_index);
+                    ear.pose = keyframe_animated_pose(ear.pose, ear_pos, ear_rot);
+                }
+            }
+
+            let (tail_pos, tail_rot) = sample("tail");
+            let tail = body.child_at_mut(layout.tail_child);
+            tail.pose = keyframe_animated_pose(tail.pose, tail_pos, tail_rot);
+        }
+
+        // The four legs (root children 1..=4): the walk rotation + position.
+        for (index, bone) in layout.legs {
+            let (leg_pos, leg_rot) = sample(bone);
+            let leg = self.root.child_at_mut(index);
+            leg.pose = keyframe_animated_pose(leg.pose, leg_pos, leg_rot);
+        }
+    }
+}
