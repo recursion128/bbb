@@ -889,22 +889,22 @@ pub(in crate::entity_models) fn spider_leg_swing_pose(
     }
 }
 
-/// The eight spider leg part indices paired with their `(phase, side_sign)` swing
-/// roles. `SpiderModel.createSpiderBodyLayer` lists the legs after head/body0/body1 in
-/// right/left pairs from hind to front: hind (`3`/`4`, phase `0`), middle-hind
-/// (`5`/`6`, phase `π`), middle-front (`7`/`8`, phase `π/2`), front (`9`/`10`, phase
-/// `3π/2`). Right legs swing `+`, left legs swing `-`.
-pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(usize, f32, f32); 8] {
+/// The eight spider leg child names paired with their `(phase, side_sign)` swing roles.
+/// `SpiderModel.createSpiderBodyLayer` lists the legs after head/body0/body1 in right/left pairs from
+/// hind to front: hind (phase `0`), middle-hind (phase `π`), middle-front (phase `π/2`), front (phase
+/// `3π/2`). Right legs swing `+`, left legs swing `-`. The names match the tree the spider builds, so
+/// `setup_anim` addresses each leg by `child_mut(name)`.
+pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(&'static str, f32, f32); 8] {
     use std::f32::consts::{FRAC_PI_2, PI};
     [
-        (3, 0.0, 1.0),
-        (4, 0.0, -1.0),
-        (5, PI, 1.0),
-        (6, PI, -1.0),
-        (7, FRAC_PI_2, 1.0),
-        (8, FRAC_PI_2, -1.0),
-        (9, PI * 1.5, 1.0),
-        (10, PI * 1.5, -1.0),
+        ("right_hind_leg", 0.0, 1.0),
+        ("left_hind_leg", 0.0, -1.0),
+        ("right_middle_hind_leg", PI, 1.0),
+        ("left_middle_hind_leg", PI, -1.0),
+        ("right_middle_front_leg", FRAC_PI_2, 1.0),
+        ("left_middle_front_leg", FRAC_PI_2, -1.0),
+        ("right_front_leg", PI * 1.5, 1.0),
+        ("left_front_leg", PI * 1.5, -1.0),
     ]
 }
 

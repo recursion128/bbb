@@ -281,7 +281,7 @@ pub(in crate::entity_models) fn spider_textured_layer_passes(
             } else {
                 SPIDER_TEXTURE_REF
             },
-            parts: &SPIDER_TEXTURED_PARTS,
+            parts: &[],
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 0,
@@ -292,7 +292,7 @@ pub(in crate::entity_models) fn spider_textured_layer_passes(
             render_type: EntityModelLayerRenderType::Eyes,
             model_layer,
             texture: SPIDER_EYES_TEXTURE_REF,
-            parts: &SPIDER_TEXTURED_PARTS,
+            parts: &[],
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 1,

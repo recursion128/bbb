@@ -1,129 +1,93 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
+// The eight spider leg bind poses, mirrored from the model file (right/left pairs hind-to-front), so
+// the leg-swing pose-math test can exercise `spider_leg_swing_pose` without the deleted `SPIDER_PARTS`
+// const tree. Paired with `spider_leg_swing_roles()` by index.
+const SPIDER_LEG_SPLAY: f32 = 0.58119464;
+fn spider_leg_bind_poses() -> [PartPose; 8] {
+    use std::f32::consts::{FRAC_PI_4, FRAC_PI_8};
+    [
+        PartPose {
+            offset: [-4.0, 15.0, 2.0],
+            rotation: [0.0, FRAC_PI_4, -FRAC_PI_4],
+        },
+        PartPose {
+            offset: [4.0, 15.0, 2.0],
+            rotation: [0.0, -FRAC_PI_4, FRAC_PI_4],
+        },
+        PartPose {
+            offset: [-4.0, 15.0, 1.0],
+            rotation: [0.0, FRAC_PI_8, -SPIDER_LEG_SPLAY],
+        },
+        PartPose {
+            offset: [4.0, 15.0, 1.0],
+            rotation: [0.0, -FRAC_PI_8, SPIDER_LEG_SPLAY],
+        },
+        PartPose {
+            offset: [-4.0, 15.0, 0.0],
+            rotation: [0.0, -FRAC_PI_8, -SPIDER_LEG_SPLAY],
+        },
+        PartPose {
+            offset: [4.0, 15.0, 0.0],
+            rotation: [0.0, FRAC_PI_8, SPIDER_LEG_SPLAY],
+        },
+        PartPose {
+            offset: [-4.0, 15.0, -1.0],
+            rotation: [0.0, -FRAC_PI_4, -FRAC_PI_4],
+        },
+        PartPose {
+            offset: [4.0, 15.0, -1.0],
+            rotation: [0.0, FRAC_PI_4, FRAC_PI_4],
+        },
+    ]
+}
+
 #[test]
-fn spider_model_parts_match_vanilla_26_1_body_layer() {
+fn spider_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `SpiderModel.createSpiderBodyLayer` (atlas 64×32). Each unified cube carries the colored
+    // tint (`SPIDER_DARK`) and the textured UV; the left legs reuse the right leg's `texOffs(18, 0)`
+    // mirrored.
     assert_eq!(
         SPIDER_HEAD[0],
-        ModelCubeDesc {
-            min: [-4.0, -4.0, -8.0],
-            size: [8.0, 8.0, 8.0],
-            color: SPIDER_DARK,
-        }
+        ModelCube::new(
+            [-4.0, -4.0, -8.0],
+            [8.0, 8.0, 8.0],
+            SPIDER_DARK,
+            [8.0, 8.0, 8.0],
+            [32.0, 4.0],
+            false,
+        )
     );
     assert_eq!(
         SPIDER_BODY_0[0],
-        ModelCubeDesc {
-            min: [-3.0, -3.0, -3.0],
-            size: [6.0, 6.0, 6.0],
-            color: SPIDER_DARK,
-        }
+        ModelCube::new(
+            [-3.0, -3.0, -3.0],
+            [6.0, 6.0, 6.0],
+            SPIDER_DARK,
+            [6.0, 6.0, 6.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         SPIDER_BODY_1[0],
-        ModelCubeDesc {
-            min: [-5.0, -4.0, -6.0],
-            size: [10.0, 8.0, 12.0],
-            color: SPIDER_DARK,
-        }
+        ModelCube::new(
+            [-5.0, -4.0, -6.0],
+            [10.0, 8.0, 12.0],
+            SPIDER_DARK,
+            [10.0, 8.0, 12.0],
+            [0.0, 12.0],
+            false,
+        )
     );
-    assert_eq!(
-        SPIDER_RIGHT_LEG[0],
-        ModelCubeDesc {
-            min: [-15.0, -1.0, -1.0],
-            size: [16.0, 2.0, 2.0],
-            color: SPIDER_DARK,
-        }
-    );
-    assert_eq!(
-        SPIDER_LEFT_LEG[0],
-        ModelCubeDesc {
-            min: [-1.0, -1.0, -1.0],
-            size: [16.0, 2.0, 2.0],
-            color: SPIDER_DARK,
-        }
-    );
-
-    assert_eq!(SPIDER_PARTS.len(), 11);
-    assert_part(
-        &SPIDER_PARTS[0],
-        [0.0, 15.0, -3.0],
-        [0.0, 0.0, 0.0],
-        SPIDER_HEAD.as_slice(),
-    );
-    assert_part(
-        &SPIDER_PARTS[1],
-        [0.0, 15.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SPIDER_BODY_0.as_slice(),
-    );
-    assert_part(
-        &SPIDER_PARTS[2],
-        [0.0, 15.0, 9.0],
-        [0.0, 0.0, 0.0],
-        SPIDER_BODY_1.as_slice(),
-    );
-
-    let leg_specs = [
-        (
-            [-4.0, 15.0, 2.0],
-            [
-                0.0,
-                std::f32::consts::FRAC_PI_4,
-                -std::f32::consts::FRAC_PI_4,
-            ],
-            SPIDER_RIGHT_LEG.as_slice(),
-        ),
-        (
-            [4.0, 15.0, 2.0],
-            [
-                0.0,
-                -std::f32::consts::FRAC_PI_4,
-                std::f32::consts::FRAC_PI_4,
-            ],
-            SPIDER_LEFT_LEG.as_slice(),
-        ),
-        (
-            [-4.0, 15.0, 1.0],
-            [0.0, std::f32::consts::FRAC_PI_8, -0.58119464],
-            SPIDER_RIGHT_LEG.as_slice(),
-        ),
-        (
-            [4.0, 15.0, 1.0],
-            [0.0, -std::f32::consts::FRAC_PI_8, 0.58119464],
-            SPIDER_LEFT_LEG.as_slice(),
-        ),
-        (
-            [-4.0, 15.0, 0.0],
-            [0.0, -std::f32::consts::FRAC_PI_8, -0.58119464],
-            SPIDER_RIGHT_LEG.as_slice(),
-        ),
-        (
-            [4.0, 15.0, 0.0],
-            [0.0, std::f32::consts::FRAC_PI_8, 0.58119464],
-            SPIDER_LEFT_LEG.as_slice(),
-        ),
-        (
-            [-4.0, 15.0, -1.0],
-            [
-                0.0,
-                -std::f32::consts::FRAC_PI_4,
-                -std::f32::consts::FRAC_PI_4,
-            ],
-            SPIDER_RIGHT_LEG.as_slice(),
-        ),
-        (
-            [4.0, 15.0, -1.0],
-            [
-                0.0,
-                std::f32::consts::FRAC_PI_4,
-                std::f32::consts::FRAC_PI_4,
-            ],
-            SPIDER_LEFT_LEG.as_slice(),
-        ),
-    ];
-    for (part, (offset, rotation, cubes)) in SPIDER_PARTS[3..].iter().zip(leg_specs) {
-        assert_part(part, offset, rotation, cubes);
-    }
+    assert_eq!(SPIDER_RIGHT_LEG[0].tex, [18.0, 0.0]);
+    assert!(!SPIDER_RIGHT_LEG[0].mirror);
+    assert_eq!(SPIDER_RIGHT_LEG[0].min, [-15.0, -1.0, -1.0]);
+    assert_eq!(SPIDER_LEFT_LEG[0].tex, [18.0, 0.0]);
+    assert!(SPIDER_LEFT_LEG[0].mirror);
+    assert_eq!(SPIDER_LEFT_LEG[0].min, [-1.0, -1.0, -1.0]);
 }
 
 #[test]
@@ -199,13 +163,14 @@ fn spider_texture_refs_match_vanilla_renderers() {
 
 #[test]
 fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
+    // The vestigial `parts` slices are nulled; both passes read the unified `SpiderModel` tree.
     let spider = spider_textured_layer_passes(false);
     assert_eq!(spider.len(), 2);
     assert_eq!(spider[0].kind, EntityModelLayerKind::SpiderBase);
     assert_eq!(spider[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(spider[0].model_layer, MODEL_LAYER_SPIDER);
     assert_eq!(spider[0].texture, SPIDER_TEXTURE_REF);
-    assert_eq!(spider[0].parts, SPIDER_TEXTURED_PARTS.as_slice());
+    assert!(spider[0].parts.is_empty());
     assert_eq!(spider[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (spider[0].collector_order, spider[0].submit_sequence),
@@ -215,7 +180,7 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(spider[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(spider[1].model_layer, MODEL_LAYER_SPIDER);
     assert_eq!(spider[1].texture, SPIDER_EYES_TEXTURE_REF);
-    assert_eq!(spider[1].parts, SPIDER_TEXTURED_PARTS.as_slice());
+    assert!(spider[1].parts.is_empty());
     assert_eq!(spider[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (spider[1].collector_order, spider[1].submit_sequence),
@@ -225,23 +190,19 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
     let cave = spider_textured_layer_passes(true);
     assert_eq!(cave.len(), 2);
     assert_eq!(cave[0].kind, EntityModelLayerKind::SpiderBase);
-    assert_eq!(cave[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(cave[0].model_layer, MODEL_LAYER_CAVE_SPIDER);
     assert_eq!(cave[0].texture, CAVE_SPIDER_TEXTURE_REF);
-    assert_eq!(cave[0].parts, SPIDER_TEXTURED_PARTS.as_slice());
-    assert_eq!(cave[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(cave[0].parts.is_empty());
     assert_eq!((cave[0].collector_order, cave[0].submit_sequence), (0, 0));
     assert_eq!(cave[1].kind, EntityModelLayerKind::SpiderEyes);
-    assert_eq!(cave[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(cave[1].model_layer, MODEL_LAYER_CAVE_SPIDER);
     assert_eq!(cave[1].texture, SPIDER_EYES_TEXTURE_REF);
-    assert_eq!(cave[1].parts, SPIDER_TEXTURED_PARTS.as_slice());
-    assert_eq!(cave[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(cave[1].parts.is_empty());
     assert_eq!((cave[1].collector_order, cave[1].submit_sequence), (1, 1));
 }
 
 #[test]
-fn spider_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+fn spider_model_layers_and_eyes_texture_match_vanilla() {
     assert_eq!(MODEL_LAYER_SPIDER, "minecraft:spider#main");
     assert_eq!(MODEL_LAYER_CAVE_SPIDER, "minecraft:cave_spider#main");
     assert_eq!(
@@ -251,60 +212,6 @@ fn spider_textured_model_parts_match_vanilla_model_layer_uv_sources() {
             size: [64, 32],
         }
     );
-    assert_eq!(SPIDER_TEXTURED_PARTS.len(), 11);
-    assert_eq!(
-        SPIDER_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -4.0, -8.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [32.0, 4.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        SPIDER_TEXTURED_BODY_0[0],
-        TexturedModelCubeDesc {
-            min: [-3.0, -3.0, -3.0],
-            size: [6.0, 6.0, 6.0],
-            uv_size: [6.0, 6.0, 6.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        SPIDER_TEXTURED_BODY_1[0],
-        TexturedModelCubeDesc {
-            min: [-5.0, -4.0, -6.0],
-            size: [10.0, 8.0, 12.0],
-            uv_size: [10.0, 8.0, 12.0],
-            tex: [0.0, 12.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        SPIDER_TEXTURED_RIGHT_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-15.0, -1.0, -1.0],
-            size: [16.0, 2.0, 2.0],
-            uv_size: [16.0, 2.0, 2.0],
-            tex: [18.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        SPIDER_TEXTURED_LEFT_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-1.0, -1.0, -1.0],
-            size: [16.0, 2.0, 2.0],
-            uv_size: [16.0, 2.0, 2.0],
-            tex: [18.0, 0.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(SPIDER_TEXTURED_PARTS[0].pose, SPIDER_PARTS[0].pose);
-    assert_eq!(SPIDER_TEXTURED_PARTS[3].pose, SPIDER_PARTS[3].pose);
-    assert_eq!(SPIDER_TEXTURED_PARTS[10].pose, SPIDER_PARTS[10].pose);
 }
 
 #[test]
@@ -398,8 +305,7 @@ fn spider_swings_its_legs_when_walking() {
     // (`-(cos(animationPos*2 + phase) * 0.4) * speed`) and steps them about their zRot
     // (`|sin(animationPos + phase) * 0.4| * speed`), with `animationPos =
     // walkAnimationPos * 0.6662`. A standing spider is inert; a walking one moves only
-    // the legs (parts 3..=10) while the head (part 0) and the two body segments (parts
-    // 1, 2) stay put. Colored path.
+    // the legs while the head and the two body segments stay put. Colored path.
     for base in [
         EntityModelInstance::spider(124, [0.0, 64.0, 0.0], 0.0),
         EntityModelInstance::cave_spider(22, [0.0, 64.0, 0.0], 0.0),
@@ -482,60 +388,61 @@ fn spider_leg_swing_pose_matches_vanilla_formula() {
     //   swing(phase) = -(cos(animationPos*2 + phase) * 0.4) * speed   (added to yRot)
     //   step(phase)  =  |sin(animationPos + phase) * 0.4| * speed      (added to zRot)
     //   right legs add both (`+=`); left legs subtract both (`-=`). The eight legs come
-    //   in right/left pairs from hind to front with phases 0, π, π/2, 3π/2, at
-    //   SPIDER_PARTS indices 3..=10.
+    //   in right/left pairs from hind to front with phases 0, π, π/2, 3π/2, now addressed
+    //   by name in `spider_leg_swing_roles`.
     use std::f32::consts::{FRAC_PI_2, PI};
     assert_eq!(
         spider_leg_swing_roles(),
         [
-            (3, 0.0, 1.0),
-            (4, 0.0, -1.0),
-            (5, PI, 1.0),
-            (6, PI, -1.0),
-            (7, FRAC_PI_2, 1.0),
-            (8, FRAC_PI_2, -1.0),
-            (9, PI * 1.5, 1.0),
-            (10, PI * 1.5, -1.0),
+            ("right_hind_leg", 0.0, 1.0),
+            ("left_hind_leg", 0.0, -1.0),
+            ("right_middle_hind_leg", PI, 1.0),
+            ("left_middle_hind_leg", PI, -1.0),
+            ("right_middle_front_leg", FRAC_PI_2, 1.0),
+            ("left_middle_front_leg", FRAC_PI_2, -1.0),
+            ("right_front_leg", PI * 1.5, 1.0),
+            ("left_front_leg", PI * 1.5, -1.0),
         ]
     );
 
     let pos = 1.5_f32;
     let speed = 0.5_f32;
     let anim = pos * 0.6662;
-    for (index, phase, side_sign) in spider_leg_swing_roles() {
-        let base = SPIDER_PARTS[index].pose;
+    let bind = spider_leg_bind_poses();
+    for (i, (_name, phase, side_sign)) in spider_leg_swing_roles().into_iter().enumerate() {
+        let base = bind[i];
         let posed = spider_leg_swing_pose(base, phase, side_sign, pos, speed);
         let swing = -((anim * 2.0 + phase).cos() * 0.4) * speed;
         let step = (anim + phase).sin().abs() * 0.4 * speed;
         assert!(
             (posed.rotation[1] - (base.rotation[1] + side_sign * swing)).abs() < 1e-6,
-            "leg {index} yRot",
+            "leg {i} yRot",
         );
         assert!(
             (posed.rotation[2] - (base.rotation[2] + side_sign * step)).abs() < 1e-6,
-            "leg {index} zRot",
+            "leg {i} zRot",
         );
         // xRot and the offset are untouched; only the swing/step accumulate.
-        assert_eq!(posed.rotation[0], base.rotation[0], "leg {index} xRot");
-        assert_eq!(posed.offset, base.offset, "leg {index} offset");
+        assert_eq!(posed.rotation[0], base.rotation[0], "leg {i} xRot");
+        assert_eq!(posed.offset, base.offset, "leg {i} offset");
     }
 
     // At rest (speed == 0) every leg holds its body-layer splay exactly.
-    for (index, phase, side_sign) in spider_leg_swing_roles() {
-        let base = SPIDER_PARTS[index].pose;
+    for (i, (_name, phase, side_sign)) in spider_leg_swing_roles().into_iter().enumerate() {
+        let base = bind[i];
         assert_eq!(
             spider_leg_swing_pose(base, phase, side_sign, pos, 0.0),
             base,
-            "leg {index} at rest"
+            "leg {i} at rest"
         );
     }
 
     // The right/left hind pair mirror each other about the body-layer splay.
-    let right_hind = spider_leg_swing_pose(SPIDER_PARTS[3].pose, 0.0, 1.0, pos, speed);
-    let left_hind = spider_leg_swing_pose(SPIDER_PARTS[4].pose, 0.0, -1.0, pos, speed);
+    let right_hind = spider_leg_swing_pose(bind[0], 0.0, 1.0, pos, speed);
+    let left_hind = spider_leg_swing_pose(bind[1], 0.0, -1.0, pos, speed);
     let swing = -((anim * 2.0).cos() * 0.4) * speed;
-    assert!((right_hind.rotation[1] - (SPIDER_PARTS[3].pose.rotation[1] + swing)).abs() < 1e-6);
-    assert!((left_hind.rotation[1] - (SPIDER_PARTS[4].pose.rotation[1] - swing)).abs() < 1e-6);
+    assert!((right_hind.rotation[1] - (bind[0].rotation[1] + swing)).abs() < 1e-6);
+    assert!((left_hind.rotation[1] - (bind[1].rotation[1] - swing)).abs() < 1e-6);
 }
 
 #[test]
