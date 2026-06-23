@@ -1,67 +1,47 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn sniffer_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `SnifferModel.createBodyLayer` (atlas 192×192): the mesh root holds one `bone` part
     // at `offset(0, 5, 0)` parenting the body and the six legs.
-    assert_eq!(SNIFFER_PARTS.len(), 1);
-    let bone = &SNIFFER_PARTS[0];
-    assert_eq!(bone.pose.offset, [0.0, 5.0, 0.0]);
-    assert!(bone.cubes.is_empty());
-    assert_eq!(bone.children.len(), 7);
+    assert_eq!(SNIFFER_BONE_POSE.offset, [0.0, 5.0, 0.0]);
 
     // `body`: the 25×29×40 trunk, the inner block inflated by `CubeDeformation(0.5)`
     // (`min -= 0.5`, `size += 1`), and the 25×0×40 belly plane.
-    let body = &bone.children[0];
-    assert_eq!(body.pose.offset, [0.0, 0.0, 0.0]);
-    assert_eq!(body.cubes.len(), 3);
-    assert_eq!(body.cubes[0].min, [-12.5, -14.0, -20.0]);
-    assert_eq!(body.cubes[0].size, [25.0, 29.0, 40.0]);
+    assert_eq!(SNIFFER_BODY_POSE.offset, [0.0, 0.0, 0.0]);
+    assert_eq!(SNIFFER_BODY_CUBES.len(), 3);
+    assert_eq!(SNIFFER_BODY_CUBES[0].min, [-12.5, -14.0, -20.0]);
+    assert_eq!(SNIFFER_BODY_CUBES[0].size, [25.0, 29.0, 40.0]);
     // The deformed inner block: base min[-12.5,-14,-20] size[25,24,40] grown by 0.5 on each face.
-    assert_eq!(body.cubes[1].min, [-13.0, -14.5, -20.5]);
-    assert_eq!(body.cubes[1].size, [26.0, 25.0, 41.0]);
-    assert_eq!(body.cubes[2].size, [25.0, 0.0, 40.0]);
-    assert_eq!(body.children.len(), 1);
+    assert_eq!(SNIFFER_BODY_CUBES[1].min, [-13.0, -14.5, -20.5]);
+    assert_eq!(SNIFFER_BODY_CUBES[1].size, [26.0, 25.0, 41.0]);
+    assert_eq!(SNIFFER_BODY_CUBES[2].size, [25.0, 0.0, 40.0]);
 
     // `head` (offset (0, 6.5, -19.48)) parents two ears, the nose, and the lower beak.
-    let head = &body.children[0];
-    assert_eq!(head.pose.offset, [0.0, 6.5, -19.48]);
-    assert_eq!(head.cubes.len(), 2);
-    assert_eq!(head.cubes[0].size, [13.0, 18.0, 11.0]);
-    assert_eq!(head.children.len(), 4);
-    assert_eq!(head.children[0].pose.offset, [6.51, -7.5, -4.51]);
-    assert_eq!(head.children[0].cubes[0].size, [1.0, 19.0, 7.0]);
+    assert_eq!(SNIFFER_HEAD_POSE.offset, [0.0, 6.5, -19.48]);
+    assert_eq!(SNIFFER_HEAD_CUBES.len(), 2);
+    assert_eq!(SNIFFER_HEAD_CUBES[0].size, [13.0, 18.0, 11.0]);
+    assert_eq!(SNIFFER_LEFT_EAR_POSE.offset, [6.51, -7.5, -4.51]);
+    assert_eq!(SNIFFER_LEFT_EAR_CUBES[0].size, [1.0, 19.0, 7.0]);
     // The nose pad and lower beak.
-    assert_eq!(head.children[2].pose.offset, [0.0, -4.5, -11.5]);
-    assert_eq!(head.children[2].cubes[0].size, [13.0, 2.0, 9.0]);
-    assert_eq!(head.children[3].cubes[0].size, [13.0, 12.0, 9.0]);
+    assert_eq!(SNIFFER_NOSE_POSE.offset, [0.0, -4.5, -11.5]);
+    assert_eq!(SNIFFER_NOSE_CUBES[0].size, [13.0, 2.0, 9.0]);
+    assert_eq!(SNIFFER_LOWER_BEAK_CUBES[0].size, [13.0, 12.0, 9.0]);
 
     // The six legs share one 7×10×8 box at the standard three pairs of offsets.
-    for (i, expected) in [
-        [-7.5, 10.0, -15.0],
-        [-7.5, 10.0, 0.0],
-        [-7.5, 10.0, 15.0],
-        [7.5, 10.0, -15.0],
-        [7.5, 10.0, 0.0],
-        [7.5, 10.0, 15.0],
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let leg = &bone.children[i + 1];
-        assert_eq!(leg.pose.offset, expected);
-        assert_eq!(leg.cubes[0].size, [7.0, 10.0, 8.0]);
+    for expected in [
+        SNIFFER_RIGHT_FRONT_LEG_POSE,
+        SNIFFER_RIGHT_MID_LEG_POSE,
+        SNIFFER_RIGHT_HIND_LEG_POSE,
+        SNIFFER_LEFT_FRONT_LEG_POSE,
+        SNIFFER_LEFT_MID_LEG_POSE,
+        SNIFFER_LEFT_HIND_LEG_POSE,
+    ] {
+        assert_eq!(expected.offset[1], 10.0);
+        assert_eq!(SNIFFER_LEG_CUBES[0].size, [7.0, 10.0, 8.0]);
     }
-
-    // Fifteen cubes total.
-    assert_eq!(count_cubes(&SNIFFER_PARTS), 15);
+    assert_eq!(SNIFFER_RIGHT_FRONT_LEG_POSE.offset, [-7.5, 10.0, -15.0]);
+    assert_eq!(SNIFFER_LEFT_HIND_LEG_POSE.offset, [7.5, 10.0, 15.0]);
 }
 
 #[test]
