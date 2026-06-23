@@ -1,7 +1,10 @@
 use super::{
+    head_look_yaw_pose, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
     ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    HOGLIN_RED,
+    HOGLIN_LEFT_EAR_CHILD_INDEX, HOGLIN_RED, HOGLIN_RIGHT_EAR_CHILD_INDEX,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_HOGLIN: &str = "minecraft:hoglin#main";
 pub(in crate::entity_models) const MODEL_LAYER_HOGLIN_BABY: &str = "minecraft:hoglin_baby#main";
@@ -638,3 +641,72 @@ pub(in crate::entity_models) const BABY_HOGLIN_TEXTURED_PARTS: [TexturedModelPar
         children: &[],
     },
 ];
+
+/// The four leg part indices in the hoglin/zoglin body layers (the head and body occupy `0`/`1` in
+/// either order). [`hoglin_leg_swing_pose`] resolves each leg's phase from its offset, so the
+/// differing head/body order of the adult and baby layers does not matter.
+const HOGLIN_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+
+/// Selects the colored ([`ADULT_HOGLIN_PARTS`]/[`BABY_HOGLIN_PARTS`]) and textured
+/// ([`ADULT_HOGLIN_TEXTURED_PARTS`]/[`BABY_HOGLIN_TEXTURED_PARTS`]) const trees for a hoglin by
+/// `baby`, zipped into the unified tree by [`HoglinModel::new`].
+pub(in crate::entity_models) fn hoglin_part_trees(
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&BABY_HOGLIN_PARTS, &BABY_HOGLIN_TEXTURED_PARTS)
+    } else {
+        (&ADULT_HOGLIN_PARTS, &ADULT_HOGLIN_TEXTURED_PARTS)
+    }
+}
+
+/// Mutable hoglin model, mirroring vanilla `HoglinModel` (shared by the zoglin). The unified tree is
+/// zipped from the colored and textured const trees selected by `baby` ([`hoglin_part_trees`]).
+/// `setup_anim` runs the yaw-only head look ([`head_look_yaw_pose`]), sways the two ears — head
+/// children at [`HOGLIN_RIGHT_EAR_CHILD_INDEX`]/[`HOGLIN_LEFT_EAR_CHILD_INDEX`]
+/// ([`hoglin_ear_sway_pose`], whose `±2π/9` rest also overrides the baby layer's wider baked angle),
+/// and swings the four legs ([`hoglin_leg_swing_pose`]). The family recolor/texture and root scale
+/// are supplied by the caller; the headbutt head tilt defers.
+pub(in crate::entity_models) struct HoglinModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl HoglinModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let (colored, textured) = hoglin_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for HoglinModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        let limb_swing = render_state.walk_animation_pos;
+        let limb_swing_amount = render_state.walk_animation_speed;
+        // Yaw-only head look, then sway the two ears (head children). Vanilla overrides the baked ear
+        // rest angle to `±2π/9` every frame, so the sway is applied unconditionally (a no-op for the
+        // adult layer at rest, an override for the baby layer's wider baked angle).
+        let head = self.root.child_at_mut(hoglin_head_part_index(self.baby));
+        head.pose = head_look_yaw_pose(head.pose, render_state.head_yaw);
+        let right_ear = head.child_at_mut(HOGLIN_RIGHT_EAR_CHILD_INDEX);
+        right_ear.pose = hoglin_ear_sway_pose(right_ear.pose, false, limb_swing, limb_swing_amount);
+        let left_ear = head.child_at_mut(HOGLIN_LEFT_EAR_CHILD_INDEX);
+        left_ear.pose = hoglin_ear_sway_pose(left_ear.pose, true, limb_swing, limb_swing_amount);
+        for index in HOGLIN_LEG_PART_INDICES {
+            let leg = self.root.child_at_mut(index);
+            leg.pose = hoglin_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
+        }
+    }
+}

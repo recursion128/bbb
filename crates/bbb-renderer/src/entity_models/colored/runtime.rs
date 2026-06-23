@@ -2623,83 +2623,15 @@ fn emit_hoglin_model(
     family: HoglinModelFamily,
     baby: bool,
 ) {
-    let parts: &[ModelPartDesc] = if baby {
-        &BABY_HOGLIN_PARTS
-    } else {
-        &ADULT_HOGLIN_PARTS
-    };
-    // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
-    // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
-    // left-hind in phase) after the yaw-only head look, and sways the ears
-    // `ear.zRot = ±2π/9 ± speed * sin(pos)` (the literal 2π/9, which also overrides the
-    // baby layer's wider ear rest angle). Legs are at [2, 3, 4, 5] in both layers; the
-    // headbutt head tilt is deferred.
-    let head_index = hoglin_head_part_index(baby);
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let transform = entity_model_root_transform(instance);
-    let color = hoglin_model_color(family);
-    let parts = hoglin_limb_swing_parts(
-        hoglin_colored_head_look_parts(parts, head_index, instance.render_state.head_yaw),
-        limb_swing,
-        limb_swing_amount,
+    // The unified `HoglinModel` tree drives both render paths; `setup_anim` runs the yaw-only head
+    // look, ear sway, and four-leg swing. The colored fallback recolors the whole model with the
+    // family color (hoglin red / zoglin gray); the textured path uses the family texture instead.
+    HoglinModel::new(baby).prepare_and_render_with_color(
+        mesh,
+        &instance,
+        entity_model_root_transform(instance),
+        hoglin_model_color(family),
     );
-    // The adult ears rest at ±2π/9, so they only need re-posing when walking; the baby ears
-    // rest at a wider angle that vanilla overrides to ±2π/9, so they are always re-posed.
-    if !baby && limb_swing_at_rest(limb_swing_amount) {
-        emit_model_parts_with_color(mesh, &parts, transform, color);
-        return;
-    }
-    // The ears are children of the head, whose children list is static, so emit the head
-    // subtree by hand with the posed ears (the horns ride unchanged).
-    for (index, part) in parts.iter().enumerate() {
-        if index == head_index {
-            let head_transform = transform * part_pose_transform(part.pose);
-            for cube in part.cubes {
-                emit_model_cube_with_color(mesh, head_transform, *cube, color);
-            }
-            let mut children = part.children.to_vec();
-            children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
-                children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose,
-                false,
-                limb_swing,
-                limb_swing_amount,
-            );
-            children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
-                children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose,
-                true,
-                limb_swing,
-                limb_swing_amount,
-            );
-            emit_model_parts_with_color(mesh, &children, head_transform, color);
-        } else {
-            emit_model_part_with_color(mesh, part, transform, color);
-        }
-    }
-}
-
-/// The four leg part indices in the hoglin/zoglin body layers (the head and body
-/// occupy `0`/`1` in either order). [`hoglin_leg_swing_pose`] resolves each leg's
-/// phase from its offset, so the differing head/body order of the adult and baby
-/// layers does not matter.
-const HOGLIN_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
-
-/// Applies the vanilla `HoglinModel.setupAnim` leg swing ([`hoglin_leg_swing_pose`])
-/// to a colored hoglin layer's four leg parts. Borrows the static parts unchanged at
-/// rest (`walkAnimationSpeed == 0`).
-fn hoglin_limb_swing_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    limb_swing: f32,
-    limb_swing_amount: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    if limb_swing_at_rest(limb_swing_amount) {
-        return parts;
-    }
-    let mut owned = parts.into_owned();
-    for index in HOGLIN_LEG_PART_INDICES {
-        owned[index].pose = hoglin_leg_swing_pose(owned[index].pose, limb_swing, limb_swing_amount);
-    }
-    Cow::Owned(owned)
 }
 
 fn emit_skeleton_variant_model(
@@ -2898,25 +2830,6 @@ fn colored_head_look_parts(
     let mut parts = parts.to_vec();
     if let Some(head) = parts.get_mut(head_index) {
         head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-    }
-    Cow::Owned(parts)
-}
-
-/// Applies the vanilla `HoglinModel.setupAnim` yaw-only head look to a colored
-/// hoglin layer's head part. Vanilla sets `head.yRot = yRot * π/180` but leaves
-/// `head.xRot` at the headbutt animation value (the fixed `HOGLIN_HEAD_X_ROT`
-/// rest tilt baked into the base pose), so only the yaw is applied here.
-fn hoglin_colored_head_look_parts(
-    parts: &[ModelPartDesc],
-    head_index: usize,
-    head_yaw: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    if head_yaw_at_rest(head_yaw) {
-        return Cow::Borrowed(parts);
-    }
-    let mut parts = parts.to_vec();
-    if let Some(head) = parts.get_mut(head_index) {
-        head.pose = head_look_yaw_pose(head.pose, head_yaw);
     }
     Cow::Owned(parts)
 }

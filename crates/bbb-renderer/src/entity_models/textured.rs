@@ -28,12 +28,11 @@ use super::{
         bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot, bee_bone_y_delta,
         bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look, dolphin_wave,
         enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
-        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
-        head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
-        limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
-        phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, piglin_ear_flap_pose,
-        piglin_head_part_index, pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
+        head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
+        humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
+        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
+        phantom_wing_pose, phantom_wing_z_rot, piglin_ear_flap_pose, piglin_head_part_index,
+        pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
         quadruped_leg_swing_pose, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
         skeleton_head_part_index, spider_leg_swing_pose, spider_leg_swing_roles,
         squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
@@ -42,9 +41,9 @@ use super::{
         tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
         wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel,
-        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, IllagerModel, IronGolemModel,
-        MagmaCubeModel, MinecartModel, PigModel, PlayerModel, PolarBearModel, RavagerModel,
-        SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel, VillagerModel,
+        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
+        IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PlayerModel, PolarBearModel,
+        RavagerModel, SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel, VillagerModel,
         WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
         ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
         ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
@@ -75,13 +74,12 @@ use super::{
         DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
         DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
         DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
-        DOLPHIN_TEXTURE_REF, ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
-        HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
-        PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
-        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
-        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
-        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
-        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
+        DOLPHIN_TEXTURE_REF, ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, PHANTOM_BODY_POSE,
+        PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_BASE_POSE, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_LEFT_WING_TIP_POSE, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_BASE_POSE, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE,
+        PHANTOM_RIGHT_WING_TIP_POSE, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
         SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
@@ -2935,101 +2933,24 @@ fn emit_hoglin_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `HoglinModel.setupAnim` (zoglin shares it) swings the four legs
-    // `cos(pos [+ π]) * 1.2 * speed` (amplitude 1.2, no 0.6662 factor; right-front/
-    // left-hind in phase) after the yaw-only head look, and sways the ears
-    // `ear.zRot = ±2π/9 ± speed * sin(pos)` (the literal 2π/9, which also overrides the
-    // baby layer's wider ear rest angle). Legs are at [2, 3, 4, 5]; the headbutt is deferred.
-    let head_index = hoglin_head_part_index(baby);
+    // The unified `HoglinModel` tree drives both render paths; `setup_anim` runs the yaw-only head
+    // look, ear sway (head children), and four-leg swing. `new` selects the adult/baby tree; the
+    // family only chooses the texture (hoglin vs zoglin). The headbutt head tilt defers.
     let transform = entity_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_yaw_at_rest(head_yaw);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    // The adult ears rest at ±2π/9, so they only need re-posing when walking; the baby ears
-    // rest at a wider angle that vanilla overrides to ±2π/9, so they are always re-posed.
-    let pose_ears = baby || !legs_resting;
+    let mut model = HoglinModel::new(baby);
+    model.prepare(&instance);
     for pass in hoglin_textured_layer_passes(family, baby) {
-        if !pose_ears && head_resting && legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
-        }
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_yaw_pose(head.pose, head_yaw);
-            }
-        }
-        if !legs_resting {
-            for index in HOGLIN_LEG_PART_INDICES {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = hoglin_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        if !pose_ears {
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-            continue;
-        }
-        // The ears are children of the head, whose children list is static, so emit the
-        // head subtree by hand with the posed ears (the horns ride unchanged).
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let mesh = meshes.mesh_mut(pass.render_type);
-        for (index, part) in parts.iter().enumerate() {
-            if index == head_index {
-                let head_transform = transform * part_pose_transform(part.pose);
-                for cube in part.cubes {
-                    emit_textured_model_cube(
-                        mesh,
-                        head_transform,
-                        *cube,
-                        pass.texture,
-                        entry.uv,
-                        pass.tint,
-                    );
-                }
-                let mut children = part.children.to_vec();
-                children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
-                    children[HOGLIN_RIGHT_EAR_CHILD_INDEX].pose,
-                    false,
-                    limb_swing,
-                    limb_swing_amount,
-                );
-                children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose = hoglin_ear_sway_pose(
-                    children[HOGLIN_LEFT_EAR_CHILD_INDEX].pose,
-                    true,
-                    limb_swing,
-                    limb_swing_amount,
-                );
-                emit_textured_model_parts(
-                    mesh,
-                    &children,
-                    head_transform,
-                    pass.texture,
-                    entry.uv,
-                    pass.tint,
-                );
-            } else {
-                emit_textured_model_parts(
-                    mesh,
-                    std::slice::from_ref(part),
-                    transform,
-                    pass.texture,
-                    entry.uv,
-                    pass.tint,
-                );
-            }
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }
-
-/// The four leg part indices in the hoglin/zoglin textured body layers (the head
-/// and body occupy `0`/`1` in either order). [`hoglin_leg_swing_pose`] resolves each
-/// leg's phase from its offset.
-const HOGLIN_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
 
 fn emit_ravager_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
