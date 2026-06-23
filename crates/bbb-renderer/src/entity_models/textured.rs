@@ -1,4 +1,4 @@
-use super::keyframe::{keyframe_elapsed_seconds, keyframe_walk_sample, sample_bone_offsets};
+use super::keyframe::{keyframe_walk_sample, sample_bone_offsets};
 use super::model::EntityModel;
 use super::{
     boat_model_root_transform,
@@ -33,8 +33,8 @@ use super::{
         strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, turtle_leg_rotation,
         wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        AllayModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
-        CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
+        AllayModel, BatModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel,
+        CowModel, CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
         HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
         MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
         RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel,
@@ -42,28 +42,22 @@ use super::{
         TropicalFishPatternModel, VexModel, VillagerModel, WanderingTraderModel, WitchModel,
         ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
-        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
-        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
-        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
-        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
-        BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
-        BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
-        BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
-        BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE,
-        BEE_BABY_TEXTURED_BACK_LEGS, BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE,
-        BEE_BABY_TEXTURED_FRONT_LEGS, BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS,
-        BEE_BABY_TEXTURED_RIGHT_WING, BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF,
-        BEE_BACK_LEGS_POSE, BEE_BODY_POSE, BEE_BONE_POSE, BEE_FRONT_LEGS_POSE,
-        BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE, BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT,
-        BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
-        BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
-        BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
-        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF,
-        CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
-        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
-        SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
-        STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y,
-        STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
+        BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE, BEE_BABY_BONE_POSE,
+        BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE, BEE_BABY_MIDDLE_LEGS_POSE,
+        BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE, BEE_BABY_TEXTURED_BACK_LEGS,
+        BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE, BEE_BABY_TEXTURED_FRONT_LEGS,
+        BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS, BEE_BABY_TEXTURED_RIGHT_WING,
+        BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF, BEE_BACK_LEGS_POSE, BEE_BODY_POSE,
+        BEE_BONE_POSE, BEE_FRONT_LEGS_POSE, BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE,
+        BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT, BEE_RIGHT_ANTENNA_POSE,
+        BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS, BEE_TEXTURED_BODY,
+        BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA, BEE_TEXTURED_LEFT_WING,
+        BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA, BEE_TEXTURED_RIGHT_WING,
+        BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR,
+        CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF,
+        PUFFERFISH_TEXTURE_REF, SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE,
+        STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X,
+        STRIDER_BABY_LEG_BASE_Y, STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
         STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
         STRIDER_BABY_TEXTURED_FRONT_BRISTLE, STRIDER_BABY_TEXTURED_LEFT_LEG,
         STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE, STRIDER_BABY_TEXTURED_RIGHT_LEG,
@@ -1234,111 +1228,22 @@ fn emit_bat_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let texture = BAT_TEXTURE_REF;
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+    // The unified `BatModel` tree drives both render paths; `setup_anim` samples the looping
+    // `BatAnimation.BAT_FLYING` (or the `BAT_RESTING` hanging pose while `isResting`) and turns the
+    // resting head by the look yaw. The base layer draws into the cutout mesh (vanilla
+    // `RenderTypes::entityCutoutCull`).
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, BAT_TEXTURE_REF) else {
         return;
     };
-    let uv = entry.uv;
-
-    // Mirror the colored `emit_bat_model`: sample the looping `BatAnimation.BAT_FLYING` (or the
-    // static `BAT_RESTING` hanging pose while `isResting`) from `age_in_ticks` and walk the
-    // head/ears + body/wings/feet hierarchy by hand, drawing the textured base layer into the
-    // cutout mesh (vanilla `RenderTypes::entityCutoutCull`).
-    let resting = instance.render_state.bat_resting;
-    let animation = if resting { &BAT_RESTING } else { &BAT_FLYING };
-    let head_look_yaw = if resting {
-        instance.render_state.head_yaw.to_radians()
-    } else {
-        0.0
-    };
-    let seconds = keyframe_elapsed_seconds(animation, instance.render_state.age_in_ticks * 0.05);
-    let sample = |bone: &str| sample_bone_offsets(animation, bone, seconds, 1.0);
-    let root = entity_model_root_transform(instance);
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
-
-    // Head (root child) carries the two ears at their bind poses. While resting the head also
-    // turns by the look yaw (`applyHeadRotation`, additive to the pose's `yRot`).
-    let (head_pos, head_rot) = sample("head");
-    let head_rot = [head_rot[0], head_rot[1] + head_look_yaw, head_rot[2]];
-    let head_pose = keyframe_textured_pose(BAT_HEAD_POSE, head_pos, head_rot);
-    let head_t = root * part_pose_transform(head_pose);
-    emit_textured_cubes_at_pose(mesh, root, head_pose, &BAT_TEXTURED_HEAD, texture, uv);
-    emit_textured_cubes_at_pose(
-        mesh,
-        head_t,
-        BAT_RIGHT_EAR_POSE,
-        &BAT_TEXTURED_RIGHT_EAR,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        head_t,
-        BAT_LEFT_EAR_POSE,
-        &BAT_TEXTURED_LEFT_EAR,
-        texture,
-        uv,
-    );
-
-    // Body (root child) carries the wings and feet.
-    let (body_pos, body_rot) = sample("body");
-    let body_pose = keyframe_textured_pose(BAT_BODY_POSE, body_pos, body_rot);
-    let body_t = root * part_pose_transform(body_pose);
-    emit_textured_cubes_at_pose(mesh, root, body_pose, &BAT_TEXTURED_BODY, texture, uv);
-
-    let (_, feet_rot) = sample("feet");
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        keyframe_textured_pose(BAT_FEET_POSE, [0.0; 3], feet_rot),
-        &BAT_TEXTURED_FEET,
-        texture,
-        uv,
-    );
-
-    // Each wing (body child) carries its tip; the resting pose also shifts the wings by a
-    // position channel (`+1` z), so sample and apply the wing positions too.
-    let (right_wing_pos, right_wing_rot) = sample("right_wing");
-    let right_wing_pose =
-        keyframe_textured_pose(BAT_RIGHT_WING_POSE, right_wing_pos, right_wing_rot);
-    let right_wing_t = body_t * part_pose_transform(right_wing_pose);
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        right_wing_pose,
-        &BAT_TEXTURED_RIGHT_WING,
-        texture,
-        uv,
-    );
-    let (_, right_tip_rot) = sample("right_wing_tip");
-    emit_textured_cubes_at_pose(
-        mesh,
-        right_wing_t,
-        keyframe_textured_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot),
-        &BAT_TEXTURED_RIGHT_WING_TIP,
-        texture,
-        uv,
-    );
-
-    let (left_wing_pos, left_wing_rot) = sample("left_wing");
-    let left_wing_pose = keyframe_textured_pose(BAT_LEFT_WING_POSE, left_wing_pos, left_wing_rot);
-    let left_wing_t = body_t * part_pose_transform(left_wing_pose);
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        left_wing_pose,
-        &BAT_TEXTURED_LEFT_WING,
-        texture,
-        uv,
-    );
-    let (_, left_tip_rot) = sample("left_wing_tip");
-    emit_textured_cubes_at_pose(
-        mesh,
-        left_wing_t,
-        keyframe_textured_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot),
-        &BAT_TEXTURED_LEFT_WING_TIP,
-        texture,
-        uv,
+    let transform = entity_model_root_transform(instance);
+    let mut model = BatModel::new();
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+        transform,
+        BAT_TEXTURE_REF,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
     );
 }
 
