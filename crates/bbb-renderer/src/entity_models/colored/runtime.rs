@@ -494,7 +494,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Minecart => {
                 if !skip_texture_backed_entities {
-                    emit_minecart_model(&mut mesh, *instance);
+                    MinecartModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Boat { family, chest } => {
@@ -3988,13 +3992,6 @@ fn head_first_colored_head_look_parts(
         instance.render_state.head_yaw,
         instance.render_state.head_pitch,
     )
-}
-
-fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `MinecartModel.createBodyLayer()`: the floor panel plus four boxed-in wall
-    // panels. There is no `setupAnim`, so the cart is static; the shared `MINECART_PARTS`
-    // back both render paths so the colored and textured geometry stay identical.
-    emit_model_parts(mesh, &MINECART_PARTS, entity_model_root_transform(instance));
 }
 
 fn emit_boat_model(

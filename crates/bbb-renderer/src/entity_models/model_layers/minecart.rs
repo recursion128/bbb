@@ -1,4 +1,6 @@
 use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 use std::f32::consts::{FRAC_PI_2, PI};
 
 const PI_3_HALVES: f32 = PI * 1.5;
@@ -97,3 +99,31 @@ pub(in crate::entity_models) const MINECART_TEXTURED_PARTS: [TexturedModelPartDe
     minecart_textured_part(MINECART_LEFT_POSE, &MINECART_TEXTURED_WALL_CUBE),
     minecart_textured_part(MINECART_RIGHT_POSE, &MINECART_TEXTURED_WALL_CUBE),
 ];
+
+/// Mutable minecart model, mirroring vanilla `MinecartModel`. The unified tree is zipped from the
+/// baked colored ([`MINECART_PARTS`]) and textured ([`MINECART_TEXTURED_PARTS`]) trees: the floor
+/// panel plus four boxed-in wall panels. Vanilla `MinecartModel` has no `setupAnim`, so `setup_anim`
+/// is a no-op — the cart is a static box rendered at its rest pose under the entity root transform.
+pub(in crate::entity_models) struct MinecartModel {
+    root: ModelPart,
+}
+
+impl MinecartModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&MINECART_PARTS, &MINECART_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for MinecartModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}
