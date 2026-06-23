@@ -84,11 +84,10 @@ fn sniffer_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn sniffer_head_follows_look_angles() {
     // Vanilla `SnifferModel.setupAnim` sets `head.xRot/yRot` from the plain look. The head is nested
-    // bone → body → head ([`SNIFFER_HEAD_PART_PATH`]); the emit order is body (3 cubes → [0, 72)),
-    // then the head subtree (head's 2 cubes + the ear/nose/beak children's 4 = 6 cubes → [72, 216)),
-    // then the six legs ([216, 360)). A non-zero look turns only the head subtree (the ears, nose,
-    // and beak ride with it); the body and legs stay at bind.
-    assert_eq!(SNIFFER_HEAD_PART_PATH, &[0, 0, 0]);
+    // bone → body → head; the emit order is body (3 cubes → [0, 72)), then the head subtree (head's 2
+    // cubes + the ear/nose/beak children's 4 = 6 cubes → [72, 216)), then the six legs ([216, 360)). A
+    // non-zero look (with the walk at rest) turns only the head subtree (the ears, nose, and beak ride
+    // with it); the body and legs stay at bind.
     let base = EntityModelInstance::sniffer(931, [0.0, 64.0, 0.0], 0.0);
     let rest = entity_model_mesh(&[base]);
     let looking = entity_model_mesh(&[base.with_head_look(35.0, -20.0)]);
@@ -107,5 +106,71 @@ fn sniffer_head_follows_look_angles() {
         rest.vertices[216..],
         looking.vertices[216..],
         "the six legs stay at bind"
+    );
+}
+
+#[test]
+fn sniffer_walk_animation_matches_vanilla_definition() {
+    // Vanilla `SnifferAnimation.SNIFFER_WALK`: 2.0 s looping, animating the six legs (rotation +
+    // position), the body (rotation + position), the head (rotation), and the two ears (rotation) —
+    // ten bones, 102 keyframes total.
+    assert_eq!(SNIFFER_WALK.length_seconds, 2.0);
+    assert!(SNIFFER_WALK.looping);
+    assert_eq!(SNIFFER_WALK.bones.len(), 10);
+    let keyframes: usize = SNIFFER_WALK
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 102);
+
+    // The right front leg pitches to `degreeVec(35, 0, 0)` at its t=0.5833 keyframe.
+    let (_, rfl_rot) = sample_bone_offsets(&SNIFFER_WALK, "right_front_leg", 0.5833, 1.0);
+    assert!((rfl_rot[0] - 35.0_f32.to_radians()).abs() < 1.0e-5);
+
+    // The two ears roll oppositely: at t=0 the left ear is `-2.5°` and the right ear `+2.5°` in z
+    // (CatmullRom at the first keyframe returns that keyframe's value).
+    let (_, left_ear) = sample_bone_offsets(&SNIFFER_WALK, "left_ear", 0.0, 1.0);
+    let (_, right_ear) = sample_bone_offsets(&SNIFFER_WALK, "right_ear", 0.0, 1.0);
+    assert!((left_ear[2] - (-2.5_f32).to_radians()).abs() < 1.0e-4);
+    assert!((right_ear[2] - 2.5_f32.to_radians()).abs() < 1.0e-4);
+}
+
+#[test]
+fn sniffer_walk_moves_the_limbs_and_composes_with_the_look() {
+    // A still sniffer (walk speed 0) samples the cycle at amplitude 0, collapsing to the bind pose; a
+    // walking sniffer samples SNIFFER_WALK across the body, head, ears, and six legs. The vertex count
+    // is preserved.
+    let still = entity_model_mesh(&[EntityModelInstance::sniffer(932, [0.0, 64.0, 0.0], 0.0)]);
+    let walking = entity_model_mesh(&[
+        EntityModelInstance::sniffer(933, [0.0, 64.0, 0.0], 0.0).with_walk_animation(5.0, 1.0)
+    ]);
+    assert_eq!(still.vertices.len(), walking.vertices.len());
+    assert_ne!(
+        still.vertices, walking.vertices,
+        "the walking sniffer rocks its body, ears, and legs"
+    );
+
+    // The head walk pitch ADDS onto the look, so a walking + looking sniffer differs from one that
+    // only walks across the head subtree [72, 216); the body and legs share the same walk.
+    let walking_looking =
+        entity_model_mesh(&[EntityModelInstance::sniffer(934, [0.0, 64.0, 0.0], 0.0)
+            .with_walk_animation(5.0, 1.0)
+            .with_head_look(30.0, -15.0)]);
+    assert_ne!(
+        walking.vertices[72..216],
+        walking_looking.vertices[72..216],
+        "the look composes onto the walking head"
+    );
+    assert_eq!(
+        walking.vertices[..72],
+        walking_looking.vertices[..72],
+        "the body shares the same walk regardless of the look"
+    );
+    assert_eq!(
+        walking.vertices[216..],
+        walking_looking.vertices[216..],
+        "the six legs share the same walk regardless of the look"
     );
 }

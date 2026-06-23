@@ -1606,13 +1606,18 @@ When an agent does any of the following, update this file in the same slice:
       belly plane) and the six 7×10×8 legs; the body parents the head (13×18×11 skull + top plane)
       which parents the two 1×19×7 ears, the 13×2×9 nose pad, and the 13×12×9 lower beak — fifteen
       cubes. The head look (`head.xRot/yRot = state.xRot/yRot`) IS reproduced: the head is nested
-      two levels under the root (bone → body → head), so the projected look angles are applied
-      through the recursive `emit_model_parts_with_head_look` helper and the head's ear/nose/beak
-      children ride with the turn, with a test pinning that only the head subtree moves. The
-      remaining `SnifferModel.setupAnim` is deferred: the search/walk (`applyWalk`) and the dig /
-      long-sniff / stand-up / happy / scenting keyframe animations. The texture-backed path remains
-      unsupported (this is a colored-first slice; the colored debug path approximates the body with
-      one brown tint and the nose pad with a pink tint)
+      two levels under the root (bone → body → head), and the head's ear/nose/beak children ride with
+      the turn, with a test pinning that only the head subtree moves. The default walk is also
+      reproduced: while not searching, `setupAnim` samples the looping 2.0 s `SnifferAnimation.SNIFFER_WALK`
+      via `applyWalk(walkAnimationPos, walkAnimationSpeed, 9.0, 100.0)` — the six legs swing (rotation +
+      position), the body sways with a y-dip, the two ears roll (CatmullRom), and the head pitches
+      (CatmullRom) ADDING onto the look it already tracks (a still sniffer samples amplitude 0,
+      collapsing to the bind pose plus the head look). The bone → body → head spine and the six legs are
+      hand-walked. The remaining `SnifferModel.setupAnim` is deferred: the search-walk variant
+      (`SNIFFER_SNIFF_SEARCH`, gated on the un-synced `isSearching`) and the dig / long-sniff / stand-up /
+      happy / scenting keyframe animations. The texture-backed path remains unsupported (this is a
+      colored-first slice; the colored debug path approximates the body with one brown tint and the nose
+      pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `142` to the
       new `EntityModelKind::Warden`, replacing the former placeholder bounds box. The static rest-pose
