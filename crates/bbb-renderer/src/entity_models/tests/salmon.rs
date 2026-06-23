@@ -265,7 +265,6 @@ fn salmon_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].kind, EntityModelLayerKind::SalmonBase);
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, SALMON_TEXTURE_REF);
-        assert!(passes[0].parts.is_empty());
         assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     }
 }

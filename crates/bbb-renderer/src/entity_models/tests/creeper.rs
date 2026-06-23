@@ -90,7 +90,6 @@ fn creeper_textured_layer_passes_match_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].kind, EntityModelLayerKind::CreeperBase);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_CREEPER);
     assert_eq!(passes[0].texture, CREEPER_TEXTURE_REF);
-    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (passes[0].collector_order, passes[0].submit_sequence),

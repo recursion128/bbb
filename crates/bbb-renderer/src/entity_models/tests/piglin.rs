@@ -605,12 +605,10 @@ fn piglin_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
         assert!(entity_model_texture_refs().contains(&texture));
         // The unified `PiglinModel` tree drives the geometry, so the layer-pass parts are vestigial.
-        assert!(passes[0].parts.is_empty());
     }
     // The brute is never baby: its baby flag still selects the adult layer + brute texture.
     let brute_baby = piglin_textured_layer_passes(PiglinModelFamily::PiglinBrute, false);
     assert_eq!(brute_baby[0].texture, PIGLIN_BRUTE_TEXTURE_REF);
-    assert!(brute_baby[0].parts.is_empty());
     assert_eq!(
         piglin_entity_texture_refs(),
         &[

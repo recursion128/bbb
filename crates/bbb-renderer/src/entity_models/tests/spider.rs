@@ -170,7 +170,6 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(spider[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(spider[0].model_layer, MODEL_LAYER_SPIDER);
     assert_eq!(spider[0].texture, SPIDER_TEXTURE_REF);
-    assert!(spider[0].parts.is_empty());
     assert_eq!(spider[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (spider[0].collector_order, spider[0].submit_sequence),
@@ -180,7 +179,6 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(spider[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(spider[1].model_layer, MODEL_LAYER_SPIDER);
     assert_eq!(spider[1].texture, SPIDER_EYES_TEXTURE_REF);
-    assert!(spider[1].parts.is_empty());
     assert_eq!(spider[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (spider[1].collector_order, spider[1].submit_sequence),
@@ -192,12 +190,10 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(cave[0].kind, EntityModelLayerKind::SpiderBase);
     assert_eq!(cave[0].model_layer, MODEL_LAYER_CAVE_SPIDER);
     assert_eq!(cave[0].texture, CAVE_SPIDER_TEXTURE_REF);
-    assert!(cave[0].parts.is_empty());
     assert_eq!((cave[0].collector_order, cave[0].submit_sequence), (0, 0));
     assert_eq!(cave[1].kind, EntityModelLayerKind::SpiderEyes);
     assert_eq!(cave[1].model_layer, MODEL_LAYER_CAVE_SPIDER);
     assert_eq!(cave[1].texture, SPIDER_EYES_TEXTURE_REF);
-    assert!(cave[1].parts.is_empty());
     assert_eq!((cave[1].collector_order, cave[1].submit_sequence), (1, 1));
 }
 

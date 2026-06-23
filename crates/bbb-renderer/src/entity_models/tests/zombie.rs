@@ -699,10 +699,8 @@ fn husk_textured_layer_passes_reuse_the_zombie_body_layer() {
     // geometry is vestigial.
     let adult = husk_textured_layer_passes(false);
     assert_eq!(adult.len(), 1);
-    assert!(adult[0].parts.is_empty());
     let baby = husk_textured_layer_passes(true);
     assert_eq!(baby.len(), 1);
-    assert!(baby[0].parts.is_empty());
 }
 
 #[test]
@@ -786,8 +784,6 @@ fn drowned_textured_layer_passes_reuse_the_zombie_body_layer() {
     // the unified `ZombieVariantModel` (plain-zombie) tree. The drowned's distinct left-limb
     // `texOffs(32, 48)`/`texOffs(16, 48)`, the `DrownedOuterLayer`, and the swim re-pose all defer,
     // so the layer-pass geometry is vestigial.
-    assert!(drowned_textured_layer_passes(false)[0].parts.is_empty());
-    assert!(drowned_textured_layer_passes(true)[0].parts.is_empty());
 }
 
 #[test]

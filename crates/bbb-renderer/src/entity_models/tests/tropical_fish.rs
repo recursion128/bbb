@@ -328,7 +328,6 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].kind, EntityModelLayerKind::TropicalFishBase);
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, texture);
-        assert!(passes[0].parts.is_empty());
         // `getModelTint = state.baseColor`: the base layer is tinted by the base dye's diffuse
         // color, not left white.
         assert_eq!(
@@ -340,7 +339,6 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[1].kind, EntityModelLayerKind::TropicalFishPattern);
         assert_eq!(passes[1].model_layer, pattern_layer);
         assert_eq!(passes[1].texture, pattern_texture);
-        assert!(passes[1].parts.is_empty());
         // The overlay is tinted by the pattern dye's diffuse color and drawn after the base.
         assert_eq!(passes[1].tint, EntityDyeColor::Cyan.texture_diffuse_color());
         assert_eq!(passes[1].submit_sequence, 1);

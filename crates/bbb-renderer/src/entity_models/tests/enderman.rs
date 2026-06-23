@@ -121,7 +121,6 @@ fn enderman_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(passes[0].model_layer, MODEL_LAYER_ENDERMAN);
     assert_eq!(passes[0].texture, ENDERMAN_TEXTURE_REF);
     // The vestigial `parts` slices are nulled; both passes read the unified `EndermanModel` tree.
-    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (passes[0].collector_order, passes[0].submit_sequence),
@@ -132,7 +131,6 @@ fn enderman_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].model_layer, MODEL_LAYER_ENDERMAN);
     assert_eq!(passes[1].texture, ENDERMAN_EYES_TEXTURE_REF);
-    assert!(passes[1].parts.is_empty());
     assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (passes[1].collector_order, passes[1].submit_sequence),

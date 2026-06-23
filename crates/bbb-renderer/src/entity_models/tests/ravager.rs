@@ -91,7 +91,6 @@ fn ravager_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].model_layer, MODEL_LAYER_RAVAGER);
     assert_eq!(passes[0].texture, RAVAGER_TEXTURE_REF);
     // The vestigial `parts` slice is nulled; emit builds `RavagerModel::new()` and renders its tree.
-    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(

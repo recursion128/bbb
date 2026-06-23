@@ -247,7 +247,6 @@ fn hoglin_textured_layer_passes_match_vanilla_renderer_model_choice() {
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         // The vestigial `parts` slice is nulled; emit builds `HoglinModel::new(baby)` and renders it.
-        assert!(passes[0].parts.is_empty());
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
         assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(

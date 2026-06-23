@@ -367,7 +367,6 @@ fn cow_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(temperate[0].kind, EntityModelLayerKind::CowBase);
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_COW);
     assert_eq!(temperate[0].texture, COW_TEMPERATE_TEXTURE_REF);
-    assert!(temperate[0].parts.is_empty());
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (temperate[0].collector_order, temperate[0].submit_sequence),
@@ -377,27 +376,22 @@ fn cow_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let temperate_baby = cow_textured_layer_passes(CowModelVariant::Temperate, true);
     assert_eq!(temperate_baby[0].model_layer, MODEL_LAYER_COW_BABY);
     assert_eq!(temperate_baby[0].texture, COW_TEMPERATE_BABY_TEXTURE_REF);
-    assert!(temperate_baby[0].parts.is_empty());
 
     let warm = cow_textured_layer_passes(CowModelVariant::Warm, false);
     assert_eq!(warm[0].model_layer, MODEL_LAYER_WARM_COW);
     assert_eq!(warm[0].texture, COW_WARM_TEXTURE_REF);
-    assert!(warm[0].parts.is_empty());
 
     let warm_baby = cow_textured_layer_passes(CowModelVariant::Warm, true);
     assert_eq!(warm_baby[0].model_layer, MODEL_LAYER_WARM_COW_BABY);
     assert_eq!(warm_baby[0].texture, COW_WARM_BABY_TEXTURE_REF);
-    assert!(warm_baby[0].parts.is_empty());
 
     let cold = cow_textured_layer_passes(CowModelVariant::Cold, false);
     assert_eq!(cold[0].model_layer, MODEL_LAYER_COLD_COW);
     assert_eq!(cold[0].texture, COW_COLD_TEXTURE_REF);
-    assert!(cold[0].parts.is_empty());
 
     let cold_baby = cow_textured_layer_passes(CowModelVariant::Cold, true);
     assert_eq!(cold_baby[0].model_layer, MODEL_LAYER_COLD_COW_BABY);
     assert_eq!(cold_baby[0].texture, COW_COLD_BABY_TEXTURE_REF);
-    assert!(cold_baby[0].parts.is_empty());
 }
 
 #[test]

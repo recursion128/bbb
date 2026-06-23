@@ -200,7 +200,6 @@ fn chicken_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult_temperate[0].kind, EntityModelLayerKind::ChickenBase);
     assert_eq!(adult_temperate[0].model_layer, MODEL_LAYER_CHICKEN);
     assert_eq!(adult_temperate[0].texture, CHICKEN_TEMPERATE_TEXTURE_REF);
-    assert!(adult_temperate[0].parts.is_empty());
     assert_eq!(adult_temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(adult_temperate[0].collector_order, 0);
     assert_eq!(adult_temperate[0].submit_sequence, 0);
@@ -208,17 +207,14 @@ fn chicken_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let adult_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, false);
     assert_eq!(adult_warm[0].model_layer, MODEL_LAYER_CHICKEN);
     assert_eq!(adult_warm[0].texture, CHICKEN_WARM_TEXTURE_REF);
-    assert!(adult_warm[0].parts.is_empty());
 
     let adult_cold = chicken_textured_layer_passes(ChickenModelVariant::Cold, false);
     assert_eq!(adult_cold[0].model_layer, MODEL_LAYER_COLD_CHICKEN);
     assert_eq!(adult_cold[0].texture, CHICKEN_COLD_TEXTURE_REF);
-    assert!(adult_cold[0].parts.is_empty());
 
     let baby_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, true);
     assert_eq!(baby_warm[0].model_layer, MODEL_LAYER_CHICKEN_BABY);
     assert_eq!(baby_warm[0].texture, CHICKEN_WARM_BABY_TEXTURE_REF);
-    assert!(baby_warm[0].parts.is_empty());
 }
 
 #[test]

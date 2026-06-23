@@ -463,7 +463,6 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(adult_red[0].model_layer, MODEL_LAYER_SHEEP);
     assert_eq!(adult_red[0].texture, SHEEP_TEXTURE_REF);
-    assert!(adult_red[0].parts.is_empty());
     assert_eq!(adult_red[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (adult_red[0].collector_order, adult_red[0].submit_sequence),
@@ -471,7 +470,6 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(adult_red[1].model_layer, MODEL_LAYER_SHEEP_WOOL);
     assert_eq!(adult_red[1].texture, SHEEP_WOOL_TEXTURE_REF);
-    assert!(adult_red[1].parts.is_empty());
     assert_eq!(
         adult_red[1].tint,
         sheep_wool_layer_color(SheepWoolColor::Red)
@@ -482,7 +480,6 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(adult_red[2].model_layer, MODEL_LAYER_SHEEP_WOOL_UNDERCOAT);
     assert_eq!(adult_red[2].texture, SHEEP_WOOL_UNDERCOAT_TEXTURE_REF);
-    assert!(adult_red[2].parts.is_empty());
     assert_eq!(
         adult_red[2].tint,
         sheep_wool_layer_color(SheepWoolColor::Red)
@@ -560,7 +557,6 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
             ),
         ]
     );
-    assert!(baby_black[1].parts.is_empty());
     let sheared_baby_black =
         sheep_textured_layer_passes(true, true, SheepWoolColor::Black, false, false, 0.0);
     assert_eq!(sheared_baby_black.len(), 1);

@@ -157,7 +157,6 @@ fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
     assert_eq!(wide[0].texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
     // The unified `PlayerModel` tree drives the geometry, so the layer-pass parts are vestigial; the
     // part visibility still rides the pass to the renderer.
-    assert!(wide[0].parts.is_empty());
     assert_eq!(
         wide[0].visibility,
         EntityModelLayerVisibility::PlayerParts(PLAYER_MODEL_PARTS_ALL_VISIBLE)
@@ -173,7 +172,6 @@ fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
     assert_eq!(slim[0].kind, EntityModelLayerKind::PlayerBase);
     assert_eq!(slim[0].model_layer, MODEL_LAYER_PLAYER_SLIM);
     assert_eq!(slim[0].texture, PLAYER_SLIM_STEVE_TEXTURE_REF);
-    assert!(slim[0].parts.is_empty());
     assert_eq!(
         slim[0].visibility,
         EntityModelLayerVisibility::PlayerParts(slim_parts)

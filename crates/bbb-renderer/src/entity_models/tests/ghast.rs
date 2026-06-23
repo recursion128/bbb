@@ -55,7 +55,6 @@ fn ghast_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].model_layer, MODEL_LAYER_GHAST);
     assert_eq!(passes[0].texture, GHAST_TEXTURE_REF);
     // The vestigial `parts` slice is nulled; emit builds `GhastModel::new()` and renders its tree.
-    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(

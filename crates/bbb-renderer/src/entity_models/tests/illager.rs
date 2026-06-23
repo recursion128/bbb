@@ -335,7 +335,6 @@ fn illager_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
-        assert!(passes[0].parts.is_empty());
         assert!(entity_model_texture_refs().contains(&texture));
     }
     assert_eq!(

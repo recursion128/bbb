@@ -311,24 +311,20 @@ fn llama_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult[0].kind, EntityModelLayerKind::LlamaBase);
     assert_eq!(adult[0].model_layer, MODEL_LAYER_LLAMA);
     assert_eq!(adult[0].texture, LLAMA_CREAMY_TEXTURE_REF);
-    assert!(adult[0].parts.is_empty());
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
 
     let adult_chest = llama_textured_layer_passes(LlamaVariant::White, false, true);
     assert_eq!(adult_chest[0].model_layer, MODEL_LAYER_LLAMA);
     assert_eq!(adult_chest[0].texture, LLAMA_WHITE_TEXTURE_REF);
-    assert!(adult_chest[0].parts.is_empty());
 
     let baby = llama_textured_layer_passes(LlamaVariant::Brown, true, false);
     assert_eq!(baby[0].model_layer, MODEL_LAYER_LLAMA_BABY);
     assert_eq!(baby[0].texture, LLAMA_BROWN_BABY_TEXTURE_REF);
-    assert!(baby[0].parts.is_empty());
 
     // A baby never shows a chest in vanilla; the chest flag must not change its texture.
     let baby_chest = llama_textured_layer_passes(LlamaVariant::Gray, true, true);
     assert_eq!(baby_chest[0].texture, LLAMA_GRAY_BABY_TEXTURE_REF);
-    assert!(baby_chest[0].parts.is_empty());
 }
 
 #[test]

@@ -295,7 +295,6 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(wild[0].model_layer, MODEL_LAYER_WOLF);
     assert_eq!(wild[0].texture, WOLF_TEXTURE_REF);
-    assert!(wild[0].parts.is_empty());
     assert_eq!(wild[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((wild[0].collector_order, wild[0].submit_sequence), (0, 0));
 
@@ -311,7 +310,6 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     assert_eq!(tame_blue[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(tame_blue[1].model_layer, MODEL_LAYER_WOLF);
     assert_eq!(tame_blue[1].texture, WOLF_COLLAR_TEXTURE_REF);
-    assert!(tame_blue[1].parts.is_empty());
     assert_eq!(
         tame_blue[1].tint,
         EntityDyeColor::Blue.texture_diffuse_color()
@@ -344,9 +342,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     let baby_tame = wolf_textured_layer_passes(true, true, false, false, Some(EntityDyeColor::Red));
     assert_eq!(baby_tame[0].model_layer, MODEL_LAYER_WOLF_BABY);
     assert_eq!(baby_tame[0].texture, WOLF_TAME_BABY_TEXTURE_REF);
-    assert!(baby_tame[0].parts.is_empty());
     assert_eq!(baby_tame[1].texture, WOLF_BABY_COLLAR_TEXTURE_REF);
-    assert!(baby_tame[1].parts.is_empty());
 
     assert_eq!(MODEL_LAYER_WOLF, "minecraft:wolf#main");
     assert_eq!(MODEL_LAYER_WOLF_BABY, "minecraft:wolf_baby#main");

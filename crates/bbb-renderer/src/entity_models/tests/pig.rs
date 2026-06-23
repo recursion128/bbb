@@ -254,7 +254,6 @@ fn pig_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(temperate[0].kind, EntityModelLayerKind::PigBase);
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_PIG);
     assert_eq!(temperate[0].texture, PIG_TEMPERATE_TEXTURE_REF);
-    assert!(temperate[0].parts.is_empty());
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (temperate[0].collector_order, temperate[0].submit_sequence),
@@ -264,12 +263,10 @@ fn pig_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let warm_baby = pig_textured_layer_passes(PigModelVariant::Warm, true);
     assert_eq!(warm_baby[0].model_layer, MODEL_LAYER_PIG_BABY);
     assert_eq!(warm_baby[0].texture, PIG_WARM_BABY_TEXTURE_REF);
-    assert!(warm_baby[0].parts.is_empty());
 
     let cold_adult = pig_textured_layer_passes(PigModelVariant::Cold, false);
     assert_eq!(cold_adult[0].model_layer, MODEL_LAYER_COLD_PIG);
     assert_eq!(cold_adult[0].texture, PIG_COLD_TEXTURE_REF);
-    assert!(cold_adult[0].parts.is_empty());
 }
 
 #[test]

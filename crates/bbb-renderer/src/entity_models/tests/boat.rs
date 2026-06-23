@@ -221,7 +221,6 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(oak_boat[0].kind, EntityModelLayerKind::BoatBase);
     assert_eq!(oak_boat[0].model_layer, MODEL_LAYER_OAK_BOAT);
     assert_eq!(oak_boat[0].texture, BOAT_OAK_TEXTURE_REF);
-    assert_eq!(oak_boat[0].parts, BOAT_TEXTURED_PARTS.as_slice());
     assert_eq!(oak_boat[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (oak_boat[0].collector_order, oak_boat[0].submit_sequence),
@@ -232,15 +231,10 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(oak_chest_boat[0].kind, EntityModelLayerKind::BoatBase);
     assert_eq!(oak_chest_boat[0].model_layer, MODEL_LAYER_OAK_CHEST_BOAT);
     assert_eq!(oak_chest_boat[0].texture, CHEST_BOAT_OAK_TEXTURE_REF);
-    assert_eq!(
-        oak_chest_boat[0].parts,
-        BOAT_CHEST_TEXTURED_PARTS.as_slice()
-    );
 
     let bamboo_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, false);
     assert_eq!(bamboo_raft[0].model_layer, MODEL_LAYER_BAMBOO_RAFT);
     assert_eq!(bamboo_raft[0].texture, BOAT_BAMBOO_TEXTURE_REF);
-    assert_eq!(bamboo_raft[0].parts, RAFT_TEXTURED_PARTS.as_slice());
 
     let bamboo_chest_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, true);
     assert_eq!(
@@ -248,10 +242,6 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
         MODEL_LAYER_BAMBOO_CHEST_RAFT
     );
     assert_eq!(bamboo_chest_raft[0].texture, CHEST_BOAT_BAMBOO_TEXTURE_REF);
-    assert_eq!(
-        bamboo_chest_raft[0].parts,
-        RAFT_CHEST_TEXTURED_PARTS.as_slice()
-    );
 }
 
 #[test]

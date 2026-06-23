@@ -58,7 +58,6 @@ fn happy_ghast_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].model_layer, MODEL_LAYER_HAPPY_GHAST);
     assert_eq!(passes[0].texture, HAPPY_GHAST_TEXTURE_REF);
     // The vestigial `parts` slice is nulled; emit builds `HappyGhastModel::new()` and renders it.
-    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
