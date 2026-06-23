@@ -23,33 +23,29 @@ use super::{
     instances::EntityModelInstance,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        allay_arm_idle_bob_amount, allay_body_x_rot, allay_root_y, allay_wing_flap_amount,
-        allay_wing_rest_x_rot, apply_wolf_sitting_pose, armor_stand_textured_cube,
-        bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot, bee_bone_y_delta,
-        bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look, dolphin_wave,
-        head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
-        humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
-        parched_head_part_index, pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
-        quadruped_leg_swing_pose, skeleton_head_part_index, strider_animation_speed,
-        strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
-        strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
-        strider_leg_z_rot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
-        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel,
-        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
-        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel, PigModel,
-        PiglinModel, PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SheepFurModel,
-        SheepModel, SilverfishModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel,
-        SpiderModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
-        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
-        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
-        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
-        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
-        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
-        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
-        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
-        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        apply_wolf_sitting_pose, armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot,
+        bee_bone_x_rot, bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot,
+        camel_clamped_head_look, dolphin_wave, head_first_part_index, head_look_at_rest,
+        head_look_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
+        limb_swing_at_rest, parched_head_part_index, pufferfish_fin_pose, pufferfish_parts,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, skeleton_head_part_index,
+        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
+        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
+        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, turtle_leg_rotation,
+        vex_left_wing_y_rot, vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles,
+        wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, BlazeModel, CamelWalkLayout,
+        ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel, EndermiteModel, GhastModel,
+        GoatModel, HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel,
+        MagmaCubeModel, MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel,
+        PolarBearModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel,
+        SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel,
+        TropicalFishModel, TropicalFishPatternModel, VillagerModel, WanderingTraderModel,
+        WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
+        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
+        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -965,100 +961,20 @@ fn emit_allay_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `AllayModel` tree drives both render paths; `setup_anim` runs the shared
+    // `AllayModel.setupAnim` idle/flying pose. Allay draws into a single translucent layer.
     let Some(entry) = entity_model_texture_atlas_entry(atlas, ALLAY_TEXTURE_REF) else {
         return;
     };
-    let uv = entry.uv;
-    let age = instance.render_state.age_in_ticks;
-    let walk_pos = instance.render_state.walk_animation_pos;
-    let walk_speed = instance.render_state.walk_animation_speed;
-    let root_pose = PartPose {
-        offset: [0.0, allay_root_y(age, walk_speed), 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    };
-    let root = entity_model_root_transform(instance) * part_pose_transform(root_pose);
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Translucent);
-
-    // Head (child of root) tracks the look yaw/pitch.
-    let head_pose = PartPose {
-        offset: ALLAY_HEAD_POSE.offset,
-        rotation: [
-            instance.render_state.head_pitch.to_radians(),
-            instance.render_state.head_yaw.to_radians(),
-            0.0,
-        ],
-    };
-    emit_textured_cubes_at_pose(
-        mesh,
-        root,
-        head_pose,
-        &ALLAY_TEXTURED_HEAD,
+    let transform = entity_model_root_transform(instance);
+    let mut model = AllayModel::new();
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Translucent),
+        transform,
         ALLAY_TEXTURE_REF,
-        uv,
-    );
-
-    // Body (child of root) tilts toward the flying pose and carries the arms and wings.
-    let body_pose = PartPose {
-        offset: ALLAY_BODY_POSE.offset,
-        rotation: [allay_body_x_rot(walk_speed), 0.0, 0.0],
-    };
-    let body_t = root * part_pose_transform(body_pose);
-    emit_textured_cubes_at_pose(
-        mesh,
-        root,
-        body_pose,
-        &ALLAY_TEXTURED_BODY,
-        ALLAY_TEXTURE_REF,
-        uv,
-    );
-
-    let arm_bob = allay_arm_idle_bob_amount(age, walk_speed);
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_RIGHT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, arm_bob],
-        },
-        &ALLAY_TEXTURED_RIGHT_ARM,
-        ALLAY_TEXTURE_REF,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_LEFT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, -arm_bob],
-        },
-        &ALLAY_TEXTURED_LEFT_ARM,
-        ALLAY_TEXTURE_REF,
-        uv,
-    );
-
-    let wing_x_rot = allay_wing_rest_x_rot(walk_speed);
-    let flap = allay_wing_flap_amount(age, walk_pos, walk_speed);
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_RIGHT_WING_POSE.offset,
-            rotation: [wing_x_rot, -ALLAY_WING_Y_ROT_BASE + flap, 0.0],
-        },
-        &ALLAY_TEXTURED_WING,
-        ALLAY_TEXTURE_REF,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_LEFT_WING_POSE.offset,
-            rotation: [wing_x_rot, ALLAY_WING_Y_ROT_BASE - flap, 0.0],
-        },
-        &ALLAY_TEXTURED_WING,
-        ALLAY_TEXTURE_REF,
-        uv,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
     );
 }
 

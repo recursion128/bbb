@@ -673,82 +673,11 @@ fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
 }
 
 fn emit_allay_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `AllayModel.setupAnim` (non-dancing, non-holding idle / flying pose): the head
-    // tracks the look angles, the wings flap on `ageInTicks` + the walk animation, the arms
-    // bob, the body tilts toward the flying pose, and the whole root bobs vertically while
-    // idle. The arms and wings hang under the body, so the body tilt carries them; the
-    // hierarchy is walked by hand. The dance pose (`isDancing`/`isSpinning`) and held-item
-    // arms are deferred entity-side state. Allay uses `LivingEntityRenderer.setupRotations`.
-    let age = instance.render_state.age_in_ticks;
-    let walk_pos = instance.render_state.walk_animation_pos;
-    let walk_speed = instance.render_state.walk_animation_speed;
-
-    // The root bobs vertically while idle (height fades out as the allay starts flying).
-    let root_pose = PartPose {
-        offset: [0.0, allay_root_y(age, walk_speed), 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    };
-    let root = entity_model_root_transform(instance) * part_pose_transform(root_pose);
-
-    // Head (child of root) tracks the look yaw/pitch.
-    let head_pose = PartPose {
-        offset: ALLAY_HEAD_POSE.offset,
-        rotation: [
-            instance.render_state.head_pitch.to_radians(),
-            instance.render_state.head_yaw.to_radians(),
-            0.0,
-        ],
-    };
-    emit_model_cubes_at_pose(mesh, root, head_pose, &ALLAY_HEAD);
-
-    // Body (child of root) tilts toward the flying pose and carries the arms and wings.
-    let body_pose = PartPose {
-        offset: ALLAY_BODY_POSE.offset,
-        rotation: [allay_body_x_rot(walk_speed), 0.0, 0.0],
-    };
-    let body_t = root * part_pose_transform(body_pose);
-    emit_model_cubes_at_pose(mesh, root, body_pose, &ALLAY_BODY);
-
-    let arm_bob = allay_arm_idle_bob_amount(age, walk_speed);
-    emit_model_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_RIGHT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, arm_bob],
-        },
-        &ALLAY_RIGHT_ARM,
-    );
-    emit_model_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_LEFT_ARM_POSE.offset,
-            rotation: [0.0, 0.0, -arm_bob],
-        },
-        &ALLAY_LEFT_ARM,
-    );
-
-    let wing_x_rot = allay_wing_rest_x_rot(walk_speed);
-    let flap = allay_wing_flap_amount(age, walk_pos, walk_speed);
-    emit_model_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_RIGHT_WING_POSE.offset,
-            rotation: [wing_x_rot, -ALLAY_WING_Y_ROT_BASE + flap, 0.0],
-        },
-        &ALLAY_WING,
-    );
-    emit_model_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: ALLAY_LEFT_WING_POSE.offset,
-            rotation: [wing_x_rot, ALLAY_WING_Y_ROT_BASE - flap, 0.0],
-        },
-        &ALLAY_WING,
-    );
+    // The unified `AllayModel` tree drives both render paths; `setup_anim` runs the vanilla
+    // `AllayModel.setupAnim` non-dancing, empty-handed idle / flying pose (root bob, head look, body
+    // flying tilt, arm idle bob, wing flap). The dance pose and held-item arms are deferred. Allay
+    // uses `LivingEntityRenderer.setupRotations`.
+    AllayModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
 }
 
 fn emit_strider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
