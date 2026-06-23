@@ -14,8 +14,7 @@ use super::mounts::{
     emit_undead_horse_model,
 };
 use super::selection::{
-    chicken_model_parts, hoglin_model_color, humanoid_model_color, piglin_model_color,
-    quadruped_model_color,
+    hoglin_model_color, humanoid_model_color, piglin_model_color, quadruped_model_color,
 };
 use super::transforms::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
@@ -56,17 +55,11 @@ fn entity_model_mesh_with_options(
         match instance.kind {
             EntityModelKind::Chicken { variant, baby } => {
                 if !skip_texture_backed_entities {
-                    // Vanilla `ChickenModel.setupAnim` swings the two legs with the
-                    // `HumanoidModel` phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` (right
-                    // leg in phase, left leg out). The chicken has no head look. The wing
-                    // flap is driven by the untracked `flap`/`flapSpeed` state (deferred).
-                    let parts = humanoid_limb_swing_parts(
-                        Cow::Borrowed(chicken_model_parts(variant, baby)),
-                        chicken_leg_part_indices(baby),
-                        instance.render_state.walk_animation_pos,
-                        instance.render_state.walk_animation_speed,
+                    ChickenModel::new(variant, baby).prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
                     );
-                    emit_model_parts(&mut mesh, &parts, entity_model_root_transform(*instance));
                 }
             }
             EntityModelKind::Pig { variant, baby } => {

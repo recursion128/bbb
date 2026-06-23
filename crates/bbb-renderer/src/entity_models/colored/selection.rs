@@ -1,5 +1,4 @@
 use super::super::catalog::*;
-use super::super::geometry::ModelPartDesc;
 use super::super::model_layers::*;
 use super::transforms::{DONKEY_SCALE, MULE_SCALE};
 
@@ -73,16 +72,5 @@ pub(super) fn llama_model_color(_family: LlamaModelFamily, variant: LlamaVariant
         LlamaVariant::White => LLAMA_WHITE,
         LlamaVariant::Brown => LLAMA_BROWN,
         LlamaVariant::Gray => LLAMA_GRAY,
-    }
-}
-
-pub(in crate::entity_models) fn chicken_model_parts(
-    variant: ChickenModelVariant,
-    baby: bool,
-) -> &'static [ModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_CHICKEN_PARTS,
-        (ChickenModelVariant::Cold, false) => &COLD_CHICKEN_PARTS,
-        (_, false) => &ADULT_CHICKEN_PARTS,
     }
 }

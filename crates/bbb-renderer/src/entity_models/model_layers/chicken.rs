@@ -1,7 +1,11 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    CHICKEN_BEAK, CHICKEN_LEG, CHICKEN_RED, CHICKEN_WHITE, CHICKEN_WING, PART_POSE_ZERO,
+    humanoid_leg_swing_pose, limb_swing_at_rest, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, CHICKEN_BEAK, CHICKEN_LEG, CHICKEN_RED,
+    CHICKEN_WHITE, CHICKEN_WING, PART_POSE_ZERO,
 };
+use crate::entity_models::catalog::ChickenModelVariant;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const ADULT_CHICKEN_BEAK: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-2.0, -4.0, -4.0],
@@ -621,3 +625,61 @@ pub(in crate::entity_models) const BABY_CHICKEN_TEXTURED_PARTS: [TexturedModelPa
         children: &[],
     },
 ];
+
+/// Selects the unified chicken part-tree pair (colored + textured) for `variant`/`baby`, mirroring the
+/// vanilla layer choice (cold chickens carry their fluff layer; babies use the squat 5-part layout).
+pub(in crate::entity_models) fn chicken_part_trees(
+    variant: ChickenModelVariant,
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    match (variant, baby) {
+        (_, true) => (&BABY_CHICKEN_PARTS, &BABY_CHICKEN_TEXTURED_PARTS),
+        (ChickenModelVariant::Cold, false) => (&COLD_CHICKEN_PARTS, &COLD_CHICKEN_TEXTURED_PARTS),
+        (_, false) => (&ADULT_CHICKEN_PARTS, &ADULT_CHICKEN_TEXTURED_PARTS),
+    }
+}
+
+/// Mutable chicken model, mirroring vanilla `ChickenModel`. The unified tree is zipped from the baked
+/// colored and textured trees for the selected `variant`/`baby` layout ([`chicken_part_trees`]).
+/// `setup_anim` swings the two legs with the `HumanoidModel` phase ([`humanoid_leg_swing_pose`], at
+/// [`chicken_leg_part_indices`]). The chicken has no head look; the wing flap is driven by the untracked
+/// `flap`/`flapSpeed` state and stays deferred.
+pub(in crate::entity_models) struct ChickenModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl ChickenModel {
+    pub(in crate::entity_models) fn new(variant: ChickenModelVariant, baby: bool) -> Self {
+        let (colored, textured) = chicken_part_trees(variant, baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for ChickenModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        if limb_swing_at_rest(render_state.walk_animation_speed) {
+            return;
+        }
+        for index in chicken_leg_part_indices(self.baby) {
+            let leg = self.root.child_at_mut(index);
+            leg.pose = humanoid_leg_swing_pose(
+                leg.pose,
+                render_state.walk_animation_pos,
+                render_state.walk_animation_speed,
+            );
+        }
+    }
+}

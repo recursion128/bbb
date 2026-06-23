@@ -27,17 +27,17 @@ use super::{
         allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
         armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot,
         bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look,
-        chicken_leg_part_indices, dolphin_wave, enderman_arm_swing_pose, enderman_carried_arm_pose,
-        enderman_leg_swing_pose, half_amplitude_leg_swing_pose, head_first_part_index,
-        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_bob_pose,
-        humanoid_arm_swing_pose, humanoid_crouch_arm_pose, humanoid_crouch_body_pose,
-        humanoid_crouch_head_pose, humanoid_crouch_leg_pose, humanoid_leg_swing_pose,
-        illager_spellcast_arm_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
-        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
-        piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
-        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
+        dolphin_wave, enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
+        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
+        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
+        hoglin_leg_swing_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose,
+        humanoid_crouch_arm_pose, humanoid_crouch_body_pose, humanoid_crouch_head_pose,
+        humanoid_crouch_leg_pose, humanoid_leg_swing_pose, illager_spellcast_arm_pose,
+        limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
+        phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, piglin_ear_flap_pose,
+        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
+        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
         sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose,
         spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
         strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
@@ -45,10 +45,10 @@ use super::{
         strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
         vex_moving_arm_z_bob, villager_head_part_index, wolf_angry_tail_pose,
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, CowModel, CreeperModel,
-        EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel, MinecartModel,
-        PigModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel,
-        WanderingTraderModel, WitchModel, ZombieModel, ADULT_CAMEL_WALK_LAYOUT,
+        zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
+        CreeperModel, EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel,
+        MinecartModel, PigModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel,
+        SnowGolemModel, WanderingTraderModel, WitchModel, ZombieModel, ADULT_CAMEL_WALK_LAYOUT,
         ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
         ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
         ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
@@ -486,26 +486,20 @@ fn emit_chicken_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `ChickenModel.setupAnim` swings the two legs with the `HumanoidModel`
-    // phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed` (right leg in phase, left out). The
-    // chicken has no head look; its wing flap is driven by the untracked `flap`/
-    // `flapSpeed` state (deferred). Every pass shares the body-layer part layout.
+    // The unified `ChickenModel` tree drives both render paths; `setup_anim` swings the two legs once.
+    // The chicken has no head look; its wing flap is driven by the untracked `flap`/`flapSpeed` state.
     let transform = entity_model_root_transform(instance);
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    let leg_indices = chicken_leg_part_indices(baby);
+    let mut model = ChickenModel::new(variant, baby);
+    model.prepare(&instance);
     for pass in chicken_textured_layer_passes(variant, baby) {
-        if legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            for index in leg_indices {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }

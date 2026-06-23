@@ -93,19 +93,19 @@ fn chicken_model_parts_match_vanilla_26_1_layers() {
     );
 
     assert_eq!(
-        chicken_model_parts(ChickenModelVariant::Temperate, false),
+        chicken_part_trees(ChickenModelVariant::Temperate, false).0,
         ADULT_CHICKEN_PARTS.as_slice()
     );
     assert_eq!(
-        chicken_model_parts(ChickenModelVariant::Warm, false),
+        chicken_part_trees(ChickenModelVariant::Warm, false).0,
         ADULT_CHICKEN_PARTS.as_slice()
     );
     assert_eq!(
-        chicken_model_parts(ChickenModelVariant::Cold, false),
+        chicken_part_trees(ChickenModelVariant::Cold, false).0,
         COLD_CHICKEN_PARTS.as_slice()
     );
     assert_eq!(
-        chicken_model_parts(ChickenModelVariant::Cold, true),
+        chicken_part_trees(ChickenModelVariant::Cold, true).0,
         BABY_CHICKEN_PARTS.as_slice()
     );
 }
