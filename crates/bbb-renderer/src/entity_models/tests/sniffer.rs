@@ -80,3 +80,32 @@ fn sniffer_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(SNIFFER_NOSE, 1.0)));
 }
+
+#[test]
+fn sniffer_head_follows_look_angles() {
+    // Vanilla `SnifferModel.setupAnim` sets `head.xRot/yRot` from the plain look. The head is nested
+    // bone → body → head ([`SNIFFER_HEAD_PART_PATH`]); the emit order is body (3 cubes → [0, 72)),
+    // then the head subtree (head's 2 cubes + the ear/nose/beak children's 4 = 6 cubes → [72, 216)),
+    // then the six legs ([216, 360)). A non-zero look turns only the head subtree (the ears, nose,
+    // and beak ride with it); the body and legs stay at bind.
+    assert_eq!(SNIFFER_HEAD_PART_PATH, &[0, 0, 0]);
+    let base = EntityModelInstance::sniffer(931, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(35.0, -20.0)]);
+    assert_eq!(rest.vertices.len(), looking.vertices.len());
+    assert_eq!(
+        rest.vertices[..72],
+        looking.vertices[..72],
+        "the body stays at bind"
+    );
+    assert_ne!(
+        rest.vertices[72..216],
+        looking.vertices[72..216],
+        "the head, ears, nose, and beak turn with the look"
+    );
+    assert_eq!(
+        rest.vertices[216..],
+        looking.vertices[216..],
+        "the six legs stay at bind"
+    );
+}

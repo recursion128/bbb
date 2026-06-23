@@ -5,10 +5,11 @@ use super::{
 
 // Vanilla 26.1 `SnifferModel.createBodyLayer` (atlas 192×192). The mesh root holds one `bone`
 // part at `offset(0, 5, 0)` parenting the body and the six legs; `body` parents the head, which
-// parents the two ears, the nose, and the lower beak. Every `SnifferModel.setupAnim` animation —
-// the head look, the search/walk (`applyWalk`), and the dig / long-sniff / stand-up / happy /
-// scenting keyframe animations — is deferred, so the model renders at this rest pose. The
-// texture-backed path is deferred.
+// parents the two ears, the nose, and the lower beak. `setupAnim` sets `head.xRot/yRot` from the
+// plain look (reproduced through the projected look angles, the head's ear/nose/beak children
+// inheriting the turn); the search/walk (`applyWalk`) and the dig / long-sniff / stand-up / happy /
+// scenting keyframe animations are deferred, so the rest of the model renders at this rest pose.
+// The texture-backed path is deferred.
 
 // `body`: the 25×29×40 trunk, a 25×24×40 inner block inflated by `CubeDeformation(0.5)` (geometry
 // `min -= 0.5`, `size += 1`), and the 25×0×40 belly plane.
@@ -69,3 +70,8 @@ const SNIFFER_BONE_CHILDREN: [ModelPartDesc; 7] = [
 /// (`offset(0, 5, 0)`). Fifteen cubes.
 pub(in crate::entity_models) const SNIFFER_PARTS: [ModelPartDesc; 1] =
     [part([0.0, 5.0, 0.0], &[], &SNIFFER_BONE_CHILDREN)];
+
+/// Child-index path from [`SNIFFER_PARTS`] to the `head` part: bone (`0`) → `body` (child `0`) →
+/// `head` (child `0`). Used to apply the plain head look to the nested head (its ear/nose/beak
+/// children inherit the turn).
+pub(in crate::entity_models) const SNIFFER_HEAD_PART_PATH: &[usize] = &[0, 0, 0];

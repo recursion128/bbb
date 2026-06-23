@@ -1550,12 +1550,26 @@ fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
 }
 
 fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `SnifferModel` is a static nested hierarchy at rest (`bone` → body/legs, body →
-    // head → ears/nose/beak). All of `SnifferModel.setupAnim` (head look, search/walk, dig,
-    // long-sniff, stand-up, happy, scenting) is deferred, so the bind-pose part tree is emitted
-    // directly. Sniffer uses `LivingEntityRenderer.setupRotations`.
+    // Vanilla `SnifferModel` is a nested hierarchy (`bone` → body/legs, body → head →
+    // ears/nose/beak). `setupAnim` sets `head.xRot/yRot` from the plain look; the search/walk, dig,
+    // long-sniff, stand-up, happy, and scenting keyframe animations are deferred. The head is nested
+    // two levels under the root ([`SNIFFER_HEAD_PART_PATH`]), so the look is applied through
+    // [`emit_model_parts_with_head_look`]. Sniffer uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    emit_model_parts(mesh, &SNIFFER_PARTS, root);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    if head_look_at_rest(head_yaw, head_pitch) {
+        emit_model_parts(mesh, &SNIFFER_PARTS, root);
+    } else {
+        emit_model_parts_with_head_look(
+            mesh,
+            &SNIFFER_PARTS,
+            root,
+            SNIFFER_HEAD_PART_PATH,
+            head_yaw,
+            head_pitch,
+        );
+    }
 }
 
 fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

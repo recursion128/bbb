@@ -1595,11 +1595,14 @@ When an agent does any of the following, update this file in the same slice:
       baked into the colored cube exactly like the vex/illager deformed cubes — and the 25×0×40
       belly plane) and the six 7×10×8 legs; the body parents the head (13×18×11 skull + top plane)
       which parents the two 1×19×7 ears, the 13×2×9 nose pad, and the 13×12×9 lower beak — fifteen
-      cubes. Every `SnifferModel.setupAnim` animation is deferred: the head look (`head.xRot/yRot =
-      state.xRot/yRot`), the search/walk (`applyWalk`), and the dig / long-sniff / stand-up / happy
-      / scenting keyframe animations. The texture-backed path remains unsupported (this is a
-      colored-first slice; the colored debug path approximates the body with one brown tint and the
-      nose pad with a pink tint)
+      cubes. The head look (`head.xRot/yRot = state.xRot/yRot`) IS reproduced: the head is nested
+      two levels under the root (bone → body → head), so the projected look angles are applied
+      through the recursive `emit_model_parts_with_head_look` helper and the head's ear/nose/beak
+      children ride with the turn, with a test pinning that only the head subtree moves. The
+      remaining `SnifferModel.setupAnim` is deferred: the search/walk (`applyWalk`) and the dig /
+      long-sniff / stand-up / happy / scenting keyframe animations. The texture-backed path remains
+      unsupported (this is a colored-first slice; the colored debug path approximates the body with
+      one brown tint and the nose pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `142` to the
       new `EntityModelKind::Warden`, replacing the former placeholder bounds box. The static rest-pose
