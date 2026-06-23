@@ -15,7 +15,7 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // the `AgeableMobRenderer` two-model entities: `state.isBaby` (the synced `AgeableMob.DATA_BABY_ID`
 // flag) selects the baby body layer, which has its own smaller geometry and a different ear/tail
 // topology. The `isHidingInShell` visibility swap is now projected (see
-// `ADULT_ARMADILLO_ROLLED_PARTS` / `BABY_ARMADILLO_ROLLED_PARTS`): the synced
+// `adult_armadillo_rolled_root` / `baby_armadillo_rolled_root`): the synced
 // `Armadillo.ArmadilloState.SCARED` shows the shell-ball `cube` and hides the body cubes, tail,
 // and hind legs. While not hiding, the clamped head look ([`armadillo_clamped_head_look`]) is
 // reproduced on the body-nested head pivot, and the `applyWalk` leg sway rocks the body, tail, four
