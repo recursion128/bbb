@@ -304,7 +304,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Zombie { baby } => {
                 if !skip_texture_backed_entities {
-                    emit_zombie_model(&mut mesh, *instance, baby);
+                    ZombieModel::new(baby).prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::ZombieVariant { family, baby } => {
@@ -2465,27 +2469,6 @@ fn emit_humanoid_model(
             },
         );
     }
-}
-
-fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    let parts: &[ModelPartDesc] = if baby {
-        &BABY_ZOMBIE_PARTS
-    } else {
-        &ADULT_ZOMBIE_PARTS
-    };
-    let parts = humanoid_limb_swing_parts(
-        zombie_colored_head_look_parts(parts, instance, baby),
-        HUMANOID_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    let parts = zombie_arm_held_out_parts(
-        parts,
-        HUMANOID_ARM_PART_INDICES,
-        instance.render_state.is_aggressive,
-        instance.render_state.age_in_ticks,
-    );
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_zombie_variant_model(

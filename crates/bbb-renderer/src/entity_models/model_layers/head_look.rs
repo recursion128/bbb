@@ -358,6 +358,38 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
     }
 }
 
+/// Vanilla `HumanoidModel.setupAnim` leg swing only, applied to a model root's legs at `[4, 5]`
+/// ([`humanoid_leg_swing_pose`]). A no-op while at rest. Used by the zombie family, whose arms are
+/// overridden with the held-out [`apply_zombie_arms_held_out`] pose instead of the humanoid arm swing.
+pub(in crate::entity_models) fn apply_humanoid_leg_swing(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    for index in [4, 5] {
+        let leg = root.child_at_mut(index);
+        leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
+    }
+}
+
+/// Vanilla `ZombieModel.setupAnim` held-out arm override applied to a model root's arms at `[2, 3]`
+/// ([`zombie_arm_held_out_pose`]). The zombie family (zombie, husk, drowned, zombie villager) replaces
+/// the inherited humanoid arm swing with this aggressive/idle held-out pose, which always re-poses the
+/// arms (the idle bob folded in advances every frame).
+pub(in crate::entity_models) fn apply_zombie_arms_held_out(
+    root: &mut ModelPart,
+    aggressive: bool,
+    age_in_ticks: f32,
+) {
+    for index in [2, 3] {
+        let arm = root.child_at_mut(index);
+        arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
+    }
+}
+
 /// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) head drop: `head.y += 4.2`, so the
 /// sneaking head sinks with the lowered body. Applied after the look/swing/bob.
 pub(in crate::entity_models) fn humanoid_crouch_head_pose(base: PartPose) -> PartPose {

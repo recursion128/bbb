@@ -49,13 +49,14 @@ use super::{
         zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, CreeperModel,
         EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel, MinecartModel,
         RavagerModel, SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel,
-        WanderingTraderModel, WitchModel, ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX,
-        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
-        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
-        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
-        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_CAMEL_WALK_LAYOUT, BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING,
-        BAT_HEAD_POSE, BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
+        WanderingTraderModel, WitchModel, ZombieModel, ADULT_CAMEL_WALK_LAYOUT,
+        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
+        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
+        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
+        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
+        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
+        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
         BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
         BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
@@ -2609,20 +2610,22 @@ fn emit_zombie_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Mirrors the colored `emit_zombie_model`: vanilla `HumanoidModel.setupAnim` runs the head
-    // look and the leg swing, then `ZombieModel` overrides the arms with the held-out
-    // `animateZombieArms` pose (`zombie_arm_held_out_pose`). The baby layer's head is part 1
-    // (the body is part 0); the adult head is part 0.
-    let head_index = if baby { 1 } else { 0 };
+    // The unified `ZombieModel` tree drives both render paths; `setup_anim` looks the head, runs the
+    // humanoid leg swing, then overrides the arms with the held-out `animateZombieArms` pose.
     let transform = entity_model_root_transform(instance);
-    emit_zombie_family_textured_passes(
-        meshes,
-        zombie_textured_layer_passes(baby),
-        head_index,
-        transform,
-        instance,
-        atlas,
-    );
+    let mut model = ZombieModel::new(baby);
+    model.prepare(&instance);
+    for pass in zombie_textured_layer_passes(baby) {
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
+    }
 }
 
 fn emit_husk_textured_model(

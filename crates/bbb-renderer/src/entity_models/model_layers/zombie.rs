@@ -1,7 +1,10 @@
 use super::{
+    apply_head_look, apply_humanoid_leg_swing, apply_zombie_arms_held_out, zombie_head_part_index,
     ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
     PART_POSE_ZERO,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE: &str = "minecraft:zombie#main";
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_BABY: &str = "minecraft:zombie_baby#main";
@@ -886,3 +889,54 @@ pub(in crate::entity_models) const BABY_ZOMBIE_VILLAGER_TEXTURED_PARTS: [Texture
         &[],
     ),
 ];
+
+/// Mutable zombie model, mirroring vanilla `ZombieModel` (an `AbstractZombieModel` over `HumanoidModel`).
+/// The unified tree is zipped from the baked colored ([`ADULT_ZOMBIE_PARTS`]/[`BABY_ZOMBIE_PARTS`]) and
+/// textured ([`ADULT_ZOMBIE_TEXTURED_PARTS`]/[`BABY_ZOMBIE_TEXTURED_PARTS`]) trees for the selected
+/// `baby` layout. `setup_anim` looks the head ([`apply_head_look`] at [`zombie_head_part_index`]), runs
+/// the humanoid leg swing ([`apply_humanoid_leg_swing`]), then overrides the arms with the held-out
+/// `animateZombieArms` pose ([`apply_zombie_arms_held_out`], `isAggressive`-driven).
+pub(in crate::entity_models) struct ZombieModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl ZombieModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let root = if baby {
+            ModelPart::root_from_descs(&BABY_ZOMBIE_PARTS, &BABY_ZOMBIE_TEXTURED_PARTS)
+        } else {
+            ModelPart::root_from_descs(&ADULT_ZOMBIE_PARTS, &ADULT_ZOMBIE_TEXTURED_PARTS)
+        };
+        Self { root, baby }
+    }
+}
+
+impl EntityModel for ZombieModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(zombie_head_part_index(self.baby)),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_humanoid_leg_swing(
+            &mut self.root,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+        apply_zombie_arms_held_out(
+            &mut self.root,
+            render_state.is_aggressive,
+            render_state.age_in_ticks,
+        );
+    }
+}
