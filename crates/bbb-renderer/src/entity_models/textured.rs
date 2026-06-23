@@ -41,10 +41,10 @@ use super::{
         vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
         wolf_tail_swing_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
         CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel,
-        IllagerModel, IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PiglinModel,
-        PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel,
-        SnowGolemModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
-        ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PigModel,
+        PiglinModel, PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SilverfishModel,
+        SkeletonModel, SnowGolemModel, VillagerModel, WanderingTraderModel, WitchModel,
+        ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
         ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
         ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
@@ -1971,26 +1971,11 @@ fn emit_dolphin_textured_model(
     );
 }
 
-/// The four leg part indices in the llama body layers, matching the colored
-/// `emit_llama_model`: the adult layer lists head/body at `0`/`1` then legs at
-/// `[2, 3, 4, 5]`; the chest layer inserts the two chests at `2`/`3`, pushing legs to
-/// `[4, 5, 6, 7]`; the baby layer lists the head at `0`, legs at `[1, 2, 3, 4]`, body
-/// last. [`quadruped_leg_swing_pose`] resolves each leg's phase from its offset.
-fn llama_leg_part_indices(baby: bool, has_chest: bool) -> [usize; 4] {
-    if baby {
-        [1, 2, 3, 4]
-    } else if has_chest {
-        [4, 5, 6, 7]
-    } else {
-        [2, 3, 4, 5]
-    }
-}
-
-/// The textured llama base layer. The trader llama shares this geometry/texture; its
-/// distinguishing `LlamaDecorLayer` overlay is a deferred equipment layer, so `family`
-/// is not consumed here. Vanilla `LlamaModel.setupAnim` is the standard
-/// `QuadrupedModel` head look plus the diagonal leg swing, both handled by
-/// [`emit_quadruped_textured_passes`]; the head is part `0` in every layout.
+/// The textured llama base layer. The trader llama shares this geometry/texture; its distinguishing
+/// `LlamaDecorLayer` overlay is a deferred equipment layer, so `family` is not consumed here. The
+/// unified `LlamaModel` tree drives both render paths; `setup_anim` is the standard `QuadrupedModel`
+/// head look plus the diagonal leg swing. `new` selects the baby / adult / chested tree; the variant
+/// chooses the texture.
 fn emit_llama_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1999,57 +1984,18 @@ fn emit_llama_textured_model(
     has_chest: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_quadruped_textured_passes(
-        meshes,
-        llama_textured_layer_passes(variant, baby, has_chest),
-        0,
-        llama_leg_part_indices(baby, has_chest),
-        entity_model_root_transform(instance),
-        instance,
-        atlas,
-    );
-}
-
-/// Emits a quadruped's textured layer passes, applying the vanilla
-/// `QuadrupedModel.setupAnim` head look ([`head_look_pose`]) to the head part at
-/// `head_index` and the leg swing ([`quadruped_leg_swing_pose`]) to the four leg
-/// parts at `leg_indices`. The static parts are reused unchanged while both the
-/// head is level/aligned and the legs are at rest.
-#[allow(clippy::too_many_arguments)]
-fn emit_quadruped_textured_passes(
-    meshes: &mut EntityModelTexturedMeshes,
-    passes: Vec<EntityModelLayerPass>,
-    head_index: usize,
-    leg_indices: [usize; 4],
-    transform: Mat4,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    for pass in passes {
-        if head_resting && legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-                }
-            }
-            if !legs_resting {
-                for index in leg_indices {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose =
-                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+    let transform = entity_model_root_transform(instance);
+    let mut model = LlamaModel::new(baby, has_chest);
+    model.prepare(&instance);
+    for pass in llama_textured_layer_passes(variant, baby, has_chest) {
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }

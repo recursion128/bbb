@@ -1,7 +1,9 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    LLAMA_CREAMY,
+    apply_head_look, apply_quadruped_leg_swing, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, LLAMA_CREAMY,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const ADULT_LLAMA_HEAD: [ModelCubeDesc; 4] = [
     ModelCubeDesc {
@@ -463,3 +465,81 @@ pub(in crate::entity_models) const BABY_LLAMA_TEXTURED_PARTS: [TexturedModelPart
         children: &[],
     },
 ];
+
+/// The four leg part indices in the llama body layers. The adult layer lists head/body at `0`/`1`
+/// then the legs at `[2, 3, 4, 5]`; the chest layer inserts the two chest parts at `2`/`3`, pushing
+/// the legs to `[4, 5, 6, 7]`; the baby layer lists the head at `0`, the legs at `[1, 2, 3, 4]`, and
+/// the body last. [`quadruped_leg_swing_pose`] resolves each leg's phase from its offset.
+fn llama_leg_part_indices(baby: bool, has_chest: bool) -> [usize; 4] {
+    if baby {
+        [1, 2, 3, 4]
+    } else if has_chest {
+        [4, 5, 6, 7]
+    } else {
+        [2, 3, 4, 5]
+    }
+}
+
+/// Selects the colored and textured const trees for a llama by `baby`/`has_chest`: the baby layer,
+/// the adult layer, or the adult layer with the two cargo-chest parts. Zipped into the unified tree
+/// by [`LlamaModel::new`].
+pub(in crate::entity_models) fn llama_part_trees(
+    baby: bool,
+    has_chest: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&BABY_LLAMA_PARTS, &BABY_LLAMA_TEXTURED_PARTS)
+    } else if has_chest {
+        (
+            &ADULT_LLAMA_PARTS_WITH_CHEST,
+            &ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST,
+        )
+    } else {
+        (&ADULT_LLAMA_PARTS, &ADULT_LLAMA_TEXTURED_PARTS)
+    }
+}
+
+/// Mutable llama model, mirroring vanilla `LlamaModel` (a `QuadrupedModel`, shared by the trader
+/// llama). The unified tree is selected by `baby`/`has_chest` ([`llama_part_trees`]). `setup_anim`
+/// looks the head (part `0`, [`apply_head_look`]) and swings the four legs at the standard quadruped
+/// diagonal phase ([`apply_quadruped_leg_swing`]). The family/variant choose only the recolor (the
+/// colored fallback) or the texture (the textured path); the chest visibility rides the tree choice.
+pub(in crate::entity_models) struct LlamaModel {
+    root: ModelPart,
+    leg_indices: [usize; 4],
+}
+
+impl LlamaModel {
+    pub(in crate::entity_models) fn new(baby: bool, has_chest: bool) -> Self {
+        let (colored, textured) = llama_part_trees(baby, has_chest);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            leg_indices: llama_leg_part_indices(baby, has_chest),
+        }
+    }
+}
+
+impl EntityModel for LlamaModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(0),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_quadruped_leg_swing(
+            &mut self.root,
+            self.leg_indices,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+    }
+}
