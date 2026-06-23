@@ -1,107 +1,86 @@
 use super::*;
 use crate::entity_models::model::EntityModel;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn feline_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `AdultFelineModel.createBodyMesh(NONE)` (atlas 64×32): eight flat root parts — head,
-    // body, two tail segments, and four legs.
-    assert_eq!(FELINE_PARTS.len(), 8);
+    // Vanilla `AdultFelineModel.createBodyMesh(NONE)` (atlas 64×32): eight flat named root parts —
+    // head, body, two tail segments, and four legs.
 
     // `head` (offset (0, 15, -9)): the 5×4×5 skull, the 3×2×2 nose, and the two 1×1×2 ears.
-    let head = &FELINE_PARTS[0];
-    assert_eq!(head.pose.offset, [0.0, 15.0, -9.0]);
-    assert_eq!(head.cubes.len(), 4);
-    assert_eq!(head.cubes[0].min, [-2.5, -2.0, -3.0]);
-    assert_eq!(head.cubes[0].size, [5.0, 4.0, 5.0]);
-    assert_eq!(head.cubes[1].min, [-1.5, -0.001, -4.0]);
-    assert_eq!(head.cubes[1].size, [3.0, 2.0, 2.0]);
-    assert_eq!(head.cubes[2].min, [-2.0, -3.0, 0.0]);
-    assert_eq!(head.cubes[3].min, [1.0, -3.0, 0.0]);
+    assert_eq!(FELINE_HEAD_POSE.offset, [0.0, 15.0, -9.0]);
+    assert_eq!(FELINE_HEAD_CUBES.len(), 4);
+    assert_eq!(FELINE_HEAD_CUBES[0].min, [-2.5, -2.0, -3.0]);
+    assert_eq!(FELINE_HEAD_CUBES[0].size, [5.0, 4.0, 5.0]);
+    assert_eq!(FELINE_HEAD_CUBES[1].min, [-1.5, -0.001, -4.0]);
+    assert_eq!(FELINE_HEAD_CUBES[1].size, [3.0, 2.0, 2.0]);
+    assert_eq!(FELINE_HEAD_CUBES[2].min, [-2.0, -3.0, 0.0]);
+    assert_eq!(FELINE_HEAD_CUBES[3].min, [1.0, -3.0, 0.0]);
 
     // `body` (offset (0, 12, -10), pitched π/2): the 4×16×6 trunk.
-    let body = &FELINE_PARTS[1];
-    assert_eq!(body.pose.offset, [0.0, 12.0, -10.0]);
-    assert_eq!(body.pose.rotation, [std::f32::consts::FRAC_PI_2, 0.0, 0.0]);
-    assert_eq!(body.cubes[0].min, [-2.0, 3.0, -8.0]);
-    assert_eq!(body.cubes[0].size, [4.0, 16.0, 6.0]);
+    assert_eq!(FELINE_BODY_POSE.offset, [0.0, 12.0, -10.0]);
+    assert_eq!(
+        FELINE_BODY_POSE.rotation,
+        [std::f32::consts::FRAC_PI_2, 0.0, 0.0]
+    );
+    assert_eq!(FELINE_BODY_CUBES[0].min, [-2.0, 3.0, -8.0]);
+    assert_eq!(FELINE_BODY_CUBES[0].size, [4.0, 16.0, 6.0]);
 
     // `tail1` (offset (0, 15, 8), pitched 0.9): the upper 1×8×1 segment.
-    let tail1 = &FELINE_PARTS[2];
-    assert_eq!(tail1.pose.offset, [0.0, 15.0, 8.0]);
-    assert_eq!(tail1.pose.rotation, [0.9, 0.0, 0.0]);
-    assert_eq!(tail1.cubes[0].size, [1.0, 8.0, 1.0]);
+    assert_eq!(FELINE_TAIL1_POSE.offset, [0.0, 15.0, 8.0]);
+    assert_eq!(FELINE_TAIL1_POSE.rotation, [0.9, 0.0, 0.0]);
+    assert_eq!(FELINE_TAIL1_CUBES[0].size, [1.0, 8.0, 1.0]);
 
     // `tail2` (offset (0, 20, 14)): the lower segment, deflated by the vanilla `CubeDeformation(-0.02)`.
-    let tail2 = &FELINE_PARTS[3];
-    assert_eq!(tail2.pose.offset, [0.0, 20.0, 14.0]);
-    assert_eq!(tail2.pose.rotation, [0.0, 0.0, 0.0]);
-    assert_eq!(tail2.cubes[0].min, [-0.48, 0.02, 0.02]);
-    assert_eq!(tail2.cubes[0].size, [0.96, 7.96, 0.96]);
+    assert_eq!(FELINE_TAIL2_POSE.offset, [0.0, 20.0, 14.0]);
+    assert_eq!(FELINE_TAIL2_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_eq!(FELINE_TAIL2_CUBES[0].min, [-0.48, 0.02, 0.02]);
+    assert_eq!(FELINE_TAIL2_CUBES[0].size, [0.96, 7.96, 0.96]);
 
     // The four legs: hind (2×6×2) at z=5, front (2×10×2) at z=-5, mirrored on X.
-    assert_eq!(FELINE_PARTS[4].pose.offset, [1.1, 18.0, 5.0]);
-    assert_eq!(FELINE_PARTS[5].pose.offset, [-1.1, 18.0, 5.0]);
-    assert_eq!(FELINE_PARTS[4].cubes[0].size, [2.0, 6.0, 2.0]);
-    assert_eq!(FELINE_PARTS[6].pose.offset, [1.2, 14.1, -5.0]);
-    assert_eq!(FELINE_PARTS[7].pose.offset, [-1.2, 14.1, -5.0]);
-    assert_eq!(FELINE_PARTS[6].cubes[0].size, [2.0, 10.0, 2.0]);
-
-    // Eleven cubes (head 4, body 1, two tail segments, four legs).
-    assert_eq!(count_cubes(&FELINE_PARTS), 11);
+    assert_eq!(FELINE_LEFT_HIND_LEG_POSE.offset, [1.1, 18.0, 5.0]);
+    assert_eq!(FELINE_RIGHT_HIND_LEG_POSE.offset, [-1.1, 18.0, 5.0]);
+    assert_eq!(FELINE_HIND_LEG_CUBES[0].size, [2.0, 6.0, 2.0]);
+    assert_eq!(FELINE_LEFT_FRONT_LEG_POSE.offset, [1.2, 14.1, -5.0]);
+    assert_eq!(FELINE_RIGHT_FRONT_LEG_POSE.offset, [-1.2, 14.1, -5.0]);
+    assert_eq!(FELINE_FRONT_LEG_CUBES[0].size, [2.0, 10.0, 2.0]);
 }
 
 #[test]
 fn baby_feline_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `BabyFelineModel.createBodyMesh` (atlas 32×32): eight flat root parts in a flatter,
-    // all-upright layout — head, three legs, body, the fourth leg, then the two tail segments.
-    assert_eq!(BABY_FELINE_PARTS.len(), 8);
+    // Vanilla `BabyFelineModel.createBodyMesh` (atlas 32×32): eight flat named root parts in a
+    // flatter, all-upright layout — head, three legs, body, the fourth leg, then the two tail segments.
 
     // `head` (offset (0, 20, -3.125)): the 5×4×4 skull, two 1×1×2 ears, and a 3×2×1 nose.
-    let head = &BABY_FELINE_PARTS[0];
-    assert_eq!(head.pose.offset, [0.0, 20.0, -3.125]);
-    assert_eq!(head.cubes.len(), 4);
-    assert_eq!(head.cubes[0].min, [-2.5, -3.0, -2.875]);
-    assert_eq!(head.cubes[0].size, [5.0, 4.0, 4.0]);
-    assert_eq!(head.cubes[1].min, [-2.0, -4.0, -0.875]);
-    assert_eq!(head.cubes[2].min, [1.0, -4.0, -0.875]);
-    assert_eq!(head.cubes[3].min, [-1.5, -1.0, -3.875]);
-    assert_eq!(head.cubes[3].size, [3.0, 2.0, 1.0]);
+    assert_eq!(BABY_FELINE_HEAD_POSE.offset, [0.0, 20.0, -3.125]);
+    assert_eq!(BABY_FELINE_HEAD_CUBES.len(), 4);
+    assert_eq!(BABY_FELINE_HEAD_CUBES[0].min, [-2.5, -3.0, -2.875]);
+    assert_eq!(BABY_FELINE_HEAD_CUBES[0].size, [5.0, 4.0, 4.0]);
+    assert_eq!(BABY_FELINE_HEAD_CUBES[1].min, [-2.0, -4.0, -0.875]);
+    assert_eq!(BABY_FELINE_HEAD_CUBES[2].min, [1.0, -4.0, -0.875]);
+    assert_eq!(BABY_FELINE_HEAD_CUBES[3].min, [-1.5, -1.0, -3.875]);
+    assert_eq!(BABY_FELINE_HEAD_CUBES[3].size, [3.0, 2.0, 1.0]);
 
     // The four 1×2×2 legs (shared box): left/right front at z=-1.5, left/right hind at z=2.5.
-    assert_eq!(BABY_FELINE_PARTS[1].pose.offset, [1.0, 22.0, -1.5]);
-    assert_eq!(BABY_FELINE_PARTS[2].pose.offset, [-1.0, 22.0, -1.5]);
-    assert_eq!(BABY_FELINE_PARTS[3].pose.offset, [1.0, 22.0, 2.5]);
-    assert_eq!(BABY_FELINE_PARTS[5].pose.offset, [-1.0, 22.0, 2.5]);
-    assert_eq!(BABY_FELINE_PARTS[1].cubes[0].min, [-0.5, 0.0, -1.0]);
-    assert_eq!(BABY_FELINE_PARTS[1].cubes[0].size, [1.0, 2.0, 2.0]);
+    assert_eq!(BABY_FELINE_LEFT_FRONT_LEG_POSE.offset, [1.0, 22.0, -1.5]);
+    assert_eq!(BABY_FELINE_RIGHT_FRONT_LEG_POSE.offset, [-1.0, 22.0, -1.5]);
+    assert_eq!(BABY_FELINE_LEFT_HIND_LEG_POSE.offset, [1.0, 22.0, 2.5]);
+    assert_eq!(BABY_FELINE_RIGHT_HIND_LEG_POSE.offset, [-1.0, 22.0, 2.5]);
+    assert_eq!(BABY_FELINE_LEG_CUBES[0].min, [-0.5, 0.0, -1.0]);
+    assert_eq!(BABY_FELINE_LEG_CUBES[0].size, [1.0, 2.0, 2.0]);
 
     // `body` (offset (0, 20.5, 0.5)): the 4×3×7 trunk, upright (no pitch).
-    let body = &BABY_FELINE_PARTS[4];
-    assert_eq!(body.pose.offset, [0.0, 20.5, 0.5]);
-    assert_eq!(body.pose.rotation, [0.0, 0.0, 0.0]);
-    assert_eq!(body.cubes[0].min, [-2.0, -1.5, -3.5]);
-    assert_eq!(body.cubes[0].size, [4.0, 3.0, 7.0]);
+    assert_eq!(BABY_FELINE_BODY_POSE.offset, [0.0, 20.5, 0.5]);
+    assert_eq!(BABY_FELINE_BODY_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_eq!(BABY_FELINE_BODY_CUBES[0].min, [-2.0, -1.5, -3.5]);
+    assert_eq!(BABY_FELINE_BODY_CUBES[0].size, [4.0, 3.0, 7.0]);
 
     // `tail1` (offset (0, 19.107, 3.9151), pitched -0.567232): the single 1×1×5 segment.
-    let tail1 = &BABY_FELINE_PARTS[6];
-    assert_eq!(tail1.pose.offset, [0.0, 19.107, 3.9151]);
-    assert_eq!(tail1.pose.rotation, [-0.567232, 0.0, 0.0]);
-    assert_eq!(tail1.cubes[0].size, [1.0, 1.0, 5.0]);
+    assert_eq!(BABY_FELINE_TAIL1_POSE.offset, [0.0, 19.107, 3.9151]);
+    assert_eq!(BABY_FELINE_TAIL1_POSE.rotation, [-0.567232, 0.0, 0.0]);
+    assert_eq!(BABY_FELINE_TAIL1_CUBES[0].size, [1.0, 1.0, 5.0]);
 
     // `tail2` (PartPose.ZERO): a cubeless pivot.
-    let tail2 = &BABY_FELINE_PARTS[7];
-    assert_eq!(tail2.pose.offset, [0.0, 0.0, 0.0]);
-    assert!(tail2.cubes.is_empty());
-
-    // Ten cubes (head 4, four legs, body 1, tail1 1; tail2 cubeless).
-    assert_eq!(count_cubes(&BABY_FELINE_PARTS), 10);
+    assert_eq!(BABY_FELINE_TAIL2_POSE.offset, [0.0, 0.0, 0.0]);
 }
 
 #[test]
@@ -232,8 +211,8 @@ fn feline_standing_drops_the_lower_tail() {
         false,
         false,
     ));
-    assert!((model.root_mut().child_at_mut(3).pose.rotation[0] - 1.7278761).abs() < 1.0e-6);
-    assert_eq!(model.root_mut().child_at_mut(2).pose.rotation[0], 0.9);
+    assert!((model.root_mut().child_mut("tail2").pose.rotation[0] - 1.7278761).abs() < 1.0e-6);
+    assert_eq!(model.root_mut().child_mut("tail1").pose.rotation[0], 0.9);
 }
 
 #[test]
