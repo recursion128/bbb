@@ -1,8 +1,11 @@
 use super::super::keyframe::{
-    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation,
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_walk_sample, pos_vec,
+    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
+    Keyframe, KeyframeInterpolation,
 };
 use super::{bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, CREAKING_BARK};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `CreakingModel.createBodyLayer` (atlas 64×64). The mesh root holds one `root` part
 // at `offset(0, 24, 0)` parenting `upper_body` and the two legs; `upper_body` (an empty pivot)
@@ -214,3 +217,72 @@ pub(in crate::entity_models) const CREAKING_WALK: AnimationDefinition = Animatio
     looping: true,
     bones: &CREAKING_WALK_BONES,
 };
+
+/// Mutable creaking model, mirroring vanilla `CreakingModel`. The cubeless `root` part (parenting
+/// the empty `upper_body` pivot and the two legs; `upper_body` parents head, body, and two arms)
+/// hangs off a synthetic root, built from the baked [`CREAKING_PARTS`] geometry. Colored-only:
+/// `setup_anim` sets the head look, then adds the looping `CREAKING_WALK` cycle onto the upper body,
+/// head, arms, and legs (the attack / invulnerable / death keyframes stay deferred).
+pub(in crate::entity_models) struct CreakingModel {
+    root: ModelPart,
+}
+
+impl CreakingModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(&CREAKING_PARTS),
+        }
+    }
+}
+
+impl EntityModel for CreakingModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `CreakingModel.setupAnim` sets `head.xRot/yRot` from the plain look, then (while
+        // `canMove`) runs `applyWalk(walkAnimationPos, walkAnimationSpeed, 1, 1)`. The `canMove`
+        // freeze is un-projected, but a frozen creaking has walk speed ≈ 0 so the amplitude already
+        // collapses to rest. The walk offsets the upper body (rotation), head (ADDING onto the look),
+        // arms, and legs; the body holds.
+        let head_pitch = instance.render_state.head_pitch.to_radians();
+        let head_yaw = instance.render_state.head_yaw.to_radians();
+        let (seconds, scale) = keyframe_walk_sample(
+            &CREAKING_WALK,
+            instance.render_state.walk_animation_pos,
+            instance.render_state.walk_animation_speed,
+            1.0,
+            1.0,
+        );
+        let animate = |part: &mut ModelPart, bone: &str| {
+            let (position, rotation) = sample_bone_offsets(&CREAKING_WALK, bone, seconds, scale);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+        };
+
+        let creaking_root = self.root.child_at_mut(0);
+        {
+            let upper_body = creaking_root.child_at_mut(0);
+            animate(upper_body, "upper_body");
+
+            // head: the look (set) plus the walk rotation (added); the walk has no head position.
+            let head = upper_body.child_at_mut(0);
+            let (_, head_walk_rot) = sample_bone_offsets(&CREAKING_WALK, "head", seconds, scale);
+            head.pose.rotation = [
+                head_pitch + head_walk_rot[0],
+                head_yaw + head_walk_rot[1],
+                head.pose.rotation[2] + head_walk_rot[2],
+            ];
+
+            // body (child 1) holds; the two arms take the walk rotation.
+            animate(upper_body.child_at_mut(2), "right_arm");
+            animate(upper_body.child_at_mut(3), "left_arm");
+        }
+        animate(creaking_root.child_at_mut(1), "left_leg");
+        animate(creaking_root.child_at_mut(2), "right_leg");
+    }
+}
