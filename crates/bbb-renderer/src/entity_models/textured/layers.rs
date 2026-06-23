@@ -132,7 +132,7 @@ pub(in crate::entity_models) fn pig_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: pig_model_layer(variant, baby),
         texture: pig_texture_ref(variant, baby),
-        parts: pig_textured_model_parts(variant, baby),
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1120,17 +1120,6 @@ fn pig_model_layer(variant: PigModelVariant, baby: bool) -> &'static str {
         (_, true) => MODEL_LAYER_PIG_BABY,
         (PigModelVariant::Cold, false) => MODEL_LAYER_COLD_PIG,
         (_, false) => MODEL_LAYER_PIG,
-    }
-}
-
-fn pig_textured_model_parts(
-    variant: PigModelVariant,
-    baby: bool,
-) -> &'static [TexturedModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_PIG_TEXTURED_PARTS,
-        (PigModelVariant::Cold, false) => &COLD_PIG_TEXTURED_PARTS,
-        (_, false) => &ADULT_PIG_TEXTURED_PARTS,
     }
 }
 

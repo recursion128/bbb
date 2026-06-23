@@ -1,129 +1,80 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn pig_adult_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`.
     assert_eq!(
         ADULT_PIG_HEAD,
         [
-            ModelCubeDesc {
-                min: [-4.0, -4.0, -8.0],
-                size: [8.0, 8.0, 8.0],
-                color: PIG_PINK,
-            },
-            ModelCubeDesc {
-                min: [-2.0, 0.0, -9.0],
-                size: [4.0, 3.0, 1.0],
-                color: PIG_PINK,
-            },
+            ModelCube::new(
+                [-4.0, -4.0, -8.0],
+                [8.0, 8.0, 8.0],
+                PIG_PINK,
+                [8.0, 8.0, 8.0],
+                [0.0, 0.0],
+                false,
+            ),
+            ModelCube::new(
+                [-2.0, 0.0, -9.0],
+                [4.0, 3.0, 1.0],
+                PIG_PINK,
+                [4.0, 3.0, 1.0],
+                [16.0, 16.0],
+                false,
+            ),
         ]
     );
     assert_eq!(
         ADULT_PIG_BODY[0],
-        ModelCubeDesc {
-            min: [-5.0, -10.0, -7.0],
-            size: [10.0, 16.0, 8.0],
-            color: PIG_PINK,
-        }
+        ModelCube::new(
+            [-5.0, -10.0, -7.0],
+            [10.0, 16.0, 8.0],
+            PIG_PINK,
+            [10.0, 16.0, 8.0],
+            [28.0, 8.0],
+            false,
+        )
     );
     assert_eq!(
         ADULT_PIG_LEG[0],
-        ModelCubeDesc {
-            min: [-2.0, 0.0, -2.0],
-            size: [4.0, 6.0, 4.0],
-            color: PIG_PINK,
-        }
+        ModelCube::new(
+            [-2.0, 0.0, -2.0],
+            [4.0, 6.0, 4.0],
+            PIG_PINK,
+            [4.0, 6.0, 4.0],
+            [0.0, 16.0],
+            false,
+        )
     );
-
-    assert_eq!(ADULT_PIG_PARTS.len(), 6);
-    assert_part(
-        &ADULT_PIG_PARTS[0],
-        [0.0, 12.0, -6.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIG_HEAD.as_slice(),
-    );
-    assert_part(
-        &ADULT_PIG_PARTS[1],
-        [0.0, 11.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_PIG_BODY.as_slice(),
-    );
-
-    for (part, expected_offset) in ADULT_PIG_PARTS[2..].iter().zip([
-        [-3.0, 18.0, 7.0],
-        [3.0, 18.0, 7.0],
-        [-3.0, 18.0, -5.0],
-        [3.0, 18.0, -5.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            ADULT_PIG_LEG.as_slice(),
-        );
-    }
 }
 
 #[test]
 fn pig_cold_adult_model_parts_match_vanilla_26_1_body_layer() {
+    // The cold body's second cube inflates the geometry (colored 11×17×9) while the textured
+    // `uv_size` keeps the base 10×16×8 (the squid body precedent).
     assert_eq!(
         COLD_PIG_BODY,
         [
-            ModelCubeDesc {
-                min: [-5.0, -10.0, -7.0],
-                size: [10.0, 16.0, 8.0],
-                color: PIG_PINK,
-            },
-            ModelCubeDesc {
-                min: [-5.5, -10.5, -7.5],
-                size: [11.0, 17.0, 9.0],
-                color: PIG_COLD_FUR,
-            },
+            ModelCube::new(
+                [-5.0, -10.0, -7.0],
+                [10.0, 16.0, 8.0],
+                PIG_PINK,
+                [10.0, 16.0, 8.0],
+                [28.0, 8.0],
+                false,
+            ),
+            ModelCube::new(
+                [-5.5, -10.5, -7.5],
+                [11.0, 17.0, 9.0],
+                PIG_COLD_FUR,
+                [10.0, 16.0, 8.0],
+                [28.0, 32.0],
+                false,
+            ),
         ]
-    );
-
-    assert_eq!(COLD_PIG_PARTS.len(), 6);
-    assert_part(
-        &COLD_PIG_PARTS[0],
-        [0.0, 12.0, -6.0],
-        [0.0, 0.0, 0.0],
-        ADULT_PIG_HEAD.as_slice(),
-    );
-    assert_part(
-        &COLD_PIG_PARTS[1],
-        [0.0, 11.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        COLD_PIG_BODY.as_slice(),
-    );
-
-    for (part, expected_offset) in COLD_PIG_PARTS[2..].iter().zip([
-        [-3.0, 18.0, 7.0],
-        [3.0, 18.0, 7.0],
-        [-3.0, 18.0, -5.0],
-        [3.0, 18.0, -5.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            ADULT_PIG_LEG.as_slice(),
-        );
-    }
-
-    assert_eq!(
-        pig_part_trees(PigModelVariant::Temperate, false).0,
-        ADULT_PIG_PARTS.as_slice()
-    );
-    assert_eq!(
-        pig_part_trees(PigModelVariant::Warm, false).0,
-        ADULT_PIG_PARTS.as_slice()
-    );
-    assert_eq!(
-        pig_part_trees(PigModelVariant::Cold, false).0,
-        COLD_PIG_PARTS.as_slice()
-    );
-    assert_eq!(
-        pig_part_trees(PigModelVariant::Cold, true).0,
-        BABY_PIG_PARTS.as_slice()
     );
 }
 
@@ -173,63 +124,42 @@ fn pig_cold_adult_model_mesh_uses_vanilla_cold_body_layer_geometry() {
 fn pig_baby_model_parts_match_vanilla_26_1_body_layer() {
     assert_eq!(
         BABY_PIG_BODY[0],
-        ModelCubeDesc {
-            min: [-3.5, -3.0, -4.5],
-            size: [7.0, 6.0, 9.0],
-            color: PIG_PINK,
-        }
+        ModelCube::new(
+            [-3.5, -3.0, -4.5],
+            [7.0, 6.0, 9.0],
+            PIG_PINK,
+            [7.0, 6.0, 9.0],
+            [0.0, 0.0],
+            false,
+        )
     );
+    // BabyPigModel bakes the deformation into the colored geometry while the UV box stays the base.
     assert_eq!(
         BABY_PIG_HEAD,
         [
-            ModelCubeDesc {
-                min: [-3.525, -5.025, -5.025],
-                size: [7.05, 6.05, 6.05],
-                color: PIG_PINK,
-            },
-            ModelCubeDesc {
-                min: [-1.515, -1.99, -6.015],
-                size: [3.03, 2.03, 1.03],
-                color: PIG_PINK,
-            },
+            ModelCube::new(
+                [-3.525, -5.025, -5.025],
+                [7.05, 6.05, 6.05],
+                PIG_PINK,
+                [7.0, 6.0, 6.0],
+                [0.0, 15.0],
+                false,
+            ),
+            ModelCube::new(
+                [-1.515, -1.99, -6.015],
+                [3.03, 2.03, 1.03],
+                PIG_PINK,
+                [3.0, 2.0, 1.0],
+                [6.0, 27.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(
-        BABY_PIG_LEG[0],
-        ModelCubeDesc {
-            min: [-1.0, 0.0, -1.0],
-            size: [2.0, 2.0, 2.0],
-            color: PIG_PINK,
-        }
-    );
-
-    assert_eq!(BABY_PIG_PARTS.len(), 6);
-    assert_part(
-        &BABY_PIG_PARTS[0],
-        [0.0, 19.0, 0.5],
-        [0.0, 0.0, 0.0],
-        BABY_PIG_BODY.as_slice(),
-    );
-    assert_part(
-        &BABY_PIG_PARTS[1],
-        [0.0, 19.0, -2.0],
-        [0.0, 0.0, 0.0],
-        BABY_PIG_HEAD.as_slice(),
-    );
-
-    for (part, expected_offset) in BABY_PIG_PARTS[2..].iter().zip([
-        [2.5, 22.0, -3.0],
-        [-2.5, 22.0, -3.0],
-        [2.5, 22.0, 4.0],
-        [-2.5, 22.0, 4.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_PIG_LEG.as_slice(),
-        );
-    }
+    // The baby legs share one geometry but distinct per-corner UV origins.
+    assert_eq!(BABY_PIG_LEFT_FRONT_LEG[0].tex, [0.0, 0.0]);
+    assert_eq!(BABY_PIG_RIGHT_FRONT_LEG[0].tex, [23.0, 0.0]);
+    assert_eq!(BABY_PIG_LEFT_HIND_LEG[0].tex, [0.0, 4.0]);
+    assert_eq!(BABY_PIG_RIGHT_HIND_LEG[0].tex, [23.0, 4.0]);
 }
 
 #[test]
@@ -324,7 +254,7 @@ fn pig_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(temperate[0].kind, EntityModelLayerKind::PigBase);
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_PIG);
     assert_eq!(temperate[0].texture, PIG_TEMPERATE_TEXTURE_REF);
-    assert_eq!(temperate[0].parts, ADULT_PIG_TEXTURED_PARTS.as_slice());
+    assert!(temperate[0].parts.is_empty());
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (temperate[0].collector_order, temperate[0].submit_sequence),
@@ -334,60 +264,33 @@ fn pig_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let warm_baby = pig_textured_layer_passes(PigModelVariant::Warm, true);
     assert_eq!(warm_baby[0].model_layer, MODEL_LAYER_PIG_BABY);
     assert_eq!(warm_baby[0].texture, PIG_WARM_BABY_TEXTURE_REF);
-    assert_eq!(warm_baby[0].parts, BABY_PIG_TEXTURED_PARTS.as_slice());
+    assert!(warm_baby[0].parts.is_empty());
 
     let cold_adult = pig_textured_layer_passes(PigModelVariant::Cold, false);
     assert_eq!(cold_adult[0].model_layer, MODEL_LAYER_COLD_PIG);
     assert_eq!(cold_adult[0].texture, PIG_COLD_TEXTURE_REF);
-    assert_eq!(cold_adult[0].parts, COLD_PIG_TEXTURED_PARTS.as_slice());
+    assert!(cold_adult[0].parts.is_empty());
 }
 
 #[test]
 fn pig_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_PIG, "minecraft:pig#main");
     assert_eq!(MODEL_LAYER_PIG_BABY, "minecraft:pig_baby#main");
     assert_eq!(MODEL_LAYER_COLD_PIG, "minecraft:cold_pig#main");
-    assert_eq!(ADULT_PIG_TEXTURED_PARTS.len(), 6);
-    assert_eq!(COLD_PIG_TEXTURED_PARTS.len(), 6);
-    assert_eq!(BABY_PIG_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        ADULT_PIG_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -4.0, -8.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(ADULT_PIG_TEXTURED_HEAD[1].tex, [16.0, 16.0]);
-    assert_eq!(ADULT_PIG_TEXTURED_BODY[0].tex, [28.0, 8.0]);
-    assert_eq!(
-        COLD_PIG_TEXTURED_BODY[1],
-        TexturedModelCubeDesc {
-            min: [-5.5, -10.5, -7.5],
-            size: [11.0, 17.0, 9.0],
-            uv_size: [10.0, 16.0, 8.0],
-            tex: [28.0, 32.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        BABY_PIG_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-3.525, -5.025, -5.025],
-            size: [7.05, 6.05, 6.05],
-            uv_size: [7.0, 6.0, 6.0],
-            tex: [0.0, 15.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(BABY_PIG_TEXTURED_HEAD[1].tex, [6.0, 27.0]);
-    assert_eq!(BABY_PIG_TEXTURED_RIGHT_FRONT_LEG[0].tex, [23.0, 0.0]);
-    assert_eq!(BABY_PIG_TEXTURED_RIGHT_HIND_LEG[0].tex, [23.0, 4.0]);
-    assert_eq!(ADULT_PIG_TEXTURED_PARTS[0].pose, ADULT_PIG_PARTS[0].pose);
-    assert_eq!(COLD_PIG_TEXTURED_PARTS[1].pose, COLD_PIG_PARTS[1].pose);
-    assert_eq!(BABY_PIG_TEXTURED_PARTS[1].pose, BABY_PIG_PARTS[1].pose);
+    assert_eq!(ADULT_PIG_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(ADULT_PIG_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(ADULT_PIG_HEAD[1].tex, [16.0, 16.0]);
+    assert_eq!(ADULT_PIG_BODY[0].tex, [28.0, 8.0]);
+    // The cold body inflates the geometry while the UV box stays the base size.
+    assert_eq!(COLD_PIG_BODY[1].size, [11.0, 17.0, 9.0]);
+    assert_eq!(COLD_PIG_BODY[1].uv_size, [10.0, 16.0, 8.0]);
+    assert_eq!(COLD_PIG_BODY[1].tex, [28.0, 32.0]);
+    assert_eq!(BABY_PIG_HEAD[0].uv_size, [7.0, 6.0, 6.0]);
+    assert_eq!(BABY_PIG_HEAD[0].tex, [0.0, 15.0]);
+    assert_eq!(BABY_PIG_HEAD[1].tex, [6.0, 27.0]);
+    assert_eq!(BABY_PIG_RIGHT_FRONT_LEG[0].tex, [23.0, 0.0]);
+    assert_eq!(BABY_PIG_RIGHT_HIND_LEG[0].tex, [23.0, 4.0]);
 }
 
 #[test]

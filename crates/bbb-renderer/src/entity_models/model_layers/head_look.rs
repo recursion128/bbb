@@ -1,18 +1,6 @@
 use super::PartPose;
 use crate::entity_models::model::ModelPart;
 
-/// Plain `QuadrupedModel` head-part index for the pig body layer. The adult pig
-/// layer lists the head first; the baby pig layer lists the body first, so the
-/// head is second (matching the vanilla baby quadruped mesh part order, the same
-/// ordering as [`super::sheep_head_part_index`]).
-pub(in crate::entity_models) const fn pig_head_part_index(baby: bool) -> usize {
-    if baby {
-        1
-    } else {
-        0
-    }
-}
-
 /// `HumanoidModel` head-part index for the zombie family body layers (zombie,
 /// husk, drowned, and zombie villager). The adult layer lists the head first;
 /// the baby layer lists the body first, so the head is second.

@@ -2,12 +2,10 @@ use super::*;
 
 #[test]
 fn head_part_indices_match_vanilla_body_layers() {
-    // The pig adult and zombie adult layers list the head first, their baby layers
-    // list the body first (head second). The per-family part tests assert that the
-    // part at this index is the head. (The cow now builds a named-children tree, so
-    // its head look resolves the `head` child by name rather than an index.)
-    assert_eq!(pig_head_part_index(false), 0);
-    assert_eq!(pig_head_part_index(true), 1);
+    // The zombie adult layer lists the head first, its baby layer the body first
+    // (head second). The per-family part tests assert that the part at this index is
+    // the head. (The cow and pig now build named-children trees, so their head look
+    // resolves the `head` child by name rather than an index.)
     assert_eq!(zombie_head_part_index(false), 0);
     assert_eq!(zombie_head_part_index(true), 1);
     assert_eq!(piglin_head_part_index(false), 0);
