@@ -428,7 +428,12 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::PolarBear { baby } => {
                 if !skip_texture_backed_entities {
-                    emit_polar_bear_model(&mut mesh, *instance, baby);
+                    let transform = if baby {
+                        entity_model_root_transform(*instance)
+                    } else {
+                        polar_bear_model_root_transform(*instance)
+                    };
+                    PolarBearModel::new(baby).prepare_and_render(&mut mesh, instance, transform);
                 }
             }
             EntityModelKind::Quadruped { family, baby } => {
@@ -3239,51 +3244,6 @@ fn wolf_leg_part_indices(baby: bool) -> [usize; 4] {
     } else {
         [3, 4, 5, 6]
     }
-}
-
-fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    let transform = if baby {
-        entity_model_root_transform(instance)
-    } else {
-        polar_bear_model_root_transform(instance)
-    };
-    let static_parts: &[ModelPartDesc] = if baby {
-        &BABY_POLAR_BEAR_PARTS
-    } else {
-        &ADULT_POLAR_BEAR_PARTS
-    };
-    let stand_scale = instance.render_state.polar_bear_stand_scale;
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    if stand_scale == 0.0
-        && head_look_at_rest(head_yaw, head_pitch)
-        && limb_swing_at_rest(limb_swing_amount)
-    {
-        emit_model_parts(mesh, static_parts, transform);
-        return;
-    }
-    // Vanilla `PolarBearModel.setupAnim` first runs `super.setupAnim` (the
-    // `QuadrupedModel` head look and four-leg swing), then the standing rear adds its
-    // deltas on top — including `frontLeg.xRot -= standScale * π * 0.45` on top of the
-    // swing — so apply the look and leg swing before the standing pose.
-    let mut parts = static_parts.to_vec();
-    if let Some(head) = parts.get_mut(polar_bear_head_part_index(baby)) {
-        head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-    }
-    if !limb_swing_at_rest(limb_swing_amount) {
-        for index in QUADRUPED_LEG_PART_INDICES {
-            parts[index].pose =
-                quadruped_leg_swing_pose(parts[index].pose, limb_swing, limb_swing_amount);
-        }
-    }
-    if stand_scale != 0.0 {
-        for (index, part) in polar_bear_standing_part_roles(baby) {
-            apply_polar_bear_standing_pose(&mut parts[index].pose, part, baby, stand_scale);
-        }
-    }
-    emit_model_parts(mesh, &parts, transform);
 }
 
 fn emit_illager_model(

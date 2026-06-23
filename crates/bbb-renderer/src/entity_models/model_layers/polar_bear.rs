@@ -1,7 +1,9 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    POLAR_BEAR_WHITE,
+    apply_head_look, apply_quadruped_leg_swing, polar_bear_head_part_index, ModelCubeDesc,
+    ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, POLAR_BEAR_WHITE,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_POLAR_BEAR: &str = "minecraft:polar_bear#main";
 pub(in crate::entity_models) const MODEL_LAYER_POLAR_BEAR_BABY: &str =
@@ -503,6 +505,75 @@ pub(in crate::entity_models) fn apply_polar_bear_standing_pose(
             pose.offset[1] -= scale * 24.0;
             pose.offset[2] += scale * 13.0;
             pose.rotation[0] += scale * std::f32::consts::PI * 0.15;
+        }
+    }
+}
+
+/// Selects the unified polar bear part-tree pair (colored + textured) for `baby`.
+fn polar_bear_part_trees(
+    baby: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&BABY_POLAR_BEAR_PARTS, &BABY_POLAR_BEAR_TEXTURED_PARTS)
+    } else {
+        (&ADULT_POLAR_BEAR_PARTS, &ADULT_POLAR_BEAR_TEXTURED_PARTS)
+    }
+}
+
+/// Mutable polar bear model, mirroring vanilla `PolarBearModel` (a `QuadrupedModel`). The unified tree
+/// is zipped from the baked colored and textured trees for the selected `baby` layout
+/// ([`polar_bear_part_trees`]). `setup_anim` runs the `QuadrupedModel` head look ([`apply_head_look`])
+/// and four-leg swing ([`apply_quadruped_leg_swing`]), then — when standing — adds the rear-up deltas on
+/// top ([`apply_polar_bear_standing_pose`] over [`polar_bear_standing_part_roles`]), driven by the
+/// projected `standScale`. The per-size scale (adult only) lives in the root transform.
+pub(in crate::entity_models) struct PolarBearModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl PolarBearModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let (colored, textured) = polar_bear_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for PolarBearModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root
+                .child_at_mut(polar_bear_head_part_index(self.baby)),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_quadruped_leg_swing(
+            &mut self.root,
+            [2, 3, 4, 5],
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+        let stand_scale = render_state.polar_bear_stand_scale;
+        if stand_scale != 0.0 {
+            for (index, part) in polar_bear_standing_part_roles(self.baby) {
+                apply_polar_bear_standing_pose(
+                    &mut self.root.child_at_mut(index).pose,
+                    part,
+                    self.baby,
+                    stand_scale,
+                );
+            }
         }
     }
 }

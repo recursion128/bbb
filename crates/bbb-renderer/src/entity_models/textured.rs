@@ -24,10 +24,10 @@ use super::{
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
         allay_arm_idle_bob_amount, allay_body_x_rot, allay_root_y, allay_wing_flap_amount,
-        allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
-        armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot,
-        bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look,
-        dolphin_wave, enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
+        allay_wing_rest_x_rot, apply_wolf_sitting_pose, armor_stand_textured_cube,
+        bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot, bee_bone_y_delta,
+        bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look, dolphin_wave,
+        enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
         half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
         head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
         hoglin_leg_swing_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose,
@@ -35,8 +35,7 @@ use super::{
         humanoid_crouch_leg_pose, humanoid_leg_swing_pose, illager_spellcast_arm_pose,
         limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
         phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, piglin_ear_flap_pose,
-        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
-        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
+        piglin_head_part_index, player_head_part_index, pufferfish_fin_pose, pufferfish_parts,
         pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
         sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose,
         spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
@@ -47,39 +46,39 @@ use super::{
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
         CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, IronGolemModel,
-        MagmaCubeModel, MinecartModel, PigModel, RavagerModel, SalmonModel, SilverfishModel,
-        SkeletonModel, SnowGolemModel, WanderingTraderModel, WitchModel, ZombieModel,
-        ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
-        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
-        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
-        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
-        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE,
-        BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE,
-        BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE,
-        BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD,
-        BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING, BAT_TEXTURED_LEFT_WING_TIP,
-        BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING, BAT_TEXTURED_RIGHT_WING_TIP,
-        BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE, BEE_BABY_BONE_POSE,
-        BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE, BEE_BABY_MIDDLE_LEGS_POSE,
-        BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE, BEE_BABY_TEXTURED_BACK_LEGS,
-        BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE, BEE_BABY_TEXTURED_FRONT_LEGS,
-        BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS, BEE_BABY_TEXTURED_RIGHT_WING,
-        BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF, BEE_BACK_LEGS_POSE, BEE_BODY_POSE,
-        BEE_BONE_POSE, BEE_FRONT_LEGS_POSE, BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE,
-        BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT, BEE_RIGHT_ANTENNA_POSE,
-        BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS, BEE_TEXTURED_BODY,
-        BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA, BEE_TEXTURED_LEFT_WING,
-        BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA, BEE_TEXTURED_RIGHT_WING,
-        BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE,
-        BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE,
-        BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR,
-        CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE,
-        DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE, DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE,
-        DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT, DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE,
-        DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY, DOLPHIN_TEXTURED_HEAD,
-        DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE, DOLPHIN_TEXTURED_RIGHT_FIN,
-        DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN, DOLPHIN_TEXTURE_REF,
-        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        MagmaCubeModel, MinecartModel, PigModel, PolarBearModel, RavagerModel, SalmonModel,
+        SilverfishModel, SkeletonModel, SnowGolemModel, WanderingTraderModel, WitchModel,
+        ZombieModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
+        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
+        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
+        BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
+        BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
+        BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE,
+        BEE_BABY_TEXTURED_BACK_LEGS, BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE,
+        BEE_BABY_TEXTURED_FRONT_LEGS, BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS,
+        BEE_BABY_TEXTURED_RIGHT_WING, BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF,
+        BEE_BACK_LEGS_POSE, BEE_BODY_POSE, BEE_BONE_POSE, BEE_FRONT_LEGS_POSE,
+        BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE, BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT,
+        BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
+        BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
+        BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
+        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_BODY_POSE,
+        BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE,
+        BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF,
+        CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
+        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE,
+        DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT,
+        DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
+        DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
+        DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
+        DOLPHIN_TEXTURE_REF, ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
         HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
         PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
@@ -3066,46 +3065,24 @@ fn emit_polar_bear_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `PolarBearModel` tree drives both render paths; `setup_anim` runs the head look and
+    // four-leg swing, then adds the standing rear-up deltas on top when `standScale != 0`.
     let transform = if baby {
         entity_model_root_transform(instance)
     } else {
         polar_bear_model_root_transform(instance)
     };
-    let stand_scale = instance.render_state.polar_bear_stand_scale;
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    let head_index = polar_bear_head_part_index(baby);
+    let mut model = PolarBearModel::new(baby);
+    model.prepare(&instance);
     for pass in polar_bear_textured_layer_passes(baby) {
-        if stand_scale == 0.0 && head_resting && legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            // Vanilla runs `super.setupAnim` (the head look and four-leg swing) before
-            // the standing rear adds its deltas on top (`frontLeg.xRot -= ...` on top
-            // of the swing), so apply the look and leg swing before the standing pose.
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-                }
-            }
-            if !legs_resting {
-                for index in QUADRUPED_LEG_PART_INDICES {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose =
-                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-            if stand_scale != 0.0 {
-                for (index, part) in polar_bear_standing_part_roles(baby) {
-                    apply_polar_bear_standing_pose(&mut parts[index].pose, part, baby, stand_scale);
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }
