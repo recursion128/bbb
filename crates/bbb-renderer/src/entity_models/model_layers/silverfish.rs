@@ -1,6 +1,6 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use super::{PartPose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // The silverfish fallback paints its body a stony gray.
 pub(in crate::entity_models) const SILVERFISH_GRAY: [f32; 4] = [0.50, 0.50, 0.53, 1.0];
@@ -14,176 +14,63 @@ pub(in crate::entity_models) const SILVERFISH_SEGMENT_COUNT: usize = 7;
 /// The number of overlay `layer` parts in the silverfish body layer.
 pub(in crate::entity_models) const SILVERFISH_LAYER_COUNT: usize = 3;
 
+/// Vanilla `SilverfishModel.createBodyLayer` body-segment child names, in order `segment0..segment6`.
+/// `child_mut` needs `&'static` names, so the procedural body draws its names from this const array.
+const SILVERFISH_SEGMENT_NAMES: [&str; SILVERFISH_SEGMENT_COUNT] = [
+    "segment0", "segment1", "segment2", "segment3", "segment4", "segment5", "segment6",
+];
+
+/// Vanilla `SilverfishModel.createBodyLayer` overlay `layer` child names, in order `layer0..layer2`.
+const SILVERFISH_LAYER_NAMES: [&str; SILVERFISH_LAYER_COUNT] = ["layer0", "layer1", "layer2"];
+
+const fn silverfish_cube(min: [f32; 3], size: [f32; 3], tex: [f32; 2]) -> ModelCube {
+    // No deformation, so `uv_size == size`; never mirrored. Each cube carries both render paths' data:
+    // the colored debug tint (`SILVERFISH_GRAY`) and the textured `uv_size` / `texOffs`.
+    ModelCube::new(min, size, SILVERFISH_GRAY, size, tex, false)
+}
+
 // Vanilla 26.1 SilverfishModel.createBodyLayer: seven nested body segments
 // (BODY_SIZES[i] = (sx, sy, sz), each addBox(-sx/2, 0, -sz/2, sx, sy, sz) at offset
 // (0, 24 - sy, placement)) plus three wider overlay layers riding segments 2/4/1.
-const SILVERFISH_SEGMENT_0_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, -1.0],
-    size: [3.0, 2.0, 2.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_SEGMENT_1_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -1.0],
-    size: [4.0, 3.0, 2.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_SEGMENT_2_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 0.0, -1.5],
-    size: [6.0, 4.0, 3.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_SEGMENT_3_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, -1.5],
-    size: [3.0, 3.0, 3.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_SEGMENT_4_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, 0.0, -1.5],
-    size: [2.0, 2.0, 3.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_SEGMENT_5_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, 0.0, -1.0],
-    size: [2.0, 1.0, 2.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_SEGMENT_6_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-0.5, 0.0, -1.0],
-    size: [1.0, 1.0, 2.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_LAYER_0_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-5.0, 0.0, -1.5],
-    size: [10.0, 8.0, 3.0],
-    color: SILVERFISH_GRAY,
-}];
-const SILVERFISH_LAYER_1_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 0.0, -1.5],
-    size: [6.0, 4.0, 3.0],
-    color: SILVERFISH_GRAY,
-}];
-// Vanilla quirk: layer2 takes its z-min from BODY_SIZES[4][2] (3 => -1.5) but its z-size
-// from BODY_SIZES[1][2] (2), so it is offset asymmetrically in z.
-const SILVERFISH_LAYER_2_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 0.0, -1.5],
-    size: [6.0, 5.0, 2.0],
-    color: SILVERFISH_GRAY,
-}];
-
-const fn silverfish_part(offset: [f32; 3], cubes: &'static [ModelCubeDesc]) -> ModelPartDesc {
-    ModelPartDesc {
-        pose: PartPose {
-            offset,
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes,
-        children: &[],
-    }
-}
-
-pub(in crate::entity_models) const SILVERFISH_PARTS: [ModelPartDesc; 10] = [
-    silverfish_part([0.0, 22.0, -3.5], &SILVERFISH_SEGMENT_0_CUBE),
-    silverfish_part([0.0, 21.0, -1.5], &SILVERFISH_SEGMENT_1_CUBE),
-    silverfish_part([0.0, 20.0, 1.0], &SILVERFISH_SEGMENT_2_CUBE),
-    silverfish_part([0.0, 21.0, 4.0], &SILVERFISH_SEGMENT_3_CUBE),
-    silverfish_part([0.0, 22.0, 7.0], &SILVERFISH_SEGMENT_4_CUBE),
-    silverfish_part([0.0, 23.0, 9.5], &SILVERFISH_SEGMENT_5_CUBE),
-    silverfish_part([0.0, 23.0, 11.5], &SILVERFISH_SEGMENT_6_CUBE),
-    silverfish_part([0.0, 16.0, 1.0], &SILVERFISH_LAYER_0_CUBE),
-    silverfish_part([0.0, 20.0, 7.0], &SILVERFISH_LAYER_1_CUBE),
-    silverfish_part([0.0, 19.0, -1.5], &SILVERFISH_LAYER_2_CUBE),
+pub(in crate::entity_models) const SILVERFISH_SEGMENT_CUBES: [ModelCube; SILVERFISH_SEGMENT_COUNT] = [
+    silverfish_cube([-1.5, 0.0, -1.0], [3.0, 2.0, 2.0], [0.0, 0.0]),
+    silverfish_cube([-2.0, 0.0, -1.0], [4.0, 3.0, 2.0], [0.0, 4.0]),
+    silverfish_cube([-3.0, 0.0, -1.5], [6.0, 4.0, 3.0], [0.0, 9.0]),
+    silverfish_cube([-1.5, 0.0, -1.5], [3.0, 3.0, 3.0], [0.0, 16.0]),
+    silverfish_cube([-1.0, 0.0, -1.5], [2.0, 2.0, 3.0], [0.0, 22.0]),
+    silverfish_cube([-1.0, 0.0, -1.0], [2.0, 1.0, 2.0], [11.0, 0.0]),
+    silverfish_cube([-0.5, 0.0, -1.0], [1.0, 1.0, 2.0], [13.0, 4.0]),
 ];
 
-const SILVERFISH_TEXTURED_SEGMENT_0_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-1.5, 0.0, -1.0],
-    [3.0, 2.0, 2.0],
-    [0.0, 0.0],
-)];
-const SILVERFISH_TEXTURED_SEGMENT_1_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-2.0, 0.0, -1.0],
-    [4.0, 3.0, 2.0],
-    [0.0, 4.0],
-)];
-const SILVERFISH_TEXTURED_SEGMENT_2_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-3.0, 0.0, -1.5],
-    [6.0, 4.0, 3.0],
-    [0.0, 9.0],
-)];
-const SILVERFISH_TEXTURED_SEGMENT_3_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-1.5, 0.0, -1.5],
-    [3.0, 3.0, 3.0],
-    [0.0, 16.0],
-)];
-const SILVERFISH_TEXTURED_SEGMENT_4_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-1.0, 0.0, -1.5],
-    [2.0, 2.0, 3.0],
-    [0.0, 22.0],
-)];
-const SILVERFISH_TEXTURED_SEGMENT_5_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-1.0, 0.0, -1.0],
-    [2.0, 1.0, 2.0],
-    [11.0, 0.0],
-)];
-const SILVERFISH_TEXTURED_SEGMENT_6_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-0.5, 0.0, -1.0],
-    [1.0, 1.0, 2.0],
-    [13.0, 4.0],
-)];
-const SILVERFISH_TEXTURED_LAYER_0_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-5.0, 0.0, -1.5],
-    [10.0, 8.0, 3.0],
-    [20.0, 0.0],
-)];
-const SILVERFISH_TEXTURED_LAYER_1_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-3.0, 0.0, -1.5],
-    [6.0, 4.0, 3.0],
-    [20.0, 11.0],
-)];
-const SILVERFISH_TEXTURED_LAYER_2_CUBE: [TexturedModelCubeDesc; 1] = [silverfish_textured_cube(
-    [-3.0, 0.0, -1.5],
-    [6.0, 5.0, 2.0],
-    [20.0, 18.0],
-)];
+pub(in crate::entity_models) const SILVERFISH_LAYER_CUBES: [ModelCube; SILVERFISH_LAYER_COUNT] = [
+    silverfish_cube([-5.0, 0.0, -1.5], [10.0, 8.0, 3.0], [20.0, 0.0]),
+    silverfish_cube([-3.0, 0.0, -1.5], [6.0, 4.0, 3.0], [20.0, 11.0]),
+    // Vanilla quirk: layer2 takes its z-min from BODY_SIZES[4][2] (3 => -1.5) but its z-size
+    // from BODY_SIZES[1][2] (2), so it is offset asymmetrically in z.
+    silverfish_cube([-3.0, 0.0, -1.5], [6.0, 5.0, 2.0], [20.0, 18.0]),
+];
 
-const fn silverfish_textured_cube(
-    min: [f32; 3],
-    size: [f32; 3],
-    tex: [f32; 2],
-) -> TexturedModelCubeDesc {
-    TexturedModelCubeDesc {
-        min,
-        size,
-        uv_size: size,
-        tex,
-        mirror: false,
+const fn silverfish_pose(offset: [f32; 3]) -> PartPose {
+    PartPose {
+        offset,
+        rotation: [0.0, 0.0, 0.0],
     }
 }
 
-const fn silverfish_textured_part(
-    offset: [f32; 3],
-    cubes: &'static [TexturedModelCubeDesc],
-) -> TexturedModelPartDesc {
-    TexturedModelPartDesc {
-        pose: PartPose {
-            offset,
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes,
-        children: &[],
-    }
-}
+pub(in crate::entity_models) const SILVERFISH_SEGMENT_POSES: [PartPose; SILVERFISH_SEGMENT_COUNT] = [
+    silverfish_pose([0.0, 22.0, -3.5]),
+    silverfish_pose([0.0, 21.0, -1.5]),
+    silverfish_pose([0.0, 20.0, 1.0]),
+    silverfish_pose([0.0, 21.0, 4.0]),
+    silverfish_pose([0.0, 22.0, 7.0]),
+    silverfish_pose([0.0, 23.0, 9.5]),
+    silverfish_pose([0.0, 23.0, 11.5]),
+];
 
-pub(in crate::entity_models) const SILVERFISH_TEXTURED_PARTS: [TexturedModelPartDesc; 10] = [
-    silverfish_textured_part([0.0, 22.0, -3.5], &SILVERFISH_TEXTURED_SEGMENT_0_CUBE),
-    silverfish_textured_part([0.0, 21.0, -1.5], &SILVERFISH_TEXTURED_SEGMENT_1_CUBE),
-    silverfish_textured_part([0.0, 20.0, 1.0], &SILVERFISH_TEXTURED_SEGMENT_2_CUBE),
-    silverfish_textured_part([0.0, 21.0, 4.0], &SILVERFISH_TEXTURED_SEGMENT_3_CUBE),
-    silverfish_textured_part([0.0, 22.0, 7.0], &SILVERFISH_TEXTURED_SEGMENT_4_CUBE),
-    silverfish_textured_part([0.0, 23.0, 9.5], &SILVERFISH_TEXTURED_SEGMENT_5_CUBE),
-    silverfish_textured_part([0.0, 23.0, 11.5], &SILVERFISH_TEXTURED_SEGMENT_6_CUBE),
-    silverfish_textured_part([0.0, 16.0, 1.0], &SILVERFISH_TEXTURED_LAYER_0_CUBE),
-    silverfish_textured_part([0.0, 20.0, 7.0], &SILVERFISH_TEXTURED_LAYER_1_CUBE),
-    silverfish_textured_part([0.0, 19.0, -1.5], &SILVERFISH_TEXTURED_LAYER_2_CUBE),
+pub(in crate::entity_models) const SILVERFISH_LAYER_POSES: [PartPose; SILVERFISH_LAYER_COUNT] = [
+    silverfish_pose([0.0, 16.0, 1.0]),
+    silverfish_pose([0.0, 20.0, 7.0]),
+    silverfish_pose([0.0, 19.0, -1.5]),
 ];
 
 /// Each overlay `layer` part copies one body segment's animation: `(source_segment,
@@ -241,20 +128,37 @@ pub(in crate::entity_models) fn silverfish_layer_pose(
     }
 }
 
-/// Mutable silverfish model, mirroring vanilla `SilverfishModel`. The unified tree is zipped from the
-/// baked colored ([`SILVERFISH_PARTS`]) and textured ([`SILVERFISH_TEXTURED_PARTS`]) trees: the first
-/// [`SILVERFISH_SEGMENT_COUNT`] children are the body segments, followed by the [`SILVERFISH_LAYER_COUNT`]
-/// overlay parts. `setup_anim` first wiggles every segment from `ageInTicks` ([`silverfish_segment_pose`]),
-/// then copies each overlay's pose from its already-animated source segment per [`SILVERFISH_LAYER_RULES`]
-/// ([`silverfish_layer_pose`]). There is no head look or walk swing, and no `MeshTransformer` scaling.
+/// Mutable silverfish model, mirroring vanilla `SilverfishModel`. The unified tree is built once with
+/// named children: the [`SILVERFISH_SEGMENT_COUNT`] body segments (`segment0..segment6`) followed by
+/// the [`SILVERFISH_LAYER_COUNT`] overlay parts (`layer0..layer2`). `setup_anim` first wiggles every
+/// segment from `ageInTicks` ([`silverfish_segment_pose`]), then copies each overlay's pose from its
+/// already-animated source segment per [`SILVERFISH_LAYER_RULES`] ([`silverfish_layer_pose`]). There is
+/// no head look or walk swing, and no `MeshTransformer` scaling.
 pub(in crate::entity_models) struct SilverfishModel {
     root: ModelPart,
 }
 
 impl SilverfishModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let mut children: Vec<(&'static str, ModelPart)> =
+            Vec::with_capacity(SILVERFISH_SEGMENT_COUNT + SILVERFISH_LAYER_COUNT);
+        for (i, &name) in SILVERFISH_SEGMENT_NAMES.iter().enumerate() {
+            children.push((
+                name,
+                ModelPart::leaf(
+                    SILVERFISH_SEGMENT_POSES[i],
+                    vec![SILVERFISH_SEGMENT_CUBES[i]],
+                ),
+            ));
+        }
+        for (i, &name) in SILVERFISH_LAYER_NAMES.iter().enumerate() {
+            children.push((
+                name,
+                ModelPart::leaf(SILVERFISH_LAYER_POSES[i], vec![SILVERFISH_LAYER_CUBES[i]]),
+            ));
+        }
         Self {
-            root: ModelPart::root_from_descs(&SILVERFISH_PARTS, &SILVERFISH_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }
@@ -270,13 +174,16 @@ impl EntityModel for SilverfishModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let age_in_ticks = instance.render_state.age_in_ticks;
-        for index in 0..SILVERFISH_SEGMENT_COUNT {
-            let segment = self.root.child_at_mut(index);
+        for (index, &name) in SILVERFISH_SEGMENT_NAMES.iter().enumerate() {
+            let segment = self.root.child_mut(name);
             segment.pose = silverfish_segment_pose(segment.pose, index, age_in_ticks);
         }
-        for (layer, &(source, copy_x)) in SILVERFISH_LAYER_RULES.iter().enumerate() {
-            let source_pose = self.root.child_at_mut(source).pose;
-            let part = self.root.child_at_mut(SILVERFISH_SEGMENT_COUNT + layer);
+        for (&layer_name, &(source, copy_x)) in SILVERFISH_LAYER_NAMES
+            .iter()
+            .zip(SILVERFISH_LAYER_RULES.iter())
+        {
+            let source_pose = self.root.child_mut(SILVERFISH_SEGMENT_NAMES[source]).pose;
+            let part = self.root.child_mut(layer_name);
             part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
         }
     }

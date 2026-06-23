@@ -1,68 +1,116 @@
 use super::*;
 
 #[test]
-fn silverfish_parts_match_vanilla_26_1_body_layer() {
+fn silverfish_cubes_and_poses_match_vanilla_26_1_body_layer() {
     // Vanilla SilverfishModel.createBodyLayer: seven body segments (BODY_SIZES[i], each
     // addBox(-sx/2, 0, -sz/2, sx, sy, sz) at (0, 24 - sy, placement)) plus three overlay
     // layers riding segments 2/4/1. placement walks -3.5 -> -1.5 -> 1 -> 4 -> 7 -> 9.5 -> 11.5.
-    // No MeshTransformer scaling.
-    assert_eq!(SILVERFISH_PARTS.len(), 10);
+    // No MeshTransformer scaling. Each unified cube carries the colored tint (`SILVERFISH_GRAY`)
+    // and the textured UV (`texOffs` / `uv_size`); `uv_size == size` and none are mirrored.
     assert_eq!(SILVERFISH_SEGMENT_COUNT, 7);
     assert_eq!(SILVERFISH_LAYER_COUNT, 3);
+    assert_eq!(SILVERFISH_SEGMENT_CUBES.len(), 7);
+    assert_eq!(SILVERFISH_LAYER_CUBES.len(), 3);
 
-    let expected: [([f32; 3], [f32; 3], [f32; 3]); 10] = [
-        // (offset, cube min, cube size)
-        ([0.0, 22.0, -3.5], [-1.5, 0.0, -1.0], [3.0, 2.0, 2.0]),
-        ([0.0, 21.0, -1.5], [-2.0, 0.0, -1.0], [4.0, 3.0, 2.0]),
-        ([0.0, 20.0, 1.0], [-3.0, 0.0, -1.5], [6.0, 4.0, 3.0]),
-        ([0.0, 21.0, 4.0], [-1.5, 0.0, -1.5], [3.0, 3.0, 3.0]),
-        ([0.0, 22.0, 7.0], [-1.0, 0.0, -1.5], [2.0, 2.0, 3.0]),
-        ([0.0, 23.0, 9.5], [-1.0, 0.0, -1.0], [2.0, 1.0, 2.0]),
-        ([0.0, 23.0, 11.5], [-0.5, 0.0, -1.0], [1.0, 1.0, 2.0]),
-        // Overlay layers (layer0 rides seg2 z, layer1 rides seg4 z, layer2 rides seg1 z).
-        ([0.0, 16.0, 1.0], [-5.0, 0.0, -1.5], [10.0, 8.0, 3.0]),
-        ([0.0, 20.0, 7.0], [-3.0, 0.0, -1.5], [6.0, 4.0, 3.0]),
-        ([0.0, 19.0, -1.5], [-3.0, 0.0, -1.5], [6.0, 5.0, 2.0]),
+    // (offset, cube min, cube size, texOffs) for the seven segments then the three overlay
+    // layers (Vanilla BODY_TEXS, then texOffs(20, 0/11/18) for the layers).
+    let segments: [([f32; 3], [f32; 3], [f32; 3], [f32; 2]); 7] = [
+        (
+            [0.0, 22.0, -3.5],
+            [-1.5, 0.0, -1.0],
+            [3.0, 2.0, 2.0],
+            [0.0, 0.0],
+        ),
+        (
+            [0.0, 21.0, -1.5],
+            [-2.0, 0.0, -1.0],
+            [4.0, 3.0, 2.0],
+            [0.0, 4.0],
+        ),
+        (
+            [0.0, 20.0, 1.0],
+            [-3.0, 0.0, -1.5],
+            [6.0, 4.0, 3.0],
+            [0.0, 9.0],
+        ),
+        (
+            [0.0, 21.0, 4.0],
+            [-1.5, 0.0, -1.5],
+            [3.0, 3.0, 3.0],
+            [0.0, 16.0],
+        ),
+        (
+            [0.0, 22.0, 7.0],
+            [-1.0, 0.0, -1.5],
+            [2.0, 2.0, 3.0],
+            [0.0, 22.0],
+        ),
+        (
+            [0.0, 23.0, 9.5],
+            [-1.0, 0.0, -1.0],
+            [2.0, 1.0, 2.0],
+            [11.0, 0.0],
+        ),
+        (
+            [0.0, 23.0, 11.5],
+            [-0.5, 0.0, -1.0],
+            [1.0, 1.0, 2.0],
+            [13.0, 4.0],
+        ),
     ];
-    for (index, (offset, min, size)) in expected.iter().enumerate() {
-        let part = &SILVERFISH_PARTS[index];
-        assert_eq!(part.pose.offset, *offset, "part {index} offset");
-        assert_eq!(part.pose.rotation, [0.0, 0.0, 0.0], "part {index} rotation");
-        assert_eq!(part.cubes.len(), 1);
-        assert_eq!(part.cubes[0].min, *min, "part {index} cube min");
-        assert_eq!(part.cubes[0].size, *size, "part {index} cube size");
+    for (index, (offset, min, size, tex)) in segments.iter().enumerate() {
+        assert_eq!(
+            SILVERFISH_SEGMENT_POSES[index].offset, *offset,
+            "seg {index} offset"
+        );
+        assert_eq!(
+            SILVERFISH_SEGMENT_POSES[index].rotation,
+            [0.0, 0.0, 0.0],
+            "seg {index} rotation"
+        );
+        let cube = SILVERFISH_SEGMENT_CUBES[index];
+        assert_eq!(cube.min, *min, "seg {index} cube min");
+        assert_eq!(cube.size, *size, "seg {index} cube size");
+        assert_eq!(cube.uv_size, *size, "seg {index} uv_size");
+        assert_eq!(cube.tex, *tex, "seg {index} texOffs");
+        assert!(!cube.mirror, "seg {index} mirror");
     }
-}
 
-#[test]
-fn silverfish_textured_parts_match_vanilla_model_layer_uv_sources() {
+    // Overlay layers (layer0 rides seg2 z, layer1 rides seg4 z, layer2 rides seg1 z).
+    let layers: [([f32; 3], [f32; 3], [f32; 3], [f32; 2]); 3] = [
+        (
+            [0.0, 16.0, 1.0],
+            [-5.0, 0.0, -1.5],
+            [10.0, 8.0, 3.0],
+            [20.0, 0.0],
+        ),
+        (
+            [0.0, 20.0, 7.0],
+            [-3.0, 0.0, -1.5],
+            [6.0, 4.0, 3.0],
+            [20.0, 11.0],
+        ),
+        (
+            [0.0, 19.0, -1.5],
+            [-3.0, 0.0, -1.5],
+            [6.0, 5.0, 2.0],
+            [20.0, 18.0],
+        ),
+    ];
+    for (index, (offset, min, size, tex)) in layers.iter().enumerate() {
+        assert_eq!(
+            SILVERFISH_LAYER_POSES[index].offset, *offset,
+            "layer {index} offset"
+        );
+        let cube = SILVERFISH_LAYER_CUBES[index];
+        assert_eq!(cube.min, *min, "layer {index} cube min");
+        assert_eq!(cube.size, *size, "layer {index} cube size");
+        assert_eq!(cube.uv_size, *size, "layer {index} uv_size");
+        assert_eq!(cube.tex, *tex, "layer {index} texOffs");
+        assert!(!cube.mirror, "layer {index} mirror");
+    }
     assert_eq!(MODEL_LAYER_SILVERFISH, "minecraft:silverfish#main");
     assert_eq!(SILVERFISH_TEXTURE_REF.size, [64, 32]);
-    assert_eq!(SILVERFISH_TEXTURED_PARTS.len(), 10);
-
-    // Vanilla BODY_TEXS for the seven segments, then texOffs(20, 0/11/18) for the layers.
-    let expected_tex: [[f32; 2]; 10] = [
-        [0.0, 0.0],
-        [0.0, 4.0],
-        [0.0, 9.0],
-        [0.0, 16.0],
-        [0.0, 22.0],
-        [11.0, 0.0],
-        [13.0, 4.0],
-        [20.0, 0.0],
-        [20.0, 11.0],
-        [20.0, 18.0],
-    ];
-    for (index, tex) in expected_tex.iter().enumerate() {
-        let part = &SILVERFISH_TEXTURED_PARTS[index];
-        assert_eq!(part.pose.offset, SILVERFISH_PARTS[index].pose.offset);
-        assert_eq!(part.cubes[0].tex, *tex, "part {index} texOffs");
-        // The colored and textured cubes share min/size; uv_size mirrors the cube size.
-        assert_eq!(part.cubes[0].min, SILVERFISH_PARTS[index].cubes[0].min);
-        assert_eq!(part.cubes[0].size, SILVERFISH_PARTS[index].cubes[0].size);
-        assert_eq!(part.cubes[0].uv_size, SILVERFISH_PARTS[index].cubes[0].size);
-        assert!(!part.cubes[0].mirror);
-    }
 }
 
 #[test]
@@ -73,7 +121,7 @@ fn silverfish_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_SILVERFISH);
     assert_eq!(passes[0].texture, SILVERFISH_TEXTURE_REF);
-    assert_eq!(passes[0].parts, SILVERFISH_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -120,7 +168,7 @@ fn silverfish_segment_pose_matches_vanilla_setup_anim() {
     };
     for age in [0.0f32, 6.3, 21.0, 100.0] {
         for index in 0..SILVERFISH_SEGMENT_COUNT {
-            let base = SILVERFISH_PARTS[index].pose;
+            let base = SILVERFISH_SEGMENT_POSES[index];
             let got = silverfish_segment_pose(base, index, age);
             assert_eq!(
                 got,
@@ -132,7 +180,7 @@ fn silverfish_segment_pose_matches_vanilla_setup_anim() {
     // The middle segment (index 2, |i-2| = 0) never shifts in x.
     for age in [0.0f32, 6.3, 21.0] {
         assert_eq!(
-            silverfish_segment_pose(SILVERFISH_PARTS[2].pose, 2, age).offset[0],
+            silverfish_segment_pose(SILVERFISH_SEGMENT_POSES[2], 2, age).offset[0],
             0.0
         );
     }
@@ -145,24 +193,24 @@ fn silverfish_layer_rules_copy_vanilla_source_segments() {
     assert_eq!(SILVERFISH_LAYER_RULES, [(2, false), (4, true), (1, true)]);
 
     let age = 13.0f32;
-    let seg2 = silverfish_segment_pose(SILVERFISH_PARTS[2].pose, 2, age);
-    let seg4 = silverfish_segment_pose(SILVERFISH_PARTS[4].pose, 4, age);
-    let seg1 = silverfish_segment_pose(SILVERFISH_PARTS[1].pose, 1, age);
+    let seg2 = silverfish_segment_pose(SILVERFISH_SEGMENT_POSES[2], 2, age);
+    let seg4 = silverfish_segment_pose(SILVERFISH_SEGMENT_POSES[4], 4, age);
+    let seg1 = silverfish_segment_pose(SILVERFISH_SEGMENT_POSES[1], 1, age);
 
     // layer0: yRot follows seg2, x stays at the layer rest (segment2 has x == 0 anyway).
-    let layer0 = silverfish_layer_pose(SILVERFISH_PARTS[7].pose, seg2, false);
+    let layer0 = silverfish_layer_pose(SILVERFISH_LAYER_POSES[0], seg2, false);
     assert_eq!(layer0.rotation[1], seg2.rotation[1]);
-    assert_eq!(layer0.offset[0], SILVERFISH_PARTS[7].pose.offset[0]);
-    assert_eq!(layer0.offset[2], SILVERFISH_PARTS[7].pose.offset[2]);
+    assert_eq!(layer0.offset[0], SILVERFISH_LAYER_POSES[0].offset[0]);
+    assert_eq!(layer0.offset[2], SILVERFISH_LAYER_POSES[0].offset[2]);
 
     // layer1: yRot AND x follow seg4.
-    let layer1 = silverfish_layer_pose(SILVERFISH_PARTS[8].pose, seg4, true);
+    let layer1 = silverfish_layer_pose(SILVERFISH_LAYER_POSES[1], seg4, true);
     assert_eq!(layer1.rotation[1], seg4.rotation[1]);
     assert_eq!(layer1.offset[0], seg4.offset[0]);
     assert_ne!(layer1.offset[0], 0.0, "seg4 (dist 2) shifts in x at age 13");
 
     // layer2: yRot AND x follow seg1.
-    let layer2 = silverfish_layer_pose(SILVERFISH_PARTS[9].pose, seg1, true);
+    let layer2 = silverfish_layer_pose(SILVERFISH_LAYER_POSES[2], seg1, true);
     assert_eq!(layer2.rotation[1], seg1.rotation[1]);
     assert_eq!(layer2.offset[0], seg1.offset[0]);
 }
