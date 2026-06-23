@@ -124,7 +124,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::HappyGhast => {
                 if !skip_texture_backed_entities {
-                    emit_happy_ghast_model(&mut mesh, *instance);
+                    HappyGhastModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        happy_ghast_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Blaze => {
@@ -514,20 +518,6 @@ fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, s
         &SLIME_PARTS,
         slime_model_root_transform(instance, size),
     );
-}
-
-fn emit_happy_ghast_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `HappyGhastModel.setupAnim` reuses `GhastModel.animateTentacles` verbatim
-    // (`tentacle.xRot = 0.2 * sin(ageInTicks * 0.3 + i) + 0.4`, never at rest), so the nine
-    // tentacles always wave. The body is part 0; tentacles `i` are parts 1..=9. The body-item
-    // squeeze (`xScale/yScale/zScale = 0.9375` when a harness is equipped) is deferred with the
-    // harness equipment layer, so an unharnessed happy ghast renders at full scale.
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let mut parts = HAPPY_GHAST_PARTS.to_vec();
-    for (tentacle, part) in parts.iter_mut().skip(1).enumerate() {
-        part.pose.rotation[0] = ghast_tentacle_x_rot(tentacle, age_in_ticks);
-    }
-    emit_model_parts(mesh, &parts, happy_ghast_model_root_transform(instance));
 }
 
 fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

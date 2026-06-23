@@ -1,4 +1,9 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use super::{
+    ghast_tentacle_x_rot, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc,
+};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Happy ghasts are a warm cream jelly; the colored fallback paints every cube the same pale
 // cream so the silhouette reads even without the texture.
@@ -159,3 +164,39 @@ pub(in crate::entity_models) const HAPPY_GHAST_TEXTURED_PARTS: [TexturedModelPar
     happy_ghast_textured_tentacle_part(7, &HAPPY_GHAST_TEXTURED_TENTACLE_7),
     happy_ghast_textured_tentacle_part(8, &HAPPY_GHAST_TEXTURED_TENTACLE_8),
 ];
+
+/// Mutable happy ghast model, mirroring vanilla `HappyGhastModel`. The unified tree is zipped from the
+/// baked colored ([`HAPPY_GHAST_PARTS`]) and textured ([`HAPPY_GHAST_TEXTURED_PARTS`]) trees: child 0 is
+/// the body, children 1..=9 are the tentacles. `setup_anim` reuses `GhastModel.animateTentacles`
+/// verbatim ([`ghast_tentacle_x_rot`], never at rest). The harness body-item squeeze
+/// (`0.9375` scale when equipped) is deferred with the equipment layer, so an unharnessed happy ghast
+/// renders at full scale; the bob/scale lives in the root transform (`happy_ghast_model_root_transform`).
+pub(in crate::entity_models) struct HappyGhastModel {
+    root: ModelPart,
+}
+
+impl HappyGhastModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&HAPPY_GHAST_PARTS, &HAPPY_GHAST_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for HappyGhastModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let age_in_ticks = instance.render_state.age_in_ticks;
+        for tentacle in 0..HAPPY_GHAST_TENTACLE_LENGTHS.len() {
+            self.root.child_at_mut(tentacle + 1).pose.rotation[0] =
+                ghast_tentacle_x_rot(tentacle, age_in_ticks);
+        }
+    }
+}
