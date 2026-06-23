@@ -1,34 +1,54 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn vex_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `VexModel.createBodyLayer` (atlas 32×32). Head is a plain 5³ box.
+    // Vanilla `VexModel.createBodyLayer` (atlas 32×32). Head is a plain 5³ box. Each unified cube
+    // carries both the colored geometry/tint and the textured `uv_size` / `texOffs` / `mirror`.
     assert_eq!(
         VEX_HEAD[0],
-        ModelCubeDesc {
-            min: [-2.5, -5.0, -2.5],
-            size: [5.0, 5.0, 5.0],
-            color: VEX_GREY,
-        }
+        ModelCube::new(
+            [-2.5, -5.0, -2.5],
+            [5.0, 5.0, 5.0],
+            VEX_GREY,
+            [5.0, 5.0, 5.0],
+            [0.0, 0.0],
+            false,
+        )
     );
 
     // Body: the plain `texOffs(0, 10)` box plus the `texOffs(0, 16)` box inset by
-    // `CubeDeformation(-0.2)` (min +0.2, size -0.4).
+    // `CubeDeformation(-0.2)` (min +0.2, size -0.4); the inset cube keeps the 3×5×2 base uv_size.
     assert_eq!(VEX_BODY.len(), 2);
     assert_eq!(VEX_BODY[0].min, [-1.5, 0.0, -1.0]);
     assert_eq!(VEX_BODY[0].size, [3.0, 4.0, 2.0]);
+    assert_eq!(VEX_BODY[0].tex, [0.0, 10.0]);
+    assert_eq!(VEX_BODY[0].uv_size, [3.0, 4.0, 2.0]);
     assert_eq!(VEX_BODY[1].min, [-1.3, 1.2, -0.8]);
     assert_eq!(VEX_BODY[1].size, [2.6, 4.6, 1.6]);
+    assert_eq!(VEX_BODY[1].tex, [0.0, 16.0]);
+    assert_eq!(VEX_BODY[1].uv_size, [3.0, 5.0, 2.0]);
 
-    // Arms: 2×4×2 boxes inset by `CubeDeformation(-0.1)` (min +0.1, size -0.2). The right and
-    // left arms differ only in their box origin (`-1.25` vs `-0.75`).
+    // Arms: 2×4×2 boxes inset by `CubeDeformation(-0.1)` (min +0.1, size -0.2), uv_size keeps the
+    // 2×4×2 base box. The right and left arms differ in their box origin (`-1.25` vs `-0.75`) and
+    // `texOffs(23, 0)` / `texOffs(23, 6)`.
     assert_eq!(VEX_RIGHT_ARM[0].min, [-1.15, -0.4, -0.9]);
     assert_eq!(VEX_RIGHT_ARM[0].size, [1.8, 3.8, 1.8]);
+    assert_eq!(VEX_RIGHT_ARM[0].uv_size, [2.0, 4.0, 2.0]);
+    assert_eq!(VEX_RIGHT_ARM[0].tex, [23.0, 0.0]);
     assert_eq!(VEX_LEFT_ARM[0].min, [-0.65, -0.4, -0.9]);
     assert_eq!(VEX_LEFT_ARM[0].size, [1.8, 3.8, 1.8]);
+    assert_eq!(VEX_LEFT_ARM[0].uv_size, [2.0, 4.0, 2.0]);
+    assert_eq!(VEX_LEFT_ARM[0].tex, [23.0, 6.0]);
 
-    // Wings: zero-thickness 0×5×8 planes.
-    assert_eq!(VEX_WING[0].size, [0.0, 5.0, 8.0]);
+    // Wings: zero-thickness 0×5×8 planes, both `texOffs(16, 14)`; only the left wing's UV mirrors.
+    assert_eq!(VEX_LEFT_WING[0].size, [0.0, 5.0, 8.0]);
+    assert_eq!(VEX_LEFT_WING[0].tex, [16.0, 14.0]);
+    assert!(VEX_LEFT_WING[0].mirror);
+    assert_eq!(VEX_RIGHT_WING[0].size, [0.0, 5.0, 8.0]);
+    assert_eq!(VEX_RIGHT_WING[0].tex, [16.0, 14.0]);
+    assert!(!VEX_RIGHT_WING[0].mirror);
 
     // Part offsets: the model root sits at -2.5, head/body at +20, arms ±1.75, wings ±0.5.
     assert_eq!(VEX_ROOT_POSE.offset, [0.0, -2.5, 0.0]);
@@ -153,36 +173,6 @@ fn vex_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         })
     );
-}
-
-#[test]
-fn vex_textured_cubes_match_vanilla_body_layer_uvs() {
-    // The textured cubes mirror the colored geometry. `CubeDeformation` inflates the box but
-    // the `uv_size` keeps the BASE box, exactly as vanilla bakes it.
-    assert_eq!(VEX_TEXTURED_HEAD[0].min, [-2.5, -5.0, -2.5]);
-    assert_eq!(VEX_TEXTURED_HEAD[0].size, [5.0, 5.0, 5.0]);
-    assert_eq!(VEX_TEXTURED_HEAD[0].uv_size, [5.0, 5.0, 5.0]);
-    assert_eq!(VEX_TEXTURED_HEAD[0].tex, [0.0, 0.0]);
-
-    // Body box 0 is `texOffs(0, 10)` 3×4×2; box 1 is `texOffs(0, 16)` with the 3×5×2 base box
-    // inset by `CubeDeformation(-0.2)`.
-    assert_eq!(VEX_TEXTURED_BODY[0].tex, [0.0, 10.0]);
-    assert_eq!(VEX_TEXTURED_BODY[0].uv_size, [3.0, 4.0, 2.0]);
-    assert_eq!(VEX_TEXTURED_BODY[1].tex, [0.0, 16.0]);
-    assert_eq!(VEX_TEXTURED_BODY[1].size, [2.6, 4.6, 1.6]);
-    assert_eq!(VEX_TEXTURED_BODY[1].uv_size, [3.0, 5.0, 2.0]);
-
-    // Arms: `texOffs(23, 0)` / `texOffs(23, 6)`, 2×4×2 base box inset by `CubeDeformation(-0.1)`.
-    assert_eq!(VEX_TEXTURED_RIGHT_ARM[0].tex, [23.0, 0.0]);
-    assert_eq!(VEX_TEXTURED_RIGHT_ARM[0].uv_size, [2.0, 4.0, 2.0]);
-    assert_eq!(VEX_TEXTURED_LEFT_ARM[0].tex, [23.0, 6.0]);
-    assert_eq!(VEX_TEXTURED_LEFT_ARM[0].uv_size, [2.0, 4.0, 2.0]);
-
-    // Both wings share `texOffs(16, 14)`; only the left wing's UV is mirrored.
-    assert_eq!(VEX_TEXTURED_LEFT_WING[0].tex, [16.0, 14.0]);
-    assert!(VEX_TEXTURED_LEFT_WING[0].mirror);
-    assert_eq!(VEX_TEXTURED_RIGHT_WING[0].tex, [16.0, 14.0]);
-    assert!(!VEX_TEXTURED_RIGHT_WING[0].mirror);
 }
 
 #[test]

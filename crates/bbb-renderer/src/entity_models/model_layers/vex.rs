@@ -1,53 +1,83 @@
-use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, VEX_GREY,
-};
+use super::{PartPose, PART_POSE_ZERO, VEX_GREY};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `VexModel.createBodyLayer` (atlas 32×32). The model root is the `root` part
 // at `(0, -2.5, 0)`; `head` and `body` hang under it, and the arms and wings are children
 // of `body` (so the body tilt carries them). `CubeDeformation` insets are baked into the
-// cube min/size below (`min -= grow`, `size += 2·grow`).
-pub(in crate::entity_models) const VEX_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.5, -5.0, -2.5],
-    size: [5.0, 5.0, 5.0],
-    color: VEX_GREY,
-}];
+// cube min/size below (`min -= grow`, `size += 2·grow`); the textured `uv_size` keeps the
+// BASE box, exactly as vanilla bakes it. Each cube carries both render paths' data: the
+// colored debug tint (`VEX_GREY`) and the textured `uv_size` / `texOffs` / `mirror`.
+pub(in crate::entity_models) const VEX_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -5.0, -2.5],
+    [5.0, 5.0, 5.0],
+    VEX_GREY,
+    [5.0, 5.0, 5.0],
+    [0.0, 0.0],
+    false,
+)];
 
 // Body: a plain `texOffs(0, 10)` 3×4×2 box plus the `texOffs(0, 16)` 3×5×2 box inset by
-// `CubeDeformation(-0.2)` → min `+0.2`, size `-0.4` per axis.
-pub(in crate::entity_models) const VEX_BODY: [ModelCubeDesc; 2] = [
-    ModelCubeDesc {
-        min: [-1.5, 0.0, -1.0],
-        size: [3.0, 4.0, 2.0],
-        color: VEX_GREY,
-    },
-    ModelCubeDesc {
-        min: [-1.3, 1.2, -0.8],
-        size: [2.6, 4.6, 1.6],
-        color: VEX_GREY,
-    },
+// `CubeDeformation(-0.2)` → min `+0.2`, size `-0.4` per axis (geometry inset, uv_size keeps
+// the 3×5×2 base box).
+pub(in crate::entity_models) const VEX_BODY: [ModelCube; 2] = [
+    ModelCube::new(
+        [-1.5, 0.0, -1.0],
+        [3.0, 4.0, 2.0],
+        VEX_GREY,
+        [3.0, 4.0, 2.0],
+        [0.0, 10.0],
+        false,
+    ),
+    ModelCube::new(
+        [-1.3, 1.2, -0.8],
+        [2.6, 4.6, 1.6],
+        VEX_GREY,
+        [3.0, 5.0, 2.0],
+        [0.0, 16.0],
+        false,
+    ),
 ];
 
-// Arms: 2×4×2 boxes inset by `CubeDeformation(-0.1)` → min `+0.1`, size `-0.2` per axis.
-pub(in crate::entity_models) const VEX_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.15, -0.4, -0.9],
-    size: [1.8, 3.8, 1.8],
-    color: VEX_GREY,
-}];
+// Arms: 2×4×2 boxes inset by `CubeDeformation(-0.1)` → min `+0.1`, size `-0.2` per axis (the
+// uv_size keeps the 2×4×2 base box).
+pub(in crate::entity_models) const VEX_RIGHT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-1.15, -0.4, -0.9],
+    [1.8, 3.8, 1.8],
+    VEX_GREY,
+    [2.0, 4.0, 2.0],
+    [23.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const VEX_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-0.65, -0.4, -0.9],
-    size: [1.8, 3.8, 1.8],
-    color: VEX_GREY,
-}];
+pub(in crate::entity_models) const VEX_LEFT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-0.65, -0.4, -0.9],
+    [1.8, 3.8, 1.8],
+    VEX_GREY,
+    [2.0, 4.0, 2.0],
+    [23.0, 6.0],
+    false,
+)];
 
-// Wings: zero-thickness `0×5×8` planes (the left wing only differs by mirrored UV).
-pub(in crate::entity_models) const VEX_WING: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [0.0, 5.0, 8.0],
-    color: VEX_GREY,
-}];
+// Wings: zero-thickness `0×5×8` planes. Both share `texOffs(16, 14)`; the left wing's UV is
+// mirrored, so the two wings use distinct cubes.
+pub(in crate::entity_models) const VEX_LEFT_WING: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [0.0, 5.0, 8.0],
+    VEX_GREY,
+    [0.0, 5.0, 8.0],
+    [16.0, 14.0],
+    true,
+)];
+
+pub(in crate::entity_models) const VEX_RIGHT_WING: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [0.0, 5.0, 8.0],
+    VEX_GREY,
+    [0.0, 5.0, 8.0],
+    [16.0, 14.0],
+    false,
+)];
 
 pub(in crate::entity_models) const VEX_ROOT_POSE: PartPose = PartPose {
     offset: [0.0, -2.5, 0.0],
@@ -115,159 +145,6 @@ pub(in crate::entity_models) fn vex_left_wing_y_rot(age_in_ticks: f32) -> f32 {
     1.099_557_4 + (age_in_ticks * 45.836_624_f32.to_radians()).cos() * 16.2_f32.to_radians()
 }
 
-// Textured counterparts of the vex cubes (atlas 32×32). `CubeDeformation` inflates the
-// geometry (min/size) but the `uv_size` keeps the BASE box, exactly as vanilla bakes it.
-pub(in crate::entity_models) const VEX_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, -5.0, -2.5],
-        size: [5.0, 5.0, 5.0],
-        uv_size: [5.0, 5.0, 5.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const VEX_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
-    TexturedModelCubeDesc {
-        min: [-1.5, 0.0, -1.0],
-        size: [3.0, 4.0, 2.0],
-        uv_size: [3.0, 4.0, 2.0],
-        tex: [0.0, 10.0],
-        mirror: false,
-    },
-    TexturedModelCubeDesc {
-        // `CubeDeformation(-0.2)`: geometry inset, but uv_size keeps the 3×5×2 base box.
-        min: [-1.3, 1.2, -0.8],
-        size: [2.6, 4.6, 1.6],
-        uv_size: [3.0, 5.0, 2.0],
-        tex: [0.0, 16.0],
-        mirror: false,
-    },
-];
-
-pub(in crate::entity_models) const VEX_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.15, -0.4, -0.9],
-        size: [1.8, 3.8, 1.8],
-        uv_size: [2.0, 4.0, 2.0],
-        tex: [23.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const VEX_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-0.65, -0.4, -0.9],
-        size: [1.8, 3.8, 1.8],
-        uv_size: [2.0, 4.0, 2.0],
-        tex: [23.0, 6.0],
-        mirror: false,
-    }];
-
-// Both wings share `texOffs(16, 14)`; the left wing's UV is mirrored.
-pub(in crate::entity_models) const VEX_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [0.0, 5.0, 8.0],
-        uv_size: [0.0, 5.0, 8.0],
-        tex: [16.0, 14.0],
-        mirror: true,
-    }];
-
-pub(in crate::entity_models) const VEX_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [0.0, 5.0, 8.0],
-        uv_size: [0.0, 5.0, 8.0],
-        tex: [16.0, 14.0],
-        mirror: false,
-    }];
-
-// Colored vex tree: `root` (the static pivot, no cubes) → `head`, `body`; `body` → right arm, left
-// arm, left wing, right wing (the emit order, preserved for byte-identical meshes). Mirrors vanilla
-// `VexModel.createBodyLayer`. Zipped with the textured tree by `VexModel::new`; the dynamic poses
-// (head look, charging body/arms, wing flap) are applied in `setup_anim`.
-const VEX_BODY_CHILDREN: [ModelPartDesc; 4] = [
-    ModelPartDesc {
-        pose: VEX_RIGHT_ARM_POSE,
-        cubes: &VEX_RIGHT_ARM,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: VEX_LEFT_ARM_POSE,
-        cubes: &VEX_LEFT_ARM,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: VEX_LEFT_WING_POSE,
-        cubes: &VEX_WING,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: VEX_RIGHT_WING_POSE,
-        cubes: &VEX_WING,
-        children: &[],
-    },
-];
-const VEX_ROOT_CHILDREN: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: VEX_HEAD_POSE,
-        cubes: &VEX_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: VEX_BODY_POSE,
-        cubes: &VEX_BODY,
-        children: &VEX_BODY_CHILDREN,
-    },
-];
-pub(in crate::entity_models) const VEX_PARTS: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: VEX_ROOT_POSE,
-    cubes: &[],
-    children: &VEX_ROOT_CHILDREN,
-}];
-
-// Textured counterpart of `VEX_PARTS` (same hierarchy and bind poses, UV cubes — the left wing's UV
-// is mirrored, so the two wings use distinct textured cubes).
-const VEX_TEXTURED_BODY_CHILDREN: [TexturedModelPartDesc; 4] = [
-    TexturedModelPartDesc {
-        pose: VEX_RIGHT_ARM_POSE,
-        cubes: &VEX_TEXTURED_RIGHT_ARM,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: VEX_LEFT_ARM_POSE,
-        cubes: &VEX_TEXTURED_LEFT_ARM,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: VEX_LEFT_WING_POSE,
-        cubes: &VEX_TEXTURED_LEFT_WING,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: VEX_RIGHT_WING_POSE,
-        cubes: &VEX_TEXTURED_RIGHT_WING,
-        children: &[],
-    },
-];
-const VEX_TEXTURED_ROOT_CHILDREN: [TexturedModelPartDesc; 2] = [
-    TexturedModelPartDesc {
-        pose: VEX_HEAD_POSE,
-        cubes: &VEX_TEXTURED_HEAD,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: VEX_BODY_POSE,
-        cubes: &VEX_TEXTURED_BODY,
-        children: &VEX_TEXTURED_BODY_CHILDREN,
-    },
-];
-pub(in crate::entity_models) const VEX_TEXTURED_PARTS: [TexturedModelPartDesc; 1] =
-    [TexturedModelPartDesc {
-        pose: VEX_ROOT_POSE,
-        cubes: &[],
-        children: &VEX_TEXTURED_ROOT_CHILDREN,
-    }];
-
 /// Applies the vanilla `VexModel.setupAnim` pose to the unified tree: the head look, the body charging
 /// level / idle tilt, the arm charging raise / idle hold (both with the shared `vex_moving_arm_z_bob`),
 /// and the wing flap. The held-item arm variant (`xRot = π·7/6`) is deferred, so this is the
@@ -299,29 +176,62 @@ fn apply_vex_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
         )
     };
 
-    let vex_root = root.child_at_mut(0);
-    vex_root.child_at_mut(0).pose.rotation = [head_pitch, head_yaw, 0.0];
+    let vex_root = root.child_mut("root");
+    vex_root.child_mut("head").pose.rotation = [head_pitch, head_yaw, 0.0];
 
-    let body = vex_root.child_at_mut(1);
+    let body = vex_root.child_mut("body");
     body.pose.rotation = [if charging { 0.0 } else { VEX_BODY_X_ROT }, 0.0, 0.0];
-    body.child_at_mut(0).pose.rotation = right_arm_rot;
-    body.child_at_mut(1).pose.rotation = left_arm_rot;
-    body.child_at_mut(2).pose.rotation = [VEX_WING_X_ROT, left_wing_yrot, -VEX_WING_Z_ROT];
-    body.child_at_mut(3).pose.rotation = [VEX_WING_X_ROT, -left_wing_yrot, VEX_WING_Z_ROT];
+    body.child_mut("right_arm").pose.rotation = right_arm_rot;
+    body.child_mut("left_arm").pose.rotation = left_arm_rot;
+    body.child_mut("left_wing").pose.rotation = [VEX_WING_X_ROT, left_wing_yrot, -VEX_WING_Z_ROT];
+    body.child_mut("right_wing").pose.rotation = [VEX_WING_X_ROT, -left_wing_yrot, VEX_WING_Z_ROT];
 }
 
-/// Mutable vex model, mirroring vanilla `VexModel`. The unified tree is zipped from the `root` →
-/// (head, body → arms/wings) hierarchy ([`VEX_PARTS`] / [`VEX_TEXTURED_PARTS`]); `setup_anim` runs
-/// [`apply_vex_anim`]. The same posed tree drives the colored fallback and the single translucent
-/// textured layer (the full-bright block light is deferred lighting).
+/// Mutable vex model, mirroring vanilla `VexModel`. The unified tree is built once with named children:
+/// the static `root` pivot → (`head`, `body`), with `body` parenting the right arm, left arm, left wing,
+/// and right wing (the emit order, preserved for byte-identical meshes). Each cube carries both the
+/// colored tint and the textured UV, so one tree drives both render paths; `setup_anim` runs
+/// [`apply_vex_anim`] (head look, charging body/arms, wing flap). The same posed tree drives the
+/// colored fallback and the single translucent textured layer (the full-bright block light is deferred
+/// lighting).
 pub(in crate::entity_models) struct VexModel {
     root: ModelPart,
 }
 
 impl VexModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let body = ModelPart::new(
+            VEX_BODY_POSE,
+            VEX_BODY.to_vec(),
+            vec![
+                (
+                    "right_arm",
+                    ModelPart::leaf(VEX_RIGHT_ARM_POSE, VEX_RIGHT_ARM.to_vec()),
+                ),
+                (
+                    "left_arm",
+                    ModelPart::leaf(VEX_LEFT_ARM_POSE, VEX_LEFT_ARM.to_vec()),
+                ),
+                (
+                    "left_wing",
+                    ModelPart::leaf(VEX_LEFT_WING_POSE, VEX_LEFT_WING.to_vec()),
+                ),
+                (
+                    "right_wing",
+                    ModelPart::leaf(VEX_RIGHT_WING_POSE, VEX_RIGHT_WING.to_vec()),
+                ),
+            ],
+        );
+        let vex_root = ModelPart::new(
+            VEX_ROOT_POSE,
+            Vec::new(),
+            vec![
+                ("head", ModelPart::leaf(VEX_HEAD_POSE, VEX_HEAD.to_vec())),
+                ("body", body),
+            ],
+        );
         Self {
-            root: ModelPart::root_from_descs(&VEX_PARTS, &VEX_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("root", vex_root)]),
         }
     }
 }
