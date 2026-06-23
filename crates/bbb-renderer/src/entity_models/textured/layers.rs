@@ -253,7 +253,7 @@ pub(in crate::entity_models) fn creeper_textured_layer_passes() -> Vec<EntityMod
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_CREEPER,
         texture: CREEPER_TEXTURE_REF,
-        parts: &CREEPER_TEXTURED_PARTS,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

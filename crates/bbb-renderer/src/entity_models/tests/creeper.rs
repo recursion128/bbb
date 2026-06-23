@@ -1,50 +1,45 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn creeper_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`. Vanilla `CreeperModel.createBodyLayer(CubeDeformation.NONE)`.
     assert_eq!(
         CREEPER_HEAD[0],
-        ModelCubeDesc {
-            min: [-4.0, -8.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            color: CREEPER_GREEN
-        }
+        ModelCube::new(
+            [-4.0, -8.0, -4.0],
+            [8.0, 8.0, 8.0],
+            CREEPER_GREEN,
+            [8.0, 8.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         CREEPER_BODY[0],
-        ModelCubeDesc {
-            min: [-4.0, 0.0, -2.0],
-            size: [8.0, 12.0, 4.0],
-            color: CREEPER_GREEN
-        }
+        ModelCube::new(
+            [-4.0, 0.0, -2.0],
+            [8.0, 12.0, 4.0],
+            CREEPER_GREEN,
+            [8.0, 12.0, 4.0],
+            [16.0, 16.0],
+            false,
+        )
     );
     assert_eq!(
         CREEPER_LEG[0],
-        ModelCubeDesc {
-            min: [-2.0, 0.0, -2.0],
-            size: [4.0, 6.0, 4.0],
-            color: CREEPER_GREEN
-        }
+        ModelCube::new(
+            [-2.0, 0.0, -2.0],
+            [4.0, 6.0, 4.0],
+            CREEPER_GREEN,
+            [4.0, 6.0, 4.0],
+            [0.0, 16.0],
+            false,
+        )
     );
-
-    assert_eq!(CREEPER_PARTS.len(), 6);
-    assert_eq!(CREEPER_PARTS[0].pose.offset, [0.0, 6.0, 0.0]);
-    assert_eq!(CREEPER_PARTS[0].cubes, CREEPER_HEAD.as_slice());
-    assert_eq!(CREEPER_PARTS[1].pose.offset, [0.0, 6.0, 0.0]);
-    assert_eq!(CREEPER_PARTS[1].cubes, CREEPER_BODY.as_slice());
-
-    let leg_offsets = [
-        [-2.0, 18.0, 4.0],
-        [2.0, 18.0, 4.0],
-        [-2.0, 18.0, -4.0],
-        [2.0, 18.0, -4.0],
-    ];
-    for (part, expected_offset) in CREEPER_PARTS[2..].iter().zip(leg_offsets) {
-        assert_eq!(part.pose.offset, expected_offset);
-        assert_eq!(part.pose.rotation, [0.0, 0.0, 0.0]);
-        assert_eq!(part.cubes, CREEPER_LEG.as_slice());
-        assert!(part.children.is_empty());
-    }
+    assert_eq!(CREEPER_HEAD_POSE.offset, [0.0, 6.0, 0.0]);
 }
 
 #[test]
@@ -95,7 +90,7 @@ fn creeper_textured_layer_passes_match_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].kind, EntityModelLayerKind::CreeperBase);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_CREEPER);
     assert_eq!(passes[0].texture, CREEPER_TEXTURE_REF);
-    assert_eq!(passes[0].parts, CREEPER_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (passes[0].collector_order, passes[0].submit_sequence),
@@ -105,41 +100,17 @@ fn creeper_textured_layer_passes_match_vanilla_renderer_model_layer() {
 
 #[test]
 fn creeper_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_CREEPER, "minecraft:creeper#main");
-    assert_eq!(CREEPER_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        CREEPER_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -8.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        CREEPER_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, 0.0, -2.0],
-            size: [8.0, 12.0, 4.0],
-            uv_size: [8.0, 12.0, 4.0],
-            tex: [16.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        CREEPER_TEXTURED_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, 0.0, -2.0],
-            size: [4.0, 6.0, 4.0],
-            uv_size: [4.0, 6.0, 4.0],
-            tex: [0.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(CREEPER_TEXTURED_PARTS[0].pose, CREEPER_PARTS[0].pose);
-    assert_eq!(CREEPER_TEXTURED_PARTS[1].pose, CREEPER_PARTS[1].pose);
-    assert_eq!(CREEPER_TEXTURED_PARTS[5].pose, CREEPER_PARTS[5].pose);
+    assert_eq!(CREEPER_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(CREEPER_HEAD[0].tex, [0.0, 0.0]);
+    assert!(!CREEPER_HEAD[0].mirror);
+    assert_eq!(CREEPER_BODY[0].uv_size, [8.0, 12.0, 4.0]);
+    assert_eq!(CREEPER_BODY[0].tex, [16.0, 16.0]);
+    assert!(!CREEPER_BODY[0].mirror);
+    assert_eq!(CREEPER_LEG[0].uv_size, [4.0, 6.0, 4.0]);
+    assert_eq!(CREEPER_LEG[0].tex, [0.0, 16.0]);
+    assert!(!CREEPER_LEG[0].mirror);
 }
 
 #[test]

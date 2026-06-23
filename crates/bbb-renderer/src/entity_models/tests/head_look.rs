@@ -73,13 +73,10 @@ fn head_part_indices_match_vanilla_body_layers() {
         PLAYER_HEAD.as_slice()
     );
 
-    // Standalone head-first models (creeper, spider, enderman, iron/snow golem)
-    // all list the head as part 0.
+    // Standalone head-first models (spider, enderman, iron/snow golem) all list
+    // the head as part 0. (The creeper now builds a named-children tree, so its
+    // head look resolves the `head` child by name rather than this index.)
     assert_eq!(head_first_part_index(), 0);
-    assert_eq!(
-        CREEPER_PARTS[head_first_part_index()].cubes,
-        CREEPER_HEAD.as_slice()
-    );
     assert_eq!(
         SPIDER_PARTS[head_first_part_index()].cubes,
         SPIDER_HEAD.as_slice()

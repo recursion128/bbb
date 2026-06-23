@@ -1,159 +1,85 @@
 use super::{
-    apply_head_look, apply_quadruped_leg_swing, ModelCubeDesc, ModelPartDesc, PartPose,
-    TexturedModelCubeDesc, TexturedModelPartDesc, CREEPER_GREEN,
+    apply_head_look, apply_quadruped_leg_swing_named, PartPose, CREEPER_GREEN, PART_POSE_ZERO,
 };
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_CREEPER: &str = "minecraft:creeper#main";
 
-pub(in crate::entity_models) const CREEPER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, -8.0, -4.0],
-    size: [8.0, 8.0, 8.0],
-    color: CREEPER_GREEN,
-}];
+// Vanilla 26.1 `CreeperModel.createBodyLayer(CubeDeformation.NONE)`. Each cube carries both render
+// paths' data: the colored debug tint (`CREEPER_GREEN`) and the textured `uv_size` / `texOffs`.
+pub(in crate::entity_models) const CREEPER_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -8.0, -4.0],
+    [8.0, 8.0, 8.0],
+    CREEPER_GREEN,
+    [8.0, 8.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const CREEPER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 0.0, -2.0],
-    size: [8.0, 12.0, 4.0],
-    color: CREEPER_GREEN,
-}];
+pub(in crate::entity_models) const CREEPER_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.0, -2.0],
+    [8.0, 12.0, 4.0],
+    CREEPER_GREEN,
+    [8.0, 12.0, 4.0],
+    [16.0, 16.0],
+    false,
+)];
 
-pub(in crate::entity_models) const CREEPER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -2.0],
-    size: [4.0, 6.0, 4.0],
-    color: CREEPER_GREEN,
-}];
+pub(in crate::entity_models) const CREEPER_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -2.0],
+    [4.0, 6.0, 4.0],
+    CREEPER_GREEN,
+    [4.0, 6.0, 4.0],
+    [0.0, 16.0],
+    false,
+)];
 
-// Vanilla 26.1 CreeperModel.createBodyLayer(CubeDeformation.NONE).
-pub(in crate::entity_models) const CREEPER_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 6.0, 0.0],
+/// The head/body part pose (vanilla `PartPose.offset(0, 6, 0)`).
+pub(in crate::entity_models) const CREEPER_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 6.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+
+/// Builds a creeper leg part at `offset` (vanilla `PartPose.offset`, no rotation).
+fn creeper_leg(offset: [f32; 3]) -> ModelPart {
+    ModelPart::leaf(
+        PartPose {
+            offset,
             rotation: [0.0, 0.0, 0.0],
         },
-        cubes: &CREEPER_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 6.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 18.0, 4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 18.0, 4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 18.0, -4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 18.0, -4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
-        children: &[],
-    },
-];
+        CREEPER_LEG.to_vec(),
+    )
+}
 
-pub(in crate::entity_models) const CREEPER_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, -8.0, -4.0],
-        size: [8.0, 8.0, 8.0],
-        uv_size: [8.0, 8.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const CREEPER_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 0.0, -2.0],
-        size: [8.0, 12.0, 4.0],
-        uv_size: [8.0, 12.0, 4.0],
-        tex: [16.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const CREEPER_TEXTURED_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 0.0, -2.0],
-        size: [4.0, 6.0, 4.0],
-        uv_size: [4.0, 6.0, 4.0],
-        tex: [0.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const CREEPER_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
-    TexturedModelPartDesc {
-        pose: CREEPER_PARTS[0].pose,
-        cubes: &CREEPER_TEXTURED_HEAD,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: CREEPER_PARTS[1].pose,
-        cubes: &CREEPER_TEXTURED_BODY,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: CREEPER_PARTS[2].pose,
-        cubes: &CREEPER_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: CREEPER_PARTS[3].pose,
-        cubes: &CREEPER_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: CREEPER_PARTS[4].pose,
-        cubes: &CREEPER_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: CREEPER_PARTS[5].pose,
-        cubes: &CREEPER_TEXTURED_LEG,
-        children: &[],
-    },
-];
-
-/// Vanilla `CreeperModel` leg part indices: the mesh lists head, body, then the four legs.
-const CREEPER_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
-
-/// Mutable creeper model, mirroring vanilla `CreeperModel`. The unified tree is zipped from the baked
-/// colored ([`CREEPER_PARTS`]) and textured ([`CREEPER_TEXTURED_PARTS`]) trees: child 0 is the head,
-/// child 1 the body, children 2..=5 the legs. `setup_anim` follows the head look ([`apply_head_look`])
-/// and applies the standard `QuadrupedModel` leg swing ([`apply_quadruped_leg_swing`]). The
-/// `CreeperRenderer.scale` swell inflate-and-flicker is folded into the root transform
-/// (`creeper_model_root_transform`); the powered charge layer is deferred.
+/// Mutable creeper model, mirroring vanilla `CreeperModel`. The unified tree is built once with the
+/// vanilla `QuadrupedModel` child names: `head`, `body`, then the four legs. `setup_anim` follows the
+/// head look ([`apply_head_look`] on `head`) and applies the standard `QuadrupedModel` leg swing
+/// ([`apply_quadruped_leg_swing_named`]). The `CreeperRenderer.scale` swell inflate-and-flicker is
+/// folded into the root transform (`creeper_model_root_transform`); the powered charge layer is
+/// deferred.
 pub(in crate::entity_models) struct CreeperModel {
     root: ModelPart,
 }
 
 impl CreeperModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let children: Vec<(&'static str, ModelPart)> = vec![
+            (
+                "head",
+                ModelPart::leaf(CREEPER_HEAD_POSE, CREEPER_HEAD.to_vec()),
+            ),
+            (
+                "body",
+                ModelPart::leaf(CREEPER_HEAD_POSE, CREEPER_BODY.to_vec()),
+            ),
+            ("right_hind_leg", creeper_leg([-2.0, 18.0, 4.0])),
+            ("left_hind_leg", creeper_leg([2.0, 18.0, 4.0])),
+            ("right_front_leg", creeper_leg([-2.0, 18.0, -4.0])),
+            ("left_front_leg", creeper_leg([2.0, 18.0, -4.0])),
+        ];
         Self {
-            root: ModelPart::root_from_descs(&CREEPER_PARTS, &CREEPER_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }
@@ -170,13 +96,12 @@ impl EntityModel for CreeperModel {
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
         apply_head_look(
-            self.root.child_at_mut(0),
+            self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_quadruped_leg_swing(
+        apply_quadruped_leg_swing_named(
             &mut self.root,
-            CREEPER_LEG_PART_INDICES,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
         );

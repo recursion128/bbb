@@ -240,6 +240,30 @@ pub(in crate::entity_models) fn apply_quadruped_leg_swing(
     }
 }
 
+/// Vanilla `QuadrupedModel.setupAnim` leg swing applied to a model root's four named leg children
+/// ([`quadruped_leg_swing_pose`]). The named counterpart of [`apply_quadruped_leg_swing`] for the
+/// quadruped family models that build a unified tree with the vanilla `QuadrupedModel` child names.
+/// A no-op while the limbs are at rest (`walkAnimationSpeed == 0`). The swing resolves each leg's
+/// phase from its own offset, so the four names may be declared in any order.
+pub(in crate::entity_models) fn apply_quadruped_leg_swing_named(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    for name in [
+        "right_hind_leg",
+        "left_hind_leg",
+        "right_front_leg",
+        "left_front_leg",
+    ] {
+        let leg = root.child_mut(name);
+        leg.pose = quadruped_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
+    }
+}
+
 /// Vanilla `HumanoidModel.setupAnim` leg swing for a single leg part: sets
 /// `leg.xRot = cos(walkAnimationPos * 0.6662 [+ π]) * 1.4 * walkAnimationSpeed`.
 /// The right leg (part offset `x < 0`) is in phase (`cos(...)`) and the left leg a
