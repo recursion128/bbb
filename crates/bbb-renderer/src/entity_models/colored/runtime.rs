@@ -242,7 +242,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Shulker => {
                 // Colored-only so far (no texture-backed shulker yet), so this arm always emits.
-                emit_shulker_model(&mut mesh, *instance);
+                ShulkerModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Wither => {
                 // Colored-only so far (no texture-backed wither yet), so this arm always emits.
@@ -1167,34 +1171,6 @@ fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     );
     let mut parts = TADPOLE_PARTS.to_vec();
     parts[TADPOLE_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
-    emit_model_parts(mesh, &parts, root);
-}
-
-fn emit_shulker_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `ShulkerModel.setupAnim`: the lid (part 0) opens with the synced peek and the head
-    // (part 2, a root sibling) tracks the look angles; the base holds still. With
-    // `bs = (0.5 + peek)·π` the lid rises to `y = 16 + sin(bs)·8` (plus an `sin(ageInTicks·0.1)·0.7`
-    // bob once `bs > π`, i.e. the lid is past half-open) and twists
-    // `lid.yRot = (−1 + sin(bs))⁴ · π · 0.125` once `peek > 0.3`. At `peek = 0` the lid sits back at
-    // its `y = 24` bind offset, so the closed pose equals the bind pose. The head look is
-    // `head.xRot = xRot`, `head.yRot = (yHeadRot − 180 − yBodyRot)` — and that yaw is exactly the
-    // already-projected `head_yaw − 180` (since `head_yaw = wrapDegrees(yHeadRot − yBodyRot)` and a
-    // 360° offset is a no-op rotation). The `−180` is vanilla's cancel for
-    // `ShulkerRenderer.setupRotations`' `bodyRot + 180`; bbb keeps the standard `180 − bodyRot`
-    // root, whose floor-shulker orientation differs from vanilla's by exactly 180° about Y — invisible
-    // on the 180°-symmetric square shell — so the literal head-vs-shell angle reproduces vanilla for
-    // the floor (`attachFace = DOWN`) case. The non-floor attach-face rotation / body-yaw inversion
-    // (and the Dinnerbone-negated head sign) stay deferred and the floor rest orientation is used.
-    let (lid_y, lid_yrot) = shulker_lid_pose(
-        instance.render_state.shulker_peek,
-        instance.render_state.age_in_ticks,
-    );
-    let mut parts = SHULKER_PARTS.to_vec();
-    parts[0].pose.offset[1] = lid_y;
-    parts[0].pose.rotation[1] = lid_yrot;
-    parts[2].pose.rotation[0] = instance.render_state.head_pitch.to_radians();
-    parts[2].pose.rotation[1] = (instance.render_state.head_yaw - 180.0).to_radians();
-    let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &parts, root);
 }
 

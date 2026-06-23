@@ -2,6 +2,8 @@ use super::{
     bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, SHULKER_HEAD,
     SHULKER_SHELL,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `ShulkerModel.createBodyLayer` (atlas 64×64). The mesh root holds three sibling
 // parts: the 16×12×16 lid and the 16×8×16 base (both at `offset(0, 24, 0)`), and the 6×6×6 head at
@@ -56,4 +58,51 @@ pub(in crate::entity_models) fn shulker_lid_pose(peek: f32, age_in_ticks: f32) -
         0.0
     };
     (lid_y, lid_yrot)
+}
+
+/// The lid is the first sibling and the head is the third; the base (second) holds still.
+const SHULKER_LID_PART_INDEX: usize = 0;
+const SHULKER_HEAD_PART_INDEX: usize = 2;
+
+/// Mutable shulker model, mirroring vanilla `ShulkerModel`. Its three sibling parts hang off a
+/// synthetic root, each built from the baked [`SHULKER_PARTS`] geometry. Colored-only (no textured
+/// path yet): `setup_anim` opens the lid from the synced peek and turns the head to the look angles.
+pub(in crate::entity_models) struct ShulkerModel {
+    root: ModelPart,
+}
+
+impl ShulkerModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(&SHULKER_PARTS),
+        }
+    }
+}
+
+impl EntityModel for ShulkerModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `ShulkerModel.setupAnim`: the lid opens with the synced peek ([`shulker_lid_pose`])
+        // and the head tracks the look angles, while the base holds still. All three are absolute
+        // sets — at `peek = 0` the lid returns to its `y = 24` bind offset, and the head yaw carries
+        // the vanilla `−180` cancel (so it never equals the bind yaw), so they apply every frame.
+        let (lid_y, lid_yrot) = shulker_lid_pose(
+            instance.render_state.shulker_peek,
+            instance.render_state.age_in_ticks,
+        );
+        let lid = self.root.child_at_mut(SHULKER_LID_PART_INDEX);
+        lid.pose.offset[1] = lid_y;
+        lid.pose.rotation[1] = lid_yrot;
+
+        let head = self.root.child_at_mut(SHULKER_HEAD_PART_INDEX);
+        head.pose.rotation[0] = instance.render_state.head_pitch.to_radians();
+        head.pose.rotation[1] = (instance.render_state.head_yaw - 180.0).to_radians();
+    }
 }
