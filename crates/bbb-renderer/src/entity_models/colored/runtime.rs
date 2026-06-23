@@ -1616,23 +1616,81 @@ pub(in crate::entity_models::colored) fn emit_model_parts_with_color_and_head_lo
 
 fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `CreakingModel` is a nested hierarchy (`root` → upper_body/legs, upper_body →
-    // head/body/arms). `setupAnim` sets `head.xRot/yRot` from the plain look; the walk, attack,
-    // invulnerable, and death keyframe animations are deferred. The head is nested two levels under
-    // the root ([`CREAKING_HEAD_PART_PATH`]), so the look is applied through
-    // [`emit_model_parts_with_head_look`]. Creaking uses `LivingEntityRenderer.setupRotations`.
-    let root = entity_model_root_transform(instance);
+    // head/body/arms). `setupAnim` sets `head.xRot/yRot` from the plain look, then (while `canMove`)
+    // applies the looping `CREAKING_WALK` via `applyWalk(walkAnimationPos, walkAnimationSpeed, 1, 1)`,
+    // which offsets the upper body, head (ADDING onto the look), arms, and legs. The `canMove` freeze
+    // gate is un-projected, but a frozen creaking has walk speed ≈ 0 so the amplitude already
+    // collapses to rest; the attack / invulnerable / death keyframe animations stay deferred. The
+    // spine is hand-walked. Creaking uses `LivingEntityRenderer.setupRotations`.
+    let root_transform = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
-    if head_look_at_rest(head_yaw, head_pitch) {
-        emit_model_parts(mesh, &CREAKING_PARTS, root);
-    } else {
-        emit_model_parts_with_head_look(
+    let (seconds, scale) = keyframe_walk_sample(
+        &CREAKING_WALK,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+        1.0,
+        1.0,
+    );
+    let animated = |bone: &str, bind: PartPose| {
+        let (position, rotation) = sample_bone_offsets(&CREAKING_WALK, bone, seconds, scale);
+        keyframe_animated_pose(bind, position, rotation)
+    };
+
+    let root = &CREAKING_PARTS[0];
+    let root_t = root_transform * part_pose_transform(root.pose);
+
+    // `upper_body` (root child 0, empty pivot): the walk rotation, carrying head/body/arms.
+    let upper_body = &root.children[0];
+    let upper_t = root_t * part_pose_transform(animated("upper_body", upper_body.pose));
+
+    // `head` (upper_body child 0): the look (set) plus the walk rotation (added). The walk has no
+    // head position channel, so the bind offset is kept.
+    let head = &upper_body.children[0];
+    let (_, head_walk_rot) = sample_bone_offsets(&CREAKING_WALK, "head", seconds, scale);
+    let head_pose = PartPose {
+        offset: head.pose.offset,
+        rotation: [
+            head_pitch.to_radians() + head_walk_rot[0],
+            head_yaw.to_radians() + head_walk_rot[1],
+            head.pose.rotation[2] + head_walk_rot[2],
+        ],
+    };
+    emit_model_part(
+        mesh,
+        &ModelPartDesc {
+            pose: head_pose,
+            ..*head
+        },
+        upper_t,
+    );
+
+    // `body` (upper_body child 1) is not animated by the walk.
+    emit_model_part(mesh, &upper_body.children[1], upper_t);
+
+    // The two arms (upper_body children 2/3) take their walk rotation.
+    for (index, bone) in [(2, "right_arm"), (3, "left_arm")] {
+        let arm = &upper_body.children[index];
+        emit_model_part(
             mesh,
-            &CREAKING_PARTS,
-            root,
-            CREAKING_HEAD_PART_PATH,
-            head_yaw,
-            head_pitch,
+            &ModelPartDesc {
+                pose: animated(bone, arm.pose),
+                ..*arm
+            },
+            upper_t,
+        );
+    }
+
+    // The two legs (root children 1/2) take their walk rotation + position.
+    for (index, bone) in [(1, "left_leg"), (2, "right_leg")] {
+        let leg = &root.children[index];
+        emit_model_part(
+            mesh,
+            &ModelPartDesc {
+                pose: animated(bone, leg.pose),
+                ..*leg
+            },
+            root_t,
         );
     }
 }
