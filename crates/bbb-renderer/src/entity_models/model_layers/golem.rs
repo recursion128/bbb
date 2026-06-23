@@ -1,7 +1,9 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    IRON_GOLEM_STONE, SNOW_GOLEM_WHITE,
+    apply_head_look, apply_iron_golem_walk, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, IRON_GOLEM_STONE, SNOW_GOLEM_WHITE,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const IRON_GOLEM_HEAD: [ModelCubeDesc; 2] = [
     ModelCubeDesc {
@@ -351,3 +353,44 @@ pub(in crate::entity_models) const SNOW_GOLEM_TEXTURED_PARTS: [TexturedModelPart
         children: &[],
     },
 ];
+
+/// Mutable iron golem model, mirroring vanilla `IronGolemModel`. The unified tree is zipped from the
+/// baked colored ([`IRON_GOLEM_PARTS`]) and textured ([`IRON_GOLEM_TEXTURED_PARTS`]) trees: child 0 is
+/// the head, child 1 the body, children 2..=5 the right/left arm and right/left leg. `setup_anim`
+/// follows the head look ([`apply_head_look`]) then swings the arms and legs ([`apply_iron_golem_walk`]).
+/// The attack swing and offer-flower arm pose are deferred event animations.
+pub(in crate::entity_models) struct IronGolemModel {
+    root: ModelPart,
+}
+
+impl IronGolemModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&IRON_GOLEM_PARTS, &IRON_GOLEM_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for IronGolemModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(0),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_iron_golem_walk(
+            &mut self.root,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+    }
+}

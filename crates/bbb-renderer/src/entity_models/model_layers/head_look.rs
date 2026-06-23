@@ -793,6 +793,23 @@ pub(in crate::entity_models) const fn iron_golem_walk_part_roles() -> [(usize, I
     ]
 }
 
+/// Vanilla `IronGolemModel.setupAnim` walk swing applied to a model root's arm/leg children at
+/// [`iron_golem_walk_part_roles`] ([`iron_golem_walk_pose`]). A no-op while the limbs are at rest
+/// (`walkAnimationSpeed == 0`).
+pub(in crate::entity_models) fn apply_iron_golem_walk(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    for (index, part) in iron_golem_walk_part_roles() {
+        let limb = root.child_at_mut(index);
+        limb.pose = iron_golem_walk_pose(limb.pose, walk_animation_pos, walk_animation_speed, part);
+    }
+}
+
 /// Vanilla `SpiderModel.setupAnim` walking swing for one leg part. With
 /// `animationPos = walkAnimationPos * 0.6662`, vanilla computes a horizontal `swing`
 /// `-(cos(animationPos * 2 + phase) * 0.4) * walkAnimationSpeed` accumulated onto

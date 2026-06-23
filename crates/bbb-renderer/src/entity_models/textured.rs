@@ -33,23 +33,23 @@ use super::{
         head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
         humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_crouch_arm_pose,
         humanoid_crouch_body_pose, humanoid_crouch_head_pose, humanoid_crouch_leg_pose,
-        humanoid_leg_swing_pose, illager_spellcast_arm_pose, iron_golem_walk_part_roles,
-        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
-        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
-        pig_head_part_index, piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
-        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
-        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
-        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
-        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
-        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
-        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
-        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel,
-        CreeperModel, EndermiteModel, GhastModel, HappyGhastModel, MagmaCubeModel, MinecartModel,
+        humanoid_leg_swing_pose, illager_spellcast_arm_pose, limb_swing_at_rest,
+        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
+        phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, piglin_ear_flap_pose,
+        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
+        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, ravager_head_child_index,
+        ravager_leg_swing_pose, ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index,
+        sheep_head_pose, skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
+        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
+        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
+        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
+        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
+        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
+        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, CreeperModel,
+        EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel, MinecartModel,
         SalmonModel, SilverfishModel, ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX,
         ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
         ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
@@ -2308,37 +2308,20 @@ fn emit_iron_golem_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `IronGolemModel.setupAnim`: full head look, then the legs swing
-    // `±1.5 * triangleWave(pos, 13) * speed` and (default branch) the arms
-    // `(-0.2 ± 1.5 * triangleWave(pos, 13)) * speed` (`iron_golem_walk_pose`). The
-    // attack swing and offer-flower arm pose are deferred.
-    let head_index = head_first_part_index();
+    // The unified `IronGolemModel` tree drives both render paths; `setup_anim` follows the head look
+    // then swings the arms and legs once. The attack swing and offer-flower arm pose are deferred.
     let transform = entity_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    let mut model = IronGolemModel::new();
+    model.prepare(&instance);
     for pass in iron_golem_textured_layer_passes() {
-        if head_resting && limbs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-                }
-            }
-            if !limbs_resting {
-                for (index, part) in iron_golem_walk_part_roles() {
-                    if let Some(limb) = parts.get_mut(index) {
-                        limb.pose =
-                            iron_golem_walk_pose(limb.pose, limb_swing, limb_swing_amount, part);
-                    }
-                }
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }
