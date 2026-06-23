@@ -1,10 +1,13 @@
 use super::super::keyframe::{
-    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation,
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_walk_sample, pos_vec,
+    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
+    Keyframe, KeyframeInterpolation,
 };
 use super::{
     bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, FROG_BODY, FROG_EYE,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
@@ -226,3 +229,58 @@ pub(in crate::entity_models) const FROG_WALK: AnimationDefinition = AnimationDef
 /// variant uses `1.0, 2.5` and is deferred).
 pub(in crate::entity_models) const FROG_WALK_SPEED_FACTOR: f32 = 1.5;
 pub(in crate::entity_models) const FROG_WALK_SCALE_FACTOR: f32 = 2.5;
+
+/// Mutable frog model, mirroring vanilla `FrogModel`. The cubeless `root` part (parenting `body`
+/// and the two legs; `body` parents the head, tongue, and two arms) hangs off a synthetic root,
+/// built from the baked [`FROG_PARTS`] geometry. Colored-only: `setup_anim` applies the looping
+/// `FROG_WALK` keyframe cycle to the body, arms, and legs (the jump / croak / tongue / swim
+/// animations stay deferred).
+pub(in crate::entity_models) struct FrogModel {
+    root: ModelPart,
+}
+
+impl FrogModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(&FROG_PARTS),
+        }
+    }
+}
+
+impl EntityModel for FrogModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `FrogModel.setupAnim` runs `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.5,
+        // 2.5)`: the walk position drives the keyframe sample time and the speed scales the amplitude
+        // (a still frog samples the cycle's rest frame). The cycle offsets the `body` (rotation), the
+        // two arms (`body` children), and the two legs (`root` children); the head and tongue hold.
+        let (seconds, scale) = keyframe_walk_sample(
+            &FROG_WALK,
+            instance.render_state.walk_animation_pos,
+            instance.render_state.walk_animation_speed,
+            FROG_WALK_SPEED_FACTOR,
+            FROG_WALK_SCALE_FACTOR,
+        );
+        let animate = |part: &mut ModelPart, bone: &str| {
+            let (position, rotation) = sample_bone_offsets(&FROG_WALK, bone, seconds, scale);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+        };
+
+        let frog_root = self.root.child_at_mut(0);
+        {
+            let body = frog_root.child_at_mut(0);
+            animate(body, "body");
+            animate(body.child_at_mut(2), "left_arm");
+            animate(body.child_at_mut(3), "right_arm");
+        }
+        animate(frog_root.child_at_mut(1), "left_leg");
+        animate(frog_root.child_at_mut(2), "right_leg");
+    }
+}

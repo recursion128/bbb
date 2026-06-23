@@ -207,7 +207,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Frog => {
                 // Colored-only so far (no texture-backed frog yet), so this arm is always emitted.
-                emit_frog_model(&mut mesh, *instance);
+                FrogModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Creaking => {
                 // Colored-only so far (no texture-backed creaking yet), so this arm always emits.
@@ -734,61 +738,6 @@ fn emit_guardian_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     let tail1_t = head_t * part_pose_transform(GUARDIAN_TAIL1_POSE);
     emit_model_cubes_at_pose(mesh, head_t, GUARDIAN_TAIL1_POSE, &GUARDIAN_TAIL1);
     emit_model_cubes_at_pose(mesh, tail1_t, GUARDIAN_TAIL2_POSE, &GUARDIAN_TAIL2);
-}
-
-fn emit_frog_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `FrogModel` is a nested hierarchy (`root` → body/legs, body → head/tongue/arms).
-    // `setupAnim` applies the looping `FROG_WALK` keyframe cycle via
-    // `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.5, 2.5)`: the walk position drives the sample
-    // time and the speed scales the amplitude (so a still frog samples the cycle's rest frame). The
-    // animation offsets the `body` (rotation), the two arms (`body` children), and the two legs
-    // (`root` children), so the spine is hand-walked. The jump / croak / tongue / in-water swim+idle
-    // keyframe animations need un-projected `AnimationState`s and stay deferred. Frogs use
-    // `LivingEntityRenderer.setupRotations`.
-    let root_transform = entity_model_root_transform(instance);
-    let (seconds, scale) = keyframe_walk_sample(
-        &FROG_WALK,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-        FROG_WALK_SPEED_FACTOR,
-        FROG_WALK_SCALE_FACTOR,
-    );
-    let animated = |bone: &str, bind: PartPose| {
-        let (position, rotation) = sample_bone_offsets(&FROG_WALK, bone, seconds, scale);
-        keyframe_animated_pose(bind, position, rotation)
-    };
-
-    let root = &FROG_PARTS[0];
-    let root_t = root_transform * part_pose_transform(root.pose);
-
-    // `body` (root child 0): a rotation channel, carrying head/tongue/arms beneath it.
-    let body = &root.children[0];
-    let body_t = root_t * part_pose_transform(animated("body", body.pose));
-    for cube in body.cubes {
-        emit_model_cube(mesh, body_t, *cube);
-    }
-    // head (0) and tongue (1) are not animated by the walk.
-    emit_model_part(mesh, &body.children[0], body_t);
-    emit_model_part(mesh, &body.children[1], body_t);
-    // The two arms (body children 2/3) take their own rotation + position offsets, carrying the
-    // webbed hands beneath them.
-    for (index, bone) in [(2, "left_arm"), (3, "right_arm")] {
-        let arm = &body.children[index];
-        let posed = ModelPartDesc {
-            pose: animated(bone, arm.pose),
-            ..*arm
-        };
-        emit_model_part(mesh, &posed, body_t);
-    }
-    // The two legs (root children 1/2) take their offsets, carrying the feet beneath them.
-    for (index, bone) in [(1, "left_leg"), (2, "right_leg")] {
-        let leg = &root.children[index];
-        let posed = ModelPartDesc {
-            pose: animated(bone, leg.pose),
-            ..*leg
-        };
-        emit_model_part(mesh, &posed, root_t);
-    }
 }
 
 fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
