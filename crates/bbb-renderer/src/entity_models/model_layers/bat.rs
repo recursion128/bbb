@@ -1,157 +1,102 @@
 use super::{
     degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation, ModelCubeDesc, ModelPartDesc, PartPose,
-    TexturedModelCubeDesc, TexturedModelPartDesc, BAT_BROWN,
+    BoneAnimation, Keyframe, KeyframeInterpolation, PartPose, BAT_BROWN, PART_POSE_ZERO,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::keyframe::{
     keyframe_animated_pose, keyframe_elapsed_seconds, sample_bone_offsets,
 };
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 use KeyframeInterpolation::Linear;
 
 // Vanilla 26.1 `BatModel.createBodyLayer` (atlas 32×32). The body and head hang under the root;
 // the wings (each with a tip) and the feet are children of the body, and the two ears are
 // children of the head. The keyframe `BatAnimation.BAT_FLYING` (below) adds per-frame position
-// and rotation offsets to these bind poses.
-pub(in crate::entity_models) const BAT_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, -1.0],
-    size: [3.0, 5.0, 2.0],
-    color: BAT_BROWN,
-}];
+// and rotation offsets to these bind poses. Each cube carries both render paths' data: the
+// colored debug tint (`BAT_BROWN`) and the textured `uv_size` / `texOffs` / `mirror`. No
+// `CubeDeformation`, so each `uv_size` matches its box `size`.
+pub(in crate::entity_models) const BAT_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, 0.0, -1.0],
+    [3.0, 5.0, 2.0],
+    BAT_BROWN,
+    [3.0, 5.0, 2.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BAT_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, -3.0, -1.0],
-    size: [4.0, 3.0, 2.0],
-    color: BAT_BROWN,
-}];
+pub(in crate::entity_models) const BAT_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -3.0, -1.0],
+    [4.0, 3.0, 2.0],
+    BAT_BROWN,
+    [4.0, 3.0, 2.0],
+    [0.0, 7.0],
+    false,
+)];
 
 // Ears and wings are zero-thickness planes.
-pub(in crate::entity_models) const BAT_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.5, -4.0, 0.0],
-    size: [3.0, 5.0, 0.0],
-    color: BAT_BROWN,
-}];
+pub(in crate::entity_models) const BAT_RIGHT_EAR: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -4.0, 0.0],
+    [3.0, 5.0, 0.0],
+    BAT_BROWN,
+    [3.0, 5.0, 0.0],
+    [1.0, 15.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BAT_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-0.1, -3.0, 0.0],
-    size: [3.0, 5.0, 0.0],
-    color: BAT_BROWN,
-}];
+pub(in crate::entity_models) const BAT_LEFT_EAR: [ModelCube; 1] = [ModelCube::new(
+    [-0.1, -3.0, 0.0],
+    [3.0, 5.0, 0.0],
+    BAT_BROWN,
+    [3.0, 5.0, 0.0],
+    [8.0, 15.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BAT_RIGHT_WING: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, -2.0, 0.0],
-    size: [2.0, 7.0, 0.0],
-    color: BAT_BROWN,
-}];
+pub(in crate::entity_models) const BAT_RIGHT_WING: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -2.0, 0.0],
+    [2.0, 7.0, 0.0],
+    BAT_BROWN,
+    [2.0, 7.0, 0.0],
+    [12.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BAT_RIGHT_WING_TIP: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-6.0, -2.0, 0.0],
-    size: [6.0, 8.0, 0.0],
-    color: BAT_BROWN,
-}];
+pub(in crate::entity_models) const BAT_RIGHT_WING_TIP: [ModelCube; 1] = [ModelCube::new(
+    [-6.0, -2.0, 0.0],
+    [6.0, 8.0, 0.0],
+    BAT_BROWN,
+    [6.0, 8.0, 0.0],
+    [16.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BAT_LEFT_WING: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -2.0, 0.0],
-    size: [2.0, 7.0, 0.0],
-    color: BAT_BROWN,
-}];
+pub(in crate::entity_models) const BAT_LEFT_WING: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -2.0, 0.0],
+    [2.0, 7.0, 0.0],
+    BAT_BROWN,
+    [2.0, 7.0, 0.0],
+    [12.0, 7.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BAT_LEFT_WING_TIP: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -2.0, 0.0],
-    size: [6.0, 8.0, 0.0],
-    color: BAT_BROWN,
-}];
+pub(in crate::entity_models) const BAT_LEFT_WING_TIP: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -2.0, 0.0],
+    [6.0, 8.0, 0.0],
+    BAT_BROWN,
+    [6.0, 8.0, 0.0],
+    [16.0, 8.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BAT_FEET: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, 0.0],
-    size: [3.0, 2.0, 0.0],
-    color: BAT_BROWN,
-}];
-
-// The same geometry with the vanilla `BatModel.createBodyLayer` texOffs UV coordinates (atlas
-// 32×32). No `CubeDeformation`, so each `uv_size` matches its box `size`.
-pub(in crate::entity_models) const BAT_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, 0.0, -1.0],
-        size: [3.0, 5.0, 2.0],
-        uv_size: [3.0, 5.0, 2.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, -3.0, -1.0],
-        size: [4.0, 3.0, 2.0],
-        uv_size: [4.0, 3.0, 2.0],
-        tex: [0.0, 7.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_RIGHT_EAR: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, -4.0, 0.0],
-        size: [3.0, 5.0, 0.0],
-        uv_size: [3.0, 5.0, 0.0],
-        tex: [1.0, 15.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_LEFT_EAR: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-0.1, -3.0, 0.0],
-        size: [3.0, 5.0, 0.0],
-        uv_size: [3.0, 5.0, 0.0],
-        tex: [8.0, 15.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, -2.0, 0.0],
-        size: [2.0, 7.0, 0.0],
-        uv_size: [2.0, 7.0, 0.0],
-        tex: [12.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_RIGHT_WING_TIP: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-6.0, -2.0, 0.0],
-        size: [6.0, 8.0, 0.0],
-        uv_size: [6.0, 8.0, 0.0],
-        tex: [16.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, -2.0, 0.0],
-        size: [2.0, 7.0, 0.0],
-        uv_size: [2.0, 7.0, 0.0],
-        tex: [12.0, 7.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_LEFT_WING_TIP: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, -2.0, 0.0],
-        size: [6.0, 8.0, 0.0],
-        uv_size: [6.0, 8.0, 0.0],
-        tex: [16.0, 8.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BAT_TEXTURED_FEET: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, 0.0, 0.0],
-        size: [3.0, 2.0, 0.0],
-        uv_size: [3.0, 2.0, 0.0],
-        tex: [16.0, 16.0],
-        mirror: false,
-    }];
+pub(in crate::entity_models) const BAT_FEET: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, 0.0, 0.0],
+    [3.0, 2.0, 0.0],
+    BAT_BROWN,
+    [3.0, 2.0, 0.0],
+    [16.0, 16.0],
+    false,
+)];
 
 pub(in crate::entity_models) const BAT_BODY_POSE: PartPose = PartPose {
     offset: [0.0, 17.0, 0.0],
@@ -422,115 +367,6 @@ pub(in crate::entity_models) const BAT_RESTING: AnimationDefinition = AnimationD
     bones: &BAT_RESTING_BONES,
 };
 
-// Colored bat tree: `head` (→ right/left ear) and `body` (→ feet, right wing → tip, left wing → tip)
-// hang under the root, in the emit order (preserved for byte-identical meshes). Mirrors vanilla
-// `BatModel.createBodyLayer`. Zipped with the textured tree by `BatModel::new`; the keyframe sample is
-// applied in `setup_anim`.
-const BAT_HEAD_CHILDREN: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: BAT_RIGHT_EAR_POSE,
-        cubes: &BAT_RIGHT_EAR,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: BAT_LEFT_EAR_POSE,
-        cubes: &BAT_LEFT_EAR,
-        children: &[],
-    },
-];
-const BAT_RIGHT_WING_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: BAT_RIGHT_WING_TIP_POSE,
-    cubes: &BAT_RIGHT_WING_TIP,
-    children: &[],
-}];
-const BAT_LEFT_WING_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: BAT_LEFT_WING_TIP_POSE,
-    cubes: &BAT_LEFT_WING_TIP,
-    children: &[],
-}];
-const BAT_BODY_CHILDREN: [ModelPartDesc; 3] = [
-    ModelPartDesc {
-        pose: BAT_FEET_POSE,
-        cubes: &BAT_FEET,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: BAT_RIGHT_WING_POSE,
-        cubes: &BAT_RIGHT_WING,
-        children: &BAT_RIGHT_WING_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: BAT_LEFT_WING_POSE,
-        cubes: &BAT_LEFT_WING,
-        children: &BAT_LEFT_WING_CHILDREN,
-    },
-];
-pub(in crate::entity_models) const BAT_PARTS: [ModelPartDesc; 2] = [
-    ModelPartDesc {
-        pose: BAT_HEAD_POSE,
-        cubes: &BAT_HEAD,
-        children: &BAT_HEAD_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: BAT_BODY_POSE,
-        cubes: &BAT_BODY,
-        children: &BAT_BODY_CHILDREN,
-    },
-];
-
-// Textured counterpart of `BAT_PARTS` (same hierarchy and bind poses, UV cubes).
-const BAT_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 2] = [
-    TexturedModelPartDesc {
-        pose: BAT_RIGHT_EAR_POSE,
-        cubes: &BAT_TEXTURED_RIGHT_EAR,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BAT_LEFT_EAR_POSE,
-        cubes: &BAT_TEXTURED_LEFT_EAR,
-        children: &[],
-    },
-];
-const BAT_TEXTURED_RIGHT_WING_CHILDREN: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: BAT_RIGHT_WING_TIP_POSE,
-    cubes: &BAT_TEXTURED_RIGHT_WING_TIP,
-    children: &[],
-}];
-const BAT_TEXTURED_LEFT_WING_CHILDREN: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: BAT_LEFT_WING_TIP_POSE,
-    cubes: &BAT_TEXTURED_LEFT_WING_TIP,
-    children: &[],
-}];
-const BAT_TEXTURED_BODY_CHILDREN: [TexturedModelPartDesc; 3] = [
-    TexturedModelPartDesc {
-        pose: BAT_FEET_POSE,
-        cubes: &BAT_TEXTURED_FEET,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BAT_RIGHT_WING_POSE,
-        cubes: &BAT_TEXTURED_RIGHT_WING,
-        children: &BAT_TEXTURED_RIGHT_WING_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: BAT_LEFT_WING_POSE,
-        cubes: &BAT_TEXTURED_LEFT_WING,
-        children: &BAT_TEXTURED_LEFT_WING_CHILDREN,
-    },
-];
-pub(in crate::entity_models) const BAT_TEXTURED_PARTS: [TexturedModelPartDesc; 2] = [
-    TexturedModelPartDesc {
-        pose: BAT_HEAD_POSE,
-        cubes: &BAT_TEXTURED_HEAD,
-        children: &BAT_TEXTURED_HEAD_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: BAT_BODY_POSE,
-        cubes: &BAT_TEXTURED_BODY,
-        children: &BAT_TEXTURED_BODY_CHILDREN,
-    },
-];
-
 /// Applies the vanilla `BatModel.setupAnim` to the unified tree: the looping `BatAnimation.BAT_FLYING`
 /// wing flap / body bob (sampled from `ageInTicks`), or, while `isResting`, the `BAT_RESTING` hanging
 /// pose with the head turned by the look yaw (`applyHeadRotation`, additive to the head's `yRot`). The
@@ -555,39 +391,85 @@ fn apply_bat_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let (left_wing_pos, left_wing_rot) = sample("left_wing");
     let (_, left_tip_rot) = sample("left_wing_tip");
 
-    let head = root.child_at_mut(0);
+    let head = root.child_mut("head");
     head.pose = keyframe_animated_pose(
         BAT_HEAD_POSE,
         head_pos,
         [head_rot[0], head_rot[1] + head_look_yaw, head_rot[2]],
     );
 
-    let body = root.child_at_mut(1);
+    let body = root.child_mut("body");
     body.pose = keyframe_animated_pose(BAT_BODY_POSE, body_pos, body_rot);
-    body.child_at_mut(0).pose = keyframe_animated_pose(BAT_FEET_POSE, [0.0; 3], feet_rot);
+    body.child_mut("feet").pose = keyframe_animated_pose(BAT_FEET_POSE, [0.0; 3], feet_rot);
 
-    let right_wing = body.child_at_mut(1);
+    let right_wing = body.child_mut("right_wing");
     right_wing.pose = keyframe_animated_pose(BAT_RIGHT_WING_POSE, right_wing_pos, right_wing_rot);
-    right_wing.child_at_mut(0).pose =
+    right_wing.child_mut("right_wing_tip").pose =
         keyframe_animated_pose(BAT_RIGHT_WING_TIP_POSE, [0.0; 3], right_tip_rot);
 
-    let left_wing = body.child_at_mut(2);
+    let left_wing = body.child_mut("left_wing");
     left_wing.pose = keyframe_animated_pose(BAT_LEFT_WING_POSE, left_wing_pos, left_wing_rot);
-    left_wing.child_at_mut(0).pose =
+    left_wing.child_mut("left_wing_tip").pose =
         keyframe_animated_pose(BAT_LEFT_WING_TIP_POSE, [0.0; 3], left_tip_rot);
 }
 
-/// Mutable bat model, mirroring vanilla `BatModel`. The unified tree is zipped from the head → ears and
-/// body → (feet, wings → tips) hierarchy ([`BAT_PARTS`] / [`BAT_TEXTURED_PARTS`]); `setup_anim` runs
-/// [`apply_bat_anim`]. The same posed tree drives the colored fallback and the cutout textured layer.
+/// Mutable bat model, mirroring vanilla `BatModel`. The unified tree is built once with named children:
+/// a synthetic root parenting `head` (→ `right_ear`, `left_ear`) and `body` (→ `feet`, `right_wing` →
+/// `right_wing_tip`, `left_wing` → `left_wing_tip`), in the emit order (preserved for byte-identical
+/// meshes). Each cube carries both the colored tint and the textured UV, so one tree drives both render
+/// paths; `setup_anim` runs [`apply_bat_anim`]. The same posed tree drives the colored fallback and the
+/// cutout textured layer.
 pub(in crate::entity_models) struct BatModel {
     root: ModelPart,
 }
 
 impl BatModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let head = ModelPart::new(
+            BAT_HEAD_POSE,
+            BAT_HEAD.to_vec(),
+            vec![
+                (
+                    "right_ear",
+                    ModelPart::leaf(BAT_RIGHT_EAR_POSE, BAT_RIGHT_EAR.to_vec()),
+                ),
+                (
+                    "left_ear",
+                    ModelPart::leaf(BAT_LEFT_EAR_POSE, BAT_LEFT_EAR.to_vec()),
+                ),
+            ],
+        );
+        let right_wing = ModelPart::new(
+            BAT_RIGHT_WING_POSE,
+            BAT_RIGHT_WING.to_vec(),
+            vec![(
+                "right_wing_tip",
+                ModelPart::leaf(BAT_RIGHT_WING_TIP_POSE, BAT_RIGHT_WING_TIP.to_vec()),
+            )],
+        );
+        let left_wing = ModelPart::new(
+            BAT_LEFT_WING_POSE,
+            BAT_LEFT_WING.to_vec(),
+            vec![(
+                "left_wing_tip",
+                ModelPart::leaf(BAT_LEFT_WING_TIP_POSE, BAT_LEFT_WING_TIP.to_vec()),
+            )],
+        );
+        let body = ModelPart::new(
+            BAT_BODY_POSE,
+            BAT_BODY.to_vec(),
+            vec![
+                ("feet", ModelPart::leaf(BAT_FEET_POSE, BAT_FEET.to_vec())),
+                ("right_wing", right_wing),
+                ("left_wing", left_wing),
+            ],
+        );
         Self {
-            root: ModelPart::root_from_descs(&BAT_PARTS, &BAT_TEXTURED_PARTS),
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![("head", head), ("body", body)],
+            ),
         }
     }
 }

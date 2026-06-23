@@ -1,18 +1,47 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn bat_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `BatModel.createBodyLayer` (atlas 32×32).
-    assert_eq!(BAT_BODY[0].min, [-1.5, 0.0, -1.0]);
-    assert_eq!(BAT_BODY[0].size, [3.0, 5.0, 2.0]);
-    assert_eq!(BAT_HEAD[0].min, [-2.0, -3.0, -1.0]);
-    assert_eq!(BAT_HEAD[0].size, [4.0, 3.0, 2.0]);
+    // Vanilla `BatModel.createBodyLayer` (atlas 32×32). Each unified cube carries both the colored
+    // geometry/tint and the textured `uv_size` / `texOffs` / `mirror`; no `CubeDeformation`, so each
+    // `uv_size` matches its box `size`.
+    assert_eq!(
+        BAT_BODY[0],
+        ModelCube::new(
+            [-1.5, 0.0, -1.0],
+            [3.0, 5.0, 2.0],
+            BAT_BROWN,
+            [3.0, 5.0, 2.0],
+            [0.0, 0.0],
+            false,
+        )
+    );
+    assert_eq!(
+        BAT_HEAD[0],
+        ModelCube::new(
+            [-2.0, -3.0, -1.0],
+            [4.0, 3.0, 2.0],
+            BAT_BROWN,
+            [4.0, 3.0, 2.0],
+            [0.0, 7.0],
+            false,
+        )
+    );
 
-    // Ears and wings are zero-thickness planes.
+    // Ears and wings are zero-thickness planes, each with its own `texOffs`.
     assert_eq!(BAT_RIGHT_EAR[0].size, [3.0, 5.0, 0.0]);
+    assert_eq!(BAT_RIGHT_EAR[0].tex, [1.0, 15.0]);
+    assert_eq!(BAT_LEFT_EAR[0].tex, [8.0, 15.0]);
     assert_eq!(BAT_RIGHT_WING[0].size, [2.0, 7.0, 0.0]);
+    assert_eq!(BAT_RIGHT_WING[0].tex, [12.0, 0.0]);
+    assert_eq!(BAT_LEFT_WING[0].tex, [12.0, 7.0]);
     assert_eq!(BAT_RIGHT_WING_TIP[0].size, [6.0, 8.0, 0.0]);
+    assert_eq!(BAT_RIGHT_WING_TIP[0].tex, [16.0, 0.0]);
+    assert_eq!(BAT_LEFT_WING_TIP[0].tex, [16.0, 8.0]);
     assert_eq!(BAT_FEET[0].size, [3.0, 2.0, 0.0]);
+    assert_eq!(BAT_FEET[0].tex, [16.0, 16.0]);
 
     // Bind-pose offsets: body and head at +17, the ears under the head, the wings/feet under
     // the body, and each wing tip under its wing.
@@ -85,23 +114,6 @@ fn bat_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         }]
     );
-}
-
-#[test]
-fn bat_textured_cubes_match_vanilla_body_layer_uvs() {
-    // Vanilla `BatModel.createBodyLayer` texOffs (atlas 32×32); no `CubeDeformation`, so each
-    // `uv_size` matches the box `size`.
-    assert_eq!(BAT_TEXTURED_BODY[0].tex, [0.0, 0.0]);
-    assert_eq!(BAT_TEXTURED_BODY[0].uv_size, [3.0, 5.0, 2.0]);
-    assert_eq!(BAT_TEXTURED_HEAD[0].tex, [0.0, 7.0]);
-    assert_eq!(BAT_TEXTURED_RIGHT_EAR[0].tex, [1.0, 15.0]);
-    assert_eq!(BAT_TEXTURED_LEFT_EAR[0].tex, [8.0, 15.0]);
-    assert_eq!(BAT_TEXTURED_RIGHT_WING[0].tex, [12.0, 0.0]);
-    assert_eq!(BAT_TEXTURED_RIGHT_WING_TIP[0].tex, [16.0, 0.0]);
-    assert_eq!(BAT_TEXTURED_LEFT_WING[0].tex, [12.0, 7.0]);
-    assert_eq!(BAT_TEXTURED_LEFT_WING_TIP[0].tex, [16.0, 8.0]);
-    assert_eq!(BAT_TEXTURED_FEET[0].tex, [16.0, 16.0]);
-    assert!(!BAT_TEXTURED_BODY[0].mirror);
 }
 
 #[test]
