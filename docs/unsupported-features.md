@@ -1686,10 +1686,13 @@ When an agent does any of the following, update this file in the same slice:
       tuck to `zRot = ±0.0873` (the `setupAnim` SITTING branch adds nothing more). The head look is now
       reproduced: `setupAnim` sets `head.xRot/yRot` from the projected `head_pitch/head_yaw` before the
       per-pose switch, so the top-level head part (and its beak/crest children) turn at both projected poses
-      (STANDING and SITTING); only the un-projected PARTY pose would overwrite it. The remaining
-      `ParrotModel.setupAnim` motion stays deferred: the FLYING leg pitch, the leg/tail walk swing, the wing
-      flap (`zRot = ±(0.0873 + flapAngle)`), the body/tail/head flap bob (needs the un-projected `flapAngle`),
-      and the PARTY dance. The five
+      (STANDING and SITTING); only the un-projected PARTY pose would overwrite it. The STANDING walk swing is
+      reproduced too: the legs add `xRot += cos(walkAnimationPos·0.6662 [+π])·1.4·walkAnimationSpeed` (left in
+      phase, right out) and the tail adds `xRot += cos(walkAnimationPos·0.6662)·0.3·walkAnimationSpeed` onto
+      their baked pitch, gated off the projected `walk_animation_pos/speed` and skipped while sitting (the
+      vanilla SITTING branch breaks before it). The remaining `ParrotModel.setupAnim` motion stays deferred:
+      the FLYING leg pitch, the wing flap (`zRot = ±(0.0873 + flapAngle)`), the body/tail/head flap bob (needs
+      the un-projected `flapAngle`), and the PARTY dance. The five
       `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) live on the deferred
       texture-backed path, so the colored debug path renders one body tint plus a beak tint. The
       texture-backed path remains unsupported (this is a colored-first slice)

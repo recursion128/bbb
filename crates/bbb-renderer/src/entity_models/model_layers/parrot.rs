@@ -1,6 +1,6 @@
 use super::{
     bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc, ModelPartDesc,
-    PARROT_BEAK, PARROT_BODY,
+    PartPose, PARROT_BEAK, PARROT_BODY,
 };
 
 // Vanilla 26.1 `ParrotModel.createBodyLayer` (atlas 32×32). The mesh root holds seven sibling parts
@@ -133,4 +133,55 @@ pub(in crate::entity_models) fn parrot_pose_parts(sitting: bool) -> Vec<ModelPar
     parts[5].pose.rotation[0] += std::f32::consts::FRAC_PI_2; // left leg fold += π/2
     parts[6].pose.rotation[0] += std::f32::consts::FRAC_PI_2; // right leg fold += π/2
     parts
+}
+
+/// The `tail` is the second sibling and the two legs are the sixth/seventh; `ParrotModel.setupAnim`
+/// adds the STANDING walk swing onto their baked pitch.
+pub(in crate::entity_models) const PARROT_TAIL_PART_INDEX: usize = 1;
+pub(in crate::entity_models) const PARROT_LEG_PART_INDICES: [usize; 2] = [5, 6];
+
+/// Vanilla `ParrotModel.setupAnim` STANDING leg walk swing for one leg:
+/// `leg.xRot += cos(walkAnimationPos·0.6662 [+ π])·1.4·walkAnimationSpeed`. The left leg
+/// (`leftLeg`, offset `x > 0`) is in phase and the right (`rightLeg`, `x < 0`) a half-cycle out —
+/// the opposite x-sign convention to `QuadrupedModel`/`HumanoidModel`. Unlike those, the swing is
+/// ADDED onto the baked leg pitch (`-0.0299`), matching vanilla's `+=`. STANDING only: the SITTING
+/// branch breaks before the swing and FLYING/PARTY are not projected.
+pub(in crate::entity_models) fn parrot_leg_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    let phase = walk_animation_pos * 0.6662;
+    let angle = if base.offset[0] > 0.0 {
+        phase
+    } else {
+        phase + std::f32::consts::PI
+    };
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            base.rotation[0] + angle.cos() * 1.4 * walk_animation_speed,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
+/// Vanilla `ParrotModel.setupAnim` STANDING tail walk swing:
+/// `tail.xRot += cos(walkAnimationPos·0.6662)·0.3·walkAnimationSpeed`, added onto the baked tail
+/// pitch (`1.015`). Reached through the STANDING fall-through, so the renderer applies it whenever
+/// the parrot is not sitting.
+pub(in crate::entity_models) fn parrot_tail_swing_pose(
+    base: PartPose,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) -> PartPose {
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            base.rotation[0] + (walk_animation_pos * 0.6662).cos() * 0.3 * walk_animation_speed,
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
 }

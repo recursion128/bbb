@@ -139,6 +139,89 @@ fn parrot_sitting_mesh_differs_from_standing() {
 }
 
 #[test]
+fn parrot_walk_swing_matches_vanilla_setup_anim() {
+    use std::f32::consts::PI;
+
+    let pos = 2.0_f32;
+    let speed = 0.75_f32;
+    let phase = pos * 0.6662;
+
+    // The left leg (index 5, offset x = +1.0) swings in phase, the right (index 6, x = -1.0) a
+    // half-cycle out, both added onto the baked -0.0299 pitch.
+    let left = parrot_leg_swing_pose(PARROT_PARTS[5].pose, pos, speed);
+    let right = parrot_leg_swing_pose(PARROT_PARTS[6].pose, pos, speed);
+    assert!((left.rotation[0] - (-0.0299 + phase.cos() * 1.4 * speed)).abs() < 1.0e-6);
+    assert!((right.rotation[0] - (-0.0299 + (phase + PI).cos() * 1.4 * speed)).abs() < 1.0e-6);
+    // The pivot and the other rotation axes are untouched.
+    assert_eq!(left.offset, PARROT_PARTS[5].pose.offset);
+    assert_eq!(left.rotation[1], PARROT_PARTS[5].pose.rotation[1]);
+    assert_eq!(left.rotation[2], PARROT_PARTS[5].pose.rotation[2]);
+
+    // The tail (index 1) adds cos(phase)·0.3·speed onto the baked 1.015 pitch.
+    let tail = parrot_tail_swing_pose(PARROT_PARTS[1].pose, pos, speed);
+    assert!((tail.rotation[0] - (1.015 + phase.cos() * 0.3 * speed)).abs() < 1.0e-6);
+
+    // At rest (speed 0) every swing collapses to the baked pose.
+    assert_eq!(
+        parrot_leg_swing_pose(PARROT_PARTS[5].pose, pos, 0.0).rotation,
+        PARROT_PARTS[5].pose.rotation
+    );
+    assert_eq!(
+        parrot_tail_swing_pose(PARROT_PARTS[1].pose, pos, 0.0).rotation,
+        PARROT_PARTS[1].pose.rotation
+    );
+}
+
+#[test]
+fn parrot_walk_swing_moves_only_the_legs_and_tail() {
+    // A walking standing parrot swings its tail [24, 48) and both legs [216, 264) while the body
+    // [0, 24), wings [48, 96), and head subtree [96, 216) hold. The wing flap / body bob need the
+    // un-projected `flapAngle`, so the wings stay put.
+    let rest = entity_model_mesh(&[EntityModelInstance::parrot(992, [0.0, 64.0, 0.0], 0.0)]);
+    let walking = entity_model_mesh(&[
+        EntityModelInstance::parrot(993, [0.0, 64.0, 0.0], 0.0).with_walk_animation(2.0, 1.0)
+    ]);
+    assert_eq!(rest.vertices.len(), walking.vertices.len());
+    assert_eq!(
+        rest.vertices[0..24],
+        walking.vertices[0..24],
+        "the body holds"
+    );
+    assert_ne!(
+        rest.vertices[24..48],
+        walking.vertices[24..48],
+        "the tail swings"
+    );
+    assert_eq!(
+        rest.vertices[48..96],
+        walking.vertices[48..96],
+        "the wings hold (flap is deferred)"
+    );
+    assert_eq!(
+        rest.vertices[96..216],
+        walking.vertices[96..216],
+        "the head holds"
+    );
+    assert_ne!(
+        rest.vertices[216..264],
+        walking.vertices[216..264],
+        "both legs swing"
+    );
+
+    // A perched parrot skips the swing: the vanilla SITTING branch breaks before it.
+    let sit_rest = entity_model_mesh(&[
+        EntityModelInstance::parrot(994, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true)
+    ]);
+    let sit_walk = entity_model_mesh(&[EntityModelInstance::parrot(995, [0.0, 64.0, 0.0], 0.0)
+        .with_parrot_sitting(true)
+        .with_walk_animation(2.0, 1.0)]);
+    assert_eq!(
+        sit_rest.vertices, sit_walk.vertices,
+        "a perched parrot is inert under walk animation"
+    );
+}
+
+#[test]
 fn parrot_mesh_uses_vanilla_body_layer_geometry() {
     // The body carries the body tint; the two beak halves carry the beak tint.
     let parrot = entity_model_mesh(&[EntityModelInstance::parrot(980, [0.0, 64.0, 0.0], 0.0)]);
