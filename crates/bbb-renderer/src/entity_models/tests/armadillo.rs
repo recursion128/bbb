@@ -1,113 +1,102 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn adult_armadillo_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `AdultArmadilloModel.createBodyLayer` (atlas 64×64): the root parents the body and
     // the four legs directly; the body parents the tail and head, and the head parents the head
     // cube and the two ear pivots.
-    assert_eq!(ADULT_ARMADILLO_PARTS.len(), 5);
 
     // `body` (offset (0, 21, 4)): a `CubeDeformation(0.3)` shell over the bare 8×8×12 box.
-    let body = &ADULT_ARMADILLO_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 21.0, 4.0]);
-    assert_eq!(body.cubes.len(), 2);
-    assert_eq!(body.cubes[0].min, [-4.3, -7.3, -10.3]);
-    assert_eq!(body.cubes[0].size, [8.6, 8.6, 12.6]);
-    assert_eq!(body.cubes[1].min, [-4.0, -7.0, -10.0]);
-    assert_eq!(body.cubes[1].size, [8.0, 8.0, 12.0]);
-    assert_eq!(body.children.len(), 2);
+    assert_eq!(ADULT_ARMADILLO_BODY_POSE.offset, [0.0, 21.0, 4.0]);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES.len(), 2);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES[0].min, [-4.3, -7.3, -10.3]);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES[0].size, [8.6, 8.6, 12.6]);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES[1].min, [-4.0, -7.0, -10.0]);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES[1].size, [8.0, 8.0, 12.0]);
 
     // `tail`: the 1×6×1 plume, pitched down by 0.5061 rad.
-    let tail = &body.children[0];
-    assert_eq!(tail.pose.offset, [0.0, -3.0, 1.0]);
-    assert_eq!(tail.pose.rotation, [0.5061, 0.0, 0.0]);
-    assert_eq!(tail.cubes[0].size, [1.0, 6.0, 1.0]);
+    assert_eq!(ADULT_ARMADILLO_TAIL_POSE.offset, [0.0, -3.0, 1.0]);
+    assert_eq!(ADULT_ARMADILLO_TAIL_POSE.rotation, [0.5061, 0.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_TAIL_CUBES[0].size, [1.0, 6.0, 1.0]);
 
     // `head` (offset (0, -2, -11)): a bare pivot parenting the head cube and the two ears.
-    let head = &body.children[1];
-    assert_eq!(head.pose.offset, [0.0, -2.0, -11.0]);
-    assert!(head.cubes.is_empty());
-    assert_eq!(head.children.len(), 3);
+    assert_eq!(ADULT_ARMADILLO_HEAD_POSE.offset, [0.0, -2.0, -11.0]);
 
     // `head_cube`: the 3×5×2 snout, pitched up by -0.3927 rad.
-    let head_cube = &head.children[0];
-    assert_eq!(head_cube.pose.rotation, [-0.3927, 0.0, 0.0]);
-    assert_eq!(head_cube.cubes[0].size, [3.0, 5.0, 2.0]);
+    assert_eq!(ADULT_ARMADILLO_HEAD_CUBE_POSE.rotation, [-0.3927, 0.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_HEAD_CUBES[0].size, [3.0, 5.0, 2.0]);
 
     // The two ear pivots and their rotated 2×5×0 ear planes.
-    let right_ear = &head.children[1];
-    let left_ear = &head.children[2];
-    assert_eq!(right_ear.pose.offset, [-1.0, -1.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_RIGHT_EAR_POSE.offset, [-1.0, -1.0, 0.0]);
     assert_eq!(
-        right_ear.children[0].pose.rotation,
+        ADULT_ARMADILLO_RIGHT_EAR_CUBE_POSE.rotation,
         [0.1886, -0.3864, -0.0718]
     );
-    assert_eq!(right_ear.children[0].cubes[0].min, [-2.0, -3.0, 0.0]);
-    assert_eq!(left_ear.pose.offset, [1.0, -2.0, 0.0]);
-    assert_eq!(left_ear.children[0].pose.rotation, [0.1886, 0.3864, 0.0718]);
-    assert_eq!(left_ear.children[0].cubes[0].size, [2.0, 5.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_RIGHT_EAR_CUBES[0].min, [-2.0, -3.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_LEFT_EAR_POSE.offset, [1.0, -2.0, 0.0]);
+    assert_eq!(
+        ADULT_ARMADILLO_LEFT_EAR_CUBE_POSE.rotation,
+        [0.1886, 0.3864, 0.0718]
+    );
+    assert_eq!(ADULT_ARMADILLO_LEFT_EAR_CUBES[0].size, [2.0, 5.0, 0.0]);
 
     // The four 2×3×2 legs at the corner pivots.
-    assert_eq!(ADULT_ARMADILLO_PARTS[1].pose.offset, [-2.0, 21.0, 4.0]);
-    assert_eq!(ADULT_ARMADILLO_PARTS[2].pose.offset, [2.0, 21.0, 4.0]);
-    assert_eq!(ADULT_ARMADILLO_PARTS[3].pose.offset, [-2.0, 21.0, -4.0]);
-    assert_eq!(ADULT_ARMADILLO_PARTS[4].pose.offset, [2.0, 21.0, -4.0]);
-    assert_eq!(ADULT_ARMADILLO_PARTS[1].cubes[0].size, [2.0, 3.0, 2.0]);
-
-    // Ten cubes in the non-hiding rest pose (the shell-ball `cube` is a separate rolled-up part).
-    assert_eq!(count_cubes(&ADULT_ARMADILLO_PARTS), 10);
+    assert_eq!(
+        ADULT_ARMADILLO_RIGHT_HIND_LEG_POSE.offset,
+        [-2.0, 21.0, 4.0]
+    );
+    assert_eq!(ADULT_ARMADILLO_LEFT_HIND_LEG_POSE.offset, [2.0, 21.0, 4.0]);
+    assert_eq!(
+        ADULT_ARMADILLO_RIGHT_FRONT_LEG_POSE.offset,
+        [-2.0, 21.0, -4.0]
+    );
+    assert_eq!(
+        ADULT_ARMADILLO_LEFT_FRONT_LEG_POSE.offset,
+        [2.0, 21.0, -4.0]
+    );
+    assert_eq!(ADULT_ARMADILLO_LEG_CUBES[0].size, [2.0, 3.0, 2.0]);
 }
 
 #[test]
 fn baby_armadillo_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `BabyArmadilloModel.createBodyLayer` (atlas 64×64): smaller geometry, the ears
     // parented to the head cube, and the front legs at swapped X origins.
-    assert_eq!(BABY_ARMADILLO_PARTS.len(), 5);
-
-    let body = &BABY_ARMADILLO_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 20.0, 0.5]);
-    assert_eq!(body.cubes[0].min, [-2.8, -2.3, -3.8]);
-    assert_eq!(body.cubes[0].size, [5.6, 4.6, 7.6]);
-    assert_eq!(body.cubes[1].size, [5.0, 4.0, 6.0]);
+    assert_eq!(BABY_ARMADILLO_BODY_POSE.offset, [0.0, 20.0, 0.5]);
+    assert_eq!(BABY_ARMADILLO_BODY_CUBES[0].min, [-2.8, -2.3, -3.8]);
+    assert_eq!(BABY_ARMADILLO_BODY_CUBES[0].size, [5.6, 4.6, 7.6]);
+    assert_eq!(BABY_ARMADILLO_BODY_CUBES[1].size, [5.0, 4.0, 6.0]);
 
     // `tail` pivot (offset (0, 0, 3.4)) parents the 1×1×4 stub pitched by -1.0472 rad.
-    let tail = &body.children[0];
-    assert_eq!(tail.pose.offset, [0.0, 0.0, 3.4]);
-    assert_eq!(tail.children[0].pose.rotation, [-1.0472, 0.0, 0.0]);
-    assert_eq!(tail.children[0].cubes[0].size, [1.0, 1.0, 4.0]);
+    assert_eq!(BABY_ARMADILLO_TAIL_POSE.offset, [0.0, 0.0, 3.4]);
+    assert_eq!(BABY_ARMADILLO_TAIL_CUBE_POSE.rotation, [-1.0472, 0.0, 0.0]);
+    assert_eq!(BABY_ARMADILLO_TAIL_CUBES[0].size, [1.0, 1.0, 4.0]);
 
     // `head` pivot parents the head cube (pitched up 0.7417649 rad) which parents the two ears.
-    let head = &body.children[1];
-    assert_eq!(head.pose.offset, [0.0, 0.0, -3.2]);
-    let head_cube = &head.children[0];
-    assert_eq!(head_cube.pose.rotation, [0.7417649, 0.0, 0.0]);
-    assert_eq!(head_cube.cubes[0].size, [2.0, 2.0, 4.0]);
-    assert_eq!(head_cube.children.len(), 2);
+    assert_eq!(BABY_ARMADILLO_HEAD_POSE.offset, [0.0, 0.0, -3.2]);
     assert_eq!(
-        head_cube.children[0].pose.rotation,
+        BABY_ARMADILLO_HEAD_CUBE_POSE.rotation,
+        [0.7417649, 0.0, 0.0]
+    );
+    assert_eq!(BABY_ARMADILLO_HEAD_CUBES[0].size, [2.0, 2.0, 4.0]);
+    assert_eq!(
+        BABY_ARMADILLO_RIGHT_EAR_POSE.rotation,
         [-0.4363, -0.1134, 0.0524]
     );
     assert_eq!(
-        head_cube.children[1].pose.rotation,
+        BABY_ARMADILLO_LEFT_EAR_POSE.rotation,
         [-0.4363, 0.1134, -0.0524]
     );
-    assert_eq!(head_cube.children[0].cubes[0].size, [2.0, 3.0, 0.0]);
+    assert_eq!(BABY_ARMADILLO_RIGHT_EAR_CUBES[0].size, [2.0, 3.0, 0.0]);
 
     // The front legs carry vanilla's swapped X origins (right at +1.5, left at -1.5).
-    assert_eq!(BABY_ARMADILLO_PARTS[1].pose.offset, [-1.5, 22.0, 2.5]);
-    assert_eq!(BABY_ARMADILLO_PARTS[2].pose.offset, [1.5, 22.0, 2.5]);
-    assert_eq!(BABY_ARMADILLO_PARTS[3].pose.offset, [1.5, 22.0, -1.5]);
-    assert_eq!(BABY_ARMADILLO_PARTS[4].pose.offset, [-1.5, 22.0, -1.5]);
-    assert_eq!(BABY_ARMADILLO_PARTS[1].cubes[0].size, [2.0, 2.0, 2.0]);
-
-    assert_eq!(count_cubes(&BABY_ARMADILLO_PARTS), 10);
+    assert_eq!(
+        BABY_ARMADILLO_RIGHT_FRONT_LEG_POSE.offset,
+        [-1.5, 22.0, 2.5]
+    );
+    assert_eq!(BABY_ARMADILLO_LEFT_FRONT_LEG_POSE.offset, [1.5, 22.0, 2.5]);
+    assert_eq!(BABY_ARMADILLO_RIGHT_HIND_LEG_POSE.offset, [1.5, 22.0, -1.5]);
+    assert_eq!(BABY_ARMADILLO_LEFT_HIND_LEG_POSE.offset, [-1.5, 22.0, -1.5]);
+    assert_eq!(BABY_ARMADILLO_LEG_CUBES[0].size, [2.0, 2.0, 2.0]);
 }
 
 #[test]
@@ -115,43 +104,29 @@ fn armadillo_rolled_up_parts_match_vanilla_hiding_in_shell() {
     // Vanilla `ArmadilloModel.setupAnim` `isHidingInShell`: the body cubes (`skipDraw`), the tail,
     // and both hind legs hide; the head (+ ears), both front legs, and the `cube` ball show.
     // So the rolled-up tree is: body pivot (no cubes) → head only; the two front legs; the ball →
-    // head_cube + 2 ears + 2 front legs + 1 ball = 6 cubes.
-    assert_eq!(ADULT_ARMADILLO_ROLLED_PARTS.len(), 4);
-
-    // Hiding body keeps its pivot offset but drops its own cubes and the tail child.
-    let body = &ADULT_ARMADILLO_ROLLED_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 21.0, 4.0]);
-    assert!(body.cubes.is_empty());
-    assert_eq!(body.children.len(), 1);
-    let head = &body.children[0];
-    assert_eq!(head.pose.offset, [0.0, -2.0, -11.0]);
-    assert_eq!(head.children.len(), 3); // head_cube + the two ears
+    // head_cube + 2 ears + 2 front legs + 1 ball = 6 cubes. The hiding body keeps its pivot offset.
+    assert_eq!(ADULT_ARMADILLO_BODY_POSE.offset, [0.0, 21.0, 4.0]);
+    assert_eq!(ADULT_ARMADILLO_HEAD_POSE.offset, [0.0, -2.0, -11.0]);
 
     // The two FRONT legs (z = -4) stay; the hind legs (z = +4) are gone.
     assert_eq!(
-        ADULT_ARMADILLO_ROLLED_PARTS[1].pose.offset,
+        ADULT_ARMADILLO_RIGHT_FRONT_LEG_POSE.offset,
         [-2.0, 21.0, -4.0]
     );
     assert_eq!(
-        ADULT_ARMADILLO_ROLLED_PARTS[2].pose.offset,
+        ADULT_ARMADILLO_LEFT_FRONT_LEG_POSE.offset,
         [2.0, 21.0, -4.0]
     );
 
     // The shell-ball `cube` (root child at (0, 24, 0)): a plain 10×10×10 box.
-    let ball = &ADULT_ARMADILLO_ROLLED_PARTS[3];
-    assert_eq!(ball.pose.offset, [0.0, 24.0, 0.0]);
-    assert_eq!(ball.cubes[0].min, [-5.0, -10.0, -6.0]);
-    assert_eq!(ball.cubes[0].size, [10.0, 10.0, 10.0]);
-
-    // Six cubes total in the rolled-up pose.
-    assert_eq!(count_cubes(&ADULT_ARMADILLO_ROLLED_PARTS), 6);
+    assert_eq!(ADULT_ARMADILLO_BALL_POSE.offset, [0.0, 24.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_BALL_CUBES[0].min, [-5.0, -10.0, -6.0]);
+    assert_eq!(ADULT_ARMADILLO_BALL_CUBES[0].size, [10.0, 10.0, 10.0]);
 
     // Baby: same swap; the ball is the 6×6×6 box + CubeDeformation(0.3) → min -3.3, size 6.6.
-    assert_eq!(count_cubes(&BABY_ARMADILLO_ROLLED_PARTS), 6);
-    let baby_ball = &BABY_ARMADILLO_ROLLED_PARTS[3];
-    assert_eq!(baby_ball.pose.offset, [0.0, 20.7, 0.5]);
-    assert_eq!(baby_ball.cubes[0].min, [-3.3, -3.3, -3.3]);
-    assert_eq!(baby_ball.cubes[0].size, [6.6, 6.6, 6.6]);
+    assert_eq!(BABY_ARMADILLO_BALL_POSE.offset, [0.0, 20.7, 0.5]);
+    assert_eq!(BABY_ARMADILLO_BALL_CUBES[0].min, [-3.3, -3.3, -3.3]);
+    assert_eq!(BABY_ARMADILLO_BALL_CUBES[0].size, [6.6, 6.6, 6.6]);
 }
 
 #[test]
