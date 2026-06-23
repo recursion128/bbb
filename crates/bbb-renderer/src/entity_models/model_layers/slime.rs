@@ -1,8 +1,6 @@
-use super::{
-    ModelCubeDesc, ModelPartDesc, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
-};
+use super::PART_POSE_ZERO;
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const SLIME_GREEN: [f32; 4] = [0.42, 0.82, 0.30, 1.0];
 pub(in crate::entity_models) const SLIME_FEATURE_DARK: [f32; 4] = [0.16, 0.28, 0.10, 1.0];
@@ -13,389 +11,117 @@ pub(in crate::entity_models) const MODEL_LAYER_SLIME: &str = "minecraft:slime#ma
 pub(in crate::entity_models) const MODEL_LAYER_SLIME_OUTER: &str = "minecraft:slime#outer";
 pub(in crate::entity_models) const MODEL_LAYER_MAGMA_CUBE: &str = "minecraft:magma_cube#main";
 
-pub(in crate::entity_models) const SLIME_INNER_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 17.0, -3.0],
-    size: [6.0, 6.0, 6.0],
-    color: SLIME_GREEN,
-}];
+// Vanilla 26.1 `SlimeModel.createInnerBodyLayer` cubes (atlas 64×32). Each unified cube carries the
+// colored tint and the textured `uv_size`/`texOffs`; all parts sit at the identity pose.
+pub(in crate::entity_models) const SLIME_INNER_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, 17.0, -3.0],
+    [6.0, 6.0, 6.0],
+    SLIME_GREEN,
+    [6.0, 6.0, 6.0],
+    [0.0, 16.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SLIME_RIGHT_EYE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.25, 18.0, -3.5],
-    size: [2.0, 2.0, 2.0],
-    color: SLIME_FEATURE_DARK,
-}];
+pub(in crate::entity_models) const SLIME_RIGHT_EYE: [ModelCube; 1] = [ModelCube::new(
+    [-3.25, 18.0, -3.5],
+    [2.0, 2.0, 2.0],
+    SLIME_FEATURE_DARK,
+    [2.0, 2.0, 2.0],
+    [32.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SLIME_LEFT_EYE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [1.25, 18.0, -3.5],
-    size: [2.0, 2.0, 2.0],
-    color: SLIME_FEATURE_DARK,
-}];
+pub(in crate::entity_models) const SLIME_LEFT_EYE: [ModelCube; 1] = [ModelCube::new(
+    [1.25, 18.0, -3.5],
+    [2.0, 2.0, 2.0],
+    SLIME_FEATURE_DARK,
+    [2.0, 2.0, 2.0],
+    [32.0, 4.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SLIME_MOUTH: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 21.0, -3.5],
-    size: [1.0, 1.0, 1.0],
-    color: SLIME_FEATURE_DARK,
-}];
+pub(in crate::entity_models) const SLIME_MOUTH: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 21.0, -3.5],
+    [1.0, 1.0, 1.0],
+    SLIME_FEATURE_DARK,
+    [1.0, 1.0, 1.0],
+    [32.0, 8.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SLIME_OUTER_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 16.0, -4.0],
-    size: [8.0, 8.0, 8.0],
-    color: SLIME_GREEN,
-}];
+// Vanilla 26.1 `SlimeModel.createOuterBodyLayer`: the single translucent 8³ shell cube.
+pub(in crate::entity_models) const SLIME_OUTER_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 16.0, -4.0],
+    [8.0, 8.0, 8.0],
+    SLIME_GREEN,
+    [8.0, 8.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-// Vanilla 26.1 ModelLayers.SLIME plus ModelLayers.SLIME_OUTER.
-pub(in crate::entity_models) const SLIME_PARTS: [ModelPartDesc; 5] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_INNER_CUBE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_RIGHT_EYE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_LEFT_EYE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_MOUTH,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_OUTER_CUBE,
-        children: &[],
-    },
+/// Vanilla `LavaSlimeModel.createBodyLayer` segment `texOffs` (left/top atlas `v` ladder).
+const MAGMA_CUBE_SEGMENT_TEX: [[f32; 2]; 8] = [
+    [0.0, 0.0],
+    [0.0, 9.0],
+    [0.0, 18.0],
+    [0.0, 27.0],
+    [32.0, 0.0],
+    [32.0, 9.0],
+    [32.0, 18.0],
+    [32.0, 27.0],
 ];
 
-pub(in crate::entity_models) const SLIME_INNER_TEXTURED_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.0, 17.0, -3.0],
-        size: [6.0, 6.0, 6.0],
-        uv_size: [6.0, 6.0, 6.0],
-        tex: [0.0, 16.0],
-        mirror: false,
-    }];
+/// Segment `i` of the magma cube's eight stacked outer slices: `box(-4, 16 + i, -4, 8×1×8)`.
+pub(in crate::entity_models) fn magma_cube_segment_cube(index: usize) -> ModelCube {
+    ModelCube::new(
+        [-4.0, 16.0 + index as f32, -4.0],
+        [8.0, 1.0, 8.0],
+        MAGMA_CUBE_ORANGE,
+        [8.0, 1.0, 8.0],
+        MAGMA_CUBE_SEGMENT_TEX[index],
+        false,
+    )
+}
 
-pub(in crate::entity_models) const SLIME_RIGHT_EYE_TEXTURED_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.25, 18.0, -3.5],
-        size: [2.0, 2.0, 2.0],
-        uv_size: [2.0, 2.0, 2.0],
-        tex: [32.0, 0.0],
-        mirror: false,
-    }];
+pub(in crate::entity_models) const MAGMA_CUBE_INSIDE_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 18.0, -2.0],
+    [4.0, 4.0, 4.0],
+    MAGMA_CUBE_CORE,
+    [4.0, 4.0, 4.0],
+    [24.0, 40.0],
+    false,
+)];
 
-pub(in crate::entity_models) const SLIME_LEFT_EYE_TEXTURED_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [1.25, 18.0, -3.5],
-        size: [2.0, 2.0, 2.0],
-        uv_size: [2.0, 2.0, 2.0],
-        tex: [32.0, 4.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SLIME_MOUTH_TEXTURED_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 21.0, -3.5],
-        size: [1.0, 1.0, 1.0],
-        uv_size: [1.0, 1.0, 1.0],
-        tex: [32.0, 8.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const SLIME_OUTER_TEXTURED_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 16.0, -4.0],
-        size: [8.0, 8.0, 8.0],
-        uv_size: [8.0, 8.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-// Vanilla 26.1 ModelLayers.SLIME: SlimeModel.createInnerBodyLayer().
-pub(in crate::entity_models) const SLIME_INNER_TEXTURED_PARTS: [TexturedModelPartDesc; 4] = [
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_INNER_TEXTURED_CUBE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_RIGHT_EYE_TEXTURED_CUBE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_LEFT_EYE_TEXTURED_CUBE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_MOUTH_TEXTURED_CUBE,
-        children: &[],
-    },
+/// Vanilla `LavaSlimeModel.createBodyLayer` segment child names, `cube0..cube7`.
+const MAGMA_CUBE_SEGMENT_NAMES: [&str; 8] = [
+    "cube0", "cube1", "cube2", "cube3", "cube4", "cube5", "cube6", "cube7",
 ];
 
-// Vanilla 26.1 ModelLayers.SLIME_OUTER: SlimeModel.createOuterBodyLayer().
-pub(in crate::entity_models) const SLIME_OUTER_TEXTURED_PARTS: [TexturedModelPartDesc; 1] =
-    [TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &SLIME_OUTER_TEXTURED_CUBE,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_0: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 16.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_1: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 17.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_2: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 18.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_3: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 19.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_4: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 20.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_5: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 21.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_6: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 22.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_SEGMENT_7: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 23.0, -4.0],
-    size: [8.0, 1.0, 8.0],
-    color: MAGMA_CUBE_ORANGE,
-}];
-
-pub(in crate::entity_models) const MAGMA_CUBE_INSIDE_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 18.0, -2.0],
-    size: [4.0, 4.0, 4.0],
-    color: MAGMA_CUBE_CORE,
-}];
-
-// Vanilla 26.1 MagmaCubeModel.createBodyLayer().
-pub(in crate::entity_models) const MAGMA_CUBE_PARTS: [ModelPartDesc; 9] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_0,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_1,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_2,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_3,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_4,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_5,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_6,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_SEGMENT_7,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_INSIDE_CUBE,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_0: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 16.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_1: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 17.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [0.0, 9.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_2: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 18.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [0.0, 18.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_3: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 19.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [0.0, 27.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_4: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 20.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [32.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_5: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 21.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [32.0, 9.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_6: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 22.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [32.0, 18.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_SEGMENT_7: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 23.0, -4.0],
-        size: [8.0, 1.0, 8.0],
-        uv_size: [8.0, 1.0, 8.0],
-        tex: [32.0, 27.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const MAGMA_CUBE_INSIDE_TEXTURED_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 18.0, -2.0],
-        size: [4.0, 4.0, 4.0],
-        uv_size: [4.0, 4.0, 4.0],
-        tex: [24.0, 40.0],
-        mirror: false,
-    }];
-
-// Vanilla 26.1 ModelLayers.MAGMA_CUBE: MagmaCubeModel.createBodyLayer().
-pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_PARTS: [TexturedModelPartDesc; 9] = [
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_0,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_1,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_2,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_3,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_4,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_5,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_6,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_TEXTURED_SEGMENT_7,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &MAGMA_CUBE_INSIDE_TEXTURED_CUBE,
-        children: &[],
-    },
-];
-
-/// Mutable magma cube model, mirroring vanilla `LavaSlimeModel`. The unified tree is zipped from the
-/// baked colored ([`MAGMA_CUBE_PARTS`]) and textured ([`MAGMA_CUBE_TEXTURED_PARTS`]) trees: eight outer
-/// segments plus the inner core. Vanilla `LavaSlimeModel.setupAnim` stretches the segments by the
-/// interpolated `squish` (`oSquish`→`squish`); that squish is server-authoritative state not carried on
-/// the render state, so it stays deferred and `setup_anim` is a no-op — the model renders its rest pose.
-/// The per-size scale lives in the root transform (`magma_cube_model_root_transform`).
+/// Mutable magma cube model, mirroring vanilla `LavaSlimeModel`. The unified tree is built once with
+/// named children: eight stacked outer segments (`cube0..cube7`) plus the inner `inside_cube` core.
+/// Vanilla `LavaSlimeModel.setupAnim` stretches the segments by the interpolated `squish`
+/// (`oSquish`→`squish`); that squish is server-authoritative state not carried on the render state, so
+/// it stays deferred and `setup_anim` is a no-op — the model renders its rest pose. The per-size scale
+/// lives in the root transform (`magma_cube_model_root_transform`).
 pub(in crate::entity_models) struct MagmaCubeModel {
     root: ModelPart,
 }
 
 impl MagmaCubeModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let mut children: Vec<(&'static str, ModelPart)> = Vec::with_capacity(9);
+        for (i, &name) in MAGMA_CUBE_SEGMENT_NAMES.iter().enumerate() {
+            children.push((
+                name,
+                ModelPart::leaf(PART_POSE_ZERO, vec![magma_cube_segment_cube(i)]),
+            ));
+        }
+        children.push((
+            "inside_cube",
+            ModelPart::leaf(PART_POSE_ZERO, MAGMA_CUBE_INSIDE_CUBE.to_vec()),
+        ));
         Self {
-            root: ModelPart::root_from_descs(&MAGMA_CUBE_PARTS, &MAGMA_CUBE_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }
@@ -413,9 +139,8 @@ impl EntityModel for MagmaCubeModel {
 }
 
 /// Mutable slime inner-body model, mirroring vanilla `SlimeModel` (`ModelLayers.SLIME`,
-/// `createInnerBodyLayer`): the inner cube plus the two eyes and the mouth. The unified tree zips the
-/// first four colored [`SLIME_PARTS`] (the inner body, shared with the combined colored layout) with
-/// [`SLIME_INNER_TEXTURED_PARTS`]. Vanilla `SlimeModel.setupAnim` only stretches by the interpolated
+/// `createInnerBodyLayer`): the inner `cube` plus the two eyes and the `mouth`. The unified tree is
+/// built with named children. Vanilla `SlimeModel.setupAnim` only stretches by the interpolated
 /// `squish`, which is server-authoritative state not on the render state, so `setup_anim` is a no-op
 /// (the model renders its rest pose); the per-size scale lives in `slime_model_root_transform`. The
 /// inner body is the opaque cutout pass; [`SlimeOuterModel`] is the translucent shell.
@@ -425,8 +150,26 @@ pub(in crate::entity_models) struct SlimeModel {
 
 impl SlimeModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let children: Vec<(&'static str, ModelPart)> = vec![
+            (
+                "cube",
+                ModelPart::leaf(PART_POSE_ZERO, SLIME_INNER_CUBE.to_vec()),
+            ),
+            (
+                "right_eye",
+                ModelPart::leaf(PART_POSE_ZERO, SLIME_RIGHT_EYE.to_vec()),
+            ),
+            (
+                "left_eye",
+                ModelPart::leaf(PART_POSE_ZERO, SLIME_LEFT_EYE.to_vec()),
+            ),
+            (
+                "mouth",
+                ModelPart::leaf(PART_POSE_ZERO, SLIME_MOUTH.to_vec()),
+            ),
+        ];
         Self {
-            root: ModelPart::root_from_descs(&SLIME_PARTS[0..4], &SLIME_INNER_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }
@@ -444,10 +187,10 @@ impl EntityModel for SlimeModel {
 }
 
 /// Mutable slime outer-shell model, mirroring vanilla `SlimeModel`'s `ModelLayers.SLIME_OUTER`
-/// (`createOuterBodyLayer`): the single translucent 8³ shell cube. The unified tree zips the last
-/// colored [`SLIME_PARTS`] entry (the outer cube) with [`SLIME_OUTER_TEXTURED_PARTS`]; `setup_anim` is
-/// a no-op for the same reason as [`SlimeModel`]. Rendered on the translucent pass over the inner body
-/// (and in the colored fallback both layers draw, reproducing the combined `SLIME_PARTS` mesh).
+/// (`createOuterBodyLayer`): the single translucent 8³ shell cube. The unified tree is the lone `cube`
+/// child; `setup_anim` is a no-op for the same reason as [`SlimeModel`]. Rendered on the translucent
+/// pass over the inner body (and in the colored fallback both layers draw, reproducing the combined
+/// slime mesh).
 pub(in crate::entity_models) struct SlimeOuterModel {
     root: ModelPart,
 }
@@ -455,7 +198,14 @@ pub(in crate::entity_models) struct SlimeOuterModel {
 impl SlimeOuterModel {
     pub(in crate::entity_models) fn new() -> Self {
         Self {
-            root: ModelPart::root_from_descs(&SLIME_PARTS[4..5], &SLIME_OUTER_TEXTURED_PARTS),
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![(
+                    "cube",
+                    ModelPart::leaf(PART_POSE_ZERO, SLIME_OUTER_CUBE.to_vec()),
+                )],
+            ),
         }
     }
 }

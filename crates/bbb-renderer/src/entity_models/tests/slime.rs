@@ -1,110 +1,84 @@
 use super::*;
 
-#[test]
-fn slime_and_magma_cube_parts_match_vanilla_26_1_body_layers() {
-    assert_eq!(SLIME_PARTS.len(), 5);
-    assert_part(
-        &SLIME_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SLIME_INNER_CUBE.as_slice(),
-    );
-    assert_part(
-        &SLIME_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SLIME_RIGHT_EYE.as_slice(),
-    );
-    assert_part(
-        &SLIME_PARTS[2],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SLIME_LEFT_EYE.as_slice(),
-    );
-    assert_part(
-        &SLIME_PARTS[3],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SLIME_MOUTH.as_slice(),
-    );
-    assert_part(
-        &SLIME_PARTS[4],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SLIME_OUTER_CUBE.as_slice(),
-    );
+use crate::entity_models::model::ModelCube;
 
-    let magma_segments = [
-        MAGMA_CUBE_SEGMENT_0.as_slice(),
-        MAGMA_CUBE_SEGMENT_1.as_slice(),
-        MAGMA_CUBE_SEGMENT_2.as_slice(),
-        MAGMA_CUBE_SEGMENT_3.as_slice(),
-        MAGMA_CUBE_SEGMENT_4.as_slice(),
-        MAGMA_CUBE_SEGMENT_5.as_slice(),
-        MAGMA_CUBE_SEGMENT_6.as_slice(),
-        MAGMA_CUBE_SEGMENT_7.as_slice(),
-    ];
-    for (index, (part, cubes)) in MAGMA_CUBE_PARTS[..8].iter().zip(magma_segments).enumerate() {
-        assert_part(part, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], cubes);
-        assert_eq!(part.cubes[0].min, [-4.0, 16.0 + index as f32, -4.0]);
-        assert_eq!(part.cubes[0].size, [8.0, 1.0, 8.0]);
-    }
-    assert_part(
-        &MAGMA_CUBE_PARTS[8],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        MAGMA_CUBE_INSIDE_CUBE.as_slice(),
+#[test]
+fn slime_cubes_match_vanilla_26_1_body_layers() {
+    // Vanilla `SlimeModel` (atlas 64×32): the inner body `cube` (cutout) plus the two eyes and the
+    // `mouth`, and the translucent 8³ outer shell `cube`. Each unified cube carries the colored tint
+    // and the textured `uv_size`/`texOffs`; all parts sit at the identity pose.
+    assert_eq!(
+        SLIME_INNER_CUBE[0],
+        ModelCube::new(
+            [-3.0, 17.0, -3.0],
+            [6.0, 6.0, 6.0],
+            SLIME_GREEN,
+            [6.0, 6.0, 6.0],
+            [0.0, 16.0],
+            false,
+        )
+    );
+    assert_eq!(SLIME_RIGHT_EYE[0].color, SLIME_FEATURE_DARK);
+    assert_eq!(SLIME_RIGHT_EYE[0].min, [-3.25, 18.0, -3.5]);
+    assert_eq!(SLIME_RIGHT_EYE[0].tex, [32.0, 0.0]);
+    assert_eq!(SLIME_LEFT_EYE[0].color, SLIME_FEATURE_DARK);
+    assert_eq!(SLIME_LEFT_EYE[0].min, [1.25, 18.0, -3.5]);
+    assert_eq!(SLIME_LEFT_EYE[0].tex, [32.0, 4.0]);
+    assert_eq!(SLIME_MOUTH[0].color, SLIME_FEATURE_DARK);
+    assert_eq!(SLIME_MOUTH[0].min, [0.0, 21.0, -3.5]);
+    assert_eq!(SLIME_MOUTH[0].tex, [32.0, 8.0]);
+    assert_eq!(
+        SLIME_OUTER_CUBE[0],
+        ModelCube::new(
+            [-4.0, 16.0, -4.0],
+            [8.0, 8.0, 8.0],
+            SLIME_GREEN,
+            [8.0, 8.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
 }
 
 #[test]
-fn slime_and_magma_cube_textured_parts_match_vanilla_26_1_body_layers() {
-    assert_eq!(MODEL_LAYER_SLIME, "minecraft:slime#main");
-    assert_eq!(MODEL_LAYER_SLIME_OUTER, "minecraft:slime#outer");
-    assert_eq!(MODEL_LAYER_MAGMA_CUBE, "minecraft:magma_cube#main");
+fn magma_cube_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `LavaSlimeModel.createBodyLayer` (atlas 64×64): eight stacked 8×1×8 outer segments
+    // climbing the atlas `v` ladder, plus the inner 4³ `inside_cube` core.
+    let segment_tex = [
+        [0.0, 0.0],
+        [0.0, 9.0],
+        [0.0, 18.0],
+        [0.0, 27.0],
+        [32.0, 0.0],
+        [32.0, 9.0],
+        [32.0, 18.0],
+        [32.0, 27.0],
+    ];
+    for (index, tex) in segment_tex.into_iter().enumerate() {
+        let cube = magma_cube_segment_cube(index);
+        assert_eq!(
+            cube,
+            ModelCube::new(
+                [-4.0, 16.0 + index as f32, -4.0],
+                [8.0, 1.0, 8.0],
+                MAGMA_CUBE_ORANGE,
+                [8.0, 1.0, 8.0],
+                tex,
+                false,
+            )
+        );
+    }
     assert_eq!(
-        SLIME_INNER_TEXTURED_CUBE[0],
-        TexturedModelCubeDesc {
-            min: [-3.0, 17.0, -3.0],
-            size: [6.0, 6.0, 6.0],
-            uv_size: [6.0, 6.0, 6.0],
-            tex: [0.0, 16.0],
-            mirror: false,
-        }
+        MAGMA_CUBE_INSIDE_CUBE[0],
+        ModelCube::new(
+            [-2.0, 18.0, -2.0],
+            [4.0, 4.0, 4.0],
+            MAGMA_CUBE_CORE,
+            [4.0, 4.0, 4.0],
+            [24.0, 40.0],
+            false,
+        )
     );
-    assert_eq!(
-        SLIME_OUTER_TEXTURED_CUBE[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, 16.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(SLIME_INNER_TEXTURED_PARTS.len(), 4);
-    assert_eq!(SLIME_OUTER_TEXTURED_PARTS.len(), 1);
-    assert_eq!(
-        MAGMA_CUBE_TEXTURED_SEGMENT_4[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, 20.0, -4.0],
-            size: [8.0, 1.0, 8.0],
-            uv_size: [8.0, 1.0, 8.0],
-            tex: [32.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        MAGMA_CUBE_INSIDE_TEXTURED_CUBE[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, 18.0, -2.0],
-            size: [4.0, 4.0, 4.0],
-            uv_size: [4.0, 4.0, 4.0],
-            tex: [24.0, 40.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(MAGMA_CUBE_TEXTURED_PARTS.len(), 9);
 }
 
 #[test]
@@ -115,7 +89,8 @@ fn slime_and_magma_cube_layer_passes_match_vanilla_renderers() {
     assert_eq!(slime[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(slime[0].model_layer, MODEL_LAYER_SLIME);
     assert_eq!(slime[0].texture, SLIME_TEXTURE_REF);
-    assert_eq!(slime[0].parts, SLIME_INNER_TEXTURED_PARTS.as_slice());
+    // The vestigial `parts` slices are nulled; emit builds the `SlimeModel`/`SlimeOuterModel` trees.
+    assert!(slime[0].parts.is_empty());
     assert_eq!(slime[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(slime[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((slime[0].collector_order, slime[0].submit_sequence), (0, 0));
@@ -126,7 +101,7 @@ fn slime_and_magma_cube_layer_passes_match_vanilla_renderers() {
     );
     assert_eq!(slime[1].model_layer, MODEL_LAYER_SLIME_OUTER);
     assert_eq!(slime[1].texture, SLIME_TEXTURE_REF);
-    assert_eq!(slime[1].parts, SLIME_OUTER_TEXTURED_PARTS.as_slice());
+    assert!(slime[1].parts.is_empty());
     assert_eq!(slime[1].visibility, EntityModelLayerVisibility::All);
     assert_eq!(slime[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((slime[1].collector_order, slime[1].submit_sequence), (1, 1));
@@ -137,7 +112,7 @@ fn slime_and_magma_cube_layer_passes_match_vanilla_renderers() {
     assert_eq!(magma[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(magma[0].model_layer, MODEL_LAYER_MAGMA_CUBE);
     assert_eq!(magma[0].texture, MAGMA_CUBE_TEXTURE_REF);
-    assert_eq!(magma[0].parts, MAGMA_CUBE_TEXTURED_PARTS.as_slice());
+    assert!(magma[0].parts.is_empty());
     assert_eq!(magma[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(magma[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((magma[0].collector_order, magma[0].submit_sequence), (0, 0));
