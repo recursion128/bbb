@@ -1,129 +1,34 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn goat_model_parts_match_vanilla_26_1_body_layers() {
+    // The unified cubes carry both render paths' geometry; the beard is a flat (size-0 width) quad.
     assert_eq!(
         ADULT_GOAT_HEAD[2],
-        ModelCubeDesc {
-            min: [-0.5, -3.0, -14.0],
-            size: [0.0, 7.0, 5.0],
-            color: GOAT_BEARD,
-        }
+        ModelCube::new(
+            [-0.5, -3.0, -14.0],
+            [0.0, 7.0, 5.0],
+            GOAT_BEARD,
+            [0.0, 7.0, 5.0],
+            [23.0, 52.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_GOAT_PARTS.len(), 6);
-    assert_part_tree(
-        &ADULT_GOAT_PARTS[ADULT_GOAT_HEAD_INDEX],
-        [1.0, 14.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_GOAT_HEAD.as_slice(),
-        ADULT_GOAT_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_GOAT_HEAD_CHILDREN[ADULT_GOAT_LEFT_HORN_CHILD_INDEX],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_GOAT_LEFT_HORN.as_slice(),
-    );
-    assert_part(
-        &ADULT_GOAT_HEAD_CHILDREN[ADULT_GOAT_RIGHT_HORN_CHILD_INDEX],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_GOAT_RIGHT_HORN.as_slice(),
-    );
-    assert_part(
-        &ADULT_GOAT_HEAD_CHILDREN[2],
-        [0.0, -8.0, -8.0],
-        [0.9599, 0.0, 0.0],
-        ADULT_GOAT_NOSE.as_slice(),
-    );
-    assert_part(
-        &ADULT_GOAT_PARTS[1],
-        [0.0, 24.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_GOAT_BODY.as_slice(),
-    );
-    for (part, expected_offset, expected_cubes) in [
-        (
-            &ADULT_GOAT_PARTS[2],
-            [1.0, 14.0, 4.0],
-            ADULT_GOAT_HIND_LEG.as_slice(),
-        ),
-        (
-            &ADULT_GOAT_PARTS[3],
-            [-3.0, 14.0, 4.0],
-            ADULT_GOAT_HIND_LEG.as_slice(),
-        ),
-        (
-            &ADULT_GOAT_PARTS[4],
-            [1.0, 14.0, -6.0],
-            ADULT_GOAT_FRONT_LEG.as_slice(),
-        ),
-        (
-            &ADULT_GOAT_PARTS[5],
-            [-3.0, 14.0, -6.0],
-            ADULT_GOAT_FRONT_LEG.as_slice(),
-        ),
-    ] {
-        assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
-    }
+    assert_eq!(ADULT_GOAT_NOSE_POSE.offset, [0.0, -8.0, -8.0]);
+    assert_eq!(ADULT_GOAT_NOSE_POSE.rotation, [0.9599, 0.0, 0.0]);
+    assert_eq!(ADULT_GOAT_LEFT_HORN[0].color, GOAT_HORN);
+    assert_eq!(ADULT_GOAT_RIGHT_HORN[0].color, GOAT_HORN);
+    assert_eq!(ADULT_GOAT_BODY[0].size, [9.0, 11.0, 16.0]);
 
-    assert_eq!(BABY_GOAT_PARTS.len(), 6);
-    for (part, expected_offset) in [
-        (&BABY_GOAT_PARTS[0], [1.5, 19.5, 3.0]),
-        (&BABY_GOAT_PARTS[1], [-1.5, 19.5, 3.0]),
-        (&BABY_GOAT_PARTS[2], [-1.5, 19.5, -2.0]),
-        (&BABY_GOAT_PARTS[3], [1.5, 19.5, -2.0]),
-    ] {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_GOAT_LEG.as_slice(),
-        );
-    }
-    assert_part(
-        &BABY_GOAT_PARTS[4],
-        [0.0, 17.8, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_GOAT_BODY.as_slice(),
-    );
-    assert_part_tree(
-        &BABY_GOAT_PARTS[BABY_GOAT_HEAD_INDEX],
-        [0.0, 15.5, -3.0],
-        [0.4363, 0.0, 0.0],
-        BABY_GOAT_HEAD.as_slice(),
-        BABY_GOAT_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_GOAT_HEAD_CHILDREN[BABY_GOAT_RIGHT_HORN_CHILD_INDEX],
-        [-1.5, -1.5, -1.0],
-        [-0.3926991, 0.0, 0.0],
-        BABY_GOAT_RIGHT_HORN.as_slice(),
-    );
-    assert_part(
-        &BABY_GOAT_HEAD_CHILDREN[BABY_GOAT_LEFT_HORN_CHILD_INDEX],
-        [-1.5, -1.5, -1.0],
-        [-0.3926991, 0.0, 0.0],
-        BABY_GOAT_LEFT_HORN.as_slice(),
-    );
-    assert_part(
-        &BABY_GOAT_HEAD_CHILDREN[2],
-        [-1.7, -2.3126, 0.1452],
-        [0.0, -0.5236, 0.0],
-        BABY_GOAT_RIGHT_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_GOAT_HEAD_CHILDREN[3],
-        [1.7, -2.3126, 0.1452],
-        [0.0, 0.5236, 0.0],
-        BABY_GOAT_LEFT_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_GOAT_HEAD_CHILDREN[4],
-        [0.0, -1.3126, -1.1548],
-        [0.0, 0.0, 0.0],
-        BABY_GOAT_HEAD_MAIN.as_slice(),
-    );
+    assert_eq!(BABY_GOAT_HORN_POSE.offset, [-1.5, -1.5, -1.0]);
+    assert_eq!(BABY_GOAT_HORN_POSE.rotation, [-0.3926991, 0.0, 0.0]);
+    assert_eq!(BABY_GOAT_RIGHT_EAR_POSE.rotation, [0.0, -0.5236, 0.0]);
+    assert_eq!(BABY_GOAT_LEFT_EAR_POSE.rotation, [0.0, 0.5236, 0.0]);
+    assert_eq!(BABY_GOAT_HEAD_MAIN_POSE.offset, [0.0, -1.3126, -1.1548]);
+    assert_eq!(BABY_GOAT_RIGHT_HORN[0].color, GOAT_HORN);
+    assert_eq!(BABY_GOAT_LEFT_HORN[0].color, GOAT_HORN);
 }
 
 #[test]
@@ -258,7 +163,7 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(adult[0].model_layer, MODEL_LAYER_GOAT);
     assert_eq!(adult[0].texture, GOAT_TEXTURE_REF);
-    assert_eq!(adult[0].parts, ADULT_GOAT_TEXTURED_PARTS.as_slice());
+    assert!(adult[0].parts.is_empty());
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
@@ -269,7 +174,7 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(baby[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(baby[0].model_layer, MODEL_LAYER_GOAT_BABY);
     assert_eq!(baby[0].texture, GOAT_BABY_TEXTURE_REF);
-    assert_eq!(baby[0].parts, BABY_GOAT_TEXTURED_PARTS.as_slice());
+    assert!(baby[0].parts.is_empty());
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(baby[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((baby[0].collector_order, baby[0].submit_sequence), (0, 0));
@@ -277,55 +182,32 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
 
 #[test]
 fn goat_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_GOAT, "minecraft:goat#main");
     assert_eq!(MODEL_LAYER_GOAT_BABY, "minecraft:goat_baby#main");
-    assert_eq!(
-        ADULT_GOAT_TEXTURED_HEAD[1],
-        TexturedModelCubeDesc {
-            min: [2.0, -11.0, -10.0],
-            size: [3.0, 2.0, 1.0],
-            uv_size: [3.0, 2.0, 1.0],
-            tex: [2.0, 61.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(
-        ADULT_GOAT_TEXTURED_HEAD[2],
-        TexturedModelCubeDesc {
-            min: [-0.5, -3.0, -14.0],
-            size: [0.0, 7.0, 5.0],
-            uv_size: [0.0, 7.0, 5.0],
-            tex: [23.0, 52.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(ADULT_GOAT_TEXTURED_LEFT_HORN[0].tex, [12.0, 55.0]);
-    assert_eq!(ADULT_GOAT_TEXTURED_RIGHT_HORN[0].tex, [12.0, 55.0]);
-    assert_eq!(ADULT_GOAT_TEXTURED_NOSE[0].tex, [34.0, 46.0]);
-    assert_eq!(ADULT_GOAT_TEXTURED_LEFT_HIND_LEG[0].tex, [36.0, 29.0]);
-    assert_eq!(ADULT_GOAT_TEXTURED_RIGHT_HIND_LEG[0].tex, [49.0, 29.0]);
-    assert_eq!(ADULT_GOAT_TEXTURED_LEFT_FRONT_LEG[0].tex, [49.0, 2.0]);
-    assert_eq!(ADULT_GOAT_TEXTURED_RIGHT_FRONT_LEG[0].tex, [35.0, 2.0]);
-    assert_eq!(
-        ADULT_GOAT_TEXTURED_PARTS[ADULT_GOAT_HEAD_INDEX].children,
-        ADULT_GOAT_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
+    assert_eq!(ADULT_GOAT_HEAD[1].tex, [2.0, 61.0]);
+    assert!(ADULT_GOAT_HEAD[1].mirror);
+    assert_eq!(ADULT_GOAT_HEAD[2].tex, [23.0, 52.0]);
+    assert!(!ADULT_GOAT_HEAD[2].mirror);
+    assert_eq!(ADULT_GOAT_LEFT_HORN[0].tex, [12.0, 55.0]);
+    assert_eq!(ADULT_GOAT_RIGHT_HORN[0].tex, [12.0, 55.0]);
+    assert_eq!(ADULT_GOAT_NOSE[0].tex, [34.0, 46.0]);
+    assert_eq!(ADULT_GOAT_LEFT_HIND_LEG[0].tex, [36.0, 29.0]);
+    assert_eq!(ADULT_GOAT_RIGHT_HIND_LEG[0].tex, [49.0, 29.0]);
+    assert_eq!(ADULT_GOAT_LEFT_FRONT_LEG[0].tex, [49.0, 2.0]);
+    assert_eq!(ADULT_GOAT_RIGHT_FRONT_LEG[0].tex, [35.0, 2.0]);
 
-    assert_eq!(BABY_GOAT_TEXTURED_LEFT_HIND_LEG[0].tex, [29.0, 12.0]);
-    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_HIND_LEG[0].tex, [21.0, 12.0]);
-    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_FRONT_LEG[0].tex, [21.0, 5.0]);
-    assert_eq!(BABY_GOAT_TEXTURED_LEFT_FRONT_LEG[0].tex, [29.0, 5.0]);
-    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_HORN[0].tex, [24.0, 0.0]);
-    assert!(BABY_GOAT_TEXTURED_RIGHT_HORN[0].mirror);
-    assert!(BABY_GOAT_TEXTURED_LEFT_HORN[0].mirror);
-    assert_eq!(BABY_GOAT_TEXTURED_RIGHT_EAR[0].tex, [0.0, 12.0]);
-    assert!(BABY_GOAT_TEXTURED_RIGHT_EAR[0].mirror);
-    assert!(!BABY_GOAT_TEXTURED_LEFT_EAR[0].mirror);
-    assert_eq!(BABY_GOAT_TEXTURED_HEAD_MAIN[0].tex, [0.0, 0.0]);
-    assert_eq!(
-        BABY_GOAT_TEXTURED_PARTS[BABY_GOAT_HEAD_INDEX].children,
-        BABY_GOAT_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
+    assert_eq!(BABY_GOAT_LEFT_HIND_LEG[0].tex, [29.0, 12.0]);
+    assert_eq!(BABY_GOAT_RIGHT_HIND_LEG[0].tex, [21.0, 12.0]);
+    assert_eq!(BABY_GOAT_RIGHT_FRONT_LEG[0].tex, [21.0, 5.0]);
+    assert_eq!(BABY_GOAT_LEFT_FRONT_LEG[0].tex, [29.0, 5.0]);
+    assert_eq!(BABY_GOAT_RIGHT_HORN[0].tex, [24.0, 0.0]);
+    assert!(BABY_GOAT_RIGHT_HORN[0].mirror);
+    assert!(BABY_GOAT_LEFT_HORN[0].mirror);
+    assert_eq!(BABY_GOAT_RIGHT_EAR[0].tex, [0.0, 12.0]);
+    assert!(BABY_GOAT_RIGHT_EAR[0].mirror);
+    assert!(!BABY_GOAT_LEFT_EAR[0].mirror);
+    assert_eq!(BABY_GOAT_HEAD_MAIN[0].tex, [0.0, 0.0]);
 }
 
 #[test]

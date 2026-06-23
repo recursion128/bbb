@@ -1005,7 +1005,7 @@ pub(in crate::entity_models) fn goat_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: goat_model_layer(baby),
         texture: goat_texture_ref(baby),
-        parts: goat_textured_model_parts(baby).as_slice(),
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1209,14 +1209,6 @@ fn goat_texture_ref(baby: bool) -> EntityModelTextureRef {
         GOAT_BABY_TEXTURE_REF
     } else {
         GOAT_TEXTURE_REF
-    }
-}
-
-fn goat_textured_model_parts(baby: bool) -> &'static [TexturedModelPartDesc; 6] {
-    if baby {
-        &BABY_GOAT_TEXTURED_PARTS
-    } else {
-        &ADULT_GOAT_TEXTURED_PARTS
     }
 }
 
