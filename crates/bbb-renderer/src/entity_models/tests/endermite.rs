@@ -1,59 +1,64 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn endermite_parts_match_vanilla_26_1_body_layer() {
+fn endermite_cubes_and_poses_match_vanilla_26_1_body_layer() {
     // Vanilla EndermiteModel.createBodyLayer: four chitin segments, each a box of
     // BODY_SIZES[i] = (sx, sy, sz) at addBox(-sx/2, 0, -sz/2, sx, sy, sz) posed at
     // (0, 24 - sy, placement), where placement walks -3.5 -> 0 -> 3 -> 4 by half the summed
-    // depths of adjacent segments. No MeshTransformer scaling.
-    assert_eq!(ENDERMITE_PARTS.len(), 4);
+    // depths of adjacent segments. No MeshTransformer scaling. Each unified cube carries the
+    // colored tint (`ENDERMITE_PURPLE`) and the textured UV; segment i samples
+    // texOffs(0, [0, 5, 14, 18][i]) at its full size (`uv_size == size`, not mirrored).
     assert_eq!(ENDERMITE_SEGMENT_COUNT, 4);
+    assert_eq!(ENDERMITE_SEGMENT_CUBES.len(), 4);
+    assert_eq!(ENDERMITE_SEGMENT_POSES.len(), 4);
 
-    let expected: [([f32; 3], [f32; 3], [f32; 3]); 4] = [
-        // (offset, cube min, cube size)
-        ([0.0, 21.0, -3.5], [-2.0, 0.0, -1.0], [4.0, 3.0, 2.0]),
-        ([0.0, 20.0, 0.0], [-3.0, 0.0, -2.5], [6.0, 4.0, 5.0]),
-        ([0.0, 21.0, 3.0], [-1.5, 0.0, -0.5], [3.0, 3.0, 1.0]),
-        ([0.0, 22.0, 4.0], [-0.5, 0.0, -0.5], [1.0, 2.0, 1.0]),
+    // (offset, cube min, cube size, texOffs)
+    let expected: [([f32; 3], [f32; 3], [f32; 3], [f32; 2]); 4] = [
+        (
+            [0.0, 21.0, -3.5],
+            [-2.0, 0.0, -1.0],
+            [4.0, 3.0, 2.0],
+            [0.0, 0.0],
+        ),
+        (
+            [0.0, 20.0, 0.0],
+            [-3.0, 0.0, -2.5],
+            [6.0, 4.0, 5.0],
+            [0.0, 5.0],
+        ),
+        (
+            [0.0, 21.0, 3.0],
+            [-1.5, 0.0, -0.5],
+            [3.0, 3.0, 1.0],
+            [0.0, 14.0],
+        ),
+        (
+            [0.0, 22.0, 4.0],
+            [-0.5, 0.0, -0.5],
+            [1.0, 2.0, 1.0],
+            [0.0, 18.0],
+        ),
     ];
-    for (index, (offset, min, size)) in expected.iter().enumerate() {
-        let part = &ENDERMITE_PARTS[index];
-        assert_eq!(part.pose.offset, *offset);
-        assert_eq!(part.pose.rotation, [0.0, 0.0, 0.0]);
-        assert_eq!(part.cubes.len(), 1);
-        assert_eq!(part.cubes[0].min, *min);
-        assert_eq!(part.cubes[0].size, *size);
-    }
-}
-
-#[test]
-fn endermite_textured_parts_match_vanilla_model_layer_uv_sources() {
-    assert_eq!(MODEL_LAYER_ENDERMITE, "minecraft:endermite#main");
-    assert_eq!(ENDERMITE_TEXTURE_REF.size, [64, 32]);
-    assert_eq!(ENDERMITE_TEXTURED_PARTS.len(), 4);
-
-    // Vanilla BODY_TEXS: segment i samples texOffs(0, [0, 5, 14, 18][i]) at its full size.
-    let expected: [([f32; 3], [f32; 2], [f32; 3]); 4] = [
-        // (cube min, texOffs, uv_size)
-        ([-2.0, 0.0, -1.0], [0.0, 0.0], [4.0, 3.0, 2.0]),
-        ([-3.0, 0.0, -2.5], [0.0, 5.0], [6.0, 4.0, 5.0]),
-        ([-1.5, 0.0, -0.5], [0.0, 14.0], [3.0, 3.0, 1.0]),
-        ([-0.5, 0.0, -0.5], [0.0, 18.0], [1.0, 2.0, 1.0]),
-    ];
-    for (index, (min, tex, uv_size)) in expected.iter().enumerate() {
-        let part = &ENDERMITE_TEXTURED_PARTS[index];
-        assert_eq!(part.pose.offset, ENDERMITE_PARTS[index].pose.offset);
+    for (index, (offset, min, size, tex)) in expected.iter().enumerate() {
         assert_eq!(
-            part.cubes[0],
-            TexturedModelCubeDesc {
-                min: *min,
-                size: *uv_size,
-                uv_size: *uv_size,
-                tex: *tex,
-                mirror: false,
-            }
+            ENDERMITE_SEGMENT_POSES[index].offset, *offset,
+            "seg {index} offset"
+        );
+        assert_eq!(
+            ENDERMITE_SEGMENT_POSES[index].rotation,
+            [0.0, 0.0, 0.0],
+            "seg {index} rotation"
+        );
+        assert_eq!(
+            ENDERMITE_SEGMENT_CUBES[index],
+            ModelCube::new(*min, *size, ENDERMITE_PURPLE, *size, *tex, false),
+            "seg {index} cube"
         );
     }
+    assert_eq!(MODEL_LAYER_ENDERMITE, "minecraft:endermite#main");
+    assert_eq!(ENDERMITE_TEXTURE_REF.size, [64, 32]);
 }
 
 #[test]
@@ -64,7 +69,7 @@ fn endermite_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_ENDERMITE);
     assert_eq!(passes[0].texture, ENDERMITE_TEXTURE_REF);
-    assert_eq!(passes[0].parts, ENDERMITE_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -112,7 +117,7 @@ fn endermite_segment_pose_matches_vanilla_setup_anim() {
     };
     for age in [0.0f32, 6.3, 21.0, 100.0] {
         for index in 0..ENDERMITE_SEGMENT_COUNT {
-            let base = ENDERMITE_PARTS[index].pose;
+            let base = ENDERMITE_SEGMENT_POSES[index];
             let got = endermite_segment_pose(base, index, age);
             let want = vanilla(base, index, age);
             assert_eq!(got, want, "segment {index} at age {age}");
@@ -120,17 +125,17 @@ fn endermite_segment_pose_matches_vanilla_setup_anim() {
     }
     // The middle segment (index 2, |i-2| = 0) never shifts in x.
     for age in [0.0f32, 6.3, 21.0] {
-        let base = ENDERMITE_PARTS[2].pose;
+        let base = ENDERMITE_SEGMENT_POSES[2];
         assert_eq!(endermite_segment_pose(base, 2, age).offset[0], 0.0);
     }
     // Segment 0's phase is 0 at age 0, so its x is 0 but it still carries a nonzero yRot tilt
     // (cos(0) term) — the endermite never sits flat at its layer pose.
-    let seg0 = endermite_segment_pose(ENDERMITE_PARTS[0].pose, 0, 0.0);
+    let seg0 = endermite_segment_pose(ENDERMITE_SEGMENT_POSES[0], 0, 0.0);
     assert_eq!(seg0.offset[0], 0.0);
     assert_ne!(seg0.rotation[1], 0.0);
     // Segment 1 (phase = 0.15*pi at age 0) already shifts in x.
     assert_ne!(
-        endermite_segment_pose(ENDERMITE_PARTS[1].pose, 1, 0.0).offset[0],
+        endermite_segment_pose(ENDERMITE_SEGMENT_POSES[1], 1, 0.0).offset[0],
         0.0
     );
 }
