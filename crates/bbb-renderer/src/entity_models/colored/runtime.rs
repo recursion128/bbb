@@ -2370,11 +2370,11 @@ fn emit_squid_model(
 ) {
     // Vanilla `SquidModel.setupAnim` only sweeps the eight tentacles by the lerped
     // `tentacleAngle` (`tentacle.xRot = tentacleAngle`); the body is static. The swim
-    // body tilt and the `0.5/1.2` translate live in `squid_model_root_transform`.
+    // body tilt and the `0.5/1.2` translate live in `squid_model_root_transform`. The
+    // colored fallback recolors the whole tree with the squid / glow-squid tint.
     let root = squid_model_root_transform(instance, baby);
     let color = if glow { GLOW_SQUID_TEAL } else { SQUID_BLUE };
-    let parts = squid_model_parts(instance.render_state.squid_tentacle_angle);
-    emit_model_parts_with_color(mesh, &parts, root, color);
+    SquidModel::new().prepare_and_render_with_color(mesh, &instance, root, color);
 }
 
 fn emit_humanoid_model(

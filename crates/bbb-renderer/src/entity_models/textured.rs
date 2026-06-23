@@ -32,16 +32,16 @@ use super::{
         parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
         phantom_wing_pose, phantom_wing_z_rot, pufferfish_fin_pose, pufferfish_parts,
         pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, skeleton_head_part_index,
-        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
-        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
-        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
-        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
-        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel,
+        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
+        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
+        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
+        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, BlazeModel,
+        CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel,
         EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
         IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PigModel, PiglinModel,
         PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel,
-        SilverfishModel, SkeletonModel, SnowGolemModel, SpiderModel, VillagerModel,
+        SilverfishModel, SkeletonModel, SnowGolemModel, SpiderModel, SquidModel, VillagerModel,
         WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
         ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
         ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
@@ -782,11 +782,10 @@ fn emit_tropical_fish_textured_model(
     }
 }
 
-/// The textured squid / glow squid base layer. The procedural tentacle ring is not a
-/// `&'static` part list, so the squid is hand-emitted: the variant texture's atlas UV is
-/// resolved once and the body + animated tentacle ring (built by
-/// [`squid_textured_model_parts`]) are emitted under [`squid_model_root_transform`]. The
-/// glow squid differs only by texture (its emissive light boost is deferred lighting).
+/// The textured squid / glow squid base layer. The unified [`SquidModel`] tree (body + the
+/// procedural eight-tentacle ring) runs the shared `SquidModel.setupAnim` and renders under
+/// [`squid_model_root_transform`]; the variant texture's atlas UV is resolved once. The glow squid
+/// differs only by texture (its emissive light boost is deferred lighting).
 fn emit_squid_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -799,11 +798,10 @@ fn emit_squid_textured_model(
         return;
     };
     let transform = squid_model_root_transform(instance, baby);
-    let parts = squid_textured_model_parts(instance.render_state.squid_tentacle_angle);
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
-    emit_textured_model_parts(
-        mesh,
-        &parts,
+    let mut model = SquidModel::new();
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
         transform,
         texture,
         entry.uv,

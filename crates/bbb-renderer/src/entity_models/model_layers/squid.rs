@@ -2,6 +2,8 @@ use super::{
     ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
     SQUID_BLUE,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `SquidModel.createBodyLayer` (atlas 64×32). The body carries a
 // `CubeDeformation(0.02)`, so its colored cube is the base box inflated by 0.02 on
@@ -103,4 +105,51 @@ pub(in crate::entity_models) fn squid_textured_model_parts(
         });
     }
     parts
+}
+
+/// The squid root's first child is the static body; its eight tentacles follow as children `1..=8`.
+const SQUID_TENTACLE_CHILD_INDICES: std::ops::RangeInclusive<usize> = 1..=8;
+
+/// Applies the vanilla `SquidModel.setupAnim` tentacle sweep to the unified tree: every tentacle's
+/// `xRot` is set to the lerped `tentacleAngle`, while the body and the tentacles' fixed yaw layout
+/// stay at the bind pose. The angle is `0` at rest, so a still squid is byte-identical to its bind
+/// tree (the `*_PARTS` builders bake `xRot = 0` and `setup_anim` overwrites it each frame).
+fn apply_squid_tentacle_sweep(root: &mut ModelPart, tentacle_angle: f32) {
+    for index in SQUID_TENTACLE_CHILD_INDICES {
+        root.child_at_mut(index).pose.rotation[0] = tentacle_angle;
+    }
+}
+
+/// Mutable squid model, mirroring vanilla `SquidModel`. The unified tree is built once from the
+/// procedural body + eight-tentacle ring ([`squid_model_parts`] / [`squid_textured_model_parts`] at
+/// the rest `tentacleAngle = 0`); `setup_anim` runs [`apply_squid_tentacle_sweep`]. The same posed
+/// tree drives the colored fallback (recolored to the squid / glow-squid tint) and the textured base
+/// layer; the swim body tilt, baby scale, and glow texture live in the squid root transform / texture
+/// selection, not the model.
+pub(in crate::entity_models) struct SquidModel {
+    root: ModelPart,
+}
+
+impl SquidModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        let colored = squid_model_parts(0.0);
+        let textured = squid_textured_model_parts(0.0);
+        Self {
+            root: ModelPart::root_from_descs(&colored, &textured),
+        }
+    }
+}
+
+impl EntityModel for SquidModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_squid_tentacle_sweep(&mut self.root, instance.render_state.squid_tentacle_angle);
+    }
 }
