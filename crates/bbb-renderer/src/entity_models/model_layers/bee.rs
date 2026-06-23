@@ -1,72 +1,100 @@
-use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    BEE_YELLOW,
-};
+use super::{PartPose, BEE_YELLOW, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 use std::f32::consts::PI;
 
 // Vanilla 26.1 `AdultBeeModel.createBodyLayer` (atlas 64×64). The empty `bone` pivot parents the
 // body (which carries the stinger and the two antennae), the two wings, and the three leg planes.
-// The colored path approximates the striped texture with a single representative yellow.
-pub(in crate::entity_models) const BEE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.5, -4.0, -5.0],
-    size: [7.0, 7.0, 10.0],
-    color: BEE_YELLOW,
-}];
+// Each cube carries both render paths' data: the colored debug tint (`BEE_YELLOW`, a single
+// representative yellow approximating the striped texture) and the textured `uv_size` / `texOffs` /
+// `mirror`. The wings keep the BASE box `uv_size` (`[9, 0, 6]`) while the geometry inflates by the
+// vanilla `CubeDeformation(0.001)` (`min -= 0.001` / `size += 0.002`).
+pub(in crate::entity_models) const BEE_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-3.5, -4.0, -5.0],
+    [7.0, 7.0, 10.0],
+    BEE_YELLOW,
+    [7.0, 7.0, 10.0],
+    [0.0, 0.0],
+    false,
+)];
 
 // The stinger is a zero-thickness plane (x size 0).
-pub(in crate::entity_models) const BEE_STINGER: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -1.0, 5.0],
-    size: [0.0, 1.0, 2.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_STINGER: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -1.0, 5.0],
+    [0.0, 1.0, 2.0],
+    BEE_YELLOW,
+    [0.0, 1.0, 2.0],
+    [26.0, 7.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_LEFT_ANTENNA: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [1.5, -2.0, -3.0],
-    size: [1.0, 2.0, 3.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_LEFT_ANTENNA: [ModelCube; 1] = [ModelCube::new(
+    [1.5, -2.0, -3.0],
+    [1.0, 2.0, 3.0],
+    BEE_YELLOW,
+    [1.0, 2.0, 3.0],
+    [2.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_RIGHT_ANTENNA: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.5, -2.0, -3.0],
-    size: [1.0, 2.0, 3.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_RIGHT_ANTENNA: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -2.0, -3.0],
+    [1.0, 2.0, 3.0],
+    BEE_YELLOW,
+    [1.0, 2.0, 3.0],
+    [2.0, 3.0],
+    false,
+)];
 
 // The wings are zero-height planes inflated by the vanilla `CubeDeformation(0.001)`, so the colored
-// box bakes `min -= 0.001` / `size += 0.002`.
-pub(in crate::entity_models) const BEE_RIGHT_WING: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-9.001, -0.001, -0.001],
-    size: [9.002, 0.002, 6.002],
-    color: BEE_YELLOW,
-}];
+// box bakes `min -= 0.001` / `size += 0.002` while the `uv_size` keeps the BASE box. Both share
+// `texOffs(0, 18)`; only the left wing's UV is mirrored.
+pub(in crate::entity_models) const BEE_RIGHT_WING: [ModelCube; 1] = [ModelCube::new(
+    [-9.001, -0.001, -0.001],
+    [9.002, 0.002, 6.002],
+    BEE_YELLOW,
+    [9.0, 0.0, 6.0],
+    [0.0, 18.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_LEFT_WING: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-0.001, -0.001, -0.001],
-    size: [9.002, 0.002, 6.002],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_LEFT_WING: [ModelCube; 1] = [ModelCube::new(
+    [-0.001, -0.001, -0.001],
+    [9.002, 0.002, 6.002],
+    BEE_YELLOW,
+    [9.0, 0.0, 6.0],
+    [0.0, 18.0],
+    true,
+)];
 
 // The three leg pairs are zero-depth planes (z size 0).
-pub(in crate::entity_models) const BEE_FRONT_LEGS: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-5.0, 0.0, 0.0],
-    size: [7.0, 2.0, 0.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_FRONT_LEGS: [ModelCube; 1] = [ModelCube::new(
+    [-5.0, 0.0, 0.0],
+    [7.0, 2.0, 0.0],
+    BEE_YELLOW,
+    [7.0, 2.0, 0.0],
+    [26.0, 1.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_MIDDLE_LEGS: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-5.0, 0.0, 0.0],
-    size: [7.0, 2.0, 0.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_MIDDLE_LEGS: [ModelCube; 1] = [ModelCube::new(
+    [-5.0, 0.0, 0.0],
+    [7.0, 2.0, 0.0],
+    BEE_YELLOW,
+    [7.0, 2.0, 0.0],
+    [26.0, 3.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_BACK_LEGS: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-5.0, 0.0, 0.0],
-    size: [7.0, 2.0, 0.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BACK_LEGS: [ModelCube; 1] = [ModelCube::new(
+    [-5.0, 0.0, 0.0],
+    [7.0, 2.0, 0.0],
+    BEE_YELLOW,
+    [7.0, 2.0, 0.0],
+    [26.0, 5.0],
+    false,
+)];
 
 pub(in crate::entity_models) const BEE_BONE_POSE: PartPose = PartPose {
     offset: [0.0, 19.0, 0.0],
@@ -110,61 +138,90 @@ pub(in crate::entity_models) const BEE_BACK_LEGS_POSE: PartPose = PartPose {
 };
 
 // Vanilla 26.1 `BabyBeeModel.createBodyLayer` (atlas 32×32). The `bone` pivot itself carries two
-// small cubes; there are no antennae, and the wings sit at a different bind rotation.
-pub(in crate::entity_models) const BEE_BABY_BONE: [ModelCubeDesc; 2] = [
-    ModelCubeDesc {
-        min: [1.0, -1.6667, -2.1633],
-        size: [1.0, 2.0, 2.0],
-        color: BEE_YELLOW,
-    },
-    ModelCubeDesc {
-        min: [-2.0, -1.6667, -2.1933],
-        size: [1.0, 2.0, 2.0],
-        color: BEE_YELLOW,
-    },
+// small cubes; there are no antennae, and the wings sit at a different bind rotation. Each cube
+// carries both render paths' data (no `CubeDeformation`, so each `uv_size` matches its box `size`).
+// The left wing carries the vanilla negative `texOffs(-3, 9)` with a mirrored box.
+pub(in crate::entity_models) const BEE_BABY_BONE: [ModelCube; 2] = [
+    ModelCube::new(
+        [1.0, -1.6667, -2.1633],
+        [1.0, 2.0, 2.0],
+        BEE_YELLOW,
+        [1.0, 2.0, 2.0],
+        [6.0, 12.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.0, -1.6667, -2.1933],
+        [1.0, 2.0, 2.0],
+        BEE_YELLOW,
+        [1.0, 2.0, 2.0],
+        [0.0, 12.0],
+        false,
+    ),
 ];
 
-pub(in crate::entity_models) const BEE_BABY_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, -2.0, -2.5],
-    size: [4.0, 4.0, 5.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BABY_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -2.0, -2.5],
+    [4.0, 4.0, 5.0],
+    BEE_YELLOW,
+    [4.0, 4.0, 5.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_BABY_STINGER: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -0.5, 0.0],
-    size: [0.0, 1.0, 1.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BABY_STINGER: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -0.5, 0.0],
+    [0.0, 1.0, 1.0],
+    BEE_YELLOW,
+    [0.0, 1.0, 1.0],
+    [13.0, 2.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_BABY_RIGHT_WING: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 0.0, 0.0],
-    size: [3.0, 0.0, 3.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BABY_RIGHT_WING: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, 0.0, 0.0],
+    [3.0, 0.0, 3.0],
+    BEE_YELLOW,
+    [3.0, 0.0, 3.0],
+    [3.0, 9.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_BABY_LEFT_WING: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [3.0, 0.0, 3.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BABY_LEFT_WING: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [3.0, 0.0, 3.0],
+    BEE_YELLOW,
+    [3.0, 0.0, 3.0],
+    [-3.0, 9.0],
+    true,
+)];
 
-pub(in crate::entity_models) const BEE_BABY_FRONT_LEGS: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, 0.0],
-    size: [3.0, 1.0, 0.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BABY_FRONT_LEGS: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, 0.0, 0.0],
+    [3.0, 1.0, 0.0],
+    BEE_YELLOW,
+    [3.0, 1.0, 0.0],
+    [13.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_BABY_MIDDLE_LEGS: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, 0.0],
-    size: [3.0, 1.0, 0.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BABY_MIDDLE_LEGS: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, 0.0, 0.0],
+    [3.0, 1.0, 0.0],
+    BEE_YELLOW,
+    [3.0, 1.0, 0.0],
+    [13.0, 1.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BEE_BABY_BACK_LEGS: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 0.0, 0.0],
-    size: [3.0, 1.0, 0.0],
-    color: BEE_YELLOW,
-}];
+pub(in crate::entity_models) const BEE_BABY_BACK_LEGS: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, 0.0, 0.0],
+    [3.0, 1.0, 0.0],
+    BEE_YELLOW,
+    [3.0, 1.0, 0.0],
+    [13.0, 2.0],
+    false,
+)];
 
 pub(in crate::entity_models) const BEE_BABY_BONE_POSE: PartPose = PartPose {
     offset: [0.0, 19.6667, -1.8567],
@@ -198,172 +255,6 @@ pub(in crate::entity_models) const BEE_BABY_BACK_LEGS_POSE: PartPose = PartPose 
     offset: [0.0, 3.3333, 3.8567],
     rotation: [0.0, 0.0, 0.0],
 };
-
-// The same geometry with the vanilla `AdultBeeModel.createBodyLayer` texOffs UV coordinates (atlas
-// 64×64). The wings keep the BASE box `uv_size` (`[9, 0, 6]`) while the geometry inflates by the
-// `CubeDeformation(0.001)`.
-pub(in crate::entity_models) const BEE_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.5, -4.0, -5.0],
-        size: [7.0, 7.0, 10.0],
-        uv_size: [7.0, 7.0, 10.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_STINGER: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, -1.0, 5.0],
-        size: [0.0, 1.0, 2.0],
-        uv_size: [0.0, 1.0, 2.0],
-        tex: [26.0, 7.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_LEFT_ANTENNA: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [1.5, -2.0, -3.0],
-        size: [1.0, 2.0, 3.0],
-        uv_size: [1.0, 2.0, 3.0],
-        tex: [2.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_RIGHT_ANTENNA: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, -2.0, -3.0],
-        size: [1.0, 2.0, 3.0],
-        uv_size: [1.0, 2.0, 3.0],
-        tex: [2.0, 3.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-9.001, -0.001, -0.001],
-        size: [9.002, 0.002, 6.002],
-        uv_size: [9.0, 0.0, 6.0],
-        tex: [0.0, 18.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-0.001, -0.001, -0.001],
-        size: [9.002, 0.002, 6.002],
-        uv_size: [9.0, 0.0, 6.0],
-        tex: [0.0, 18.0],
-        mirror: true,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_FRONT_LEGS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-5.0, 0.0, 0.0],
-        size: [7.0, 2.0, 0.0],
-        uv_size: [7.0, 2.0, 0.0],
-        tex: [26.0, 1.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_MIDDLE_LEGS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-5.0, 0.0, 0.0],
-        size: [7.0, 2.0, 0.0],
-        uv_size: [7.0, 2.0, 0.0],
-        tex: [26.0, 3.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_TEXTURED_BACK_LEGS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-5.0, 0.0, 0.0],
-        size: [7.0, 2.0, 0.0],
-        uv_size: [7.0, 2.0, 0.0],
-        tex: [26.0, 5.0],
-        mirror: false,
-    }];
-
-// The baby textured geometry (`BabyBeeModel.createBodyLayer`, atlas 32×32). The left wing carries
-// the vanilla negative `texOffs(-3, 9)` with a mirrored box.
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_BONE: [TexturedModelCubeDesc; 2] = [
-    TexturedModelCubeDesc {
-        min: [1.0, -1.6667, -2.1633],
-        size: [1.0, 2.0, 2.0],
-        uv_size: [1.0, 2.0, 2.0],
-        tex: [6.0, 12.0],
-        mirror: false,
-    },
-    TexturedModelCubeDesc {
-        min: [-2.0, -1.6667, -2.1933],
-        size: [1.0, 2.0, 2.0],
-        uv_size: [1.0, 2.0, 2.0],
-        tex: [0.0, 12.0],
-        mirror: false,
-    },
-];
-
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, -2.0, -2.5],
-        size: [4.0, 4.0, 5.0],
-        uv_size: [4.0, 4.0, 5.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_STINGER: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, -0.5, 0.0],
-        size: [0.0, 1.0, 1.0],
-        uv_size: [0.0, 1.0, 1.0],
-        tex: [13.0, 2.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_RIGHT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.0, 0.0, 0.0],
-        size: [3.0, 0.0, 3.0],
-        uv_size: [3.0, 0.0, 3.0],
-        tex: [3.0, 9.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_LEFT_WING: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [3.0, 0.0, 3.0],
-        uv_size: [3.0, 0.0, 3.0],
-        tex: [-3.0, 9.0],
-        mirror: true,
-    }];
-
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_FRONT_LEGS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, 0.0, 0.0],
-        size: [3.0, 1.0, 0.0],
-        uv_size: [3.0, 1.0, 0.0],
-        tex: [13.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_MIDDLE_LEGS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, 0.0, 0.0],
-        size: [3.0, 1.0, 0.0],
-        uv_size: [3.0, 1.0, 0.0],
-        tex: [13.0, 1.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BEE_BABY_TEXTURED_BACK_LEGS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.5, 0.0, 0.0],
-        size: [3.0, 1.0, 0.0],
-        uv_size: [3.0, 1.0, 0.0],
-        tex: [13.0, 2.0],
-        mirror: false,
-    }];
 
 // The flying middle-leg angle (vanilla sets all three legs to `π/4` in the airborne branch before
 // the bob overrides the front/back pair).
@@ -405,205 +296,97 @@ pub(in crate::entity_models) fn bee_antenna_x_rot(age_in_ticks: f32) -> f32 {
     bee_bob_speed(age_in_ticks) * PI * 0.03
 }
 
-// Colored adult bee tree (`AdultBeeModel.createBodyLayer`): a single root child, the empty `bone`
-// pivot, parenting the body (which carries the stinger and the two antennae), the two wings, and the
-// three leg planes — in the vanilla emit order. Zipped with the textured tree by [`BeeModel::new`].
-const BEE_PARTS: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: BEE_BONE_POSE,
-    cubes: &[],
-    children: &[
-        ModelPartDesc {
-            pose: BEE_BODY_POSE,
-            cubes: &BEE_BODY,
-            children: &[
-                ModelPartDesc {
-                    pose: BEE_STINGER_POSE,
-                    cubes: &BEE_STINGER,
-                    children: &[],
-                },
-                ModelPartDesc {
-                    pose: BEE_LEFT_ANTENNA_POSE,
-                    cubes: &BEE_LEFT_ANTENNA,
-                    children: &[],
-                },
-                ModelPartDesc {
-                    pose: BEE_RIGHT_ANTENNA_POSE,
-                    cubes: &BEE_RIGHT_ANTENNA,
-                    children: &[],
-                },
-            ],
-        },
-        ModelPartDesc {
-            pose: BEE_RIGHT_WING_POSE,
-            cubes: &BEE_RIGHT_WING,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_LEFT_WING_POSE,
-            cubes: &BEE_LEFT_WING,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_FRONT_LEGS_POSE,
-            cubes: &BEE_FRONT_LEGS,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_MIDDLE_LEGS_POSE,
-            cubes: &BEE_MIDDLE_LEGS,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_BACK_LEGS_POSE,
-            cubes: &BEE_BACK_LEGS,
-            children: &[],
-        },
-    ],
-}];
-const BEE_TEXTURED_PARTS: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: BEE_BONE_POSE,
-    cubes: &[],
-    children: &[
-        TexturedModelPartDesc {
-            pose: BEE_BODY_POSE,
-            cubes: &BEE_TEXTURED_BODY,
-            children: &[
-                TexturedModelPartDesc {
-                    pose: BEE_STINGER_POSE,
-                    cubes: &BEE_TEXTURED_STINGER,
-                    children: &[],
-                },
-                TexturedModelPartDesc {
-                    pose: BEE_LEFT_ANTENNA_POSE,
-                    cubes: &BEE_TEXTURED_LEFT_ANTENNA,
-                    children: &[],
-                },
-                TexturedModelPartDesc {
-                    pose: BEE_RIGHT_ANTENNA_POSE,
-                    cubes: &BEE_TEXTURED_RIGHT_ANTENNA,
-                    children: &[],
-                },
-            ],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_RIGHT_WING_POSE,
-            cubes: &BEE_TEXTURED_RIGHT_WING,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_LEFT_WING_POSE,
-            cubes: &BEE_TEXTURED_LEFT_WING,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_FRONT_LEGS_POSE,
-            cubes: &BEE_TEXTURED_FRONT_LEGS,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_MIDDLE_LEGS_POSE,
-            cubes: &BEE_TEXTURED_MIDDLE_LEGS,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_BACK_LEGS_POSE,
-            cubes: &BEE_TEXTURED_BACK_LEGS,
-            children: &[],
-        },
-    ],
-}];
+/// Builds the adult bee's `bone` pivot subtree (`AdultBeeModel.createBodyLayer`): the empty `bone`
+/// parents the body (which carries the stinger and the two antennae), the two wings, and the three
+/// leg planes — in the vanilla emit order, preserved for byte-identical meshes. Each cube carries
+/// both the colored tint and the textured UV, so one tree drives both render paths.
+fn bee_adult_bone() -> ModelPart {
+    let body = ModelPart::new(
+        BEE_BODY_POSE,
+        BEE_BODY.to_vec(),
+        vec![
+            (
+                "stinger",
+                ModelPart::leaf(BEE_STINGER_POSE, BEE_STINGER.to_vec()),
+            ),
+            (
+                "left_antenna",
+                ModelPart::leaf(BEE_LEFT_ANTENNA_POSE, BEE_LEFT_ANTENNA.to_vec()),
+            ),
+            (
+                "right_antenna",
+                ModelPart::leaf(BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_ANTENNA.to_vec()),
+            ),
+        ],
+    );
+    ModelPart::new(
+        BEE_BONE_POSE,
+        Vec::new(),
+        vec![
+            ("body", body),
+            (
+                "right_wing",
+                ModelPart::leaf(BEE_RIGHT_WING_POSE, BEE_RIGHT_WING.to_vec()),
+            ),
+            (
+                "left_wing",
+                ModelPart::leaf(BEE_LEFT_WING_POSE, BEE_LEFT_WING.to_vec()),
+            ),
+            (
+                "front_legs",
+                ModelPart::leaf(BEE_FRONT_LEGS_POSE, BEE_FRONT_LEGS.to_vec()),
+            ),
+            (
+                "middle_legs",
+                ModelPart::leaf(BEE_MIDDLE_LEGS_POSE, BEE_MIDDLE_LEGS.to_vec()),
+            ),
+            (
+                "back_legs",
+                ModelPart::leaf(BEE_BACK_LEGS_POSE, BEE_BACK_LEGS.to_vec()),
+            ),
+        ],
+    )
+}
 
-// Colored baby bee tree (`BabyBeeModel.createBodyLayer`): the `bone` pivot itself carries two small
-// cubes, the body has only the stinger (no antennae), and the wings/legs sit at the baby binds.
-const BEE_BABY_PARTS: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: BEE_BABY_BONE_POSE,
-    cubes: &BEE_BABY_BONE,
-    children: &[
-        ModelPartDesc {
-            pose: BEE_BABY_BODY_POSE,
-            cubes: &BEE_BABY_BODY,
-            children: &[ModelPartDesc {
-                pose: BEE_BABY_STINGER_POSE,
-                cubes: &BEE_BABY_STINGER,
-                children: &[],
-            }],
-        },
-        ModelPartDesc {
-            pose: BEE_BABY_RIGHT_WING_POSE,
-            cubes: &BEE_BABY_RIGHT_WING,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_BABY_LEFT_WING_POSE,
-            cubes: &BEE_BABY_LEFT_WING,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_BABY_FRONT_LEGS_POSE,
-            cubes: &BEE_BABY_FRONT_LEGS,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_BABY_MIDDLE_LEGS_POSE,
-            cubes: &BEE_BABY_MIDDLE_LEGS,
-            children: &[],
-        },
-        ModelPartDesc {
-            pose: BEE_BABY_BACK_LEGS_POSE,
-            cubes: &BEE_BABY_BACK_LEGS,
-            children: &[],
-        },
-    ],
-}];
-const BEE_BABY_TEXTURED_PARTS: [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: BEE_BABY_BONE_POSE,
-    cubes: &BEE_BABY_TEXTURED_BONE,
-    children: &[
-        TexturedModelPartDesc {
-            pose: BEE_BABY_BODY_POSE,
-            cubes: &BEE_BABY_TEXTURED_BODY,
-            children: &[TexturedModelPartDesc {
-                pose: BEE_BABY_STINGER_POSE,
-                cubes: &BEE_BABY_TEXTURED_STINGER,
-                children: &[],
-            }],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_BABY_RIGHT_WING_POSE,
-            cubes: &BEE_BABY_TEXTURED_RIGHT_WING,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_BABY_LEFT_WING_POSE,
-            cubes: &BEE_BABY_TEXTURED_LEFT_WING,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_BABY_FRONT_LEGS_POSE,
-            cubes: &BEE_BABY_TEXTURED_FRONT_LEGS,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_BABY_MIDDLE_LEGS_POSE,
-            cubes: &BEE_BABY_TEXTURED_MIDDLE_LEGS,
-            children: &[],
-        },
-        TexturedModelPartDesc {
-            pose: BEE_BABY_BACK_LEGS_POSE,
-            cubes: &BEE_BABY_TEXTURED_BACK_LEGS,
-            children: &[],
-        },
-    ],
-}];
-
-/// Selects the colored and textured const trees for an adult or baby bee, zipped into the unified
-/// tree by [`BeeModel::new`].
-fn bee_part_trees(baby: bool) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
-    if baby {
-        (&BEE_BABY_PARTS, &BEE_BABY_TEXTURED_PARTS)
-    } else {
-        (&BEE_PARTS, &BEE_TEXTURED_PARTS)
-    }
+/// Builds the baby bee's `bone` pivot subtree (`BabyBeeModel.createBodyLayer`): the `bone` itself
+/// carries two small cubes, the body has only the stinger (no antennae), and the wings/legs sit at
+/// the baby binds — in the vanilla emit order.
+fn bee_baby_bone() -> ModelPart {
+    let body = ModelPart::new(
+        BEE_BABY_BODY_POSE,
+        BEE_BABY_BODY.to_vec(),
+        vec![(
+            "stinger",
+            ModelPart::leaf(BEE_BABY_STINGER_POSE, BEE_BABY_STINGER.to_vec()),
+        )],
+    );
+    ModelPart::new(
+        BEE_BABY_BONE_POSE,
+        BEE_BABY_BONE.to_vec(),
+        vec![
+            ("body", body),
+            (
+                "right_wing",
+                ModelPart::leaf(BEE_BABY_RIGHT_WING_POSE, BEE_BABY_RIGHT_WING.to_vec()),
+            ),
+            (
+                "left_wing",
+                ModelPart::leaf(BEE_BABY_LEFT_WING_POSE, BEE_BABY_LEFT_WING.to_vec()),
+            ),
+            (
+                "front_legs",
+                ModelPart::leaf(BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_FRONT_LEGS.to_vec()),
+            ),
+            (
+                "middle_legs",
+                ModelPart::leaf(BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_MIDDLE_LEGS.to_vec()),
+            ),
+            (
+                "back_legs",
+                ModelPart::leaf(BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BACK_LEGS.to_vec()),
+            ),
+        ],
+    )
 }
 
 /// Applies vanilla `BeeModel.setupAnim` to the unified tree. While airborne the wings flap on
@@ -620,7 +403,7 @@ fn apply_bee_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstan
     let has_stinger = instance.render_state.bee_has_stinger;
 
     // Bone pivot (root child): the airborne bob rocks it forward and lifts/drops it.
-    let bone = root.child_at_mut(0);
+    let bone = root.child_mut("bone");
     if bob {
         bone.pose.offset[1] += bee_bone_y_delta(age);
         bone.pose.rotation = [bee_bone_x_rot(age), 0.0, 0.0];
@@ -628,12 +411,12 @@ fn apply_bee_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstan
 
     // Body subtree: the stinger is shown only while carried; the adult antennae bob with the body.
     {
-        let body = bone.child_at_mut(0);
-        body.child_at_mut(0).visible = has_stinger;
+        let body = bone.child_mut("body");
+        body.child_mut("stinger").visible = has_stinger;
         if !baby {
             let antenna_x_rot = if bob { bee_antenna_x_rot(age) } else { 0.0 };
-            body.child_at_mut(1).pose.rotation = [antenna_x_rot, 0.0, 0.0];
-            body.child_at_mut(2).pose.rotation = [antenna_x_rot, 0.0, 0.0];
+            body.child_mut("left_antenna").pose.rotation = [antenna_x_rot, 0.0, 0.0];
+            body.child_mut("right_antenna").pose.rotation = [antenna_x_rot, 0.0, 0.0];
         }
     }
 
@@ -641,9 +424,9 @@ fn apply_bee_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstan
     // left, while the bind pitch (0 on adults, `0.2182` on babies) is preserved.
     if flying {
         let wing_z_rot = bee_wing_z_rot(age);
-        let right_wing = bone.child_at_mut(1);
+        let right_wing = bone.child_mut("right_wing");
         right_wing.pose.rotation = [right_wing.pose.rotation[0], 0.0, wing_z_rot];
-        let left_wing = bone.child_at_mut(2);
+        let left_wing = bone.child_mut("left_wing");
         left_wing.pose.rotation = [left_wing.pose.rotation[0], 0.0, -wing_z_rot];
     }
 
@@ -666,15 +449,19 @@ fn apply_bee_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstan
     } else {
         (0.0, 0.0, 0.0)
     };
-    bone.child_at_mut(3).pose.rotation = [front_x, 0.0, 0.0];
-    bone.child_at_mut(4).pose.rotation = [mid_x, 0.0, 0.0];
-    bone.child_at_mut(5).pose.rotation = [back_x, 0.0, 0.0];
+    bone.child_mut("front_legs").pose.rotation = [front_x, 0.0, 0.0];
+    bone.child_mut("middle_legs").pose.rotation = [mid_x, 0.0, 0.0];
+    bone.child_mut("back_legs").pose.rotation = [back_x, 0.0, 0.0];
 }
 
-/// Mutable bee model, mirroring vanilla `AdultBeeModel` / `BabyBeeModel`. The unified tree is zipped
-/// from the const trees selected by `baby` ([`bee_part_trees`]); `setup_anim` runs [`apply_bee_anim`].
-/// The same posed tree drives the colored fallback and the cutout textured layer; the adult/baby
-/// texture and the rolled-up fall pose (`rollAmount`) live outside the model.
+/// Mutable bee model, mirroring vanilla `AdultBeeModel` / `BabyBeeModel`. The unified tree is built
+/// once with named children: a synthetic root parenting the `bone` pivot selected by `baby`
+/// ([`bee_adult_bone`] / [`bee_baby_bone`]), with the `bone` carrying the body (→ `stinger`, and on
+/// adults the two antennae), the two wings, and the three leg planes, in the emit order (preserved
+/// for byte-identical meshes). Each cube carries both the colored tint and the textured UV, so one
+/// tree drives both render paths; `setup_anim` runs [`apply_bee_anim`]. The same posed tree drives
+/// the colored fallback and the cutout textured layer; the adult/baby texture and the rolled-up fall
+/// pose (`rollAmount`) live outside the model.
 pub(in crate::entity_models) struct BeeModel {
     root: ModelPart,
     baby: bool,
@@ -682,9 +469,13 @@ pub(in crate::entity_models) struct BeeModel {
 
 impl BeeModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
-        let (colored, textured) = bee_part_trees(baby);
+        let bone = if baby {
+            bee_baby_bone()
+        } else {
+            bee_adult_bone()
+        };
         Self {
-            root: ModelPart::root_from_descs(colored, textured),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("bone", bone)]),
             baby,
         }
     }

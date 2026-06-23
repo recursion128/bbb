@@ -1,29 +1,60 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
 use std::f32::consts::PI;
 
 #[test]
 fn bee_geometry_matches_vanilla_26_1_body_layers() {
     // Adult `AdultBeeModel.createBodyLayer` (atlas 64×64): the empty bone parents a 7×7×10 body.
-    assert_eq!(BEE_BODY[0].min, [-3.5, -4.0, -5.0]);
-    assert_eq!(BEE_BODY[0].size, [7.0, 7.0, 10.0]);
+    // Each unified cube carries both the colored geometry/tint and the textured `uv_size` /
+    // `texOffs` / `mirror`.
+    assert_eq!(
+        BEE_BODY[0],
+        ModelCube::new(
+            [-3.5, -4.0, -5.0],
+            [7.0, 7.0, 10.0],
+            BEE_YELLOW,
+            [7.0, 7.0, 10.0],
+            [0.0, 0.0],
+            false,
+        )
+    );
     assert_eq!(BEE_BONE_POSE.offset, [0.0, 19.0, 0.0]);
-    // The stinger is a zero-thickness plane, the legs zero-depth planes.
+    // The stinger is a zero-thickness plane, the legs zero-depth planes; each carries its texOffs.
     assert_eq!(BEE_STINGER[0].size, [0.0, 1.0, 2.0]);
+    assert_eq!(BEE_STINGER[0].tex, [26.0, 7.0]);
+    assert_eq!(BEE_LEFT_ANTENNA[0].tex, [2.0, 0.0]);
+    assert_eq!(BEE_RIGHT_ANTENNA[0].tex, [2.0, 3.0]);
     assert_eq!(BEE_FRONT_LEGS[0].size, [7.0, 2.0, 0.0]);
-    // The wings carry the vanilla `CubeDeformation(0.001)`.
+    assert_eq!(BEE_FRONT_LEGS[0].tex, [26.0, 1.0]);
+    assert_eq!(BEE_MIDDLE_LEGS[0].tex, [26.0, 3.0]);
+    assert_eq!(BEE_BACK_LEGS[0].tex, [26.0, 5.0]);
+    // The wings carry the vanilla `CubeDeformation(0.001)` on the geometry but keep the BASE box
+    // `uv_size`; both share `texOffs(0, 18)` and only the left wing's UV mirrors.
     assert_eq!(BEE_RIGHT_WING[0].min, [-9.001, -0.001, -0.001]);
     assert_eq!(BEE_RIGHT_WING[0].size, [9.002, 0.002, 6.002]);
+    assert_eq!(BEE_RIGHT_WING[0].uv_size, [9.0, 0.0, 6.0]);
+    assert_eq!(BEE_RIGHT_WING[0].tex, [0.0, 18.0]);
+    assert!(!BEE_RIGHT_WING[0].mirror);
+    assert_eq!(BEE_LEFT_WING[0].uv_size, [9.0, 0.0, 6.0]);
+    assert_eq!(BEE_LEFT_WING[0].tex, [0.0, 18.0]);
+    assert!(BEE_LEFT_WING[0].mirror);
     assert_eq!(BEE_RIGHT_WING_POSE.rotation, [0.0, -0.2618, 0.0]);
     assert_eq!(BEE_LEFT_WING_POSE.rotation, [0.0, 0.2618, 0.0]);
 
     // Baby `BabyBeeModel.createBodyLayer` (atlas 32×32): the bone itself carries two cubes, there
-    // are no antennae, and the wings sit at a `0.2182` pitch.
+    // are no antennae, and the wings sit at a `0.2182` pitch. The left wing carries the vanilla
+    // negative `texOffs(-3, 9)` with a mirrored box.
     assert_eq!(BEE_BABY_BONE.len(), 2);
+    assert_eq!(BEE_BABY_BONE[0].tex, [6.0, 12.0]);
+    assert_eq!(BEE_BABY_BONE[1].tex, [0.0, 12.0]);
     assert_eq!(BEE_BABY_BODY[0].size, [4.0, 4.0, 5.0]);
+    assert_eq!(BEE_BABY_BODY[0].tex, [0.0, 0.0]);
     assert_eq!(BEE_BABY_BONE_POSE.offset, [0.0, 19.6667, -1.8567]);
     assert_eq!(BEE_BABY_RIGHT_WING_POSE.rotation, [0.2182, 0.3491, 0.0]);
     assert_eq!(BEE_BABY_LEFT_WING_POSE.rotation, [0.2182, -0.3491, 0.0]);
+    assert_eq!(BEE_BABY_LEFT_WING[0].tex, [-3.0, 9.0]);
+    assert!(BEE_BABY_LEFT_WING[0].mirror);
 }
 
 #[test]
@@ -117,32 +148,6 @@ fn bee_texture_ref_matches_vanilla_renderer() {
             }
         ]
     );
-}
-
-#[test]
-fn bee_textured_cubes_match_vanilla_body_layer_uvs() {
-    // Adult `AdultBeeModel.createBodyLayer` texOffs (atlas 64×64).
-    assert_eq!(BEE_TEXTURED_BODY[0].tex, [0.0, 0.0]);
-    assert_eq!(BEE_TEXTURED_STINGER[0].tex, [26.0, 7.0]);
-    assert_eq!(BEE_TEXTURED_LEFT_ANTENNA[0].tex, [2.0, 0.0]);
-    assert_eq!(BEE_TEXTURED_RIGHT_ANTENNA[0].tex, [2.0, 3.0]);
-    assert_eq!(BEE_TEXTURED_RIGHT_WING[0].tex, [0.0, 18.0]);
-    assert!(!BEE_TEXTURED_RIGHT_WING[0].mirror);
-    // The left wing is mirrored; the wing keeps the BASE box `uv_size` despite the deformation.
-    assert_eq!(BEE_TEXTURED_LEFT_WING[0].tex, [0.0, 18.0]);
-    assert!(BEE_TEXTURED_LEFT_WING[0].mirror);
-    assert_eq!(BEE_TEXTURED_LEFT_WING[0].uv_size, [9.0, 0.0, 6.0]);
-    assert_eq!(BEE_TEXTURED_FRONT_LEGS[0].tex, [26.0, 1.0]);
-    assert_eq!(BEE_TEXTURED_MIDDLE_LEGS[0].tex, [26.0, 3.0]);
-    assert_eq!(BEE_TEXTURED_BACK_LEGS[0].tex, [26.0, 5.0]);
-
-    // Baby `BabyBeeModel.createBodyLayer` texOffs (atlas 32×32): the bone's two cubes, and the
-    // negative-offset mirrored left wing.
-    assert_eq!(BEE_BABY_TEXTURED_BONE[0].tex, [6.0, 12.0]);
-    assert_eq!(BEE_BABY_TEXTURED_BONE[1].tex, [0.0, 12.0]);
-    assert_eq!(BEE_BABY_TEXTURED_BODY[0].tex, [0.0, 0.0]);
-    assert_eq!(BEE_BABY_TEXTURED_LEFT_WING[0].tex, [-3.0, 9.0]);
-    assert!(BEE_BABY_TEXTURED_LEFT_WING[0].mirror);
 }
 
 #[test]
