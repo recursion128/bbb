@@ -1,66 +1,42 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn warden_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `WardenModel.createBodyLayer` (atlas 128×128): the mesh root holds one `bone` part
     // at `offset(0, 24, 0)` parenting the body and the two legs.
-    assert_eq!(WARDEN_PARTS.len(), 1);
-    let bone = &WARDEN_PARTS[0];
-    assert_eq!(bone.pose.offset, [0.0, 24.0, 0.0]);
-    assert!(bone.cubes.is_empty());
-    assert_eq!(bone.children.len(), 3);
+    assert_eq!(WARDEN_BONE_POSE.offset, [0.0, 24.0, 0.0]);
 
     // `body` (offset (0, -21, 0)): one 18×21×11 box parenting two ribcages, the head, and arms.
-    let body = &bone.children[0];
-    assert_eq!(body.pose.offset, [0.0, -21.0, 0.0]);
-    assert_eq!(body.cubes.len(), 1);
-    assert_eq!(body.cubes[0].min, [-9.0, -13.0, -4.0]);
-    assert_eq!(body.cubes[0].size, [18.0, 21.0, 11.0]);
-    assert_eq!(body.children.len(), 5);
+    assert_eq!(WARDEN_BODY_POSE.offset, [0.0, -21.0, 0.0]);
+    assert_eq!(WARDEN_BODY_CUBES.len(), 1);
+    assert_eq!(WARDEN_BODY_CUBES[0].min, [-9.0, -13.0, -4.0]);
+    assert_eq!(WARDEN_BODY_CUBES[0].size, [18.0, 21.0, 11.0]);
 
     // The two 9×21×0 ribcage planes.
-    let right_ribcage = &body.children[0];
-    let left_ribcage = &body.children[1];
-    assert_eq!(right_ribcage.pose.offset, [-7.0, -2.0, -4.0]);
-    assert_eq!(right_ribcage.cubes[0].min, [-2.0, -11.0, -0.1]);
-    assert_eq!(left_ribcage.pose.offset, [7.0, -2.0, -4.0]);
-    assert_eq!(left_ribcage.cubes[0].min, [-7.0, -11.0, -0.1]);
-    assert_eq!(right_ribcage.cubes[0].size, [9.0, 21.0, 0.0]);
+    assert_eq!(WARDEN_RIGHT_RIBCAGE_POSE.offset, [-7.0, -2.0, -4.0]);
+    assert_eq!(WARDEN_RIGHT_RIBCAGE_CUBES[0].min, [-2.0, -11.0, -0.1]);
+    assert_eq!(WARDEN_LEFT_RIBCAGE_POSE.offset, [7.0, -2.0, -4.0]);
+    assert_eq!(WARDEN_LEFT_RIBCAGE_CUBES[0].min, [-7.0, -11.0, -0.1]);
+    assert_eq!(WARDEN_RIGHT_RIBCAGE_CUBES[0].size, [9.0, 21.0, 0.0]);
 
     // `head` (16×16×10) parents the two 16×16×0 tendril planes.
-    let head = &body.children[2];
-    assert_eq!(head.pose.offset, [0.0, -13.0, 0.0]);
-    assert_eq!(head.cubes[0].size, [16.0, 16.0, 10.0]);
-    assert_eq!(head.children.len(), 2);
-    assert_eq!(head.children[0].pose.offset, [-8.0, -12.0, 0.0]);
-    assert_eq!(head.children[0].cubes[0].min, [-16.0, -13.0, 0.0]);
-    assert_eq!(head.children[1].cubes[0].min, [0.0, -13.0, 0.0]);
-    assert_eq!(head.children[1].cubes[0].size, [16.0, 16.0, 0.0]);
+    assert_eq!(WARDEN_HEAD_POSE.offset, [0.0, -13.0, 0.0]);
+    assert_eq!(WARDEN_HEAD_CUBES[0].size, [16.0, 16.0, 10.0]);
+    assert_eq!(WARDEN_RIGHT_TENDRIL_POSE.offset, [-8.0, -12.0, 0.0]);
+    assert_eq!(WARDEN_RIGHT_TENDRIL_CUBES[0].min, [-16.0, -13.0, 0.0]);
+    assert_eq!(WARDEN_LEFT_TENDRIL_CUBES[0].min, [0.0, -13.0, 0.0]);
+    assert_eq!(WARDEN_LEFT_TENDRIL_CUBES[0].size, [16.0, 16.0, 0.0]);
 
     // The two 8×28×8 arms.
-    let right_arm = &body.children[3];
-    let left_arm = &body.children[4];
-    assert_eq!(right_arm.pose.offset, [-13.0, -13.0, 1.0]);
-    assert_eq!(left_arm.pose.offset, [13.0, -13.0, 1.0]);
-    assert_eq!(right_arm.cubes[0].size, [8.0, 28.0, 8.0]);
+    assert_eq!(WARDEN_RIGHT_ARM_POSE.offset, [-13.0, -13.0, 1.0]);
+    assert_eq!(WARDEN_LEFT_ARM_POSE.offset, [13.0, -13.0, 1.0]);
+    assert_eq!(WARDEN_ARM_CUBES[0].size, [8.0, 28.0, 8.0]);
 
     // The two 6×13×6 legs (differing only in X origin).
-    let right_leg = &bone.children[1];
-    let left_leg = &bone.children[2];
-    assert_eq!(right_leg.pose.offset, [-5.9, -13.0, 0.0]);
-    assert_eq!(right_leg.cubes[0].min, [-3.1, 0.0, -3.0]);
-    assert_eq!(left_leg.pose.offset, [5.9, -13.0, 0.0]);
-    assert_eq!(left_leg.cubes[0].min, [-2.9, 0.0, -3.0]);
-
-    // Ten cubes total.
-    assert_eq!(count_cubes(&WARDEN_PARTS), 10);
+    assert_eq!(WARDEN_RIGHT_LEG_POSE.offset, [-5.9, -13.0, 0.0]);
+    assert_eq!(WARDEN_RIGHT_LEG_CUBES[0].min, [-3.1, 0.0, -3.0]);
+    assert_eq!(WARDEN_LEFT_LEG_POSE.offset, [5.9, -13.0, 0.0]);
+    assert_eq!(WARDEN_LEFT_LEG_CUBES[0].min, [-2.9, 0.0, -3.0]);
 }
 
 #[test]
@@ -115,7 +91,7 @@ fn warden_idle_and_head_pose_match_vanilla_setup_anim() {
     let s = age * 0.1;
 
     // `animateIdlePose` body roll: xRot += 0.025·cos(s), zRot += 0.025·sin(s), yRot untouched.
-    let body_bind = WARDEN_PARTS[0].children[WARDEN_BODY_BONE_CHILD_INDEX].pose;
+    let body_bind = WARDEN_BODY_POSE;
     let body = warden_idle_body_pose(body_bind, age);
     assert!((body.rotation[0] - (body_bind.rotation[0] + 0.025 * s.cos())).abs() < 1.0e-6);
     assert_eq!(body.rotation[1], body_bind.rotation[1]);
@@ -124,9 +100,7 @@ fn warden_idle_and_head_pose_match_vanilla_setup_anim() {
 
     // The head pose: the look sets xRot/yRot, then the idle roll adds xRot += 0.06·sin(s) and
     // zRot += 0.06·cos(s).
-    let head_bind = WARDEN_PARTS[0].children[WARDEN_BODY_BONE_CHILD_INDEX].children
-        [WARDEN_HEAD_BODY_CHILD_INDEX]
-        .pose;
+    let head_bind = WARDEN_HEAD_POSE;
     let head = warden_head_pose(head_bind, 40.0, -30.0, age);
     assert!((head.rotation[0] - ((-30.0_f32).to_radians() + 0.06 * s.sin())).abs() < 1.0e-6);
     assert!((head.rotation[1] - 40.0_f32.to_radians()).abs() < 1.0e-6);

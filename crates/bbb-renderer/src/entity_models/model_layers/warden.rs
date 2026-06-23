@@ -1,6 +1,5 @@
 use super::{
-    bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, PartPose, WARDEN_BODY,
-    WARDEN_TENDRIL,
+    model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, WARDEN_BODY, WARDEN_TENDRIL,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -18,86 +17,156 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // layers (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed path are deferred.
 
 // `body`: one 18×21×11 box.
-const WARDEN_BODY_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_BODY_CUBES: [ModelCubeDesc; 1] =
     [cube([-9.0, -13.0, -4.0], [18.0, 21.0, 11.0], WARDEN_BODY)];
 
 // The two ribcage planes (`texOffs(90,11)`, the left mirrored); both are 9×21×0.
-const WARDEN_RIGHT_RIBCAGE_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_RIGHT_RIBCAGE_CUBES: [ModelCubeDesc; 1] =
     [cube([-2.0, -11.0, -0.1], [9.0, 21.0, 0.0], WARDEN_BODY)];
-const WARDEN_LEFT_RIBCAGE_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_LEFT_RIBCAGE_CUBES: [ModelCubeDesc; 1] =
     [cube([-7.0, -11.0, -0.1], [9.0, 21.0, 0.0], WARDEN_BODY)];
 
 // `head`: one 16×16×10 box.
-const WARDEN_HEAD_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_HEAD_CUBES: [ModelCubeDesc; 1] =
     [cube([-8.0, -16.0, -5.0], [16.0, 16.0, 10.0], WARDEN_BODY)];
 
 // The two tendril planes (16×16×0), the warden's iconic glow antennae.
-const WARDEN_RIGHT_TENDRIL_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_RIGHT_TENDRIL_CUBES: [ModelCubeDesc; 1] =
     [cube([-16.0, -13.0, 0.0], [16.0, 16.0, 0.0], WARDEN_TENDRIL)];
-const WARDEN_LEFT_TENDRIL_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_LEFT_TENDRIL_CUBES: [ModelCubeDesc; 1] =
     [cube([0.0, -13.0, 0.0], [16.0, 16.0, 0.0], WARDEN_TENDRIL)];
 
 // Both arms share one 8×28×8 box.
-const WARDEN_ARM_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_ARM_CUBES: [ModelCubeDesc; 1] =
     [cube([-4.0, 0.0, -4.0], [8.0, 28.0, 8.0], WARDEN_BODY)];
 
 // The legs (6×13×6) differ only in X origin.
-const WARDEN_RIGHT_LEG_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_RIGHT_LEG_CUBES: [ModelCubeDesc; 1] =
     [cube([-3.1, 0.0, -3.0], [6.0, 13.0, 6.0], WARDEN_BODY)];
-const WARDEN_LEFT_LEG_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const WARDEN_LEFT_LEG_CUBES: [ModelCubeDesc; 1] =
     [cube([-2.9, 0.0, -3.0], [6.0, 13.0, 6.0], WARDEN_BODY)];
 
-// `head` children: the two tendrils.
-const WARDEN_HEAD_CHILDREN: [ModelPartDesc; 2] = [
-    part([-8.0, -12.0, 0.0], &WARDEN_RIGHT_TENDRIL_CUBES, &[]),
-    part([8.0, -12.0, 0.0], &WARDEN_LEFT_TENDRIL_CUBES, &[]),
-];
+/// Vanilla `WardenModel.createBodyLayer` rest-pose part poses, rooted at the cubeless `bone` part
+/// (`offset(0, 24, 0)`) parenting the `body` and the two legs; `body` parents the two ribcages, the
+/// `head` (which parents the two tendrils), and the two arms. Ten cubes.
+/// `bone` cubeless-pivot part pose: `PartPose.offset(0, 24, 0)`.
+pub(in crate::entity_models) const WARDEN_BONE_POSE: PartPose = PartPose {
+    offset: [0.0, 24.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `body` part pose: `PartPose.offset(0, -21, 0)`. The idle wobble and walk swing add onto its bind.
+pub(in crate::entity_models) const WARDEN_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, -21.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_ribcage` part pose: `PartPose.offset(-7, -2, -4)`.
+pub(in crate::entity_models) const WARDEN_RIGHT_RIBCAGE_POSE: PartPose = PartPose {
+    offset: [-7.0, -2.0, -4.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_ribcage` part pose: `PartPose.offset(7, -2, -4)`.
+pub(in crate::entity_models) const WARDEN_LEFT_RIBCAGE_POSE: PartPose = PartPose {
+    offset: [7.0, -2.0, -4.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `head` part pose: `PartPose.offset(0, -13, 0)`. `animateHeadLookTarget` sets `head.xRot/yRot`
+/// from the look; the tendrils nested under the head inherit the turn.
+pub(in crate::entity_models) const WARDEN_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, -13.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_tendril` part pose: `PartPose.offset(-8, -12, 0)`. Vanilla sets `rightTendril.xRot =
+/// -tendrilXRot`.
+pub(in crate::entity_models) const WARDEN_RIGHT_TENDRIL_POSE: PartPose = PartPose {
+    offset: [-8.0, -12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_tendril` part pose: `PartPose.offset(8, -12, 0)`. Vanilla sets `leftTendril.xRot =
+/// +tendrilXRot`.
+pub(in crate::entity_models) const WARDEN_LEFT_TENDRIL_POSE: PartPose = PartPose {
+    offset: [8.0, -12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_arm` part pose: `PartPose.offset(-13, -13, 1)`. `animateWalk` swings its `xRot`.
+pub(in crate::entity_models) const WARDEN_RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-13.0, -13.0, 1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_arm` part pose: `PartPose.offset(13, -13, 1)`. `animateWalk` swings its `xRot`.
+pub(in crate::entity_models) const WARDEN_LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [13.0, -13.0, 1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_leg` part pose: `PartPose.offset(-5.9, -13, 0)`. `animateWalk` swings its `xRot`.
+pub(in crate::entity_models) const WARDEN_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-5.9, -13.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_leg` part pose: `PartPose.offset(5.9, -13, 0)`. `animateWalk` swings its `xRot`.
+pub(in crate::entity_models) const WARDEN_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [5.9, -13.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-// `body` children: the two ribcages, the head, and the two arms.
-const WARDEN_BODY_CHILDREN: [ModelPartDesc; 5] = [
-    part([-7.0, -2.0, -4.0], &WARDEN_RIGHT_RIBCAGE_CUBES, &[]),
-    part([7.0, -2.0, -4.0], &WARDEN_LEFT_RIBCAGE_CUBES, &[]),
-    part([0.0, -13.0, 0.0], &WARDEN_HEAD_CUBES, &WARDEN_HEAD_CHILDREN),
-    part([-13.0, -13.0, 1.0], &WARDEN_ARM_CUBES, &[]),
-    part([13.0, -13.0, 1.0], &WARDEN_ARM_CUBES, &[]),
-];
-
-// `bone` children: the body and the two legs.
-const WARDEN_BONE_CHILDREN: [ModelPartDesc; 3] = [
-    part([0.0, -21.0, 0.0], &WARDEN_BODY_CUBES, &WARDEN_BODY_CHILDREN),
-    part([-5.9, -13.0, 0.0], &WARDEN_RIGHT_LEG_CUBES, &[]),
-    part([5.9, -13.0, 0.0], &WARDEN_LEFT_LEG_CUBES, &[]),
-];
-
-/// Vanilla `WardenModel.createBodyLayer` rest-pose hierarchy, rooted at the `bone` part
-/// (`offset(0, 24, 0)`). Ten cubes.
-pub(in crate::entity_models) const WARDEN_PARTS: [ModelPartDesc; 1] =
-    [part([0.0, 24.0, 0.0], &[], &WARDEN_BONE_CHILDREN)];
-
-/// Child-index path from [`WARDEN_PARTS`] to the `head`: `bone` (`0`) → `body` (child `0`) → `head`
-/// (child `2`, after the two ribcages). `WardenModel.animateHeadLookTarget` sets `head.xRot/yRot`
-/// from the look angles, and the two tendrils nested under the head inherit the turn. The idle
-/// wobble also rolls the body, so the warden emit hand-walks `bone → body → head` using these
-/// indices.
-pub(in crate::entity_models) const WARDEN_BODY_BONE_CHILD_INDEX: usize = 0;
-pub(in crate::entity_models) const WARDEN_HEAD_BODY_CHILD_INDEX: usize = 2;
-
-/// The two legs hang directly off the `bone` (after the body at child `0`); `animateWalk` swings
-/// each leg's `xRot`. Vanilla order: right leg (`x = -5.9`) then left leg (`x = 5.9`).
-pub(in crate::entity_models) const WARDEN_RIGHT_LEG_BONE_CHILD_INDEX: usize = 1;
-pub(in crate::entity_models) const WARDEN_LEFT_LEG_BONE_CHILD_INDEX: usize = 2;
-
-/// The two arms hang off the `body` (after the two ribcages at `0`/`1` and the head at `2`);
-/// `animateWalk` swings each arm's `xRot`. Vanilla order: right arm (`x = -13`) then left arm
-/// (`x = 13`).
-pub(in crate::entity_models) const WARDEN_RIGHT_ARM_BODY_CHILD_INDEX: usize = 3;
-pub(in crate::entity_models) const WARDEN_LEFT_ARM_BODY_CHILD_INDEX: usize = 4;
-
-/// The two tendrils hang off the `head`; `animateTendrils` sways each tendril's `xRot`. Vanilla
-/// order (`createBodyLayer`): right tendril (`x = -8`) then left tendril (`x = 8`). Vanilla sets
-/// `leftTendril.xRot = +tendrilXRot`, `rightTendril.xRot = -tendrilXRot`.
-pub(in crate::entity_models) const WARDEN_RIGHT_TENDRIL_HEAD_CHILD_INDEX: usize = 0;
-pub(in crate::entity_models) const WARDEN_LEFT_TENDRIL_HEAD_CHILD_INDEX: usize = 1;
+/// Builds the warden's synthetic root parenting the single cubeless `bone` part, which parents the
+/// cube-bearing `body` (→ two ribcages / `head` → two tendrils / two arms) and the two legs, in
+/// vanilla `addOrReplaceChild` order. The `bone`, `body`, `head`, both tendrils, both arms, and both
+/// legs are name-addressed by `setup_anim`, so `bone`, `body`, and `head` carry named children.
+fn warden_root() -> ModelPart {
+    let head = ModelPart::colored_named(
+        WARDEN_HEAD_POSE,
+        &WARDEN_HEAD_CUBES,
+        vec![
+            (
+                "right_tendril",
+                ModelPart::leaf_colored(WARDEN_RIGHT_TENDRIL_POSE, &WARDEN_RIGHT_TENDRIL_CUBES),
+            ),
+            (
+                "left_tendril",
+                ModelPart::leaf_colored(WARDEN_LEFT_TENDRIL_POSE, &WARDEN_LEFT_TENDRIL_CUBES),
+            ),
+        ],
+    );
+    let body = ModelPart::colored_named(
+        WARDEN_BODY_POSE,
+        &WARDEN_BODY_CUBES,
+        vec![
+            (
+                "right_ribcage",
+                ModelPart::leaf_colored(WARDEN_RIGHT_RIBCAGE_POSE, &WARDEN_RIGHT_RIBCAGE_CUBES),
+            ),
+            (
+                "left_ribcage",
+                ModelPart::leaf_colored(WARDEN_LEFT_RIBCAGE_POSE, &WARDEN_LEFT_RIBCAGE_CUBES),
+            ),
+            ("head", head),
+            (
+                "right_arm",
+                ModelPart::leaf_colored(WARDEN_RIGHT_ARM_POSE, &WARDEN_ARM_CUBES),
+            ),
+            (
+                "left_arm",
+                ModelPart::leaf_colored(WARDEN_LEFT_ARM_POSE, &WARDEN_ARM_CUBES),
+            ),
+        ],
+    );
+    let bone = ModelPart::new(
+        WARDEN_BONE_POSE,
+        Vec::new(),
+        vec![
+            ("body", body),
+            (
+                "right_leg",
+                ModelPart::leaf_colored(WARDEN_RIGHT_LEG_POSE, &WARDEN_RIGHT_LEG_CUBES),
+            ),
+            (
+                "left_leg",
+                ModelPart::leaf_colored(WARDEN_LEFT_LEG_POSE, &WARDEN_LEFT_LEG_CUBES),
+            ),
+        ],
+    );
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("bone", bone)])
+}
 
 /// Vanilla `WardenModel.animateIdlePose` body roll: with `s = ageInTicks·0.1`, the body adds
 /// `xRot += 0.025·cos(s)` and `zRot += 0.025·sin(s)` onto its bind pose. Always on (no gating
@@ -214,9 +283,9 @@ pub(in crate::entity_models) fn warden_tendril_x_rot(
 
 /// Mutable warden model, mirroring vanilla `WardenModel`. The cubeless `bone` root (parenting the
 /// body and two legs; `body` parents the ribcages, head, and two arms; `head` parents the two
-/// tendrils) hangs off a synthetic root, built from the baked [`WARDEN_PARTS`] geometry.
-/// Colored-only: `setup_anim` reproduces the four non-keyframe motions — the head look, the idle
-/// wobble, the walk swing, and the tendril sway (the attack / sonic-boom / dig / emerge / roar
+/// tendrils) hangs off a synthetic root, built from the baked colored geometry as a named-children
+/// tree. Colored-only: `setup_anim` reproduces the four non-keyframe motions — the head look, the
+/// idle wobble, the walk swing, and the tendril sway (the attack / sonic-boom / dig / emerge / roar
 /// keyframes stay deferred).
 pub(in crate::entity_models) struct WardenModel {
     root: ModelPart,
@@ -225,7 +294,7 @@ pub(in crate::entity_models) struct WardenModel {
 impl WardenModel {
     pub(in crate::entity_models) fn new() -> Self {
         Self {
-            root: ModelPart::root_from_colored_descs(&WARDEN_PARTS),
+            root: warden_root(),
         }
     }
 }
@@ -255,9 +324,9 @@ impl EntityModel for WardenModel {
         );
         let tendril_x = warden_tendril_x_rot(instance.render_state.tendril_animation, age);
 
-        let bone = self.root.child_at_mut(0);
+        let bone = self.root.child_mut("bone");
         {
-            let body = bone.child_at_mut(WARDEN_BODY_BONE_CHILD_INDEX);
+            let body = bone.child_mut("body");
             body.pose = warden_add_x_z_rot(
                 warden_idle_body_pose(body.pose, age),
                 walk.body_x_rot,
@@ -265,7 +334,7 @@ impl EntityModel for WardenModel {
             );
 
             {
-                let head = body.child_at_mut(WARDEN_HEAD_BODY_CHILD_INDEX);
+                let head = body.child_mut("head");
                 head.pose = warden_add_x_z_rot(
                     warden_head_pose(head.pose, head_yaw, head_pitch, age),
                     walk.head_x_rot,
@@ -273,23 +342,23 @@ impl EntityModel for WardenModel {
                 );
 
                 // The two tendrils sway their `xRot` off the pulse (left `+`, right `-`).
-                let right = head.child_at_mut(WARDEN_RIGHT_TENDRIL_HEAD_CHILD_INDEX);
+                let right = head.child_mut("right_tendril");
                 right.pose = warden_add_x_z_rot(right.pose, -tendril_x, 0.0);
-                let left = head.child_at_mut(WARDEN_LEFT_TENDRIL_HEAD_CHILD_INDEX);
+                let left = head.child_mut("left_tendril");
                 left.pose = warden_add_x_z_rot(left.pose, tendril_x, 0.0);
             }
 
             // The two arms swing their `xRot` with the walk; the ribcages hold.
-            let right_arm = body.child_at_mut(WARDEN_RIGHT_ARM_BODY_CHILD_INDEX);
+            let right_arm = body.child_mut("right_arm");
             right_arm.pose = warden_add_x_z_rot(right_arm.pose, walk.right_arm_x_rot, 0.0);
-            let left_arm = body.child_at_mut(WARDEN_LEFT_ARM_BODY_CHILD_INDEX);
+            let left_arm = body.child_mut("left_arm");
             left_arm.pose = warden_add_x_z_rot(left_arm.pose, walk.left_arm_x_rot, 0.0);
         }
 
         // The two legs swing their `xRot` with the walk.
-        let right_leg = bone.child_at_mut(WARDEN_RIGHT_LEG_BONE_CHILD_INDEX);
+        let right_leg = bone.child_mut("right_leg");
         right_leg.pose = warden_add_x_z_rot(right_leg.pose, walk.right_leg_x_rot, 0.0);
-        let left_leg = bone.child_at_mut(WARDEN_LEFT_LEG_BONE_CHILD_INDEX);
+        let left_leg = bone.child_mut("left_leg");
         left_leg.pose = warden_add_x_z_rot(left_leg.pose, walk.left_leg_x_rot, 0.0);
     }
 }
