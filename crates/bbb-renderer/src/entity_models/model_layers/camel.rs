@@ -302,10 +302,10 @@ pub(in crate::entity_models) const BABY_CAMEL_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
-/// Child-index path from [`ADULT_CAMEL_PARTS`] to the `head` part: body (`0`) → `head` (child `2`,
-/// after the hump and tail). The baby body lists only the tail before the head, so its head is child
-/// `1` ([`BABY_CAMEL_HEAD_PART_PATH`]). Used to apply the clamped head look to the nested head.
-pub(in crate::entity_models) const ADULT_CAMEL_HEAD_PART_PATH: &[usize] = &[0, 2];
+/// Child-index path from [`BABY_CAMEL_PARTS`] to the `head` part: body (`0`) → `head` (child `1`,
+/// after the tail). Used to apply the clamped head look to the nested baby head (the adult/husk camel
+/// hand-walks its body→head spine via [`CAMEL_WALK`], composing the look in directly). The adult head
+/// sits at child `2`, after the hump and tail.
 pub(in crate::entity_models) const BABY_CAMEL_HEAD_PART_PATH: &[usize] = &[0, 1];
 
 /// Vanilla `CamelModel.applyHeadRotation`: the net head look clamped to `yRot ∈ [-30, 30]` and

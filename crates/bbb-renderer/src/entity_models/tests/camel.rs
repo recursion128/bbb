@@ -320,9 +320,9 @@ fn camel_textured_model_parts_match_vanilla_model_layer_uv_sources() {
 #[test]
 fn camel_textured_mesh_matches_static_vanilla_pose() {
     // Vanilla `CamelModel.setupAnim` drives the limbs via baked `KeyframeAnimation`s plus a
-    // direct head clamp. The keyframe animations are deferred, so the textured meshes carry the
-    // full body-layer geometry (12 adult cubes / 11 baby cubes, 24 vertices each) and are inert
-    // under walk animation (the head look is exercised separately below).
+    // direct head clamp. The textured meshes carry the full body-layer geometry (12 adult cubes /
+    // 11 baby cubes, 24 vertices each); the adult/husk walk is reproduced (exercised below), and the
+    // head look is exercised separately.
     let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
     let adult =
         EntityModelInstance::camel(700, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
@@ -356,9 +356,13 @@ fn camel_textured_mesh_matches_static_vanilla_pose() {
             .collect::<Vec<_>>()
     );
 
-    // The keyframe walk animation is still deferred, so walking is byte-identical to rest.
-    let walking = entity_model_textured_mesh(&[adult.with_walk_animation(0.0, 1.0)], &atlas);
-    assert_eq!(adult_mesh.vertices, walking.vertices);
+    // The adult/husk walk is reproduced on the textured path: a still camel (walk speed 0) matches
+    // the rest pose, while a walking camel (speed > 0) differs.
+    let still = entity_model_textured_mesh(&[adult.with_walk_animation(0.0, 0.0)], &atlas);
+    assert_eq!(adult_mesh.vertices, still.vertices);
+    let walking = entity_model_textured_mesh(&[adult.with_walk_animation(5.0, 1.0)], &atlas);
+    assert_eq!(adult_mesh.vertices.len(), walking.vertices.len());
+    assert_ne!(adult_mesh.vertices, walking.vertices);
 }
 
 /// The adult camel's depth-first emit order: body `[0, 24)`, hump `[24, 48)`, the zero-thickness
@@ -494,6 +498,46 @@ fn camel_walk_moves_the_whole_model_and_composes_with_the_look() {
     assert_eq!(
         walking.vertices[head.end..],
         walking_looking.vertices[head.end..],
+        "the legs share the same walk regardless of the look"
+    );
+}
+
+#[test]
+fn camel_textured_walk_moves_the_whole_model_and_composes_with_the_look() {
+    // The textured path reproduces the same CAMEL_WALK as the colored path: the `root` roll turns the
+    // whole model and the head walk pitch ADDS onto the clamped look (only the nested head subtree
+    // [72, 192) tracks the look; the body and legs share the walk).
+    let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
+    let head = ADULT_CAMEL_HEAD_VERTEX_RANGE;
+    let still =
+        EntityModelInstance::camel(730, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+    let walking = still.with_walk_animation(5.0, 1.0);
+    let walking_looking = still
+        .with_walk_animation(5.0, 1.0)
+        .with_head_look(40.0, -20.0);
+
+    let still_mesh = entity_model_textured_mesh(&[still], &atlas);
+    let walking_mesh = entity_model_textured_mesh(&[walking], &atlas);
+    assert_eq!(still_mesh.vertices.len(), walking_mesh.vertices.len());
+    assert_ne!(
+        still_mesh.vertices, walking_mesh.vertices,
+        "the walking camel rolls its whole body and swings its legs"
+    );
+
+    let walking_looking_mesh = entity_model_textured_mesh(&[walking_looking], &atlas);
+    assert_ne!(
+        walking_mesh.vertices[head.clone()],
+        walking_looking_mesh.vertices[head.clone()],
+        "the look composes onto the walking head"
+    );
+    assert_eq!(
+        walking_mesh.vertices[..head.start],
+        walking_looking_mesh.vertices[..head.start],
+        "the body/hump/tail share the same walk regardless of the look"
+    );
+    assert_eq!(
+        walking_mesh.vertices[head.end..],
+        walking_looking_mesh.vertices[head.end..],
         "the legs share the same walk regardless of the look"
     );
 }

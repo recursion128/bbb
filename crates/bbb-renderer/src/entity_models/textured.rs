@@ -1,4 +1,4 @@
-use super::keyframe::{keyframe_elapsed_seconds, sample_bone_offsets};
+use super::keyframe::{keyframe_elapsed_seconds, keyframe_walk_sample, sample_bone_offsets};
 use super::{
     boat_model_root_transform,
     catalog::squid_texture_ref,
@@ -49,14 +49,13 @@ use super::{
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
         turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
         witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, zombie_arm_held_out_pose, ADULT_CAMEL_HEAD_PART_PATH,
-        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
-        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
-        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
-        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
-        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_HEAD_PART_PATH,
-        BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
-        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
+        wolf_tail_swing_pose, zombie_arm_held_out_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE,
+        ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
+        ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
+        BABY_CAMEL_HEAD_PART_PATH, BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING,
+        BAT_HEAD_POSE, BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
         BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
         BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
@@ -74,10 +73,11 @@ use super::{
         BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT,
         BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE,
         BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD,
-        BREEZE_TEXTURE_REF, COD_TAIL_FIN_PART_INDEX, DOLPHIN_BABY_TEXTURE_REF,
-        DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE, DOLPHIN_LEFT_FIN_POSE,
-        DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT, DOLPHIN_TAIL_FIN_POSE,
-        DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY, DOLPHIN_TEXTURED_HEAD,
+        BREEZE_TEXTURE_REF, CAMEL_WALK, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR,
+        COD_TAIL_FIN_PART_INDEX, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE,
+        DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE, DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE,
+        DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT, DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE,
+        DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY, DOLPHIN_TEXTURED_HEAD,
         DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE, DOLPHIN_TEXTURED_RIGHT_FIN,
         DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN, DOLPHIN_TEXTURE_REF,
         ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
@@ -544,9 +544,9 @@ fn emit_cow_textured_model(
 
 /// The textured camel base layer. Vanilla `CamelModel.setupAnim` drives every limb via
 /// baked `KeyframeAnimation`s (walk/sit/standup/idle/dash) plus a direct head yaw/pitch
-/// clamp ([`camel_clamped_head_look`]). The head look is reproduced here; the keyframe
-/// animations remain deferred. The camel husk shares the adult mesh, differing only in
-/// texture.
+/// clamp ([`camel_clamped_head_look`]). The head look and the adult/husk walk
+/// ([`CAMEL_WALK`]) are reproduced here; the sit/standup/idle/dash animations and the baby
+/// walk remain deferred. The camel husk shares the adult mesh, differing only in texture.
 fn emit_camel_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -559,17 +559,160 @@ fn emit_camel_textured_model(
         instance.render_state.head_yaw,
         instance.render_state.head_pitch,
     );
-    let head_path = if family == CamelModelFamily::Camel && baby {
-        BABY_CAMEL_HEAD_PART_PATH
-    } else {
-        ADULT_CAMEL_HEAD_PART_PATH
-    };
+    if family == CamelModelFamily::Camel && baby {
+        // The baby walk (`CAMEL_BABY_WALK`, a different cycle/topology) is deferred, so the baby camel
+        // takes only the clamped head look.
+        for pass in camel_textured_layer_passes(family, baby) {
+            if head_look_at_rest(head_yaw, head_pitch) {
+                emit_textured_layer_pass(meshes, &pass, transform, atlas);
+            } else {
+                emit_textured_layer_pass_with_head_look(
+                    meshes,
+                    &pass,
+                    transform,
+                    atlas,
+                    BABY_CAMEL_HEAD_PART_PATH,
+                    head_yaw,
+                    head_pitch,
+                );
+            }
+        }
+        return;
+    }
+    // The adult camel and the husk (which shares the adult mesh) hand-walk through `CAMEL_WALK`.
+    emit_camel_adult_walk_textured(
+        meshes, instance, transform, atlas, family, baby, head_yaw, head_pitch,
+    );
+}
+
+/// Hand-walks the adult camel's textured passes through [`CAMEL_WALK`], composing the walk onto the
+/// clamped head look — the textured twin of the colored `emit_camel_adult_walk_colored`. The `root`
+/// channel rolls the whole model, the four legs swing (rotation + position), the head pitch ADDS onto
+/// the look, the two ears flap, and the tail swishes. A still camel samples amplitude 0, collapsing to
+/// the bind pose plus the head look.
+#[allow(clippy::too_many_arguments)]
+fn emit_camel_adult_walk_textured(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+    family: CamelModelFamily,
+    baby: bool,
+    head_yaw: f32,
+    head_pitch: f32,
+) {
+    let (seconds, scale) = keyframe_walk_sample(
+        &CAMEL_WALK,
+        instance.render_state.walk_animation_pos,
+        instance.render_state.walk_animation_speed,
+        CAMEL_WALK_SPEED_FACTOR,
+        CAMEL_WALK_SCALE_FACTOR,
+    );
+    let sample = |bone: &str| sample_bone_offsets(&CAMEL_WALK, bone, seconds, scale);
+    let (root_pos, root_rot) = sample("root");
+    let (tail_pos, tail_rot) = sample("tail");
+    let (_, head_walk_rot) = sample("head");
+    let (left_ear_pos, left_ear_rot) = sample("left_ear");
+    let (right_ear_pos, right_ear_rot) = sample("right_ear");
+
     for pass in camel_textured_layer_passes(family, baby) {
-        if head_look_at_rest(head_yaw, head_pitch) {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            emit_textured_layer_pass_with_head_look(
-                meshes, &pass, transform, atlas, head_path, head_yaw, head_pitch,
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        let uv = entry.uv;
+        let texture = pass.texture;
+        let tint = pass.tint;
+        let parts = pass.parts;
+        let mesh = meshes.mesh_mut(pass.render_type);
+
+        // `root` rolls the whole model at the entity root.
+        let root_t = transform
+            * part_pose_transform(keyframe_textured_pose(PART_POSE_ZERO, root_pos, root_rot));
+
+        // `body` (root child 0) is not animated; it carries the hump, tail, and head.
+        let body = &parts[0];
+        let body_t = root_t * part_pose_transform(body.pose);
+        for cube in body.cubes {
+            emit_textured_model_cube(mesh, body_t, *cube, texture, uv, tint);
+        }
+
+        // `hump` (body child 0) is not animated.
+        emit_textured_model_part(mesh, &body.children[0], body_t, texture, uv, tint);
+
+        // `tail` (body child 1): the walk swish.
+        let tail = &body.children[1];
+        emit_textured_model_part(
+            mesh,
+            &TexturedModelPartDesc {
+                pose: keyframe_textured_pose(tail.pose, tail_pos, tail_rot),
+                ..*tail
+            },
+            body_t,
+            texture,
+            uv,
+            tint,
+        );
+
+        // `head` (body child 2): the clamped look (set) plus the walk pitch (added).
+        let head = &body.children[2];
+        let head_pose = PartPose {
+            offset: head.pose.offset,
+            rotation: [
+                head_pitch.to_radians() + head_walk_rot[0],
+                head_yaw.to_radians() + head_walk_rot[1],
+                head.pose.rotation[2] + head_walk_rot[2],
+            ],
+        };
+        let head_t = body_t * part_pose_transform(head_pose);
+        for cube in head.cubes {
+            emit_textured_model_cube(mesh, head_t, *cube, texture, uv, tint);
+        }
+
+        // The two ears (head children 0/1): the walk z-roll flap.
+        let left_ear = &head.children[0];
+        emit_textured_model_part(
+            mesh,
+            &TexturedModelPartDesc {
+                pose: keyframe_textured_pose(left_ear.pose, left_ear_pos, left_ear_rot),
+                ..*left_ear
+            },
+            head_t,
+            texture,
+            uv,
+            tint,
+        );
+        let right_ear = &head.children[1];
+        emit_textured_model_part(
+            mesh,
+            &TexturedModelPartDesc {
+                pose: keyframe_textured_pose(right_ear.pose, right_ear_pos, right_ear_rot),
+                ..*right_ear
+            },
+            head_t,
+            texture,
+            uv,
+            tint,
+        );
+
+        // The four legs (root children 1..=4): the walk rotation + position.
+        for (bone, index) in [
+            ("left_hind_leg", 1usize),
+            ("right_hind_leg", 2),
+            ("left_front_leg", 3),
+            ("right_front_leg", 4),
+        ] {
+            let (leg_pos, leg_rot) = sample(bone);
+            let leg = &parts[index];
+            emit_textured_model_part(
+                mesh,
+                &TexturedModelPartDesc {
+                    pose: keyframe_textured_pose(leg.pose, leg_pos, leg_rot),
+                    ..*leg
+                },
+                root_t,
+                texture,
+                uv,
+                tint,
             );
         }
     }
