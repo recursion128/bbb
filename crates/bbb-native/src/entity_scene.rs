@@ -170,19 +170,21 @@ const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
 
-/// The thrown-item projectiles whose vanilla `ThrownItemRenderer` draws a camera-facing item sprite at
-/// unit scale (`scale = 1.0`), so they render through the item-entity billboard layer rather than the 3D
-/// model scene (see [`crate::item_entities::thrown_item_projectile_billboards_from_world`]). The
-/// `ThrownItemRenderer` fireball pair (`fireball` ×3.0, `small_fireball` ×0.75) needs a per-billboard
-/// scale and stays a placeholder for now.
-pub(crate) const THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS: &[i32] = &[
-    VANILLA_ENTITY_TYPE_EGG_ID,
-    VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
-    VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
-    VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
-    VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
-    VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
-    VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+/// The thrown-item projectiles whose vanilla `ThrownItemRenderer` draws a camera-facing item sprite,
+/// paired with that renderer's sprite scale (`poseStack.scale(scale)`). They render through the
+/// item-entity billboard layer rather than the 3D model scene (see
+/// [`crate::item_entities::item_entity_billboards_from_world`]). Most are unit scale; the two fireballs
+/// are the only non-unit `ThrownItemRenderer` registrations (`fireball` ×3.0, `small_fireball` ×0.75).
+pub(crate) const THROWN_ITEM_PROJECTILE_BILLBOARDS: &[(i32, f32)] = &[
+    (VANILLA_ENTITY_TYPE_EGG_ID, 1.0),
+    (VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, 1.0),
+    (VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, 1.0),
+    (VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, 1.0),
+    (VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, 1.0),
+    (VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, 1.0),
+    (VANILLA_ENTITY_TYPE_SNOWBALL_ID, 1.0),
+    (VANILLA_ENTITY_TYPE_FIREBALL_ID, 3.0),
+    (VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, 0.75),
 ];
 const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
@@ -785,7 +787,8 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             placeholder("todo_falling_block_bounds", 0.98, 0.98, 0.98)
         }
-        VANILLA_ENTITY_TYPE_FIREBALL_ID => placeholder("todo_fireball_bounds", 1.0, 1.0, 1.0),
+        // The large fireball also renders as a (3× scaled) item sprite via the billboard layer.
+        VANILLA_ENTITY_TYPE_FIREBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => {
             placeholder("todo_firework_rocket_bounds", 0.25, 0.25, 0.25)
         }
@@ -845,9 +848,8 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {
             size: slime_size(data_values),
         },
-        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID => {
-            placeholder("todo_small_fireball_bounds", 0.3125, 0.3125, 0.3125)
-        }
+        // The small fireball also renders as a (0.75× scaled) item sprite via the billboard layer.
+        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_SPIDER_ID => EntityModelKind::Spider,
         VANILLA_ENTITY_TYPE_SQUID_ID => EntityModelKind::Squid {
             glow: false,
@@ -4826,7 +4828,7 @@ mod tests {
         // The thrown-item projectiles (vanilla `ThrownItemRenderer`) render as a camera-facing item
         // sprite via the item-entity billboard layer, so the 3D model scene draws nothing for them — the
         // model kind is `NoRender` rather than the former placeholder box.
-        for &type_id in THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS {
+        for &(type_id, _scale) in THROWN_ITEM_PROJECTILE_BILLBOARDS {
             assert_eq!(
                 entity_model_kind(type_id, &[]),
                 EntityModelKind::NoRender,

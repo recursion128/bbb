@@ -29,6 +29,10 @@ impl ItemEntityBillboardLayer {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemEntityBillboard {
     pub position: [f32; 3],
+    /// Multiplier on the base [`ITEM_ENTITY_BILLBOARD_SIZE`] quad, mirroring vanilla's per-renderer
+    /// sprite scale (the dropped item and the unit-scale `ThrownItemRenderer` projectiles use `1.0`; the
+    /// large fireball uses `3.0`, the small fireball `0.75`).
+    pub scale: f32,
     pub layers: Vec<ItemEntityBillboardLayer>,
 }
 
@@ -36,6 +40,7 @@ impl ItemEntityBillboard {
     pub fn single(position: [f32; 3], uv: ItemEntityUvRect) -> Self {
         Self {
             position,
+            scale: 1.0,
             layers: vec![ItemEntityBillboardLayer::new(uv, ITEM_ENTITY_TINT_WHITE)],
         }
     }
@@ -314,6 +319,12 @@ fn sanitize_item_entity_billboard(billboard: ItemEntityBillboard) -> Option<Item
     {
         return None;
     }
+    // A non-finite or non-positive scale would collapse or explode the quad; fall back to the base size.
+    let scale = if billboard.scale.is_finite() && billboard.scale > 0.0 {
+        billboard.scale
+    } else {
+        1.0
+    };
     let layers = billboard
         .layers
         .into_iter()
@@ -321,6 +332,7 @@ fn sanitize_item_entity_billboard(billboard: ItemEntityBillboard) -> Option<Item
         .collect::<Vec<_>>();
     (!layers.is_empty()).then_some(ItemEntityBillboard {
         position: billboard.position,
+        scale,
         layers,
     })
 }
@@ -388,10 +400,11 @@ fn camera_billboard_axes(pose: crate::CameraPose) -> ItemEntityBillboardAxes {
 fn item_entity_billboard_vertices(
     billboards: &[ItemEntityBillboard],
     axes: ItemEntityBillboardAxes,
-    size: f32,
+    base_size: f32,
 ) -> Vec<ItemEntityVertex> {
     let mut vertices = Vec::new();
     for billboard in billboards {
+        let size = base_size * billboard.scale;
         for layer in &billboard.layers {
             vertices.extend(item_entity_layer_vertices(
                 billboard.position,
@@ -460,6 +473,7 @@ mod tests {
     fn sanitize_item_entity_billboard_keeps_valid_layers_and_clamps_values() {
         let billboard = ItemEntityBillboard {
             position: [1.0, 2.0, 3.0],
+            scale: 3.0,
             layers: vec![
                 ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
@@ -482,6 +496,7 @@ mod tests {
             sanitize_item_entity_billboard(billboard),
             Some(ItemEntityBillboard {
                 position: [1.0, 2.0, 3.0],
+                scale: 3.0,
                 layers: vec![ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
                         min: [0.2, 0.0],
@@ -494,9 +509,32 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_item_entity_billboard_falls_back_on_invalid_scale() {
+        for bad_scale in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+            let billboard = ItemEntityBillboard {
+                position: [0.0, 0.0, 0.0],
+                scale: bad_scale,
+                layers: vec![ItemEntityBillboardLayer::new(
+                    ItemEntityUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    ITEM_ENTITY_TINT_WHITE,
+                )],
+            };
+            assert_eq!(
+                sanitize_item_entity_billboard(billboard).map(|b| b.scale),
+                Some(1.0),
+                "scale {bad_scale} should fall back to 1.0",
+            );
+        }
+    }
+
+    #[test]
     fn item_entity_billboard_vertices_emit_layered_camera_facing_quads() {
         let billboards = [ItemEntityBillboard {
             position: [1.0, 2.0, 3.0],
+            scale: 1.0,
             layers: vec![
                 ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
@@ -534,6 +572,33 @@ mod tests {
         assert_close3_f32(vertices[11].position, [0.8, 2.2, 3.0]);
         assert_eq!(vertices[11].uv, [0.5, 0.5]);
         assert_eq!(vertices[11].color, ITEM_ENTITY_TINT_WHITE);
+    }
+
+    #[test]
+    fn item_entity_billboard_scale_enlarges_the_quad() {
+        // A scale of 3.0 (the large fireball) widens each corner offset 3× relative to the unit-scale
+        // sprite, mirroring vanilla's `ThrownItemRenderer` `poseStack.scale(scale)`.
+        let make = |scale: f32| ItemEntityBillboard {
+            position: [0.0, 0.0, 0.0],
+            scale,
+            layers: vec![ItemEntityBillboardLayer::new(
+                ItemEntityUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                ITEM_ENTITY_TINT_WHITE,
+            )],
+        };
+        let axes = ItemEntityBillboardAxes {
+            right: Vec3::X,
+            up: Vec3::Y,
+        };
+        let unit = item_entity_billboard_vertices(&[make(1.0)], axes, 0.5);
+        let triple = item_entity_billboard_vertices(&[make(3.0)], axes, 0.5);
+
+        // Bottom-left corner: half-size 0.25 at unit scale, 0.75 at ×3.
+        assert_close3_f32(unit[0].position, [-0.25, -0.25, 0.0]);
+        assert_close3_f32(triple[0].position, [-0.75, -0.75, 0.0]);
     }
 
     fn assert_close3_f32(actual: [f32; 3], expected: [f32; 3]) {

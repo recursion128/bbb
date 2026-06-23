@@ -1,7 +1,7 @@
 use bbb_renderer::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
 use bbb_world::{ItemEntityStackState, WorldStore};
 
-use crate::entity_scene::THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS;
+use crate::entity_scene::THROWN_ITEM_PROJECTILE_BILLBOARDS;
 use crate::item_runtime::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
 
 /// Vanilla `ItemEntityRenderer` lifts the dropped item sprite to sit above the entity's ground
@@ -18,34 +18,44 @@ pub(crate) fn item_entity_billboards_from_world(
         return Vec::new();
     };
 
-    let dropped = world.item_entity_stacks().into_iter().filter_map(|state| {
-        let icon = item_runtime.icon_for_stack(&state.stack)?;
-        Some(item_entity_billboard_from_icon(
-            &state,
-            icon,
-            DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
-        ))
-    });
-    // Thrown-item projectiles (snowball, egg, ender pearl, potions, …) render the same item sprite via
-    // vanilla `ThrownItemRenderer`, so they share the billboard layer (centered on the entity).
-    let thrown = world
-        .item_stacks_for_entity_types(THROWN_ITEM_PROJECTILE_ENTITY_TYPE_IDS)
+    // Dropped items: the unit-scale sprite lifted above the ground position.
+    let mut billboards: Vec<ItemEntityBillboard> = world
+        .item_entity_stacks()
         .into_iter()
         .filter_map(|state| {
             let icon = item_runtime.icon_for_stack(&state.stack)?;
             Some(item_entity_billboard_from_icon(
                 &state,
                 icon,
-                THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
+                DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
+                1.0,
             ))
-        });
-    dropped.chain(thrown).collect()
+        })
+        .collect();
+
+    // Thrown-item projectiles (snowball, egg, ender pearl, potions, fireballs, …) render the same item
+    // sprite via vanilla `ThrownItemRenderer`, centered on the entity at that renderer's sprite scale.
+    for &(type_id, scale) in THROWN_ITEM_PROJECTILE_BILLBOARDS {
+        for state in world.item_stacks_for_entity_types(&[type_id]) {
+            if let Some(icon) = item_runtime.icon_for_stack(&state.stack) {
+                billboards.push(item_entity_billboard_from_icon(
+                    &state,
+                    icon,
+                    THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
+                    scale,
+                ));
+            }
+        }
+    }
+
+    billboards
 }
 
 fn item_entity_billboard_from_icon(
     state: &ItemEntityStackState,
     icon: ItemAtlasIcon,
     y_offset: f32,
+    scale: f32,
 ) -> ItemEntityBillboard {
     ItemEntityBillboard {
         position: [
@@ -53,6 +63,7 @@ fn item_entity_billboard_from_icon(
             state.position.y as f32 + y_offset,
             state.position.z as f32,
         ],
+        scale,
         layers: icon
             .layers
             .into_iter()
@@ -120,11 +131,16 @@ mod tests {
             ],
         };
 
-        let billboard =
-            item_entity_billboard_from_icon(&state, icon, DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET);
+        let billboard = item_entity_billboard_from_icon(
+            &state,
+            icon,
+            DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
+            1.0,
+        );
 
         // The dropped item is lifted 0.25 above its ground position.
         assert_eq!(billboard.position, [1.5, 64.25, -2.25]);
+        assert_eq!(billboard.scale, 1.0);
         assert_eq!(billboard.layers.len(), 2);
         assert_eq!(
             billboard.layers[0],
@@ -179,9 +195,11 @@ mod tests {
             &state,
             icon,
             THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
+            3.0,
         );
 
         assert_eq!(billboard.position, [2.0, 70.5, -4.0]);
+        assert_eq!(billboard.scale, 3.0);
         assert_eq!(billboard.layers.len(), 1);
     }
 }

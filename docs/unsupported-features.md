@@ -773,15 +773,16 @@ When an agent does any of the following, update this file in the same slice:
       - canonical item entity stack metadata
       - the native item atlas
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
-      experience bottle) as camera-facing item-icon billboards on the same path: vanilla's
-      `ThrownItemRenderer` draws each as the item sprite of its carried `DATA_ITEM_STACK` (the same data
-      id `8` the dropped item uses), at unit scale (`ThrownItemRenderer` `scale = 1.0`) and centered on
-      the entity (no dropped-item lift offset). The native entity scene maps these types to
+      experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
+      same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried
+      `DATA_ITEM_STACK` (the same data id `8` the dropped item uses), centered on the entity (no
+      dropped-item lift offset) at that renderer's sprite scale (`poseStack.scale(scale)`: `1.0` for all
+      but the large fireball `3.0` and small fireball `0.75`, carried per-billboard on
+      `ItemEntityBillboard::scale`). The native entity scene maps these types to
       `EntityModelKind::NoRender` (the 3D model scene draws nothing) and the billboard layer
-      (`thrown_item_projectile_billboards_from_world` via `WorldStore::item_stacks_for_entity_types`)
-      emits the sprite. The non-unit-scale `ThrownItemRenderer` fireballs (`fireball` ×3.0,
-      `small_fireball` ×0.75) need a per-billboard scale and stay placeholder boxes for now; the
-      `fullBright` lighting flag (eye of ender, fireballs) is a no-op on the unlit billboard shader
+      (`item_entity_billboards_from_world` over `THROWN_ITEM_PROJECTILE_BILLBOARDS` via
+      `WorldStore::item_stacks_for_entity_types`) emits the sprite. The `fullBright` lighting flag (eye of
+      ender, fireballs) is a no-op on the unlit billboard shader
     - player and mannequin entities as renderer-owned vanilla 26.1
       `PlayerModel.createMesh(CubeDeformation.NONE, slim)` body-layer geometry
       from `PlayerModel`, `AvatarRenderer`, and `LayerDefinitions`, including
