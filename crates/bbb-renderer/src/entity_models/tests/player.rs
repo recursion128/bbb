@@ -1,114 +1,56 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
+/// The wide-player limb rest poses, for the desc-level arm-swing/bob reference-formula tests (the
+/// player now builds a named tree, so it has no `*_PARTS` desc const). Right arm `x = -5`, left arm
+/// `x = +5`, right leg `x = -1.9` — the vanilla `PlayerModel.createMesh` offsets.
+const PLAYER_FIXTURE_RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-5.0, 2.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const PLAYER_FIXTURE_LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [5.0, 2.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const PLAYER_FIXTURE_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-1.9, 12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+
 #[test]
 fn player_model_parts_match_vanilla_26_1_body_layers() {
-    assert_eq!(PLAYER_WIDE_PARTS.len(), 6);
-    assert_part_tree(
-        &PLAYER_WIDE_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_HEAD.as_slice(),
-        PLAYER_HEAD_CHILDREN.as_slice(),
+    // The player builds a named-children tree (each base part nests one skin overlay child:
+    // `head` -> `hat`, `body` -> `jacket`, the arms -> `sleeve`, the legs -> `pants`), so the head
+    // look resolves the `head` child by name and the visibility toggles resolve the overlays by name.
+    // The geometry is asserted on the per-part unified cube consts (colored tint + textured
+    // uv/tex/mirror); the wide and slim layouts differ only in the arm/sleeve widths.
+    assert_eq!(PLAYER_HEAD[0].size, [8.0, 8.0, 8.0]);
+    assert_eq!(PLAYER_HAT[0].size, [9.0, 9.0, 9.0]);
+    assert_eq!(PLAYER_HAT[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(PLAYER_BODY[0].size, [8.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_JACKET[0].size, [8.5, 12.5, 4.5]);
+    assert_eq!(PLAYER_JACKET[0].uv_size, [8.0, 12.0, 4.0]);
+    // Wide arms/sleeves are 4 wide; slim arms/sleeves are 3 wide.
+    assert_eq!(PLAYER_WIDE_RIGHT_ARM[0].size, [4.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_WIDE_RIGHT_SLEEVE[0].size, [4.5, 12.5, 4.5]);
+    assert_eq!(PLAYER_WIDE_RIGHT_SLEEVE[0].uv_size, [4.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_SLIM_RIGHT_ARM[0].size, [3.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_SLIM_RIGHT_SLEEVE[0].size, [3.5, 12.5, 4.5]);
+    assert_eq!(PLAYER_SLIM_RIGHT_SLEEVE[0].uv_size, [3.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_RIGHT_LEG[0].size, [4.0, 12.0, 4.0]);
+    assert_eq!(
+        PLAYER_RIGHT_PANTS[0],
+        ModelCube::new(
+            [-2.25, -0.25, -2.25],
+            [4.5, 12.5, 4.5],
+            PLAYER_BLUE,
+            [4.0, 12.0, 4.0],
+            [0.0, 32.0],
+            false,
+        )
     );
-    assert_part(
-        &PLAYER_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_HAT.as_slice(),
-    );
-    assert_part_tree(
-        &PLAYER_WIDE_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_BODY.as_slice(),
-        PLAYER_BODY_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &PLAYER_BODY_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_JACKET.as_slice(),
-    );
-    assert_part_tree(
-        &PLAYER_WIDE_PARTS[2],
-        [-5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_WIDE_RIGHT_ARM.as_slice(),
-        PLAYER_WIDE_RIGHT_ARM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &PLAYER_WIDE_RIGHT_ARM_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_WIDE_RIGHT_SLEEVE.as_slice(),
-    );
-    assert_part_tree(
-        &PLAYER_WIDE_PARTS[3],
-        [5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_WIDE_LEFT_ARM.as_slice(),
-        PLAYER_WIDE_LEFT_ARM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &PLAYER_WIDE_LEFT_ARM_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_WIDE_LEFT_SLEEVE.as_slice(),
-    );
-    assert_part_tree(
-        &PLAYER_WIDE_PARTS[4],
-        [-1.9, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_LEG.as_slice(),
-        PLAYER_RIGHT_PANTS_CHILDREN.as_slice(),
-    );
-    assert_part_tree(
-        &PLAYER_WIDE_PARTS[5],
-        [1.9, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_LEG.as_slice(),
-        PLAYER_LEFT_PANTS_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &PLAYER_RIGHT_PANTS_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_PANTS.as_slice(),
-    );
-    assert_part(
-        &PLAYER_LEFT_PANTS_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_PANTS.as_slice(),
-    );
-
-    assert_eq!(PLAYER_SLIM_PARTS.len(), 6);
-    assert_part_tree(
-        &PLAYER_SLIM_PARTS[2],
-        [-5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_SLIM_RIGHT_ARM.as_slice(),
-        PLAYER_SLIM_RIGHT_ARM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &PLAYER_SLIM_RIGHT_ARM_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_SLIM_RIGHT_SLEEVE.as_slice(),
-    );
-    assert_part_tree(
-        &PLAYER_SLIM_PARTS[3],
-        [5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_SLIM_LEFT_ARM.as_slice(),
-        PLAYER_SLIM_LEFT_ARM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &PLAYER_SLIM_LEFT_ARM_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PLAYER_SLIM_LEFT_SLEEVE.as_slice(),
-    );
+    assert_eq!(PLAYER_LEFT_PANTS[0].size, [4.5, 12.5, 4.5]);
 }
 
 #[test]
@@ -213,7 +155,9 @@ fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
     assert_eq!(wide[0].kind, EntityModelLayerKind::PlayerBase);
     assert_eq!(wide[0].model_layer, MODEL_LAYER_PLAYER);
     assert_eq!(wide[0].texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
-    assert_eq!(wide[0].parts, PLAYER_WIDE_TEXTURED_PARTS.as_slice());
+    // The unified `PlayerModel` tree drives the geometry, so the layer-pass parts are vestigial; the
+    // part visibility still rides the pass to the renderer.
+    assert!(wide[0].parts.is_empty());
     assert_eq!(
         wide[0].visibility,
         EntityModelLayerVisibility::PlayerParts(PLAYER_MODEL_PARTS_ALL_VISIBLE)
@@ -229,7 +173,7 @@ fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
     assert_eq!(slim[0].kind, EntityModelLayerKind::PlayerBase);
     assert_eq!(slim[0].model_layer, MODEL_LAYER_PLAYER_SLIM);
     assert_eq!(slim[0].texture, PLAYER_SLIM_STEVE_TEXTURE_REF);
-    assert_eq!(slim[0].parts, PLAYER_SLIM_TEXTURED_PARTS.as_slice());
+    assert!(slim[0].parts.is_empty());
     assert_eq!(
         slim[0].visibility,
         EntityModelLayerVisibility::PlayerParts(slim_parts)
@@ -242,74 +186,29 @@ fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
 fn player_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_PLAYER, "minecraft:player#main");
     assert_eq!(MODEL_LAYER_PLAYER_SLIM, "minecraft:player_slim#main");
-    assert_eq!(PLAYER_WIDE_TEXTURED_PARTS.len(), 6);
-    assert_eq!(PLAYER_SLIM_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        PLAYER_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -8.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        PLAYER_TEXTURED_HAT[0],
-        TexturedModelCubeDesc {
-            min: [-4.5, -8.5, -4.5],
-            size: [9.0, 9.0, 9.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [32.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        PLAYER_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, 0.0, -2.0],
-            size: [8.0, 12.0, 4.0],
-            uv_size: [8.0, 12.0, 4.0],
-            tex: [16.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        PLAYER_TEXTURED_JACKET[0],
-        TexturedModelCubeDesc {
-            min: [-4.25, -0.25, -2.25],
-            size: [8.5, 12.5, 4.5],
-            uv_size: [8.0, 12.0, 4.0],
-            tex: [16.0, 32.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(PLAYER_WIDE_TEXTURED_RIGHT_ARM[0].tex, [40.0, 16.0]);
-    assert_eq!(PLAYER_WIDE_TEXTURED_LEFT_ARM[0].tex, [32.0, 48.0]);
-    assert_eq!(PLAYER_WIDE_TEXTURED_RIGHT_SLEEVE[0].tex, [40.0, 32.0]);
-    assert_eq!(PLAYER_WIDE_TEXTURED_LEFT_SLEEVE[0].tex, [48.0, 48.0]);
-    assert_eq!(PLAYER_SLIM_TEXTURED_RIGHT_ARM[0].size, [3.0, 12.0, 4.0]);
-    assert_eq!(PLAYER_SLIM_TEXTURED_LEFT_ARM[0].size, [3.0, 12.0, 4.0]);
-    assert_eq!(
-        PLAYER_SLIM_TEXTURED_RIGHT_SLEEVE[0].uv_size,
-        [3.0, 12.0, 4.0]
-    );
-    assert_eq!(
-        PLAYER_SLIM_TEXTURED_LEFT_SLEEVE[0].uv_size,
-        [3.0, 12.0, 4.0]
-    );
-    assert_eq!(PLAYER_TEXTURED_RIGHT_LEG[0].tex, [0.0, 16.0]);
-    assert_eq!(PLAYER_TEXTURED_LEFT_LEG[0].tex, [16.0, 48.0]);
-    assert_eq!(PLAYER_TEXTURED_RIGHT_PANTS[0].tex, [0.0, 32.0]);
-    assert_eq!(PLAYER_TEXTURED_LEFT_PANTS[0].tex, [0.0, 48.0]);
-    assert_eq!(
-        PLAYER_WIDE_TEXTURED_PARTS[0].pose,
-        PLAYER_WIDE_PARTS[0].pose
-    );
-    assert_eq!(
-        PLAYER_SLIM_TEXTURED_PARTS[2].pose,
-        PLAYER_SLIM_PARTS[2].pose
-    );
+    // The player UVs are now carried on the unified cubes' `.tex` field; the overlay cubes keep the
+    // base box as uv_size.
+    assert_eq!(PLAYER_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(PLAYER_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(PLAYER_HAT[0].tex, [32.0, 0.0]);
+    assert_eq!(PLAYER_HAT[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(PLAYER_HAT[0].size, [9.0, 9.0, 9.0]);
+    assert_eq!(PLAYER_BODY[0].tex, [16.0, 16.0]);
+    assert_eq!(PLAYER_JACKET[0].tex, [16.0, 32.0]);
+    assert_eq!(PLAYER_JACKET[0].uv_size, [8.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_JACKET[0].size, [8.5, 12.5, 4.5]);
+    assert_eq!(PLAYER_WIDE_RIGHT_ARM[0].tex, [40.0, 16.0]);
+    assert_eq!(PLAYER_WIDE_LEFT_ARM[0].tex, [32.0, 48.0]);
+    assert_eq!(PLAYER_WIDE_RIGHT_SLEEVE[0].tex, [40.0, 32.0]);
+    assert_eq!(PLAYER_WIDE_LEFT_SLEEVE[0].tex, [48.0, 48.0]);
+    assert_eq!(PLAYER_SLIM_RIGHT_ARM[0].size, [3.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_SLIM_LEFT_ARM[0].size, [3.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_SLIM_RIGHT_SLEEVE[0].uv_size, [3.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_SLIM_LEFT_SLEEVE[0].uv_size, [3.0, 12.0, 4.0]);
+    assert_eq!(PLAYER_RIGHT_LEG[0].tex, [0.0, 16.0]);
+    assert_eq!(PLAYER_LEFT_LEG[0].tex, [16.0, 48.0]);
+    assert_eq!(PLAYER_RIGHT_PANTS[0].tex, [0.0, 32.0]);
+    assert_eq!(PLAYER_LEFT_PANTS[0].tex, [0.0, 48.0]);
 }
 
 #[test]
@@ -579,13 +478,12 @@ fn humanoid_arm_swing_pose_matches_vanilla_formula() {
     // Vanilla HumanoidModel.setupAnim: rightArm.xRot = cos(pos*0.6662 + π)*2.0*speed*0.5,
     // leftArm.xRot = cos(pos*0.6662)*2.0*speed*0.5 (amplitude 1.0). The right arm
     // (offset x < 0) is the out-of-phase one, opposite the same-side leg. Only xRot
-    // moves. PLAYER_WIDE_PARTS lists right_arm at [2] (x = -5) and left_arm at [3]
-    // (x = 5).
+    // moves. The right arm rests at x = -5, the left at x = +5.
     let pos = 1.3_f32;
     let speed = 0.7_f32;
     let phase = pos * 0.6662;
-    let right = humanoid_arm_swing_pose(PLAYER_WIDE_PARTS[2].pose, pos, speed);
-    let left = humanoid_arm_swing_pose(PLAYER_WIDE_PARTS[3].pose, pos, speed);
+    let right = humanoid_arm_swing_pose(PLAYER_FIXTURE_RIGHT_ARM_POSE, pos, speed);
+    let left = humanoid_arm_swing_pose(PLAYER_FIXTURE_LEFT_ARM_POSE, pos, speed);
     assert!(
         (right.rotation[0] - (phase + std::f32::consts::PI).cos() * 2.0 * speed * 0.5).abs() < 1e-6,
         "right arm out of phase"
@@ -596,19 +494,19 @@ fn humanoid_arm_swing_pose_matches_vanilla_formula() {
     );
     // The arm swing is the opposite phase to the same-side leg (right arm uses +π, the
     // right leg uses none) and a shorter amplitude (1.0 vs 1.4).
-    let right_leg = humanoid_leg_swing_pose(PLAYER_WIDE_PARTS[4].pose, pos, speed);
+    let right_leg = humanoid_leg_swing_pose(PLAYER_FIXTURE_RIGHT_LEG_POSE, pos, speed);
     assert!(
         (right.rotation[0] + right_leg.rotation[0] / 1.4).abs() < 1e-6,
         "right arm is the negated, scaled right-leg swing"
     );
     // Only xRot changes.
-    assert_eq!(right.offset, PLAYER_WIDE_PARTS[2].pose.offset);
-    assert_eq!(right.rotation[1], PLAYER_WIDE_PARTS[2].pose.rotation[1]);
-    assert_eq!(right.rotation[2], PLAYER_WIDE_PARTS[2].pose.rotation[2]);
+    assert_eq!(right.offset, PLAYER_FIXTURE_RIGHT_ARM_POSE.offset);
+    assert_eq!(right.rotation[1], PLAYER_FIXTURE_RIGHT_ARM_POSE.rotation[1]);
+    assert_eq!(right.rotation[2], PLAYER_FIXTURE_RIGHT_ARM_POSE.rotation[2]);
     // At rest (speed 0) the arms hold their body-layer pose.
     assert_eq!(
-        humanoid_arm_swing_pose(PLAYER_WIDE_PARTS[2].pose, pos, 0.0),
-        PLAYER_WIDE_PARTS[2].pose
+        humanoid_arm_swing_pose(PLAYER_FIXTURE_RIGHT_ARM_POSE, pos, 0.0),
+        PLAYER_FIXTURE_RIGHT_ARM_POSE
     );
 }
 
@@ -618,38 +516,38 @@ fn humanoid_arm_bob_pose_matches_vanilla_formula() {
     // frame — bobModelPart(rightArm, age, 1.0), bobModelPart(leftArm, age, -1.0):
     //   arm.zRot += scale * (cos(age * 0.09)  * 0.05 + 0.05)
     //   arm.xRot += scale * (sin(age * 0.067) * 0.05)
-    // PLAYER_WIDE_PARTS lists rightArm (offset x = -5, scale +1) at [2] and leftArm
-    // (x = +5, scale -1) at [3]; the bob accumulates onto the arm's rest pose.
+    // The right arm rests at x = -5 (bob scale +1), the left at x = +5 (scale -1); the bob
+    // accumulates onto the arm's rest pose.
     let age = 27.3_f32;
     let bob_x = (age * 0.067).sin() * 0.05;
     let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
-    let right = humanoid_arm_bob_pose(PLAYER_WIDE_PARTS[2].pose, age);
-    let left = humanoid_arm_bob_pose(PLAYER_WIDE_PARTS[3].pose, age);
+    let right = humanoid_arm_bob_pose(PLAYER_FIXTURE_RIGHT_ARM_POSE, age);
+    let left = humanoid_arm_bob_pose(PLAYER_FIXTURE_LEFT_ARM_POSE, age);
     assert!(
-        (right.rotation[0] - (PLAYER_WIDE_PARTS[2].pose.rotation[0] + bob_x)).abs() < 1e-6,
+        (right.rotation[0] - (PLAYER_FIXTURE_RIGHT_ARM_POSE.rotation[0] + bob_x)).abs() < 1e-6,
         "right arm bob xRot"
     );
     assert!(
-        (right.rotation[2] - (PLAYER_WIDE_PARTS[2].pose.rotation[2] + bob_z)).abs() < 1e-6,
+        (right.rotation[2] - (PLAYER_FIXTURE_RIGHT_ARM_POSE.rotation[2] + bob_z)).abs() < 1e-6,
         "right arm bob zRot"
     );
     // The left arm uses the opposite sign (scale -1).
     assert!(
-        (left.rotation[0] - (PLAYER_WIDE_PARTS[3].pose.rotation[0] - bob_x)).abs() < 1e-6,
+        (left.rotation[0] - (PLAYER_FIXTURE_LEFT_ARM_POSE.rotation[0] - bob_x)).abs() < 1e-6,
         "left arm bob xRot mirrored"
     );
     assert!(
-        (left.rotation[2] - (PLAYER_WIDE_PARTS[3].pose.rotation[2] - bob_z)).abs() < 1e-6,
+        (left.rotation[2] - (PLAYER_FIXTURE_LEFT_ARM_POSE.rotation[2] - bob_z)).abs() < 1e-6,
         "left arm bob zRot mirrored"
     );
     // The bob preserves the offset and yRot.
-    assert_eq!(right.offset, PLAYER_WIDE_PARTS[2].pose.offset);
-    assert_eq!(right.rotation[1], PLAYER_WIDE_PARTS[2].pose.rotation[1]);
+    assert_eq!(right.offset, PLAYER_FIXTURE_RIGHT_ARM_POSE.offset);
+    assert_eq!(right.rotation[1], PLAYER_FIXTURE_RIGHT_ARM_POSE.rotation[1]);
     // The xRot term vanishes at age 0 (sin 0 = 0) but the zRot baseline does not
     // (cos 0 = 1 gives ±0.1), so the arms never sit at the bare rest pose.
-    let at_zero = humanoid_arm_bob_pose(PLAYER_WIDE_PARTS[2].pose, 0.0);
-    assert!((at_zero.rotation[0] - PLAYER_WIDE_PARTS[2].pose.rotation[0]).abs() < 1e-6);
-    assert!((at_zero.rotation[2] - (PLAYER_WIDE_PARTS[2].pose.rotation[2] + 0.1)).abs() < 1e-6);
+    let at_zero = humanoid_arm_bob_pose(PLAYER_FIXTURE_RIGHT_ARM_POSE, 0.0);
+    assert!((at_zero.rotation[0] - PLAYER_FIXTURE_RIGHT_ARM_POSE.rotation[0]).abs() < 1e-6);
+    assert!((at_zero.rotation[2] - (PLAYER_FIXTURE_RIGHT_ARM_POSE.rotation[2] + 0.1)).abs() < 1e-6);
 }
 
 #[test]

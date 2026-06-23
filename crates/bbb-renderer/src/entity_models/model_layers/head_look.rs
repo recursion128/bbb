@@ -1,13 +1,6 @@
 use super::PartPose;
 use crate::entity_models::model::ModelPart;
 
-/// `PlayerModel` head-part index. The wide and slim player body layers list the
-/// head first; visibility filtering only toggles the overlay children, never the
-/// base part order.
-pub(in crate::entity_models) const fn player_head_part_index() -> usize {
-    0
-}
-
 /// Head-part index for standalone single-head body layers whose mesh lists the head first (the iron
 /// and snow golems still address their head positionally). The creeper, spider/cave spider, enderman,
 /// and wolf now build named-children trees and resolve the head by name, so this is retained only as
@@ -273,26 +266,6 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
     }
 }
 
-/// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose, applied to a humanoid
-/// model root (head `0`, body `1`, arms `[2, 3]`, legs `[4, 5]`): the body leans forward and drops
-/// ([`humanoid_crouch_body_pose`]), the head drops with it, the arms tilt forward and ride down, and
-/// the legs tuck back. Applied after the walk swing and idle bob (the arm tilt accumulates onto the
-/// swung/bobbed pose), so callers run it last and only while crouching.
-pub(in crate::entity_models) fn apply_humanoid_crouch(root: &mut ModelPart) {
-    let head = root.child_at_mut(0);
-    head.pose = humanoid_crouch_head_pose(head.pose);
-    let body = root.child_at_mut(1);
-    body.pose = humanoid_crouch_body_pose(body.pose);
-    for index in [2, 3] {
-        let arm = root.child_at_mut(index);
-        arm.pose = humanoid_crouch_arm_pose(arm.pose);
-    }
-    for index in [4, 5] {
-        let leg = root.child_at_mut(index);
-        leg.pose = humanoid_crouch_leg_pose(leg.pose);
-    }
-}
-
 /// Vanilla `HumanoidModel.setupAnim` arm + leg walk swing applied to a model root's named children
 /// (the named counterpart of [`apply_humanoid_walk`]). The legs (`right_leg`/`left_leg`) swing
 /// ([`humanoid_leg_swing_pose`]) and the arms (`right_arm`/`left_arm`) swing ([`humanoid_arm_swing_pose`])
@@ -319,6 +292,25 @@ pub(in crate::entity_models) fn apply_humanoid_walk_named(
             pose = humanoid_arm_swing_pose(pose, walk_animation_pos, walk_animation_speed);
         }
         arm.pose = humanoid_arm_bob_pose(pose, age_in_ticks);
+    }
+}
+
+/// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose applied to a humanoid model
+/// root by name: the body (`body`) leans forward and drops, the head (`head`) drops with it, the arms
+/// (`right_arm`/`left_arm`) tilt forward and ride down, and the legs (`right_leg`/`left_leg`) tuck back.
+/// Applied after the walk swing and idle bob, so callers run it last and only while crouching.
+pub(in crate::entity_models) fn apply_humanoid_crouch_named(root: &mut ModelPart) {
+    let head = root.child_mut("head");
+    head.pose = humanoid_crouch_head_pose(head.pose);
+    let body = root.child_mut("body");
+    body.pose = humanoid_crouch_body_pose(body.pose);
+    for name in ["right_arm", "left_arm"] {
+        let arm = root.child_mut(name);
+        arm.pose = humanoid_crouch_arm_pose(arm.pose);
+    }
+    for name in ["right_leg", "left_leg"] {
+        let leg = root.child_mut(name);
+        leg.pose = humanoid_crouch_leg_pose(leg.pose);
     }
 }
 

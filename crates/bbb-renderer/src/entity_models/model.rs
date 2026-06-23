@@ -257,7 +257,9 @@ impl ModelPart {
     /// Builds a unified root [`ModelPart`] over a flat list of sibling colored/textured part trees
     /// (the common vanilla layout where `createBodyLayer` returns several root parts). The siblings
     /// hang off a synthetic identity root and are addressed positionally via
-    /// [`ModelPart::child_at_mut`].
+    /// [`ModelPart::child_at_mut`]. Retained as the generic dual-path desc-zip root builder now that
+    /// every dual-path entity builds its tree imperatively with named children.
+    #[allow(dead_code)]
     pub(in crate::entity_models) fn root_from_descs(
         colored: &[ModelPartDesc],
         textured: &[TexturedModelPartDesc],

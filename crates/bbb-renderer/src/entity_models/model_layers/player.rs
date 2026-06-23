@@ -1,544 +1,276 @@
 use super::{
-    apply_head_look, apply_humanoid_crouch, apply_humanoid_walk, player_head_part_index,
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    apply_head_look, apply_humanoid_crouch_named, apply_humanoid_walk_named, PartPose,
     PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER: &str = "minecraft:player#main";
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER_SLIM: &str = "minecraft:player_slim#main";
 
-pub(in crate::entity_models) const PLAYER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, -8.0, -4.0],
-    size: [8.0, 8.0, 8.0],
-    color: PLAYER_BLUE,
-}];
+// Vanilla 26.1 PlayerModel.createMesh(CubeDeformation.NONE, slim). Each cube carries both render
+// paths' data: the colored debug tint and the textured uv_size/texOffs/mirror. Each base part nests
+// one inflated skin-customization overlay child (hat/jacket/sleeve/pants) that the player part
+// visibility toggles; the overlays keep the base box as uv_size.
+pub(in crate::entity_models) const PLAYER_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -8.0, -4.0],
+    [8.0, 8.0, 8.0],
+    PLAYER_BLUE,
+    [8.0, 8.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.5, -8.5, -4.5],
-    size: [9.0, 9.0, 9.0],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_HAT: [ModelCube; 1] = [ModelCube::new(
+    [-4.5, -8.5, -4.5],
+    [9.0, 9.0, 9.0],
+    PLAYER_BLUE,
+    [8.0, 8.0, 8.0],
+    [32.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &PLAYER_HAT,
-    children: &[],
-}];
+pub(in crate::entity_models) const PLAYER_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.0, -2.0],
+    [8.0, 12.0, 4.0],
+    PLAYER_BLUE,
+    [8.0, 12.0, 4.0],
+    [16.0, 16.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 0.0, -2.0],
-    size: [8.0, 12.0, 4.0],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_JACKET: [ModelCube; 1] = [ModelCube::new(
+    [-4.25, -0.25, -2.25],
+    [8.5, 12.5, 4.5],
+    PLAYER_BLUE,
+    [8.0, 12.0, 4.0],
+    [16.0, 32.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_JACKET: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.25, -0.25, -2.25],
-    size: [8.5, 12.5, 4.5],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_WIDE_RIGHT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, -2.0, -2.0],
+    [4.0, 12.0, 4.0],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [40.0, 16.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_BODY_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &PLAYER_JACKET,
-    children: &[],
-}];
+pub(in crate::entity_models) const PLAYER_WIDE_RIGHT_SLEEVE: [ModelCube; 1] = [ModelCube::new(
+    [-3.25, -2.25, -2.25],
+    [4.5, 12.5, 4.5],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [40.0, 32.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_WIDE_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, -2.0, -2.0],
-    size: [4.0, 12.0, 4.0],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_WIDE_LEFT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -2.0, -2.0],
+    [4.0, 12.0, 4.0],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [32.0, 48.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_WIDE_RIGHT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.25, -2.25, -2.25],
-    size: [4.5, 12.5, 4.5],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_WIDE_LEFT_SLEEVE: [ModelCube; 1] = [ModelCube::new(
+    [-1.25, -2.25, -2.25],
+    [4.5, 12.5, 4.5],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [48.0, 48.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_WIDE_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -2.0, -2.0],
-    size: [4.0, 12.0, 4.0],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_SLIM_RIGHT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -2.0, -2.0],
+    [3.0, 12.0, 4.0],
+    PLAYER_BLUE,
+    [3.0, 12.0, 4.0],
+    [40.0, 16.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_WIDE_LEFT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.25, -2.25, -2.25],
-    size: [4.5, 12.5, 4.5],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_SLIM_RIGHT_SLEEVE: [ModelCube; 1] = [ModelCube::new(
+    [-2.25, -2.25, -2.25],
+    [3.5, 12.5, 4.5],
+    PLAYER_BLUE,
+    [3.0, 12.0, 4.0],
+    [40.0, 32.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_SLIM_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, -2.0, -2.0],
-    size: [3.0, 12.0, 4.0],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_SLIM_LEFT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -2.0, -2.0],
+    [3.0, 12.0, 4.0],
+    PLAYER_BLUE,
+    [3.0, 12.0, 4.0],
+    [32.0, 48.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_SLIM_RIGHT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.25, -2.25, -2.25],
-    size: [3.5, 12.5, 4.5],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_SLIM_LEFT_SLEEVE: [ModelCube; 1] = [ModelCube::new(
+    [-1.25, -2.25, -2.25],
+    [3.5, 12.5, 4.5],
+    PLAYER_BLUE,
+    [3.0, 12.0, 4.0],
+    [48.0, 48.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_SLIM_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -2.0, -2.0],
-    size: [3.0, 12.0, 4.0],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_RIGHT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -2.0],
+    [4.0, 12.0, 4.0],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [0.0, 16.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_SLIM_LEFT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.25, -2.25, -2.25],
-    size: [3.5, 12.5, 4.5],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_LEFT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -2.0],
+    [4.0, 12.0, 4.0],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [16.0, 48.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -2.0],
-    size: [4.0, 12.0, 4.0],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_RIGHT_PANTS: [ModelCube; 1] = [ModelCube::new(
+    [-2.25, -0.25, -2.25],
+    [4.5, 12.5, 4.5],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [0.0, 32.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_PANTS: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.25, -0.25, -2.25],
-    size: [4.5, 12.5, 4.5],
-    color: PLAYER_BLUE,
-}];
+pub(in crate::entity_models) const PLAYER_LEFT_PANTS: [ModelCube; 1] = [ModelCube::new(
+    [-2.25, -0.25, -2.25],
+    [4.5, 12.5, 4.5],
+    PLAYER_BLUE,
+    [4.0, 12.0, 4.0],
+    [0.0, 48.0],
+    false,
+)];
 
-pub(in crate::entity_models) const PLAYER_RIGHT_PANTS_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_PANTS,
-        children: &[],
-    }];
+/// Shared humanoid limb part poses (vanilla `PlayerModel.createMesh`).
+const PLAYER_RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-5.0, 2.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const PLAYER_LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [5.0, 2.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const PLAYER_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-1.9, 12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const PLAYER_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [1.9, 12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-pub(in crate::entity_models) const PLAYER_LEFT_PANTS_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_PANTS,
-        children: &[],
-    }];
+/// Builds a base part at `pose` carrying `cubes` plus its single inflated skin overlay child named
+/// `overlay_name` (hat/jacket/sleeve/pants) at the zero pose.
+fn part_with_overlay(
+    pose: PartPose,
+    cubes: &[ModelCube],
+    overlay_name: &'static str,
+    overlay: &[ModelCube],
+) -> ModelPart {
+    ModelPart::new(
+        pose,
+        cubes.to_vec(),
+        vec![(
+            overlay_name,
+            ModelPart::leaf(PART_POSE_ZERO, overlay.to_vec()),
+        )],
+    )
+}
 
-pub(in crate::entity_models) const PLAYER_WIDE_RIGHT_ARM_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_WIDE_RIGHT_SLEEVE,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const PLAYER_WIDE_LEFT_ARM_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_WIDE_LEFT_SLEEVE,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const PLAYER_SLIM_RIGHT_ARM_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_SLIM_RIGHT_SLEEVE,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const PLAYER_SLIM_LEFT_ARM_CHILDREN: [ModelPartDesc; 1] =
-    [ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_SLIM_LEFT_SLEEVE,
-        children: &[],
-    }];
-
-// Vanilla 26.1 ModelLayers.PLAYER / PLAYER_SLIM:
-// PlayerModel.createMesh(CubeDeformation.NONE, slim).
-pub(in crate::entity_models) const PLAYER_WIDE_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_HEAD,
-        children: &PLAYER_HEAD_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_BODY,
-        children: &PLAYER_BODY_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-5.0, 2.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_WIDE_RIGHT_ARM,
-        children: &PLAYER_WIDE_RIGHT_ARM_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [5.0, 2.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_WIDE_LEFT_ARM,
-        children: &PLAYER_WIDE_LEFT_ARM_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-1.9, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_LEG,
-        children: &PLAYER_RIGHT_PANTS_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [1.9, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_LEG,
-        children: &PLAYER_LEFT_PANTS_CHILDREN,
-    },
-];
-
-pub(in crate::entity_models) const PLAYER_SLIM_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_HEAD,
-        children: &PLAYER_HEAD_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_BODY,
-        children: &PLAYER_BODY_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-5.0, 2.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_SLIM_RIGHT_ARM,
-        children: &PLAYER_SLIM_RIGHT_ARM_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [5.0, 2.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_SLIM_LEFT_ARM,
-        children: &PLAYER_SLIM_LEFT_ARM_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-1.9, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_LEG,
-        children: &PLAYER_RIGHT_PANTS_CHILDREN,
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [1.9, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &PLAYER_LEG,
-        children: &PLAYER_LEFT_PANTS_CHILDREN,
-    },
-];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, -8.0, -4.0],
-        size: [8.0, 8.0, 8.0],
-        uv_size: [8.0, 8.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_HAT: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.5, -8.5, -4.5],
-        size: [9.0, 9.0, 9.0],
-        uv_size: [8.0, 8.0, 8.0],
-        tex: [32.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_HEAD_CHILDREN: [TexturedModelPartDesc; 1] =
-    [TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_TEXTURED_HAT,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, 0.0, -2.0],
-        size: [8.0, 12.0, 4.0],
-        uv_size: [8.0, 12.0, 4.0],
-        tex: [16.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_JACKET: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.25, -0.25, -2.25],
-        size: [8.5, 12.5, 4.5],
-        uv_size: [8.0, 12.0, 4.0],
-        tex: [16.0, 32.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_BODY_CHILDREN: [TexturedModelPartDesc; 1] =
-    [TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_TEXTURED_JACKET,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const PLAYER_WIDE_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.0, -2.0, -2.0],
-        size: [4.0, 12.0, 4.0],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [40.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_WIDE_TEXTURED_RIGHT_SLEEVE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.25, -2.25, -2.25],
-        size: [4.5, 12.5, 4.5],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [40.0, 32.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_WIDE_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, -2.0, -2.0],
-        size: [4.0, 12.0, 4.0],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [32.0, 48.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_WIDE_TEXTURED_LEFT_SLEEVE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.25, -2.25, -2.25],
-        size: [4.5, 12.5, 4.5],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [48.0, 48.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_SLIM_TEXTURED_RIGHT_ARM: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, -2.0, -2.0],
-        size: [3.0, 12.0, 4.0],
-        uv_size: [3.0, 12.0, 4.0],
-        tex: [40.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_SLIM_TEXTURED_RIGHT_SLEEVE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.25, -2.25, -2.25],
-        size: [3.5, 12.5, 4.5],
-        uv_size: [3.0, 12.0, 4.0],
-        tex: [40.0, 32.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_SLIM_TEXTURED_LEFT_ARM: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, -2.0, -2.0],
-        size: [3.0, 12.0, 4.0],
-        uv_size: [3.0, 12.0, 4.0],
-        tex: [32.0, 48.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_SLIM_TEXTURED_LEFT_SLEEVE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.25, -2.25, -2.25],
-        size: [3.5, 12.5, 4.5],
-        uv_size: [3.0, 12.0, 4.0],
-        tex: [48.0, 48.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 0.0, -2.0],
-        size: [4.0, 12.0, 4.0],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [0.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 0.0, -2.0],
-        size: [4.0, 12.0, 4.0],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [16.0, 48.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_RIGHT_PANTS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.25, -0.25, -2.25],
-        size: [4.5, 12.5, 4.5],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [0.0, 32.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_LEFT_PANTS: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.25, -0.25, -2.25],
-        size: [4.5, 12.5, 4.5],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [0.0, 48.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_RIGHT_PANTS_CHILDREN: [TexturedModelPartDesc;
-    1] = [TexturedModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &PLAYER_TEXTURED_RIGHT_PANTS,
-    children: &[],
-}];
-
-pub(in crate::entity_models) const PLAYER_TEXTURED_LEFT_PANTS_CHILDREN: [TexturedModelPartDesc; 1] =
-    [TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &PLAYER_TEXTURED_LEFT_PANTS,
-        children: &[],
-    }];
-
-pub(in crate::entity_models) const PLAYER_WIDE_TEXTURED_RIGHT_ARM_CHILDREN:
-    [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &PLAYER_WIDE_TEXTURED_RIGHT_SLEEVE,
-    children: &[],
-}];
-
-pub(in crate::entity_models) const PLAYER_WIDE_TEXTURED_LEFT_ARM_CHILDREN: [TexturedModelPartDesc;
-    1] = [TexturedModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &PLAYER_WIDE_TEXTURED_LEFT_SLEEVE,
-    children: &[],
-}];
-
-pub(in crate::entity_models) const PLAYER_SLIM_TEXTURED_RIGHT_ARM_CHILDREN:
-    [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &PLAYER_SLIM_TEXTURED_RIGHT_SLEEVE,
-    children: &[],
-}];
-
-pub(in crate::entity_models) const PLAYER_SLIM_TEXTURED_LEFT_ARM_CHILDREN: [TexturedModelPartDesc;
-    1] = [TexturedModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &PLAYER_SLIM_TEXTURED_LEFT_SLEEVE,
-    children: &[],
-}];
-
-pub(in crate::entity_models) const PLAYER_WIDE_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
-    TexturedModelPartDesc {
-        pose: PLAYER_WIDE_PARTS[0].pose,
-        cubes: &PLAYER_TEXTURED_HEAD,
-        children: &PLAYER_TEXTURED_HEAD_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_WIDE_PARTS[1].pose,
-        cubes: &PLAYER_TEXTURED_BODY,
-        children: &PLAYER_TEXTURED_BODY_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_WIDE_PARTS[2].pose,
-        cubes: &PLAYER_WIDE_TEXTURED_RIGHT_ARM,
-        children: &PLAYER_WIDE_TEXTURED_RIGHT_ARM_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_WIDE_PARTS[3].pose,
-        cubes: &PLAYER_WIDE_TEXTURED_LEFT_ARM,
-        children: &PLAYER_WIDE_TEXTURED_LEFT_ARM_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_WIDE_PARTS[4].pose,
-        cubes: &PLAYER_TEXTURED_RIGHT_LEG,
-        children: &PLAYER_TEXTURED_RIGHT_PANTS_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_WIDE_PARTS[5].pose,
-        cubes: &PLAYER_TEXTURED_LEFT_LEG,
-        children: &PLAYER_TEXTURED_LEFT_PANTS_CHILDREN,
-    },
-];
-
-pub(in crate::entity_models) const PLAYER_SLIM_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
-    TexturedModelPartDesc {
-        pose: PLAYER_SLIM_PARTS[0].pose,
-        cubes: &PLAYER_TEXTURED_HEAD,
-        children: &PLAYER_TEXTURED_HEAD_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_SLIM_PARTS[1].pose,
-        cubes: &PLAYER_TEXTURED_BODY,
-        children: &PLAYER_TEXTURED_BODY_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_SLIM_PARTS[2].pose,
-        cubes: &PLAYER_SLIM_TEXTURED_RIGHT_ARM,
-        children: &PLAYER_SLIM_TEXTURED_RIGHT_ARM_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_SLIM_PARTS[3].pose,
-        cubes: &PLAYER_SLIM_TEXTURED_LEFT_ARM,
-        children: &PLAYER_SLIM_TEXTURED_LEFT_ARM_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_SLIM_PARTS[4].pose,
-        cubes: &PLAYER_TEXTURED_RIGHT_LEG,
-        children: &PLAYER_TEXTURED_RIGHT_PANTS_CHILDREN,
-    },
-    TexturedModelPartDesc {
-        pose: PLAYER_SLIM_PARTS[5].pose,
-        cubes: &PLAYER_TEXTURED_LEFT_LEG,
-        children: &PLAYER_TEXTURED_LEFT_PANTS_CHILDREN,
-    },
-];
-
-/// Selects the colored ([`PLAYER_WIDE_PARTS`]/[`PLAYER_SLIM_PARTS`]) and textured
-/// ([`PLAYER_WIDE_TEXTURED_PARTS`]/[`PLAYER_SLIM_TEXTURED_PARTS`]) const trees for a player by the
-/// `slim` arm model, zipped into the unified tree by [`PlayerModel::new`].
-pub(in crate::entity_models) fn player_part_trees(
-    slim: bool,
-) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
-    if slim {
-        (&PLAYER_SLIM_PARTS, &PLAYER_SLIM_TEXTURED_PARTS)
+/// Builds the unified player root for the `slim`/wide arm model, with the vanilla `HumanoidModel`
+/// child names (`head`, `body`, `right_arm`, `left_arm`, `right_leg`, `left_leg`, head first). Each base
+/// part nests its one skin overlay child (`hat`/`jacket`/`sleeve`/`pants`) that
+/// [`PlayerModel::apply_part_visibility`] toggles.
+fn player_tree(slim: bool) -> ModelPart {
+    let (right_arm, right_sleeve, left_arm, left_sleeve) = if slim {
+        (
+            PLAYER_SLIM_RIGHT_ARM.as_slice(),
+            PLAYER_SLIM_RIGHT_SLEEVE.as_slice(),
+            PLAYER_SLIM_LEFT_ARM.as_slice(),
+            PLAYER_SLIM_LEFT_SLEEVE.as_slice(),
+        )
     } else {
-        (&PLAYER_WIDE_PARTS, &PLAYER_WIDE_TEXTURED_PARTS)
-    }
+        (
+            PLAYER_WIDE_RIGHT_ARM.as_slice(),
+            PLAYER_WIDE_RIGHT_SLEEVE.as_slice(),
+            PLAYER_WIDE_LEFT_ARM.as_slice(),
+            PLAYER_WIDE_LEFT_SLEEVE.as_slice(),
+        )
+    };
+    let children = vec![
+        (
+            "head",
+            part_with_overlay(PART_POSE_ZERO, &PLAYER_HEAD, "hat", &PLAYER_HAT),
+        ),
+        (
+            "body",
+            part_with_overlay(PART_POSE_ZERO, &PLAYER_BODY, "jacket", &PLAYER_JACKET),
+        ),
+        (
+            "right_arm",
+            part_with_overlay(PLAYER_RIGHT_ARM_POSE, right_arm, "sleeve", right_sleeve),
+        ),
+        (
+            "left_arm",
+            part_with_overlay(PLAYER_LEFT_ARM_POSE, left_arm, "sleeve", left_sleeve),
+        ),
+        (
+            "right_leg",
+            part_with_overlay(
+                PLAYER_RIGHT_LEG_POSE,
+                &PLAYER_RIGHT_LEG,
+                "pants",
+                &PLAYER_RIGHT_PANTS,
+            ),
+        ),
+        (
+            "left_leg",
+            part_with_overlay(
+                PLAYER_LEFT_LEG_POSE,
+                &PLAYER_LEFT_LEG,
+                "pants",
+                &PLAYER_LEFT_PANTS,
+            ),
+        ),
+    ];
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
 }
 
 /// Mutable player model, mirroring vanilla `PlayerModel extends HumanoidModel`. The unified tree is
-/// zipped from the colored and textured const trees selected by the `slim`/wide arm model
-/// ([`player_part_trees`]); each of the six base parts (head, body, arms, legs) carries one skin
-/// overlay child (hat/jacket/sleeve/pants). `setup_anim` looks the head, runs the inherited
-/// `HumanoidModel` walk swing + idle arm bob ([`apply_humanoid_walk`]), then the crouch sneaking
-/// pose ([`apply_humanoid_crouch`]). The held-item/attack arm poses, swim, and the elytra defer.
+/// built for the `slim`/wide arm model with the vanilla child names; each of the six base parts (head,
+/// body, arms, legs) carries one skin overlay child (hat/jacket/sleeve/pants). `setup_anim` looks the
+/// head, runs the inherited `HumanoidModel` walk swing + idle arm bob ([`apply_humanoid_walk_named`]),
+/// then the crouch sneaking pose ([`apply_humanoid_crouch_named`]). The held-item/attack arm poses,
+/// swim, and the elytra defer.
 pub(in crate::entity_models) struct PlayerModel {
     root: ModelPart,
 }
 
 impl PlayerModel {
     pub(in crate::entity_models) fn new(slim: bool) -> Self {
-        let (colored, textured) = player_part_trees(slim);
         Self {
-            root: ModelPart::root_from_descs(colored, textured),
+            root: player_tree(slim),
         }
     }
 
     /// Toggles the six skin-customization overlay children (hat/jacket/right & left sleeve/right &
-    /// left pants), which the base parts `[0..6]` each carry as their single child, by the player's
+    /// left pants), which the base parts each carry as their single named child, by the player's
     /// `PlayerModelPartVisibility`. The textured path calls this after [`EntityModel::prepare`]; the
     /// colored fallback leaves every overlay visible (vanilla renders untextured players whole).
     pub(in crate::entity_models) fn apply_part_visibility(
@@ -546,15 +278,15 @@ impl PlayerModel {
         parts: PlayerModelPartVisibility,
     ) {
         let overlays = [
-            parts.hat,
-            parts.jacket,
-            parts.right_sleeve,
-            parts.left_sleeve,
-            parts.right_pants,
-            parts.left_pants,
+            ("head", "hat", parts.hat),
+            ("body", "jacket", parts.jacket),
+            ("right_arm", "sleeve", parts.right_sleeve),
+            ("left_arm", "sleeve", parts.left_sleeve),
+            ("right_leg", "pants", parts.right_pants),
+            ("left_leg", "pants", parts.left_pants),
         ];
-        for (index, visible) in overlays.into_iter().enumerate() {
-            self.root.child_at_mut(index).child_at_mut(0).visible = visible;
+        for (base, overlay, visible) in overlays {
+            self.root.child_mut(base).child_mut(overlay).visible = visible;
         }
     }
 }
@@ -571,18 +303,18 @@ impl EntityModel for PlayerModel {
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
         apply_head_look(
-            self.root.child_at_mut(player_head_part_index()),
+            self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_humanoid_walk(
+        apply_humanoid_walk_named(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
         );
         if render_state.is_crouching {
-            apply_humanoid_crouch(&mut self.root);
+            apply_humanoid_crouch_named(&mut self.root);
         }
     }
 }

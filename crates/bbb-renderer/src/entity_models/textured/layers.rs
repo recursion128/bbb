@@ -789,12 +789,14 @@ pub(in crate::entity_models) fn player_textured_layer_passes(
     slim: bool,
     parts: PlayerModelPartVisibility,
 ) -> Vec<EntityModelLayerPass> {
+    // The unified `PlayerModel` tree drives the geometry (its overlay children are toggled by
+    // `apply_part_visibility`), so the layer-pass parts are vestigial (`&[]`).
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::PlayerBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: player_model_layer(slim),
         texture: player_texture_ref(slim),
-        parts: player_textured_model_parts(slim),
+        parts: &[],
         visibility: EntityModelLayerVisibility::PlayerParts(parts),
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1006,14 +1008,6 @@ fn player_model_layer(slim: bool) -> &'static str {
         MODEL_LAYER_PLAYER_SLIM
     } else {
         MODEL_LAYER_PLAYER
-    }
-}
-
-fn player_textured_model_parts(slim: bool) -> &'static [TexturedModelPartDesc] {
-    if slim {
-        &PLAYER_SLIM_TEXTURED_PARTS
-    } else {
-        &PLAYER_WIDE_TEXTURED_PARTS
     }
 }
 

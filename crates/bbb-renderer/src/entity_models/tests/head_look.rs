@@ -17,16 +17,8 @@ fn head_part_indices_match_vanilla_body_layers() {
     assert_eq!(skeleton_head_part_index(), 0);
     assert_eq!(parched_head_part_index(), 1);
 
-    // The wide and slim player layers both list the head first.
-    assert_eq!(player_head_part_index(), 0);
-    assert_eq!(
-        PLAYER_WIDE_PARTS[player_head_part_index()].cubes,
-        PLAYER_HEAD.as_slice()
-    );
-    assert_eq!(
-        PLAYER_SLIM_PARTS[player_head_part_index()].cubes,
-        PLAYER_HEAD.as_slice()
-    );
+    // (The player now builds a named-children tree, so its head look resolves the `head` child by
+    // name rather than an index; the wide and slim layouts both list the head first.)
 
     // Standalone head-first models list the head as part 0. (The creeper, enderman, spider, and now
     // the iron/snow golem build named-children trees, so their head look resolves the `head` child by
