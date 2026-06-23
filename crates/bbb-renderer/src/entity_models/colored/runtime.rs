@@ -1831,15 +1831,39 @@ fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
 
 fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `EndCrystalModel` is the base slab plus the concentric glass/core stack (the per-part
-    // `withScale` baked into the cube dimensions). The diagonal spin and the vertical bob are
-    // deferred, so the bind-pose part tree is emitted at the static `EndCrystalRenderer` transform
-    // (`scale(2.0)` + `translate(0, -0.5, 0)`, no living flip). `EndCrystalModel.setupAnim` hides
-    // the base slab (`END_CRYSTAL_PARTS[0]`) when `!showsBottom`, leaving the glass/core stack.
+    // `withScale` baked into the cube dimensions). `setupAnim` hides the base slab
+    // (`END_CRYSTAL_PARTS[0]`) when `!showsBottom`, bobs the glass stack by `getY(age)·8` pixels, and
+    // counter-spins the nested glass: `outer_glass` by `Ry(age·3°)·TILT`, then `inner_glass` and the
+    // core `cube` by `TILT·Ry(age·3°)` (inheriting the outer rotation through the hierarchy). The
+    // renderer flattens the glass stack, so the nested spin is hand-walked here off the shared,
+    // bobbing `(0, 24, 0)` centre. Emitted at the static `EndCrystalRenderer` transform (`scale(2.0)`
+    // + `translate(0, -0.5, 0)`, no living flip).
     let root = end_crystal_model_root_transform(instance);
     if instance.render_state.end_crystal_shows_bottom {
-        emit_model_parts(mesh, &END_CRYSTAL_PARTS, root);
-    } else {
-        emit_model_parts(mesh, &END_CRYSTAL_PARTS[1..], root);
+        emit_model_part(mesh, &END_CRYSTAL_PARTS[0], root);
+    }
+
+    let age = instance.render_state.age_in_ticks;
+    let bob = end_crystal_bob_y(age);
+    let (q_outer, q_inner) = end_crystal_glass_quaternions(age);
+    // The shared glass centre, bobbing on Y (offset in model-pixels; `part_pose_transform` applies
+    // the model-unit scale). All three glass parts sit at this centre with no rotation in the layer.
+    let centre = root
+        * part_pose_transform(PartPose {
+            offset: [0.0, 24.0 + bob, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        });
+    let outer_t = centre * Mat4::from_quat(q_outer);
+    let inner_t = outer_t * Mat4::from_quat(q_inner);
+    let core_t = inner_t * Mat4::from_quat(q_inner);
+    for cube in END_CRYSTAL_PARTS[1].cubes {
+        emit_model_cube(mesh, outer_t, *cube);
+    }
+    for cube in END_CRYSTAL_PARTS[2].cubes {
+        emit_model_cube(mesh, inner_t, *cube);
+    }
+    for cube in END_CRYSTAL_PARTS[3].cubes {
+        emit_model_cube(mesh, core_t, *cube);
     }
 }
 

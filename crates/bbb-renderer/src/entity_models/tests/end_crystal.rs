@@ -100,3 +100,68 @@ fn end_crystal_hides_base_when_shows_bottom_false() {
         .iter()
         .any(|vertex| vertex.color == shade_color(END_CRYSTAL_CORE, 1.0)));
 }
+
+#[test]
+fn end_crystal_bob_matches_vanilla_get_y() {
+    // Vanilla `EndCrystalRenderer.getY`: hh = sin(t·0.2)/2 + 0.5; hh = (hh² + hh)·0.4; return hh − 1.4.
+    // The glass bob is `getY(age)·16/2`.
+    for age in [0.0_f32, 7.5, 30.0, 100.0] {
+        let hh = (age * 0.2).sin() / 2.0 + 0.5;
+        let hh = (hh * hh + hh) * 0.4;
+        let expected = hh - 1.4;
+        assert!((end_crystal_get_y(age) - expected).abs() < 1.0e-6);
+        assert!((end_crystal_bob_y(age) - expected * 8.0).abs() < 1.0e-6);
+    }
+    // getY is always negative — the crystal hovers above its base.
+    assert!(end_crystal_get_y(0.0) < 0.0);
+}
+
+#[test]
+fn end_crystal_glass_spin_matches_vanilla_setup_anim() {
+    use glam::Vec3;
+
+    // At age 0 the spin is identity, so both quaternions are the π/3 tilt about the (sin45, 0, sin45)
+    // diagonal. Rotating +Y by 60° about that axis gives, by Rodrigues, (-0.61237, 0.5, 0.61237).
+    let (outer0, inner0) = end_crystal_glass_quaternions(0.0);
+    let up = outer0 * Vec3::Y;
+    assert!((up.x - (-0.61237)).abs() < 1.0e-4, "x was {}", up.x);
+    assert!((up.y - 0.5).abs() < 1.0e-4, "y was {}", up.y);
+    assert!((up.z - 0.61237).abs() < 1.0e-4, "z was {}", up.z);
+    // Both shells share the tilt when the spin is zero.
+    assert!((outer0 * Vec3::Y).abs_diff_eq(inner0 * Vec3::Y, 1.0e-6));
+
+    // Advancing the age spins the shells, and the outer (`Ry·TILT`) and inner (`TILT·Ry`) orders
+    // diverge — the order distinction is the vanilla detail this proves.
+    let (outer, inner) = end_crystal_glass_quaternions(30.0);
+    assert!(
+        !(outer * Vec3::Y).abs_diff_eq(outer0 * Vec3::Y, 1.0e-3),
+        "the outer glass spins with age"
+    );
+    assert!(
+        !(outer * Vec3::Y).abs_diff_eq(inner * Vec3::Y, 1.0e-3),
+        "the outer and inner spin orders differ"
+    );
+}
+
+#[test]
+fn end_crystal_spins_and_bobs_the_glass_with_age() {
+    // The four cubes emit base [0, 24), outer glass [24, 48), inner glass [48, 72), core [72, 96).
+    // The base holds across age; the whole glass stack spins (the always-on π/3 tilt plus the
+    // age-driven Y spin) and bobs (`getY`), so its vertices move while the count is preserved.
+    let rest = entity_model_mesh(&[EntityModelInstance::end_crystal(451, [0.0, 64.0, 0.0], 0.0)]);
+    let later = entity_model_mesh(&[
+        EntityModelInstance::end_crystal(452, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(30.0)
+    ]);
+    assert_eq!(rest.vertices.len(), 96);
+    assert_eq!(later.vertices.len(), 96);
+    assert_eq!(
+        rest.vertices[..24],
+        later.vertices[..24],
+        "the base slab holds"
+    );
+    assert_ne!(
+        rest.vertices[24..],
+        later.vertices[24..],
+        "the glass stack spins and bobs with age"
+    );
+}

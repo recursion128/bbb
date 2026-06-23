@@ -1773,11 +1773,14 @@ When an agent does any of the following, update this file in the same slice:
       (`END_CRYSTAL_PARTS[0]`) is gated on the synced `EndCrystal.DATA_SHOW_BOTTOM` boolean (data id 9,
       default `true`), so a crystal with `ShowBottom = false` (e.g. the four end-spike crystals that heal the
       dragon) drops the slab while the glass/core stack stays, with native-projection + renderer tests pinning
-      the face/vertex drop and the default-true. The remaining `EndCrystalModel.setupAnim` motion is deferred
-      — the `outer_glass`/`inner_glass`/`cube` diagonal spin (`Axis.YP.rotationDegrees(ageInTicks · 3) · ...`),
-      the `EndCrystalRenderer.getY` vertical bob, and the `submitCrystalBeams` beam to the dragon. The
-      texture-backed path is deferred, so the colored debug path renders the magenta glass, the bright core,
-      and the dark base with three tints
+      the face/vertex drop and the default-true. The `EndCrystalModel.setupAnim` glass motion is now
+      reproduced off the projected `age_in_ticks`: the `outer_glass`/`inner_glass`/`cube` diagonal spin
+      (the π/3 tilt about the `(sin45, 0, sin45)` axis composed with `Ry(age·3°)` — `outer_glass` as
+      `Ry·TILT`, `inner_glass`/`cube` as `TILT·Ry`, hand-walked through the flattened glass stack so the
+      inner shells inherit the outer rotation) and the `EndCrystalRenderer.getY` vertical bob
+      (`getY(age)·16/2` lifting the whole glass stack). The `submitCrystalBeams` beam to the dragon and
+      the texture-backed path are deferred, so the colored debug path renders the spinning magenta glass,
+      the bright core, and the dark base with three tints
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
       `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw
