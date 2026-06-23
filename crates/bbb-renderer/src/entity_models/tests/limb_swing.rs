@@ -78,6 +78,44 @@ fn limb_swing_lifts_quadruped_feet_off_the_ground() {
     );
 }
 
+/// A bare quadruped body-layer fixture (head/body at `0`/`1`, then the four legs at the given
+/// offsets) for the desc-level [`quadruped_limb_swing_parts`] phase-rule tests. Mirrors a vanilla
+/// `QuadrupedModel` part list: the head carries no rotation, the body the `FRAC_PI_2` x-tilt, and the
+/// four legs only their offsets (the swing resolves each leg's phase from its `x * z` offset sign).
+fn quadruped_leg_phase_fixture(leg_offsets: [[f32; 3]; 4]) -> [ModelPartDesc; 6] {
+    const NO_CUBES: &[ModelCubeDesc] = &[];
+    let leg = |offset: [f32; 3]| ModelPartDesc {
+        pose: PartPose {
+            offset,
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: NO_CUBES,
+        children: &[],
+    };
+    [
+        ModelPartDesc {
+            pose: PartPose {
+                offset: [0.0, 4.0, -8.0],
+                rotation: [0.0, 0.0, 0.0],
+            },
+            cubes: NO_CUBES,
+            children: &[],
+        },
+        ModelPartDesc {
+            pose: PartPose {
+                offset: [0.0, 5.0, 2.0],
+                rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            },
+            cubes: NO_CUBES,
+            children: &[],
+        },
+        leg(leg_offsets[0]),
+        leg(leg_offsets[1]),
+        leg(leg_offsets[2]),
+        leg(leg_offsets[3]),
+    ]
+}
+
 #[test]
 fn quadruped_limb_swing_parts_assign_vanilla_leg_phases_by_offset() {
     // The adult cow body layer lists its legs hind-first: indices [2, 3, 4, 5] are
@@ -85,12 +123,14 @@ fn quadruped_limb_swing_parts_assign_vanilla_leg_phases_by_offset() {
     // [-4,_,7], [4,_,7], [-4,_,-5], [4,_,-5]. With walkAnimationPos = 0 and
     // walkAnimationSpeed = 1, vanilla sets rightHind/leftFront to cos(0)*1.4 = 1.4
     // and leftHind/rightFront to cos(π)*1.4 = -1.4.
-    let posed = quadruped_limb_swing_parts(
-        Cow::Borrowed(&ADULT_COW_PARTS),
-        QUADRUPED_LEG_PART_INDICES,
-        0.0,
-        1.0,
-    );
+    let adult = quadruped_leg_phase_fixture([
+        [-4.0, 12.0, 7.0],
+        [4.0, 12.0, 7.0],
+        [-4.0, 12.0, -5.0],
+        [4.0, 12.0, -5.0],
+    ]);
+    let posed =
+        quadruped_limb_swing_parts(Cow::Borrowed(&adult), QUADRUPED_LEG_PART_INDICES, 0.0, 1.0);
     assert!(
         (posed[2].pose.rotation[0] - 1.4).abs() < 1e-5,
         "right hind in phase"
@@ -109,17 +149,19 @@ fn quadruped_limb_swing_parts_assign_vanilla_leg_phases_by_offset() {
     );
     // The head and body parts are untouched by the leg swing.
     assert_eq!(posed[0].pose.rotation, [0.0, 0.0, 0.0]);
-    assert_eq!(posed[1].pose.rotation, ADULT_COW_PARTS[1].pose.rotation);
+    assert_eq!(posed[1].pose.rotation, adult[1].pose.rotation);
 
     // The baby cow body layer lists its legs front-first: indices [2, 3, 4, 5] are
     // [rightFront, leftFront, rightHind, leftHind]. The offset-based phase keeps the
     // diagonal pairing correct despite the different ordering.
-    let posed = quadruped_limb_swing_parts(
-        Cow::Borrowed(&BABY_COW_PARTS),
-        QUADRUPED_LEG_PART_INDICES,
-        0.0,
-        1.0,
-    );
+    let baby = quadruped_leg_phase_fixture([
+        [-2.5, 18.0, -3.5],
+        [2.5, 18.0, -3.5],
+        [-2.5, 18.0, 3.5],
+        [2.5, 18.0, 3.5],
+    ]);
+    let posed =
+        quadruped_limb_swing_parts(Cow::Borrowed(&baby), QUADRUPED_LEG_PART_INDICES, 0.0, 1.0);
     assert!(
         (posed[2].pose.rotation[0] + 1.4).abs() < 1e-5,
         "baby right front out of phase"
@@ -141,12 +183,14 @@ fn quadruped_limb_swing_parts_assign_vanilla_leg_phases_by_offset() {
 #[test]
 fn quadruped_limb_swing_parts_borrow_unchanged_at_rest() {
     // walkAnimationSpeed == 0 leaves the static parts untouched (a borrow, no clone).
-    let posed = quadruped_limb_swing_parts(
-        Cow::Borrowed(&ADULT_COW_PARTS),
-        QUADRUPED_LEG_PART_INDICES,
-        2.5,
-        0.0,
-    );
+    let adult = quadruped_leg_phase_fixture([
+        [-4.0, 12.0, 7.0],
+        [4.0, 12.0, 7.0],
+        [-4.0, 12.0, -5.0],
+        [4.0, 12.0, -5.0],
+    ]);
+    let posed =
+        quadruped_limb_swing_parts(Cow::Borrowed(&adult), QUADRUPED_LEG_PART_INDICES, 2.5, 0.0);
     assert!(matches!(posed, Cow::Borrowed(_)));
 }
 

@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn entity_texture_atlas_stitches_official_cow_png_slots() {
     let (layout, rgba) = build_entity_model_texture_atlas(&cow_texture_images()).unwrap();
@@ -82,187 +84,100 @@ fn cow_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
 
 #[test]
 fn cow_adult_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`.
     assert_eq!(
         ADULT_COW_HEAD,
         [
-            ModelCubeDesc {
-                min: [-4.0, -4.0, -6.0],
-                size: [8.0, 8.0, 6.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-3.0, 1.0, -7.0],
-                size: [6.0, 3.0, 1.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-5.0, -5.0, -5.0],
-                size: [1.0, 3.0, 1.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [4.0, -5.0, -5.0],
-                size: [1.0, 3.0, 1.0],
-                color: COW_BROWN,
-            },
+            ModelCube::new(
+                [-4.0, -4.0, -6.0],
+                [8.0, 8.0, 6.0],
+                COW_BROWN,
+                [8.0, 8.0, 6.0],
+                [0.0, 0.0],
+                false,
+            ),
+            ModelCube::new(
+                [-3.0, 1.0, -7.0],
+                [6.0, 3.0, 1.0],
+                COW_BROWN,
+                [6.0, 3.0, 1.0],
+                [1.0, 33.0],
+                false,
+            ),
+            ModelCube::new(
+                [-5.0, -5.0, -5.0],
+                [1.0, 3.0, 1.0],
+                COW_BROWN,
+                [1.0, 3.0, 1.0],
+                [22.0, 0.0],
+                false,
+            ),
+            ModelCube::new(
+                [4.0, -5.0, -5.0],
+                [1.0, 3.0, 1.0],
+                COW_BROWN,
+                [1.0, 3.0, 1.0],
+                [22.0, 0.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(ADULT_COW_PARTS.len(), 6);
-    assert_part(
-        &ADULT_COW_PARTS[0],
-        [0.0, 4.0, -8.0],
-        [0.0, 0.0, 0.0],
-        ADULT_COW_HEAD.as_slice(),
-    );
-    assert_part(
-        &ADULT_COW_PARTS[1],
-        [0.0, 5.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_COW_BODY.as_slice(),
-    );
-    for (part, expected_offset) in ADULT_COW_PARTS[2..].iter().zip([
-        [-4.0, 12.0, 7.0],
-        [4.0, 12.0, 7.0],
-        [-4.0, 12.0, -5.0],
-        [4.0, 12.0, -5.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            ADULT_COW_LEG.as_slice(),
-        );
-    }
+    assert_eq!(ADULT_COW_BODY[0].size, [12.0, 18.0, 10.0]);
+    assert_eq!(ADULT_COW_RIGHT_LEG[0].size, [4.0, 12.0, 4.0]);
+    assert!(!ADULT_COW_RIGHT_LEG[0].mirror);
+    assert!(ADULT_COW_LEFT_LEG[0].mirror);
 }
 
 #[test]
 fn cow_warm_adult_model_parts_match_vanilla_26_1_body_layer() {
-    assert_eq!(
-        WARM_COW_HEAD,
-        [
-            ModelCubeDesc {
-                min: [-4.0, -4.0, -6.0],
-                size: [8.0, 8.0, 6.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-3.0, 1.0, -7.0],
-                size: [6.0, 3.0, 1.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-8.0, -3.0, -5.0],
-                size: [4.0, 2.0, 2.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-8.0, -5.0, -5.0],
-                size: [2.0, 2.0, 2.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [4.0, -3.0, -5.0],
-                size: [4.0, 2.0, 2.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [6.0, -5.0, -5.0],
-                size: [2.0, 2.0, 2.0],
-                color: COW_BROWN,
-            },
-        ]
-    );
-
-    assert_eq!(WARM_COW_PARTS.len(), 6);
-    assert_part(
-        &WARM_COW_PARTS[0],
-        [0.0, 4.0, -8.0],
-        [0.0, 0.0, 0.0],
-        WARM_COW_HEAD.as_slice(),
-    );
-    assert_part(
-        &WARM_COW_PARTS[1],
-        [0.0, 5.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_COW_BODY.as_slice(),
-    );
+    assert_eq!(WARM_COW_HEAD.len(), 6);
+    assert_eq!(WARM_COW_HEAD[2].min, [-8.0, -3.0, -5.0]);
+    assert_eq!(WARM_COW_HEAD[2].size, [4.0, 2.0, 2.0]);
+    assert_eq!(WARM_COW_HEAD[2].color, COW_BROWN);
+    assert!(!WARM_COW_HEAD[2].mirror);
+    assert_eq!(WARM_COW_HEAD[4].min, [4.0, -3.0, -5.0]);
+    assert!(WARM_COW_HEAD[4].mirror);
 }
 
 #[test]
 fn cow_cold_adult_model_parts_match_vanilla_26_1_body_layer() {
+    // The cold body's first cube inflates the geometry (colored 13×19×11) while the textured
+    // `uv_size` keeps the base 12×18×10 (the squid body precedent).
     assert_eq!(
         COLD_COW_BODY,
         [
-            ModelCubeDesc {
-                min: [-6.5, -10.5, -7.5],
-                size: [13.0, 19.0, 11.0],
-                color: COW_COLD_FUR,
-            },
-            ModelCubeDesc {
-                min: [-6.0, -10.0, -7.0],
-                size: [12.0, 18.0, 10.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-2.0, 2.0, -8.0],
-                size: [4.0, 6.0, 1.0],
-                color: COW_BROWN,
-            },
+            ModelCube::new(
+                [-6.5, -10.5, -7.5],
+                [13.0, 19.0, 11.0],
+                COW_COLD_FUR,
+                [12.0, 18.0, 10.0],
+                [20.0, 32.0],
+                false,
+            ),
+            ModelCube::new(
+                [-6.0, -10.0, -7.0],
+                [12.0, 18.0, 10.0],
+                COW_BROWN,
+                [12.0, 18.0, 10.0],
+                [18.0, 4.0],
+                false,
+            ),
+            ModelCube::new(
+                [-2.0, 2.0, -8.0],
+                [4.0, 6.0, 1.0],
+                COW_BROWN,
+                [4.0, 6.0, 1.0],
+                [52.0, 0.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(
-        COLD_COW_HEAD_CHILDREN,
-        [
-            ModelPartDesc {
-                pose: PartPose {
-                    offset: [-4.5, -2.5, -3.5],
-                    rotation: [1.5708, 0.0, 0.0],
-                },
-                cubes: &COLD_COW_RIGHT_HORN,
-                children: &[],
-            },
-            ModelPartDesc {
-                pose: PartPose {
-                    offset: [5.5, -2.5, -5.0],
-                    rotation: [1.5708, 0.0, 0.0],
-                },
-                cubes: &COLD_COW_LEFT_HORN,
-                children: &[],
-            },
-        ]
-    );
-
-    assert_eq!(COLD_COW_PARTS.len(), 6);
-    assert_part_tree(
-        &COLD_COW_PARTS[0],
-        [0.0, 4.0, -8.0],
-        [0.0, 0.0, 0.0],
-        COLD_COW_HEAD.as_slice(),
-        COLD_COW_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &COLD_COW_PARTS[1],
-        [0.0, 5.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        COLD_COW_BODY.as_slice(),
-    );
-
-    assert_eq!(
-        cow_part_trees(CowModelVariant::Temperate, false).0,
-        ADULT_COW_PARTS.as_slice()
-    );
-    assert_eq!(
-        cow_part_trees(CowModelVariant::Warm, false).0,
-        WARM_COW_PARTS.as_slice()
-    );
-    assert_eq!(
-        cow_part_trees(CowModelVariant::Cold, false).0,
-        COLD_COW_PARTS.as_slice()
-    );
-    assert_eq!(
-        cow_part_trees(CowModelVariant::Cold, true).0,
-        BABY_COW_PARTS.as_slice()
-    );
+    assert_eq!(COLD_COW_RIGHT_HORN_POSE.offset, [-4.5, -2.5, -3.5]);
+    assert_eq!(COLD_COW_RIGHT_HORN_POSE.rotation, [1.5708, 0.0, 0.0]);
+    assert_eq!(COLD_COW_LEFT_HORN_POSE.offset, [5.5, -2.5, -5.0]);
+    assert_eq!(COLD_COW_RIGHT_HORN[0].color, COW_COLD_FUR);
+    assert_eq!(COLD_COW_LEFT_HORN[0].color, COW_COLD_FUR);
 }
 
 #[test]
@@ -325,54 +240,46 @@ fn cow_baby_model_parts_match_vanilla_26_1_body_layer() {
     assert_eq!(
         BABY_COW_HEAD,
         [
-            ModelCubeDesc {
-                min: [-3.0, -4.569, -4.8333],
-                size: [6.0, 6.0, 5.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [3.0, -5.569, -3.8333],
-                size: [1.0, 2.0, 1.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-4.0, -5.569, -3.8333],
-                size: [1.0, 2.0, 1.0],
-                color: COW_BROWN,
-            },
-            ModelCubeDesc {
-                min: [-2.0, -1.569, -5.8333],
-                size: [4.0, 3.0, 1.0],
-                color: COW_BROWN,
-            },
+            ModelCube::new(
+                [-3.0, -4.569, -4.8333],
+                [6.0, 6.0, 5.0],
+                COW_BROWN,
+                [6.0, 6.0, 5.0],
+                [0.0, 18.0],
+                false,
+            ),
+            ModelCube::new(
+                [3.0, -5.569, -3.8333],
+                [1.0, 2.0, 1.0],
+                COW_BROWN,
+                [1.0, 2.0, 1.0],
+                [8.0, 29.0],
+                false,
+            ),
+            ModelCube::new(
+                [-4.0, -5.569, -3.8333],
+                [1.0, 2.0, 1.0],
+                COW_BROWN,
+                [1.0, 2.0, 1.0],
+                [4.0, 29.0],
+                true,
+            ),
+            ModelCube::new(
+                [-2.0, -1.569, -5.8333],
+                [4.0, 3.0, 1.0],
+                COW_BROWN,
+                [4.0, 3.0, 1.0],
+                [12.0, 29.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(BABY_COW_PARTS.len(), 6);
-    assert_part(
-        &BABY_COW_PARTS[0],
-        [0.0, 13.569, -5.1667],
-        [0.0, 0.0, 0.0],
-        BABY_COW_HEAD.as_slice(),
-    );
-    assert_part(
-        &BABY_COW_PARTS[1],
-        [3.0, 19.0, -5.0],
-        [0.0, 0.0, 0.0],
-        BABY_COW_BODY.as_slice(),
-    );
-    for (part, expected_offset) in BABY_COW_PARTS[2..].iter().zip([
-        [-2.5, 18.0, -3.5],
-        [2.5, 18.0, -3.5],
-        [-2.5, 18.0, 3.5],
-        [2.5, 18.0, 3.5],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_COW_LEG.as_slice(),
-        );
-    }
+    assert_eq!(BABY_COW_BODY[0].size, [8.0, 6.0, 12.0]);
+    // The baby legs share one geometry but distinct per-corner UV origins.
+    assert_eq!(BABY_COW_RIGHT_FRONT_LEG[0].tex, [22.0, 18.0]);
+    assert_eq!(BABY_COW_LEFT_FRONT_LEG[0].tex, [34.0, 18.0]);
+    assert_eq!(BABY_COW_RIGHT_HIND_LEG[0].tex, [22.0, 27.0]);
+    assert_eq!(BABY_COW_LEFT_HIND_LEG[0].tex, [34.0, 27.0]);
 }
 
 #[test]
@@ -460,7 +367,7 @@ fn cow_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(temperate[0].kind, EntityModelLayerKind::CowBase);
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_COW);
     assert_eq!(temperate[0].texture, COW_TEMPERATE_TEXTURE_REF);
-    assert_eq!(temperate[0].parts, ADULT_COW_TEXTURED_PARTS.as_slice());
+    assert!(temperate[0].parts.is_empty());
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (temperate[0].collector_order, temperate[0].submit_sequence),
@@ -470,105 +377,54 @@ fn cow_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let temperate_baby = cow_textured_layer_passes(CowModelVariant::Temperate, true);
     assert_eq!(temperate_baby[0].model_layer, MODEL_LAYER_COW_BABY);
     assert_eq!(temperate_baby[0].texture, COW_TEMPERATE_BABY_TEXTURE_REF);
-    assert_eq!(temperate_baby[0].parts, BABY_COW_TEXTURED_PARTS.as_slice());
+    assert!(temperate_baby[0].parts.is_empty());
 
     let warm = cow_textured_layer_passes(CowModelVariant::Warm, false);
     assert_eq!(warm[0].model_layer, MODEL_LAYER_WARM_COW);
     assert_eq!(warm[0].texture, COW_WARM_TEXTURE_REF);
-    assert_eq!(warm[0].parts, WARM_COW_TEXTURED_PARTS.as_slice());
+    assert!(warm[0].parts.is_empty());
 
     let warm_baby = cow_textured_layer_passes(CowModelVariant::Warm, true);
     assert_eq!(warm_baby[0].model_layer, MODEL_LAYER_WARM_COW_BABY);
     assert_eq!(warm_baby[0].texture, COW_WARM_BABY_TEXTURE_REF);
-    assert_eq!(warm_baby[0].parts, BABY_COW_TEXTURED_PARTS.as_slice());
+    assert!(warm_baby[0].parts.is_empty());
 
     let cold = cow_textured_layer_passes(CowModelVariant::Cold, false);
     assert_eq!(cold[0].model_layer, MODEL_LAYER_COLD_COW);
     assert_eq!(cold[0].texture, COW_COLD_TEXTURE_REF);
-    assert_eq!(cold[0].parts, COLD_COW_TEXTURED_PARTS.as_slice());
+    assert!(cold[0].parts.is_empty());
 
     let cold_baby = cow_textured_layer_passes(CowModelVariant::Cold, true);
     assert_eq!(cold_baby[0].model_layer, MODEL_LAYER_COLD_COW_BABY);
     assert_eq!(cold_baby[0].texture, COW_COLD_BABY_TEXTURE_REF);
-    assert_eq!(cold_baby[0].parts, BABY_COW_TEXTURED_PARTS.as_slice());
+    assert!(cold_baby[0].parts.is_empty());
 }
 
 #[test]
 fn cow_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_COW, "minecraft:cow#main");
     assert_eq!(MODEL_LAYER_COW_BABY, "minecraft:cow_baby#main");
     assert_eq!(MODEL_LAYER_WARM_COW, "minecraft:warm_cow#main");
     assert_eq!(MODEL_LAYER_WARM_COW_BABY, "minecraft:warm_cow_baby#main");
     assert_eq!(MODEL_LAYER_COLD_COW, "minecraft:cold_cow#main");
     assert_eq!(MODEL_LAYER_COLD_COW_BABY, "minecraft:cold_cow_baby#main");
-    assert_eq!(
-        ADULT_COW_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -4.0, -6.0],
-            size: [8.0, 8.0, 6.0],
-            uv_size: [8.0, 8.0, 6.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_COW_TEXTURED_BODY[1],
-        TexturedModelCubeDesc {
-            min: [-2.0, 2.0, -8.0],
-            size: [4.0, 6.0, 1.0],
-            uv_size: [4.0, 6.0, 1.0],
-            tex: [52.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        WARM_COW_TEXTURED_HEAD[4],
-        TexturedModelCubeDesc {
-            min: [4.0, -3.0, -5.0],
-            size: [4.0, 2.0, 2.0],
-            uv_size: [4.0, 2.0, 2.0],
-            tex: [27.0, 0.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(
-        COLD_COW_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-6.5, -10.5, -7.5],
-            size: [13.0, 19.0, 11.0],
-            uv_size: [12.0, 18.0, 10.0],
-            tex: [20.0, 32.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        COLD_COW_TEXTURED_HEAD_CHILDREN[0],
-        TexturedModelPartDesc {
-            pose: COLD_COW_HEAD_CHILDREN[0].pose,
-            cubes: &COLD_COW_TEXTURED_RIGHT_HORN,
-            children: &[],
-        }
-    );
-    assert_eq!(
-        BABY_COW_TEXTURED_HEAD[2],
-        TexturedModelCubeDesc {
-            min: [-4.0, -5.569, -3.8333],
-            size: [1.0, 2.0, 1.0],
-            uv_size: [1.0, 2.0, 1.0],
-            tex: [4.0, 29.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(
-        BABY_COW_TEXTURED_LEFT_HIND_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-1.5, 0.0, -1.5],
-            size: [3.0, 6.0, 3.0],
-            uv_size: [3.0, 6.0, 3.0],
-            tex: [34.0, 27.0],
-            mirror: false,
-        }
-    );
+    assert_eq!(ADULT_COW_HEAD[0].uv_size, [8.0, 8.0, 6.0]);
+    assert_eq!(ADULT_COW_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(ADULT_COW_BODY[1].tex, [52.0, 0.0]);
+    assert!(!ADULT_COW_BODY[1].mirror);
+    assert_eq!(WARM_COW_HEAD[4].tex, [27.0, 0.0]);
+    assert!(WARM_COW_HEAD[4].mirror);
+    // The cold body inflates the geometry while the UV box stays the base size.
+    assert_eq!(COLD_COW_BODY[0].size, [13.0, 19.0, 11.0]);
+    assert_eq!(COLD_COW_BODY[0].uv_size, [12.0, 18.0, 10.0]);
+    assert_eq!(COLD_COW_BODY[0].tex, [20.0, 32.0]);
+    assert_eq!(COLD_COW_RIGHT_HORN[0].tex, [0.0, 40.0]);
+    assert_eq!(COLD_COW_LEFT_HORN[0].tex, [0.0, 32.0]);
+    assert_eq!(BABY_COW_HEAD[2].tex, [4.0, 29.0]);
+    assert!(BABY_COW_HEAD[2].mirror);
+    assert_eq!(BABY_COW_LEFT_HIND_LEG[0].tex, [34.0, 27.0]);
+    assert!(!BABY_COW_LEFT_HIND_LEG[0].mirror);
 }
 
 #[test]

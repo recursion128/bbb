@@ -149,7 +149,7 @@ pub(in crate::entity_models) fn cow_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
-        parts: cow_textured_model_parts(variant, baby),
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1142,18 +1142,6 @@ fn cow_model_layer(variant: CowModelVariant, baby: bool) -> &'static str {
         (CowModelVariant::Warm, true) => MODEL_LAYER_WARM_COW_BABY,
         (CowModelVariant::Cold, false) => MODEL_LAYER_COLD_COW,
         (CowModelVariant::Cold, true) => MODEL_LAYER_COLD_COW_BABY,
-    }
-}
-
-fn cow_textured_model_parts(
-    variant: CowModelVariant,
-    baby: bool,
-) -> &'static [TexturedModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_COW_TEXTURED_PARTS,
-        (CowModelVariant::Warm, false) => &WARM_COW_TEXTURED_PARTS,
-        (CowModelVariant::Cold, false) => &COLD_COW_TEXTURED_PARTS,
-        (CowModelVariant::Temperate, false) => &ADULT_COW_TEXTURED_PARTS,
     }
 }
 
