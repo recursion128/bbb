@@ -1,3 +1,7 @@
+use super::super::keyframe::{
+    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
+    BoneAnimation, Keyframe, KeyframeInterpolation,
+};
 use super::{
     bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc, ModelPartDesc,
     ARMADILLO_SHELL, ARMADILLO_SKIN,
@@ -12,9 +16,11 @@ use super::{
 // `ADULT_ARMADILLO_ROLLED_PARTS` / `BABY_ARMADILLO_ROLLED_PARTS`): the synced
 // `Armadillo.ArmadilloState.SCARED` shows the shell-ball `cube` and hides the body cubes, tail,
 // and hind legs. While not hiding, the clamped head look ([`armadillo_clamped_head_look`]) is
-// reproduced on the body-nested head pivot. The `applyWalk` leg sway and the roll-out / roll-up /
-// peek keyframe transition animations (ROLLING/UNROLLING, gated on the un-synced `inStateTicks`)
-// stay deferred. The texture-backed path is deferred.
+// reproduced on the body-nested head pivot, and the adult `applyWalk` leg sway ([`ARMADILLO_WALK`])
+// rocks the body, tail, four legs, and head as the armadillo moves (the head walk roll ADDS onto the
+// look). The baby `applyWalk` (`ARMADILLO_BABY_WALK`, a different cycle/topology) and the roll-out /
+// roll-up / peek keyframe transition animations (ROLLING/UNROLLING, gated on the un-synced
+// `inStateTicks`) stay deferred. The texture-backed path is deferred.
 
 // ----- Adult -----
 
@@ -224,3 +230,201 @@ pub(in crate::entity_models) const BABY_ARMADILLO_ROLLED_PARTS: [ModelPartDesc; 
     part([-1.5, 22.0, -1.5], &BABY_ARMADILLO_LEG_CUBES, &[]),
     part([0.0, 20.7, 0.5], &BABY_ARMADILLO_BALL_CUBES, &[]),
 ];
+
+// ----- `ArmadilloAnimation.ARMADILLO_WALK` (the adult walk; length 1.4583s, looping) -----
+//
+// `ArmadilloModel.setupAnim` samples it (while not hiding) via
+// `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`. The `body` channel rolls the trunk
+// (a CatmullRom z-sway with a slight y-bob), the four legs swing (rotation + position), the `tail`
+// rocks, and the `head` channel adds a small z-roll onto the look the head already tracks. The baby
+// (`BabyArmadilloAnimation.ARMADILLO_BABY_WALK`, a different cycle and topology) stays deferred.
+
+const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
+const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
+
+const ARMADILLO_WALK_BODY_ROT: [Keyframe; 9] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(0.0, 0.0, 4.6), CATMULLROM),
+    keyframe(0.2917, degree_vec(0.0, 0.0, 6.81), CATMULLROM),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.7083, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.9583, degree_vec(0.0, 0.0, -4.6), CATMULLROM),
+    keyframe(1.0, degree_vec(0.0, 0.0, -6.89), CATMULLROM),
+    keyframe(1.25, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.4583, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const ARMADILLO_WALK_BODY_POS: [Keyframe; 7] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, pos_vec(0.0, -0.2, 0.0), CATMULLROM),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.7083, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.9583, pos_vec(0.0, -0.2, 0.0), CATMULLROM),
+    keyframe(1.25, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.4583, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const ARMADILLO_WALK_TAIL_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-9.17, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(5.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2083, degree_vec(-8.24, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_WALK_RIGHT_HIND_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(-50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2917, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(-50.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_WALK_RIGHT_HIND_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(1.2917, pos_vec(0.0, 1.0, -0.18), LINEAR),
+    keyframe(1.4583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_WALK_LEFT_HIND_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5417, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7083, degree_vec(-50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2083, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(50.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_WALK_LEFT_HIND_LEG_POS: [Keyframe; 7] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, -0.25), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(0.5417, pos_vec(0.0, 1.0, -0.18), LINEAR),
+    keyframe(0.7083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9583, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(1.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, pos_vec(0.0, 0.0, -0.25), LINEAR),
+];
+const ARMADILLO_WALK_RIGHT_FRONT_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5417, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7083, degree_vec(-50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2083, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(50.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_WALK_RIGHT_FRONT_LEG_POS: [Keyframe; 7] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, -0.25), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(0.5417, pos_vec(0.0, 1.0, -0.18), LINEAR),
+    keyframe(0.7083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9583, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(1.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, pos_vec(0.0, 0.0, -0.25), LINEAR),
+];
+const ARMADILLO_WALK_LEFT_FRONT_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(-50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2917, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(-50.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_WALK_LEFT_FRONT_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(1.2917, pos_vec(0.0, 1.0, -0.18), LINEAR),
+    keyframe(1.4583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_WALK_HEAD_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(0.0, 0.0, -2.5), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7083, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 2.5), LINEAR),
+    keyframe(1.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes,
+    }
+}
+const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Position,
+        keyframes,
+    }
+}
+
+const ARMADILLO_WALK_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&ARMADILLO_WALK_BODY_ROT), pos(&ARMADILLO_WALK_BODY_POS)];
+const ARMADILLO_WALK_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&ARMADILLO_WALK_TAIL_ROT)];
+const ARMADILLO_WALK_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_WALK_RIGHT_HIND_LEG_ROT),
+    pos(&ARMADILLO_WALK_RIGHT_HIND_LEG_POS),
+];
+const ARMADILLO_WALK_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_WALK_LEFT_HIND_LEG_ROT),
+    pos(&ARMADILLO_WALK_LEFT_HIND_LEG_POS),
+];
+const ARMADILLO_WALK_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_WALK_RIGHT_FRONT_LEG_ROT),
+    pos(&ARMADILLO_WALK_RIGHT_FRONT_LEG_POS),
+];
+const ARMADILLO_WALK_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_WALK_LEFT_FRONT_LEG_ROT),
+    pos(&ARMADILLO_WALK_LEFT_FRONT_LEG_POS),
+];
+const ARMADILLO_WALK_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&ARMADILLO_WALK_HEAD_ROT)];
+
+const ARMADILLO_WALK_BONES: [BoneAnimation; 7] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &ARMADILLO_WALK_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &ARMADILLO_WALK_TAIL_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &ARMADILLO_WALK_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &ARMADILLO_WALK_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &ARMADILLO_WALK_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &ARMADILLO_WALK_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &ARMADILLO_WALK_HEAD_CHANNELS,
+    },
+];
+
+/// Vanilla `ArmadilloAnimation.ARMADILLO_WALK`: the looping 1.4583s adult walk cycle, sampled by
+/// `ArmadilloModel.setupAnim` (while not hiding) via
+/// `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`. The `head` channel adds onto the
+/// clamped look the head already tracks; the `body` channel uses CatmullRom interpolation.
+pub(in crate::entity_models) const ARMADILLO_WALK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 1.4583,
+    looping: true,
+    bones: &ARMADILLO_WALK_BONES,
+};
+
+/// Vanilla `ArmadilloModel.applyWalk(..., 16.5F, 2.5F)` factors: `MAX_WALK_ANIMATION_SPEED` drives
+/// the sample time and `WALK_ANIMATION_SCALE_FACTOR` the amplitude.
+pub(in crate::entity_models) const ARMADILLO_WALK_SPEED_FACTOR: f32 = 16.5;
+pub(in crate::entity_models) const ARMADILLO_WALK_SCALE_FACTOR: f32 = 2.5;

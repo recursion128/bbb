@@ -273,3 +273,92 @@ fn armadillo_ignores_the_look_while_hiding_in_shell() {
         "the rolled-up armadillo ignores the look"
     );
 }
+
+#[test]
+fn armadillo_walk_animation_matches_vanilla_definition() {
+    // Vanilla `ArmadilloAnimation.ARMADILLO_WALK`: 1.4583 s looping, animating body, tail, the four
+    // legs, and the head — seven bones, 82 keyframes total.
+    assert_eq!(ARMADILLO_WALK.length_seconds, 1.4583);
+    assert!(ARMADILLO_WALK.looping);
+    assert_eq!(ARMADILLO_WALK.bones.len(), 7);
+    let keyframes: usize = ARMADILLO_WALK
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 82);
+
+    // The hind legs start a half-cycle apart: at t=0 the right hind leg pitches `-50°` and the left
+    // hind leg `+50°` (`degreeVec(±50, 0, 0)`).
+    let (_, rhl_rot) = sample_bone_offsets(&ARMADILLO_WALK, "right_hind_leg", 0.0, 1.0);
+    let (_, lhl_rot) = sample_bone_offsets(&ARMADILLO_WALK, "left_hind_leg", 0.0, 1.0);
+    assert!((rhl_rot[0] - (-50.0_f32).to_radians()).abs() < 1.0e-5);
+    assert!((lhl_rot[0] - 50.0_f32.to_radians()).abs() < 1.0e-5);
+
+    // The right hind leg's position channel reaches `posVec(0, 0, -0.5)` at its t=0.25 keyframe.
+    let (rhl_pos, _) = sample_bone_offsets(&ARMADILLO_WALK, "right_hind_leg", 0.25, 1.0);
+    assert!((rhl_pos[2] - -0.5).abs() < 1.0e-5);
+
+    // The `body` z-sway is CatmullRom: at its t=0.2917 keyframe it reaches `degreeVec(0, 0, 6.81)`.
+    let (_, body_rot) = sample_bone_offsets(&ARMADILLO_WALK, "body", 0.2917, 1.0);
+    assert!(
+        (body_rot[2] - 6.81_f32.to_radians()).abs() < 1.0e-4,
+        "body z-roll was {}",
+        body_rot[2]
+    );
+}
+
+#[test]
+fn armadillo_walk_moves_the_limbs_and_composes_with_the_look() {
+    // A still adult (walk speed 0) samples the cycle at amplitude 0, collapsing to the bind pose; a
+    // walking adult samples ARMADILLO_WALK across the body, tail, four legs, and head. The vertex
+    // count is preserved.
+    let still = entity_model_mesh(&[EntityModelInstance::armadillo(
+        76,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )]);
+    let walking = entity_model_mesh(&[EntityModelInstance::armadillo(
+        77,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )
+    .with_walk_animation(5.0, 1.0)]);
+    assert_eq!(still.vertices.len(), walking.vertices.len());
+    assert_ne!(
+        still.vertices, walking.vertices,
+        "the walking armadillo rocks its body and legs"
+    );
+
+    // The head walk roll ADDS onto the look, so a walking + looking adult differs from one that only
+    // walks — and ONLY across the head subtree [72, 144); the body, tail, and legs share the walk.
+    let walking_looking = entity_model_mesh(&[EntityModelInstance::armadillo(
+        78,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )
+    .with_walk_animation(5.0, 1.0)
+    .with_head_look(30.0, -15.0)]);
+    assert_ne!(
+        walking.vertices[72..144],
+        walking_looking.vertices[72..144],
+        "the look composes onto the walking head"
+    );
+    assert_eq!(
+        walking.vertices[..72],
+        walking_looking.vertices[..72],
+        "the body and tail share the same walk regardless of the look"
+    );
+    assert_eq!(
+        walking.vertices[144..],
+        walking_looking.vertices[144..],
+        "the legs share the same walk regardless of the look"
+    );
+}
