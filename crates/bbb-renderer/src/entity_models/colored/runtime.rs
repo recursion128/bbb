@@ -339,7 +339,7 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Skeleton => {
                 if !skip_texture_backed_entities {
-                    SkeletonModel::new().prepare_and_render(
+                    SkeletonModel::new(None).prepare_and_render(
                         &mut mesh,
                         instance,
                         entity_model_root_transform(*instance),
@@ -1599,69 +1599,21 @@ fn emit_skeleton_variant_model(
     instance: EntityModelInstance,
     family: SkeletonModelFamily,
 ) {
-    match family {
-        SkeletonModelFamily::Stray => emit_model_parts(
+    // The unified `SkeletonModel` tree (selected by family) drives both render paths; `setup_anim` runs
+    // the shared humanoid head look + arm/leg walk swing. The clothing / mushroom overlay is a
+    // textured-only pass, so the colored fallback renders only the base body. The wither skeleton reuses
+    // the plain mesh with the dark tint and its own root transform.
+    let mut model = SkeletonModel::new(Some(family));
+    if family == SkeletonModelFamily::WitherSkeleton {
+        model.prepare_and_render_with_color(
             mesh,
-            &skeleton_colored_posed_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
-            entity_model_root_transform(instance),
-        ),
-        SkeletonModelFamily::Parched => emit_model_parts(
-            mesh,
-            &skeleton_colored_posed_parts(&PARCHED_PARTS, parched_head_part_index(), instance),
-            entity_model_root_transform(instance),
-        ),
-        SkeletonModelFamily::Bogged { sheared } => {
-            let parts: &[ModelPartDesc] = if sheared {
-                &BOGGED_SHEARED_PARTS
-            } else {
-                &BOGGED_PARTS
-            };
-            emit_model_parts(
-                mesh,
-                &skeleton_colored_posed_parts(parts, skeleton_head_part_index(), instance),
-                entity_model_root_transform(instance),
-            )
-        }
-        SkeletonModelFamily::WitherSkeleton => emit_model_parts_with_color(
-            mesh,
-            &skeleton_colored_posed_parts(&SKELETON_PARTS, skeleton_head_part_index(), instance),
+            &instance,
             wither_skeleton_model_root_transform(instance),
             WITHER_SKELETON_DARK,
-        ),
+        );
+    } else {
+        model.prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
     }
-}
-
-/// Applies the vanilla `HumanoidModel.setupAnim` head look, leg swing, and arm swing to
-/// a skeleton-family layer. `SkeletonModel extends HumanoidModel` and overrides the arms
-/// only in its melee branch (`isAggressive && !isHoldingBow`, deferred) and the bow
-/// aiming is a deferred `ArmPose`, so in the default state the legs and arms swing
-/// exactly as in the inherited `HumanoidModel.setupAnim` (arms at `[2, 3]`).
-fn skeleton_colored_posed_parts(
-    parts: &[ModelPartDesc],
-    head_index: usize,
-    instance: EntityModelInstance,
-) -> Cow<'_, [ModelPartDesc]> {
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let parts = colored_head_look_parts(
-        parts,
-        head_index,
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    );
-    let parts = humanoid_limb_swing_parts(
-        parts,
-        HUMANOID_LEG_PART_INDICES,
-        limb_swing,
-        limb_swing_amount,
-    );
-    humanoid_arm_swing_parts(
-        parts,
-        HUMANOID_ARM_PART_INDICES,
-        limb_swing,
-        limb_swing_amount,
-        instance.render_state.age_in_ticks,
-    )
 }
 
 /// Applies the vanilla `QuadrupedModel.setupAnim` leg swing
@@ -1724,10 +1676,10 @@ pub(in crate::entity_models) const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3
 /// arm parts at `arm_indices`: the walk swing ([`humanoid_arm_swing_pose`], only while
 /// the limbs move) plus the always-on `ageInTicks` idle bob ([`humanoid_arm_bob_pose`]).
 /// Because the idle bob advances every frame, the arms are always re-posed (the parts are
-/// never borrowed unchanged). Callers whose subclass keeps the inherited default arms use
-/// this (the player, the skeleton family, and the non-zombified piglin family); the
-/// zombie / zombified-piglin constant arms-out poses (which carry their own bob) stay
-/// deferred.
+/// never borrowed unchanged). The humanoid models now pose their arms through
+/// [`apply_humanoid_walk`] directly, so this `Cow`-slice variant is retained only as the
+/// reference the arm-phase unit test asserts against.
+#[cfg(test)]
 pub(in crate::entity_models) fn humanoid_arm_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     arm_indices: [usize; 2],

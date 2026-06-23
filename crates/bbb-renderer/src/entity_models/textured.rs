@@ -21,21 +21,20 @@ use super::{
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
         apply_wolf_sitting_pose, head_first_part_index, head_look_at_rest, head_look_pose,
-        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
-        limb_swing_at_rest, parched_head_part_index, quadruped_leg_swing_pose,
-        skeleton_head_part_index, wolf_angry_tail_pose, wolf_sitting_part_roles,
-        wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, ArmorStandModel, BatModel,
-        BeeModel, BlazeModel, BoatModel, BreezeModel, CamelModel, ChickenModel, CodModel, CowModel,
-        CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
-        HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
-        MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
-        PufferfishModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel,
-        SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel,
-        StriderModel, TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel,
-        VillagerModel, WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel,
-        ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF,
-        BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
-        DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
+        limb_swing_at_rest, quadruped_leg_swing_pose, skeleton_family_head_index,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        AllayModel, ArmorStandModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel,
+        CamelModel, ChickenModel, CodModel, CowModel, CreeperModel, DolphinModel, EndermanModel,
+        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
+        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel, PigModel,
+        PiglinModel, PlayerModel, PolarBearModel, PufferfishModel, RavagerModel, SalmonModel,
+        SheepFurModel, SheepModel, SilverfishModel, SkeletonClothingModel, SkeletonModel,
+        SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel,
+        TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
+        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF,
+        ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF,
+        BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF,
+        PUFFERFISH_TEXTURE_REF, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
         TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
@@ -46,6 +45,8 @@ use super::{
 use glam::Mat4;
 
 mod layers;
+#[cfg(test)]
+pub(super) use layers::EntityModelLayerVisibility;
 pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
     chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
@@ -61,10 +62,9 @@ pub(super) use layers::{
     spider_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
     witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderType,
 };
-#[cfg(test)]
-pub(super) use layers::{EntityModelLayerKind, EntityModelLayerVisibility};
 
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
@@ -345,23 +345,7 @@ pub(super) fn entity_model_textured_meshes(
                 );
             }
             EntityModelKind::Skeleton => {
-                // The unified `SkeletonModel` tree drives both render paths; `setup_anim` looks the
-                // head and runs the shared humanoid arm + leg walk swing once. Variants (stray/bogged
-                // clothing, wither/parched) keep the family-parameterized emitter below.
-                let transform = entity_model_root_transform(*instance);
-                let mut model = SkeletonModel::new();
-                model.prepare(instance);
-                for pass in skeleton_textured_layer_passes(None) {
-                    if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-                        model.root().render_textured(
-                            meshes.mesh_mut(pass.render_type),
-                            transform,
-                            pass.texture,
-                            entry.uv,
-                            pass.tint,
-                        );
-                    }
-                }
+                emit_skeleton_textured_model(&mut meshes, *instance, None, atlas);
             }
             EntityModelKind::SkeletonVariant { family } => {
                 emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
@@ -896,70 +880,6 @@ fn emit_llama_textured_model(
                 pass.tint,
             );
         }
-    }
-}
-
-/// `HumanoidModel` leg part indices in the skeleton-family body and clothing
-/// layers: the head, body, and two arms occupy the lower slots (in either order),
-/// then the right and left legs. [`humanoid_leg_swing_pose`] resolves each leg's
-/// phase from its offset, so the parched layer's head/body swap does not matter.
-const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
-
-/// `HumanoidModel` arm part indices (head/body at `0`/`1`, arms at `[2, 3]`).
-const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
-
-/// Emits the skeleton family's textured layer passes, applying the vanilla
-/// `HumanoidModel.setupAnim` head look ([`head_look_pose`]) to the head part at
-/// `head_index`, the leg swing ([`humanoid_leg_swing_pose`]) to the two leg parts at
-/// `leg_indices`, and the inherited arm counter-swing ([`humanoid_arm_swing_pose`]) to
-/// the arms at `[2, 3]`. `SkeletonModel` overrides the arms only in its melee branch
-/// (`isAggressive && !isHoldingBow`) and the bow aiming is a deferred `ArmPose`, so in
-/// the default state the arms swing as inherited. The static parts are reused unchanged
-/// while the head is level/aligned and the limbs are at rest.
-#[allow(clippy::too_many_arguments)]
-fn emit_humanoid_textured_passes(
-    meshes: &mut EntityModelTexturedMeshes,
-    passes: Vec<EntityModelLayerPass>,
-    head_index: usize,
-    leg_indices: [usize; 2],
-    transform: Mat4,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
-    for pass in passes {
-        // The inherited `HumanoidModel.setupAnim` idle arm bob advances every frame, so the
-        // arms are always re-posed — there is no static rest fast path for a humanoid.
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-        }
-        if !limbs_resting {
-            for index in leg_indices {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = humanoid_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-            for index in HUMANOID_ARM_PART_INDICES {
-                if let Some(arm) = parts.get_mut(index) {
-                    arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        for index in HUMANOID_ARM_PART_INDICES {
-            if let Some(arm) = parts.get_mut(index) {
-                arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
-            }
-        }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 
@@ -1854,25 +1774,34 @@ fn emit_skeleton_textured_model(
     family: Option<SkeletonModelFamily>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `SkeletonModel` tree (selected by family) drives both render paths; `setup_anim` runs
+    // the shared humanoid head look + arm/leg walk swing. The base body draws in the cutout pass; the
+    // stray frost / bogged mushroom overlay is a second cutout pass driven by a textured-only
+    // `SkeletonClothingModel` posed by the SAME animator, so it tracks the limbs.
     let transform = if matches!(family, Some(SkeletonModelFamily::WitherSkeleton)) {
         wither_skeleton_model_root_transform(instance)
     } else {
         entity_model_root_transform(instance)
     };
-    let head_index = if matches!(family, Some(SkeletonModelFamily::Parched)) {
-        parched_head_part_index()
-    } else {
-        skeleton_head_part_index()
-    };
-    emit_humanoid_textured_passes(
-        meshes,
-        skeleton_textured_layer_passes(family),
-        head_index,
-        HUMANOID_LEG_PART_INDICES,
-        transform,
-        instance,
-        atlas,
-    );
+    let head_index = skeleton_family_head_index(family);
+    let mut base = SkeletonModel::new(family);
+    base.prepare(&instance);
+    for pass in skeleton_textured_layer_passes(family) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        let mesh = meshes.mesh_mut(pass.render_type);
+        if matches!(pass.kind, EntityModelLayerKind::SkeletonClothing) {
+            let mut clothing = SkeletonClothingModel::new(pass.parts, head_index);
+            clothing.prepare(&instance);
+            clothing
+                .root()
+                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+        } else {
+            base.root()
+                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+        }
+    }
 }
 
 fn emit_textured_layer_pass(

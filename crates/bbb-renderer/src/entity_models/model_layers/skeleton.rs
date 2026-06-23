@@ -2,6 +2,8 @@ use super::{
     apply_head_look, apply_humanoid_walk, ModelCubeDesc, ModelPartDesc, PartPose,
     TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
 };
+use super::{parched_head_part_index, skeleton_head_part_index};
+use crate::entity_models::catalog::SkeletonModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
 
@@ -848,20 +850,76 @@ pub(in crate::entity_models) const PARCHED_TEXTURED_PARTS: [TexturedModelPartDes
     },
 ];
 
-/// Mutable plain-skeleton model, mirroring vanilla `SkeletonModel` (the base `HumanoidModel`). The
-/// unified tree is zipped from the baked colored ([`SKELETON_PARTS`]) and textured
-/// ([`SKELETON_TEXTURED_PARTS`]) trees: child 0 is the head, child 1 the body, children 2/3 the
-/// right/left arm, children 4/5 the right/left leg. `setup_anim` looks the head ([`apply_head_look`])
-/// then runs the shared humanoid arm + leg walk swing ([`apply_humanoid_walk`]). The bow-aiming arm
-/// pose and the stray/bogged clothing and wither-skeleton variants are handled separately.
+/// Selects the base colored + textured trees for a skeleton family. Every family lists the head, body,
+/// right/left arm, right/left leg at the `HumanoidModel` indices (head first, except parched — see
+/// [`skeleton_family_head_index`]). The wither-skeleton reuses the plain skeleton mesh (its dark tint
+/// and root transform are applied at the call site); the stray / bogged clothing is a separate
+/// textured-only overlay ([`SkeletonClothingModel`]).
+fn skeleton_part_trees(
+    family: Option<SkeletonModelFamily>,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    match family {
+        None | Some(SkeletonModelFamily::Stray) | Some(SkeletonModelFamily::WitherSkeleton) => {
+            (&SKELETON_PARTS, &SKELETON_TEXTURED_PARTS)
+        }
+        Some(SkeletonModelFamily::Parched) => (&PARCHED_PARTS, &PARCHED_TEXTURED_PARTS),
+        Some(SkeletonModelFamily::Bogged { sheared: false }) => {
+            (&BOGGED_PARTS, &BOGGED_TEXTURED_PARTS)
+        }
+        Some(SkeletonModelFamily::Bogged { sheared: true }) => {
+            (&BOGGED_SHEARED_PARTS, &BOGGED_SHEARED_TEXTURED_PARTS)
+        }
+    }
+}
+
+/// The head-part index for a skeleton family: the parched body layer lists the body first (head at 1),
+/// every other family lists the head first (0).
+pub(in crate::entity_models) fn skeleton_family_head_index(
+    family: Option<SkeletonModelFamily>,
+) -> usize {
+    match family {
+        Some(SkeletonModelFamily::Parched) => parched_head_part_index(),
+        _ => skeleton_head_part_index(),
+    }
+}
+
+/// Applies the shared vanilla `HumanoidModel.setupAnim` head look + arm/leg walk swing to a
+/// skeleton-family tree (the base body OR a clothing overlay), so one animator drives both render paths
+/// and both textured passes. `SkeletonModel extends HumanoidModel` and only overrides the arms in its
+/// deferred melee/bow branches, so the default state is the inherited humanoid walk (legs `[4, 5]`,
+/// arms `[2, 3]`).
+fn apply_skeleton_anim(root: &mut ModelPart, head_index: usize, instance: &EntityModelInstance) {
+    let render_state = &instance.render_state;
+    apply_head_look(
+        root.child_at_mut(head_index),
+        render_state.head_yaw,
+        render_state.head_pitch,
+    );
+    apply_humanoid_walk(
+        root,
+        render_state.walk_animation_pos,
+        render_state.walk_animation_speed,
+        render_state.age_in_ticks,
+    );
+}
+
+/// Mutable skeleton model, mirroring vanilla `SkeletonModel` (the base `HumanoidModel`) and its
+/// stray / parched / bogged / wither-skeleton variants. The unified tree is zipped from the baked
+/// colored and textured trees selected by family ([`skeleton_part_trees`]): the head, body, right/left
+/// arm, right/left leg. `setup_anim` runs the shared [`apply_skeleton_anim`]. The bow-aiming arm pose
+/// is deferred; the wither dark tint / root transform and the stray / bogged clothing overlay
+/// ([`SkeletonClothingModel`]) are applied at the call site.
 pub(in crate::entity_models) struct SkeletonModel {
     root: ModelPart,
+    head_index: usize,
 }
 
 impl SkeletonModel {
-    pub(in crate::entity_models) fn new() -> Self {
+    pub(in crate::entity_models) fn new(family: Option<SkeletonModelFamily>) -> Self {
+        let (colored, textured) = skeleton_part_trees(family);
         Self {
-            root: ModelPart::root_from_descs(&SKELETON_PARTS, &SKELETON_TEXTURED_PARTS),
+            root: ModelPart::root_from_descs(colored, textured),
+            head_index: skeleton_family_head_index(family),
         }
     }
 }
@@ -876,17 +934,41 @@ impl EntityModel for SkeletonModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        let render_state = &instance.render_state;
-        apply_head_look(
-            self.root.child_at_mut(0),
-            render_state.head_yaw,
-            render_state.head_pitch,
-        );
-        apply_humanoid_walk(
-            &mut self.root,
-            render_state.walk_animation_pos,
-            render_state.walk_animation_speed,
-            render_state.age_in_ticks,
-        );
+        apply_skeleton_anim(&mut self.root, self.head_index, instance);
+    }
+}
+
+/// Mutable textured-only skeleton clothing overlay (the stray frost layer / bogged mushroom layer): an
+/// inflated overlay built from its `&'static` textured parts and posed by the SAME
+/// [`apply_skeleton_anim`] as the base body, so the overlay tracks the limbs. It has no colored variant
+/// (the colored debug path omits the clothing), so only [`ModelPart::render_textured`] is ever called.
+pub(in crate::entity_models) struct SkeletonClothingModel {
+    root: ModelPart,
+    head_index: usize,
+}
+
+impl SkeletonClothingModel {
+    pub(in crate::entity_models) fn new(
+        parts: &'static [TexturedModelPartDesc],
+        head_index: usize,
+    ) -> Self {
+        Self {
+            root: ModelPart::root_from_textured_descs(parts),
+            head_index,
+        }
+    }
+}
+
+impl EntityModel for SkeletonClothingModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_skeleton_anim(&mut self.root, self.head_index, instance);
     }
 }
