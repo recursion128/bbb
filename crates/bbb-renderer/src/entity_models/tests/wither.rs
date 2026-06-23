@@ -90,11 +90,74 @@ fn wither_center_head_follows_look_angles() {
     assert_eq!(
         rest.vertices[..144],
         turned.vertices[..144],
-        "the shoulders, ribcage, and tail stay at bind"
+        "the shoulders, ribcage, and tail are unmoved by the look (their shared age breathes both)"
     );
     assert_eq!(
         rest.vertices[168..],
         turned.vertices[168..],
         "the two side heads stay at bind"
+    );
+}
+
+#[test]
+fn wither_breathing_poses_match_vanilla_setup_anim() {
+    use std::f32::consts::PI;
+    // Vanilla `WitherBossModel.setupAnim`:
+    //   anim         = cos(ageInTicks * 0.1)
+    //   ribcage.xRot = (0.065 + 0.05 * anim) * PI
+    //   tail.setPos(-2, 6.9 + cos(ribcage.xRot) * 10, -0.5 + sin(ribcage.xRot) * 10)
+    //   tail.xRot    = (0.265 + 0.1 * anim) * PI
+    let age = 10.0_f32;
+    let anim = (age * 0.1).cos();
+    let ribcage_x_rot = (0.065 + 0.05 * anim) * PI;
+    let (ribcage, tail) = wither_breathing_poses(age);
+    assert_eq!(ribcage.offset, [-2.0, 6.9, -0.5]);
+    assert!((ribcage.rotation[0] - ribcage_x_rot).abs() < 1.0e-6);
+    assert_eq!([ribcage.rotation[1], ribcage.rotation[2]], [0.0, 0.0]);
+    assert!((tail.offset[0] - (-2.0)).abs() < 1.0e-6);
+    assert!((tail.offset[1] - (6.9 + ribcage_x_rot.cos() * 10.0)).abs() < 1.0e-5);
+    assert!((tail.offset[2] - (-0.5 + ribcage_x_rot.sin() * 10.0)).abs() < 1.0e-5);
+    assert!((tail.rotation[0] - (0.265 + 0.1 * anim) * PI).abs() < 1.0e-6);
+    assert_eq!([tail.rotation[1], tail.rotation[2]], [0.0, 0.0]);
+
+    // `anim == 0` (when ageInTicks * 0.1 == PI/2) collapses the sway onto the baked rest poses, so
+    // the breathing oscillates symmetrically about the layer pose.
+    let (rib_rest, tail_rest) = wither_breathing_poses(5.0 * PI);
+    let rib_bind = WITHER_PARTS[WITHER_RIBCAGE_PART_INDEX].pose;
+    let tail_bind = WITHER_PARTS[WITHER_TAIL_PART_INDEX].pose;
+    assert!((rib_rest.rotation[0] - rib_bind.rotation[0]).abs() < 1.0e-5);
+    assert!((tail_rest.offset[1] - tail_bind.offset[1]).abs() < 1.0e-4);
+    assert!((tail_rest.offset[2] - tail_bind.offset[2]).abs() < 1.0e-4);
+    assert!((tail_rest.rotation[0] - tail_bind.rotation[0]).abs() < 1.0e-5);
+}
+
+#[test]
+fn wither_ribcage_and_tail_breathe_with_age() {
+    // The ribcage (cubes [24, 120)) and tail (cubes [120, 144)) sway off `ageInTicks`; the shoulders
+    // (cubes [0, 24)) and the three heads (cubes [144, 216)) carry no breathing. Two distinct ages,
+    // with the look at rest, re-pose only the ribcage and tail.
+    let young = EntityModelInstance::wither(1460, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(3.0);
+    let old = EntityModelInstance::wither(1460, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(11.0);
+    let young_mesh = entity_model_mesh(&[young]);
+    let old_mesh = entity_model_mesh(&[old]);
+    assert_ne!(
+        young_mesh.vertices[24..120],
+        old_mesh.vertices[24..120],
+        "the ribcage breathes with age"
+    );
+    assert_ne!(
+        young_mesh.vertices[120..144],
+        old_mesh.vertices[120..144],
+        "the tail breathes with age"
+    );
+    assert_eq!(
+        young_mesh.vertices[..24],
+        old_mesh.vertices[..24],
+        "the shoulders never breathe"
+    );
+    assert_eq!(
+        young_mesh.vertices[144..],
+        old_mesh.vertices[144..],
+        "the three heads never breathe"
     );
 }
