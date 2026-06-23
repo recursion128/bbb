@@ -6,11 +6,9 @@ fn head_part_indices_match_vanilla_body_layers() {
     // (head second). The per-family part tests assert that the part at this index is
     // the head. (The cow and pig now build named-children trees, so their head look
     // resolves the `head` child by name rather than an index.)
-    assert_eq!(zombie_head_part_index(false), 0);
-    assert_eq!(zombie_head_part_index(true), 1);
-    // (The piglin now builds a named-children tree, so its head look resolves the `head`
-    // child by name rather than an index — the adult layer lists the head first, the baby
-    // layer lists the body first, but both name the head `head`.)
+    // (The zombie family and piglin now build named-children trees, so their head look resolves
+    // the `head` child by name rather than an index — the adult layers list the head first, the
+    // baby layers list the body first, but both name the head `head`.)
 
     // Skeleton/stray/wither/bogged list the head first; parched lists the body
     // first (head second). Tie the indices to the actual head parts so the

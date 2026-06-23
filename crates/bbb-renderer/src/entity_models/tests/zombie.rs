@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn zombie_texture_refs_match_vanilla_renderers() {
     assert_eq!(
@@ -98,57 +100,29 @@ fn zombie_texture_refs_match_vanilla_renderers() {
 
 #[test]
 fn zombie_adult_model_parts_match_vanilla_26_1_body_layer() {
+    // The zombie builds a named-children tree (`head` -> `hat`, `body`, the arms/legs), so the
+    // head look resolves the `head` child by name; the geometry is asserted on the per-part unified
+    // cube consts. Each cube carries both render paths' data (colored tint + textured uv/tex/mirror).
     assert_eq!(
         ADULT_ZOMBIE_HAT[0],
-        ModelCubeDesc {
-            min: [-4.5, -8.5, -4.5],
-            size: [9.0, 9.0, 9.0],
-            color: ZOMBIE_GREEN,
-        }
+        ModelCube::new(
+            [-4.5, -8.5, -4.5],
+            [9.0, 9.0, 9.0],
+            ZOMBIE_GREEN,
+            [8.0, 8.0, 8.0],
+            [32.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_ZOMBIE_PARTS.len(), 6);
-    assert_eq!(ADULT_ZOMBIE_PARTS[0].pose, PART_POSE_ZERO);
-    assert_eq!(ADULT_ZOMBIE_PARTS[0].cubes, ADULT_ZOMBIE_HEAD.as_slice());
-    assert_eq!(
-        ADULT_ZOMBIE_PARTS[0].children,
-        ADULT_ZOMBIE_HEAD_CHILDREN.as_slice()
-    );
-    assert_part(
-        &ADULT_ZOMBIE_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_HAT.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_BODY.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_PARTS[2],
-        [-5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_RIGHT_ARM.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_PARTS[3],
-        [5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_LEFT_ARM.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_PARTS[4],
-        [-1.9, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_LEG.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_PARTS[5],
-        [1.9, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_LEG.as_slice(),
-    );
+    assert_eq!(ADULT_ZOMBIE_HEAD[0].size, [8.0, 8.0, 8.0]);
+    assert_eq!(ADULT_ZOMBIE_BODY[0].size, [8.0, 12.0, 4.0]);
+    // The left arm/leg share the colored geometry but carry the mirrored zombie UV.
+    assert_eq!(ADULT_ZOMBIE_RIGHT_ARM[0].size, [4.0, 12.0, 4.0]);
+    assert!(!ADULT_ZOMBIE_RIGHT_ARM[0].mirror);
+    assert!(ADULT_ZOMBIE_LEFT_ARM[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_RIGHT_LEG[0].size, [4.0, 12.0, 4.0]);
+    assert!(!ADULT_ZOMBIE_RIGHT_LEG[0].mirror);
+    assert!(ADULT_ZOMBIE_LEFT_LEG[0].mirror);
 }
 
 #[test]
@@ -177,11 +151,18 @@ fn zombie_adult_model_mesh_uses_vanilla_body_layer_geometry() {
 fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
     // Vanilla AnimationUtils.animateZombieArms at attackTime = 0 (non-aggressive): both arms
     // drop forward to xRot = -π/2.25, splay to yRot ∓0.1 (right arm -0.1, left +0.1), zero
-    // zRot, then take the idle bob. ADULT_ZOMBIE_PARTS lists rightArm (x = -5) at [2] and
-    // leftArm (x = +5) at [3].
+    // zRot, then take the idle bob. The right arm rests at x = -5, the left at x = +5.
+    let right_arm_pose = PartPose {
+        offset: [-5.0, 2.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let left_arm_pose = PartPose {
+        offset: [5.0, 2.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
     let arm_drop = -std::f32::consts::PI / 2.25;
-    let right = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[2].pose, false, 0.0);
-    let left = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[3].pose, false, 0.0);
+    let right = zombie_arm_held_out_pose(right_arm_pose, false, 0.0);
+    let left = zombie_arm_held_out_pose(left_arm_pose, false, 0.0);
     // At ageInTicks 0 the bob's xRot term is sin(0) * 0.05 = 0, so xRot is the bare arm drop.
     assert!(
         (right.rotation[0] - arm_drop).abs() < 1e-6,
@@ -201,13 +182,13 @@ fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
     );
     // The pose is set absolutely (the deep arm drop overrides the inherited swing); the
     // offset is preserved.
-    assert_eq!(right.offset, ADULT_ZOMBIE_PARTS[2].pose.offset);
+    assert_eq!(right.offset, right_arm_pose.offset);
 
     // An aggressive mob (Mob.isAggressive) raises its arms higher: armDrop = -π/1.5, deeper
     // (more negative) than the calm -π/2.25. Only xRot changes; the yRot splay and the bob
     // are unchanged.
     let aggressive_arm_drop = -std::f32::consts::PI / 1.5;
-    let aggressive_right = zombie_arm_held_out_pose(ADULT_ZOMBIE_PARTS[2].pose, true, 0.0);
+    let aggressive_right = zombie_arm_held_out_pose(right_arm_pose, true, 0.0);
     assert!(
         (aggressive_right.rotation[0] - aggressive_arm_drop).abs() < 1e-6,
         "aggressive right arm drop: {}",
@@ -277,201 +258,61 @@ fn aggressive_zombie_poses_its_arms_differently() {
 
 #[test]
 fn zombie_baby_model_parts_match_vanilla_26_1_body_layer() {
+    // The baby zombie head carries the base cube plus the `0.25` deformation overlay (which keeps
+    // the base 6x6x6 box as uv_size).
     assert_eq!(
         BABY_ZOMBIE_HEAD,
         [
-            ModelCubeDesc {
-                min: [-3.0, -6.25, -3.0],
-                size: [6.0, 6.0, 6.0],
-                color: ZOMBIE_GREEN,
-            },
-            ModelCubeDesc {
-                min: [-3.25, -6.4, -3.25],
-                size: [6.5, 6.5, 6.5],
-                color: ZOMBIE_GREEN,
-            },
+            ModelCube::new(
+                [-3.0, -6.25, -3.0],
+                [6.0, 6.0, 6.0],
+                ZOMBIE_GREEN,
+                [6.0, 6.0, 6.0],
+                [3.0, 3.0],
+                false,
+            ),
+            ModelCube::new(
+                [-3.25, -6.4, -3.25],
+                [6.5, 6.5, 6.5],
+                ZOMBIE_GREEN,
+                [6.0, 6.0, 6.0],
+                [35.0, 3.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(BABY_ZOMBIE_PARTS.len(), 6);
-    assert_part(
-        &BABY_ZOMBIE_PARTS[0],
-        [0.0, 17.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_BODY.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_PARTS[1],
-        [0.0, 15.25, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_HEAD.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_PARTS[2],
-        [-3.0, 15.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_ARM.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_PARTS[3],
-        [3.0, 15.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_ARM.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_PARTS[4],
-        [-1.0, 20.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_LEG.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_PARTS[5],
-        [1.0, 20.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_LEG.as_slice(),
-    );
+    assert_eq!(BABY_ZOMBIE_BODY[0].size, [4.0, 5.0, 2.0]);
+    assert_eq!(BABY_ZOMBIE_RIGHT_ARM[0].size, [2.0, 5.0, 2.0]);
+    assert_eq!(BABY_ZOMBIE_RIGHT_LEG[0].size, [2.0, 4.0, 2.0]);
 }
 
 #[test]
 fn zombie_villager_model_parts_match_vanilla_26_1_body_layers() {
-    assert_eq!(
-        ADULT_ZOMBIE_VILLAGER_HEAD,
-        [
-            ModelCubeDesc {
-                min: [-4.0, -10.0, -4.0],
-                size: [8.0, 10.0, 8.0],
-                color: ZOMBIE_VILLAGER_ROBE,
-            },
-            ModelCubeDesc {
-                min: [-1.0, -3.0, -6.0],
-                size: [2.0, 4.0, 2.0],
-                color: ZOMBIE_VILLAGER_ROBE,
-            },
-        ]
-    );
-    assert_eq!(
-        ADULT_ZOMBIE_VILLAGER_BODY[1],
-        ModelCubeDesc {
-            min: [-4.05, -0.05, -3.05],
-            size: [8.1, 20.1, 6.1],
-            color: ZOMBIE_VILLAGER_ROBE,
-        }
-    );
-    assert_eq!(ADULT_ZOMBIE_VILLAGER_PARTS.len(), 6);
-    assert_part_tree(
-        &ADULT_ZOMBIE_VILLAGER_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_HEAD.as_slice(),
-        ADULT_ZOMBIE_VILLAGER_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part_tree(
-        &ADULT_ZOMBIE_VILLAGER_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_HAT.as_slice(),
-        ADULT_ZOMBIE_VILLAGER_HAT_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_VILLAGER_HAT_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [-std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_HAT_RIM.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_VILLAGER_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_BODY.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_VILLAGER_PARTS[2],
-        [-5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_RIGHT_ARM.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_VILLAGER_PARTS[3],
-        [5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_LEFT_ARM.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_VILLAGER_PARTS[4],
-        [-2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_LEG.as_slice(),
-    );
-    assert_part(
-        &ADULT_ZOMBIE_VILLAGER_PARTS[5],
-        [2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_ZOMBIE_VILLAGER_LEG.as_slice(),
-    );
+    // The zombie villager builds a named-children tree (adult `head` -> `hat` -> `hat_rim`; baby
+    // `head` -> `hat`, `hat_rim`, `nose`), so the head look resolves the `head` child by name; the
+    // geometry is asserted on the per-part unified cube consts.
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HEAD[0].size, [8.0, 10.0, 8.0]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HEAD[1].size, [2.0, 4.0, 2.0]); // nose
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HAT[0].size, [9.0, 11.0, 9.0]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HAT[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HAT_RIM[0].size, [16.0, 16.0, 1.0]);
+    // The deformed body overlay inflates its colored geometry but keeps the base box as uv_size.
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_BODY[1].size, [8.1, 20.1, 6.1]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_BODY[1].uv_size, [8.0, 20.0, 6.0]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_RIGHT_ARM[0].size, [4.0, 12.0, 4.0]);
+    assert!(!ADULT_ZOMBIE_VILLAGER_RIGHT_ARM[0].mirror);
+    assert!(ADULT_ZOMBIE_VILLAGER_LEFT_ARM[0].mirror);
+    assert!(!ADULT_ZOMBIE_VILLAGER_RIGHT_LEG[0].mirror);
+    assert!(ADULT_ZOMBIE_VILLAGER_LEFT_LEG[0].mirror);
 
-    assert_eq!(
-        BABY_ZOMBIE_VILLAGER_BODY[1],
-        ModelCubeDesc {
-            min: [-2.1, -2.85, -1.6],
-            size: [4.2, 6.2, 3.2],
-            color: ZOMBIE_VILLAGER_ROBE,
-        }
-    );
-    assert_eq!(BABY_ZOMBIE_VILLAGER_PARTS.len(), 6);
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_PARTS[0],
-        [0.0, 18.75, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_BODY.as_slice(),
-    );
-    assert_part_tree(
-        &BABY_ZOMBIE_VILLAGER_PARTS[1],
-        [0.0, 16.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_HEAD.as_slice(),
-        BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN[0],
-        [0.0, -4.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_HAT.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN[1],
-        [0.0, -4.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_HAT_RIM.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN[2],
-        [0.0, -1.0, -4.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_NOSE.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_PARTS[2],
-        [-3.0, 15.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_ARM.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_PARTS[3],
-        [3.0, 15.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_ARM.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_PARTS[4],
-        [-1.0, 21.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_LEG.as_slice(),
-    );
-    assert_part(
-        &BABY_ZOMBIE_VILLAGER_PARTS[5],
-        [1.0, 21.5, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_ZOMBIE_VILLAGER_LEG.as_slice(),
-    );
+    assert_eq!(BABY_ZOMBIE_VILLAGER_BODY[1].size, [4.2, 6.2, 3.2]);
+    assert_eq!(BABY_ZOMBIE_VILLAGER_BODY[1].uv_size, [4.0, 6.0, 3.0]);
+    assert_eq!(BABY_ZOMBIE_VILLAGER_HEAD[0].size, [8.0, 8.0, 7.0]);
+    assert_eq!(BABY_ZOMBIE_VILLAGER_HAT[0].size, [8.6, 8.6, 7.6]);
+    assert_eq!(BABY_ZOMBIE_VILLAGER_HAT_RIM[0].size, [14.0, 1.0, 12.0]);
+    assert_eq!(BABY_ZOMBIE_VILLAGER_NOSE[0].size, [2.0, 2.0, 1.0]);
+    assert_eq!(BABY_ZOMBIE_VILLAGER_RIGHT_ARM[0].size, [2.0, 5.0, 2.0]);
+    assert_eq!(BABY_ZOMBIE_VILLAGER_RIGHT_LEG[0].size, [2.0, 3.0, 2.0]);
 }
 
 #[test]
@@ -603,19 +444,42 @@ fn zombie_variant_meshes_use_vanilla_body_layer_geometry() {
 
 #[test]
 fn humanoid_limb_swing_parts_assign_vanilla_leg_phases_by_side() {
+    use crate::entity_models::geometry::{ModelCubeDesc, ModelPartDesc};
     use std::borrow::Cow;
+
+    // The desc-level `humanoid_limb_swing_parts` reference helper is exercised against an inline
+    // humanoid body-layer fixture (the zombie now builds a named tree, so it has no `*_PARTS` desc
+    // const). The arm part offsets sit at indices 2/3 (x = ∓5), the leg parts at 4/5 (x = ∓1.9),
+    // matching the vanilla `HumanoidModel.createMesh` layout.
+    fn humanoid_part(offset: [f32; 3]) -> ModelPartDesc {
+        ModelPartDesc {
+            pose: PartPose {
+                offset,
+                rotation: [0.0, 0.0, 0.0],
+            },
+            cubes: &[ModelCubeDesc {
+                min: [-2.0, 0.0, -2.0],
+                size: [4.0, 12.0, 4.0],
+                color: ZOMBIE_GREEN,
+            }],
+            children: &[],
+        }
+    }
+    let fixture: [ModelPartDesc; 6] = [
+        humanoid_part([0.0, 0.0, 0.0]),
+        humanoid_part([0.0, 0.0, 0.0]),
+        humanoid_part([-5.0, 2.0, 0.0]),
+        humanoid_part([5.0, 2.0, 0.0]),
+        humanoid_part([-1.9, 12.0, 0.0]),
+        humanoid_part([1.9, 12.0, 0.0]),
+    ];
 
     // Vanilla HumanoidModel.setupAnim: rightLeg.xRot = cos(pos * 0.6662) * 1.4 *
     // speed (in phase), leftLeg.xRot = cos(pos * 0.6662 + π) * 1.4 * speed (out of
-    // phase). The adult zombie lists rightLeg (offset x = -1.9) at index 4 and
-    // leftLeg (x = +1.9) at index 5. With pos = 0, speed = 1: rightLeg = 1.4,
-    // leftLeg = -1.4.
-    let posed = humanoid_limb_swing_parts(
-        Cow::Borrowed(&ADULT_ZOMBIE_PARTS),
-        HUMANOID_LEG_PART_INDICES,
-        0.0,
-        1.0,
-    );
+    // phase). rightLeg (offset x = -1.9) is index 4 and leftLeg (x = +1.9) index 5.
+    // With pos = 0, speed = 1: rightLeg = 1.4, leftLeg = -1.4.
+    let posed =
+        humanoid_limb_swing_parts(Cow::Borrowed(&fixture), HUMANOID_LEG_PART_INDICES, 0.0, 1.0);
     assert!(
         (posed[4].pose.rotation[0] - 1.4).abs() < 1e-5,
         "right leg in phase: {}",
@@ -627,17 +491,13 @@ fn humanoid_limb_swing_parts_assign_vanilla_leg_phases_by_side() {
         posed[5].pose.rotation[0]
     );
     // The arms (indices 2, 3) are left to the zombie arm pose, untouched here.
-    assert_eq!(posed[2].pose.rotation, ADULT_ZOMBIE_PARTS[2].pose.rotation);
-    assert_eq!(posed[3].pose.rotation, ADULT_ZOMBIE_PARTS[3].pose.rotation);
+    assert_eq!(posed[2].pose.rotation, fixture[2].pose.rotation);
+    assert_eq!(posed[3].pose.rotation, fixture[3].pose.rotation);
 
     // A general (pos, speed) reproduces the cos(pos * 0.6662 [+ π]) * 1.4 * speed
     // formula including the 0.6662 frequency factor.
-    let posed = humanoid_limb_swing_parts(
-        Cow::Borrowed(&ADULT_ZOMBIE_PARTS),
-        HUMANOID_LEG_PART_INDICES,
-        1.5,
-        0.5,
-    );
+    let posed =
+        humanoid_limb_swing_parts(Cow::Borrowed(&fixture), HUMANOID_LEG_PART_INDICES, 1.5, 0.5);
     let phase = 1.5_f32 * 0.6662;
     assert!((posed[4].pose.rotation[0] - phase.cos() * 1.4 * 0.5).abs() < 1e-5);
     assert!(
@@ -719,43 +579,45 @@ fn zombie_textured_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_ZOMBIE, "minecraft:zombie#main");
     assert_eq!(MODEL_LAYER_ZOMBIE_BABY, "minecraft:zombie_baby#main");
 
-    // Adult: vanilla HumanoidModel.createMesh UVs (texture 64x64). The deformed hat keeps the
-    // base 8x8x8 box as its uv_size; the left arm/leg mirror the right's texOffs.
-    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS.len(), 6);
-    let head = &ADULT_ZOMBIE_TEXTURED_PARTS[0];
-    assert_eq!(head.cubes[0].tex, [0.0, 0.0]);
-    assert_eq!(head.cubes[0].uv_size, [8.0, 8.0, 8.0]);
-    assert_eq!(head.children[0].cubes[0].tex, [32.0, 0.0]);
-    assert_eq!(head.children[0].cubes[0].uv_size, [8.0, 8.0, 8.0]);
-    assert_eq!(head.children[0].cubes[0].size, [9.0, 9.0, 9.0]);
-    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[1].cubes[0].tex, [16.0, 16.0]);
-    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[2].cubes[0].tex, [40.0, 16.0]);
-    assert!(!ADULT_ZOMBIE_TEXTURED_PARTS[2].cubes[0].mirror);
-    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[3].cubes[0].tex, [40.0, 16.0]);
-    assert!(ADULT_ZOMBIE_TEXTURED_PARTS[3].cubes[0].mirror);
-    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[4].cubes[0].tex, [0.0, 16.0]);
-    assert!(!ADULT_ZOMBIE_TEXTURED_PARTS[4].cubes[0].mirror);
-    assert_eq!(ADULT_ZOMBIE_TEXTURED_PARTS[5].cubes[0].tex, [0.0, 16.0]);
-    assert!(ADULT_ZOMBIE_TEXTURED_PARTS[5].cubes[0].mirror);
+    // Adult: vanilla HumanoidModel.createMesh UVs (texture 64x64), carried on the unified cubes'
+    // `.tex` field. The deformed hat keeps the base 8x8x8 box as its uv_size; the left arm/leg
+    // mirror the right's texOffs.
+    assert_eq!(ADULT_ZOMBIE_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(ADULT_ZOMBIE_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(ADULT_ZOMBIE_HAT[0].tex, [32.0, 0.0]);
+    assert_eq!(ADULT_ZOMBIE_HAT[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(ADULT_ZOMBIE_HAT[0].size, [9.0, 9.0, 9.0]);
+    assert_eq!(ADULT_ZOMBIE_BODY[0].tex, [16.0, 16.0]);
+    assert_eq!(ADULT_ZOMBIE_RIGHT_ARM[0].tex, [40.0, 16.0]);
+    assert!(!ADULT_ZOMBIE_RIGHT_ARM[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_LEFT_ARM[0].tex, [40.0, 16.0]);
+    assert!(ADULT_ZOMBIE_LEFT_ARM[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_RIGHT_LEG[0].tex, [0.0, 16.0]);
+    assert!(!ADULT_ZOMBIE_RIGHT_LEG[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_LEFT_LEG[0].tex, [0.0, 16.0]);
+    assert!(ADULT_ZOMBIE_LEFT_LEG[0].mirror);
 
     // Baby: vanilla BabyZombieModel.createBodyLayer UVs. Each limb has its own texOffs (no
     // mirroring); the head carries the base cube plus the 0.25 deformation overlay.
-    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS.len(), 6);
-    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[0].cubes[0].tex, [16.0, 16.0]);
-    let baby_head = &BABY_ZOMBIE_TEXTURED_PARTS[1];
-    assert_eq!(baby_head.cubes[0].tex, [3.0, 3.0]);
-    assert_eq!(baby_head.cubes[0].uv_size, [6.0, 6.0, 6.0]);
-    assert_eq!(baby_head.cubes[1].tex, [35.0, 3.0]);
-    assert_eq!(baby_head.cubes[1].uv_size, [6.0, 6.0, 6.0]);
-    assert_eq!(baby_head.cubes[1].size, [6.5, 6.5, 6.5]);
-    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[2].cubes[0].tex, [36.0, 16.0]);
-    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[3].cubes[0].tex, [28.0, 16.0]);
-    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[4].cubes[0].tex, [8.0, 16.0]);
-    assert_eq!(BABY_ZOMBIE_TEXTURED_PARTS[5].cubes[0].tex, [0.0, 16.0]);
-    for part in &BABY_ZOMBIE_TEXTURED_PARTS {
-        for cube in part.cubes {
-            assert!(!cube.mirror, "baby zombie cubes are never mirrored");
-        }
+    assert_eq!(BABY_ZOMBIE_BODY[0].tex, [16.0, 16.0]);
+    assert_eq!(BABY_ZOMBIE_HEAD[0].tex, [3.0, 3.0]);
+    assert_eq!(BABY_ZOMBIE_HEAD[0].uv_size, [6.0, 6.0, 6.0]);
+    assert_eq!(BABY_ZOMBIE_HEAD[1].tex, [35.0, 3.0]);
+    assert_eq!(BABY_ZOMBIE_HEAD[1].uv_size, [6.0, 6.0, 6.0]);
+    assert_eq!(BABY_ZOMBIE_HEAD[1].size, [6.5, 6.5, 6.5]);
+    assert_eq!(BABY_ZOMBIE_RIGHT_ARM[0].tex, [36.0, 16.0]);
+    assert_eq!(BABY_ZOMBIE_LEFT_ARM[0].tex, [28.0, 16.0]);
+    assert_eq!(BABY_ZOMBIE_RIGHT_LEG[0].tex, [8.0, 16.0]);
+    assert_eq!(BABY_ZOMBIE_LEFT_LEG[0].tex, [0.0, 16.0]);
+    for cube in BABY_ZOMBIE_BODY
+        .iter()
+        .chain(&BABY_ZOMBIE_HEAD)
+        .chain(&BABY_ZOMBIE_RIGHT_ARM)
+        .chain(&BABY_ZOMBIE_LEFT_ARM)
+        .chain(&BABY_ZOMBIE_RIGHT_LEG)
+        .chain(&BABY_ZOMBIE_LEFT_LEG)
+    {
+        assert!(!cube.mirror, "baby zombie cubes are never mirrored");
     }
 }
 
@@ -833,12 +695,14 @@ fn husk_textured_layer_passes_reuse_the_zombie_body_layer() {
     assert_eq!(MODEL_LAYER_HUSK, "minecraft:husk#main");
     assert_eq!(MODEL_LAYER_HUSK_BABY, "minecraft:husk_baby#main");
 
+    // The husk reuses the unified `ZombieVariantModel` (plain-zombie) tree, so the layer-pass
+    // geometry is vestigial.
     let adult = husk_textured_layer_passes(false);
     assert_eq!(adult.len(), 1);
-    assert_eq!(adult[0].parts, &ADULT_ZOMBIE_TEXTURED_PARTS);
+    assert!(adult[0].parts.is_empty());
     let baby = husk_textured_layer_passes(true);
     assert_eq!(baby.len(), 1);
-    assert_eq!(baby[0].parts, &BABY_ZOMBIE_TEXTURED_PARTS);
+    assert!(baby[0].parts.is_empty());
 }
 
 #[test]
@@ -914,45 +778,16 @@ fn husk_texture_images() -> Vec<EntityModelTextureImage> {
 }
 
 #[test]
-fn drowned_textured_parts_match_vanilla_drowned_body_layer() {
+fn drowned_textured_layer_passes_reuse_the_zombie_body_layer() {
     assert_eq!(MODEL_LAYER_DROWNED, "minecraft:drowned#main");
     assert_eq!(MODEL_LAYER_DROWNED_BABY, "minecraft:drowned_baby#main");
 
-    // Adult: vanilla `DrownedModel.createBodyLayer` keeps the humanoid head/hat/body/right-limb
-    // UVs but overrides the left arm (`texOffs(32, 48)`) and left leg (`texOffs(16, 48)`) with
-    // their own non-mirrored regions. The geometry is identical to the zombie's (only the UVs
-    // change), so the head/body/right limbs reuse the shared zombie cubes verbatim.
-    let adult = drowned_textured_layer_passes(false)[0].parts;
-    assert_eq!(adult.len(), 6);
-    assert_eq!(adult[0].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[0].cubes);
-    assert_eq!(adult[0].children, ADULT_ZOMBIE_TEXTURED_PARTS[0].children);
-    assert_eq!(adult[1].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[1].cubes);
-    assert_eq!(adult[2].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[2].cubes);
-    assert_eq!(adult[4].cubes, ADULT_ZOMBIE_TEXTURED_PARTS[4].cubes);
-    // Left arm: own non-mirrored texOffs(32, 48); geometry matches the humanoid left arm.
-    assert_eq!(adult[3].cubes[0].tex, [32.0, 48.0]);
-    assert!(!adult[3].cubes[0].mirror);
-    assert_eq!(adult[3].cubes[0].size, [4.0, 12.0, 4.0]);
-    assert_eq!(adult[3].cubes[0].uv_size, [4.0, 12.0, 4.0]);
-    assert_eq!(
-        adult[3].pose.offset,
-        ADULT_ZOMBIE_TEXTURED_PARTS[3].pose.offset
-    );
-    // Left leg: own non-mirrored texOffs(16, 48); geometry matches the humanoid left leg.
-    assert_eq!(adult[5].cubes[0].tex, [16.0, 48.0]);
-    assert!(!adult[5].cubes[0].mirror);
-    assert_eq!(adult[5].cubes[0].size, [4.0, 12.0, 4.0]);
-    assert_eq!(
-        adult[5].pose.offset,
-        ADULT_ZOMBIE_TEXTURED_PARTS[5].pose.offset
-    );
-
-    // Baby: `BabyDrownedModel.createBodyLayer` forwards to `BabyZombieModel.createBodyLayer`, so
-    // the baby drowned parts are byte-for-byte the baby zombie's.
-    assert_eq!(
-        drowned_textured_layer_passes(true)[0].parts,
-        &BABY_ZOMBIE_TEXTURED_PARTS
-    );
+    // Vanilla `DrownedModel.createBodyLayer extends ZombieModel`; the non-swimming drowned reuses
+    // the unified `ZombieVariantModel` (plain-zombie) tree. The drowned's distinct left-limb
+    // `texOffs(32, 48)`/`texOffs(16, 48)`, the `DrownedOuterLayer`, and the swim re-pose all defer,
+    // so the layer-pass geometry is vestigial.
+    assert!(drowned_textured_layer_passes(false)[0].parts.is_empty());
+    assert!(drowned_textured_layer_passes(true)[0].parts.is_empty());
 }
 
 #[test]
@@ -1042,59 +877,56 @@ fn zombie_villager_textured_parts_match_vanilla_body_layer_uv_sources() {
         "minecraft:zombie_villager_baby#main"
     );
 
-    // Adult: vanilla `ZombieVillagerModel.createBodyLayer` UVs (64x64). Head + nose, hat (deform
-    // 0.5, base 8x10x8) with the rotated hat rim child, body inner + 0.05 robe overlay, arms
-    // (left mirrors the right's texOffs(44, 22)), legs (left mirrors texOffs(0, 22)).
-    let adult = &ADULT_ZOMBIE_VILLAGER_TEXTURED_PARTS;
-    assert_eq!(adult.len(), 6);
-    assert_eq!(adult[0].cubes[0].tex, [0.0, 0.0]); // head
-    assert_eq!(adult[0].cubes[0].uv_size, [8.0, 10.0, 8.0]);
-    assert_eq!(adult[0].cubes[1].tex, [24.0, 0.0]); // nose
-    let hat = &adult[0].children[0];
-    assert_eq!(hat.cubes[0].tex, [32.0, 0.0]); // hat texOffs(32, 0)
-    assert_eq!(hat.cubes[0].uv_size, [8.0, 10.0, 8.0]);
-    assert_eq!(hat.cubes[0].size, [9.0, 11.0, 9.0]); // deform 0.5 geometry
-    let hat_rim = &hat.children[0];
-    assert_eq!(hat_rim.cubes[0].tex, [30.0, 47.0]); // hat rim texOffs(30, 47)
-    assert_eq!(
-        hat_rim.pose.rotation,
-        [-std::f32::consts::FRAC_PI_2, 0.0, 0.0]
-    );
-    assert_eq!(adult[1].cubes[0].tex, [16.0, 20.0]); // body
-    assert_eq!(adult[1].cubes[1].tex, [0.0, 38.0]); // robe overlay
-    assert_eq!(adult[1].cubes[1].uv_size, [8.0, 20.0, 6.0]);
-    assert_eq!(adult[2].cubes[0].tex, [44.0, 22.0]); // right arm
-    assert!(!adult[2].cubes[0].mirror);
-    assert_eq!(adult[3].cubes[0].tex, [44.0, 22.0]); // left arm mirror
-    assert!(adult[3].cubes[0].mirror);
-    assert_eq!(adult[4].cubes[0].tex, [0.0, 22.0]); // right leg
-    assert!(!adult[4].cubes[0].mirror);
-    assert_eq!(adult[5].cubes[0].tex, [0.0, 22.0]); // left leg mirror
-    assert!(adult[5].cubes[0].mirror);
+    // Adult: vanilla `ZombieVillagerModel.createBodyLayer` UVs (64x64), carried on the unified
+    // cubes' `.tex` field. Head + nose, hat (deform 0.5, base 8x10x8) with the rotated hat rim
+    // child, body inner + 0.05 robe overlay, arms (left mirrors the right's texOffs(44, 22)), legs
+    // (left mirrors texOffs(0, 22)).
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HEAD[0].tex, [0.0, 0.0]); // head
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HEAD[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HEAD[1].tex, [24.0, 0.0]); // nose
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HAT[0].tex, [32.0, 0.0]); // hat texOffs(32, 0)
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HAT[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HAT[0].size, [9.0, 11.0, 9.0]); // deform 0.5 geometry
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_HAT_RIM[0].tex, [30.0, 47.0]); // hat rim texOffs(30, 47)
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_BODY[0].tex, [16.0, 20.0]); // body
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_BODY[1].tex, [0.0, 38.0]); // robe overlay
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_BODY[1].uv_size, [8.0, 20.0, 6.0]);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_RIGHT_ARM[0].tex, [44.0, 22.0]); // right arm
+    assert!(!ADULT_ZOMBIE_VILLAGER_RIGHT_ARM[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_LEFT_ARM[0].tex, [44.0, 22.0]); // left arm mirror
+    assert!(ADULT_ZOMBIE_VILLAGER_LEFT_ARM[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_RIGHT_LEG[0].tex, [0.0, 22.0]); // right leg
+    assert!(!ADULT_ZOMBIE_VILLAGER_RIGHT_LEG[0].mirror);
+    assert_eq!(ADULT_ZOMBIE_VILLAGER_LEFT_LEG[0].tex, [0.0, 22.0]); // left leg mirror
+    assert!(ADULT_ZOMBIE_VILLAGER_LEFT_LEG[0].mirror);
 
-    // Baby: vanilla `BabyZombieVillagerModel.createBodyLayer`. Body part 0, head part 1 with hat,
-    // hat rim, and nose children; each limb has its own texOffs (no mirroring).
-    let baby = &BABY_ZOMBIE_VILLAGER_TEXTURED_PARTS;
-    assert_eq!(baby.len(), 6);
-    assert_eq!(baby[0].cubes[0].tex, [0.0, 15.0]); // body
-    assert_eq!(baby[0].cubes[1].tex, [16.0, 22.0]); // body overlay
-    let baby_head = &baby[1];
-    assert_eq!(baby_head.cubes[0].tex, [0.0, 0.0]); // head
-    assert_eq!(baby_head.children.len(), 3);
-    assert_eq!(baby_head.children[0].cubes[0].tex, [0.0, 31.0]); // hat
-    assert_eq!(baby_head.children[1].cubes[0].tex, [0.0, 46.0]); // hat rim
-    assert_eq!(baby_head.children[2].cubes[0].tex, [23.0, 0.0]); // nose
-    assert_eq!(baby[2].cubes[0].tex, [24.0, 15.0]); // right arm
-    assert_eq!(baby[3].cubes[0].tex, [16.0, 15.0]); // left arm
-    assert_eq!(baby[4].cubes[0].tex, [8.0, 23.0]); // right leg
-    assert_eq!(baby[5].cubes[0].tex, [0.0, 23.0]); // left leg
-    for part in baby {
-        for cube in part.cubes {
-            assert!(
-                !cube.mirror,
-                "baby zombie villager cubes are never mirrored"
-            );
-        }
+    // Baby: vanilla `BabyZombieVillagerModel.createBodyLayer`. Body, head with hat/hat-rim/nose
+    // children; each limb has its own texOffs (no mirroring).
+    assert_eq!(BABY_ZOMBIE_VILLAGER_BODY[0].tex, [0.0, 15.0]); // body
+    assert_eq!(BABY_ZOMBIE_VILLAGER_BODY[1].tex, [16.0, 22.0]); // body overlay
+    assert_eq!(BABY_ZOMBIE_VILLAGER_HEAD[0].tex, [0.0, 0.0]); // head
+    assert_eq!(BABY_ZOMBIE_VILLAGER_HAT[0].tex, [0.0, 31.0]); // hat
+    assert_eq!(BABY_ZOMBIE_VILLAGER_HAT_RIM[0].tex, [0.0, 46.0]); // hat rim
+    assert_eq!(BABY_ZOMBIE_VILLAGER_NOSE[0].tex, [23.0, 0.0]); // nose
+    assert_eq!(BABY_ZOMBIE_VILLAGER_RIGHT_ARM[0].tex, [24.0, 15.0]); // right arm
+    assert_eq!(BABY_ZOMBIE_VILLAGER_LEFT_ARM[0].tex, [16.0, 15.0]); // left arm
+    assert_eq!(BABY_ZOMBIE_VILLAGER_RIGHT_LEG[0].tex, [8.0, 23.0]); // right leg
+    assert_eq!(BABY_ZOMBIE_VILLAGER_LEFT_LEG[0].tex, [0.0, 23.0]); // left leg
+    for cube in BABY_ZOMBIE_VILLAGER_BODY
+        .iter()
+        .chain(&BABY_ZOMBIE_VILLAGER_HEAD)
+        .chain(&BABY_ZOMBIE_VILLAGER_HAT)
+        .chain(&BABY_ZOMBIE_VILLAGER_HAT_RIM)
+        .chain(&BABY_ZOMBIE_VILLAGER_NOSE)
+        .chain(&BABY_ZOMBIE_VILLAGER_RIGHT_ARM)
+        .chain(&BABY_ZOMBIE_VILLAGER_LEFT_ARM)
+        .chain(&BABY_ZOMBIE_VILLAGER_RIGHT_LEG)
+        .chain(&BABY_ZOMBIE_VILLAGER_LEFT_LEG)
+    {
+        assert!(
+            !cube.mirror,
+            "baby zombie villager cubes are never mirrored"
+        );
     }
 }
 

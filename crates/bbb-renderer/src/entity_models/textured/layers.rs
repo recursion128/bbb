@@ -456,25 +456,18 @@ pub(in crate::entity_models) fn minecart_textured_layer_passes() -> Vec<EntityMo
 pub(in crate::entity_models) fn zombie_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
-    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = if baby {
-        (
-            MODEL_LAYER_ZOMBIE_BABY,
-            ZOMBIE_BABY_TEXTURE_REF,
-            &BABY_ZOMBIE_TEXTURED_PARTS,
-        )
+    // The unified `ZombieModel` tree drives the geometry, so the layer-pass parts are vestigial (`&[]`).
+    let (model_layer, texture) = if baby {
+        (MODEL_LAYER_ZOMBIE_BABY, ZOMBIE_BABY_TEXTURE_REF)
     } else {
-        (
-            MODEL_LAYER_ZOMBIE,
-            ZOMBIE_TEXTURE_REF,
-            &ADULT_ZOMBIE_TEXTURED_PARTS,
-        )
+        (MODEL_LAYER_ZOMBIE, ZOMBIE_TEXTURE_REF)
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -487,27 +480,20 @@ pub(in crate::entity_models) fn husk_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // Vanilla `HuskRenderer extends ZombieRenderer`: it reuses `ZombieModel`/`BabyZombieModel`
     // geometry (`ModelLayers.HUSK` is `humanoidBodyLayer.apply(huskScale)` and `HUSK_BABY` is the
-    // shared `babyZombieLayer`), so the husk body parts are byte-for-byte the zombie body parts;
-    // only the texture (`husk.png`/`husk_baby.png`) and the adult's 1.0625 mesh scale differ.
-    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = if baby {
-        (
-            MODEL_LAYER_HUSK_BABY,
-            HUSK_BABY_TEXTURE_REF,
-            &BABY_ZOMBIE_TEXTURED_PARTS,
-        )
+    // shared `babyZombieLayer`), so the husk reuses the unified `ZombieVariantModel` tree; only the
+    // texture (`husk.png`/`husk_baby.png`) and the adult's 1.0625 mesh scale differ. The layer-pass
+    // geometry is vestigial (`&[]`).
+    let (model_layer, texture) = if baby {
+        (MODEL_LAYER_HUSK_BABY, HUSK_BABY_TEXTURE_REF)
     } else {
-        (
-            MODEL_LAYER_HUSK,
-            HUSK_TEXTURE_REF,
-            &ADULT_ZOMBIE_TEXTURED_PARTS,
-        )
+        (MODEL_LAYER_HUSK, HUSK_TEXTURE_REF)
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::HuskBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -518,29 +504,21 @@ pub(in crate::entity_models) fn husk_textured_layer_passes(
 pub(in crate::entity_models) fn drowned_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
-    // Vanilla `DrownedModel.createBodyLayer` reuses the humanoid head/hat/body/right-limb UVs but
-    // gives the left arm/leg their own non-mirrored `texOffs` (`ADULT_DROWNED_TEXTURED_PARTS`);
-    // `BabyDrownedModel.createBodyLayer` simply forwards to `BabyZombieModel.createBodyLayer`, so
-    // the baby drowned reuses the baby zombie parts. Only the texture differs from the husk path.
-    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = if baby {
-        (
-            MODEL_LAYER_DROWNED_BABY,
-            DROWNED_BABY_TEXTURE_REF,
-            &BABY_ZOMBIE_TEXTURED_PARTS,
-        )
+    // Vanilla `DrownedModel.createBodyLayer extends ZombieModel`; the non-swimming drowned reuses the
+    // unified `ZombieVariantModel` (plain-zombie) tree. Only the texture differs from the husk path;
+    // the drowned's distinct left-limb `texOffs`, the `DrownedOuterLayer`, and the swim re-pose defer.
+    // The layer-pass geometry is vestigial (`&[]`).
+    let (model_layer, texture) = if baby {
+        (MODEL_LAYER_DROWNED_BABY, DROWNED_BABY_TEXTURE_REF)
     } else {
-        (
-            MODEL_LAYER_DROWNED,
-            DROWNED_TEXTURE_REF,
-            &ADULT_DROWNED_TEXTURED_PARTS,
-        )
+        (MODEL_LAYER_DROWNED, DROWNED_TEXTURE_REF)
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::DrownedBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -553,26 +531,22 @@ pub(in crate::entity_models) fn zombie_villager_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // Vanilla `ZombieVillagerModel.createBodyLayer` / `BabyZombieVillagerModel.createBodyLayer`
     // (the hatted base layer; the no-hat model selection and the profession/type/level overlays
-    // stay deferred). The geometry matches the colored zombie-villager parts.
-    let (model_layer, texture, parts): (_, _, &'static [TexturedModelPartDesc]) = if baby {
+    // stay deferred). The unified `ZombieVariantModel` tree drives the geometry, so the layer-pass
+    // parts are vestigial (`&[]`).
+    let (model_layer, texture) = if baby {
         (
             MODEL_LAYER_ZOMBIE_VILLAGER_BABY,
             ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
-            &BABY_ZOMBIE_VILLAGER_TEXTURED_PARTS,
         )
     } else {
-        (
-            MODEL_LAYER_ZOMBIE_VILLAGER,
-            ZOMBIE_VILLAGER_TEXTURE_REF,
-            &ADULT_ZOMBIE_VILLAGER_TEXTURED_PARTS,
-        )
+        (MODEL_LAYER_ZOMBIE_VILLAGER, ZOMBIE_VILLAGER_TEXTURE_REF)
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieVillagerBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture,
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

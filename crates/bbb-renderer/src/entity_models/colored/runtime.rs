@@ -1102,8 +1102,8 @@ pub(in crate::entity_models) const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5
 /// (`walkAnimationSpeed == 0`). The arm swing is left to each humanoid subclass,
 /// which overrides the arms (e.g. the zombie held-out pose), so only the legs —
 /// which subclasses inherit unchanged from `HumanoidModel` — are swung here. The humanoid models
-/// now swing their legs through [`apply_humanoid_leg_swing`] directly, so this `Cow`-slice variant
-/// is retained only as the reference the leg-phase unit tests assert against.
+/// now swing their legs through the name-based humanoid leg-swing animator directly, so this
+/// `Cow`-slice variant is retained only as the reference the leg-phase unit tests assert against.
 #[cfg(test)]
 pub(in crate::entity_models) fn humanoid_limb_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,

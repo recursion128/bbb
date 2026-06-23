@@ -1,17 +1,6 @@
 use super::PartPose;
 use crate::entity_models::model::ModelPart;
 
-/// `HumanoidModel` head-part index for the zombie family body layers (zombie,
-/// husk, drowned, and zombie villager). The adult layer lists the head first;
-/// the baby layer lists the body first, so the head is second.
-pub(in crate::entity_models) const fn zombie_head_part_index(baby: bool) -> usize {
-    if baby {
-        1
-    } else {
-        0
-    }
-}
-
 /// `PlayerModel` head-part index. The wide and slim player body layers list the
 /// head first; visibility filtering only toggles the overlay children, never the
 /// base part order.
@@ -304,38 +293,6 @@ pub(in crate::entity_models) fn apply_humanoid_crouch(root: &mut ModelPart) {
     }
 }
 
-/// Vanilla `HumanoidModel.setupAnim` leg swing only, applied to a model root's legs at `[4, 5]`
-/// ([`humanoid_leg_swing_pose`]). A no-op while at rest. Used by the zombie family, whose arms are
-/// overridden with the held-out [`apply_zombie_arms_held_out`] pose instead of the humanoid arm swing.
-pub(in crate::entity_models) fn apply_humanoid_leg_swing(
-    root: &mut ModelPart,
-    walk_animation_pos: f32,
-    walk_animation_speed: f32,
-) {
-    if limb_swing_at_rest(walk_animation_speed) {
-        return;
-    }
-    for index in [4, 5] {
-        let leg = root.child_at_mut(index);
-        leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
-    }
-}
-
-/// Vanilla `ZombieModel.setupAnim` held-out arm override applied to a model root's arms at `[2, 3]`
-/// ([`zombie_arm_held_out_pose`]). The zombie family (zombie, husk, drowned, zombie villager) replaces
-/// the inherited humanoid arm swing with this aggressive/idle held-out pose, which always re-poses the
-/// arms (the idle bob folded in advances every frame).
-pub(in crate::entity_models) fn apply_zombie_arms_held_out(
-    root: &mut ModelPart,
-    aggressive: bool,
-    age_in_ticks: f32,
-) {
-    for index in [2, 3] {
-        let arm = root.child_at_mut(index);
-        arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
-    }
-}
-
 /// Vanilla `HumanoidModel.setupAnim` arm + leg walk swing applied to a model root's named children
 /// (the named counterpart of [`apply_humanoid_walk`]). The legs (`right_leg`/`left_leg`) swing
 /// ([`humanoid_leg_swing_pose`]) and the arms (`right_arm`/`left_arm`) swing ([`humanoid_arm_swing_pose`])
@@ -366,9 +323,8 @@ pub(in crate::entity_models) fn apply_humanoid_walk_named(
 }
 
 /// Vanilla `HumanoidModel.setupAnim` leg swing only, applied to a model root's named leg children
-/// `right_leg`/`left_leg` ([`humanoid_leg_swing_pose`]). The named counterpart of
-/// [`apply_humanoid_leg_swing`]. A no-op while at rest. Used by the zombified piglin (and, once
-/// converted, the zombie family), whose arms are overridden by a held-out pose instead of swinging.
+/// `right_leg`/`left_leg` ([`humanoid_leg_swing_pose`]). A no-op while at rest. Used by the zombified
+/// piglin and the zombie family, whose arms are overridden by a held-out pose instead of swinging.
 pub(in crate::entity_models) fn apply_humanoid_leg_swing_named(
     root: &mut ModelPart,
     walk_animation_pos: f32,
@@ -380,6 +336,21 @@ pub(in crate::entity_models) fn apply_humanoid_leg_swing_named(
     for name in ["right_leg", "left_leg"] {
         let leg = root.child_mut(name);
         leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
+    }
+}
+
+/// Vanilla `ZombieModel.setupAnim` held-out arm override applied to a model root's named arm children
+/// `right_arm`/`left_arm` ([`zombie_arm_held_out_pose`]). The zombie family (zombie, husk, drowned,
+/// zombie villager) replaces the inherited humanoid arm swing with this aggressive/idle held-out pose,
+/// which always re-poses the arms (the idle bob folded in advances every frame).
+pub(in crate::entity_models) fn apply_zombie_arms_held_out_named(
+    root: &mut ModelPart,
+    aggressive: bool,
+    age_in_ticks: f32,
+) {
+    for name in ["right_arm", "left_arm"] {
+        let arm = root.child_mut(name);
+        arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
     }
 }
 
