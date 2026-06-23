@@ -417,7 +417,7 @@ pub(in crate::entity_models) fn ghast_textured_layer_passes() -> Vec<EntityModel
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_GHAST,
         texture: GHAST_TEXTURE_REF,
-        parts: &GHAST_TEXTURED_PARTS,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

@@ -1,64 +1,49 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn ghast_parts_match_vanilla_26_1_body_layer() {
+fn ghast_cubes_match_vanilla_26_1_body_layer() {
     // Vanilla GhastModel.createBodyLayer: a 16x16x16 body at y 17.6 plus nine tentacles at
     // y 24.6, whose lengths come from a fixed-seed RandomSource(1660) (random.nextInt(7)+8)
-    // and whose xz offsets come from the documented index formula.
-    assert_eq!(GHAST_PARTS.len(), 10);
+    // and whose xz offsets come from the documented index formula. Each unified cube carries the
+    // colored tint (`GHAST_WHITE`) and the textured UV (`texOffs(0, 0)`) in one struct.
     assert_eq!(
         GHAST_TENTACLE_LENGTHS,
         [8.0, 13.0, 9.0, 11.0, 11.0, 10.0, 12.0, 9.0, 12.0]
     );
-
-    assert_part(
-        &GHAST_PARTS[0],
-        [0.0, 17.6, 0.0],
-        [0.0, 0.0, 0.0],
-        GHAST_BODY_CUBE.as_slice(),
+    assert_eq!(
+        GHAST_BODY_CUBE[0],
+        ModelCube::new(
+            [-8.0, -8.0, -8.0],
+            [16.0, 16.0, 16.0],
+            GHAST_WHITE,
+            [16.0, 16.0, 16.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(GHAST_BODY_CUBE[0].min, [-8.0, -8.0, -8.0]);
-    assert_eq!(GHAST_BODY_CUBE[0].size, [16.0, 16.0, 16.0]);
-
-    for index in 0..9 {
-        let part = &GHAST_PARTS[index + 1];
-        assert_eq!(part.pose.offset, GHAST_TENTACLE_OFFSETS[index]);
-        assert_eq!(part.pose.rotation, [0.0, 0.0, 0.0]);
-        assert_eq!(part.cubes.len(), 1);
-        assert_eq!(part.cubes[0].min, [-1.0, 0.0, -1.0]);
-        assert_eq!(
-            part.cubes[0].size,
-            [2.0, GHAST_TENTACLE_LENGTHS[index], 2.0]
-        );
-    }
+    assert_close3(GHAST_BODY_POSE.offset, [0.0, 17.6, 0.0]);
+    assert_eq!(GHAST_BODY_POSE.rotation, [0.0, 0.0, 0.0]);
 }
 
 #[test]
-fn ghast_textured_parts_match_vanilla_model_layer_uv_sources() {
-    assert_eq!(MODEL_LAYER_GHAST, "minecraft:ghast#main");
-    assert_eq!(GHAST_TEXTURE_REF.size, [64, 32]);
-    assert_eq!(GHAST_TEXTURED_PARTS.len(), 10);
-    assert_eq!(
-        GHAST_TEXTURED_BODY_CUBE[0],
-        TexturedModelCubeDesc {
-            min: [-8.0, -8.0, -8.0],
-            size: [16.0, 16.0, 16.0],
-            uv_size: [16.0, 16.0, 16.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    // Vanilla reuses texOffs(0, 0) for every tentacle, so each samples the top-left region.
+fn ghast_tentacle_ring_layout_matches_vanilla() {
+    // The nine tentacles hang at `GHAST_TENTACLE_OFFSETS[i]` (`y = 24.6`) with no bind rotation, each
+    // a `box(-1, 0, -1, 2, len, 2)` at `texOffs(0, 0)` (reused for the body and every tentacle, so
+    // each samples the same top-left region). `uv_size == size` (no deformation).
     for index in 0..9 {
-        let part = &GHAST_TEXTURED_PARTS[index + 1];
-        assert_eq!(part.pose.offset, GHAST_TENTACLE_OFFSETS[index]);
-        assert_eq!(part.cubes[0].tex, [0.0, 0.0]);
-        assert_eq!(
-            part.cubes[0].uv_size,
-            [2.0, GHAST_TENTACLE_LENGTHS[index], 2.0]
-        );
+        let pose = ghast_tentacle_pose(index);
+        assert_eq!(pose.offset, GHAST_TENTACLE_OFFSETS[index]);
+        assert_eq!(pose.rotation, [0.0, 0.0, 0.0]);
+        // The bind `xRot` is overwritten by `setup_anim`; the cube geometry/UV are stable.
+        let cube = ghast_tentacle_cube(index);
+        assert_eq!(cube.min, [-1.0, 0.0, -1.0]);
+        assert_eq!(cube.size, [2.0, GHAST_TENTACLE_LENGTHS[index], 2.0]);
+        assert_eq!(cube.uv_size, [2.0, GHAST_TENTACLE_LENGTHS[index], 2.0]);
+        assert_eq!(cube.tex, [0.0, 0.0]);
+        assert_eq!(cube.color, GHAST_WHITE);
     }
-    assert_eq!(GHAST_TEXTURED_PARTS[0].pose.offset, [0.0, 17.6, 0.0]);
 }
 
 #[test]
@@ -69,7 +54,8 @@ fn ghast_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_GHAST);
     assert_eq!(passes[0].texture, GHAST_TEXTURE_REF);
-    assert_eq!(passes[0].parts, GHAST_TEXTURED_PARTS.as_slice());
+    // The vestigial `parts` slice is nulled; emit builds `GhastModel::new()` and renders its tree.
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -88,6 +74,8 @@ fn ghast_texture_ref_matches_vanilla_renderer() {
             size: [64, 32],
         })
     );
+    assert_eq!(GHAST_TEXTURE_REF.size, [64, 32]);
+    assert_eq!(MODEL_LAYER_GHAST, "minecraft:ghast#main");
     assert!(entity_model_texture_refs().contains(&GHAST_TEXTURE_REF));
     assert_eq!(ghast_entity_texture_refs(), &[GHAST_TEXTURE_REF]);
 }
