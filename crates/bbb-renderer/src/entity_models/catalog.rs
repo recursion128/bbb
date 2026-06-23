@@ -270,12 +270,14 @@ pub enum EntityModelKind {
     PolarBear {
         baby: bool,
     },
-    /// `PandaModel` (a `QuadrupedModel`) at its `createBodyLayer` rest pose. The shared
-    /// `QuadrupedModel.setupAnim` head look and four-leg walk swing are reproduced; every
-    /// panda-specific pose (`isUnhappy`, `isSneezing`, `sitAmount`, `lieOnBackAmount`, `rollAmount`)
-    /// reads un-projected `PandaRenderState` state and stays deferred, as do the gene-driven textures
-    /// and the baby `MeshTransformer` scale.
-    Panda,
+    /// `PandaModel` / `BabyPandaModel` (both `QuadrupedModel`s) at their `createBodyLayer` rest pose
+    /// (`baby` selects the baby body layout — body-first, no body pitch). The shared
+    /// `QuadrupedModel.setupAnim` head look and four-leg walk swing are reproduced; every panda-specific
+    /// pose (`isUnhappy`, `isSneezing`, `sitAmount`, `lieOnBackAmount`, `rollAmount`) reads un-projected
+    /// `PandaRenderState` state and stays deferred, as do the gene-driven textures.
+    Panda {
+        baby: bool,
+    },
     /// `AdultFelineModel` at its `createBodyMesh` rest pose, shared by the ocelot (`cat = false`,
     /// unscaled) and the cat (`cat = true`, the same mesh scaled 0.8 by `AdultCatModel.CAT_TRANSFORMER`
     /// in the root transform). The shared `setupAnim` head look and the standing `tail2` droop

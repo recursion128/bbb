@@ -893,14 +893,11 @@ fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entit
     }
 }
 
-/// Vanilla `PandaRenderer` (an `AgeableMobRenderer`) picks `PandaModel` for an adult and the distinct
-/// `BabyPandaModel` mesh for a baby. The adult renders through the dedicated [`EntityModelKind::Panda`];
-/// the baby still falls back to the cow-shaped proxy until its body layer is modeled.
+/// Vanilla `PandaRenderer` (an `AgeableMobRenderer`) picks `PandaModel` for an adult and `BabyPandaModel`
+/// for a baby; both render through the dedicated [`EntityModelKind::Panda`] (`baby` selecting the layout).
 fn panda_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
-    if ageable_baby(values) {
-        quadruped(QuadrupedModelFamily::Cow, true)
-    } else {
-        EntityModelKind::Panda
+    EntityModelKind::Panda {
+        baby: ageable_baby(values),
     }
 }
 
@@ -4890,18 +4887,17 @@ mod tests {
             ),
             EntityModelKind::PolarBear { baby: true }
         );
-        // The adult panda renders through its dedicated `PandaModel`; the baby (whose own
-        // `BabyPandaModel` mesh is not yet modeled) still falls back to the cow-shaped proxy.
+        // The panda (adult and baby) renders through its dedicated `PandaModel` / `BabyPandaModel`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PANDA_ID, &[]),
-            EntityModelKind::Panda
+            EntityModelKind::Panda { baby: false }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_PANDA_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            quadruped(QuadrupedModelFamily::Cow, true)
+            EntityModelKind::Panda { baby: true }
         );
     }
 

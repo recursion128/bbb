@@ -526,8 +526,8 @@ fn entity_model_mesh_with_options(
                     PolarBearModel::new(baby).prepare_and_render(&mut mesh, instance, transform);
                 }
             }
-            EntityModelKind::Panda => {
-                PandaModel::new().prepare_and_render(
+            EntityModelKind::Panda { baby } => {
+                PandaModel::new(baby).prepare_and_render(
                     &mut mesh,
                     instance,
                     entity_model_root_transform(*instance),

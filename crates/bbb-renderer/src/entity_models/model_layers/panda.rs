@@ -49,22 +49,71 @@ pub(in crate::entity_models) const PANDA_PARTS: [ModelPartDesc; 6] = [
     part([5.5, 15.0, -9.0], &PANDA_LEG_CUBES, &[]),
 ];
 
-/// The `head` is the first root part; the four legs are parts 2..=5 (the `QuadrupedModel` layout).
-const PANDA_HEAD_PART_INDEX: usize = 0;
+// Vanilla `BabyPandaModel.createBodyLayer` (atlas 64×64). The `QuadrupedModel` baby convention lists the
+// body FIRST then the head (so the head is part 1, not 0), and the baby body carries no `π/2` pitch.
+
+// `head` cubes: the 7×6×5 skull and the 4×2×1 muzzle (white), plus the two 3×3×1 ears (black).
+const BABY_PANDA_HEAD_CUBES: [ModelCubeDesc; 4] = [
+    cube([-3.5, -3.0, -5.0], [7.0, 6.0, 5.0], PANDA_WHITE),
+    cube([-2.0, 1.0, -6.0], [4.0, 2.0, 1.0], PANDA_WHITE),
+    cube([-4.5, -4.0, -3.5], [3.0, 3.0, 1.0], PANDA_BLACK),
+    cube([1.5, -4.0, -3.5], [3.0, 3.0, 1.0], PANDA_BLACK),
+];
+
+// `body`: the 9×7×11 trunk (no pitch on the baby), white.
+const BABY_PANDA_BODY_CUBES: [ModelCubeDesc; 1] =
+    [cube([-4.5, -3.5, -5.5], [9.0, 7.0, 11.0], PANDA_WHITE)];
+
+// The shared 3×2×3 baby leg box, black.
+const BABY_PANDA_LEG_CUBES: [ModelCubeDesc; 1] =
+    [cube([-1.5, 0.0, -1.5], [3.0, 2.0, 3.0], PANDA_BLACK)];
+
+/// Vanilla `BabyPandaModel.createBodyLayer` rest-pose hierarchy: `body` (0, no pitch), `head` (1), then
+/// the right-hind / left-hind / right-front / left-front legs (2..=5). Nine cubes.
+pub(in crate::entity_models) const BABY_PANDA_PARTS: [ModelPartDesc; 6] = [
+    part([0.0, 18.5, 2.5], &BABY_PANDA_BODY_CUBES, &[]),
+    part([0.0, 19.0, -3.0], &BABY_PANDA_HEAD_CUBES, &[]),
+    part([-3.0, 22.0, 6.5], &BABY_PANDA_LEG_CUBES, &[]),
+    part([3.0, 22.0, 6.5], &BABY_PANDA_LEG_CUBES, &[]),
+    part([-3.0, 22.0, -1.5], &BABY_PANDA_LEG_CUBES, &[]),
+    part([3.0, 22.0, -1.5], &BABY_PANDA_LEG_CUBES, &[]),
+];
+
+/// The four legs are parts 2..=5 in both layouts (the `QuadrupedModel` layout); the head is part 0 in the
+/// adult layout but part 1 in the baby layout (which lists the body first).
 const PANDA_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
 
-/// Mutable panda model, mirroring vanilla `PandaModel` (a `QuadrupedModel`). The six root parts hang off
-/// a synthetic root, built from the baked [`PANDA_PARTS`] geometry. Colored-only: `setup_anim` runs the
-/// shared `QuadrupedModel` head look ([`apply_head_look`]) and four-leg swing ([`apply_quadruped_leg_swing`]);
-/// every panda-specific pose stays deferred.
+fn panda_parts(baby: bool) -> &'static [ModelPartDesc] {
+    if baby {
+        &BABY_PANDA_PARTS
+    } else {
+        &PANDA_PARTS
+    }
+}
+
+fn panda_head_part_index(baby: bool) -> usize {
+    if baby {
+        1
+    } else {
+        0
+    }
+}
+
+/// Mutable panda model, mirroring vanilla `PandaModel` / `BabyPandaModel` (both `QuadrupedModel`s). The
+/// six root parts hang off a synthetic root, built from the baked [`PANDA_PARTS`] / [`BABY_PANDA_PARTS`]
+/// geometry for the selected `baby` layout. Colored-only: `setup_anim` runs the shared `QuadrupedModel`
+/// head look ([`apply_head_look`]) and four-leg swing ([`apply_quadruped_leg_swing`]); every
+/// panda-specific pose stays deferred.
 pub(in crate::entity_models) struct PandaModel {
     root: ModelPart,
+    baby: bool,
 }
 
 impl PandaModel {
-    pub(in crate::entity_models) fn new() -> Self {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
         Self {
-            root: ModelPart::root_from_colored_descs(&PANDA_PARTS),
+            root: ModelPart::root_from_colored_descs(panda_parts(baby)),
+            baby,
         }
     }
 }
@@ -81,7 +130,7 @@ impl EntityModel for PandaModel {
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
         apply_head_look(
-            self.root.child_at_mut(PANDA_HEAD_PART_INDEX),
+            self.root.child_at_mut(panda_head_part_index(self.baby)),
             render_state.head_yaw,
             render_state.head_pitch,
         );
