@@ -61,7 +61,7 @@ fn adult_armadillo_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(ADULT_ARMADILLO_PARTS[4].pose.offset, [2.0, 21.0, -4.0]);
     assert_eq!(ADULT_ARMADILLO_PARTS[1].cubes[0].size, [2.0, 3.0, 2.0]);
 
-    // Ten cubes (the shell-ball `cube` part is the deferred hiding-in-shell state).
+    // Ten cubes in the non-hiding rest pose (the shell-ball `cube` is a separate rolled-up part).
     assert_eq!(count_cubes(&ADULT_ARMADILLO_PARTS), 10);
 }
 
@@ -111,6 +111,77 @@ fn baby_armadillo_geometry_matches_vanilla_26_1_body_layer() {
 }
 
 #[test]
+fn armadillo_rolled_up_parts_match_vanilla_hiding_in_shell() {
+    // Vanilla `ArmadilloModel.setupAnim` `isHidingInShell`: the body cubes (`skipDraw`), the tail,
+    // and both hind legs hide; the head (+ ears), both front legs, and the `cube` ball show.
+    // So the rolled-up tree is: body pivot (no cubes) → head only; the two front legs; the ball →
+    // head_cube + 2 ears + 2 front legs + 1 ball = 6 cubes.
+    assert_eq!(ADULT_ARMADILLO_ROLLED_PARTS.len(), 4);
+
+    // Hiding body keeps its pivot offset but drops its own cubes and the tail child.
+    let body = &ADULT_ARMADILLO_ROLLED_PARTS[0];
+    assert_eq!(body.pose.offset, [0.0, 21.0, 4.0]);
+    assert!(body.cubes.is_empty());
+    assert_eq!(body.children.len(), 1);
+    let head = &body.children[0];
+    assert_eq!(head.pose.offset, [0.0, -2.0, -11.0]);
+    assert_eq!(head.children.len(), 3); // head_cube + the two ears
+
+    // The two FRONT legs (z = -4) stay; the hind legs (z = +4) are gone.
+    assert_eq!(
+        ADULT_ARMADILLO_ROLLED_PARTS[1].pose.offset,
+        [-2.0, 21.0, -4.0]
+    );
+    assert_eq!(
+        ADULT_ARMADILLO_ROLLED_PARTS[2].pose.offset,
+        [2.0, 21.0, -4.0]
+    );
+
+    // The shell-ball `cube` (root child at (0, 24, 0)): a plain 10×10×10 box.
+    let ball = &ADULT_ARMADILLO_ROLLED_PARTS[3];
+    assert_eq!(ball.pose.offset, [0.0, 24.0, 0.0]);
+    assert_eq!(ball.cubes[0].min, [-5.0, -10.0, -6.0]);
+    assert_eq!(ball.cubes[0].size, [10.0, 10.0, 10.0]);
+
+    // Six cubes total in the rolled-up pose.
+    assert_eq!(count_cubes(&ADULT_ARMADILLO_ROLLED_PARTS), 6);
+
+    // Baby: same swap; the ball is the 6×6×6 box + CubeDeformation(0.3) → min -3.3, size 6.6.
+    assert_eq!(count_cubes(&BABY_ARMADILLO_ROLLED_PARTS), 6);
+    let baby_ball = &BABY_ARMADILLO_ROLLED_PARTS[3];
+    assert_eq!(baby_ball.pose.offset, [0.0, 20.7, 0.5]);
+    assert_eq!(baby_ball.cubes[0].min, [-3.3, -3.3, -3.3]);
+    assert_eq!(baby_ball.cubes[0].size, [6.6, 6.6, 6.6]);
+}
+
+#[test]
+fn armadillo_rolled_up_mesh_swaps_to_the_shell_ball() {
+    // The rolled-up mesh has six cubes (→ 36 faces / 144 vertices) versus the rest pose's ten,
+    // and shows the shell-ball geometry while hiding the body box, tail, and hind legs.
+    let rest = entity_model_mesh(&[EntityModelInstance::armadillo(
+        72,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )]);
+    let rolled = entity_model_mesh(&[EntityModelInstance::armadillo(
+        73,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+    )]);
+    assert_eq!(rest.vertices.len(), 240);
+    assert_eq!(rolled.opaque_faces, 36);
+    assert_eq!(rolled.vertices.len(), 144);
+
+    // The 10×10×10 shell ball is wider in Z than the rest pose's bare body box at this scale, so
+    // the rolled mesh reaches a distinct extent — proving the ball replaced the body.
+    assert_ne!(rest.vertices, rolled.vertices);
+}
+
+#[test]
 fn armadillo_mesh_selects_adult_or_baby_body_layer() {
     // Each rest pose has 10 cubes → 60 faces / 240 vertices / 360 indices; the soft head/ears/tail
     // carry the skin tint while the armored body/legs carry the shell tint.
@@ -118,6 +189,7 @@ fn armadillo_mesh_selects_adult_or_baby_body_layer() {
         70,
         [0.0, 64.0, 0.0],
         0.0,
+        false,
         false,
     )]);
     assert_eq!(adult.opaque_faces, 60);
@@ -137,6 +209,7 @@ fn armadillo_mesh_selects_adult_or_baby_body_layer() {
         [0.0, 64.0, 0.0],
         0.0,
         true,
+        false,
     )]);
     assert_eq!(baby.opaque_faces, 60);
     assert_eq!(baby.vertices.len(), 240);

@@ -1605,11 +1605,15 @@ When an agent does any of the following, update this file in the same slice:
       colored cube exactly like the vex/illager/sniffer deformed cubes), with a 1×6×1 tail, a 3×5×2
       head snout, two 2×5×0 ears, and four 2×3×2 legs — ten cubes; the baby is the smaller 5×4×7 / 5×4×6
       shell with a 1×1×4 tail stub, a 2×2×4 snout, two 2×3×0 ears parented to the head cube, and four
-      2×2×2 legs (front legs at vanilla's swapped X origins) — ten cubes. Every `ArmadilloModel.setupAnim`
-      animation is deferred: the clamped head look (`head.xRot/yRot`), the `applyWalk` leg sway, and the
-      roll-out / roll-up / peek keyframe animations. The shell-ball `cube` part and the `isHidingInShell`
-      visibility swap (which hides the body/legs/tail and shows the 10×10×10 ball) are deferred entity-side
-      state, so the non-hiding rest pose is emitted. The texture-backed path remains unsupported (this is a
+      2×2×2 legs (front legs at vanilla's swapped X origins) — ten cubes. The `isHidingInShell` visibility
+      swap is now projected: the synced `Armadillo.ARMADILLO_STATE` (data id `18`, the `ArmadilloState`
+      enum; `SCARED` = id `2`) drives `setupAnim`'s shell pose — `body.skipDraw` hides the body cubes, the
+      tail and both hind legs hide, and the `cube` ball shows, while the head (+ ears) and both front legs
+      stay drawn (adult 10×10×10 ball / baby 6×6×6 + `CubeDeformation(0.3)` ball; six cubes rolled up). Only
+      the steady `SCARED` state is server-derivable (its `shouldHideInShell` is `true` for every tick); the
+      tick-gated `ROLLING` / `UNROLLING` transitions and the `inStateTicks`-driven smooth roll-out / roll-up
+      / peek keyframe scrunch stay deferred (treated as not rolled up), along with the clamped head look
+      (`head.xRot/yRot`) and the `applyWalk` leg sway. The texture-backed path remains unsupported (this is a
       colored-first slice; the colored debug path approximates the armored body/legs with one brown tint and
       the soft head/ears/tail with a tan tint)
     - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /

@@ -712,10 +712,16 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Warden, position, y_rot)
     }
 
-    pub fn armadillo(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+    pub fn armadillo(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        rolled_up: bool,
+    ) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Armadillo { baby },
+            EntityModelKind::Armadillo { baby, rolled_up },
             position,
             y_rot,
         )

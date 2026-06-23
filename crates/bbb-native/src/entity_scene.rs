@@ -1,4 +1,6 @@
-use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
+use bbb_protocol::packets::{
+    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind,
+};
 use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
     DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
@@ -185,6 +187,14 @@ const ZOMBIE_DROWNED_CONVERSION_DATA_ID: u8 = 18;
 const ZOMBIE_VILLAGER_CONVERTING_DATA_ID: u8 = 19;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
+/// Vanilla `Armadillo.ARMADILLO_STATE` data id (18): the synced `ArmadilloState` enum, the
+/// armadillo's first own accessor after `AgeableMob.AGE_LOCKED` (17). Matches the
+/// `Sniffer.DATA_STATE` slot (both `extends Animal`).
+const ARMADILLO_STATE_DATA_ID: u8 = 18;
+/// Vanilla `Armadillo.ArmadilloState.SCARED` ordinal (2): the steady rolled-into-a-ball state
+/// whose `shouldHideInShell` is `true` for every `inStateTicks` (server-derivable, unlike the
+/// tick-gated ROLLING/UNROLLING transitions).
+const ARMADILLO_STATE_SCARED_ID: i32 = 2;
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
 const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 17;
 const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 18;
@@ -704,6 +714,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => EntityModelKind::Armadillo {
             baby: ageable_baby(data_values),
+            rolled_up: armadillo_rolled_up(data_values),
         },
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityModelKind::Axolotl {
             baby: ageable_baby(data_values),
@@ -1171,6 +1182,25 @@ fn tropical_fish_pattern_color(
 
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, false)
+}
+
+/// Vanilla `ArmadilloModel.setupAnim` `isHidingInShell` swap, projected from the synced
+/// `Armadillo.ARMADILLO_STATE` (data id 18, the `ArmadilloState` enum; SCARED = ordinal 2).
+/// Only the steady SCARED state is server-derivable: it hides the body in the shell for every
+/// `inStateTicks`, whereas ROLLING/UNROLLING gate the hide on the un-synced `inStateTicks`, so
+/// they stay deferred (treated as not rolled up). Defaults to IDLE (not rolled up).
+fn armadillo_rolled_up(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    values
+        .iter()
+        .find(|value| value.data_id == ARMADILLO_STATE_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::EnumId {
+                serializer: EntityDataEnumSerializer::ArmadilloState,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .is_some_and(|id| id == ARMADILLO_STATE_SCARED_ID)
 }
 
 fn chicken_model_variant(
@@ -4250,18 +4280,69 @@ mod tests {
         // The armadillo was a placeholder bounds box; it now resolves to the real
         // `AdultArmadilloModel` / `BabyArmadilloModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
         // (index 16, default adult), as in the vanilla `AgeableMobRenderer`. The clamped head look,
-        // `applyWalk` leg sway, roll-out / roll-up / peek keyframes, and the `isHidingInShell`
-        // shell-ball swap are deferred entity-side state.
+        // `applyWalk` leg sway, and the roll-out / roll-up / peek keyframe transitions are deferred
+        // entity-side state.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ARMADILLO_ID, &[]),
-            EntityModelKind::Armadillo { baby: false }
+            EntityModelKind::Armadillo {
+                baby: false,
+                rolled_up: false
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_ARMADILLO_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Armadillo { baby: true }
+            EntityModelKind::Armadillo {
+                baby: true,
+                rolled_up: false
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_armadillo_rolled_up_from_state() {
+        // Vanilla `Armadillo.ARMADILLO_STATE` (data id 18, `ArmadilloState` enum). Only the steady
+        // SCARED state (id 2) is `shouldHideInShell` for every tick, so it maps to `rolled_up`; the
+        // tick-gated ROLLING (1) / UNROLLING (3) transitions and IDLE (0) stay not-rolled-up.
+        let kind = |id: i32| {
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+                &[protocol_armadillo_state_data(id)],
+            )
+        };
+        assert_eq!(
+            kind(2),
+            EntityModelKind::Armadillo {
+                baby: false,
+                rolled_up: true
+            }
+        );
+        for non_scared in [0, 1, 3] {
+            assert_eq!(
+                kind(non_scared),
+                EntityModelKind::Armadillo {
+                    baby: false,
+                    rolled_up: false
+                },
+                "state {non_scared} is not the steady SCARED ball"
+            );
+        }
+
+        // A baby armadillo can roll up too — the state and the baby flag compose.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+                &[
+                    protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                    protocol_armadillo_state_data(2),
+                ]
+            ),
+            EntityModelKind::Armadillo {
+                baby: true,
+                rolled_up: true
+            }
         );
     }
 
@@ -5315,6 +5396,18 @@ mod tests {
             serializer_id: 30,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::ChickenVariant,
+                id,
+            },
+        }
+    }
+
+    fn protocol_armadillo_state_data(id: i32) -> EntityDataValue {
+        // Vanilla `EntityDataSerializers.ARMADILLO_STATE` is serializer id 36.
+        EntityDataValue {
+            data_id: ARMADILLO_STATE_DATA_ID,
+            serializer_id: 36,
+            value: EntityDataValueKind::EnumId {
+                serializer: EntityDataEnumSerializer::ArmadilloState,
                 id,
             },
         }

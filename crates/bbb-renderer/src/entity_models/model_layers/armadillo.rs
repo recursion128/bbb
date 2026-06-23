@@ -8,11 +8,13 @@ use super::{
 // and the head, and the head parents the head cube and the two ear planes. The armadillo is one of
 // the `AgeableMobRenderer` two-model entities: `state.isBaby` (the synced `AgeableMob.DATA_BABY_ID`
 // flag) selects the baby body layer, which has its own smaller geometry and a different ear/tail
-// topology. Every `ArmadilloModel.setupAnim` animation is deferred — the clamped head look, the
-// `applyWalk` leg sway, and the roll-out / roll-up / peek keyframe animations — so the model
-// renders at this non-hiding rest pose. The shell-ball `cube` part and the `isHidingInShell`
-// visibility swap (which hides the body/legs/tail and shows the 10×10×10 ball) are deferred
-// entity-side state, so the shell ball is not emitted here. The texture-backed path is deferred.
+// topology. The `isHidingInShell` visibility swap is now projected (see
+// `ADULT_ARMADILLO_ROLLED_PARTS` / `BABY_ARMADILLO_ROLLED_PARTS`): the synced
+// `Armadillo.ArmadilloState.SCARED` shows the shell-ball `cube` and hides the body cubes, tail,
+// and hind legs. The clamped head look, the `applyWalk` leg sway, and the roll-out / roll-up /
+// peek keyframe transition animations (ROLLING/UNROLLING, gated on the un-synced `inStateTicks`)
+// stay deferred, so the non-hiding pose renders at its rest pose. The texture-backed path is
+// deferred.
 
 // ----- Adult -----
 
@@ -89,6 +91,30 @@ pub(in crate::entity_models) const ADULT_ARMADILLO_PARTS: [ModelPartDesc; 5] = [
     part([2.0, 21.0, -4.0], &ADULT_ARMADILLO_LEG_CUBES, &[]),
 ];
 
+// Adult shell ball `cube` (root child at (0, 24, 0)): a plain 10×10×10 box, no deformation.
+const ADULT_ARMADILLO_BALL_CUBES: [ModelCubeDesc; 1] = [cube(
+    [-5.0, -10.0, -6.0],
+    [10.0, 10.0, 10.0],
+    ARMADILLO_SHELL,
+)];
+
+// When `isHidingInShell`, `body.skipDraw` hides the body's own cubes but still traverses its
+// children — and only the head subtree stays visible (`tail.visible = false`). So the hiding
+// body keeps an empty cube list and just its head child.
+const ADULT_BODY_CHILDREN_HIDDEN: [ModelPartDesc; 1] =
+    [part([0.0, -2.0, -11.0], &[], &ADULT_HEAD_CHILDREN)];
+
+// Vanilla `ArmadilloModel.setupAnim` rolled-up (`isHidingInShell`) pose: the body cubes, the
+// tail, and both HIND legs hide; the head (+ ears), both FRONT legs, and the 10×10×10 `cube`
+// ball stay drawn → six cubes. (Steady SCARED state only; the ROLLING/UNROLLING keyframe
+// scrunch, gated on the un-synced `inStateTicks`, stays deferred.)
+pub(in crate::entity_models) const ADULT_ARMADILLO_ROLLED_PARTS: [ModelPartDesc; 4] = [
+    part([0.0, 21.0, 4.0], &[], &ADULT_BODY_CHILDREN_HIDDEN),
+    part([-2.0, 21.0, -4.0], &ADULT_ARMADILLO_LEG_CUBES, &[]),
+    part([2.0, 21.0, -4.0], &ADULT_ARMADILLO_LEG_CUBES, &[]),
+    part([0.0, 24.0, 0.0], &ADULT_ARMADILLO_BALL_CUBES, &[]),
+];
+
 // ----- Baby -----
 
 // `body` (offset (0, 20, 0.5)): a `CubeDeformation(0.3)` armor shell over the bare 5×4×6 box.
@@ -160,4 +186,22 @@ pub(in crate::entity_models) const BABY_ARMADILLO_PARTS: [ModelPartDesc; 5] = [
     part([1.5, 22.0, 2.5], &BABY_ARMADILLO_LEG_CUBES, &[]),
     part([1.5, 22.0, -1.5], &BABY_ARMADILLO_LEG_CUBES, &[]),
     part([-1.5, 22.0, -1.5], &BABY_ARMADILLO_LEG_CUBES, &[]),
+];
+
+// Baby shell ball `cube` (root child at (0, 20.7, 0.5)): a 6×6×6 box + `CubeDeformation(0.3)` →
+// min -3.3, size 6.6.
+const BABY_ARMADILLO_BALL_CUBES: [ModelCubeDesc; 1] =
+    [cube([-3.3, -3.3, -3.3], [6.6, 6.6, 6.6], ARMADILLO_SHELL)];
+
+// The hiding baby body keeps only its head child (the tail child and body cubes are hidden).
+const BABY_BODY_CHILDREN_HIDDEN: [ModelPartDesc; 1] =
+    [part([0.0, 0.0, -3.2], &[], &BABY_HEAD_CHILDREN)];
+
+// Baby rolled-up (`isHidingInShell`) pose: same swap as the adult — head (+ ears), both front
+// legs, and the 6×6×6 ball stay drawn; the body cubes, tail, and both hind legs hide.
+pub(in crate::entity_models) const BABY_ARMADILLO_ROLLED_PARTS: [ModelPartDesc; 4] = [
+    part([0.0, 20.0, 0.5], &[], &BABY_BODY_CHILDREN_HIDDEN),
+    part([1.5, 22.0, -1.5], &BABY_ARMADILLO_LEG_CUBES, &[]),
+    part([-1.5, 22.0, -1.5], &BABY_ARMADILLO_LEG_CUBES, &[]),
+    part([0.0, 20.7, 0.5], &BABY_ARMADILLO_BALL_CUBES, &[]),
 ];

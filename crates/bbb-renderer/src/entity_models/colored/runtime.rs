@@ -192,9 +192,9 @@ fn entity_model_mesh_with_options(
                 // Colored-only so far (no texture-backed warden yet), so this arm always emits.
                 emit_warden_model(&mut mesh, *instance);
             }
-            EntityModelKind::Armadillo { baby } => {
+            EntityModelKind::Armadillo { baby, rolled_up } => {
                 // Colored-only so far (no texture-backed armadillo yet), so this arm always emits.
-                emit_armadillo_model(&mut mesh, *instance, baby);
+                emit_armadillo_model(&mut mesh, *instance, baby, rolled_up);
             }
             EntityModelKind::Axolotl { baby } => {
                 // Colored-only so far (no texture-backed axolotl yet), so this arm always emits.
@@ -1472,18 +1472,27 @@ fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
     emit_model_parts(mesh, &WARDEN_PARTS, root);
 }
 
-fn emit_armadillo_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+fn emit_armadillo_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    baby: bool,
+    rolled_up: bool,
+) {
     // Vanilla `AdultArmadilloModel`/`BabyArmadilloModel` are static nested hierarchies at rest
-    // (root → body/legs, body → tail/head, head → ears). All of `ArmadilloModel.setupAnim` (the
-    // clamped head look, `applyWalk`, and the roll-out / roll-up / peek keyframes) plus the
-    // `isHidingInShell` shell-ball swap are deferred, so the bind-pose part tree is emitted
-    // directly. The baby flag (synced `AgeableMob.DATA_BABY_ID`) selects the baby body layer, as
-    // in the vanilla `AgeableMobRenderer`. Armadillo uses `LivingEntityRenderer.setupRotations`.
+    // (root → body/legs, body → tail/head, head → ears). When `isHidingInShell` (the synced
+    // `ArmadilloState.SCARED`), `setupAnim` hides the body cubes (`skipDraw`), the tail, and both
+    // hind legs and shows the shell-ball `cube` — the head, ears, and front legs stay drawn — so
+    // the rolled-up part tree is emitted instead. The clamped head look, `applyWalk`, and the
+    // roll-out / roll-up / peek keyframe transition animations stay deferred, so the non-hiding
+    // pose is the bind pose. The baby flag (synced `AgeableMob.DATA_BABY_ID`) selects the baby
+    // body layer, as in the vanilla `AgeableMobRenderer`. Armadillo uses
+    // `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    let parts: &[ModelPartDesc] = if baby {
-        &BABY_ARMADILLO_PARTS
-    } else {
-        &ADULT_ARMADILLO_PARTS
+    let parts: &[ModelPartDesc] = match (baby, rolled_up) {
+        (false, false) => &ADULT_ARMADILLO_PARTS,
+        (true, false) => &BABY_ARMADILLO_PARTS,
+        (false, true) => &ADULT_ARMADILLO_ROLLED_PARTS,
+        (true, true) => &BABY_ARMADILLO_ROLLED_PARTS,
     };
     emit_model_parts(mesh, parts, root);
 }

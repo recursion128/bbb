@@ -116,11 +116,13 @@ pub enum EntityModelKind {
     /// animations, and the four emissive overlay layers are deferred.
     Warden,
     /// `AdultArmadilloModel` / `BabyArmadilloModel` at their `createBodyLayer` rest pose (`baby`
-    /// selects the baby body layer). The clamped head look, the `applyWalk` leg sway, the
-    /// roll-out / roll-up / peek keyframe animations, and the `isHidingInShell` shell-ball swap
-    /// are deferred.
+    /// selects the baby body layer). When `rolled_up` (the synced `Armadillo.ArmadilloState`
+    /// is `SCARED`), `setupAnim`'s `isHidingInShell` swap is emitted — the body cubes, tail, and
+    /// hind legs hide and the shell-ball `cube` shows. The clamped head look, the `applyWalk`
+    /// leg sway, and the roll-out / roll-up / peek keyframe transition animations are deferred.
     Armadillo {
         baby: bool,
+        rolled_up: bool,
     },
     /// `AdultAxolotlModel` / `BabyAxolotlModel` at their `createBodyLayer` rest pose (`baby`
     /// selects the baby body layer). The body yaw, the swimming / water-hovering / ground-crawling
