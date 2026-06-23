@@ -1,3 +1,4 @@
+#[cfg(test)]
 use std::borrow::Cow;
 
 use glam::{Mat4, Vec3};
@@ -263,7 +264,13 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Giant => {
                 // Colored-only so far (no texture-backed giant yet), so this arm always emits.
-                emit_giant_model(&mut mesh, *instance);
+                // `GiantZombieModel extends ZombieModel`: the same non-baby zombie body and
+                // `setupAnim`, baked through `MeshTransformer.scaling(6.0)`.
+                ZombieModel::new(false).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    mesh_transformer_scaled_model_root_transform(*instance, GIANT_SCALE),
+                );
             }
             EntityModelKind::EndCrystal => {
                 // Colored-only so far (no texture-backed end crystal yet), so this arm always emits.
@@ -1164,33 +1171,6 @@ fn emit_axolotl_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance,
     emit_model_parts(mesh, &parts, root);
 }
 
-fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `GiantZombieModel` is the standard `HumanoidModel` (zombie) mesh, baked through
-    // `humanoidBodyLayer.apply(MeshTransformer.scaling(6.0))` — i.e. the adult zombie body layer
-    // scaled 6×, exactly the husk's `MeshTransformer` pattern but with the giant's 6.0 factor and no
-    // baby variant. The head look, limb swing, and held-out `animateZombieArms` arm pose match
-    // the zombie (`GiantZombieModel extends ZombieModel`, the giant extracts the same
-    // `ZombieRenderState`); the `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie texture
-    // are deferred.
-    let parts = humanoid_limb_swing_parts(
-        zombie_colored_head_look_parts(&ADULT_ZOMBIE_PARTS, instance, false),
-        HUMANOID_LEG_PART_INDICES,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    let parts = zombie_arm_held_out_parts(
-        parts,
-        HUMANOID_ARM_PART_INDICES,
-        instance.render_state.is_aggressive,
-        instance.render_state.age_in_ticks,
-    );
-    emit_model_parts(
-        mesh,
-        &parts,
-        mesh_transformer_scaled_model_root_transform(instance, GIANT_SCALE),
-    );
-}
-
 fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `EndCrystalModel` is the base slab plus the concentric glass/core stack (the per-part
     // `withScale` baked into the cube dimensions). `setupAnim` hides the base slab
@@ -1479,21 +1459,6 @@ fn zombie_variant_root_transform(
     }
 }
 
-/// Applies the vanilla `HumanoidModel.setupAnim` head look to a zombie-family
-/// layer's head part (index `baby ? 1 : 0`).
-fn zombie_colored_head_look_parts(
-    parts: &[ModelPartDesc],
-    instance: EntityModelInstance,
-    baby: bool,
-) -> Cow<'_, [ModelPartDesc]> {
-    colored_head_look_parts(
-        parts,
-        zombie_head_part_index(baby),
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    )
-}
-
 fn emit_piglin_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
@@ -1578,7 +1543,9 @@ pub(in crate::entity_models) fn quadruped_limb_swing_parts(
 /// Vanilla `HumanoidModel` leg part indices: the head, body, and the two arms
 /// occupy the lower slots, then the right and left legs. Every humanoid body layer
 /// here lists the legs last at `[4, 5]` (the baby layers swap head/body to `1`/`0`
-/// but keep arms at `2`/`3` and legs at `4`/`5`).
+/// but keep arms at `2`/`3` and legs at `4`/`5`). Now that the humanoid models swing their
+/// legs through `setup_anim` directly, this index pair is retained only for the unit tests.
+#[cfg(test)]
 pub(in crate::entity_models) const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5];
 
 /// Applies the vanilla `HumanoidModel.setupAnim` leg swing
@@ -1586,7 +1553,10 @@ pub(in crate::entity_models) const HUMANOID_LEG_PART_INDICES: [usize; 2] = [4, 5
 /// `leg_indices`. Borrows the static parts unchanged at rest
 /// (`walkAnimationSpeed == 0`). The arm swing is left to each humanoid subclass,
 /// which overrides the arms (e.g. the zombie held-out pose), so only the legs —
-/// which subclasses inherit unchanged from `HumanoidModel` — are swung here.
+/// which subclasses inherit unchanged from `HumanoidModel` — are swung here. The humanoid models
+/// now swing their legs through [`apply_humanoid_leg_swing`] directly, so this `Cow`-slice variant
+/// is retained only as the reference the leg-phase unit tests assert against.
+#[cfg(test)]
 pub(in crate::entity_models) fn humanoid_limb_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     leg_indices: [usize; 2],
@@ -1606,7 +1576,10 @@ pub(in crate::entity_models) fn humanoid_limb_swing_parts(
 }
 
 /// Vanilla `HumanoidModel` arm part indices: the head and body occupy `0`/`1`, then
-/// the right and left arms at `[2, 3]` (every humanoid layer, adult or baby).
+/// the right and left arms at `[2, 3]` (every humanoid layer, adult or baby). Now that the
+/// humanoid models pose their arms through `setup_anim` directly, this index pair is retained only
+/// for the unit tests.
+#[cfg(test)]
 pub(in crate::entity_models) const HUMANOID_ARM_PART_INDICES: [usize; 2] = [2, 3];
 
 /// Applies the vanilla `HumanoidModel.setupAnim` arm animation to a colored layer's two
@@ -1636,44 +1609,6 @@ pub(in crate::entity_models) fn humanoid_arm_swing_parts(
         }
     }
     Cow::Owned(owned)
-}
-
-/// Applies the vanilla `ZombieModel.setupAnim` held-out arm pose
-/// ([`zombie_arm_held_out_pose`]) to a colored zombie-family layer's two arm parts at
-/// `arm_indices`, overriding the inherited walk arm swing. Always re-poses the arms (the
-/// idle bob folded into the pose advances every frame).
-pub(in crate::entity_models) fn zombie_arm_held_out_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    arm_indices: [usize; 2],
-    aggressive: bool,
-    age_in_ticks: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    let mut owned = parts.into_owned();
-    for index in arm_indices {
-        if let Some(arm) = owned.get_mut(index) {
-            arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
-        }
-    }
-    Cow::Owned(owned)
-}
-
-/// Applies the vanilla `QuadrupedModel`/`HumanoidModel.setupAnim` head look to a
-/// colored layer's head part, borrowing the static parts unchanged while the
-/// head is level and aligned with the body.
-fn colored_head_look_parts(
-    parts: &[ModelPartDesc],
-    head_index: usize,
-    head_yaw: f32,
-    head_pitch: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    if head_look_at_rest(head_yaw, head_pitch) {
-        return Cow::Borrowed(parts);
-    }
-    let mut parts = parts.to_vec();
-    if let Some(head) = parts.get_mut(head_index) {
-        head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-    }
-    Cow::Owned(parts)
 }
 
 fn emit_sheep_model(
