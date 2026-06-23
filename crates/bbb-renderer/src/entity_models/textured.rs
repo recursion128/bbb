@@ -25,8 +25,8 @@ use super::{
     model_layers::{
         apply_wolf_sitting_pose, armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot,
         bee_bone_x_rot, bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot,
-        camel_clamped_head_look, dolphin_wave, head_first_part_index, head_look_at_rest,
-        head_look_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
+        camel_clamped_head_look, head_first_part_index, head_look_at_rest, head_look_pose,
+        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
         limb_swing_at_rest, parched_head_part_index, pufferfish_fin_pose, pufferfish_parts,
         pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, skeleton_head_part_index,
         strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
@@ -34,17 +34,18 @@ use super::{
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, turtle_leg_rotation,
         wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         AllayModel, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel,
-        EndermanModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel,
-        IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel,
-        PigModel, PiglinModel, PlayerModel, PolarBearModel, RavagerModel, SalmonModel,
-        SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SlimeModel, SlimeOuterModel,
-        SnowGolemModel, SpiderModel, SquidModel, TropicalFishModel, TropicalFishPatternModel,
-        VexModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel,
-        ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS,
-        ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING,
-        BAT_HEAD_POSE, BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
-        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
-        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel,
+        HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel,
+        PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel, RavagerModel,
+        SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SlimeModel,
+        SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, TropicalFishModel,
+        TropicalFishPatternModel, VexModel, VillagerModel, WanderingTraderModel, WitchModel,
+        ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
+        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
+        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
+        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -61,15 +62,11 @@ use super::{
         BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE,
         BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF,
         CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
-        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE,
-        DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT,
-        DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
-        DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
-        DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
-        DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF, SMALL_ARMOR_STAND_PARTS,
-        STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE,
-        STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y, STRIDER_BABY_MIDDLE_BRISTLE_POSE,
-        STRIDER_BABY_RIGHT_LEG_X, STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
+        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
+        SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
+        STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y,
+        STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
+        STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
         STRIDER_BABY_TEXTURED_FRONT_BRISTLE, STRIDER_BABY_TEXTURED_LEFT_LEG,
         STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE, STRIDER_BABY_TEXTURED_RIGHT_LEG,
         STRIDER_BABY_TEXTURE_REF, STRIDER_BODY_BASE_Y, STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
@@ -1662,6 +1659,10 @@ fn emit_dolphin_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `DolphinModel` tree drives both render paths; `setup_anim` steers the body and waves
+    // the tail. The base body draws into the cutout mesh (the `DolphinModel` default
+    // `RenderTypes::entityCutoutNoCull`). The baby uses the `MeshTransformer.scaling(0.5)` layer and a
+    // distinct texture.
     let texture = if baby {
         DOLPHIN_BABY_TEXTURE_REF
     } else {
@@ -1670,106 +1671,16 @@ fn emit_dolphin_textured_model(
     let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
         return;
     };
-    let uv = entry.uv;
-
-    // Mirror the colored `emit_dolphin_model`: steer the body by the look pitch/yaw and add the
-    // swim wave while moving. The base body draws into the cutout mesh (the `DolphinModel` default
-    // `RenderTypes::entityCutoutNoCull`). The baby uses the `MeshTransformer.scaling(0.5)` layer.
-    let moving = instance.render_state.is_moving;
-    let age = instance.render_state.age_in_ticks;
-    let head_pitch = instance.render_state.head_pitch.to_radians();
-    let head_yaw = instance.render_state.head_yaw.to_radians();
-    let wave = dolphin_wave(age);
-    let root = mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
-
-    // Body (root child) carries the fins, the tail chain, and the head chain.
-    let body_pose = PartPose {
-        offset: DOLPHIN_BODY_POSE.offset,
-        rotation: [
-            head_pitch + if moving { -0.05 - 0.05 * wave } else { 0.0 },
-            head_yaw,
-            0.0,
-        ],
-    };
-    let body_t = root * part_pose_transform(body_pose);
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PART_POSE_ZERO,
-        &DOLPHIN_TEXTURED_BODY,
+    let transform =
+        mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
+    let mut model = DolphinModel::new();
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+        transform,
         texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        DOLPHIN_BACK_FIN_POSE,
-        &DOLPHIN_TEXTURED_BACK_FIN,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        DOLPHIN_LEFT_FIN_POSE,
-        &DOLPHIN_TEXTURED_LEFT_FIN,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        DOLPHIN_RIGHT_FIN_POSE,
-        &DOLPHIN_TEXTURED_RIGHT_FIN,
-        texture,
-        uv,
-    );
-
-    // Tail (body child) carries the tail fin; both pitch with the swim wave while moving.
-    let tail_pose = PartPose {
-        offset: DOLPHIN_TAIL_POSE.offset,
-        rotation: [
-            if moving {
-                -0.1 * wave
-            } else {
-                DOLPHIN_TAIL_BIND_X_ROT
-            },
-            0.0,
-            0.0,
-        ],
-    };
-    let tail_t = body_t * part_pose_transform(tail_pose);
-    emit_textured_cubes_at_pose(mesh, body_t, tail_pose, &DOLPHIN_TEXTURED_TAIL, texture, uv);
-    emit_textured_cubes_at_pose(
-        mesh,
-        tail_t,
-        PartPose {
-            offset: DOLPHIN_TAIL_FIN_POSE.offset,
-            rotation: [if moving { -0.2 * wave } else { 0.0 }, 0.0, 0.0],
-        },
-        &DOLPHIN_TEXTURED_TAIL_FIN,
-        texture,
-        uv,
-    );
-
-    // Head (body child) carries the nose.
-    let head_t = body_t * part_pose_transform(DOLPHIN_HEAD_POSE);
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        DOLPHIN_HEAD_POSE,
-        &DOLPHIN_TEXTURED_HEAD,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        head_t,
-        DOLPHIN_NOSE_POSE,
-        &DOLPHIN_TEXTURED_NOSE,
-        texture,
-        uv,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
     );
 }
 
