@@ -1,3 +1,7 @@
+use super::super::keyframe::{
+    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
+    BoneAnimation, Keyframe, KeyframeInterpolation,
+};
 use super::{
     bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, FROG_BODY, FROG_EYE,
 };
@@ -5,10 +9,11 @@ use super::{
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
 // chain), the tongue, and the two arms (with their hands). The `croaking_body` cube is omitted
-// because `setupAnim` only makes it visible while the croak animation plays. Every keyframe
-// animation (jump, croak, tongue, swim/walk, idle-in-water) is deferred, so the model renders at
-// this rest pose. The three frog texture variants share this geometry and are deferred with the
-// texture-backed path.
+// because `setupAnim` only makes it visible while the croak animation plays. The looping
+// `FrogAnimation.FROG_WALK` keyframe animation is reproduced ([`FROG_WALK`]); the jump, croak,
+// tongue, in-water swim/idle keyframe animations stay deferred (un-projected `AnimationState`s), so
+// a still or non-swimming frog renders at the walk-sampled pose. The three frog texture variants
+// share this geometry and are deferred with the texture-backed path.
 
 // `body`: the `texOffs(3,1)` 7×3×9 box plus the `texOffs(23,22)` 7×0×9 underside plane.
 const FROG_BODY_CUBES: [ModelCubeDesc; 2] = [
@@ -87,3 +92,137 @@ const FROG_ROOT_CHILDREN: [ModelPartDesc; 3] = [
 /// (`offset(0, 24, 0)`). Fifteen visible cubes (the `croaking_body` is hidden at rest).
 pub(in crate::entity_models) const FROG_PARTS: [ModelPartDesc; 1] =
     [part([0.0, 24.0, 0.0], &[], &FROG_ROOT_CHILDREN)];
+
+// ----- `FrogAnimation.FROG_WALK` (length 1.25s, looping). All keyframes are LINEAR; `degreeVec`
+// converts degrees → radians and `posVec` negates the y axis. The animated bones map to the part
+// tree as: `body` = root child 0, `left_leg`/`right_leg` = root children 1/2, `left_arm`/`right_arm`
+// = body children 2/3. -----
+
+const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
+
+const FROG_WALK_LEFT_ARM_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, -5.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(7.5, -2.67, -7.5), LINEAR),
+    keyframe(0.625, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7917, degree_vec(22.5, 0.0, 0.0), LINEAR),
+    keyframe(1.125, degree_vec(-45.0, 0.0, 0.0), LINEAR),
+    keyframe(1.25, degree_vec(0.0, -5.0, 0.0), LINEAR),
+];
+const FROG_WALK_LEFT_ARM_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.1, -2.0), LINEAR),
+    keyframe(0.2917, pos_vec(-0.5, -0.25, -0.13), LINEAR),
+    keyframe(0.625, pos_vec(-0.5, 0.1, 2.0), LINEAR),
+    keyframe(0.9583, pos_vec(0.5, 1.0, -0.11), LINEAR),
+    keyframe(1.25, pos_vec(0.0, 0.1, -2.0), LINEAR),
+];
+const FROG_WALK_RIGHT_ARM_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(22.5, 0.0, 0.0), LINEAR),
+    keyframe(0.4583, degree_vec(-45.0, 0.0, 0.0), LINEAR),
+    keyframe(0.625, degree_vec(0.0, 5.0, 0.0), LINEAR),
+    keyframe(0.9583, degree_vec(7.5, 2.33, 7.5), LINEAR),
+    keyframe(1.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const FROG_WALK_RIGHT_ARM_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.5, 0.1, 2.0), LINEAR),
+    keyframe(0.2917, pos_vec(-0.5, 1.0, 0.12), LINEAR),
+    keyframe(0.625, pos_vec(0.0, 0.1, -2.0), LINEAR),
+    keyframe(0.9583, pos_vec(0.5, -0.25, -0.13), LINEAR),
+    keyframe(1.25, pos_vec(0.5, 0.1, 2.0), LINEAR),
+];
+const FROG_WALK_LEFT_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(45.0, 0.0, 0.0), LINEAR),
+    keyframe(0.625, degree_vec(-45.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7917, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const FROG_WALK_LEFT_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.1, 1.2), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, 0.1, 2.0), LINEAR),
+    keyframe(0.4583, pos_vec(0.0, 2.0, 1.06), LINEAR),
+    keyframe(0.7917, pos_vec(0.0, 0.1, -1.0), LINEAR),
+    keyframe(1.25, pos_vec(0.0, 0.1, 1.2), LINEAR),
+];
+const FROG_WALK_RIGHT_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(-33.75, 0.0, 0.0), LINEAR),
+    keyframe(0.0417, degree_vec(-45.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7917, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9583, degree_vec(45.0, 0.0, 0.0), LINEAR),
+    keyframe(1.25, degree_vec(-33.75, 0.0, 0.0), LINEAR),
+];
+const FROG_WALK_RIGHT_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 1.14, 0.11), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, 0.1, -1.0), LINEAR),
+    keyframe(0.7917, pos_vec(0.0, 0.1, 2.0), LINEAR),
+    keyframe(1.125, pos_vec(0.0, 2.0, 0.95), LINEAR),
+    keyframe(1.25, pos_vec(0.0, 1.14, 0.11), LINEAR),
+];
+const FROG_WALK_BODY_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 5.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(-7.5, 0.33, 7.5), LINEAR),
+    keyframe(0.625, degree_vec(0.0, -5.0, 0.0), LINEAR),
+    keyframe(0.9583, degree_vec(-7.5, 0.33, -7.5), LINEAR),
+    keyframe(1.25, degree_vec(0.0, 5.0, 0.0), LINEAR),
+];
+
+const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes,
+    }
+}
+const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Position,
+        keyframes,
+    }
+}
+
+const FROG_WALK_LEFT_ARM_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_WALK_LEFT_ARM_ROT), pos(&FROG_WALK_LEFT_ARM_POS)];
+const FROG_WALK_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_WALK_RIGHT_ARM_ROT), pos(&FROG_WALK_RIGHT_ARM_POS)];
+const FROG_WALK_LEFT_LEG_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_WALK_LEFT_LEG_ROT), pos(&FROG_WALK_LEFT_LEG_POS)];
+const FROG_WALK_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_WALK_RIGHT_LEG_ROT), pos(&FROG_WALK_RIGHT_LEG_POS)];
+const FROG_WALK_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&FROG_WALK_BODY_ROT)];
+
+const FROG_WALK_BONES: [BoneAnimation; 5] = [
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &FROG_WALK_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &FROG_WALK_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &FROG_WALK_LEFT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &FROG_WALK_RIGHT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "body",
+        channels: &FROG_WALK_BODY_CHANNELS,
+    },
+];
+
+/// Vanilla `FrogAnimation.FROG_WALK`: the looping 1.25s ground-walk cycle, sampled by
+/// `FrogModel.setupAnim` via `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.5, 2.5)`.
+pub(in crate::entity_models) const FROG_WALK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 1.25,
+    looping: true,
+    bones: &FROG_WALK_BONES,
+};
+
+/// Vanilla `FrogModel.setupAnim` walk-call factors: `applyWalk(pos, speed, 1.5, 2.5)` (the swim
+/// variant uses `1.0, 2.5` and is deferred).
+pub(in crate::entity_models) const FROG_WALK_SPEED_FACTOR: f32 = 1.5;
+pub(in crate::entity_models) const FROG_WALK_SCALE_FACTOR: f32 = 2.5;

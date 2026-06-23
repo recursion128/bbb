@@ -98,6 +98,25 @@ pub(in crate::entity_models) fn keyframe_elapsed_seconds(
     }
 }
 
+/// Vanilla `KeyframeAnimation.applyWalk(animationPos, animationSpeed, speedFactor, scaleFactor)`:
+/// the walk-cycle position drives the sample time `((long)(animationPos·50·speedFactor)) / 1000`
+/// seconds (truncated to whole milliseconds, then wrapped by the definition length when looping),
+/// and the amplitude is `min(animationSpeed·scaleFactor, 1)`. Returns `(seconds, target_scale)` to
+/// feed [`sample_bone_offsets`]. (`animationPos` is a non-negative accumulator, so the `as i64`
+/// truncates toward zero exactly like Java's `(long)` cast.)
+pub(in crate::entity_models) fn keyframe_walk_sample(
+    definition: &AnimationDefinition,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+    speed_factor: f32,
+    scale_factor: f32,
+) -> (f32, f32) {
+    let millis = (walk_animation_pos * 50.0 * speed_factor) as i64;
+    let seconds = keyframe_elapsed_seconds(definition, millis as f32 / 1000.0);
+    let scale = (walk_animation_speed * scale_factor).min(1.0);
+    (seconds, scale)
+}
+
 /// Sample one channel's keyframes at `seconds`, reproducing `KeyframeAnimation.Entry.apply`: a
 /// binary search for the surrounding keyframes (`Mth.binarySearch(...) - 1`, clamped to `0`),
 /// the clamped lerp alpha, and the interpolation, scaled by `target_scale`.

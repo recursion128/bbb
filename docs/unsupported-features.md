@@ -1563,11 +1563,16 @@ When an agent does any of the following, update this file in the same slice:
       parents `body` (the 7×3×9 box + 7×0×9 underside plane) and the two legs; `body` parents the
       head (7×0×9 plane + 7×3×9 box) with its `eyes` pivot and two 3×2×3 eyes, the tongue, and the
       two 2×3×3 arms, each carrying an 8×0×8 webbed hand; each leg carries an 8×0×8 foot — fifteen
-      visible cubes (the `croaking_body` is hidden at rest, so it is omitted). The frog is the
-      first keyframe-animated entity rendered at its `createBodyLayer` rest pose: every
-      `FrogModel.setupAnim` animation — the jump, croak (and the `croaking_body` it reveals),
-      tongue, swim/walk (`applyWalk`), and idle-in-water keyframe animations — is deferred
-      entity-side state. The texture-backed path and the three frog texture variants
+      visible cubes (the `croaking_body` is hidden at rest, so it is omitted). The looping
+      `FrogAnimation.FROG_WALK` keyframe cycle is reproduced: `FrogModel.setupAnim` samples it via
+      `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.5, 2.5)` — the walk position drives the
+      sample time (`(long)(pos·50·1.5)` ms, wrapped by the 1.25 s length) and the walk speed scales
+      the amplitude (`min(speed·2.5, 1)`), so a still frog collapses to the bind pose — and the
+      sampled per-bone position/rotation offsets are folded onto the `body`, the two arms, and the two
+      legs (the spine is hand-walked). The jump, croak (and the `croaking_body` it reveals), tongue,
+      and the in-water swim/idle keyframe animations need un-projected `AnimationState`s and stay
+      deferred, as does the swim-walk variant (`applyWalk(..., 1.0, 2.5)` while `isSwimming`). The
+      texture-backed path and the three frog texture variants
       (temperate/warm/cold, `FrogVariant`) also remain unsupported (this is a colored-first slice;
       the colored debug path approximates the body with one orange-tan tint and the eyes with a
       gold tint)

@@ -127,3 +127,26 @@ fn sample_bone_offsets_reads_bat_resting_definition() {
     let (_, head_rot_late) = sample_bone_offsets(&BAT_RESTING, "head", 0.4, 1.0);
     assert!((head_rot_late[0] - 180.0 * RAD).abs() < 1.0e-6);
 }
+
+#[test]
+fn keyframe_walk_sample_matches_vanilla_apply_walk() {
+    // Vanilla `KeyframeAnimation.applyWalk(pos, speed, speedFactor, scaleFactor)`:
+    //   time_ms = (long)(pos·50·speedFactor); seconds = (time_ms/1000) % length when looping;
+    //   target_scale = min(speed·scaleFactor, 1). FROG_WALK is length 1.25, looping.
+    let (seconds, scale) = keyframe_walk_sample(&FROG_WALK, 0.5, 0.3, 1.5, 2.5);
+    // 0.5·50·1.5 = 37.5 → (long)37 → 0.037 s (no wrap); min(0.3·2.5, 1) = 0.75.
+    assert!((seconds - 0.037).abs() < 1.0e-6, "seconds was {seconds}");
+    assert!((scale - 0.75).abs() < 1.0e-6, "scale was {scale}");
+
+    // The millisecond truncation drops the fraction: 0.999·50·1.5 = 74.925 → (long)74 → 0.074.
+    let (s2, _) = keyframe_walk_sample(&FROG_WALK, 0.999, 0.0, 1.5, 2.5);
+    assert!((s2 - 0.074).abs() < 1.0e-6, "seconds was {s2}");
+
+    // The looping wrap: 20·50·1.5 = 1500 ms = 1.5 s, wrapped by the 1.25 s length → 0.25 s.
+    let (s3, _) = keyframe_walk_sample(&FROG_WALK, 20.0, 1.0, 1.5, 2.5);
+    assert!((s3 - 0.25).abs() < 1.0e-6, "seconds was {s3}");
+
+    // The amplitude clamps at 1.0.
+    let (_, clamped) = keyframe_walk_sample(&FROG_WALK, 0.0, 1.0, 1.5, 2.5);
+    assert_eq!(clamped, 1.0);
+}

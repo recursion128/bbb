@@ -80,3 +80,67 @@ fn frog_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(FROG_EYE, 1.0)));
 }
+
+#[test]
+fn frog_walk_animation_matches_vanilla_definition() {
+    // Vanilla `FrogAnimation.FROG_WALK`: 1.25 s looping, animating the body (rotation only), the two
+    // arms, and the two legs (each rotation + position). 49 keyframes total.
+    assert_eq!(FROG_WALK.length_seconds, 1.25);
+    assert!(FROG_WALK.looping);
+    assert_eq!(FROG_WALK.bones.len(), 5);
+    let keyframes: usize = FROG_WALK
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 49);
+
+    // The body has only a rotation channel: at t=0 it yaws +5° (`degreeVec(0, 5, 0)`).
+    let (body_pos, body_rot) = sample_bone_offsets(&FROG_WALK, "body", 0.0, 1.0);
+    assert_eq!(body_pos, [0.0, 0.0, 0.0]);
+    assert_eq!(body_rot[0], 0.0);
+    assert!((body_rot[1] - 5.0_f32.to_radians()).abs() < 1.0e-6);
+
+    // Linear interpolation: the body rotation midway through [0, 0.2917] is the lerp of
+    // `degreeVec(0, 5, 0)` and `degreeVec(-7.5, 0.33, 7.5)`.
+    let (_, mid) = sample_bone_offsets(&FROG_WALK, "body", 0.2917 / 2.0, 1.0);
+    let a = [0.0_f32.to_radians(), 5.0_f32.to_radians(), 0.0];
+    let b = [
+        (-7.5_f32).to_radians(),
+        0.33_f32.to_radians(),
+        7.5_f32.to_radians(),
+    ];
+    for axis in 0..3 {
+        let expected = a[axis] + (b[axis] - a[axis]) * 0.5;
+        assert!(
+            (mid[axis] - expected).abs() < 1.0e-5,
+            "axis {axis}: {} vs {expected}",
+            mid[axis]
+        );
+    }
+
+    // The target scale linearly attenuates the amplitude.
+    let (_, half) = sample_bone_offsets(&FROG_WALK, "body", 0.0, 0.5);
+    assert!((half[1] - 5.0_f32.to_radians() * 0.5).abs() < 1.0e-6);
+}
+
+#[test]
+fn frog_walk_moves_the_limbs_off_the_walk_cycle() {
+    // A still frog (walk speed 0) samples the cycle at amplitude 0, collapsing to the bind pose; a
+    // walking frog samples the FROG_WALK offsets, animating the body, arms, and legs. The vertex
+    // count is preserved (no parts appear or vanish).
+    let still = entity_model_mesh(&[EntityModelInstance::frog(70, [0.0, 64.0, 0.0], 0.0)]);
+    let walking = entity_model_mesh(&[
+        EntityModelInstance::frog(71, [0.0, 64.0, 0.0], 0.0).with_walk_animation(6.0, 1.0)
+    ]);
+    assert_eq!(still.vertices.len(), walking.vertices.len());
+    assert_ne!(
+        still.vertices, walking.vertices,
+        "the walking frog animates its limbs"
+    );
+
+    // The still frog equals the plain bind-pose emit (amplitude 0 ⇒ no offsets).
+    let bind = entity_model_mesh(&[EntityModelInstance::frog(72, [0.0, 64.0, 0.0], 0.0)]);
+    assert_eq!(still.vertices, bind.vertices);
+}
