@@ -1,31 +1,18 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn tadpole_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `TadpoleModel.createBodyLayer` (atlas 16×16): two sibling root parts — a 3×2×3 body
-    // box at offset (0, 22, -3) and a 0×2×7 tail fin plane at offset (0, 22, 0).
-    assert_eq!(TADPOLE_PARTS.len(), 2);
+    // Vanilla `TadpoleModel.createBodyLayer` (atlas 16×16): two named sibling root parts — a 3×2×3
+    // `body` box at offset (0, 22, -3) and a 0×2×7 `tail` fin plane at offset (0, 22, 0).
+    assert_eq!(TADPOLE_BODY_POSE.offset, [0.0, 22.0, -3.0]);
+    assert_eq!(TADPOLE_BODY_CUBES.len(), 1);
+    assert_eq!(TADPOLE_BODY_CUBES[0].min, [-1.5, -1.0, 0.0]);
+    assert_eq!(TADPOLE_BODY_CUBES[0].size, [3.0, 2.0, 3.0]);
 
-    let body = &TADPOLE_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 22.0, -3.0]);
-    assert!(body.children.is_empty());
-    assert_eq!(body.cubes[0].min, [-1.5, -1.0, 0.0]);
-    assert_eq!(body.cubes[0].size, [3.0, 2.0, 3.0]);
-
-    let tail = &TADPOLE_PARTS[1];
-    assert_eq!(tail.pose.offset, [0.0, 22.0, 0.0]);
-    assert_eq!(tail.cubes[0].min, [0.0, -1.0, 0.0]);
-    assert_eq!(tail.cubes[0].size, [0.0, 2.0, 7.0]);
-
-    // Two cubes total.
-    assert_eq!(count_cubes(&TADPOLE_PARTS), 2);
+    assert_eq!(TADPOLE_TAIL_POSE.offset, [0.0, 22.0, 0.0]);
+    assert_eq!(TADPOLE_TAIL_CUBES.len(), 1);
+    assert_eq!(TADPOLE_TAIL_CUBES[0].min, [0.0, -1.0, 0.0]);
+    assert_eq!(TADPOLE_TAIL_CUBES[0].size, [0.0, 2.0, 7.0]);
 }
 
 #[test]
@@ -59,9 +46,8 @@ fn tadpole_tail_sway_matches_vanilla_setup_anim() {
 
 #[test]
 fn tadpole_swims_its_tail_with_age() {
-    // A still tadpole (age 0) is at bind; advancing the age sways the tail fin (part 1, vertices
-    // [24, 48)) while the body box (part 0, [0, 24)) stays put.
-    assert_eq!(TADPOLE_TAIL_PART_INDEX, 1);
+    // A still tadpole (age 0) is at bind; advancing the age sways the `tail` fin (vertices [24, 48))
+    // while the `body` box (vertices [0, 24)) stays put.
     let base = EntityModelInstance::tadpole(641, [0.0, 64.0, 0.0], 0.0).with_in_water(true);
     let rest = entity_model_mesh(&[base]);
     let swaying = entity_model_mesh(&[base.with_age_in_ticks(5.0)]);
