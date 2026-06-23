@@ -1,219 +1,136 @@
-use super::{
-    apply_quadruped_leg_swing, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
-    TexturedModelPartDesc, SHEEP_WOOL,
-};
+use super::{apply_quadruped_leg_swing_named, PartPose, PART_POSE_ZERO, SHEEP_WOOL};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
-pub(in crate::entity_models) const ADULT_SHEEP_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, -4.0, -6.0],
-    size: [6.0, 6.0, 8.0],
-    color: SHEEP_WOOL,
-}];
+// Vanilla 26.1 SheepModel.createBodyLayer(). Each cube carries both render paths' data: the colored
+// debug tint and the textured `uv_size` / `texOffs` / `mirror`.
+pub(in crate::entity_models) const ADULT_SHEEP_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, -4.0, -6.0],
+    [6.0, 6.0, 8.0],
+    SHEEP_WOOL,
+    [6.0, 6.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const ADULT_SHEEP_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, -10.0, -7.0],
-    size: [8.0, 16.0, 6.0],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const ADULT_SHEEP_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -10.0, -7.0],
+    [8.0, 16.0, 6.0],
+    SHEEP_WOOL,
+    [8.0, 16.0, 6.0],
+    [28.0, 8.0],
+    false,
+)];
 
-pub(in crate::entity_models) const ADULT_SHEEP_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -2.0],
-    size: [4.0, 12.0, 4.0],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const ADULT_SHEEP_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -2.0],
+    [4.0, 12.0, 4.0],
+    SHEEP_WOOL,
+    [4.0, 12.0, 4.0],
+    [0.0, 16.0],
+    false,
+)];
 
-// Vanilla 26.1 SheepModel.createBodyLayer().
-pub(in crate::entity_models) const ADULT_SHEEP_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 6.0, -8.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 5.0, 2.0],
-            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-3.0, 12.0, 7.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [3.0, 12.0, 7.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-3.0, 12.0, -5.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [3.0, 12.0, -5.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_LEG,
-        children: &[],
-    },
-];
+// Vanilla 26.1 SheepFurModel.createFurLayer(): the wool cubes carry a `CubeDeformation`, so the
+// colored geometry is inflated (head 7.2, body 11.5×19.5×9.5, leg 5×7×5) while the textured `uv_size`
+// keeps the base box (the squid body precedent).
+pub(in crate::entity_models) const ADULT_SHEEP_WOOL_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-3.6, -4.6, -4.6],
+    [7.2, 7.2, 7.2],
+    SHEEP_WOOL,
+    [6.0, 6.0, 6.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.6, -4.6, -4.6],
-    size: [7.2, 7.2, 7.2],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const ADULT_SHEEP_WOOL_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-5.75, -11.75, -8.75],
+    [11.5, 19.5, 9.5],
+    SHEEP_WOOL,
+    [8.0, 16.0, 6.0],
+    [28.0, 8.0],
+    false,
+)];
 
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-5.75, -11.75, -8.75],
-    size: [11.5, 19.5, 9.5],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const ADULT_SHEEP_WOOL_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -0.5, -2.5],
+    [5.0, 7.0, 5.0],
+    SHEEP_WOOL,
+    [4.0, 6.0, 4.0],
+    [0.0, 16.0],
+    false,
+)];
 
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.5, -0.5, -2.5],
-    size: [5.0, 7.0, 5.0],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const BABY_SHEEP_HEAD: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -4.5, -3.5],
+    [5.0, 5.0, 5.0],
+    SHEEP_WOOL,
+    [5.0, 5.0, 5.0],
+    [0.0, 0.0],
+    false,
+)];
 
-// Vanilla 26.1 SheepFurModel.createFurLayer().
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 6.0, -8.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_WOOL_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 5.0, 2.0],
-            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_WOOL_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-3.0, 12.0, 7.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_WOOL_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [3.0, 12.0, 7.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_WOOL_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-3.0, 12.0, -5.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_WOOL_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [3.0, 12.0, -5.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ADULT_SHEEP_WOOL_LEG,
-        children: &[],
-    },
-];
+pub(in crate::entity_models) const BABY_SHEEP_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, -2.0, -4.5],
+    [6.0, 4.0, 9.0],
+    SHEEP_WOOL,
+    [6.0, 4.0, 9.0],
+    [0.0, 10.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BABY_SHEEP_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.5, -4.5, -3.5],
-    size: [5.0, 5.0, 5.0],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const BABY_SHEEP_RIGHT_HIND_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 5.0, 2.0],
+    SHEEP_WOOL,
+    [2.0, 5.0, 2.0],
+    [0.0, 23.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BABY_SHEEP_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, -2.0, -4.5],
-    size: [6.0, 4.0, 9.0],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const BABY_SHEEP_LEFT_HIND_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 5.0, 2.0],
+    SHEEP_WOOL,
+    [2.0, 5.0, 2.0],
+    [24.0, 12.0],
+    false,
+)];
 
-pub(in crate::entity_models) const BABY_SHEEP_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, 0.0, -1.0],
-    size: [2.0, 5.0, 2.0],
-    color: SHEEP_WOOL,
-}];
+pub(in crate::entity_models) const BABY_SHEEP_RIGHT_FRONT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 5.0, 2.0],
+    SHEEP_WOOL,
+    [2.0, 5.0, 2.0],
+    [8.0, 23.0],
+    false,
+)];
 
-// Vanilla 26.1 BabySheepModel.createBodyLayer().
-pub(in crate::entity_models) const BABY_SHEEP_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 17.0, 0.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_SHEEP_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 15.5, -2.5],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_SHEEP_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 19.0, 3.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_SHEEP_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 19.0, 3.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_SHEEP_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 19.0, -2.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_SHEEP_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 19.0, -2.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &BABY_SHEEP_LEG,
-        children: &[],
-    },
-];
+pub(in crate::entity_models) const BABY_SHEEP_LEFT_FRONT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 5.0, 2.0],
+    SHEEP_WOOL,
+    [2.0, 5.0, 2.0],
+    [24.0, 5.0],
+    false,
+)];
+
+/// The adult sheep head/body part poses (shared by the body and wool layers).
+const ADULT_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 6.0, -8.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+
+const ADULT_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 5.0, 2.0],
+    rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+};
+
+/// The baby sheep head part pose.
+const BABY_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 15.5, -2.5],
+    rotation: [0.0, 0.0, 0.0],
+};
 
 /// Vanilla `SheepRenderState.headEatPositionScale` / `headEatAngleScale`, the
 /// per-frame eat-grass head animation projected from `Sheep.eatAnimationTick`.
@@ -279,17 +196,6 @@ fn sheep_head_eat_angle_scale(eat_animation_tick: i32, partial_tick: f32) -> f32
     }
 }
 
-/// Vanilla sheep models name the head part `head`. The adult body/fur layers
-/// list it first; the baby body/fur layers list the body first, so the head is
-/// second.
-pub(in crate::entity_models) const fn sheep_head_part_index(baby: bool) -> usize {
-    if baby {
-        1
-    } else {
-        0
-    }
-}
-
 /// Returns `true` when the sheep head is fully at rest — not eating and with no
 /// head-look turn — so callers can borrow the static parts unchanged instead of
 /// cloning to apply [`sheep_head_pose`].
@@ -345,221 +251,93 @@ pub(in crate::entity_models) const MODEL_LAYER_SHEEP_WOOL: &str = "minecraft:she
 pub(in crate::entity_models) const MODEL_LAYER_SHEEP_BABY_WOOL: &str = "minecraft:sheep_baby#wool";
 pub(in crate::entity_models) const MODEL_LAYER_SHEEP_WOOL_UNDERCOAT: &str =
     "minecraft:sheep#wool_undercoat";
-pub(in crate::entity_models) const ADULT_SHEEP_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.0, -4.0, -6.0],
-        size: [6.0, 6.0, 8.0],
-        uv_size: [6.0, 6.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
 
-pub(in crate::entity_models) const ADULT_SHEEP_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, -10.0, -7.0],
-        size: [8.0, 16.0, 6.0],
-        uv_size: [8.0, 16.0, 6.0],
-        tex: [28.0, 8.0],
-        mirror: false,
-    }];
+/// Builds a leaf part at `offset` (no rotation) carrying `cubes`.
+fn leg(offset: [f32; 3], cubes: &[ModelCube]) -> ModelPart {
+    ModelPart::leaf(
+        PartPose {
+            offset,
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes.to_vec(),
+    )
+}
 
-pub(in crate::entity_models) const ADULT_SHEEP_TEXTURED_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 0.0, -2.0],
-        size: [4.0, 12.0, 4.0],
-        uv_size: [4.0, 12.0, 4.0],
-        tex: [0.0, 16.0],
-        mirror: false,
-    }];
+/// Builds the four adult-sheep legs (hind-first, shared by the body and wool layers) under the
+/// vanilla `QuadrupedModel` child names, carrying `cubes`.
+fn adult_legs(cubes: &'static [ModelCube]) -> Vec<(&'static str, ModelPart)> {
+    vec![
+        ("right_hind_leg", leg([-3.0, 12.0, 7.0], cubes)),
+        ("left_hind_leg", leg([3.0, 12.0, 7.0], cubes)),
+        ("right_front_leg", leg([-3.0, 12.0, -5.0], cubes)),
+        ("left_front_leg", leg([3.0, 12.0, -5.0], cubes)),
+    ]
+}
 
-pub(in crate::entity_models) const ADULT_SHEEP_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_PARTS[0].pose,
-        cubes: &ADULT_SHEEP_TEXTURED_HEAD,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_PARTS[1].pose,
-        cubes: &ADULT_SHEEP_TEXTURED_BODY,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_PARTS[2].pose,
-        cubes: &ADULT_SHEEP_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_PARTS[3].pose,
-        cubes: &ADULT_SHEEP_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_PARTS[4].pose,
-        cubes: &ADULT_SHEEP_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_PARTS[5].pose,
-        cubes: &ADULT_SHEEP_TEXTURED_LEG,
-        children: &[],
-    },
-];
+/// Builds the unified adult sheep body tree (head, body, legs) under the vanilla child names.
+fn adult_sheep_body_tree() -> ModelPart {
+    let mut children = vec![
+        (
+            "head",
+            ModelPart::leaf(ADULT_HEAD_POSE, ADULT_SHEEP_HEAD.to_vec()),
+        ),
+        (
+            "body",
+            ModelPart::leaf(ADULT_BODY_POSE, ADULT_SHEEP_BODY.to_vec()),
+        ),
+    ];
+    children.extend(adult_legs(&ADULT_SHEEP_LEG));
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
 
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.6, -4.6, -4.6],
-        size: [7.2, 7.2, 7.2],
-        uv_size: [6.0, 6.0, 6.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
+/// Builds the unified adult sheep wool (fur) tree (head, body, legs) under the vanilla child names.
+fn adult_sheep_wool_tree() -> ModelPart {
+    let mut children = vec![
+        (
+            "head",
+            ModelPart::leaf(ADULT_HEAD_POSE, ADULT_SHEEP_WOOL_HEAD.to_vec()),
+        ),
+        (
+            "body",
+            ModelPart::leaf(ADULT_BODY_POSE, ADULT_SHEEP_WOOL_BODY.to_vec()),
+        ),
+    ];
+    children.extend(adult_legs(&ADULT_SHEEP_WOOL_LEG));
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
 
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-5.75, -11.75, -8.75],
-        size: [11.5, 19.5, 9.5],
-        uv_size: [8.0, 16.0, 6.0],
-        tex: [28.0, 8.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_TEXTURED_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, -0.5, -2.5],
-        size: [5.0, 7.0, 5.0],
-        uv_size: [4.0, 6.0, 4.0],
-        tex: [0.0, 16.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const ADULT_SHEEP_WOOL_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_WOOL_PARTS[0].pose,
-        cubes: &ADULT_SHEEP_WOOL_TEXTURED_HEAD,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_WOOL_PARTS[1].pose,
-        cubes: &ADULT_SHEEP_WOOL_TEXTURED_BODY,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_WOOL_PARTS[2].pose,
-        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_WOOL_PARTS[3].pose,
-        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_WOOL_PARTS[4].pose,
-        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: ADULT_SHEEP_WOOL_PARTS[5].pose,
-        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
-        children: &[],
-    },
-];
-
-pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.0, -2.0, -4.5],
-        size: [6.0, 4.0, 9.0],
-        uv_size: [6.0, 4.0, 9.0],
-        tex: [0.0, 10.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.5, -4.5, -3.5],
-        size: [5.0, 5.0, 5.0],
-        uv_size: [5.0, 5.0, 5.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, 5.0, 2.0],
-        uv_size: [2.0, 5.0, 2.0],
-        tex: [0.0, 23.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, 5.0, 2.0],
-        uv_size: [2.0, 5.0, 2.0],
-        tex: [24.0, 12.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, 5.0, 2.0],
-        uv_size: [2.0, 5.0, 2.0],
-        tex: [8.0, 23.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, 5.0, 2.0],
-        uv_size: [2.0, 5.0, 2.0],
-        tex: [24.0, 5.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const BABY_SHEEP_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
-    TexturedModelPartDesc {
-        pose: BABY_SHEEP_PARTS[0].pose,
-        cubes: &BABY_SHEEP_TEXTURED_BODY,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_SHEEP_PARTS[1].pose,
-        cubes: &BABY_SHEEP_TEXTURED_HEAD,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_SHEEP_PARTS[2].pose,
-        cubes: &BABY_SHEEP_TEXTURED_RIGHT_HIND_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_SHEEP_PARTS[3].pose,
-        cubes: &BABY_SHEEP_TEXTURED_LEFT_HIND_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_SHEEP_PARTS[4].pose,
-        cubes: &BABY_SHEEP_TEXTURED_RIGHT_FRONT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: BABY_SHEEP_PARTS[5].pose,
-        cubes: &BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG,
-        children: &[],
-    },
-];
-
-/// The four leg part indices in every sheep body/wool layer (head/body at `0`/`1`, then the four
-/// legs). [`apply_quadruped_leg_swing`] resolves each leg's phase from its offset.
-const SHEEP_LEG_PART_INDICES: [usize; 4] = [2, 3, 4, 5];
+/// Builds the unified baby sheep tree (body first, then head, then legs — vanilla declaration order),
+/// shared by the baby body and fur layers (vanilla baby sheep has no separate fur layer).
+fn baby_sheep_tree() -> ModelPart {
+    let children = vec![
+        ("body", leg([0.0, 17.0, 0.5], &BABY_SHEEP_BODY)),
+        (
+            "head",
+            ModelPart::leaf(BABY_HEAD_POSE, BABY_SHEEP_HEAD.to_vec()),
+        ),
+        (
+            "right_hind_leg",
+            leg([-2.0, 19.0, 3.0], &BABY_SHEEP_RIGHT_HIND_LEG),
+        ),
+        (
+            "left_hind_leg",
+            leg([2.0, 19.0, 3.0], &BABY_SHEEP_LEFT_HIND_LEG),
+        ),
+        (
+            "right_front_leg",
+            leg([-2.0, 19.0, -2.0], &BABY_SHEEP_RIGHT_FRONT_LEG),
+        ),
+        (
+            "left_front_leg",
+            leg([2.0, 19.0, -2.0], &BABY_SHEEP_LEFT_FRONT_LEG),
+        ),
+    ];
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
 
 /// Vanilla `SheepModel.setupAnim`: `super.setupAnim` (the `QuadrupedModel` leg swing) then the
 /// eat-grass head pose ([`sheep_head_pose`], folded with the head look). Shared by the body and fur
-/// layers — both move together. The head pose is skipped while fully at rest ([`sheep_head_at_rest`]),
-/// matching the static fast path of the hand-walked emitters.
+/// layers — both move together. The head pose is skipped while fully at rest ([`sheep_head_at_rest`]).
 fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
     let render_state = &instance.render_state;
     if !sheep_head_at_rest(
@@ -567,7 +345,7 @@ fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInst
         render_state.head_yaw,
         render_state.head_pitch,
     ) {
-        let head = root.child_at_mut(sheep_head_part_index(baby));
+        let head = root.child_mut("head");
         head.pose = sheep_head_pose(
             head.pose,
             baby,
@@ -576,44 +354,17 @@ fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInst
             render_state.head_pitch,
         );
     }
-    apply_quadruped_leg_swing(
+    apply_quadruped_leg_swing_named(
         root,
-        SHEEP_LEG_PART_INDICES,
         render_state.walk_animation_pos,
         render_state.walk_animation_speed,
     );
 }
 
-/// Selects the colored ([`ADULT_SHEEP_PARTS`]/[`BABY_SHEEP_PARTS`]) and textured
-/// ([`ADULT_SHEEP_TEXTURED_PARTS`]/[`BABY_SHEEP_TEXTURED_PARTS`]) body const trees for a sheep by
-/// `baby`, zipped into the unified tree by [`SheepModel::new`].
-pub(in crate::entity_models) fn sheep_body_part_trees(
-    baby: bool,
-) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
-    if baby {
-        (&BABY_SHEEP_PARTS, &BABY_SHEEP_TEXTURED_PARTS)
-    } else {
-        (&ADULT_SHEEP_PARTS, &ADULT_SHEEP_TEXTURED_PARTS)
-    }
-}
-
-/// Selects the colored and textured fur (wool) const trees for a sheep. The adult fur is the fluffy
-/// [`ADULT_SHEEP_WOOL_PARTS`] layer; the baby reuses its body geometry (vanilla baby sheep has no
-/// separate fur layer), zipped into the unified tree by [`SheepFurModel::new`].
-pub(in crate::entity_models) fn sheep_fur_part_trees(
-    baby: bool,
-) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
-    if baby {
-        (&BABY_SHEEP_PARTS, &BABY_SHEEP_TEXTURED_PARTS)
-    } else {
-        (&ADULT_SHEEP_WOOL_PARTS, &ADULT_SHEEP_WOOL_TEXTURED_PARTS)
-    }
-}
-
 /// Mutable sheep body model, mirroring vanilla `SheepModel` (a `QuadrupedModel`). The unified tree is
-/// zipped from the body const trees selected by `baby` ([`sheep_body_part_trees`]); `setup_anim` runs
-/// the shared [`apply_sheep_anim`]. The base layer renders this with its texture (or baked colors);
-/// the dyed-undercoat layer renders the same tree recolored with the wool tint.
+/// built for `baby` with the vanilla child names; `setup_anim` runs the shared [`apply_sheep_anim`].
+/// The base layer renders this with its texture (or baked colors); the dyed-undercoat layer renders
+/// the same tree recolored with the wool tint.
 pub(in crate::entity_models) struct SheepModel {
     root: ModelPart,
     baby: bool,
@@ -621,11 +372,12 @@ pub(in crate::entity_models) struct SheepModel {
 
 impl SheepModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
-        let (colored, textured) = sheep_body_part_trees(baby);
-        Self {
-            root: ModelPart::root_from_descs(colored, textured),
-            baby,
-        }
+        let root = if baby {
+            baby_sheep_tree()
+        } else {
+            adult_sheep_body_tree()
+        };
+        Self { root, baby }
     }
 }
 
@@ -643,10 +395,11 @@ impl EntityModel for SheepModel {
     }
 }
 
-/// Mutable sheep fur model, mirroring vanilla `SheepFurModel`. The unified tree is zipped from the fur
-/// const trees selected by `baby` ([`sheep_fur_part_trees`]); `setup_anim` runs the same shared
-/// [`apply_sheep_anim`] so the wool moves with the body. Rendered with the wool tint (colored) or the
-/// wool texture (textured); skipped when sheared or invisible.
+/// Mutable sheep fur model, mirroring vanilla `SheepFurModel`. The unified tree is the fluffy wool
+/// layer for the adult; the baby reuses its body geometry (vanilla baby sheep has no separate fur
+/// layer). `setup_anim` runs the same shared [`apply_sheep_anim`] so the wool moves with the body.
+/// Rendered with the wool tint (colored) or the wool texture (textured); skipped when sheared or
+/// invisible.
 pub(in crate::entity_models) struct SheepFurModel {
     root: ModelPart,
     baby: bool,
@@ -654,11 +407,12 @@ pub(in crate::entity_models) struct SheepFurModel {
 
 impl SheepFurModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
-        let (colored, textured) = sheep_fur_part_trees(baby);
-        Self {
-            root: ModelPart::root_from_descs(colored, textured),
-            baby,
-        }
+        let root = if baby {
+            baby_sheep_tree()
+        } else {
+            adult_sheep_wool_tree()
+        };
+        Self { root, baby }
     }
 }
 

@@ -890,11 +890,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
         } else {
             SHEEP_TEXTURE_REF
         },
-        parts: if baby {
-            &BABY_SHEEP_TEXTURED_PARTS
-        } else {
-            &ADULT_SHEEP_TEXTURED_PARTS
-        },
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -906,7 +902,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
             render_type: EntityModelLayerRenderType::Cutout,
             model_layer: MODEL_LAYER_SHEEP_WOOL_UNDERCOAT,
             texture: SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
-            parts: &ADULT_SHEEP_TEXTURED_PARTS,
+            parts: &[],
             visibility: EntityModelLayerVisibility::All,
             tint: wool_tint,
             collector_order: 1,
@@ -927,11 +923,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
             } else {
                 SHEEP_WOOL_TEXTURE_REF
             },
-            parts: if baby {
-                &BABY_SHEEP_TEXTURED_PARTS
-            } else {
-                &ADULT_SHEEP_WOOL_TEXTURED_PARTS
-            },
+            parts: &[],
             visibility: EntityModelLayerVisibility::All,
             tint: wool_tint,
             collector_order: if baby { 1 } else { 0 },

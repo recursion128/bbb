@@ -1,41 +1,26 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn sheep_adult_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`.
     assert_eq!(
         ADULT_SHEEP_HEAD[0],
-        ModelCubeDesc {
-            min: [-3.0, -4.0, -6.0],
-            size: [6.0, 6.0, 8.0],
-            color: SHEEP_WOOL,
-        }
+        ModelCube::new(
+            [-3.0, -4.0, -6.0],
+            [6.0, 6.0, 8.0],
+            SHEEP_WOOL,
+            [6.0, 6.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_SHEEP_PARTS.len(), 6);
-    assert_part(
-        &ADULT_SHEEP_PARTS[0],
-        [0.0, 6.0, -8.0],
-        [0.0, 0.0, 0.0],
-        ADULT_SHEEP_HEAD.as_slice(),
-    );
-    assert_part(
-        &ADULT_SHEEP_PARTS[1],
-        [0.0, 5.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_SHEEP_BODY.as_slice(),
-    );
-    for (part, expected_offset) in ADULT_SHEEP_PARTS[2..].iter().zip([
-        [-3.0, 12.0, 7.0],
-        [3.0, 12.0, 7.0],
-        [-3.0, 12.0, -5.0],
-        [3.0, 12.0, -5.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            ADULT_SHEEP_LEG.as_slice(),
-        );
-    }
+    assert_eq!(ADULT_SHEEP_BODY[0].size, [8.0, 16.0, 6.0]);
+    assert_eq!(ADULT_SHEEP_BODY[0].tex, [28.0, 8.0]);
+    assert_eq!(ADULT_SHEEP_LEG[0].size, [4.0, 12.0, 4.0]);
+    assert_eq!(ADULT_SHEEP_LEG[0].tex, [0.0, 16.0]);
 }
 
 #[test]
@@ -60,56 +45,40 @@ fn sheep_adult_model_mesh_uses_vanilla_body_layer_geometry() {
 
 #[test]
 fn sheep_wool_layer_parts_match_vanilla_26_1_fur_layer() {
+    // The wool cubes inflate the colored geometry while the textured `uv_size` keeps the base box.
     assert_eq!(
         ADULT_SHEEP_WOOL_HEAD[0],
-        ModelCubeDesc {
-            min: [-3.6, -4.6, -4.6],
-            size: [7.2, 7.2, 7.2],
-            color: SHEEP_WOOL,
-        }
+        ModelCube::new(
+            [-3.6, -4.6, -4.6],
+            [7.2, 7.2, 7.2],
+            SHEEP_WOOL,
+            [6.0, 6.0, 6.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         ADULT_SHEEP_WOOL_BODY[0],
-        ModelCubeDesc {
-            min: [-5.75, -11.75, -8.75],
-            size: [11.5, 19.5, 9.5],
-            color: SHEEP_WOOL,
-        }
+        ModelCube::new(
+            [-5.75, -11.75, -8.75],
+            [11.5, 19.5, 9.5],
+            SHEEP_WOOL,
+            [8.0, 16.0, 6.0],
+            [28.0, 8.0],
+            false,
+        )
     );
     assert_eq!(
         ADULT_SHEEP_WOOL_LEG[0],
-        ModelCubeDesc {
-            min: [-2.5, -0.5, -2.5],
-            size: [5.0, 7.0, 5.0],
-            color: SHEEP_WOOL,
-        }
+        ModelCube::new(
+            [-2.5, -0.5, -2.5],
+            [5.0, 7.0, 5.0],
+            SHEEP_WOOL,
+            [4.0, 6.0, 4.0],
+            [0.0, 16.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_SHEEP_WOOL_PARTS.len(), 6);
-    assert_part(
-        &ADULT_SHEEP_WOOL_PARTS[0],
-        [0.0, 6.0, -8.0],
-        [0.0, 0.0, 0.0],
-        ADULT_SHEEP_WOOL_HEAD.as_slice(),
-    );
-    assert_part(
-        &ADULT_SHEEP_WOOL_PARTS[1],
-        [0.0, 5.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_SHEEP_WOOL_BODY.as_slice(),
-    );
-    for (part, expected_offset) in ADULT_SHEEP_WOOL_PARTS[2..].iter().zip([
-        [-3.0, 12.0, 7.0],
-        [3.0, 12.0, 7.0],
-        [-3.0, 12.0, -5.0],
-        [3.0, 12.0, -5.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            ADULT_SHEEP_WOOL_LEG.as_slice(),
-        );
-    }
 }
 
 #[test]
@@ -226,38 +195,21 @@ fn sheep_wool_layer_mesh_applies_vanilla_visibility_and_color() {
 fn sheep_baby_model_parts_match_vanilla_26_1_body_layer() {
     assert_eq!(
         BABY_SHEEP_BODY[0],
-        ModelCubeDesc {
-            min: [-3.0, -2.0, -4.5],
-            size: [6.0, 4.0, 9.0],
-            color: SHEEP_WOOL,
-        }
+        ModelCube::new(
+            [-3.0, -2.0, -4.5],
+            [6.0, 4.0, 9.0],
+            SHEEP_WOOL,
+            [6.0, 4.0, 9.0],
+            [0.0, 10.0],
+            false,
+        )
     );
-    assert_eq!(BABY_SHEEP_PARTS.len(), 6);
-    assert_part(
-        &BABY_SHEEP_PARTS[0],
-        [0.0, 17.0, 0.5],
-        [0.0, 0.0, 0.0],
-        BABY_SHEEP_BODY.as_slice(),
-    );
-    assert_part(
-        &BABY_SHEEP_PARTS[1],
-        [0.0, 15.5, -2.5],
-        [0.0, 0.0, 0.0],
-        BABY_SHEEP_HEAD.as_slice(),
-    );
-    for (part, expected_offset) in BABY_SHEEP_PARTS[2..].iter().zip([
-        [-2.0, 19.0, 3.0],
-        [2.0, 19.0, 3.0],
-        [-2.0, 19.0, -2.0],
-        [2.0, 19.0, -2.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_SHEEP_LEG.as_slice(),
-        );
-    }
+    assert_eq!(BABY_SHEEP_HEAD[0].size, [5.0, 5.0, 5.0]);
+    // The baby legs share one geometry but distinct per-corner UV origins.
+    assert_eq!(BABY_SHEEP_RIGHT_HIND_LEG[0].tex, [0.0, 23.0]);
+    assert_eq!(BABY_SHEEP_LEFT_HIND_LEG[0].tex, [24.0, 12.0]);
+    assert_eq!(BABY_SHEEP_RIGHT_FRONT_LEG[0].tex, [8.0, 23.0]);
+    assert_eq!(BABY_SHEEP_LEFT_FRONT_LEG[0].tex, [24.0, 5.0]);
 }
 
 #[test]
@@ -511,7 +463,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(adult_red[0].model_layer, MODEL_LAYER_SHEEP);
     assert_eq!(adult_red[0].texture, SHEEP_TEXTURE_REF);
-    assert_eq!(adult_red[0].parts, ADULT_SHEEP_TEXTURED_PARTS.as_slice());
+    assert!(adult_red[0].parts.is_empty());
     assert_eq!(adult_red[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (adult_red[0].collector_order, adult_red[0].submit_sequence),
@@ -519,10 +471,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(adult_red[1].model_layer, MODEL_LAYER_SHEEP_WOOL);
     assert_eq!(adult_red[1].texture, SHEEP_WOOL_TEXTURE_REF);
-    assert_eq!(
-        adult_red[1].parts,
-        ADULT_SHEEP_WOOL_TEXTURED_PARTS.as_slice()
-    );
+    assert!(adult_red[1].parts.is_empty());
     assert_eq!(
         adult_red[1].tint,
         sheep_wool_layer_color(SheepWoolColor::Red)
@@ -533,7 +482,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(adult_red[2].model_layer, MODEL_LAYER_SHEEP_WOOL_UNDERCOAT);
     assert_eq!(adult_red[2].texture, SHEEP_WOOL_UNDERCOAT_TEXTURE_REF);
-    assert_eq!(adult_red[2].parts, ADULT_SHEEP_TEXTURED_PARTS.as_slice());
+    assert!(adult_red[2].parts.is_empty());
     assert_eq!(
         adult_red[2].tint,
         sheep_wool_layer_color(SheepWoolColor::Red)
@@ -611,7 +560,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
             ),
         ]
     );
-    assert_eq!(baby_black[1].parts, BABY_SHEEP_TEXTURED_PARTS.as_slice());
+    assert!(baby_black[1].parts.is_empty());
     let sheared_baby_black =
         sheep_textured_layer_passes(true, true, SheepWoolColor::Black, false, false, 0.0);
     assert_eq!(sheared_baby_black.len(), 1);
@@ -651,46 +600,17 @@ fn sheep_textured_model_parts_match_vanilla_model_layer_uv_sources() {
         MODEL_LAYER_SHEEP_WOOL_UNDERCOAT,
         "minecraft:sheep#wool_undercoat"
     );
-    assert_eq!(
-        ADULT_SHEEP_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-3.0, -4.0, -6.0],
-            size: [6.0, 6.0, 8.0],
-            uv_size: [6.0, 6.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_SHEEP_WOOL_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-3.6, -4.6, -4.6],
-            size: [7.2, 7.2, 7.2],
-            uv_size: [6.0, 6.0, 6.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_SHEEP_WOOL_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-5.75, -11.75, -8.75],
-            size: [11.5, 19.5, 9.5],
-            uv_size: [8.0, 16.0, 6.0],
-            tex: [28.0, 8.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-1.0, 0.0, -1.0],
-            size: [2.0, 5.0, 2.0],
-            uv_size: [2.0, 5.0, 2.0],
-            tex: [24.0, 5.0],
-            mirror: false,
-        }
-    );
+    // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
+    assert_eq!(ADULT_SHEEP_HEAD[0].uv_size, [6.0, 6.0, 8.0]);
+    assert_eq!(ADULT_SHEEP_HEAD[0].tex, [0.0, 0.0]);
+    // The wool head/body inflate the colored geometry while the UV box stays the base size.
+    assert_eq!(ADULT_SHEEP_WOOL_HEAD[0].size, [7.2, 7.2, 7.2]);
+    assert_eq!(ADULT_SHEEP_WOOL_HEAD[0].uv_size, [6.0, 6.0, 6.0]);
+    assert_eq!(ADULT_SHEEP_WOOL_BODY[0].size, [11.5, 19.5, 9.5]);
+    assert_eq!(ADULT_SHEEP_WOOL_BODY[0].uv_size, [8.0, 16.0, 6.0]);
+    assert_eq!(ADULT_SHEEP_WOOL_BODY[0].tex, [28.0, 8.0]);
+    assert_eq!(BABY_SHEEP_LEFT_FRONT_LEG[0].uv_size, [2.0, 5.0, 2.0]);
+    assert_eq!(BABY_SHEEP_LEFT_FRONT_LEG[0].tex, [24.0, 5.0]);
 }
 
 #[test]
@@ -908,10 +828,11 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
     //   head.xRot = xRot * PI/180; head.yRot = yRot * PI/180   (super)
     //   head.y += headEatPositionScale * 9.0 * ageScale         (sheep)
     //   head.xRot = headEatAngleScale                           (sheep, overrides pitch)
-    assert_eq!(sheep_head_part_index(false), 0);
-    assert_eq!(sheep_head_part_index(true), 1);
-
-    let adult_head = ADULT_SHEEP_PARTS[sheep_head_part_index(false)].pose;
+    // The head bind poses are the vanilla `SheepModel`/`BabySheepModel` head offsets.
+    let adult_head = PartPose {
+        offset: [0.0, 6.0, -8.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
     // Eating overrides head.xRot with the eat angle; head.yRot stays at the look
     // yaw (0 here). ageScale = 1.0, so the head drops the full 9.0 model units.
     let adult_eaten = sheep_head_pose(
@@ -936,7 +857,10 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
 
     // BabySheepModel extends SheepModel; LivingEntity.getAgeScale = 0.5 for a
     // baby, so the head drops by 9.0 * 0.5 = 4.5.
-    let baby_head = BABY_SHEEP_PARTS[sheep_head_part_index(true)].pose;
+    let baby_head = PartPose {
+        offset: [0.0, 15.5, -2.5],
+        rotation: [0.0, 0.0, 0.0],
+    };
     let baby_eaten = sheep_head_pose(
         baby_head,
         true,
