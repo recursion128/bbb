@@ -259,7 +259,8 @@ impl EntityModelKind {
             Self::Panda => "panda",
             Self::Feline { cat: true } => "feline_cat",
             Self::Feline { cat: false } => "feline_ocelot",
-            Self::Fox => "fox",
+            Self::Fox { baby: false } => "fox",
+            Self::Fox { baby: true } => "fox_baby",
             Self::Nautilus => "nautilus",
             Self::Rabbit => "rabbit",
             Self::Quadruped {

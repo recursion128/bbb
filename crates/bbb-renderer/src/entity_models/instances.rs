@@ -1213,8 +1213,8 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Feline { cat }, position, y_rot)
     }
 
-    pub fn fox(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Fox, position, y_rot)
+    pub fn fox(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Fox { baby }, position, y_rot)
     }
 
     pub fn nautilus(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

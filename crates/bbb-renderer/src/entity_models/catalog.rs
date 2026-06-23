@@ -286,12 +286,14 @@ pub enum EntityModelKind {
     Feline {
         cat: bool,
     },
-    /// `AdultFoxModel` (a custom `EntityModel`) at its `createBodyLayer` rest pose. The `setupAnim` head
-    /// look is reproduced; the walk leg swing, the `headRollAngle` tilt, and every fox pose
-    /// (`isCrouching`, `isSleeping`, `isSitting`, `isPouncing`, `isFaceplanted`) read un-projected
-    /// `FoxRenderState` state and stay deferred, as do the red/snow variant textures and the
-    /// `BabyFoxModel` mesh.
-    Fox,
+    /// `AdultFoxModel` / `BabyFoxModel` (custom `EntityModel`s) at their `createBodyLayer` rest pose
+    /// (`baby` selects the baby body layout). The `setupAnim` head look is reproduced; the walk leg
+    /// swing, the `headRollAngle` tilt, and every fox pose (`isCrouching`, `isSleeping`, `isSitting`,
+    /// `isPouncing`, `isFaceplanted`) read un-projected `FoxRenderState` state and stay deferred, as do
+    /// the red/snow variant textures.
+    Fox {
+        baby: bool,
+    },
     /// `NautilusModel` (a custom `EntityModel`, the new rideable nautilus) at its `createBodyMesh` rest
     /// pose. The `setupAnim` body look — clamped to ±10° — is reproduced; the looping
     /// `NautilusAnimation.SWIMMING` keyframe undulation, the variant textures, the saddle / armor / coral
