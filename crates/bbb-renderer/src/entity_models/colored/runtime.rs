@@ -1592,11 +1592,21 @@ fn emit_shulker_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 
 fn emit_wither_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `WitherBossModel` is six static sibling parts (shoulders, ribcage, tail, the three
-    // heads) at their baked rest poses. The procedural ribcage/tail breathing sway, the head look,
-    // and the invulnerable-shimmer overlay layer are deferred, so the bind-pose part tree is
-    // emitted directly. Wither uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
-    let root = entity_model_root_transform(instance);
-    emit_model_parts(mesh, &WITHER_PARTS, root);
+    // heads) at their baked rest poses. The center head (part 3) follows the plain `head_look_pose`
+    // (`centerHead.yRot/xRot = state.yRot/xRot`); the procedural ribcage/tail breathing sway, the two
+    // side heads' target tracking, and the invulnerable-shimmer overlay layer are deferred. Wither
+    // uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let mut parts = WITHER_PARTS.to_vec();
+    if !head_look_at_rest(head_yaw, head_pitch) {
+        parts[WITHER_CENTER_HEAD_PART_INDEX].pose = head_look_pose(
+            parts[WITHER_CENTER_HEAD_PART_INDEX].pose,
+            head_yaw,
+            head_pitch,
+        );
+    }
+    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

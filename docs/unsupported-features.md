@@ -1709,12 +1709,15 @@ When an agent does any of the following, update this file in the same slice:
       (atlas 64×64): six sibling root parts — the 20×3×3 shoulders bar, the ribcage (a 3×10×3 spine plus
       three 11×2×2 rib bars, at `offset(-2, 6.9, -0.5)` pitched 0.20420352 rad), the 3×6×3 hanging tail
       (at the bind position `(-2, 6.9 + cos(0.20420352)·10, -0.5 + sin(0.20420352)·10)` pitched 0.83252203
-      rad), the 8×8×8 center head, and the two 6×6×6 side heads — nine cubes. Every
-      `WitherBossModel.setupAnim` motion is deferred: the procedural ribcage/tail breathing sway
-      (`cos(ageInTicks · 0.1)`), the center-head look (`yRot`/`xRot`), and the two side heads' target
-      tracking. The `WITHER_ARMOR` invulnerable-shimmer overlay layer (the same mesh re-rendered with
-      `INNER_ARMOR_DEFORMATION`) and the texture-backed path are deferred, so the colored debug path renders
-      a dark body tint plus a lighter head tint (this is a colored-first slice)
+      rad), the 8×8×8 center head, and the two 6×6×6 side heads — nine cubes. The center head (part 3)
+      follows the plain head look (`centerHead.yRot/xRot = state.yRot/xRot`), reproduced through the
+      instance's `head_yaw` / `head_pitch` and the shared `head_look_pose`, with a test pinning that only the
+      center-head vertices turn. The remaining `WitherBossModel.setupAnim` motion is deferred: the procedural
+      ribcage/tail breathing sway (`cos(ageInTicks · 0.1)`) and the two side heads' target tracking (the
+      `DATA_TARGET_*` head targets are client-tick lerped). The `WITHER_ARMOR` invulnerable-shimmer overlay
+      layer (the same mesh re-rendered with `INNER_ARMOR_DEFORMATION`) and the texture-backed path are
+      deferred, so the colored debug path renders a dark body tint plus a lighter head tint (this is a
+      colored-first slice)
     - giant entities as renderer-owned vanilla 26.1 `GiantZombieModel` geometry on the colored path: the
       native entity scene (`entity_scene.rs`) projects vanilla type id `59` to the new
       `EntityModelKind::Giant`, replacing the former placeholder bounds box. `GiantZombieModel` is the

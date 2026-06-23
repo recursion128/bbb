@@ -69,3 +69,32 @@ fn wither_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(WITHER_HEAD, 1.0)));
 }
+
+#[test]
+fn wither_center_head_follows_look_angles() {
+    // Vanilla `WitherBossModel.setupAnim` sets `centerHead.yRot/xRot` from the net head look. The
+    // center head is part 3 (vertices [144, 168)): one cube each for shoulders (1), ribcage (4), tail
+    // (1) precede it (24·6 = 144). A non-zero look re-poses only those vertices; the shoulders /
+    // ribcage / tail and the two side heads (which track the separate `DATA_TARGET_*` heads) stay at
+    // bind.
+    assert_eq!(WITHER_CENTER_HEAD_PART_INDEX, 3);
+    let base = EntityModelInstance::wither(1451, [0.0, 64.0, 0.0], 0.0);
+    let looking = base.with_head_look(35.0, -20.0);
+    let rest = entity_model_mesh(&[base]);
+    let turned = entity_model_mesh(&[looking]);
+    assert_ne!(
+        rest.vertices[144..168],
+        turned.vertices[144..168],
+        "the center head turns with the look angles"
+    );
+    assert_eq!(
+        rest.vertices[..144],
+        turned.vertices[..144],
+        "the shoulders, ribcage, and tail stay at bind"
+    );
+    assert_eq!(
+        rest.vertices[168..],
+        turned.vertices[168..],
+        "the two side heads stay at bind"
+    );
+}

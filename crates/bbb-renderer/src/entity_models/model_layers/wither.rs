@@ -7,12 +7,13 @@ use super::{
 // holds six sibling parts: the shoulders bar, the ribcage (its spine plus three rib bars), the
 // hanging tail, the center head, and the two side heads. The ribcage and tail carry their baked
 // rest rotation; the tail's bind position is `(-2, 6.9 + cos(0.20420352) * 10, -0.5 +
-// sin(0.20420352) * 10)`, derived from the ribcage's bind pitch. Every `WitherBossModel.setupAnim`
-// motion is deferred — the procedural ribcage/tail breathing sway (`cos(ageInTicks * 0.1)`), the
-// center-head look (`yRot`/`xRot`), and the two side heads' target tracking — so the model renders
-// at this bind rest pose. The `WITHER_ARMOR` invulnerable-shimmer overlay layer (the same mesh
-// re-rendered with `INNER_ARMOR_DEFORMATION`) and the texture-backed path are deferred, so the
-// colored debug path renders a dark body tint plus a lighter head tint.
+// sin(0.20420352) * 10)`, derived from the ribcage's bind pitch. The center head (part 3) follows
+// the plain head look (`centerHead.yRot/xRot = state.yRot/xRot`), reproduced via `head_look_pose`.
+// The remaining `WitherBossModel.setupAnim` motion is deferred — the procedural ribcage/tail
+// breathing sway (`cos(ageInTicks * 0.1)`) and the two side heads' target tracking (the
+// `DATA_TARGET_*` head targets are client-tick lerped). The `WITHER_ARMOR` invulnerable-shimmer
+// overlay layer (the same mesh re-rendered with `INNER_ARMOR_DEFORMATION`) and the texture-backed
+// path are deferred, so the colored debug path renders a dark body tint plus a lighter head tint.
 
 // `shoulders`: the 20×3×3 bar.
 const WITHER_SHOULDERS_CUBES: [ModelCubeDesc; 1] =
@@ -55,3 +56,7 @@ pub(in crate::entity_models) const WITHER_PARTS: [ModelPartDesc; 6] = [
     part([-8.0, 4.0, 0.0], &WITHER_SIDE_HEAD_CUBES, &[]),
     part([10.0, 4.0, 0.0], &WITHER_SIDE_HEAD_CUBES, &[]),
 ];
+
+/// Index of the `center_head` part in [`WITHER_PARTS`] (vanilla `createBodyLayer` order:
+/// shoulders, ribcage, tail, center_head, right_head, left_head). It tracks the plain head look.
+pub(in crate::entity_models) const WITHER_CENTER_HEAD_PART_INDEX: usize = 3;
