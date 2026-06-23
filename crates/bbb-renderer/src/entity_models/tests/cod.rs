@@ -1,46 +1,41 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn cod_model_parts_match_vanilla_26_1_body_layer() {
-    assert_eq!(COD_PARTS.len(), 7);
-    // body, head, nose, then the two side fins (zRot ±π/4), tail fin, top fin.
-    assert_part(
-        &COD_PARTS[0],
-        [0.0, 22.0, 0.0],
-        [0.0, 0.0, 0.0],
-        COD_BODY.as_slice(),
-    );
+fn cod_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `CodModel.createBodyLayer` (atlas 32×32): seven cubes — body, head, nose, the two
+    // side fins, tail fin, top fin. Each unified cube carries the colored tint (`COD_TAN`) and the
+    // textured UV (`CubeDeformation.NONE`, so `uv_size == size`).
     assert_eq!(
         COD_BODY[0],
-        ModelCubeDesc {
-            min: [-1.0, -2.0, 0.0],
-            size: [2.0, 4.0, 7.0],
-            color: COD_TAN,
-        }
+        ModelCube::new(
+            [-1.0, -2.0, 0.0],
+            [2.0, 4.0, 7.0],
+            COD_TAN,
+            [2.0, 4.0, 7.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_part(
-        &COD_PARTS[2],
-        [0.0, 22.0, -3.0],
-        [0.0, 0.0, 0.0],
-        COD_NOSE.as_slice(),
-    );
-    assert_part(
-        &COD_PARTS[3],
-        [-1.0, 23.0, 0.0],
-        [0.0, 0.0, -std::f32::consts::FRAC_PI_4],
-        COD_RIGHT_FIN.as_slice(),
-    );
-    assert_part(
-        &COD_PARTS[4],
-        [1.0, 23.0, 0.0],
-        [0.0, 0.0, std::f32::consts::FRAC_PI_4],
-        COD_LEFT_FIN.as_slice(),
-    );
-    // The tail fin is index 5 and the top fin index 6; both are zero-thickness planes.
-    assert_eq!(COD_TAIL_FIN_PART_INDEX, 5);
+    assert_eq!(COD_HEAD[0].tex, [11.0, 0.0]);
+    assert_eq!(COD_NOSE[0].size, [2.0, 3.0, 1.0]);
+    // The fins are zero-thickness planes.
+    assert_eq!(COD_RIGHT_FIN[0].size, [2.0, 0.0, 2.0]);
     assert_eq!(COD_TAIL_FIN[0].size, [0.0, 4.0, 4.0]);
     assert_eq!(COD_TOP_FIN[0].size, [0.0, 1.0, 6.0]);
-    assert_eq!(COD_RIGHT_FIN[0].size, [2.0, 0.0, 2.0]);
+    // Every cube wears the cod tint on the colored path.
+    for cube in [
+        COD_BODY[0],
+        COD_HEAD[0],
+        COD_NOSE[0],
+        COD_RIGHT_FIN[0],
+        COD_LEFT_FIN[0],
+        COD_TAIL_FIN[0],
+        COD_TOP_FIN[0],
+    ] {
+        assert_eq!(cube.color, COD_TAN);
+    }
 }
 
 #[test]
@@ -121,22 +116,20 @@ fn cod_texture_ref_matches_vanilla_renderer() {
 }
 
 #[test]
-fn cod_textured_layer_passes_match_vanilla_renderer() {
-    let passes = cod_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].kind, EntityModelLayerKind::CodBase);
-    assert_eq!(passes[0].model_layer, MODEL_LAYER_COD);
-    assert_eq!(passes[0].texture, COD_TEXTURE_REF);
-    assert_eq!(passes[0].parts, COD_TEXTURED_PARTS.as_slice());
-    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
-
-    // The textured parts mirror the colored poses (the top fin keeps its negative
-    // `texOffs(20, -6)` V origin).
-    assert_eq!(MODEL_LAYER_COD, "minecraft:cod#main");
-    assert_eq!(COD_TEXTURED_TOP_FIN[0].tex, [20.0, -6.0]);
-    for (colored, textured) in COD_PARTS.iter().zip(COD_TEXTURED_PARTS.iter()) {
-        assert_eq!(colored.pose, textured.pose);
-    }
+fn cod_textured_cubes_match_vanilla_renderer() {
+    // The unified cubes carry the vanilla `texOffs` for the single cutout pass; the top fin keeps
+    // its negative `texOffs(20, -6)` V origin. The cod texture ref is the vanilla atlas path.
+    assert_eq!(COD_TOP_FIN[0].tex, [20.0, -6.0]);
+    assert_eq!(COD_RIGHT_FIN[0].tex, [22.0, 1.0]);
+    assert_eq!(COD_LEFT_FIN[0].tex, [22.0, 4.0]);
+    assert_eq!(COD_TAIL_FIN[0].tex, [22.0, 3.0]);
+    assert_eq!(
+        COD_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/fish/cod.png",
+            size: [32, 32],
+        }
+    );
 }
 
 #[test]

@@ -1,4 +1,5 @@
 use super::keyframe::{keyframe_elapsed_seconds, keyframe_walk_sample, sample_bone_offsets};
+use super::model::EntityModel;
 use super::{
     boat_model_root_transform,
     catalog::squid_texture_ref,
@@ -26,8 +27,8 @@ use super::{
         allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
         armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot,
         bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, blaze_rod_offset,
-        camel_clamped_head_look, chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index,
-        dolphin_wave, enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
+        camel_clamped_head_look, chicken_leg_part_indices, cow_head_part_index, dolphin_wave,
+        enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
         endermite_segment_pose, ghast_tentacle_x_rot, half_amplitude_leg_swing_pose,
         head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
         head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
@@ -49,12 +50,12 @@ use super::{
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
         turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
         witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, zombie_arm_held_out_pose, CamelWalkLayout, ADULT_CAMEL_WALK_LAYOUT,
-        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
-        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
-        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
-        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
-        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        wolf_tail_swing_pose, zombie_arm_held_out_pose, CamelWalkLayout, CodModel,
+        ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
         BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
         BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
         BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
@@ -74,14 +75,13 @@ use super::{
         BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT,
         BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE,
         BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD,
-        BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR,
-        COD_TAIL_FIN_PART_INDEX, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE,
-        DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE, DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE,
-        DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT, DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE,
-        DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY, DOLPHIN_TEXTURED_HEAD,
-        DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE, DOLPHIN_TEXTURED_RIGHT_FIN,
-        DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN, DOLPHIN_TEXTURE_REF,
-        ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
+        BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
+        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE,
+        DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT,
+        DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
+        DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
+        DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
+        DOLPHIN_TEXTURE_REF, ENDERMAN_TEXTURED_HEAD_CHILDREN_CREEPY, HOGLIN_LEFT_EAR_CHILD_INDEX,
         HOGLIN_RIGHT_EAR_CHILD_INDEX, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE,
         PHANTOM_HEAD_POSE, PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
         PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
@@ -136,13 +136,12 @@ mod layers;
 
 pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
-    chicken_textured_layer_passes, cod_textured_layer_passes, cow_textured_layer_passes,
-    creeper_textured_layer_passes, drowned_textured_layer_passes, enderman_textured_layer_passes,
-    endermite_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
-    illager_textured_layer_passes, illager_textured_spellcasting_parts,
-    iron_golem_textured_layer_passes, llama_textured_layer_passes,
-    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
+    drowned_textured_layer_passes, enderman_textured_layer_passes, endermite_textured_layer_passes,
+    ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
+    hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
+    illager_textured_spellcasting_parts, iron_golem_textured_layer_passes,
+    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     phantom_textured_layer_passes, pig_textured_layer_passes, piglin_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
     salmon_textured_layer_passes, sheep_textured_layer_passes, silverfish_textured_layer_passes,
@@ -704,17 +703,20 @@ fn emit_cod_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `CodModel` tree drives both render paths: `setup_anim` sways the tail fin once,
+    // and the textured pass walks the posed tree (vanilla `CodRenderer` is a single cutout layer).
     let in_water = instance.render_state.in_water;
     let transform = cod_model_root_transform(instance, in_water);
-    let tail_yrot = cod_tail_fin_yrot(instance.render_state.age_in_ticks, in_water);
-    for pass in cod_textured_layer_passes() {
-        if tail_yrot == 0.0 {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            parts[COD_TAIL_FIN_PART_INDEX].pose.rotation[1] = tail_yrot;
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
-        }
+    let mut model = CodModel::new();
+    model.prepare(&instance);
+    if let Some(entry) = entity_model_texture_atlas_entry(atlas, COD_TEXTURE_REF) {
+        model.root().render_textured(
+            meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+            transform,
+            COD_TEXTURE_REF,
+            entry.uv,
+            [1.0, 1.0, 1.0, 1.0],
+        );
     }
 }
 

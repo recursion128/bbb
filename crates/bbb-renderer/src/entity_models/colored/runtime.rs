@@ -431,7 +431,12 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Cod => {
                 if !skip_texture_backed_entities {
-                    emit_cod_model(&mut mesh, *instance);
+                    let in_water = instance.render_state.in_water;
+                    CodModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        cod_model_root_transform(*instance, in_water),
+                    );
                 }
             }
             EntityModelKind::Salmon { size } => {
@@ -2329,17 +2334,6 @@ fn emit_pufferfish_model(
         };
         emit_model_cubes_at_pose(mesh, root, pose, &[part.colored_cube()]);
     }
-}
-
-fn emit_cod_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `CodModel.setupAnim` sways only the tail fin (`yRot`); the swim wiggle and
-    // out-of-water flop live in `cod_model_root_transform`.
-    let in_water = instance.render_state.in_water;
-    let root = cod_model_root_transform(instance, in_water);
-    let tail_yrot = cod_tail_fin_yrot(instance.render_state.age_in_ticks, in_water);
-    let mut parts = COD_PARTS.to_vec();
-    parts[COD_TAIL_FIN_PART_INDEX].pose.rotation[1] = tail_yrot;
-    emit_model_parts_with_color(mesh, &parts, root, COD_TAN);
 }
 
 fn emit_salmon_model(

@@ -70,11 +70,11 @@ use textured::entity_model_textured_meshes;
 #[cfg(test)]
 use textured::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
-    chicken_textured_layer_passes, cod_textured_layer_passes, cow_textured_layer_passes,
-    creeper_textured_layer_passes, drowned_textured_layer_passes, enderman_textured_layer_passes,
-    endermite_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
-    illager_textured_layer_passes, iron_golem_textured_layer_passes, llama_textured_layer_passes,
+    chicken_textured_layer_passes, cow_textured_layer_passes, creeper_textured_layer_passes,
+    drowned_textured_layer_passes, enderman_textured_layer_passes, endermite_textured_layer_passes,
+    ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
+    hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
+    iron_golem_textured_layer_passes, llama_textured_layer_passes,
     magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     phantom_textured_layer_passes, pig_textured_layer_passes, piglin_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,

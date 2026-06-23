@@ -110,11 +110,12 @@ pub(in crate::entity_models) struct WitherModel {
 
 impl WitherModel {
     pub(in crate::entity_models) fn new() -> Self {
-        let leaf =
-            |index: usize| ModelPart::leaf(WITHER_PARTS[index].pose, WITHER_PARTS[index].cubes);
+        let leaf = |index: usize| {
+            ModelPart::leaf_colored(WITHER_PARTS[index].pose, WITHER_PARTS[index].cubes)
+        };
         let root = ModelPart::new(
             PART_POSE_ZERO,
-            &[],
+            Vec::new(),
             vec![
                 ("shoulders", leaf(0)),
                 ("ribcage", leaf(WITHER_RIBCAGE_PART_INDEX)),

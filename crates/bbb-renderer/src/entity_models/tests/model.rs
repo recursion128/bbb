@@ -1,13 +1,21 @@
 use glam::Mat4;
 
-use crate::entity_models::geometry::{EntityModelMesh, ModelCubeDesc, PartPose, PART_POSE_ZERO};
-use crate::entity_models::model::ModelPart;
+use crate::entity_models::geometry::{
+    EntityModelMesh, EntityModelTexturedMesh, PartPose, PART_POSE_ZERO,
+};
+use crate::entity_models::model::{ModelCube, ModelPart};
+use crate::entity_models::{EntityModelTextureRef, EntityModelUvRect};
 
-const UNIT_CUBE: &[ModelCubeDesc] = &[ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [1.0, 1.0, 1.0],
-    color: [1.0, 1.0, 1.0, 1.0],
-}];
+fn unit_cube() -> Vec<ModelCube> {
+    vec![ModelCube::new(
+        [0.0, 0.0, 0.0],
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0],
+        [0.0, 0.0],
+        false,
+    )]
+}
 
 #[test]
 fn model_part_reset_pose_restores_bind_and_visibility() {
@@ -22,7 +30,11 @@ fn model_part_reset_pose_restores_bind_and_visibility() {
         offset: [4.0, 5.0, 6.0],
         rotation: [0.4, 0.5, 0.6],
     };
-    let mut part = ModelPart::new(bind, &[], vec![("child", ModelPart::leaf(child_bind, &[]))]);
+    let mut part = ModelPart::new(
+        bind,
+        Vec::new(),
+        vec![("child", ModelPart::leaf(child_bind, Vec::new()))],
+    );
 
     // Mutate the part and its child away from bind, then hide the part.
     part.pose = PART_POSE_ZERO;
@@ -36,17 +48,17 @@ fn model_part_reset_pose_restores_bind_and_visibility() {
 }
 
 #[test]
-fn model_part_render_skips_invisible_subtrees() {
+fn model_part_render_colored_skips_invisible_subtrees() {
     // Vanilla `ModelPart.render` draws nothing for a hidden part and its whole subtree. A 1×1×1 cube
     // emits 6 faces / 24 vertices when visible.
     let mut part = ModelPart::new(
         PART_POSE_ZERO,
-        UNIT_CUBE,
-        vec![("child", ModelPart::leaf(PART_POSE_ZERO, UNIT_CUBE))],
+        unit_cube(),
+        vec![("child", ModelPart::leaf(PART_POSE_ZERO, unit_cube()))],
     );
 
     let mut visible_mesh = EntityModelMesh::new();
-    part.render(&mut visible_mesh, Mat4::IDENTITY);
+    part.render_colored(&mut visible_mesh, Mat4::IDENTITY);
     assert_eq!(
         visible_mesh.vertices.len(),
         48,
@@ -55,9 +67,39 @@ fn model_part_render_skips_invisible_subtrees() {
 
     part.visible = false;
     let mut hidden_mesh = EntityModelMesh::new();
-    part.render(&mut hidden_mesh, Mat4::IDENTITY);
+    part.render_colored(&mut hidden_mesh, Mat4::IDENTITY);
     assert!(
         hidden_mesh.vertices.is_empty(),
         "a hidden part skips its whole subtree"
     );
+}
+
+#[test]
+fn model_part_render_textured_drives_the_same_posed_tree() {
+    // The textured render path walks the same `ModelPart` tree (one `setup_anim`, two paths). A
+    // 1×1×1 cube emits 6 faces / 24 vertices into the textured mesh; a hidden part skips its subtree.
+    let texture = EntityModelTextureRef {
+        path: "test",
+        size: [16, 16],
+    };
+    let uv_rect = EntityModelUvRect {
+        min: [0.0, 0.0],
+        max: [1.0, 1.0],
+    };
+    let tint = [1.0, 1.0, 1.0, 1.0];
+
+    let mut part = ModelPart::new(
+        PART_POSE_ZERO,
+        unit_cube(),
+        vec![("child", ModelPart::leaf(PART_POSE_ZERO, unit_cube()))],
+    );
+
+    let mut visible_mesh = EntityModelTexturedMesh::new();
+    part.render_textured(&mut visible_mesh, Mat4::IDENTITY, texture, uv_rect, tint);
+    assert_eq!(visible_mesh.vertices.len(), 48);
+
+    part.visible = false;
+    let mut hidden_mesh = EntityModelTexturedMesh::new();
+    part.render_textured(&mut hidden_mesh, Mat4::IDENTITY, texture, uv_rect, tint);
+    assert!(hidden_mesh.vertices.is_empty());
 }
