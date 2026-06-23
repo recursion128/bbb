@@ -302,12 +302,6 @@ pub(in crate::entity_models) const BABY_CAMEL_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
-/// Child-index path from [`BABY_CAMEL_PARTS`] to the `head` part: body (`0`) → `head` (child `1`,
-/// after the tail). Used to apply the clamped head look to the nested baby head (the adult/husk camel
-/// hand-walks its body→head spine via [`CAMEL_WALK`], composing the look in directly). The adult head
-/// sits at child `2`, after the hump and tail.
-pub(in crate::entity_models) const BABY_CAMEL_HEAD_PART_PATH: &[usize] = &[0, 1];
-
 /// Vanilla `CamelModel.applyHeadRotation`: the net head look clamped to `yRot ∈ [-30, 30]` and
 /// `xRot ∈ [-25, 45]` (a camel turns its long neck only so far) before `head.yRot/xRot` are set from
 /// the clamped degrees. Returns the clamped `(yaw, pitch)` in degrees. The transient `jumpCooldown`
@@ -821,6 +815,219 @@ pub(in crate::entity_models) const CAMEL_WALK: AnimationDefinition = AnimationDe
 };
 
 /// Vanilla `CamelModel.applyWalk(..., 2.0F, 2.5F)` factors (`MAX_WALK_ANIMATION_SPEED` drives the
-/// sample time, `WALK_ANIMATION_SCALE_FACTOR` the amplitude).
+/// sample time, `WALK_ANIMATION_SCALE_FACTOR` the amplitude). The base `CamelModel` passes these for
+/// both the adult and the baby walk.
 pub(in crate::entity_models) const CAMEL_WALK_SPEED_FACTOR: f32 = 2.0;
 pub(in crate::entity_models) const CAMEL_WALK_SCALE_FACTOR: f32 = 2.5;
+
+// ----- `CamelBabyAnimation.CAMEL_BABY_WALK` (the baby walk; length 1.5s, looping) -----
+//
+// The baby walk animates the same nine bones as the adult plus a `body` position dip and a `head`
+// position nudge (the adult had neither). The baby leg/ear order differs from the adult (see
+// [`BABY_CAMEL_WALK_LAYOUT`]). Sampled like the adult via `applyWalk(..., 2.0, 2.5)`.
+
+const CAMEL_BABY_WALK_ROOT_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 2.5), LINEAR),
+    keyframe(0.75, degree_vec(0.0, 0.0, -2.5), CATMULLROM),
+    keyframe(1.5, degree_vec(0.0, 0.0, 2.5), LINEAR),
+];
+const CAMEL_BABY_WALK_HEAD_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(2.5, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(-2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.75, degree_vec(2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.125, degree_vec(-2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(2.5, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_HEAD_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4583, pos_vec(0.0, 0.0, 0.1), LINEAR),
+];
+const CAMEL_BABY_WALK_RIGHT_FRONT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(-22.5, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(-22.5, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_RIGHT_FRONT_LEG_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.075, 0.0, 0.0), LINEAR),
+    keyframe(0.75, pos_vec(0.075, 0.0, 0.0), CATMULLROM),
+    keyframe(1.2083, pos_vec(0.075, 4.0, 0.0), CATMULLROM),
+    keyframe(1.5, pos_vec(0.075, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_LEFT_FRONT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(22.5, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(-22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(22.5, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_LEFT_FRONT_LEG_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(-0.1, 0.0, 0.0), LINEAR),
+    keyframe(0.4583, pos_vec(-0.1, 4.0, 0.0), CATMULLROM),
+    keyframe(0.75, pos_vec(-0.1, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, pos_vec(-0.1, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_LEFT_HIND_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(22.5, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(-9.49, 0.0, 0.0), CATMULLROM),
+    keyframe(0.5833, degree_vec(-17.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.2083, degree_vec(7.38, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(22.5, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_LEFT_HIND_LEG_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(-0.1, 0.0, 0.0), LINEAR),
+    keyframe(0.25, pos_vec(-0.1, 5.0, 0.0), CATMULLROM),
+    keyframe(0.5833, pos_vec(-0.1, 0.0, -0.1), CATMULLROM),
+    keyframe(1.5, pos_vec(-0.1, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_BABY_WALK_RIGHT_HIND_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(-15.83, 0.0, 0.0), CATMULLROM),
+    keyframe(0.75, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0, degree_vec(-7.38, 0.0, 0.0), CATMULLROM),
+    keyframe(1.25, degree_vec(-21.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5, degree_vec(-15.83, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_BABY_WALK_RIGHT_HIND_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.1, 0.0, 0.0), LINEAR),
+    keyframe(0.6667, pos_vec(0.1, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0, pos_vec(0.1, 4.0, 0.17), CATMULLROM),
+    keyframe(1.2083, pos_vec(0.1, 0.0, -0.11), CATMULLROM),
+    keyframe(1.5, pos_vec(0.1, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_LEFT_EAR_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+    keyframe(0.75, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.125, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+    keyframe(1.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_RIGHT_EAR_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+    keyframe(0.75, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.125, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+    keyframe(1.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_BABY_WALK_TAIL_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(15.94, -8.42, 20.94), LINEAR),
+    keyframe(0.75, degree_vec(15.94, 8.42, -20.94), CATMULLROM),
+    keyframe(1.5, degree_vec(15.94, -8.42, 20.94), LINEAR),
+];
+const CAMEL_BABY_WALK_BODY_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, -0.6, 0.0), LINEAR),
+    keyframe(0.4583, pos_vec(0.0, -0.6, 0.0), LINEAR),
+];
+
+const CAMEL_BABY_WALK_ROOT_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_BABY_WALK_ROOT_ROT)];
+const CAMEL_BABY_WALK_HEAD_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_BABY_WALK_HEAD_ROT),
+    pos(&CAMEL_BABY_WALK_HEAD_POS),
+];
+const CAMEL_BABY_WALK_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_BABY_WALK_RIGHT_FRONT_LEG_ROT),
+    pos(&CAMEL_BABY_WALK_RIGHT_FRONT_LEG_POS),
+];
+const CAMEL_BABY_WALK_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_BABY_WALK_LEFT_FRONT_LEG_ROT),
+    pos(&CAMEL_BABY_WALK_LEFT_FRONT_LEG_POS),
+];
+const CAMEL_BABY_WALK_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_BABY_WALK_LEFT_HIND_LEG_ROT),
+    pos(&CAMEL_BABY_WALK_LEFT_HIND_LEG_POS),
+];
+const CAMEL_BABY_WALK_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_BABY_WALK_RIGHT_HIND_LEG_ROT),
+    pos(&CAMEL_BABY_WALK_RIGHT_HIND_LEG_POS),
+];
+const CAMEL_BABY_WALK_LEFT_EAR_CHANNELS: [AnimationChannel; 1] =
+    [rot(&CAMEL_BABY_WALK_LEFT_EAR_ROT)];
+const CAMEL_BABY_WALK_RIGHT_EAR_CHANNELS: [AnimationChannel; 1] =
+    [rot(&CAMEL_BABY_WALK_RIGHT_EAR_ROT)];
+const CAMEL_BABY_WALK_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_BABY_WALK_TAIL_ROT)];
+const CAMEL_BABY_WALK_BODY_CHANNELS: [AnimationChannel; 1] = [pos(&CAMEL_BABY_WALK_BODY_POS)];
+
+const CAMEL_BABY_WALK_BONES: [BoneAnimation; 10] = [
+    BoneAnimation {
+        bone: "root",
+        channels: &CAMEL_BABY_WALK_ROOT_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &CAMEL_BABY_WALK_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &CAMEL_BABY_WALK_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &CAMEL_BABY_WALK_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &CAMEL_BABY_WALK_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &CAMEL_BABY_WALK_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_ear",
+        channels: &CAMEL_BABY_WALK_LEFT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_ear",
+        channels: &CAMEL_BABY_WALK_RIGHT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &CAMEL_BABY_WALK_TAIL_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "body",
+        channels: &CAMEL_BABY_WALK_BODY_CHANNELS,
+    },
+];
+
+/// Vanilla `CamelBabyAnimation.CAMEL_BABY_WALK`: the looping 1.5s baby walk cycle, sampled like the
+/// adult via `applyWalk(walkAnimationPos, walkAnimationSpeed, 2.0, 2.5)`. Adds a `body` y-dip and a
+/// `head` position nudge the adult lacks, and reorders the legs/ears (see [`BABY_CAMEL_WALK_LAYOUT`]).
+pub(in crate::entity_models) const CAMEL_BABY_WALK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 1.5,
+    looping: true,
+    bones: &CAMEL_BABY_WALK_BONES,
+};
+
+/// The per-variant camel walk layout (which body child is the head / tail, the head-child ear order,
+/// and the root-child leg order), so one hand-walk serves both the adult and the baby. The adult body
+/// lists `[hump, tail, head]`; the baby `[tail, head]`.
+pub(in crate::entity_models) struct CamelWalkLayout {
+    pub walk: &'static AnimationDefinition,
+    pub head_child: usize,
+    pub tail_child: usize,
+    pub ears: [(usize, &'static str); 2],
+    pub legs: [(usize, &'static str); 4],
+}
+
+pub(in crate::entity_models) const ADULT_CAMEL_WALK_LAYOUT: CamelWalkLayout = CamelWalkLayout {
+    walk: &CAMEL_WALK,
+    head_child: 2,
+    tail_child: 1,
+    ears: [(0, "left_ear"), (1, "right_ear")],
+    legs: [
+        (1, "left_hind_leg"),
+        (2, "right_hind_leg"),
+        (3, "left_front_leg"),
+        (4, "right_front_leg"),
+    ],
+};
+
+pub(in crate::entity_models) const BABY_CAMEL_WALK_LAYOUT: CamelWalkLayout = CamelWalkLayout {
+    walk: &CAMEL_BABY_WALK,
+    head_child: 1,
+    tail_child: 0,
+    ears: [(0, "right_ear"), (1, "left_ear")],
+    legs: [
+        (1, "right_front_leg"),
+        (2, "left_front_leg"),
+        (3, "left_hind_leg"),
+        (4, "right_hind_leg"),
+    ],
+};

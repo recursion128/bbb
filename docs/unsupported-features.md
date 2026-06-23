@@ -329,8 +329,8 @@ When an agent does any of the following, update this file in the same slice:
       `z += speed * 2 * ageScale` shift (body tail child, body subtree hand-emitted; the
       baby horse `getTailXRotOffset = −π/2` also overrides the layer rest angle and
       `ageScale = 0.5`), colored path; the baby donkey/mule nested legs and forced
-      head pitch, the camel's baby walk and sit/dash-entangled gait (the colored and
-      textured adult/husk `CAMEL_WALK` is now reproduced), and the tail's `ageInTicks` yRot
+      head pitch, the camel's sit/dash-entangled gait (the colored and textured
+      `CAMEL_WALK` / `CAMEL_BABY_WALK` are now reproduced), and the tail's `ageInTicks` yRot
       wag stay deferred). The remaining
       slices consume them
       in the other model families' `setupAnim` (fish; other birds; etc., plus
@@ -967,8 +967,9 @@ When an agent does any of the following, update this file in the same slice:
       channel rolls the whole model, the four legs swing (rotation + position), the head
       pitch ADDS onto the clamped look, the two ears flap, and the tail swishes (a still
       camel samples amplitude 0, collapsing to the bind pose plus the head look); the baby
-      walk (`CamelBabyAnimation.CAMEL_BABY_WALK`, a different cycle/topology) stays
-      deferred. Saddle equipment layers, the `CamelModel.setupAnim`
+      camel walk (`CamelBabyAnimation.CAMEL_BABY_WALK`, which adds a `body` y-dip and a
+      `head` position nudge and reorders the legs/ears) is reproduced too on both paths via
+      a shared per-variant `CamelWalkLayout`. Saddle equipment layers, the `CamelModel.setupAnim`
       sit/standup/idle/dash keyframe animations and the `jumpCooldown` extra-pitch head
       boost (the dash/idle/sit animations need their un-projected `AnimationState`s and
       the jump-cooldown state), and lighting remain unsupported

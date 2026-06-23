@@ -11,11 +11,12 @@ use super::super::instances::EntityModelInstance;
 use super::super::model_layers::{
     camel_clamped_head_look, equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose,
     head_look_at_rest, head_look_pose, limb_swing_at_rest, quadruped_leg_swing_pose,
-    ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST, ADULT_HORSE_PARTS, ADULT_LLAMA_PARTS,
-    ADULT_LLAMA_PARTS_WITH_CHEST, BABY_CAMEL_HEAD_PART_PATH, BABY_CAMEL_PARTS, BABY_DONKEY_PARTS,
+    CamelWalkLayout, ADULT_CAMEL_PARTS, ADULT_CAMEL_WALK_LAYOUT, ADULT_DONKEY_PARTS,
+    ADULT_DONKEY_PARTS_WITH_CHEST, ADULT_HORSE_PARTS, ADULT_LLAMA_PARTS,
+    ADULT_LLAMA_PARTS_WITH_CHEST, BABY_CAMEL_PARTS, BABY_CAMEL_WALK_LAYOUT, BABY_DONKEY_PARTS,
     BABY_HORSE_PARTS, BABY_LLAMA_PARTS,
 };
-use super::runtime::{emit_camel_adult_walk_colored, emit_model_parts_with_color_and_head_look};
+use super::runtime::emit_camel_walk_colored;
 
 /// The four leg part indices in the adult equine body layers: body and neck at `0`/`1`,
 /// then left-hind, right-hind, left-front, right-front.
@@ -290,31 +291,21 @@ pub(super) fn emit_camel_model(
     // Vanilla `CamelModel.applyHeadRotation`: the net look yaw is clamped to [-30, 30] and the
     // pitch to [-25, 45] degrees before driving `head.yRot/xRot`. The transient `jumpCooldown`
     // extra-pitch boost needs un-projected render state and is deferred. The head is nested under
-    // the body. `CamelModel.setupAnim` then applies `CAMEL_WALK` via `applyWalk(..., 2, 2.5)`.
+    // the body. `CamelModel.setupAnim` then applies the walk via `applyWalk(..., 2, 2.5)`. The
+    // adult camel and the husk share the adult mesh/walk; the camel baby uses its own mesh/walk.
     let (head_yaw, head_pitch) = camel_clamped_head_look(
         instance.render_state.head_yaw,
         instance.render_state.head_pitch,
     );
-    if family == CamelModelFamily::Camel && baby {
-        // The baby walk (`CAMEL_BABY_WALK`, a different cycle/topology) is deferred, so the baby camel
-        // takes only the clamped head look.
-        if head_look_at_rest(head_yaw, head_pitch) {
-            emit_model_parts_with_color(mesh, &BABY_CAMEL_PARTS, transform, color);
+    let (parts, layout): (&[ModelPartDesc], &CamelWalkLayout) =
+        if family == CamelModelFamily::Camel && baby {
+            (&BABY_CAMEL_PARTS, &BABY_CAMEL_WALK_LAYOUT)
         } else {
-            emit_model_parts_with_color_and_head_look(
-                mesh,
-                &BABY_CAMEL_PARTS,
-                transform,
-                color,
-                BABY_CAMEL_HEAD_PART_PATH,
-                head_yaw,
-                head_pitch,
-            );
-        }
-        return;
-    }
-    // The adult camel and the husk (which shares the adult mesh) hand-walk through `CAMEL_WALK`.
-    emit_camel_adult_walk_colored(mesh, instance, transform, color, head_yaw, head_pitch);
+            (&ADULT_CAMEL_PARTS, &ADULT_CAMEL_WALK_LAYOUT)
+        };
+    emit_camel_walk_colored(
+        mesh, instance, transform, color, parts, layout, head_yaw, head_pitch,
+    );
 }
 
 pub(super) fn emit_llama_model(

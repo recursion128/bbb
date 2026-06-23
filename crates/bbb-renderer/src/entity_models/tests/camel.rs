@@ -543,6 +543,92 @@ fn camel_textured_walk_moves_the_whole_model_and_composes_with_the_look() {
 }
 
 #[test]
+fn camel_baby_walk_animation_matches_vanilla_definition() {
+    // Vanilla `CamelBabyAnimation.CAMEL_BABY_WALK`: 1.5 s looping, animating the root, the head
+    // (rotation + position), the four legs (rotation + position), the two ears, the tail, and a `body`
+    // y-dip the adult lacks — ten bones, 58 keyframes.
+    assert_eq!(CAMEL_BABY_WALK.length_seconds, 1.5);
+    assert!(CAMEL_BABY_WALK.looping);
+    assert_eq!(CAMEL_BABY_WALK.bones.len(), 10);
+    let keyframes: usize = CAMEL_BABY_WALK
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 58);
+
+    // The root rolls the whole model (`degreeVec(0, 0, 2.5)` at t=0) and the baby body dips
+    // (`posVec(0, -0.6, 0)` → y negated to +0.6).
+    let (_, root_rot) = sample_bone_offsets(&CAMEL_BABY_WALK, "root", 0.0, 1.0);
+    assert!((root_rot[2] - 2.5_f32.to_radians()).abs() < 1.0e-4);
+    let (body_pos, _) = sample_bone_offsets(&CAMEL_BABY_WALK, "body", 0.0, 1.0);
+    assert!((body_pos[1] - 0.6).abs() < 1.0e-4);
+
+    // The front legs start a half-cycle apart: right `-22.5°`, left `+22.5°` at t=0.
+    let (_, rfl_rot) = sample_bone_offsets(&CAMEL_BABY_WALK, "right_front_leg", 0.0, 1.0);
+    let (_, lfl_rot) = sample_bone_offsets(&CAMEL_BABY_WALK, "left_front_leg", 0.0, 1.0);
+    assert!((rfl_rot[0] - (-22.5_f32).to_radians()).abs() < 1.0e-4);
+    assert!((lfl_rot[0] - 22.5_f32.to_radians()).abs() < 1.0e-4);
+}
+
+/// The baby camel's depth-first emit order: body `[0, 24)`, the zero-thickness tail plane `[24, 48)`,
+/// the three head cubes and two ears `[48, 168)`, then the four legs `[168, 264)`. The head sits
+/// nested under the body, so a head look turns only `[48, 168)`.
+const BABY_CAMEL_HEAD_VERTEX_RANGE: std::ops::Range<usize> = 48..168;
+
+#[test]
+fn camel_baby_walk_moves_the_model_and_composes_with_the_look() {
+    // The baby camel hand-walks `CAMEL_BABY_WALK` on both paths: a still baby (walk speed 0) collapses
+    // to the bind pose, a walking baby rolls/swings, and the head walk pitch ADDS onto the look (only
+    // the nested head subtree [48, 168) tracks the look).
+    let head = BABY_CAMEL_HEAD_VERTEX_RANGE;
+    let still =
+        EntityModelInstance::camel(740, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, true);
+    let walking = still.with_walk_animation(5.0, 1.0);
+    let walking_looking = still
+        .with_walk_animation(5.0, 1.0)
+        .with_head_look(40.0, -20.0);
+
+    let still_colored = entity_model_mesh(&[still]);
+    let walking_colored = entity_model_mesh(&[walking]);
+    assert_eq!(still_colored.vertices.len(), walking_colored.vertices.len());
+    assert_ne!(
+        still_colored.vertices, walking_colored.vertices,
+        "the walking baby camel rolls its whole body and swings its legs"
+    );
+    let walking_looking_colored = entity_model_mesh(&[walking_looking]);
+    assert_ne!(
+        walking_colored.vertices[head.clone()],
+        walking_looking_colored.vertices[head.clone()],
+        "the look composes onto the walking baby head"
+    );
+    assert_eq!(
+        walking_colored.vertices[..head.start],
+        walking_looking_colored.vertices[..head.start],
+        "the body and tail share the same walk regardless of the look"
+    );
+    assert_eq!(
+        walking_colored.vertices[head.end..],
+        walking_looking_colored.vertices[head.end..],
+        "the legs share the same walk regardless of the look"
+    );
+
+    // The textured path reproduces the same baby walk.
+    let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
+    let still_textured = entity_model_textured_mesh(&[still], &atlas);
+    let walking_textured = entity_model_textured_mesh(&[walking], &atlas);
+    assert_eq!(
+        still_textured.vertices.len(),
+        walking_textured.vertices.len()
+    );
+    assert_ne!(
+        still_textured.vertices, walking_textured.vertices,
+        "the textured baby camel walks too"
+    );
+}
+
+#[test]
 fn camel_head_look_clamps_to_vanilla_range() {
     // Vanilla `CamelModel.applyHeadRotation`: `yRot = clamp(yRot, -30, 30)`,
     // `xRot = clamp(xRot, -25, 45)`, in degrees. Inside the range the angle passes through.

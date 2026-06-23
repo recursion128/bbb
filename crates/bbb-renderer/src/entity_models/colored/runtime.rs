@@ -1529,145 +1529,98 @@ fn emit_frog_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     }
 }
 
-/// Emits a nested part tree, applying [`head_look_pose`] to the single part reached by walking
-/// `head_path` (a sequence of child indices from `parts`) and tinting every cube with a single
-/// `color` (the `emit_model_parts_with_color` path). Every part not on the path is emitted at its
-/// bind pose; the head part is emitted with the look folded into its pose, so its children
-/// (ears/nose/etc.) inherit the rotation exactly as in vanilla. Used by the camel, whose colored
-/// debug mesh is tinted by the camel/husk family color and whose head is nested under the body.
-pub(in crate::entity_models::colored) fn emit_model_parts_with_color_and_head_look(
-    mesh: &mut EntityModelMesh,
-    parts: &[ModelPartDesc],
-    transform: Mat4,
-    color: [f32; 4],
-    head_path: &[usize],
-    head_yaw: f32,
-    head_pitch: f32,
-) {
-    for (index, part) in parts.iter().enumerate() {
-        if head_path.first() != Some(&index) {
-            emit_model_part_with_color(mesh, part, transform, color);
-            continue;
-        }
-        if head_path.len() == 1 {
-            let looked = ModelPartDesc {
-                pose: head_look_pose(part.pose, head_yaw, head_pitch),
-                ..*part
-            };
-            emit_model_part_with_color(mesh, &looked, transform, color);
-        } else {
-            let part_transform = transform * part_pose_transform(part.pose);
-            for cube in part.cubes {
-                emit_model_cube_with_color(mesh, part_transform, *cube, color);
-            }
-            emit_model_parts_with_color_and_head_look(
-                mesh,
-                part.children,
-                part_transform,
-                color,
-                &head_path[1..],
-                head_yaw,
-                head_pitch,
-            );
-        }
-    }
-}
-
-/// Hand-walks the adult camel's colored mesh through [`CAMEL_WALK`], composing the walk onto the
-/// clamped head look. Vanilla `CamelModel.setupAnim` samples the walk via
+/// Hand-walks the camel's colored mesh through its walk ([`CamelWalkLayout::walk`]), composing the
+/// walk onto the clamped head look. Vanilla `CamelModel.setupAnim` samples the walk via
 /// `applyWalk(walkAnimationPos, walkAnimationSpeed, 2.0, 2.5)`: the `root` channel rolls the whole
-/// model, the four legs swing (rotation + position), the `head` adds a pitch onto the look, the two
-/// ears flap, and the tail swishes. A still camel samples amplitude 0, collapsing to the bind pose
-/// plus the head look. The husk shares the adult mesh, so this serves both families.
-pub(in crate::entity_models::colored) fn emit_camel_adult_walk_colored(
+/// model, the four legs swing (rotation + position), the `head` adds a pitch (and, for the baby, a
+/// position nudge) onto the look, the two ears flap, the tail swishes, and the baby `body` dips. A
+/// still camel samples amplitude 0, collapsing to the bind pose plus the head look. The `layout`
+/// carries the per-variant head/tail/ear/leg indices, so this serves the adult, husk, and baby.
+pub(in crate::entity_models::colored) fn emit_camel_walk_colored(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
     transform: Mat4,
     color: [f32; 4],
+    parts: &[ModelPartDesc],
+    layout: &CamelWalkLayout,
     head_yaw: f32,
     head_pitch: f32,
 ) {
     let (seconds, scale) = keyframe_walk_sample(
-        &CAMEL_WALK,
+        layout.walk,
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
         CAMEL_WALK_SPEED_FACTOR,
         CAMEL_WALK_SCALE_FACTOR,
     );
     let animated = |bone: &str, bind: PartPose| {
-        let (position, rotation) = sample_bone_offsets(&CAMEL_WALK, bone, seconds, scale);
+        let (position, rotation) = sample_bone_offsets(layout.walk, bone, seconds, scale);
         keyframe_animated_pose(bind, position, rotation)
     };
 
-    // `root` rolls the whole model: it has no bind offset/rotation, so the z-sway is applied straight
-    // at the entity root transform.
-    let root_bind = PartPose {
-        offset: [0.0, 0.0, 0.0],
-        rotation: [0.0, 0.0, 0.0],
-    };
-    let root_t = transform * part_pose_transform(animated("root", root_bind));
+    // `root` rolls the whole model: no bind offset/rotation, so the z-sway applies at the entity root.
+    let root_t = transform * part_pose_transform(animated("root", PART_POSE_ZERO));
 
-    // `body` (root child 0) is not animated; it carries the hump, tail, and head.
-    let body = &ADULT_CAMEL_PARTS[0];
-    let body_t = root_t * part_pose_transform(body.pose);
+    // `body` (root child 0): not animated on the adult; the baby walk dips it via a `body` position.
+    let body = &parts[0];
+    let body_t = root_t * part_pose_transform(animated("body", body.pose));
     for cube in body.cubes {
         emit_model_cube_with_color(mesh, body_t, *cube, color);
     }
 
-    // `hump` (body child 0) is not animated.
-    emit_model_part_with_color(mesh, &body.children[0], body_t, color);
-
-    // `tail` (body child 1): the walk swish.
-    let tail = &body.children[1];
-    emit_model_part_with_color(
-        mesh,
-        &ModelPartDesc {
-            pose: animated("tail", tail.pose),
-            ..*tail
-        },
-        body_t,
-        color,
-    );
-
-    // `head` (body child 2): the clamped look (set) plus the walk pitch (added). No head position
-    // channel, so the bind offset is kept.
-    let head = &body.children[2];
-    let (_, head_walk_rot) = sample_bone_offsets(&CAMEL_WALK, "head", seconds, scale);
-    let head_pose = PartPose {
-        offset: head.pose.offset,
-        rotation: [
-            head_pitch.to_radians() + head_walk_rot[0],
-            head_yaw.to_radians() + head_walk_rot[1],
-            head.pose.rotation[2] + head_walk_rot[2],
-        ],
-    };
-    let head_t = body_t * part_pose_transform(head_pose);
-    for cube in head.cubes {
-        emit_model_cube_with_color(mesh, head_t, *cube, color);
-    }
-
-    // The two ears (head children 0/1): the walk z-roll flap.
-    for (index, bone) in [(0, "left_ear"), (1, "right_ear")] {
-        let ear = &head.children[index];
-        emit_model_part_with_color(
-            mesh,
-            &ModelPartDesc {
-                pose: animated(bone, ear.pose),
-                ..*ear
-            },
-            head_t,
-            color,
-        );
+    // The body's children: the head (clamped look + walk), the tail (walk swish), and — on the adult —
+    // the static hump. Iterating in declared order preserves the depth-first emit order.
+    for (index, child) in body.children.iter().enumerate() {
+        if index == layout.head_child {
+            let (head_walk_pos, head_walk_rot) =
+                sample_bone_offsets(layout.walk, "head", seconds, scale);
+            let head_pose = PartPose {
+                offset: [
+                    child.pose.offset[0] + head_walk_pos[0],
+                    child.pose.offset[1] + head_walk_pos[1],
+                    child.pose.offset[2] + head_walk_pos[2],
+                ],
+                rotation: [
+                    head_pitch.to_radians() + head_walk_rot[0],
+                    head_yaw.to_radians() + head_walk_rot[1],
+                    child.pose.rotation[2] + head_walk_rot[2],
+                ],
+            };
+            let head_t = body_t * part_pose_transform(head_pose);
+            for cube in child.cubes {
+                emit_model_cube_with_color(mesh, head_t, *cube, color);
+            }
+            for (ear_index, ear_bone) in layout.ears {
+                let ear = &child.children[ear_index];
+                emit_model_part_with_color(
+                    mesh,
+                    &ModelPartDesc {
+                        pose: animated(ear_bone, ear.pose),
+                        ..*ear
+                    },
+                    head_t,
+                    color,
+                );
+            }
+        } else if index == layout.tail_child {
+            emit_model_part_with_color(
+                mesh,
+                &ModelPartDesc {
+                    pose: animated("tail", child.pose),
+                    ..*child
+                },
+                body_t,
+                color,
+            );
+        } else {
+            // The adult hump (static).
+            emit_model_part_with_color(mesh, child, body_t, color);
+        }
     }
 
     // The four legs (root children 1..=4): the walk rotation + position.
-    for (index, bone) in [
-        (1, "left_hind_leg"),
-        (2, "right_hind_leg"),
-        (3, "left_front_leg"),
-        (4, "right_front_leg"),
-    ] {
-        let leg = &ADULT_CAMEL_PARTS[index];
+    for (index, bone) in layout.legs {
+        let leg = &parts[index];
         emit_model_part_with_color(
             mesh,
             &ModelPartDesc {
