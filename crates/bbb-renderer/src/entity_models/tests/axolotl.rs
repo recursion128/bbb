@@ -128,3 +128,55 @@ fn axolotl_mesh_selects_adult_or_baby_body_layer() {
         "baby z-span {baby_span} should be smaller than adult {adult_span}"
     );
 }
+
+#[test]
+fn axolotl_adult_body_turns_toward_the_look_yaw() {
+    // Vanilla `AdultAxolotlModel.setupAnim` turns the whole body toward the look:
+    // `body.yRot += yRot·π/180`, unconditionally and before the deferred procedural sways. The body
+    // is the root part, so the yaw rotates every vertex about the body pivot.
+    let adult_rest = entity_model_mesh(&[EntityModelInstance::axolotl(
+        82,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    let adult_yawed =
+        entity_model_mesh(&[
+            EntityModelInstance::axolotl(83, [0.0, 64.0, 0.0], 0.0, false)
+                .with_head_look(40.0, 0.0),
+        ]);
+    assert_eq!(adult_rest.vertices.len(), adult_yawed.vertices.len());
+    assert_ne!(
+        adult_rest.vertices, adult_yawed.vertices,
+        "the adult body turns with the look yaw"
+    );
+
+    // The pitch feeds only the deferred swimming sways (line 77 uses `yRot` alone), so a pure-pitch
+    // look leaves the body at rest.
+    let adult_pitched =
+        entity_model_mesh(&[
+            EntityModelInstance::axolotl(84, [0.0, 64.0, 0.0], 0.0, false)
+                .with_head_look(0.0, -25.0),
+        ]);
+    assert_eq!(
+        adult_rest.vertices, adult_pitched.vertices,
+        "pitch alone does not turn the adult body"
+    );
+
+    // The baby model (entirely keyframe-driven, no `body.yRot += yRot`) ignores the look.
+    let baby_rest = entity_model_mesh(&[EntityModelInstance::axolotl(
+        85,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+    )]);
+    let baby_looked =
+        entity_model_mesh(&[
+            EntityModelInstance::axolotl(86, [0.0, 64.0, 0.0], 0.0, true)
+                .with_head_look(40.0, -25.0),
+        ]);
+    assert_eq!(
+        baby_rest.vertices, baby_looked.vertices,
+        "the baby axolotl ignores the look"
+    );
+}

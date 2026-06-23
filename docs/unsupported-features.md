@@ -1660,9 +1660,12 @@ When an agent does any of the following, update this file in the same slice:
       side frills), the four 3×5×0 leg planes (right/left legs at the -2/-1 origins), and the 0×5×12 tail
       fin — eleven cubes; the baby (atlas 32×32) wraps the body under a `root` bone at (0, 24, 0), with a
       4×2×6 trunk, four 3×0×1 horizontal leg planes (the right hind leg a doubly-rotated pivot/cube pair),
-      a 0×3×8 tail, a 6×3×4 head, and the three gill planes — eleven cubes. Every `setupAnim` animation is
-      deferred: the body yaw, the adult swimming / water-hovering / ground-crawling / lay-still procedural
-      sways, the baby swim / walk / idle keyframe animations, the play-dead pose, and the mirror-leg copy.
+      a 0×3×8 tail, a 6×3×4 head, and the three gill planes — eleven cubes. The adult body yaw look is
+      reproduced: `AdultAxolotlModel.setupAnim` unconditionally turns the root body toward the look target
+      (`body.yRot += yRot·π/180`) off the projected `head_yaw`, before the factor-blended procedural sways.
+      The rest of `setupAnim` is deferred: the adult swimming / water-hovering / ground-crawling / lay-still
+      procedural sways, the baby swim / walk / idle keyframe animations, the play-dead pose, and the
+      mirror-leg copy.
       The five `Axolotl.Variant` color variants (lucy / wild / gold / cyan / blue, each with adult and baby
       textures) live on the deferred texture-backed path, so the colored debug path renders the lucy (pink)
       body with one body tint and one gill tint. The texture-backed path remains unsupported (this is a
