@@ -108,3 +108,50 @@ fn warden_head_look_turns_only_the_nested_head_subtree() {
         "the arms and legs stay put"
     );
 }
+
+#[test]
+fn warden_idle_and_head_pose_match_vanilla_setup_anim() {
+    let age = 50.0_f32;
+    let s = age * 0.1;
+
+    // `animateIdlePose` body roll: xRot += 0.025·cos(s), zRot += 0.025·sin(s), yRot untouched.
+    let body_bind = WARDEN_PARTS[0].children[WARDEN_BODY_BONE_CHILD_INDEX].pose;
+    let body = warden_idle_body_pose(body_bind, age);
+    assert!((body.rotation[0] - (body_bind.rotation[0] + 0.025 * s.cos())).abs() < 1.0e-6);
+    assert_eq!(body.rotation[1], body_bind.rotation[1]);
+    assert!((body.rotation[2] - (body_bind.rotation[2] + 0.025 * s.sin())).abs() < 1.0e-6);
+    assert_eq!(body.offset, body_bind.offset);
+
+    // The head pose: the look sets xRot/yRot, then the idle roll adds xRot += 0.06·sin(s) and
+    // zRot += 0.06·cos(s).
+    let head_bind = WARDEN_PARTS[0].children[WARDEN_BODY_BONE_CHILD_INDEX].children
+        [WARDEN_HEAD_BODY_CHILD_INDEX]
+        .pose;
+    let head = warden_head_pose(head_bind, 40.0, -30.0, age);
+    assert!((head.rotation[0] - ((-30.0_f32).to_radians() + 0.06 * s.sin())).abs() < 1.0e-6);
+    assert!((head.rotation[1] - 40.0_f32.to_radians()).abs() < 1.0e-6);
+    assert!((head.rotation[2] - (head_bind.rotation[2] + 0.06 * s.cos())).abs() < 1.0e-6);
+    assert_eq!(head.offset, head_bind.offset);
+}
+
+#[test]
+fn warden_idle_wobble_sways_the_body_subtree_off_age() {
+    // `animateIdlePose` is always on, so advancing `ageInTicks` rolls the body — carrying its whole
+    // subtree (ribcages, head, tendrils, arms) — plus the head's own extra roll. Only the legs,
+    // hung off the `bone` rather than the body, hold. Layout: body subtree `[0, 192)`, the two legs
+    // `[192, 240)`.
+    let rest = EntityModelInstance::warden(922, [0.0, 64.0, 0.0], 0.0);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let aged_mesh = entity_model_mesh(&[rest.with_age_in_ticks(50.0)]);
+    assert_eq!(rest_mesh.vertices.len(), aged_mesh.vertices.len());
+    assert_ne!(
+        rest_mesh.vertices[..192],
+        aged_mesh.vertices[..192],
+        "the body subtree wobbles with age"
+    );
+    assert_eq!(
+        rest_mesh.vertices[192..],
+        aged_mesh.vertices[192..],
+        "the legs hold"
+    );
+}

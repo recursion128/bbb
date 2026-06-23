@@ -1611,13 +1611,15 @@ When an agent does any of the following, update this file in the same slice:
       hierarchy is emitted directly (atlas 128×128): the `bone` part at `offset(0, 24, 0)` parents the
       body (the 18×21×11 torso) and the two 6×13×6 legs (differing only in X origin, ±5.9); the body
       parents the two 9×21×0 ribcage planes, the head (16×16×10 skull) and the two mirrored 8×28×8
-      arms; the head parents the two 16×16×0 tendril planes — ten cubes. The head look is reproduced:
-      `WardenModel.animateHeadLookTarget` sets `head.xRot/yRot` from the projected `head_pitch/head_yaw`,
-      so the body-nested head (and its two tendrils) track the look target. The remaining
-      `WardenModel.setupAnim` motion is deferred: the walk (`animateWalk`), the always-on idle-pose
-      wobble (`animateIdlePose`, which also rolls the body and adds onto the head), the tendril sway
-      (`animateTendrils`, gated by the un-projected `tendrilAnimation` heart-rate float), and the attack /
-      sonic-boom / digging / emerging / roar / sniff keyframe animations. The four emissive overlay layers
+      arms; the head parents the two 16×16×0 tendril planes — ten cubes. Two non-keyframe motions are
+      reproduced: the head look (`WardenModel.animateHeadLookTarget` sets `head.xRot/yRot` from the
+      projected `head_pitch/head_yaw`, so the body-nested head and its two tendrils track the look target)
+      and the always-on idle wobble (`animateIdlePose` rolls the body `xRot/zRot += 0.025·cos/sin(age·0.1)`
+      and the head `xRot/zRot += 0.06·sin/cos(age·0.1)` off the projected `age_in_ticks`, hand-walking the
+      `bone → body → head` spine so the body roll carries its subtree). The remaining `WardenModel.setupAnim`
+      motion is deferred: the walk (`animateWalk`), the tendril sway (`animateTendrils`, gated by the
+      un-projected `tendrilAnimation` heart-rate float), and the attack / sonic-boom / digging / emerging /
+      roar / sniff keyframe animations. The four emissive overlay layers
       (`WardenEmissiveLayer` for the tendrils, heart, bioluminescent spots, and pulsating spots, each
       keyed off the danger/heartbeat/anger animation state) are deferred. The texture-backed path
       remains unsupported (this is a colored-first slice; the colored debug path approximates the body

@@ -1,16 +1,16 @@
 use super::{
-    bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, WARDEN_BODY,
+    bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, PartPose, WARDEN_BODY,
     WARDEN_TENDRIL,
 };
 
 // Vanilla 26.1 `WardenModel.createBodyLayer` (atlas 128×128). The mesh root holds one `bone` part
 // at `offset(0, 24, 0)` parenting the body and the two legs; `body` parents the two ribcage
-// planes, the head (which parents the two tendril planes), and the two arms. Every
-// `WardenModel.setupAnim` animation — the head look, walk, the procedural idle wobble
-// (`animateIdlePose`), the tendril sway (`animateTendrils`), and the attack / sonic-boom /
-// digging / emerge / roar / sniff keyframe animations — is deferred, so the model renders at this
-// rest pose. The four emissive overlay layers (tendrils, heart, bioluminescent, pulsating spots)
-// and the texture-backed path are deferred.
+// planes, the head (which parents the two tendril planes), and the two arms. Two non-keyframe
+// `WardenModel.setupAnim` motions are reproduced ([`warden_head_pose`] / [`warden_idle_body_pose`]):
+// the head look (`animateHeadLookTarget`) and the always-on idle wobble (`animateIdlePose`). The
+// walk (`animateWalk`), the tendril sway (`animateTendrils`), and the attack / sonic-boom / digging
+// / emerge / roar / sniff keyframe animations stay deferred. The four emissive overlay layers
+// (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed path are deferred.
 
 // `body`: one 18×21×11 box.
 const WARDEN_BODY_CUBES: [ModelCubeDesc; 1] =
@@ -71,5 +71,48 @@ pub(in crate::entity_models) const WARDEN_PARTS: [ModelPartDesc; 1] =
 
 /// Child-index path from [`WARDEN_PARTS`] to the `head`: `bone` (`0`) → `body` (child `0`) → `head`
 /// (child `2`, after the two ribcages). `WardenModel.animateHeadLookTarget` sets `head.xRot/yRot`
-/// from the look angles, and the two tendrils nested under the head inherit the turn.
-pub(in crate::entity_models) const WARDEN_HEAD_PART_PATH: &[usize] = &[0, 0, 2];
+/// from the look angles, and the two tendrils nested under the head inherit the turn. The idle
+/// wobble also rolls the body, so the warden emit hand-walks `bone → body → head` using these
+/// indices.
+pub(in crate::entity_models) const WARDEN_BODY_BONE_CHILD_INDEX: usize = 0;
+pub(in crate::entity_models) const WARDEN_HEAD_BODY_CHILD_INDEX: usize = 2;
+
+/// Vanilla `WardenModel.animateIdlePose` body roll: with `s = ageInTicks·0.1`, the body adds
+/// `xRot += 0.025·cos(s)` and `zRot += 0.025·sin(s)` onto its bind pose. Always on (no gating
+/// state), so every warden sways gently. Mirrors the head roll in [`warden_head_pose`].
+pub(in crate::entity_models) fn warden_idle_body_pose(
+    base: PartPose,
+    age_in_ticks: f32,
+) -> PartPose {
+    let s = age_in_ticks * 0.1;
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            base.rotation[0] + 0.025 * s.cos(),
+            base.rotation[1],
+            base.rotation[2] + 0.025 * s.sin(),
+        ],
+    }
+}
+
+/// Vanilla `WardenModel` head pose: `animateHeadLookTarget` first sets `head.xRot = xRot·π/180`,
+/// `head.yRot = yRot·π/180` (overwriting the bind), then `animateIdlePose` adds the always-on roll
+/// `head.xRot += 0.06·sin(s)`, `head.zRot += 0.06·cos(s)` with `s = ageInTicks·0.1`. (The walk pose
+/// would add further to `head.xRot/zRot`, but the walk is deferred.) The base `head.zRot` is the
+/// bind `0`, so the idle roll lands on `base.rotation[2]`.
+pub(in crate::entity_models) fn warden_head_pose(
+    base: PartPose,
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
+    age_in_ticks: f32,
+) -> PartPose {
+    let s = age_in_ticks * 0.1;
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            head_pitch_deg.to_radians() + 0.06 * s.sin(),
+            head_yaw_deg.to_radians(),
+            base.rotation[2] + 0.06 * s.cos(),
+        ],
+    }
+}

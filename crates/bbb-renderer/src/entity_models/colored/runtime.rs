@@ -1615,26 +1615,43 @@ fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 
 fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `WardenModel` is a nested hierarchy (`bone` → body/legs, body → ribcages/head/arms,
-    // head → tendrils). `WardenModel.animateHeadLookTarget` sets `head.xRot/yRot` from the look
-    // angles, so the head (and its tendrils) track the look target — reproduced here on the
-    // body-nested head. The walk pose (`animateWalk`), the always-on idle wobble
-    // (`animateIdlePose`, which also rolls the body), the tendril sway (`animateTendrils`, gated by
-    // the un-projected `tendrilAnimation`), and the attack / sonic-boom / digging / emerge / roar /
-    // sniff keyframe animations stay deferred. Warden uses `LivingEntityRenderer.setupRotations`.
+    // head → tendrils). Two non-keyframe `setupAnim` motions are reproduced: the head look
+    // (`animateHeadLookTarget` sets `head.xRot/yRot` from the look angles, so the head and its
+    // tendrils track the target) and the always-on idle wobble (`animateIdlePose` rolls the body
+    // `±0.025` and the head `±0.06` off `ageInTicks`). Both land on parts nested under the body, so
+    // the `bone → body → head` spine is hand-walked. The walk pose (`animateWalk`), the tendril sway
+    // (`animateTendrils`, gated by the un-projected `tendrilAnimation`), and the attack / sonic-boom
+    // / digging / emerge / roar / sniff keyframe animations stay deferred. Warden uses
+    // `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
-    if head_look_at_rest(head_yaw, head_pitch) {
-        emit_model_parts(mesh, &WARDEN_PARTS, root);
-    } else {
-        emit_model_parts_with_head_look(
-            mesh,
-            &WARDEN_PARTS,
-            root,
-            WARDEN_HEAD_PART_PATH,
-            head_yaw,
-            head_pitch,
-        );
+    let age = instance.render_state.age_in_ticks;
+
+    // `bone` is the lone root part and carries no cubes; the two legs hang off it unchanged.
+    let bone = &WARDEN_PARTS[0];
+    let bone_t = root * part_pose_transform(bone.pose);
+
+    // `body` rolls with the idle wobble; its `head` child takes the look plus the idle head roll.
+    let body = &bone.children[WARDEN_BODY_BONE_CHILD_INDEX];
+    let body_t = bone_t * part_pose_transform(warden_idle_body_pose(body.pose, age));
+    for cube in body.cubes {
+        emit_model_cube(mesh, body_t, *cube);
+    }
+    for (index, child) in body.children.iter().enumerate() {
+        if index == WARDEN_HEAD_BODY_CHILD_INDEX {
+            let head = ModelPartDesc {
+                pose: warden_head_pose(child.pose, head_yaw, head_pitch, age),
+                ..*child
+            };
+            emit_model_part(mesh, &head, body_t);
+        } else {
+            emit_model_part(mesh, child, body_t);
+        }
+    }
+
+    for leg in bone.children.iter().skip(1) {
+        emit_model_part(mesh, leg, bone_t);
     }
 }
 
