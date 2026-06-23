@@ -1,6 +1,9 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
+    head_look_at_rest, head_look_pose, ModelCubeDesc, ModelPartDesc, TexturedModelCubeDesc,
+    TexturedModelPartDesc, PART_POSE_ZERO,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // The blaze fallback paints the head and rods a single fiery orange.
 pub(in crate::entity_models) const BLAZE_ORANGE: [f32; 4] = [0.94, 0.55, 0.10, 1.0];
@@ -126,4 +129,44 @@ pub(in crate::entity_models) fn blaze_rod_offset(index: usize, age_in_ticks: f32
     };
     let angle = base_angle + (index % 4) as f32 * FRAC_PI_2;
     [angle.cos() * radius, y, angle.sin() * radius]
+}
+
+/// Mutable blaze model, mirroring vanilla `BlazeModel`. The unified tree is zipped from the baked
+/// colored ([`BLAZE_PARTS`]) and textured ([`BLAZE_TEXTURED_PARTS`]) trees: child 0 is the head,
+/// children 1..=[`BLAZE_ROD_COUNT`] are the orbiting rods. `setup_anim` follows the head look angles
+/// ([`head_look_pose`]) and SETs every rod offset from `ageInTicks` ([`blaze_rod_offset`]). A blaze
+/// floats, so there is no walk swing, and there is no `MeshTransformer` scaling (unit model root).
+pub(in crate::entity_models) struct BlazeModel {
+    root: ModelPart,
+}
+
+impl BlazeModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&BLAZE_PARTS, &BLAZE_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for BlazeModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let age_in_ticks = instance.render_state.age_in_ticks;
+        let head_yaw = instance.render_state.head_yaw;
+        let head_pitch = instance.render_state.head_pitch;
+        if !head_look_at_rest(head_yaw, head_pitch) {
+            let head = self.root.child_at_mut(0);
+            head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
+        }
+        for index in 0..BLAZE_ROD_COUNT {
+            self.root.child_at_mut(index + 1).pose.offset = blaze_rod_offset(index, age_in_ticks);
+        }
+    }
 }

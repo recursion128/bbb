@@ -121,7 +121,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Blaze => {
                 if !skip_texture_backed_entities {
-                    emit_blaze_model(&mut mesh, *instance);
+                    BlazeModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Endermite => {
@@ -536,25 +540,6 @@ fn emit_happy_ghast_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
         part.pose.rotation[0] = ghast_tentacle_x_rot(tentacle, age_in_ticks);
     }
     emit_model_parts(mesh, &parts, happy_ghast_model_root_transform(instance));
-}
-
-fn emit_blaze_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `BlazeModel.setupAnim` re-positions all twelve rods from `ageInTicks` every
-    // frame (`blaze_rod_offset`), orbiting in three rings; the head (part 0) follows the
-    // plain `head_look_pose`. The rods are parts 1..=12. There is no walk swing — a blaze
-    // floats — and no synced render state beyond the head look, so the model is fully
-    // animated from `ageInTicks` plus the look angles.
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let mut parts = BLAZE_PARTS.to_vec();
-    if !head_look_at_rest(head_yaw, head_pitch) {
-        parts[0].pose = head_look_pose(parts[0].pose, head_yaw, head_pitch);
-    }
-    for index in 0..BLAZE_ROD_COUNT {
-        parts[index + 1].pose.offset = blaze_rod_offset(index, age_in_ticks);
-    }
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

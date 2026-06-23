@@ -26,30 +26,30 @@ use super::{
         allay_arm_idle_bob_amount, allay_body_x_rot, allay_root_y, allay_wing_flap_amount,
         allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
         armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot,
-        bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, blaze_rod_offset,
-        camel_clamped_head_look, chicken_leg_part_indices, cow_head_part_index, dolphin_wave,
-        enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
-        ghast_tentacle_x_rot, half_amplitude_leg_swing_pose, head_first_part_index,
-        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
-        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_bob_pose,
-        humanoid_arm_swing_pose, humanoid_crouch_arm_pose, humanoid_crouch_body_pose,
-        humanoid_crouch_head_pose, humanoid_crouch_leg_pose, humanoid_leg_swing_pose,
-        illager_spellcast_arm_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
-        limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
-        phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index,
-        piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
-        polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
-        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
-        ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
-        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
-        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
-        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
-        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
-        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
-        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, zombie_arm_held_out_pose, CamelWalkLayout, CodModel, EndermiteModel,
+        bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look,
+        chicken_leg_part_indices, cow_head_part_index, dolphin_wave, enderman_arm_swing_pose,
+        enderman_carried_arm_pose, enderman_leg_swing_pose, ghast_tentacle_x_rot,
+        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
+        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
+        hoglin_leg_swing_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose,
+        humanoid_crouch_arm_pose, humanoid_crouch_body_pose, humanoid_crouch_head_pose,
+        humanoid_crouch_leg_pose, humanoid_leg_swing_pose, illager_spellcast_arm_pose,
+        iron_golem_walk_part_roles, iron_golem_walk_pose, limb_swing_at_rest,
+        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
+        phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index, piglin_ear_flap_pose,
+        piglin_head_part_index, player_head_part_index, polar_bear_head_part_index,
+        polar_bear_standing_part_roles, pufferfish_fin_pose, pufferfish_parts,
+        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, ravager_head_child_index,
+        ravager_leg_swing_pose, ravager_neck_part_index, sheep_head_at_rest, sheep_head_part_index,
+        sheep_head_pose, skeleton_head_part_index, snow_golem_arm_pose, snow_golem_upper_body_pose,
+        snow_golem_upper_body_yrot, spider_leg_swing_pose, spider_leg_swing_roles,
+        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
+        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
+        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
+        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
+        villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, EndermiteModel,
         SalmonModel, SilverfishModel, ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX,
         ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
         ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
@@ -71,10 +71,10 @@ use super::{
         BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
         BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
         BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
-        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BLAZE_ROD_COUNT,
-        BREEZE_BODY_POSE, BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE,
-        BREEZE_ROD_2_POSE, BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD,
-        BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
+        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_BODY_POSE,
+        BREEZE_HEAD_POSE, BREEZE_IDLE, BREEZE_RODS_POSE, BREEZE_ROD_1_POSE, BREEZE_ROD_2_POSE,
+        BREEZE_ROD_3_POSE, BREEZE_TEXTURED_HEAD, BREEZE_TEXTURED_ROD, BREEZE_TEXTURE_REF,
+        CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
         DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_BACK_FIN_POSE, DOLPHIN_BODY_POSE, DOLPHIN_HEAD_POSE,
         DOLPHIN_LEFT_FIN_POSE, DOLPHIN_NOSE_POSE, DOLPHIN_RIGHT_FIN_POSE, DOLPHIN_TAIL_BIND_X_ROT,
         DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
@@ -2938,23 +2938,22 @@ fn emit_blaze_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `BlazeModel.setupAnim` re-positions all twelve rods from `ageInTicks` every
-    // frame (`blaze_rod_offset`); the head (part 0) follows the plain `head_look_pose`. The
-    // rods are parts 1..=12; there is no walk swing.
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
+    // The unified `BlazeModel` tree drives both render paths; `setup_anim` follows the head look and
+    // SETs all twelve rod offsets from `ageInTicks` once. The layer pass supplies the texture /
+    // render type / tint.
     let transform = entity_model_root_transform(instance);
+    let mut model = BlazeModel::new();
+    model.prepare(&instance);
     for pass in blaze_textured_layer_passes() {
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            parts[0].pose = head_look_pose(parts[0].pose, head_yaw, head_pitch);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
-        for index in 0..BLAZE_ROD_COUNT {
-            parts[index + 1].pose.offset = blaze_rod_offset(index, age_in_ticks);
-        }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 
