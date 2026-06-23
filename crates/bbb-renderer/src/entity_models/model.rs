@@ -2,10 +2,17 @@ use glam::Mat4;
 
 use super::geometry::{
     emit_model_cube, emit_textured_model_cube, part_pose_transform, EntityModelMesh,
-    EntityModelTexturedMesh, ModelCubeDesc, PartPose, TexturedModelCubeDesc,
+    EntityModelTexturedMesh, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc,
 };
 use super::instances::EntityModelInstance;
 use super::{EntityModelTextureRef, EntityModelUvRect};
+
+/// Vanilla child parts are addressed by name; the descs the migration zips from carry none, so a
+/// zipped child is named by its index. Sixteen covers the widest part in the entity catalog.
+const INDEX_CHILD_NAMES: [&str; 16] = [
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
+];
 
 /// A unified model cube carrying both render paths' data, mirroring a vanilla `ModelPart.Cube`. The
 /// `min`/`size` geometry is shared; `color` drives the colored debug path and `uv_size`/`tex`/
@@ -130,6 +137,100 @@ impl ModelPart {
             pose,
             cubes.iter().map(ModelCube::from_colored_desc).collect(),
         )
+    }
+
+    /// Builds a unified [`ModelPart`] subtree by zipping a colored [`ModelPartDesc`] tree with its
+    /// matching textured [`TexturedModelPartDesc`] tree (the two share structure and bind poses; the
+    /// textured tree reuses the colored poses). Each unified cube takes its geometry/color from the
+    /// colored cube and its UV from the paired textured cube. This lets a dual-path entity reuse its
+    /// existing baked cube consts verbatim while collapsing its two hand-walked `emit_*` functions
+    /// into one mutable tree driven by a single `setup_anim`. Children are addressed positionally via
+    /// [`ModelPart::child_at_mut`] (named by index). Panics if the two trees disagree in shape.
+    pub(in crate::entity_models) fn from_descs(
+        colored: &ModelPartDesc,
+        textured: &TexturedModelPartDesc,
+    ) -> Self {
+        assert_eq!(
+            colored.cubes.len(),
+            textured.cubes.len(),
+            "colored/textured cube counts diverge"
+        );
+        assert_eq!(
+            colored.children.len(),
+            textured.children.len(),
+            "colored/textured child counts diverge"
+        );
+        let cubes = colored
+            .cubes
+            .iter()
+            .zip(textured.cubes.iter())
+            .map(|(colored_cube, textured_cube)| ModelCube {
+                min: colored_cube.min,
+                size: colored_cube.size,
+                color: colored_cube.color,
+                uv_size: textured_cube.uv_size,
+                tex: textured_cube.tex,
+                mirror: textured_cube.mirror,
+            })
+            .collect();
+        let children = colored
+            .children
+            .iter()
+            .zip(textured.children.iter())
+            .enumerate()
+            .map(|(index, (colored_child, textured_child))| {
+                (
+                    INDEX_CHILD_NAMES[index],
+                    ModelPart::from_descs(colored_child, textured_child),
+                )
+            })
+            .collect();
+        Self {
+            pose: colored.pose,
+            default_pose: colored.pose,
+            cubes,
+            children,
+            visible: true,
+        }
+    }
+
+    /// Builds a unified root [`ModelPart`] over a flat list of sibling colored/textured part trees
+    /// (the common vanilla layout where `createBodyLayer` returns several root parts). The siblings
+    /// hang off a synthetic identity root and are addressed positionally via
+    /// [`ModelPart::child_at_mut`].
+    pub(in crate::entity_models) fn root_from_descs(
+        colored: &[ModelPartDesc],
+        textured: &[TexturedModelPartDesc],
+    ) -> Self {
+        assert_eq!(
+            colored.len(),
+            textured.len(),
+            "colored/textured root part counts diverge"
+        );
+        let children = colored
+            .iter()
+            .zip(textured.iter())
+            .enumerate()
+            .map(|(index, (colored_part, textured_part))| {
+                (
+                    INDEX_CHILD_NAMES[index],
+                    ModelPart::from_descs(colored_part, textured_part),
+                )
+            })
+            .collect();
+        Self {
+            pose: super::geometry::PART_POSE_ZERO,
+            default_pose: super::geometry::PART_POSE_ZERO,
+            cubes: Vec::new(),
+            children,
+            visible: true,
+        }
+    }
+
+    /// Vanilla `ModelPart.getChild` by position: a mutable handle to the `index`-th direct child.
+    /// Pairs with the entities' existing `*_PART_INDEX` constants. Panics if out of range.
+    pub(in crate::entity_models) fn child_at_mut(&mut self, index: usize) -> &mut ModelPart {
+        &mut self.children[index].1
     }
 
     /// Vanilla `ModelPart.resetPose` over the whole subtree: restores the bind pose and visibility

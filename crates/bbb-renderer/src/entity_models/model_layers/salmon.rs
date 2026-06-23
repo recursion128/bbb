@@ -3,6 +3,8 @@ use super::{
     SALMON_RED,
 };
 use crate::entity_models::catalog::SalmonModelSize;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `SalmonModel.createBodyLayer` (atlas 32×32). The body is split into a
 // front and back segment (the back sways), each carrying a flat top fin; the back also
@@ -294,3 +296,43 @@ pub(in crate::entity_models) const SALMON_TEXTURED_PARTS: [TexturedModelPartDesc
         children: &[],
     },
 ];
+
+/// Mutable salmon model, mirroring vanilla `SalmonModel`. The unified tree is zipped from the baked
+/// colored ([`SALMON_PARTS`]) and textured ([`SALMON_TEXTURED_PARTS`]) trees, so one tree drives both
+/// render paths. `setup_anim` sways only the back body segment (which carries the tail and rear top
+/// fin); the swim wiggle, out-of-water flop, and small/medium/large mesh scale live in the salmon
+/// root transform.
+pub(in crate::entity_models) struct SalmonModel {
+    root: ModelPart,
+}
+
+impl SalmonModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&SALMON_PARTS, &SALMON_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SalmonModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `SalmonModel.setupAnim`: `bodyBack.yRot = sway` (the back segment carries the tail
+        // and rear top fin as children, so they swing with it).
+        let body_back_yrot = salmon_body_back_yrot(
+            instance.render_state.age_in_ticks,
+            instance.render_state.in_water,
+        );
+        self.root
+            .child_at_mut(SALMON_BODY_BACK_PART_INDEX)
+            .pose
+            .rotation[1] = body_back_yrot;
+    }
+}

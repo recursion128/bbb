@@ -441,7 +441,12 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Salmon { size } => {
                 if !skip_texture_backed_entities {
-                    emit_salmon_model(&mut mesh, *instance, size);
+                    let in_water = instance.render_state.in_water;
+                    SalmonModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        salmon_model_root_transform(*instance, in_water, size),
+                    );
                 }
             }
             EntityModelKind::TropicalFish {
@@ -2334,22 +2339,6 @@ fn emit_pufferfish_model(
         };
         emit_model_cubes_at_pose(mesh, root, pose, &[part.colored_cube()]);
     }
-}
-
-fn emit_salmon_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    size: SalmonModelSize,
-) {
-    // Vanilla `SalmonModel.setupAnim` sways only the back body segment (`bodyBack.yRot`),
-    // which carries the tail and rear top fin as children; the swim wiggle, out-of-water
-    // flop, and the small/medium/large mesh scale live in `salmon_model_root_transform`.
-    let in_water = instance.render_state.in_water;
-    let root = salmon_model_root_transform(instance, in_water, size);
-    let body_back_yrot = salmon_body_back_yrot(instance.render_state.age_in_ticks, in_water);
-    let mut parts = SALMON_PARTS.to_vec();
-    parts[SALMON_BODY_BACK_PART_INDEX].pose.rotation[1] = body_back_yrot;
-    emit_model_parts_with_color(mesh, &parts, root, SALMON_RED);
 }
 
 fn emit_tropical_fish_model(

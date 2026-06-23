@@ -41,21 +41,21 @@ use super::{
         polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
         pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
-        salmon_body_back_yrot, sheep_head_at_rest, sheep_head_part_index, sheep_head_pose,
-        silverfish_layer_pose, silverfish_segment_pose, skeleton_head_part_index,
-        snow_golem_arm_pose, snow_golem_upper_body_pose, snow_golem_upper_body_yrot,
-        spider_leg_swing_pose, spider_leg_swing_roles, squid_textured_model_parts,
-        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
-        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
-        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
-        turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
-        witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, zombie_arm_held_out_pose, CamelWalkLayout, CodModel,
-        ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
-        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        sheep_head_at_rest, sheep_head_part_index, sheep_head_pose, silverfish_layer_pose,
+        silverfish_segment_pose, skeleton_head_part_index, snow_golem_arm_pose,
+        snow_golem_upper_body_pose, snow_golem_upper_body_yrot, spider_leg_swing_pose,
+        spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
+        strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
+        strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
+        strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
+        vex_moving_arm_z_bob, villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        zombie_arm_held_out_pose, CamelWalkLayout, CodModel, SalmonModel, ADULT_CAMEL_WALK_LAYOUT,
+        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
+        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
+        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
+        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
+        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
         BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
         BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
         BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
@@ -90,13 +90,12 @@ use super::{
         PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
         PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
         PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE, PUFFERFISH_TEXTURE_REF,
-        RAVAGER_TEXTURED_NECK_CHILDREN, SALMON_BODY_BACK_PART_INDEX, SILVERFISH_LAYER_RULES,
-        SILVERFISH_SEGMENT_COUNT, SMALL_ARMOR_STAND_PARTS, SNOW_GOLEM_HEAD_PART_INDEX,
-        SNOW_GOLEM_LEFT_ARM_PART_INDEX, SNOW_GOLEM_RIGHT_ARM_PART_INDEX,
-        SNOW_GOLEM_UPPER_BODY_PART_INDEX, STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y,
-        STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y,
-        STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
-        STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
+        RAVAGER_TEXTURED_NECK_CHILDREN, SILVERFISH_LAYER_RULES, SILVERFISH_SEGMENT_COUNT,
+        SMALL_ARMOR_STAND_PARTS, SNOW_GOLEM_HEAD_PART_INDEX, SNOW_GOLEM_LEFT_ARM_PART_INDEX,
+        SNOW_GOLEM_RIGHT_ARM_PART_INDEX, SNOW_GOLEM_UPPER_BODY_PART_INDEX,
+        STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE,
+        STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y, STRIDER_BABY_MIDDLE_BRISTLE_POSE,
+        STRIDER_BABY_RIGHT_LEG_X, STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
         STRIDER_BABY_TEXTURED_FRONT_BRISTLE, STRIDER_BABY_TEXTURED_LEFT_LEG,
         STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE, STRIDER_BABY_TEXTURED_RIGHT_LEG,
         STRIDER_BABY_TEXTURE_REF, STRIDER_BODY_BASE_Y, STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
@@ -730,16 +729,22 @@ fn emit_salmon_textured_model(
     size: SalmonModelSize,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `SalmonModel` tree drives both render paths; `setup_anim` sways the back body
+    // segment once. Each layer pass supplies the texture / render type / tint, and the posed tree
+    // supplies the geometry (vanilla `SalmonRenderer` is a single cutout layer per size).
     let in_water = instance.render_state.in_water;
     let transform = salmon_model_root_transform(instance, in_water, size);
-    let body_back_yrot = salmon_body_back_yrot(instance.render_state.age_in_ticks, in_water);
+    let mut model = SalmonModel::new();
+    model.prepare(&instance);
     for pass in salmon_textured_layer_passes(size) {
-        if body_back_yrot == 0.0 {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            parts[SALMON_BODY_BACK_PART_INDEX].pose.rotation[1] = body_back_yrot;
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }
