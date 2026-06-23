@@ -2981,29 +2981,65 @@ fn emit_illager_model(
     // so they use the dedicated `half_amplitude_leg_swing_pose`. The separate arms, however,
     // swing with the exact `HumanoidModel` amplitude `cos(pos * 0.6662 [+ π]) * 2.0 *
     // speed * 0.5` ([`humanoid_arm_swing_pose`]) — but only the pillager renders the
-    // separate uncrossed arms; the evoker/vindicator/illusioner show the static crossed
+    // separate uncrossed arms; the idle evoker/vindicator/illusioner show the static crossed
     // `arms` part (vanilla swings the *invisible* separate arms, so their visible arms hold
-    // still). The arm-pose overrides (attack/spellcast/bow/crossbow/celebrate) and the
-    // riding sit pose are deferred (they need the `IllagerArmPose`/riding render state).
+    // still). When `SpellcasterIllager.isCastingSpell()`, the evoker/illusioner instead swap to
+    // the uncrossed layout (hiding the crossed `arms`) and raise both arms into the
+    // `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). The remaining arm-pose overrides
+    // (attack/bow/crossbow/celebrate, which need held items or attack ticks) and the riding sit
+    // pose are deferred.
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let spellcasting = instance.render_state.illager_spellcasting
+        && matches!(
+            family,
+            IllagerModelFamily::Evoker | IllagerModelFamily::Illusioner
+        );
+    // The spellcasting evoker/illusioner switch to the uncrossed (separate-arm) layout, which
+    // lists the legs at `[2, 3]` and the arms at `[4, 5]` (like the pillager).
+    let base_parts = if spellcasting {
+        illager_spellcasting_parts(family)
+    } else {
+        illager_model_parts(family)
+    };
+    let leg_indices = if spellcasting {
+        [2, 3]
+    } else {
+        illager_leg_part_indices(family)
+    };
     let legs_swung = half_amplitude_limb_swing_parts(
-        villager_colored_head_look_parts(
-            illager_model_parts(family),
-            villager_head_part_index(false),
-            instance,
-        ),
-        illager_leg_part_indices(family),
+        villager_colored_head_look_parts(base_parts, villager_head_part_index(false), instance),
+        leg_indices,
         limb_swing,
         limb_swing_amount,
     );
-    let parts = match illager_arm_part_indices(family) {
-        Some(arm_indices) => {
-            illager_arm_swing_parts(legs_swung, arm_indices, limb_swing, limb_swing_amount)
+    let parts = if spellcasting {
+        // Vanilla overwrites both arms' rotations with the spellcasting pose (after the swing),
+        // so apply it directly to the separate arms at `[4, 5]` (right, left) instead of swinging.
+        let age = instance.render_state.age_in_ticks;
+        let mut owned = legs_swung.into_owned();
+        owned[4].pose = illager_spellcast_arm_pose(owned[4].pose, age, true);
+        owned[5].pose = illager_spellcast_arm_pose(owned[5].pose, age, false);
+        Cow::Owned(owned)
+    } else {
+        match illager_arm_part_indices(family) {
+            Some(arm_indices) => {
+                illager_arm_swing_parts(legs_swung, arm_indices, limb_swing, limb_swing_amount)
+            }
+            None => legs_swung,
         }
-        None => legs_swung,
     };
     emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
+}
+
+/// The uncrossed (separate-arm) part layout an evoker/illusioner switches to while
+/// `SpellcasterIllager.isCastingSpell()`: the crossed `arms` part is hidden and the two separate
+/// arms render so the `SPELLCASTING` pose can raise them. The illusioner keeps its hatted head.
+fn illager_spellcasting_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
+    match family {
+        IllagerModelFamily::Illusioner => &ILLAGER_ILLUSIONER_UNCROSSED_PARTS,
+        _ => &ILLAGER_SHARED_UNCROSSED_PARTS,
+    }
 }
 
 /// The two separate arm part indices in an illager body layer, if the family renders the

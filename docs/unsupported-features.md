@@ -534,9 +534,14 @@ When an agent does any of the following, update this file in the same slice:
     the crossed-arms layouts (evoker/vindicator/illusioner) and `[2, 3]` for the
     uncrossed pillager, resolved per family. The pillager also swings its *separate* arms
     with the exact `HumanoidModel` amplitude (`cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5`,
-    [`humanoid_arm_swing_pose`], arms at `[4, 5]`); the evoker/vindicator/illusioner show
+    [`humanoid_arm_swing_pose`], arms at `[4, 5]`); the idle evoker/vindicator/illusioner show
     the static crossed `arms` part, which vanilla never animates (it swings the *invisible*
-    separate arms), so their visible arms stay put. The villager family
+    separate arms), so their visible arms stay put. The SPELLCASTING arm pose is now projected:
+    `SpellcasterIllager.isCastingSpell()` (the synced `DATA_SPELL_CASTING_ID` byte > 0, data id
+    `17`, gated to the evoker/illusioner) swaps those two to the uncrossed layout (hiding the
+    crossed `arms` part, the illusioner keeping its hat) and raises both separate arms —
+    `xRot = cos(ageInTicks · 0.6662) · 0.25`, `zRot = ±3π/4`, holding the bind offset
+    `x = ∓5` — on both render paths. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
     `emit_villager_family_textured_passes` textured for the villager/wandering-trader, plus
     the witch's own `emit_witch_model`/`emit_witch_textured_model` that add the idle nose bob)
@@ -635,8 +640,9 @@ When an agent does any of the following, update this file in the same slice:
     `ArmPose`, the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
     `PiglinModel` dance/attack/crossbow/admire poses (the `AbstractPiglinModel` ear flap is
     implemented for every piglin/zombified-piglin subclass — see below), the `IllagerModel`
-    attack/spellcast/bow/crossbow/celebrate arm-pose overrides and riding sit pose (the
-    default walk arm swing is implemented for the pillager), the `VillagerModel` unhappy
+    attack/bow/crossbow/celebrate arm-pose overrides and riding sit pose (the default walk
+    arm swing is implemented for the pillager, and the evoker/illusioner spellcasting arm
+    raise is implemented — see the illager note above), the `VillagerModel` unhappy
     head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
     implemented — see below), the `GoatModel` ramming head
     tilt, the `HoglinModel` headbutt head tilt (the `EndermanModel`

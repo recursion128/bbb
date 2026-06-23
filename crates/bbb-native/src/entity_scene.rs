@@ -195,6 +195,10 @@ const ARMADILLO_STATE_DATA_ID: u8 = 18;
 /// whose `shouldHideInShell` is `true` for every `inStateTicks` (server-derivable, unlike the
 /// tick-gated ROLLING/UNROLLING transitions).
 const ARMADILLO_STATE_SCARED_ID: i32 = 2;
+/// Vanilla `SpellcasterIllager.DATA_SPELL_CASTING_ID` data id (17): the byte holding the spell
+/// id, the first `SpellcasterIllager` accessor after `Raider.IS_CELEBRATING` (16). The byte is
+/// `> 0` while `isCastingSpell()`.
+const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
 const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 17;
 const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 18;
@@ -408,6 +412,10 @@ fn entity_model_instance(
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
         .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
+        .with_illager_spellcasting(illager_spellcasting(
+            source.entity_type_id,
+            &source.data_values,
+        ))
         .with_creeper_swelling(source.creeper_swelling)
         .with_shulker_peek(source.shulker_peek)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
@@ -1022,6 +1030,20 @@ fn parrot_sitting(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDa
     entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID
         && (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_SITTING_FLAG)
             != 0
+}
+
+/// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()` =
+/// the synced `DATA_SPELL_CASTING_ID` byte > 0, id 17 — the byte holds the spell id, so any
+/// non-zero value means casting). Only the spellcaster illagers (evoker, illusioner) define that
+/// byte and render the raised-arm spell pose, so the projection is gated to them; the
+/// vindicator/pillager are `AbstractIllager` but not spellcasters.
+fn illager_spellcasting(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_ILLUSIONER_ID)
+        && entity_data_byte(values, SPELLCASTER_ILLAGER_CASTING_DATA_ID, 0) > 0
 }
 
 fn donkey_model_kind(
@@ -4950,6 +4972,66 @@ mod tests {
             )],
         }));
         assert!(!parrot_sitting(&world, 151));
+    }
+
+    #[test]
+    fn entity_model_instances_project_illager_spellcasting_flag_from_world() {
+        // Vanilla `SpellcasterIllager.isCastingSpell()` = the synced `DATA_SPELL_CASTING_ID`
+        // byte > 0 (id 17, the byte holds the spell id). A casting evoker/illusioner projects
+        // `illager_spellcasting`; the projection is gated to the spellcaster illagers, so the
+        // same byte on a vindicator never sets it.
+        const VANILLA_SPELLCASTER_CASTING_DATA_ID: u8 = 17;
+        const VANILLA_ENTITY_TYPE_VINDICATOR_ID: i32 = 140;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            160,
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            161,
+            VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+            [2.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            162,
+            VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let casting = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .illager_spellcasting
+        };
+
+        // An idle evoker/illusioner projects illager_spellcasting = false.
+        assert!(!casting(&world, 160));
+        assert!(!casting(&world, 161));
+
+        // Setting the spell-casting byte > 0 (here 2 = FANGS) projects through to the cast pose.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 160,
+            values: vec![protocol_byte_data(VANILLA_SPELLCASTER_CASTING_DATA_ID, 2)],
+        }));
+        assert!(casting(&world, 160));
+        // Any non-zero spell id (1 = SUMMON_VEX, the lowest) also counts as casting.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 161,
+            values: vec![protocol_byte_data(VANILLA_SPELLCASTER_CASTING_DATA_ID, 1)],
+        }));
+        assert!(casting(&world, 161));
+
+        // The same byte on a non-spellcaster (vindicator) does NOT project illager_spellcasting.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 162,
+            values: vec![protocol_byte_data(VANILLA_SPELLCASTER_CASTING_DATA_ID, 2)],
+        }));
+        assert!(!casting(&world, 162));
     }
 
     #[test]

@@ -198,6 +198,40 @@ pub(in crate::entity_models) const ILLAGER_SHARED_UNCROSSED_PARTS: [ModelPartDes
     ILLAGER_LEFT_ARM_PART,
 ];
 
+// The illusioner's spellcasting layout: the same uncrossed (separate-arm) body as the shared
+// uncrossed parts, but keeping the illusioner's hatted head. Used when `isCastingSpell` hides the
+// crossed `arms` part and raises the two separate arms.
+pub(in crate::entity_models) const ILLAGER_ILLUSIONER_UNCROSSED_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_HEAD,
+        children: &ILLAGER_HEAD_WITH_HAT_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ILLAGER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ILLAGER_LEG,
+        children: &[],
+    },
+    ILLAGER_RIGHT_ARM_PART,
+    ILLAGER_LEFT_ARM_PART,
+];
+
 pub(in crate::entity_models) const ILLAGER_ILLUSIONER_PARTS: [ModelPartDesc; 5] = [
     ModelPartDesc {
         pose: PART_POSE_ZERO,
@@ -427,3 +461,43 @@ pub(in crate::entity_models) const ILLAGER_TEXTURED_UNCROSSED_PARTS: [TexturedMo
     ILLAGER_TEXTURED_RIGHT_ARM_PART,
     ILLAGER_TEXTURED_LEFT_ARM_PART,
 ];
+
+// The illusioner's textured spellcasting layout: the uncrossed (separate-arm) body with the
+// illusioner's hatted head. Mirrors `ILLAGER_ILLUSIONER_UNCROSSED_PARTS` on the textured path.
+pub(in crate::entity_models) const ILLAGER_TEXTURED_ILLUSIONER_UNCROSSED_PARTS:
+    [TexturedModelPartDesc; 6] = [
+    illager_textured_part(
+        [0.0, 0.0, 0.0],
+        &ILLAGER_TEXTURED_HEAD,
+        &ILLAGER_TEXTURED_HEAD_WITH_HAT_CHILDREN,
+    ),
+    illager_textured_part([0.0, 0.0, 0.0], &ILLAGER_TEXTURED_BODY, &[]),
+    illager_textured_part([-2.0, 12.0, 0.0], &ILLAGER_TEXTURED_RIGHT_LEG, &[]),
+    illager_textured_part([2.0, 12.0, 0.0], &ILLAGER_TEXTURED_LEFT_LEG, &[]),
+    ILLAGER_TEXTURED_RIGHT_ARM_PART,
+    ILLAGER_TEXTURED_LEFT_ARM_PART,
+];
+
+/// Vanilla `IllagerModel.setupAnim` SPELLCASTING arm pose for one separate arm. The arm holds its
+/// base offset (`rightArm.x = -5`/`leftArm.x = 5`, `z = 0` — both already the bind offset), pitches
+/// `xRot = cos(ageInTicks · 0.6662) · 0.25`, and rolls outward `zRot = ±3π/4` (right `+`, left `−`),
+/// with `yRot = 0`. Reused by both the colored and textured illager emits.
+pub(in crate::entity_models) fn illager_spellcast_arm_pose(
+    base: PartPose,
+    age_in_ticks: f32,
+    is_right: bool,
+) -> PartPose {
+    let three_quarter_pi = std::f32::consts::PI * 3.0 / 4.0;
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            (age_in_ticks * 0.6662).cos() * 0.25,
+            0.0,
+            if is_right {
+                three_quarter_pi
+            } else {
+                -three_quarter_pi
+            },
+        ],
+    }
+}

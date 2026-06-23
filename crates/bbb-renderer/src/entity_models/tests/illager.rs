@@ -478,6 +478,18 @@ fn illager_textured_mesh_matches_colored_geometry_and_swings() {
         evoker_walk.vertices[96..168],
         "the textured crossed arms part stays still when walking"
     );
+
+    // The textured spellcasting evoker swaps to the uncrossed layout (216 → 192 verts), matching
+    // the colored path; an idle illusioner keeps its hat (216 verts when casting).
+    let evoker_cast = entity_model_textured_mesh(&[evoker.with_illager_spellcasting(true)], &atlas);
+    assert_eq!(evoker_cast.cutout_faces, 48);
+    assert_eq!(evoker_cast.vertices.len(), 192);
+    assert_ne!(evoker_rest.vertices, evoker_cast.vertices);
+    let illusioner =
+        EntityModelInstance::illager(68, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Illusioner);
+    let illusioner_cast =
+        entity_model_textured_mesh(&[illusioner.with_illager_spellcasting(true)], &atlas);
+    assert_eq!(illusioner_cast.vertices.len(), 216);
 }
 
 fn illager_texture_images() -> Vec<EntityModelTextureImage> {
@@ -489,6 +501,72 @@ fn illager_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+#[test]
+fn illager_spellcast_arm_pose_matches_vanilla() {
+    use std::f32::consts::PI;
+
+    // Vanilla `IllagerModel.setupAnim` SPELLCASTING: `rightArm.x = -5` / `leftArm.x = 5`,
+    // `z = 0` (both the bind offset), `xRot = cos(ageInTicks · 0.6662) · 0.25`, and
+    // `zRot = ±3π/4` (right `+`, left `−`), `yRot = 0`. The offset is unchanged from the base.
+    let right = illager_spellcast_arm_pose(ILLAGER_RIGHT_ARM_PART.pose, 0.0, true);
+    assert_eq!(right.offset, [-5.0, 2.0, 0.0]);
+    assert!((right.rotation[0] - 0.25).abs() < 1.0e-6); // cos(0) * 0.25
+    assert_eq!(right.rotation[1], 0.0);
+    assert!((right.rotation[2] - PI * 3.0 / 4.0).abs() < 1.0e-6);
+
+    let left = illager_spellcast_arm_pose(ILLAGER_LEFT_ARM_PART.pose, 0.0, false);
+    assert_eq!(left.offset, [5.0, 2.0, 0.0]);
+    assert!((left.rotation[2] - (-PI * 3.0 / 4.0)).abs() < 1.0e-6);
+
+    // The arm pitch animates with `ageInTicks`.
+    let aged = illager_spellcast_arm_pose(ILLAGER_RIGHT_ARM_PART.pose, 5.0, true);
+    assert!((aged.rotation[0] - (5.0_f32 * 0.6662).cos() * 0.25).abs() < 1.0e-6);
+}
+
+#[test]
+fn spellcasting_evoker_raises_separate_arms() {
+    // A casting evoker swaps the crossed `arms` part (idle: 9 cubes / 216 verts) for the
+    // uncrossed layout with two separate raised arms (8 cubes / 192 verts, like a pillager),
+    // so the mesh both shrinks by one cube and re-poses.
+    let base = EntityModelInstance::illager(46, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Evoker);
+    let idle = entity_model_mesh(&[base]);
+    let casting = entity_model_mesh(&[base.with_illager_spellcasting(true)]);
+    assert_eq!(idle.vertices.len(), 216);
+    assert_eq!(
+        casting.vertices.len(),
+        192,
+        "the crossed arms part is hidden and two separate arms render"
+    );
+    assert_ne!(idle.vertices, casting.vertices);
+}
+
+#[test]
+fn spellcasting_illusioner_keeps_its_hat() {
+    // A casting illusioner swaps to the uncrossed layout (idle 10 cubes / 240 verts → 9 cubes /
+    // 216 verts) but keeps its hat — so it stays one cube larger than a casting evoker (192).
+    let base =
+        EntityModelInstance::illager(68, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Illusioner);
+    let idle = entity_model_mesh(&[base]);
+    let casting = entity_model_mesh(&[base.with_illager_spellcasting(true)]);
+    assert_eq!(idle.vertices.len(), 240);
+    assert_eq!(casting.vertices.len(), 216, "the hatted head is kept");
+    assert_ne!(idle.vertices, casting.vertices);
+}
+
+#[test]
+fn non_spellcaster_illagers_ignore_the_spellcasting_flag() {
+    // Vindicator and pillager are not spellcasters, so the flag must not change their pose.
+    for family in [IllagerModelFamily::Vindicator, IllagerModelFamily::Pillager] {
+        let base = EntityModelInstance::illager(140, [0.0, 64.0, 0.0], 0.0, family);
+        let idle = entity_model_mesh(&[base]);
+        let flagged = entity_model_mesh(&[base.with_illager_spellcasting(true)]);
+        assert_eq!(
+            idle.vertices, flagged.vertices,
+            "the spellcasting flag is gated to evoker/illusioner"
+        );
+    }
 }
 
 #[test]
