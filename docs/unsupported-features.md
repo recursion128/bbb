@@ -1542,10 +1542,12 @@ When an agent does any of the following, update this file in the same slice:
       verbatim `SPIKE_*` tables), the eye, and the nested three-segment tail. The elder guardian
       is the same mesh scaled 2.35× by `GuardianModel.ELDER_GUARDIAN_SCALE`
       (`MeshTransformer.scaling(2.35)`, composed at the root exactly like the squid/dolphin baby
-      scale). The procedural `GuardianModel.setupAnim` is deferred — the model renders at its
-      `createBodyLayer` rest pose — namely the head look (`head.yRot/xRot = state.yRot/xRot`), the
-      spike age pulse (`getSpikeOffset = 1 + cos(ageInTicks · 1.5 + i) · 0.01`) and the
-      `spikesAnimation` withdrawal (`(1 - spikesAnimation) · 0.55`), the eye target tracking
+      scale). The head look (`head.yRot/xRot = state.yRot/xRot`) IS reproduced — every part hangs off
+      `head`, so folding `head_look_pose` into `head_t` turns the whole guardian with the projected
+      `head_yaw` / `head_pitch`, with a test pinning that both the guardian and the scaled elder turn.
+      The remaining `GuardianModel.setupAnim` is deferred — the spike age pulse
+      (`getSpikeOffset = 1 + cos(ageInTicks · 1.5 + i) · 0.01`) and the `spikesAnimation` withdrawal
+      (`(1 - spikesAnimation) · 0.55`), the eye target tracking
       (`lookAtPosition`/`lookDirection`/`eyePosition`), the tail sway (`tailAnimation`), and the
       `GuardianRenderer` attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
       which read entity-side state not yet projected. The texture-backed path

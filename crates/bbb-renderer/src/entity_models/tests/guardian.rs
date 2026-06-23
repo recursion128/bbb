@@ -134,3 +134,25 @@ fn elder_guardian_is_the_guardian_mesh_scaled_up() {
         "the elder guardian is ~2.35× the guardian's size ({guardian_width} vs {elder_width})"
     );
 }
+
+#[test]
+fn guardian_whole_body_turns_with_the_look() {
+    // Vanilla `GuardianModel.setupAnim` sets `head.yRot/xRot` from the plain look, and every part
+    // (body shell, spikes, eye, tail) hangs off `head`, so the whole guardian rotates with the look.
+    // A non-zero look re-poses every vertex (the cube count is unchanged — it is a rigid rotation).
+    let base = EntityModelInstance::guardian(993, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(35.0, -20.0)]);
+    assert_eq!(rest.vertices.len(), looking.vertices.len());
+    assert_ne!(
+        rest.vertices, looking.vertices,
+        "the whole guardian turns with the look"
+    );
+
+    // The elder guardian (scaled mesh) turns the same way.
+    let elder = EntityModelInstance::guardian(994, [0.0, 64.0, 0.0], 0.0, true);
+    assert_ne!(
+        entity_model_mesh(&[elder]).vertices,
+        entity_model_mesh(&[elder.with_head_look(35.0, -20.0)]).vertices,
+    );
+}

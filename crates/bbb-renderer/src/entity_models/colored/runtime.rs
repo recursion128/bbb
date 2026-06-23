@@ -1447,10 +1447,19 @@ fn emit_guardian_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     // Vanilla `GuardianModel` hangs the whole model off one `head` part (`PartPose.ZERO`): the
     // body shell, twelve spikes, the eye, and the nested three-segment tail. The elder guardian
     // is the same mesh scaled 2.35× by `ELDER_GUARDIAN_SCALE` (a `MeshTransformer`, composed at
-    // the root). The `setupAnim` head look, spike age pulse + `spikesAnimation` withdrawal, eye
-    // tracking, tail sway, and attack beam are deferred, so the model renders at its rest pose.
+    // the root). `setupAnim` sets `head.yRot/xRot` from the plain look, and since every part is a
+    // child of `head` the whole guardian turns with it — reproduced by folding `head_look_pose`
+    // into `head_t`. The spike age pulse + `spikesAnimation` withdrawal, the eye tracking, the tail
+    // sway, and the attack beam are deferred, so those stay at their rest pose.
     let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
-    let head_t = mesh_transformer_scaled_model_root_transform(instance, scale);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let base_root = mesh_transformer_scaled_model_root_transform(instance, scale);
+    let head_t = if head_look_at_rest(head_yaw, head_pitch) {
+        base_root
+    } else {
+        base_root * part_pose_transform(head_look_pose(PART_POSE_ZERO, head_yaw, head_pitch))
+    };
 
     emit_model_cubes_at_pose(mesh, head_t, PART_POSE_ZERO, &GUARDIAN_HEAD);
     for i in 0..GUARDIAN_SPIKE_X.len() {
