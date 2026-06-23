@@ -532,7 +532,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Illager { family } => {
                 if !skip_texture_backed_entities {
-                    emit_illager_model(&mut mesh, *instance, family)
+                    IllagerModel::new(instance, family).prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        villager_adult_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Minecart => {
@@ -3066,21 +3070,6 @@ fn sheep_colored_head_parts(
     Cow::Owned(parts)
 }
 
-/// Applies the vanilla `VillagerModel`/`IllagerModel`/`WitchModel.setupAnim` head
-/// look to a villager-family layer's head part at `head_index`.
-fn villager_colored_head_look_parts(
-    parts: &[ModelPartDesc],
-    head_index: usize,
-    instance: EntityModelInstance,
-) -> Cow<'_, [ModelPartDesc]> {
-    colored_head_look_parts(
-        parts,
-        head_index,
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    )
-}
-
 fn emit_wolf_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
@@ -3215,159 +3204,6 @@ fn wolf_leg_part_indices(baby: bool) -> [usize; 4] {
     } else {
         [3, 4, 5, 6]
     }
-}
-
-fn emit_illager_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: IllagerModelFamily,
-) {
-    // `IllagerModel.setupAnim` (the non-riding branch) swings the legs
-    // `cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5` after the head look. The legs are not a
-    // `HumanoidModel` swing (the extra `0.5` factor and the per-family part order differ),
-    // so they use the dedicated `half_amplitude_leg_swing_pose`. The separate arms, however,
-    // swing with the exact `HumanoidModel` amplitude `cos(pos * 0.6662 [+ π]) * 2.0 *
-    // speed * 0.5` ([`humanoid_arm_swing_pose`]) — but only the pillager renders the
-    // separate uncrossed arms; the idle evoker/vindicator/illusioner show the static crossed
-    // `arms` part (vanilla swings the *invisible* separate arms, so their visible arms hold
-    // still). When `SpellcasterIllager.isCastingSpell()`, the evoker/illusioner instead swap to
-    // the uncrossed layout (hiding the crossed `arms`) and raise both arms into the
-    // `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). The remaining arm-pose overrides
-    // (attack/bow/crossbow/celebrate, which need held items or attack ticks) and the riding sit
-    // pose are deferred.
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let spellcasting = instance.render_state.illager_spellcasting
-        && matches!(
-            family,
-            IllagerModelFamily::Evoker | IllagerModelFamily::Illusioner
-        );
-    // The spellcasting evoker/illusioner switch to the uncrossed (separate-arm) layout, which
-    // lists the legs at `[2, 3]` and the arms at `[4, 5]` (like the pillager).
-    let base_parts = if spellcasting {
-        illager_spellcasting_parts(family)
-    } else {
-        illager_model_parts(family)
-    };
-    let leg_indices = if spellcasting {
-        [2, 3]
-    } else {
-        illager_leg_part_indices(family)
-    };
-    let legs_swung = half_amplitude_limb_swing_parts(
-        villager_colored_head_look_parts(base_parts, villager_head_part_index(false), instance),
-        leg_indices,
-        limb_swing,
-        limb_swing_amount,
-    );
-    let parts = if spellcasting {
-        // Vanilla overwrites both arms' rotations with the spellcasting pose (after the swing),
-        // so apply it directly to the separate arms at `[4, 5]` (right, left) instead of swinging.
-        let age = instance.render_state.age_in_ticks;
-        let mut owned = legs_swung.into_owned();
-        owned[4].pose = illager_spellcast_arm_pose(owned[4].pose, age, true);
-        owned[5].pose = illager_spellcast_arm_pose(owned[5].pose, age, false);
-        Cow::Owned(owned)
-    } else {
-        match illager_arm_part_indices(family) {
-            Some(arm_indices) => {
-                illager_arm_swing_parts(legs_swung, arm_indices, limb_swing, limb_swing_amount)
-            }
-            None => legs_swung,
-        }
-    };
-    emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
-}
-
-/// The uncrossed (separate-arm) part layout an evoker/illusioner switches to while
-/// `SpellcasterIllager.isCastingSpell()`: the crossed `arms` part is hidden and the two separate
-/// arms render so the `SPELLCASTING` pose can raise them. The illusioner keeps its hatted head.
-fn illager_spellcasting_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
-    match family {
-        IllagerModelFamily::Illusioner => &ILLAGER_ILLUSIONER_UNCROSSED_PARTS,
-        _ => &ILLAGER_SHARED_UNCROSSED_PARTS,
-    }
-}
-
-/// The two separate arm part indices in an illager body layer, if the family renders the
-/// uncrossed (separate) arms. Only the pillager does (`ILLAGER_SHARED_UNCROSSED_PARTS`:
-/// head/body/leg/leg/right_arm/left_arm); the evoker/vindicator/illusioner show the static
-/// crossed `arms` part instead, so they have no separate arms to swing.
-fn illager_arm_part_indices(family: IllagerModelFamily) -> Option<[usize; 2]> {
-    match family {
-        IllagerModelFamily::Pillager => Some([4, 5]),
-        IllagerModelFamily::Evoker
-        | IllagerModelFamily::Vindicator
-        | IllagerModelFamily::Illusioner => None,
-    }
-}
-
-/// Applies the vanilla `IllagerModel.setupAnim` arm swing ([`humanoid_arm_swing_pose`]) to
-/// an illager layer's two separate arm parts. Borrows the static parts unchanged at rest
-/// (`walkAnimationSpeed == 0`).
-fn illager_arm_swing_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    arm_indices: [usize; 2],
-    limb_swing: f32,
-    limb_swing_amount: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    if limb_swing_at_rest(limb_swing_amount) {
-        return parts;
-    }
-    let mut owned = parts.into_owned();
-    for index in arm_indices {
-        if let Some(arm) = owned.get_mut(index) {
-            arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
-        }
-    }
-    Cow::Owned(owned)
-}
-
-fn illager_model_parts(family: IllagerModelFamily) -> &'static [ModelPartDesc] {
-    match family {
-        IllagerModelFamily::Evoker | IllagerModelFamily::Vindicator => {
-            &ILLAGER_SHARED_CROSSED_PARTS
-        }
-        IllagerModelFamily::Illusioner => &ILLAGER_ILLUSIONER_PARTS,
-        IllagerModelFamily::Pillager => &ILLAGER_SHARED_UNCROSSED_PARTS,
-    }
-}
-
-/// The right/left leg part indices in each illager body layer. The crossed-arms
-/// layouts (evoker, vindicator, illusioner) carry one combined crossed-arm part at
-/// slot `2` and list the legs at `[3, 4]`; the uncrossed pillager layout lists the
-/// legs at `[2, 3]` before its two separate arms. [`half_amplitude_leg_swing_pose`]
-/// resolves each leg's phase from its offset, so only the slot positions differ.
-fn illager_leg_part_indices(family: IllagerModelFamily) -> [usize; 2] {
-    match family {
-        IllagerModelFamily::Pillager => [2, 3],
-        IllagerModelFamily::Evoker
-        | IllagerModelFamily::Vindicator
-        | IllagerModelFamily::Illusioner => [3, 4],
-    }
-}
-
-/// Applies the vanilla half-amplitude leg swing ([`half_amplitude_leg_swing_pose`])
-/// to a colored `IllagerModel`/`VillagerModel`/`WitchModel` layer's two leg parts at
-/// `leg_indices`. Borrows the static parts unchanged at rest
-/// (`walkAnimationSpeed == 0`). The arm/nose poses and the illager riding sit pose
-/// are left to the deferred animations.
-fn half_amplitude_limb_swing_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    leg_indices: [usize; 2],
-    limb_swing: f32,
-    limb_swing_amount: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    if limb_swing_at_rest(limb_swing_amount) {
-        return parts;
-    }
-    let mut owned = parts.into_owned();
-    for index in leg_indices {
-        if let Some(leg) = owned.get_mut(index) {
-            leg.pose = half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-        }
-    }
-    Cow::Owned(owned)
 }
 
 fn emit_quadruped_model(

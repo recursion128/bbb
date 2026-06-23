@@ -1,7 +1,11 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
+    apply_half_amplitude_leg_swing, apply_head_look, humanoid_arm_swing_pose,
+    villager_head_part_index, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    TexturedModelPartDesc, ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
 };
+use crate::entity_models::catalog::IllagerModelFamily;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_EVOKER: &str = "minecraft:evoker#main";
 pub(in crate::entity_models) const MODEL_LAYER_ILLUSIONER: &str = "minecraft:illusioner#main";
@@ -499,5 +503,139 @@ pub(in crate::entity_models) fn illager_spellcast_arm_pose(
                 -three_quarter_pi
             },
         ],
+    }
+}
+
+/// Right/left leg part indices in an illager body layer. The crossed-arms layouts (idle
+/// evoker/vindicator/illusioner) carry the combined crossed `arms` part at slot `2` and list the
+/// legs at `[3, 4]`; the uncrossed pillager / spellcasting layout lists the legs at `[2, 3]` before
+/// its two separate arms at `[4, 5]`. [`half_amplitude_leg_swing_pose`] resolves each leg's phase
+/// from its offset, so only the slot positions differ.
+fn illager_leg_part_indices(crossed: bool) -> [usize; 2] {
+    if crossed {
+        [3, 4]
+    } else {
+        [2, 3]
+    }
+}
+
+/// Whether an illager is mid spell-cast — only the evoker and illusioner cast, and only then do they
+/// swap from the static crossed `arms` layout to the uncrossed separate-arm layout.
+fn illager_is_spellcasting(instance: &EntityModelInstance, family: IllagerModelFamily) -> bool {
+    instance.render_state.illager_spellcasting
+        && matches!(
+            family,
+            IllagerModelFamily::Evoker | IllagerModelFamily::Illusioner
+        )
+}
+
+/// Selects the colored and textured const trees for an illager by `family` and whether it is mid
+/// spell-cast. Idle evoker/vindicator show the static crossed `arms` layout; the pillager (and any
+/// spellcasting evoker/illusioner) use the uncrossed separate-arm layout. The illusioner keeps its
+/// hatted head in both. Zipped into the unified tree by [`IllagerModel::new`].
+pub(in crate::entity_models) fn illager_part_trees(
+    family: IllagerModelFamily,
+    spellcasting: bool,
+) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if spellcasting {
+        return match family {
+            IllagerModelFamily::Illusioner => (
+                &ILLAGER_ILLUSIONER_UNCROSSED_PARTS,
+                &ILLAGER_TEXTURED_ILLUSIONER_UNCROSSED_PARTS,
+            ),
+            _ => (
+                &ILLAGER_SHARED_UNCROSSED_PARTS,
+                &ILLAGER_TEXTURED_UNCROSSED_PARTS,
+            ),
+        };
+    }
+    match family {
+        IllagerModelFamily::Evoker | IllagerModelFamily::Vindicator => (
+            &ILLAGER_SHARED_CROSSED_PARTS,
+            &ILLAGER_TEXTURED_CROSSED_PARTS,
+        ),
+        IllagerModelFamily::Illusioner => (
+            &ILLAGER_ILLUSIONER_PARTS,
+            &ILLAGER_TEXTURED_ILLUSIONER_PARTS,
+        ),
+        IllagerModelFamily::Pillager => (
+            &ILLAGER_SHARED_UNCROSSED_PARTS,
+            &ILLAGER_TEXTURED_UNCROSSED_PARTS,
+        ),
+    }
+}
+
+/// Mutable illager model, mirroring vanilla `IllagerModel`/`SpellcasterIllagerModel` shared by the
+/// evoker, vindicator, illusioner, and pillager. The unified tree is zipped from the colored and
+/// textured const trees selected by `family`/`spellcasting` ([`illager_part_trees`]). `setup_anim`
+/// looks the head ([`apply_head_look`]) and swings the legs at the villager-family half amplitude
+/// ([`apply_half_amplitude_leg_swing`]); the pillager additionally swings its separate arms at the
+/// `HumanoidModel` amplitude ([`humanoid_arm_swing_pose`]), while a spellcasting evoker/illusioner
+/// instead raises both arms into the `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). The
+/// attack/bow/crossbow/celebrate arm overrides and the riding sit pose defer.
+pub(in crate::entity_models) struct IllagerModel {
+    root: ModelPart,
+    family: IllagerModelFamily,
+    spellcasting: bool,
+}
+
+impl IllagerModel {
+    pub(in crate::entity_models) fn new(
+        instance: &EntityModelInstance,
+        family: IllagerModelFamily,
+    ) -> Self {
+        let spellcasting = illager_is_spellcasting(instance, family);
+        let (colored, textured) = illager_part_trees(family, spellcasting);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            family,
+            spellcasting,
+        }
+    }
+}
+
+impl EntityModel for IllagerModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(villager_head_part_index(false)),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        let limb_swing = render_state.walk_animation_pos;
+        let limb_swing_amount = render_state.walk_animation_speed;
+        // The idle crossed-arms layout (evoker/vindicator/illusioner) lists the legs at `[3, 4]`; the
+        // uncrossed pillager / spellcasting layout lists them at `[2, 3]`.
+        let crossed = !self.spellcasting && !matches!(self.family, IllagerModelFamily::Pillager);
+        apply_half_amplitude_leg_swing(
+            &mut self.root,
+            illager_leg_part_indices(crossed),
+            limb_swing,
+            limb_swing_amount,
+        );
+        if self.spellcasting {
+            // Vanilla overwrites both separate arms' rotations with the spellcasting pose (arms
+            // `[4, 5]` are right then left), so it overrides even at rest.
+            let age = render_state.age_in_ticks;
+            let right = self.root.child_at_mut(4);
+            right.pose = illager_spellcast_arm_pose(right.pose, age, true);
+            let left = self.root.child_at_mut(5);
+            left.pose = illager_spellcast_arm_pose(left.pose, age, false);
+        } else if matches!(self.family, IllagerModelFamily::Pillager) {
+            // Only the pillager renders the uncrossed (separate, swinging) arms at `[4, 5]`; the
+            // idle evoker/vindicator/illusioner show the static crossed `arms` part instead.
+            for index in [4, 5] {
+                let arm = self.root.child_at_mut(index);
+                arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+            }
+        }
     }
 }

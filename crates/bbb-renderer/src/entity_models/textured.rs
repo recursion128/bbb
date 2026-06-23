@@ -28,15 +28,14 @@ use super::{
         bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot, bee_bone_y_delta,
         bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look, dolphin_wave,
         enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
-        half_amplitude_leg_swing_pose, head_first_part_index, head_look_at_rest, head_look_pose,
-        head_look_yaw_pose, head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index,
-        hoglin_leg_swing_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose,
-        humanoid_crouch_arm_pose, humanoid_crouch_body_pose, humanoid_crouch_head_pose,
-        humanoid_crouch_leg_pose, humanoid_leg_swing_pose, illager_spellcast_arm_pose,
-        limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
-        phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, piglin_ear_flap_pose,
-        piglin_head_part_index, player_head_part_index, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
+        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
+        head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
+        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_crouch_arm_pose,
+        humanoid_crouch_body_pose, humanoid_crouch_head_pose, humanoid_crouch_leg_pose,
+        humanoid_leg_swing_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
+        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
+        piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index, pufferfish_fin_pose,
+        pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
         sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose,
         spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
         strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
@@ -45,8 +44,8 @@ use super::{
         vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
         wolf_tail_swing_pose, zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, ChickenModel,
         CodModel, CowModel, CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel,
-        IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PolarBearModel, RavagerModel,
-        SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel, VillagerModel,
+        IllagerModel, IronGolemModel, MagmaCubeModel, MinecartModel, PigModel, PolarBearModel,
+        RavagerModel, SalmonModel, SilverfishModel, SkeletonModel, SnowGolemModel, VillagerModel,
         WanderingTraderModel, WitchModel, ZombieModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE,
         ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
         ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
@@ -133,8 +132,8 @@ pub(super) use layers::{
     drowned_textured_layer_passes, enderman_textured_layer_passes, endermite_textured_layer_passes,
     ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
     hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
-    illager_textured_spellcasting_parts, iron_golem_textured_layer_passes,
-    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    iron_golem_textured_layer_passes, llama_textured_layer_passes,
+    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     phantom_textured_layer_passes, pig_textured_layer_passes, piglin_textured_layer_passes,
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
     salmon_textured_layer_passes, sheep_textured_layer_passes, silverfish_textured_layer_passes,
@@ -2763,83 +2762,25 @@ fn emit_illager_textured_model(
     family: IllagerModelFamily,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Mirrors the colored `emit_illager_model`: `IllagerModel.setupAnim` runs the head look, then
-    // the half-amplitude leg swing (`cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`). The separate
-    // arms swing with the `HumanoidModel` amplitude, but only the pillager renders the uncrossed
-    // arms; the idle evoker/vindicator/illusioner show the static folded `arms` part (vanilla
-    // swings the *invisible* separate arms). When `SpellcasterIllager.isCastingSpell()`, the
-    // evoker/illusioner swap to the uncrossed layout (hiding the crossed `arms`) and raise both
-    // arms into the `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). The other arm-pose
+    // The unified `IllagerModel` tree drives both render paths; `new` selects the crossed/uncrossed
+    // tree by family and spell-cast state, and `setup_anim` looks the head, swings the legs at the
+    // villager-family half amplitude, then swings the pillager's separate arms or raises a
+    // spellcasting evoker/illusioner's arms into the `SPELLCASTING` pose. The other arm-pose
     // overrides (attack/bow/crossbow/celebrate), the riding sit pose, and the item-in-hand layers
     // stay deferred.
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let age = instance.render_state.age_in_ticks;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
-    let spellcasting = instance.render_state.illager_spellcasting
-        && matches!(
-            family,
-            IllagerModelFamily::Evoker | IllagerModelFamily::Illusioner
-        );
     let transform = villager_adult_model_root_transform(instance);
-    // The spellcasting evoker/illusioner use the uncrossed layout (legs `[2, 3]`, arms `[4, 5]`).
-    let (leg_indices, arm_indices): ([usize; 2], Option<[usize; 2]>) = if spellcasting {
-        ([2, 3], Some([4, 5]))
-    } else {
-        match family {
-            IllagerModelFamily::Pillager => ([2, 3], Some([4, 5])),
-            IllagerModelFamily::Evoker
-            | IllagerModelFamily::Vindicator
-            | IllagerModelFamily::Illusioner => ([3, 4], None),
-        }
-    };
+    let mut model = IllagerModel::new(&instance, family);
+    model.prepare(&instance);
     for pass in illager_textured_layer_passes(family) {
-        // The spellcasting arms are raised even at rest, so the static fast path cannot be used.
-        if head_resting && limbs_resting && !spellcasting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
-        let base_parts: &[TexturedModelPartDesc] = if spellcasting {
-            illager_textured_spellcasting_parts(family)
-        } else {
-            pass.parts
-        };
-        let mut parts = base_parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(0) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-        }
-        if !limbs_resting {
-            for index in leg_indices {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose =
-                        half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        if spellcasting {
-            // Vanilla overwrites both arms' rotations with the spellcasting pose; arms `[4, 5]`
-            // are right then left.
-            if let Some(arm) = parts.get_mut(4) {
-                arm.pose = illager_spellcast_arm_pose(arm.pose, age, true);
-            }
-            if let Some(arm) = parts.get_mut(5) {
-                arm.pose = illager_spellcast_arm_pose(arm.pose, age, false);
-            }
-        } else if !limbs_resting {
-            if let Some(arm_indices) = arm_indices {
-                for index in arm_indices {
-                    if let Some(arm) = parts.get_mut(index) {
-                        arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-        }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 

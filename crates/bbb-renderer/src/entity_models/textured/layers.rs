@@ -659,19 +659,6 @@ pub(in crate::entity_models) fn illager_textured_layer_passes(
     }]
 }
 
-/// The uncrossed (separate-arm) textured part layout an evoker/illusioner switches to while
-/// `SpellcasterIllager.isCastingSpell()` (mirrors the colored `illager_spellcasting_parts`): the
-/// crossed `arms` part is hidden and the two separate arms render so the `SPELLCASTING` pose can
-/// raise them. The illusioner keeps its hatted head.
-pub(in crate::entity_models) fn illager_textured_spellcasting_parts(
-    family: IllagerModelFamily,
-) -> &'static [TexturedModelPartDesc] {
-    match family {
-        IllagerModelFamily::Illusioner => &ILLAGER_TEXTURED_ILLUSIONER_UNCROSSED_PARTS,
-        _ => &ILLAGER_TEXTURED_UNCROSSED_PARTS,
-    }
-}
-
 pub(in crate::entity_models) fn blaze_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::BlazeBase,
