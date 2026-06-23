@@ -48,12 +48,12 @@ use super::{
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, CreeperModel,
         EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel, MinecartModel,
-        RavagerModel, SalmonModel, SilverfishModel, SnowGolemModel, ADULT_CAMEL_WALK_LAYOUT,
-        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
-        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
-        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
-        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
-        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        RavagerModel, SalmonModel, SilverfishModel, SnowGolemModel, WanderingTraderModel,
+        ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
         BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
         BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
         BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
@@ -3304,15 +3304,22 @@ fn emit_wandering_trader_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    emit_villager_family_textured_passes(
-        meshes,
-        wandering_trader_textured_layer_passes(),
-        villager_head_part_index(false),
-        VILLAGER_ADULT_LEG_PART_INDICES,
-        villager_adult_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    // The unified `WanderingTraderModel` tree drives both render paths; `setup_anim` looks the head and
+    // swings the legs at the villager-family half amplitude once.
+    let transform = villager_adult_model_root_transform(instance);
+    let mut model = WanderingTraderModel::new();
+    model.prepare(&instance);
+    for pass in wandering_trader_textured_layer_passes() {
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
+    }
 }
 
 fn emit_player_textured_model(

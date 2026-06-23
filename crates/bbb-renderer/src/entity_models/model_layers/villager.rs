@@ -1,7 +1,9 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    PART_POSE_ZERO, VILLAGER_ROBE,
+    apply_half_amplitude_leg_swing, apply_head_look, ModelCubeDesc, ModelPartDesc, PartPose,
+    TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO, VILLAGER_ROBE,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_VILLAGER: &str = "minecraft:villager#main";
 pub(in crate::entity_models) const MODEL_LAYER_VILLAGER_BABY: &str = "minecraft:villager_baby#main";
@@ -614,3 +616,49 @@ pub(in crate::entity_models) const BABY_VILLAGER_TEXTURED_PARTS: [TexturedModelP
         children: &[],
     },
 ];
+
+/// Adult villager-layer leg part indices (head/body/nose occupy `0`/`1`/`2`, then the two legs).
+const ADULT_VILLAGER_LEG_PART_INDICES: [usize; 2] = [3, 4];
+
+/// Mutable wandering trader model, mirroring vanilla `WanderingTraderRenderer`, which reuses the adult
+/// `VillagerModel` layer. The unified tree is zipped from the baked colored ([`ADULT_VILLAGER_PARTS`])
+/// and textured ([`ADULT_VILLAGER_TEXTURED_PARTS`]) trees: child 0 is the head, child 1 the body, child
+/// 2 the nose, children 3/4 the legs. `setup_anim` looks the head ([`apply_head_look`]) and swings the
+/// legs at the villager-family half amplitude ([`apply_half_amplitude_leg_swing`]). The held-item arm
+/// pose and the combined `arms` part defer.
+pub(in crate::entity_models) struct WanderingTraderModel {
+    root: ModelPart,
+}
+
+impl WanderingTraderModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&ADULT_VILLAGER_PARTS, &ADULT_VILLAGER_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for WanderingTraderModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(0),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_half_amplitude_leg_swing(
+            &mut self.root,
+            ADULT_VILLAGER_LEG_PART_INDICES,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+    }
+}

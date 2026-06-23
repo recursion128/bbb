@@ -368,7 +368,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::WanderingTrader => {
                 if !skip_texture_backed_entities {
-                    emit_wandering_trader_model(&mut mesh, *instance);
+                    WanderingTraderModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        villager_adult_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Wolf { baby, angry, .. } => {
@@ -3117,22 +3121,6 @@ fn villager_leg_part_indices(baby: bool) -> [usize; 2] {
     } else {
         [3, 4]
     }
-}
-
-fn emit_wandering_trader_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The wandering trader uses the adult `VillagerModel` layer, so its legs swing
-    // the same half-amplitude swing (legs at `[3, 4]`).
-    let parts = half_amplitude_limb_swing_parts(
-        villager_colored_head_look_parts(
-            &ADULT_VILLAGER_PARTS,
-            villager_head_part_index(false),
-            instance,
-        ),
-        villager_leg_part_indices(false),
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-    );
-    emit_model_parts(mesh, &parts, villager_adult_model_root_transform(instance));
 }
 
 /// Applies the vanilla `VillagerModel`/`IllagerModel`/`WitchModel.setupAnim` head

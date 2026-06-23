@@ -486,6 +486,25 @@ pub(in crate::entity_models) fn half_amplitude_leg_swing_pose(
     }
 }
 
+/// Vanilla villager-family (`VillagerModel`/`IllagerModel`/`WitchModel`) leg swing applied to a model
+/// root's leg children at `leg_indices` ([`half_amplitude_leg_swing_pose`]). A no-op while the limbs
+/// are at rest (`walkAnimationSpeed == 0`).
+pub(in crate::entity_models) fn apply_half_amplitude_leg_swing(
+    root: &mut ModelPart,
+    leg_indices: [usize; 2],
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    for index in leg_indices {
+        let leg = root.child_at_mut(index);
+        leg.pose =
+            half_amplitude_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
+    }
+}
+
 /// Vanilla `HoglinModel.setupAnim` leg swing for a single leg part: `leg.xRot =
 /// cos(walkAnimationPos [+ π]) * 1.2 * walkAnimationSpeed`. `HoglinModel` is a custom
 /// `EntityModel` (zoglin shares it) with its own formula — amplitude `1.2` (not the
