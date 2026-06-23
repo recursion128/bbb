@@ -1,6 +1,6 @@
 use super::{
-    apply_head_look, apply_humanoid_walk_named, bogged_clothing_root, stray_clothing_root,
-    PartPose, PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_walk, bogged_clothing_root, stray_clothing_root, PartPose,
+    PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::SkeletonModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -518,7 +518,7 @@ impl EntityModel for SkeletonModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_humanoid_walk_named(
+        apply_humanoid_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
@@ -561,7 +561,7 @@ impl EntityModel for SkeletonClothingModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_humanoid_walk_named(
+        apply_humanoid_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

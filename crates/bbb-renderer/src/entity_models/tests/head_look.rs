@@ -10,12 +10,9 @@ fn head_part_indices_match_vanilla_body_layers() {
     // the `head` child by name rather than an index — the adult layers list the head first, the
     // baby layers list the body first, but both name the head `head`.)
 
-    // Skeleton/stray/wither/bogged list the head first; parched lists the body
-    // first (head second). The base `SkeletonModel` now builds a named tree and resolves the head
-    // by name, but the textured-only `SkeletonClothingModel` (stray frost / bogged mushroom overlay)
-    // still addresses its head positionally, so these head indices are retained and asserted.
-    assert_eq!(skeleton_head_part_index(), 0);
-    assert_eq!(parched_head_part_index(), 1);
+    // (Every skeleton family — skeleton/stray/wither/bogged and the parched dual body layer — now
+    // builds a named tree and resolves the head by name; the textured-only `SkeletonClothingModel`
+    // stray frost / bogged mushroom overlay does too, so the skeleton head-part indices are gone.)
 
     // (The player now builds a named-children tree, so its head look resolves the `head` child by
     // name rather than an index; the wide and slim layouts both list the head first.)

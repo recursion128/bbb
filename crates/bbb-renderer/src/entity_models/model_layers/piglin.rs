@@ -1,6 +1,6 @@
 use super::{
-    apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_walk_named,
-    piglin_ear_flap_pose, PartPose, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_walk, piglin_ear_flap_pose,
+    PartPose, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -470,7 +470,7 @@ fn piglin_tree(baby_layout: bool) -> ModelPart {
 /// Mutable piglin model, mirroring vanilla `AbstractPiglinModel extends HumanoidModel` (the piglin,
 /// piglin brute, and zombified piglin). The unified tree is built for the `family`/`baby` layout with
 /// the vanilla child names. `setup_anim` runs `super.setupAnim` — the head look ([`apply_head_look`]
-/// on `head`) and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk_named`]) — except the
+/// on `head`) and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk`]) — except the
 /// zombified piglin keeps its arms at rest (the held-out `animateZombieArms` pose defers), so it swings
 /// only the legs ([`apply_humanoid_leg_swing_named`]); then it always flaps the two ears
 /// ([`piglin_ear_flap_pose`], head children). The family recolor/texture is supplied by the caller; the
@@ -516,7 +516,7 @@ impl EntityModel for PiglinModel {
             // legs swing.
             apply_humanoid_leg_swing_named(&mut self.root, limb_swing, limb_swing_amount);
         } else {
-            apply_humanoid_walk_named(&mut self.root, limb_swing, limb_swing_amount, age_in_ticks);
+            apply_humanoid_walk(&mut self.root, limb_swing, limb_swing_amount, age_in_ticks);
         }
         // Flap the two ears (head children) every frame.
         let default_ear_angle = piglin_default_ear_angle(self.baby_layout);

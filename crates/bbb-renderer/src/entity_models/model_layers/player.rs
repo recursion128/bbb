@@ -1,6 +1,6 @@
 use super::{
-    apply_head_look, apply_humanoid_crouch_named, apply_humanoid_walk_named, PartPose,
-    PART_POSE_ZERO, PLAYER_BLUE,
+    apply_head_look, apply_humanoid_crouch_named, apply_humanoid_walk, PartPose, PART_POSE_ZERO,
+    PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -255,7 +255,7 @@ fn player_tree(slim: bool) -> ModelPart {
 /// Mutable player model, mirroring vanilla `PlayerModel extends HumanoidModel`. The unified tree is
 /// built for the `slim`/wide arm model with the vanilla child names; each of the six base parts (head,
 /// body, arms, legs) carries one skin overlay child (hat/jacket/sleeve/pants). `setup_anim` looks the
-/// head, runs the inherited `HumanoidModel` walk swing + idle arm bob ([`apply_humanoid_walk_named`]),
+/// head, runs the inherited `HumanoidModel` walk swing + idle arm bob ([`apply_humanoid_walk`]),
 /// then the crouch sneaking pose ([`apply_humanoid_crouch_named`]). The held-item/attack arm poses,
 /// swim, and the elytra defer.
 pub(in crate::entity_models) struct PlayerModel {
@@ -307,7 +307,7 @@ impl EntityModel for PlayerModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_humanoid_walk_named(
+        apply_humanoid_walk(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

@@ -10,23 +10,6 @@ pub(in crate::entity_models) const fn head_first_part_index() -> usize {
     0
 }
 
-/// `SkeletonModel` head-part index. The skeleton, stray, wither-skeleton, and
-/// bogged body layers list the head first. Retained only as the reference the head-look unit test
-/// asserts the skeleton-family head-first layout against (every skeleton model now resolves the head
-/// by name); removed once the textured clothing overlay stopped addressing its head positionally.
-#[cfg(test)]
-pub(in crate::entity_models) const fn skeleton_head_part_index() -> usize {
-    0
-}
-
-/// Parched-skeleton head-part index. The parched body layer lists the body
-/// first, so the head is second. Retained only as the head-look unit test reference (see
-/// [`skeleton_head_part_index`]).
-#[cfg(test)]
-pub(in crate::entity_models) const fn parched_head_part_index() -> usize {
-    1
-}
-
 /// Vanilla `HoglinModel.setupAnim` ear sway for one ear: `rightEar.zRot = -2π/9 -
 /// walkAnimationSpeed * sin(walkAnimationPos)`, `leftEar.zRot = +2π/9 + walkAnimationSpeed
 /// * sin(walkAnimationPos)`. Vanilla writes the absolute angle from the literal `2π/9`, so
@@ -242,46 +225,13 @@ pub(in crate::entity_models) fn humanoid_arm_bob_pose(
     }
 }
 
-/// Vanilla `HumanoidModel.setupAnim` arm + leg walk swing applied to a model root. Every humanoid body
-/// layer lists the arms at `[2, 3]` and the legs at `[4, 5]` (the baby layers swap head/body to `1`/`0`
-/// but keep those slots). The legs swing ([`humanoid_leg_swing_pose`]) and the arms swing
-/// ([`humanoid_arm_swing_pose`]) only while moving (`walkAnimationSpeed != 0`), but the arms ALWAYS carry
-/// the continuous idle bob ([`humanoid_arm_bob_pose`], driven by `ageInTicks`), so the arms are re-posed
-/// every frame. Head look and any held-item/crouch overrides are applied separately by the caller.
-///
-/// Now that the skeleton clothing overlay builds a named tree, nothing addresses humanoid limbs
-/// positionally; this index variant is retained for one commit (replaced by `apply_humanoid_walk_named`).
-#[allow(dead_code)]
+/// Vanilla `HumanoidModel.setupAnim` arm + leg walk swing applied to a model root's named children.
+/// The legs (`right_leg`/`left_leg`) swing ([`humanoid_leg_swing_pose`]) and the arms
+/// (`right_arm`/`left_arm`) swing ([`humanoid_arm_swing_pose`]) only while moving, but the arms ALWAYS
+/// carry the continuous idle bob ([`humanoid_arm_bob_pose`]). The swing/bob resolves each limb's phase
+/// from its own offset, so the names may be declared in any order (the baby layouts swap head/body but
+/// keep the same arm/leg names).
 pub(in crate::entity_models) fn apply_humanoid_walk(
-    root: &mut ModelPart,
-    walk_animation_pos: f32,
-    walk_animation_speed: f32,
-    age_in_ticks: f32,
-) {
-    let swinging = !limb_swing_at_rest(walk_animation_speed);
-    if swinging {
-        for index in [4, 5] {
-            let leg = root.child_at_mut(index);
-            leg.pose = humanoid_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
-        }
-    }
-    for index in [2, 3] {
-        let arm = root.child_at_mut(index);
-        let mut pose = arm.pose;
-        if swinging {
-            pose = humanoid_arm_swing_pose(pose, walk_animation_pos, walk_animation_speed);
-        }
-        arm.pose = humanoid_arm_bob_pose(pose, age_in_ticks);
-    }
-}
-
-/// Vanilla `HumanoidModel.setupAnim` arm + leg walk swing applied to a model root's named children
-/// (the named counterpart of [`apply_humanoid_walk`]). The legs (`right_leg`/`left_leg`) swing
-/// ([`humanoid_leg_swing_pose`]) and the arms (`right_arm`/`left_arm`) swing ([`humanoid_arm_swing_pose`])
-/// only while moving, but the arms ALWAYS carry the continuous idle bob ([`humanoid_arm_bob_pose`]). The
-/// swing/bob resolves each limb's phase from its own offset, so the names may be declared in any order
-/// (the baby layouts swap head/body but keep the same arm/leg names).
-pub(in crate::entity_models) fn apply_humanoid_walk_named(
     root: &mut ModelPart,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
