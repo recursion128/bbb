@@ -1,5 +1,14 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
+// The adult wolf tail bind pose, mirrored from the model file so the tail pose-math tests can run
+// without the deleted `ADULT_WOLF_PARTS` const tree. The layer rests the tail at the π/5 wild droop.
+const ADULT_WOLF_TAIL_POSE: PartPose = PartPose {
+    offset: [-1.0, 12.0, 8.0],
+    rotation: [0.62831855, 0.0, 0.0],
+};
+
 #[test]
 fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
@@ -69,145 +78,59 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
 }
 
 #[test]
-fn wolf_model_parts_match_vanilla_26_1_body_layers() {
+fn wolf_cubes_match_vanilla_26_1_body_layers() {
+    // Vanilla `AdultWolfModel.createBodyLayer` (atlas 64×32). Each unified cube carries the colored
+    // tint (`WOLF_GRAY`) and the textured UV; the right legs reuse the left leg's `texOffs(0, 18)`
+    // mirrored.
     assert_eq!(
-        ADULT_WOLF_REAL_HEAD,
-        [
-            ModelCubeDesc {
-                min: [-2.0, -3.0, -2.0],
-                size: [6.0, 6.0, 4.0],
-                color: WOLF_GRAY,
-            },
-            ModelCubeDesc {
-                min: [-2.0, -5.0, 0.0],
-                size: [2.0, 2.0, 1.0],
-                color: WOLF_GRAY,
-            },
-            ModelCubeDesc {
-                min: [2.0, -5.0, 0.0],
-                size: [2.0, 2.0, 1.0],
-                color: WOLF_GRAY,
-            },
-            ModelCubeDesc {
-                min: [-0.5, -0.001, -5.0],
-                size: [3.0, 3.0, 4.0],
-                color: WOLF_GRAY,
-            },
-        ]
+        ADULT_WOLF_REAL_HEAD[0],
+        ModelCube::new(
+            [-2.0, -3.0, -2.0],
+            [6.0, 6.0, 4.0],
+            WOLF_GRAY,
+            [6.0, 6.0, 4.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(ADULT_WOLF_PARTS.len(), 8);
-    assert_part_tree(
-        &ADULT_WOLF_PARTS[0],
-        [-1.0, 13.5, -7.0],
-        [0.0, 0.0, 0.0],
-        &[],
-        ADULT_WOLF_HEAD_CHILDREN.as_slice(),
+    assert_eq!(ADULT_WOLF_REAL_HEAD.len(), 4);
+    assert_eq!(ADULT_WOLF_BODY[0].tex, [18.0, 14.0]);
+    assert_eq!(ADULT_WOLF_UPPER_BODY[0].tex, [21.0, 0.0]);
+    assert_eq!(ADULT_WOLF_LEFT_LEG[0].tex, [0.0, 18.0]);
+    assert!(!ADULT_WOLF_LEFT_LEG[0].mirror);
+    assert_eq!(
+        ADULT_WOLF_RIGHT_LEG[0],
+        ModelCube::new(
+            [0.0, 0.0, -1.0],
+            [2.0, 8.0, 2.0],
+            WOLF_GRAY,
+            [2.0, 8.0, 2.0],
+            [0.0, 18.0],
+            true,
+        )
     );
-    assert_part(
-        &ADULT_WOLF_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_WOLF_REAL_HEAD.as_slice(),
-    );
-    assert_part(
-        &ADULT_WOLF_PARTS[1],
-        [0.0, 14.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_WOLF_BODY.as_slice(),
-    );
-    assert_part(
-        &ADULT_WOLF_PARTS[2],
-        [-1.0, 14.0, -3.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_WOLF_UPPER_BODY.as_slice(),
-    );
-    for (part, expected_offset) in ADULT_WOLF_PARTS[3..7].iter().zip([
-        [-2.5, 16.0, 7.0],
-        [0.5, 16.0, 7.0],
-        [-2.5, 16.0, -4.0],
-        [0.5, 16.0, -4.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            ADULT_WOLF_LEG.as_slice(),
-        );
-    }
-    assert_part_tree(
-        &ADULT_WOLF_PARTS[7],
-        [-1.0, 12.0, 8.0],
-        [0.62831855, 0.0, 0.0],
-        &[],
-        ADULT_WOLF_TAIL_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &ADULT_WOLF_TAIL_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        ADULT_WOLF_REAL_TAIL.as_slice(),
-    );
+    assert_eq!(ADULT_WOLF_REAL_TAIL[0].tex, [9.0, 18.0]);
 
+    // Vanilla `BabyWolfModel.createBodyLayer` (atlas 32×32): an inflated skull box keeping the base UV.
     assert_eq!(
         BABY_WOLF_HEAD[0],
-        ModelCubeDesc {
-            min: [-3.015, -3.275, -3.025],
-            size: [6.05, 5.05, 5.05],
-            color: WOLF_GRAY,
-        }
+        ModelCube::new(
+            [-3.015, -3.275, -3.025],
+            [6.05, 5.05, 5.05],
+            WOLF_GRAY,
+            [6.0, 5.0, 5.0],
+            [0.0, 12.0],
+            false,
+        )
     );
-    assert_eq!(BABY_WOLF_PARTS.len(), 7);
-    assert_part_tree(
-        &BABY_WOLF_PARTS[0],
-        [0.0, 18.25, -4.0],
-        [0.0, 0.0, 0.0],
-        BABY_WOLF_HEAD.as_slice(),
-        BABY_WOLF_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_WOLF_HEAD_CHILDREN[0],
-        [-2.0, -4.25, -0.5],
-        [0.0, 0.0, 0.0],
-        BABY_WOLF_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_WOLF_HEAD_CHILDREN[1],
-        [2.0, -4.25, -0.5],
-        [0.0, 0.0, 0.0],
-        BABY_WOLF_EAR.as_slice(),
-    );
-    assert_part(
-        &BABY_WOLF_PARTS[1],
-        [0.0, 19.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BABY_WOLF_BODY.as_slice(),
-    );
-    for (part, expected_offset) in BABY_WOLF_PARTS[2..6].iter().zip([
-        [-1.5, 21.0, 3.0],
-        [1.5, 21.0, 3.0],
-        [-1.5, 21.0, -3.0],
-        [1.5, 21.0, -3.0],
-    ]) {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            BABY_WOLF_LEG.as_slice(),
-        );
-    }
-    assert_part_tree(
-        &BABY_WOLF_PARTS[6],
-        [0.0, 19.0, 3.0],
-        [-0.5236, 0.0, 0.0],
-        &[],
-        BABY_WOLF_TAIL_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BABY_WOLF_TAIL_CHILDREN[0],
-        [0.0, -0.6, 0.2],
-        [-3.1, 0.0, 0.0],
-        BABY_WOLF_TAIL_R1.as_slice(),
-    );
+    assert_eq!(BABY_WOLF_RIGHT_EAR[0].tex, [0.0, 5.0]);
+    assert_eq!(BABY_WOLF_LEFT_EAR[0].tex, [20.0, 5.0]);
+    assert_eq!(BABY_WOLF_BODY[0].tex, [0.0, 0.0]);
+    assert_eq!(BABY_WOLF_RIGHT_HIND_LEG[0].tex, [0.0, 22.0]);
+    assert_eq!(BABY_WOLF_LEFT_HIND_LEG[0].tex, [8.0, 22.0]);
+    assert_eq!(BABY_WOLF_RIGHT_FRONT_LEG[0].tex, [0.0, 0.0]);
+    assert_eq!(BABY_WOLF_LEFT_FRONT_LEG[0].tex, [20.0, 0.0]);
+    assert_eq!(BABY_WOLF_TAIL_R1[0].tex, [22.0, 16.0]);
 }
 
 #[test]
@@ -364,6 +287,7 @@ fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
 
 #[test]
 fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
+    // The vestigial `parts` slices are nulled; every pass reads the unified `WolfModel` tree.
     let wild = wolf_textured_layer_passes(false, false, false, false, None);
     assert_eq!(
         wild.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
@@ -371,7 +295,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(wild[0].model_layer, MODEL_LAYER_WOLF);
     assert_eq!(wild[0].texture, WOLF_TEXTURE_REF);
-    assert_eq!(wild[0].parts, ADULT_WOLF_TEXTURED_PARTS.as_slice());
+    assert!(wild[0].parts.is_empty());
     assert_eq!(wild[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((wild[0].collector_order, wild[0].submit_sequence), (0, 0));
 
@@ -387,7 +311,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     assert_eq!(tame_blue[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(tame_blue[1].model_layer, MODEL_LAYER_WOLF);
     assert_eq!(tame_blue[1].texture, WOLF_COLLAR_TEXTURE_REF);
-    assert_eq!(tame_blue[1].parts, ADULT_WOLF_TEXTURED_PARTS.as_slice());
+    assert!(tame_blue[1].parts.is_empty());
     assert_eq!(
         tame_blue[1].tint,
         EntityDyeColor::Blue.texture_diffuse_color()
@@ -420,55 +344,12 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     let baby_tame = wolf_textured_layer_passes(true, true, false, false, Some(EntityDyeColor::Red));
     assert_eq!(baby_tame[0].model_layer, MODEL_LAYER_WOLF_BABY);
     assert_eq!(baby_tame[0].texture, WOLF_TAME_BABY_TEXTURE_REF);
-    assert_eq!(baby_tame[0].parts, BABY_WOLF_TEXTURED_PARTS.as_slice());
+    assert!(baby_tame[0].parts.is_empty());
     assert_eq!(baby_tame[1].texture, WOLF_BABY_COLLAR_TEXTURE_REF);
-    assert_eq!(baby_tame[1].parts, BABY_WOLF_TEXTURED_PARTS.as_slice());
-}
+    assert!(baby_tame[1].parts.is_empty());
 
-#[test]
-fn wolf_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_WOLF, "minecraft:wolf#main");
     assert_eq!(MODEL_LAYER_WOLF_BABY, "minecraft:wolf_baby#main");
-    assert_eq!(
-        ADULT_WOLF_TEXTURED_REAL_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, -3.0, -2.0],
-            size: [6.0, 6.0, 4.0],
-            uv_size: [6.0, 6.0, 4.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        ADULT_WOLF_TEXTURED_RIGHT_LEG[0],
-        TexturedModelCubeDesc {
-            min: [0.0, 0.0, -1.0],
-            size: [2.0, 8.0, 2.0],
-            uv_size: [2.0, 8.0, 2.0],
-            tex: [0.0, 18.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(
-        BABY_WOLF_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-3.015, -3.275, -3.025],
-            size: [6.05, 5.05, 5.05],
-            uv_size: [6.0, 5.0, 5.0],
-            tex: [0.0, 12.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        BABY_WOLF_TEXTURED_LEFT_EAR[0],
-        TexturedModelCubeDesc {
-            min: [-1.0, -1.0, -0.5],
-            size: [2.0, 2.0, 1.0],
-            uv_size: [2.0, 2.0, 1.0],
-            tex: [20.0, 5.0],
-            mirror: false,
-        }
-    );
 }
 
 #[test]
@@ -630,7 +511,7 @@ fn wolf_tail_swing_pose_wags_with_the_quadruped_amplitude() {
     // tail.xRot = state.tailAngle. The base tail pose carries the layer's resting xRot
     // droop (0.62831855 = π/5, the untamed tailAngle); the wag sets yRot and xRot and
     // preserves the offset and zRot.
-    let base = ADULT_WOLF_PARTS[7].pose;
+    let base = ADULT_WOLF_TAIL_POSE;
     let wild = std::f32::consts::PI / 5.0;
     assert!(
         (base.rotation[0] - wild).abs() < 1e-6,
@@ -809,27 +690,17 @@ fn wolf_sitting_pose_matches_vanilla_set_sitting_pose() {
     //   hindLeg:  y += 6.7*as, z -= 5*as, xRot = 3π/2
     //   frontLeg: xRot = 5.811947, x += ±0.01*as (right +, left −), y += 1*as
     //   tail:     y += 9*as,  z -= 2*as  (offset only; xRot/yRot come from the tail pose)
+    // The roles are now resolved by child name (the adult and baby trees name the same parts).
     assert_eq!(WOLF_SIT_FRONT_LEG_X_ROT, 5.811947);
     assert_eq!(
-        wolf_sitting_part_roles(false),
+        wolf_sitting_part_roles(),
         [
-            (1, WolfSitPart::Body),
-            (3, WolfSitPart::HindLeg),
-            (4, WolfSitPart::HindLeg),
-            (5, WolfSitPart::RightFrontLeg),
-            (6, WolfSitPart::LeftFrontLeg),
-            (7, WolfSitPart::Tail),
-        ]
-    );
-    assert_eq!(
-        wolf_sitting_part_roles(true),
-        [
-            (1, WolfSitPart::Body),
-            (2, WolfSitPart::HindLeg),
-            (3, WolfSitPart::HindLeg),
-            (4, WolfSitPart::RightFrontLeg),
-            (5, WolfSitPart::LeftFrontLeg),
-            (6, WolfSitPart::Tail),
+            ("body", WolfSitPart::Body),
+            ("right_hind_leg", WolfSitPart::HindLeg),
+            ("left_hind_leg", WolfSitPart::HindLeg),
+            ("right_front_leg", WolfSitPart::RightFrontLeg),
+            ("left_front_leg", WolfSitPart::LeftFrontLeg),
+            ("tail", WolfSitPart::Tail),
         ]
     );
 
@@ -941,7 +812,7 @@ fn wolf_angry_tail_pose_matches_vanilla_get_tail_angle() {
     // Vanilla `WolfModel.setupAnim` for an angry wolf: `tail.yRot = 0` (no wag) and
     // `tail.xRot = getTailAngle() = 1.5393804` (the angry constant), overriding the layer's
     // π/5 wild rest droop. The offset and zRot are preserved.
-    let base = ADULT_WOLF_PARTS[wolf_tail_part_index(false)].pose;
+    let base = ADULT_WOLF_TAIL_POSE;
     assert!(
         (base.rotation[0] - 0.62831855).abs() < 1e-6,
         "adult tail rests at the π/5 wild droop: {}",

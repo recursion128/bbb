@@ -44,10 +44,11 @@ pub(in crate::entity_models) const fn player_head_part_index() -> usize {
     0
 }
 
-/// Head-part index for standalone single-head body layers whose mesh lists the
-/// head first: creeper, spider/cave spider, enderman, iron golem, snow golem,
-/// and wolf (whose part 0 is the head pivot with the head/ears as children).
-/// Each of these models applies the plain `setupAnim` head look.
+/// Head-part index for standalone single-head body layers whose mesh lists the head first (the iron
+/// and snow golems still address their head positionally). The creeper, spider/cave spider, enderman,
+/// and wolf now build named-children trees and resolve the head by name, so this is retained only as
+/// the reference the head-look unit test asserts the golems' head-first layout against.
+#[cfg(test)]
 pub(in crate::entity_models) const fn head_first_part_index() -> usize {
     0
 }
@@ -664,17 +665,6 @@ pub(in crate::entity_models) fn wolf_angry_tail_pose(base: PartPose) -> PartPose
     }
 }
 
-/// Tail part index in the wolf body layers. The adult layer lists head/body/mane at
-/// `0`/`1`/`2`, the four legs at `[3, 4, 5, 6]`, and the tail last at `7`; the baby layer
-/// drops the mane, so the tail is at `6`.
-pub(in crate::entity_models) const fn wolf_tail_part_index(baby: bool) -> usize {
-    if baby {
-        6
-    } else {
-        7
-    }
-}
-
 /// Which wolf part a `WolfModel.setSittingPose` delta applies to. A sitting wolf tilts its
 /// body, tucks the hind legs under it, splays the front legs forward (with a tiny opposite
 /// `x` nudge per side), and lifts the tail; the head still follows the look.
@@ -687,32 +677,19 @@ pub(in crate::entity_models) enum WolfSitPart {
     Tail,
 }
 
-/// Maps each sitting-pose part to its index in the adult/baby wolf body layer. The adult
-/// layer lists head/body/mane at `0`/`1`/`2`, then `right_hind`/`left_hind`/`right_front`/
-/// `left_front` at `[3, 4, 5, 6]` and the tail at `7`; the baby layer drops the mane, so
-/// the legs are at `[2, 3, 4, 5]` and the tail at `6`.
-pub(in crate::entity_models) const fn wolf_sitting_part_roles(
-    baby: bool,
-) -> [(usize, WolfSitPart); 6] {
-    if baby {
-        [
-            (1, WolfSitPart::Body),
-            (2, WolfSitPart::HindLeg),
-            (3, WolfSitPart::HindLeg),
-            (4, WolfSitPart::RightFrontLeg),
-            (5, WolfSitPart::LeftFrontLeg),
-            (6, WolfSitPart::Tail),
-        ]
-    } else {
-        [
-            (1, WolfSitPart::Body),
-            (3, WolfSitPart::HindLeg),
-            (4, WolfSitPart::HindLeg),
-            (5, WolfSitPart::RightFrontLeg),
-            (6, WolfSitPart::LeftFrontLeg),
-            (7, WolfSitPart::Tail),
-        ]
-    }
+/// Maps each sitting-pose part to its child name in the wolf body layer (the adult and baby trees
+/// name the same parts identically — the baby drops only the mane `upper_body`, which never sits).
+/// `WolfModel.setupAnim` folds each of these by `child_mut(name)`.
+pub(in crate::entity_models) const fn wolf_sitting_part_roles() -> [(&'static str, WolfSitPart); 6]
+{
+    [
+        ("body", WolfSitPart::Body),
+        ("right_hind_leg", WolfSitPart::HindLeg),
+        ("left_hind_leg", WolfSitPart::HindLeg),
+        ("right_front_leg", WolfSitPart::RightFrontLeg),
+        ("left_front_leg", WolfSitPart::LeftFrontLeg),
+        ("tail", WolfSitPart::Tail),
+    ]
 }
 
 /// Front-leg sitting `xRot` (`WolfModel.setSittingPose`, the literal `5.811947`, ≈ 333°).

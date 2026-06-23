@@ -927,11 +927,6 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
     invisible: bool,
     collar_color: Option<EntityDyeColor>,
 ) -> Vec<EntityModelLayerPass> {
-    let parts = if baby {
-        BABY_WOLF_TEXTURED_PARTS.as_slice()
-    } else {
-        ADULT_WOLF_TEXTURED_PARTS.as_slice()
-    };
     let model_layer = if baby {
         MODEL_LAYER_WOLF_BABY
     } else {
@@ -943,7 +938,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
         texture: wolf_texture_ref(baby, tame, angry),
-        parts,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -960,7 +955,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
                 } else {
                     WOLF_COLLAR_TEXTURE_REF
                 },
-                parts,
+                parts: &[],
                 visibility: EntityModelLayerVisibility::All,
                 tint: collar_color.texture_diffuse_color(),
                 collector_order: 1,
