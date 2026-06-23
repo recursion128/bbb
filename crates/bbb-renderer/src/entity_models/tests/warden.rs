@@ -79,3 +79,32 @@ fn warden_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(WARDEN_TENDRIL, 1.0)));
 }
+
+#[test]
+fn warden_head_look_turns_only_the_nested_head_subtree() {
+    // Vanilla `WardenModel.animateHeadLookTarget` sets `head.xRot/yRot` from the look angles. The
+    // head is `bone.body.head` (nested three deep), so the head box and its two tendrils turn while
+    // the body, ribcages, arms, and legs hold. Depth-first emit order: the body and two ribcages
+    // `[0, 72)`, the head and its two tendrils `[72, 144)`, then the two arms and two legs
+    // `[144, 240)`.
+    let rest = EntityModelInstance::warden(921, [0.0, 64.0, 0.0], 0.0);
+    let looked = rest.with_head_look(40.0, -30.0);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let looked_mesh = entity_model_mesh(&[looked]);
+    assert_eq!(rest_mesh.vertices.len(), looked_mesh.vertices.len());
+    assert_eq!(
+        rest_mesh.vertices[..72],
+        looked_mesh.vertices[..72],
+        "the body and ribcages stay put"
+    );
+    assert_ne!(
+        rest_mesh.vertices[72..144],
+        looked_mesh.vertices[72..144],
+        "the head and its tendrils turn"
+    );
+    assert_eq!(
+        rest_mesh.vertices[144..],
+        looked_mesh.vertices[144..],
+        "the arms and legs stay put"
+    );
+}

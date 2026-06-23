@@ -1614,12 +1614,28 @@ fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 }
 
 fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `WardenModel` is a static nested hierarchy at rest (`bone` → body/legs, body →
-    // ribcages/head/arms, head → tendrils). All of `WardenModel.setupAnim` (head look, walk,
-    // idle wobble, tendril sway, and the action keyframe animations) is deferred, so the
-    // bind-pose part tree is emitted directly. Warden uses `LivingEntityRenderer.setupRotations`.
+    // Vanilla `WardenModel` is a nested hierarchy (`bone` → body/legs, body → ribcages/head/arms,
+    // head → tendrils). `WardenModel.animateHeadLookTarget` sets `head.xRot/yRot` from the look
+    // angles, so the head (and its tendrils) track the look target — reproduced here on the
+    // body-nested head. The walk pose (`animateWalk`), the always-on idle wobble
+    // (`animateIdlePose`, which also rolls the body), the tendril sway (`animateTendrils`, gated by
+    // the un-projected `tendrilAnimation`), and the attack / sonic-boom / digging / emerge / roar /
+    // sniff keyframe animations stay deferred. Warden uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    emit_model_parts(mesh, &WARDEN_PARTS, root);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    if head_look_at_rest(head_yaw, head_pitch) {
+        emit_model_parts(mesh, &WARDEN_PARTS, root);
+    } else {
+        emit_model_parts_with_head_look(
+            mesh,
+            &WARDEN_PARTS,
+            root,
+            WARDEN_HEAD_PART_PATH,
+            head_yaw,
+            head_pitch,
+        );
+    }
 }
 
 fn emit_armadillo_model(

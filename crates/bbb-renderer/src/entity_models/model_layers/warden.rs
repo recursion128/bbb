@@ -68,3 +68,8 @@ const WARDEN_BONE_CHILDREN: [ModelPartDesc; 3] = [
 /// (`offset(0, 24, 0)`). Ten cubes.
 pub(in crate::entity_models) const WARDEN_PARTS: [ModelPartDesc; 1] =
     [part([0.0, 24.0, 0.0], &[], &WARDEN_BONE_CHILDREN)];
+
+/// Child-index path from [`WARDEN_PARTS`] to the `head`: `bone` (`0`) → `body` (child `0`) → `head`
+/// (child `2`, after the two ribcages). `WardenModel.animateHeadLookTarget` sets `head.xRot/yRot`
+/// from the look angles, and the two tendrils nested under the head inherit the turn.
+pub(in crate::entity_models) const WARDEN_HEAD_PART_PATH: &[usize] = &[0, 0, 2];
