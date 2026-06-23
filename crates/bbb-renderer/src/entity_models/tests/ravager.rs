@@ -1,70 +1,46 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn ravager_model_parts_match_vanilla_26_1_body_layer() {
-    assert_eq!(RAVAGER_PARTS.len(), 6);
-    assert_part_tree(
-        &RAVAGER_PARTS[0],
-        [0.0, -7.0, 5.5],
-        [0.0, 0.0, 0.0],
-        RAVAGER_NECK.as_slice(),
-        RAVAGER_NECK_CHILDREN.as_slice(),
+fn ravager_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `RavagerModel.createBodyLayer` (atlas 128×128): the neck (parenting the head → two
+    // horns + mouth), the body, and four legs. Each unified cube carries the colored tint
+    // (`RAVAGER_GRAY`) and the textured `uv_size`/`texOffs`/`mirror`; the left horn/legs reuse their
+    // right counterpart's `texOffs` mirrored.
+    assert_eq!(
+        RAVAGER_NECK[0],
+        ModelCube::new(
+            [-5.0, -1.0, -18.0],
+            [10.0, 10.0, 18.0],
+            RAVAGER_GRAY,
+            [10.0, 10.0, 18.0],
+            [68.0, 73.0],
+            false,
+        )
     );
-    assert_part_tree(
-        &RAVAGER_NECK_CHILDREN[0],
-        [0.0, 16.0, -17.0],
-        [0.0, 0.0, 0.0],
-        RAVAGER_HEAD.as_slice(),
-        RAVAGER_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &RAVAGER_HEAD_CHILDREN[0],
-        [-10.0, -14.0, -8.0],
-        [1.0995574, 0.0, 0.0],
-        RAVAGER_HORN.as_slice(),
-    );
-    assert_part(
-        &RAVAGER_HEAD_CHILDREN[1],
-        [8.0, -14.0, -8.0],
-        [1.0995574, 0.0, 0.0],
-        RAVAGER_HORN.as_slice(),
-    );
-    assert_part(
-        &RAVAGER_HEAD_CHILDREN[2],
-        [0.0, -2.0, 2.0],
-        [0.0, 0.0, 0.0],
-        RAVAGER_MOUTH.as_slice(),
-    );
-    assert_part(
-        &RAVAGER_PARTS[1],
-        [0.0, 1.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        RAVAGER_BODY.as_slice(),
-    );
-    for (part, expected_offset, expected_cubes) in [
-        (
-            &RAVAGER_PARTS[2],
-            [-8.0, -13.0, 18.0],
-            RAVAGER_HIND_LEG.as_slice(),
-        ),
-        (
-            &RAVAGER_PARTS[3],
-            [8.0, -13.0, 18.0],
-            RAVAGER_HIND_LEG.as_slice(),
-        ),
-        (
-            &RAVAGER_PARTS[4],
-            [-8.0, -13.0, -5.0],
-            RAVAGER_FRONT_LEG.as_slice(),
-        ),
-        (
-            &RAVAGER_PARTS[5],
-            [8.0, -13.0, -5.0],
-            RAVAGER_FRONT_LEG.as_slice(),
-        ),
-    ] {
-        assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
-    }
+    assert_eq!(RAVAGER_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(RAVAGER_HEAD[0].size, [16.0, 20.0, 16.0]);
+    assert_eq!(RAVAGER_HEAD[1].tex, [0.0, 0.0]);
+    assert_eq!(RAVAGER_HEAD[1].size, [4.0, 8.0, 4.0]);
+    // The two horns share `texOffs(74, 55)`; the left horn is mirrored.
+    assert_eq!(RAVAGER_RIGHT_HORN[0].tex, [74.0, 55.0]);
+    assert!(!RAVAGER_RIGHT_HORN[0].mirror);
+    assert_eq!(RAVAGER_LEFT_HORN[0].tex, [74.0, 55.0]);
+    assert!(RAVAGER_LEFT_HORN[0].mirror);
+    assert_eq!(RAVAGER_MOUTH[0].tex, [0.0, 36.0]);
+    assert_eq!(RAVAGER_BODY[0].tex, [0.0, 55.0]);
+    assert_eq!(RAVAGER_BODY[1].tex, [0.0, 91.0]);
+    // The hind legs share `texOffs(96, 0)` and the front legs `texOffs(64, 0)`, each with a
+    // mirrored left counterpart.
+    assert_eq!(RAVAGER_RIGHT_HIND_LEG[0].tex, [96.0, 0.0]);
+    assert!(!RAVAGER_RIGHT_HIND_LEG[0].mirror);
+    assert_eq!(RAVAGER_LEFT_HIND_LEG[0].tex, [96.0, 0.0]);
+    assert!(RAVAGER_LEFT_HIND_LEG[0].mirror);
+    assert_eq!(RAVAGER_RIGHT_FRONT_LEG[0].tex, [64.0, 0.0]);
+    assert!(!RAVAGER_RIGHT_FRONT_LEG[0].mirror);
+    assert_eq!(RAVAGER_LEFT_FRONT_LEG[0].tex, [64.0, 0.0]);
+    assert!(RAVAGER_LEFT_FRONT_LEG[0].mirror);
 }
 
 #[test]
@@ -114,88 +90,16 @@ fn ravager_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_RAVAGER);
     assert_eq!(passes[0].texture, RAVAGER_TEXTURE_REF);
-    assert_eq!(passes[0].parts, RAVAGER_TEXTURED_PARTS.as_slice());
+    // The vestigial `parts` slice is nulled; emit builds `RavagerModel::new()` and renders its tree.
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (passes[0].collector_order, passes[0].submit_sequence),
         (0, 0)
     );
-}
-
-#[test]
-fn ravager_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_RAVAGER, "minecraft:ravager#main");
     assert_eq!(RAVAGER_TEXTURE_REF.size, [128, 128]);
-    assert_eq!(RAVAGER_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        RAVAGER_TEXTURED_NECK[0],
-        TexturedModelCubeDesc {
-            min: [-5.0, -1.0, -18.0],
-            size: [10.0, 10.0, 18.0],
-            uv_size: [10.0, 10.0, 18.0],
-            tex: [68.0, 73.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        RAVAGER_TEXTURED_HEAD,
-        [
-            TexturedModelCubeDesc {
-                min: [-8.0, -20.0, -14.0],
-                size: [16.0, 20.0, 16.0],
-                uv_size: [16.0, 20.0, 16.0],
-                tex: [0.0, 0.0],
-                mirror: false,
-            },
-            TexturedModelCubeDesc {
-                min: [-2.0, -6.0, -18.0],
-                size: [4.0, 8.0, 4.0],
-                uv_size: [4.0, 8.0, 4.0],
-                tex: [0.0, 0.0],
-                mirror: false,
-            },
-        ]
-    );
-    assert_eq!(
-        RAVAGER_TEXTURED_LEFT_HORN[0],
-        TexturedModelCubeDesc {
-            min: [0.0, -14.0, -2.0],
-            size: [2.0, 14.0, 4.0],
-            uv_size: [2.0, 14.0, 4.0],
-            tex: [74.0, 55.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(
-        RAVAGER_TEXTURED_BODY,
-        [
-            TexturedModelCubeDesc {
-                min: [-7.0, -10.0, -7.0],
-                size: [14.0, 16.0, 20.0],
-                uv_size: [14.0, 16.0, 20.0],
-                tex: [0.0, 55.0],
-                mirror: false,
-            },
-            TexturedModelCubeDesc {
-                min: [-6.0, 6.0, -7.0],
-                size: [12.0, 13.0, 18.0],
-                uv_size: [12.0, 13.0, 18.0],
-                tex: [0.0, 91.0],
-                mirror: false,
-            },
-        ]
-    );
-    assert_eq!(RAVAGER_TEXTURED_PARTS[0].pose, RAVAGER_PARTS[0].pose);
-    assert_eq!(
-        RAVAGER_TEXTURED_PARTS[0].children,
-        RAVAGER_TEXTURED_NECK_CHILDREN.as_slice()
-    );
-    assert_eq!(
-        RAVAGER_TEXTURED_NECK_CHILDREN[0].children,
-        RAVAGER_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
-    assert_eq!(RAVAGER_TEXTURED_PARTS[5].pose, RAVAGER_PARTS[5].pose);
 }
 
 #[test]
@@ -257,9 +161,9 @@ fn ravager_textured_mesh_turns_nested_head_not_neck_or_body() {
 #[test]
 fn ravager_swings_its_legs_when_walking() {
     // Vanilla `RavagerModel.setupAnim` swings the four legs `cos(pos * 0.6662 [+ π]) *
-    // 0.4 * speed` (the `QuadrupedModel` phase with a shorter 0.4 amplitude, legs at
-    // [2, 3, 4, 5]). A standing ravager is inert; a walking one lifts its feet and
-    // splays its legs along Z. The neck/mouth attack/stun/roar poses are deferred.
+    // 0.4 * speed` (the `QuadrupedModel` phase with a shorter 0.4 amplitude). A standing
+    // ravager is inert; a walking one lifts its feet and splays its legs along Z. The
+    // neck/mouth attack/stun/roar poses are deferred.
     let base = EntityModelInstance::ravager(280, [0.0, 64.0, 0.0], 0.0);
     let rest = entity_model_mesh(&[base]);
     let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
@@ -325,13 +229,29 @@ fn ravager_leg_swing_pose_matches_vanilla_formula() {
     // rightFrontLeg.xRot = cos(pos * 0.6662 + π) * legRot;
     // leftFrontLeg.xRot  = cos(pos * 0.6662) * legRot.
     // This is the QuadrupedModel diagonal phase (in phase when x*z < 0) but with a 0.4
-    // amplitude rather than the usual 1.4. RAVAGER_PARTS lists right hind at index 2
-    // (x = -8, z = 18 -> x*z < 0 -> in phase) and left hind at index 3 (x = 8 -> out of
-    // phase); front legs are at z = -5 so their phases flip.
-    let right_hind = ravager_leg_swing_pose(RAVAGER_PARTS[2].pose, 0.0, 1.0);
-    let left_hind = ravager_leg_swing_pose(RAVAGER_PARTS[3].pose, 0.0, 1.0);
-    let right_front = ravager_leg_swing_pose(RAVAGER_PARTS[4].pose, 0.0, 1.0);
-    let left_front = ravager_leg_swing_pose(RAVAGER_PARTS[5].pose, 0.0, 1.0);
+    // amplitude rather than the usual 1.4. The right hind leg sits at x = -8, z = 18
+    // (x*z < 0 -> in phase), the left hind at x = 8 (out of phase); the front legs are at
+    // z = -5 so their phases flip.
+    let right_hind_pose = PartPose {
+        offset: [-8.0, -13.0, 18.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let left_hind_pose = PartPose {
+        offset: [8.0, -13.0, 18.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let right_front_pose = PartPose {
+        offset: [-8.0, -13.0, -5.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let left_front_pose = PartPose {
+        offset: [8.0, -13.0, -5.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let right_hind = ravager_leg_swing_pose(right_hind_pose, 0.0, 1.0);
+    let left_hind = ravager_leg_swing_pose(left_hind_pose, 0.0, 1.0);
+    let right_front = ravager_leg_swing_pose(right_front_pose, 0.0, 1.0);
+    let left_front = ravager_leg_swing_pose(left_front_pose, 0.0, 1.0);
     assert!(
         (right_hind.rotation[0] - 0.4).abs() < 1e-6,
         "right hind in phase at amplitude 0.4: {}",
@@ -347,8 +267,8 @@ fn ravager_leg_swing_pose_matches_vanilla_formula() {
     assert!((left_front.rotation[0] - right_hind.rotation[0]).abs() < 1e-6);
 
     // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 0.4 * speed.
-    let right_hind = ravager_leg_swing_pose(RAVAGER_PARTS[2].pose, 1.5, 0.5);
-    let left_hind = ravager_leg_swing_pose(RAVAGER_PARTS[3].pose, 1.5, 0.5);
+    let right_hind = ravager_leg_swing_pose(right_hind_pose, 1.5, 0.5);
+    let left_hind = ravager_leg_swing_pose(left_hind_pose, 1.5, 0.5);
     assert!((right_hind.rotation[0] - (1.5_f32 * 0.6662).cos() * 0.4 * 0.5).abs() < 1e-6);
     assert!(
         (left_hind.rotation[0] - (1.5_f32 * 0.6662 + std::f32::consts::PI).cos() * 0.4 * 0.5).abs()
@@ -356,9 +276,9 @@ fn ravager_leg_swing_pose_matches_vanilla_formula() {
     );
 
     // The swing only sets xRot; the resting offset and yRot/zRot are preserved.
-    assert_eq!(right_hind.offset, RAVAGER_PARTS[2].pose.offset);
-    assert_eq!(right_hind.rotation[1], RAVAGER_PARTS[2].pose.rotation[1]);
-    assert_eq!(right_hind.rotation[2], RAVAGER_PARTS[2].pose.rotation[2]);
+    assert_eq!(right_hind.offset, right_hind_pose.offset);
+    assert_eq!(right_hind.rotation[1], right_hind_pose.rotation[1]);
+    assert_eq!(right_hind.rotation[2], right_hind_pose.rotation[2]);
 }
 
 fn ravager_texture_images() -> Vec<EntityModelTextureImage> {

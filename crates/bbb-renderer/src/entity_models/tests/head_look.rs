@@ -94,18 +94,8 @@ fn head_part_indices_match_vanilla_body_layers() {
     // child by name rather than an index — the adult layer lists the body first, the baby
     // layer lists the head first, but both name the head `head`.)
 
-    // The ravager nests its head inside the neck: neck is part 0, the head is the
-    // neck's first (only) child.
-    assert_eq!(ravager_neck_part_index(), 0);
-    assert_eq!(ravager_head_child_index(), 0);
-    assert_eq!(
-        RAVAGER_PARTS[ravager_neck_part_index()].cubes,
-        RAVAGER_NECK.as_slice()
-    );
-    assert_eq!(
-        RAVAGER_NECK_CHILDREN[ravager_head_child_index()].cubes,
-        RAVAGER_HEAD.as_slice()
-    );
+    // (The ravager now builds a named-children tree, so its head look resolves the nested head
+    // as `neck.child_mut("head")` by name rather than two positional indices.)
 }
 
 #[test]

@@ -762,7 +762,7 @@ pub(in crate::entity_models) fn ravager_textured_layer_passes() -> Vec<EntityMod
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_RAVAGER,
         texture: RAVAGER_TEXTURE_REF,
-        parts: &RAVAGER_TEXTURED_PARTS,
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
