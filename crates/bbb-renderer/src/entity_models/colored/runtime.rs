@@ -6,7 +6,6 @@ use glam::{Mat4, Vec3};
 use super::super::catalog::{sheep_wool_render_color, *};
 use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
-use super::super::keyframe::*;
 use super::super::model::{EntityModel, StaticModel};
 use super::super::model_layers::*;
 use super::armor_stand::emit_armor_stand_model;
@@ -235,7 +234,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Armadillo { baby, rolled_up } => {
                 // Colored-only so far (no texture-backed armadillo yet), so this arm always emits.
-                emit_armadillo_model(&mut mesh, *instance, baby, rolled_up);
+                ArmadilloModel::new(baby, rolled_up).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Axolotl { baby } => {
                 // Colored-only so far (no texture-backed axolotl yet), so this arm always emits.
@@ -839,130 +842,6 @@ fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) 
             ..*leg
         };
         emit_model_part(mesh, &leg_posed, bone_t);
-    }
-}
-
-fn emit_armadillo_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    baby: bool,
-    rolled_up: bool,
-) {
-    // Vanilla `AdultArmadilloModel`/`BabyArmadilloModel` are nested hierarchies (root → body/legs,
-    // body → tail/head, head → ears). When `isHidingInShell` (the synced `ArmadilloState.SCARED`),
-    // `setupAnim` hides the body cubes (`skipDraw`), the tail, and both hind legs and shows the
-    // shell-ball `cube` — the head, ears, and front legs stay drawn — so the rolled-up part tree is
-    // emitted instead, with no head look. While NOT hiding, `setupAnim` sets the clamped head look
-    // (`head.xRot/yRot` clamped to [-22.5, 25] / [-32.5, 32.5]) on the body-nested head pivot, then
-    // `applyWalk` rocks the body, tail, four legs, and head as the armadillo moves. Both the adult
-    // ([`ARMADILLO_WALK`]) and the baby ([`ARMADILLO_BABY_WALK`]) walks are hand-walked; the
-    // roll-out / roll-up / peek keyframe transitions stay deferred. The baby flag (synced
-    // `AgeableMob.DATA_BABY_ID`) selects the baby body layer, as in the vanilla `AgeableMobRenderer`.
-    // Armadillo uses `LivingEntityRenderer.setupRotations`.
-    let root = entity_model_root_transform(instance);
-    if rolled_up {
-        let parts: &[ModelPartDesc] = if baby {
-            &BABY_ARMADILLO_ROLLED_PARTS
-        } else {
-            &ADULT_ARMADILLO_ROLLED_PARTS
-        };
-        emit_model_parts(mesh, parts, root);
-        return;
-    }
-    let (head_yaw, head_pitch) = armadillo_clamped_head_look(
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    );
-    let (parts, walk): (&[ModelPartDesc], &AnimationDefinition) = if baby {
-        (&BABY_ARMADILLO_PARTS, &ARMADILLO_BABY_WALK)
-    } else {
-        (&ADULT_ARMADILLO_PARTS, &ARMADILLO_WALK)
-    };
-    emit_armadillo_walk(mesh, instance, root, parts, walk, head_yaw, head_pitch);
-}
-
-fn emit_armadillo_walk(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    root: Mat4,
-    parts: &[ModelPartDesc],
-    walk: &AnimationDefinition,
-    head_yaw: f32,
-    head_pitch: f32,
-) {
-    // The walk is sampled via `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`: the `body`
-    // rolls (a CatmullRom z-sway with a small y-bob) carrying the tail and head, the four legs swing
-    // (rotation + position), the `tail` rocks, and the `head` channel adds a z-roll onto the clamped
-    // look. A still armadillo samples amplitude 0, collapsing to the bind pose plus the head look. The
-    // adult and baby share this `body → tail/head` + four-leg topology, so one hand-walk serves both.
-    let (seconds, scale) = keyframe_walk_sample(
-        walk,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-        ARMADILLO_WALK_SPEED_FACTOR,
-        ARMADILLO_WALK_SCALE_FACTOR,
-    );
-    let animated = |bone: &str, bind: PartPose| {
-        let (position, rotation) = sample_bone_offsets(walk, bone, seconds, scale);
-        keyframe_animated_pose(bind, position, rotation)
-    };
-
-    // `body` (root child 0): the walk roll/bob, carrying the tail and head.
-    let body = &parts[0];
-    let body_t = root * part_pose_transform(animated("body", body.pose));
-    for cube in body.cubes {
-        emit_model_cube(mesh, body_t, *cube);
-    }
-
-    // `tail` (body child 0): the walk rock added onto its bind pitch (the baby tail also carries its
-    // stub cube, which has no walk channel of its own).
-    let tail = &body.children[0];
-    emit_model_part(
-        mesh,
-        &ModelPartDesc {
-            pose: animated("tail", tail.pose),
-            ..*tail
-        },
-        body_t,
-    );
-
-    // `head` (body child 1): the clamped look (set) plus the walk z-roll (added). The walk has no
-    // head position channel, so the bind offset is kept.
-    let head = &body.children[1];
-    let (_, head_walk_rot) = sample_bone_offsets(walk, "head", seconds, scale);
-    let head_pose = PartPose {
-        offset: head.pose.offset,
-        rotation: [
-            head_pitch.to_radians() + head_walk_rot[0],
-            head_yaw.to_radians() + head_walk_rot[1],
-            head.pose.rotation[2] + head_walk_rot[2],
-        ],
-    };
-    emit_model_part(
-        mesh,
-        &ModelPartDesc {
-            pose: head_pose,
-            ..*head
-        },
-        body_t,
-    );
-
-    // The four legs (root children 1..=4) take their walk rotation + position.
-    for (index, bone) in [
-        (1, "right_hind_leg"),
-        (2, "left_hind_leg"),
-        (3, "right_front_leg"),
-        (4, "left_front_leg"),
-    ] {
-        let leg = &parts[index];
-        emit_model_part(
-            mesh,
-            &ModelPartDesc {
-                pose: animated(bone, leg.pose),
-                ..*leg
-            },
-            root,
-        );
     }
 }
 

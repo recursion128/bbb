@@ -1,11 +1,14 @@
 use super::super::keyframe::{
-    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation,
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_walk_sample, pos_vec,
+    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
+    Keyframe, KeyframeInterpolation,
 };
 use super::{
     bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc, ModelPartDesc,
     ARMADILLO_SHELL, ARMADILLO_SKIN,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `AdultArmadilloModel`/`BabyArmadilloModel.createBodyLayer` (atlas 64×64). The mesh
 // root parents the body and the four legs directly (no wrapping bone); the body parents the tail
@@ -602,3 +605,97 @@ pub(in crate::entity_models) const ARMADILLO_BABY_WALK: AnimationDefinition = An
     looping: true,
     bones: &ARMADILLO_BABY_WALK_BONES,
 };
+
+/// Mutable armadillo model, mirroring vanilla `AdultArmadilloModel` / `BabyArmadilloModel`. The
+/// body (parenting the tail and head; the head parents the head cube and ears) and four legs hang
+/// off a synthetic root, built from the baked adult/baby geometry selected at construction. When
+/// `rolled_up` (the synced `ArmadilloState.SCARED`), the shell-ball variant tree is used and held
+/// static (no head look, no walk). Colored-only: while not hiding, `setup_anim` sets the clamped
+/// head look and adds the looping walk cycle onto the body, tail, head, and four legs.
+pub(in crate::entity_models) struct ArmadilloModel {
+    root: ModelPart,
+    baby: bool,
+    rolled_up: bool,
+}
+
+impl ArmadilloModel {
+    pub(in crate::entity_models) fn new(baby: bool, rolled_up: bool) -> Self {
+        let parts: &[ModelPartDesc] = match (baby, rolled_up) {
+            (false, false) => &ADULT_ARMADILLO_PARTS,
+            (true, false) => &BABY_ARMADILLO_PARTS,
+            (false, true) => &ADULT_ARMADILLO_ROLLED_PARTS,
+            (true, true) => &BABY_ARMADILLO_ROLLED_PARTS,
+        };
+        Self {
+            root: ModelPart::root_from_colored_descs(parts),
+            baby,
+            rolled_up,
+        }
+    }
+}
+
+impl EntityModel for ArmadilloModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // While hiding in its shell the rolled-up variant tree is rendered as-is (vanilla shows the
+        // shell ball with no head look or walk), so `setup_anim` is a no-op.
+        if self.rolled_up {
+            return;
+        }
+        // Vanilla `ArmadilloModel.setupAnim` (not hiding): the clamped head look, then
+        // `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`. The walk rolls the body
+        // (CatmullRom z-sway + y-bob, carrying the tail and head), rocks the tail, adds a head z-roll
+        // ONTO the clamped look, and swings the four legs. A still armadillo samples amplitude 0,
+        // collapsing to the bind pose plus the head look. The adult and baby share this topology.
+        let walk: &AnimationDefinition = if self.baby {
+            &ARMADILLO_BABY_WALK
+        } else {
+            &ARMADILLO_WALK
+        };
+        let (head_yaw, head_pitch) = armadillo_clamped_head_look(
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        );
+        let (seconds, scale) = keyframe_walk_sample(
+            walk,
+            instance.render_state.walk_animation_pos,
+            instance.render_state.walk_animation_speed,
+            ARMADILLO_WALK_SPEED_FACTOR,
+            ARMADILLO_WALK_SCALE_FACTOR,
+        );
+        let animate = |part: &mut ModelPart, bone: &str| {
+            let (position, rotation) = sample_bone_offsets(walk, bone, seconds, scale);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+        };
+
+        {
+            let body = self.root.child_at_mut(0);
+            animate(body, "body");
+            animate(body.child_at_mut(0), "tail");
+
+            // head (body child 1): the clamped look (set) plus the walk z-roll (added).
+            let head = body.child_at_mut(1);
+            let (_, head_walk_rot) = sample_bone_offsets(walk, "head", seconds, scale);
+            head.pose.rotation = [
+                head_pitch.to_radians() + head_walk_rot[0],
+                head_yaw.to_radians() + head_walk_rot[1],
+                head.pose.rotation[2] + head_walk_rot[2],
+            ];
+        }
+        for (index, bone) in [
+            (1, "right_hind_leg"),
+            (2, "left_hind_leg"),
+            (3, "right_front_leg"),
+            (4, "left_front_leg"),
+        ] {
+            animate(self.root.child_at_mut(index), bone);
+        }
+    }
+}
