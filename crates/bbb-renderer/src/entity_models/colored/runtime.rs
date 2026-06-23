@@ -2280,44 +2280,11 @@ fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInst
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
-    // Vanilla `PhantomModel.setupAnim` flaps the nested wing/tail chains from `flapTime`
-    // (`id*3 + ageInTicks`) every frame, while the body and head hold their rest tilt. The
-    // hierarchy (body → tail chain / wing chains / head) is walked by hand so the animated
-    // descendants can be re-posed; the size scale and body pitch live in the root transform.
+    // The unified `PhantomModel` tree drives both render paths; `setup_anim` flaps the nested
+    // wing/tail chains from `flapTime` (`id*3 + ageInTicks`), while the body and head hold their rest
+    // tilt. The size scale and body pitch live in the root transform.
     let root = phantom_model_root_transform(instance, size);
-    let flap = phantom_flap_time(instance.entity_id, instance.render_state.age_in_ticks);
-    let wing_z = phantom_wing_z_rot(flap);
-    let tail_x = phantom_tail_x_rot(flap);
-
-    let body_t = root * part_pose_transform(PHANTOM_BODY_POSE);
-    emit_model_cube(mesh, body_t, PHANTOM_BODY_CUBE);
-
-    let tail_base_t =
-        body_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_BASE_POSE, tail_x));
-    emit_model_cube(mesh, tail_base_t, PHANTOM_TAIL_BASE_CUBE);
-    let tail_tip_t =
-        tail_base_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_TIP_POSE, tail_x));
-    emit_model_cube(mesh, tail_tip_t, PHANTOM_TAIL_TIP_CUBE);
-
-    let left_base_t =
-        body_t * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_BASE_POSE, wing_z));
-    emit_model_cube(mesh, left_base_t, PHANTOM_LEFT_WING_BASE_CUBE);
-    let left_tip_t =
-        left_base_t * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_TIP_POSE, wing_z));
-    emit_model_cube(mesh, left_tip_t, PHANTOM_LEFT_WING_TIP_CUBE);
-
-    let right_base_t =
-        body_t * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_BASE_POSE, -wing_z));
-    emit_model_cube(mesh, right_base_t, PHANTOM_RIGHT_WING_BASE_CUBE);
-    let right_tip_t =
-        right_base_t * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_TIP_POSE, -wing_z));
-    emit_model_cube(mesh, right_tip_t, PHANTOM_RIGHT_WING_TIP_CUBE);
-
-    emit_model_cube(
-        mesh,
-        body_t * part_pose_transform(PHANTOM_HEAD_POSE),
-        PHANTOM_HEAD_CUBE,
-    );
+    PhantomModel::new().prepare_and_render(mesh, &instance, root);
 }
 
 fn emit_pufferfish_model(

@@ -29,29 +29,27 @@ use super::{
         bee_front_leg_x_rot, bee_wing_z_rot, camel_clamped_head_look, dolphin_wave,
         head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
         humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
-        parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
-        phantom_wing_pose, phantom_wing_z_rot, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, skeleton_head_part_index,
-        strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
-        strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
-        strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, turtle_leg_rotation,
-        vex_left_wing_y_rot, vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles,
-        wolf_tail_part_index, wolf_tail_swing_pose, BlazeModel, CamelWalkLayout, ChickenModel,
-        CodModel, CowModel, CreeperModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
-        HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
-        MinecartModel, PigModel, PiglinModel, PlayerModel, PolarBearModel, RavagerModel,
-        SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SlimeModel,
-        SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, TropicalFishModel,
-        TropicalFishPatternModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
-        ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
-        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
-        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
-        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
-        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
-        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        parched_head_part_index, pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
+        quadruped_leg_swing_pose, skeleton_head_part_index, strider_animation_speed,
+        strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
+        strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
+        strider_leg_z_rot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel,
+        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
+        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel, PigModel,
+        PiglinModel, PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SheepFurModel,
+        SheepModel, SilverfishModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel,
+        SpiderModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
+        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
+        ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE,
+        ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD,
+        ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF,
+        ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
+        BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
+        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
+        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
+        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -73,17 +71,10 @@ use super::{
         DOLPHIN_TAIL_FIN_POSE, DOLPHIN_TAIL_POSE, DOLPHIN_TEXTURED_BACK_FIN, DOLPHIN_TEXTURED_BODY,
         DOLPHIN_TEXTURED_HEAD, DOLPHIN_TEXTURED_LEFT_FIN, DOLPHIN_TEXTURED_NOSE,
         DOLPHIN_TEXTURED_RIGHT_FIN, DOLPHIN_TEXTURED_TAIL, DOLPHIN_TEXTURED_TAIL_FIN,
-        DOLPHIN_TEXTURE_REF, PHANTOM_BODY_POSE, PHANTOM_BODY_TEXTURED_CUBE, PHANTOM_HEAD_POSE,
-        PHANTOM_HEAD_TEXTURED_CUBE, PHANTOM_LEFT_WING_BASE_POSE,
-        PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE, PHANTOM_LEFT_WING_TIP_POSE,
-        PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE, PHANTOM_RIGHT_WING_BASE_POSE,
-        PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE, PHANTOM_RIGHT_WING_TIP_POSE,
-        PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE, PHANTOM_TAIL_BASE_POSE,
-        PHANTOM_TAIL_BASE_TEXTURED_CUBE, PHANTOM_TAIL_TIP_POSE, PHANTOM_TAIL_TIP_TEXTURED_CUBE,
-        PUFFERFISH_TEXTURE_REF, SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_BACK_BRISTLE_POSE,
-        STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE, STRIDER_BABY_LEFT_LEG_X,
-        STRIDER_BABY_LEG_BASE_Y, STRIDER_BABY_MIDDLE_BRISTLE_POSE, STRIDER_BABY_RIGHT_LEG_X,
-        STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
+        DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF, SMALL_ARMOR_STAND_PARTS,
+        STRIDER_BABY_BACK_BRISTLE_POSE, STRIDER_BABY_BODY_BASE_Y, STRIDER_BABY_FRONT_BRISTLE_POSE,
+        STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y, STRIDER_BABY_MIDDLE_BRISTLE_POSE,
+        STRIDER_BABY_RIGHT_LEG_X, STRIDER_BABY_TEXTURED_BACK_BRISTLE, STRIDER_BABY_TEXTURED_BODY,
         STRIDER_BABY_TEXTURED_FRONT_BRISTLE, STRIDER_BABY_TEXTURED_LEFT_LEG,
         STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE, STRIDER_BABY_TEXTURED_RIGHT_LEG,
         STRIDER_BABY_TEXTURE_REF, STRIDER_BODY_BASE_Y, STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
@@ -2643,51 +2634,23 @@ fn emit_phantom_textured_model(
     size: i32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `PhantomModel.setupAnim` flaps the nested wing/tail chains from `flapTime`
-    // (`id*3 + ageInTicks`); the hierarchy is walked by hand so the animated descendants can
-    // be re-posed. The size scale and body pitch live in the root transform.
-    let root = phantom_model_root_transform(instance, size);
-    let flap = phantom_flap_time(instance.entity_id, instance.render_state.age_in_ticks);
-    let wing_z = phantom_wing_z_rot(flap);
-    let tail_x = phantom_tail_x_rot(flap);
+    // The unified `PhantomModel` tree drives both render paths; `setup_anim` flaps the nested
+    // wing/tail chains from `flapTime` (`id*3 + ageInTicks`). The cutout base layer and the emissive
+    // eyes overlay both re-render the same posed tree. The size scale and body pitch live in the root
+    // transform.
+    let transform = phantom_model_root_transform(instance, size);
+    let mut model = PhantomModel::new();
+    model.prepare(&instance);
     for pass in phantom_textured_layer_passes() {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let mesh = meshes.mesh_mut(pass.render_type);
-        let (tex, uv, tint) = (pass.texture, entry.uv, pass.tint);
-        let mut emit = |transform: Mat4, cube| {
-            emit_textured_model_cube(mesh, transform, cube, tex, uv, tint);
-        };
-
-        let body_t = root * part_pose_transform(PHANTOM_BODY_POSE);
-        emit(body_t, PHANTOM_BODY_TEXTURED_CUBE);
-
-        let tail_base_t =
-            body_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_BASE_POSE, tail_x));
-        emit(tail_base_t, PHANTOM_TAIL_BASE_TEXTURED_CUBE);
-        let tail_tip_t =
-            tail_base_t * part_pose_transform(phantom_tail_pose(PHANTOM_TAIL_TIP_POSE, tail_x));
-        emit(tail_tip_t, PHANTOM_TAIL_TIP_TEXTURED_CUBE);
-
-        let left_base_t =
-            body_t * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_BASE_POSE, wing_z));
-        emit(left_base_t, PHANTOM_LEFT_WING_BASE_TEXTURED_CUBE);
-        let left_tip_t = left_base_t
-            * part_pose_transform(phantom_wing_pose(PHANTOM_LEFT_WING_TIP_POSE, wing_z));
-        emit(left_tip_t, PHANTOM_LEFT_WING_TIP_TEXTURED_CUBE);
-
-        let right_base_t =
-            body_t * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_BASE_POSE, -wing_z));
-        emit(right_base_t, PHANTOM_RIGHT_WING_BASE_TEXTURED_CUBE);
-        let right_tip_t = right_base_t
-            * part_pose_transform(phantom_wing_pose(PHANTOM_RIGHT_WING_TIP_POSE, -wing_z));
-        emit(right_tip_t, PHANTOM_RIGHT_WING_TIP_TEXTURED_CUBE);
-
-        emit(
-            body_t * part_pose_transform(PHANTOM_HEAD_POSE),
-            PHANTOM_HEAD_TEXTURED_CUBE,
-        );
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
     }
 }
 
