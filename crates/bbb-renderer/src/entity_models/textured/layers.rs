@@ -934,12 +934,15 @@ pub(in crate::entity_models) fn goat_textured_layer_passes(
 pub(in crate::entity_models) fn skeleton_textured_layer_passes(
     family: Option<SkeletonModelFamily>,
 ) -> Vec<EntityModelLayerPass> {
+    // The base body geometry comes from the unified `SkeletonModel` tree, so the base layer-pass
+    // parts are vestigial (`&[]`). The clothing pass below keeps its parts — they are the genuine
+    // geometry source the textured-only `SkeletonClothingModel` is built from.
     let mut passes = vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SkeletonBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: skeleton_model_layer(family),
         texture: skeleton_texture_ref(family),
-        parts: skeleton_textured_model_parts(family),
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1092,19 +1095,6 @@ fn skeleton_texture_ref(family: Option<SkeletonModelFamily>) -> EntityModelTextu
         Some(SkeletonModelFamily::Parched) => PARCHED_TEXTURE_REF,
         Some(SkeletonModelFamily::WitherSkeleton) => WITHER_SKELETON_TEXTURE_REF,
         Some(SkeletonModelFamily::Bogged { .. }) => BOGGED_TEXTURE_REF,
-    }
-}
-
-fn skeleton_textured_model_parts(
-    family: Option<SkeletonModelFamily>,
-) -> &'static [TexturedModelPartDesc] {
-    match family {
-        None | Some(SkeletonModelFamily::Stray) | Some(SkeletonModelFamily::WitherSkeleton) => {
-            &SKELETON_TEXTURED_PARTS
-        }
-        Some(SkeletonModelFamily::Parched) => &PARCHED_TEXTURED_PARTS,
-        Some(SkeletonModelFamily::Bogged { sheared: false }) => &BOGGED_TEXTURED_PARTS,
-        Some(SkeletonModelFamily::Bogged { sheared: true }) => &BOGGED_SHEARED_TEXTURED_PARTS,
     }
 }
 

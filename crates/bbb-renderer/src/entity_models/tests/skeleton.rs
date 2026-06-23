@@ -1,52 +1,59 @@
 use super::*;
 
+use crate::entity_models::geometry::{ModelCubeDesc, ModelPartDesc};
+use crate::entity_models::model::ModelCube;
+
+/// An inline `HumanoidModel` body-layer fixture for the desc-level swing reference helpers (the
+/// skeleton now builds a named tree, so it has no `*_PARTS` desc const). Head, body, arms at `±5`,
+/// legs at `±2` — the vanilla `SkeletonModel.createBodyLayer` layout, head first.
+const SKELETON_BONE_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -1.0],
+    size: [2.0, 12.0, 2.0],
+    color: SKELETON_BONE,
+}];
+const fn humanoid_fixture_part(offset: [f32; 3]) -> ModelPartDesc {
+    ModelPartDesc {
+        pose: PartPose {
+            offset,
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SKELETON_BONE_CUBE,
+        children: &[],
+    }
+}
+const SKELETON_HUMANOID_FIXTURE: [ModelPartDesc; 6] = [
+    humanoid_fixture_part([0.0, 0.0, 0.0]),
+    humanoid_fixture_part([0.0, 0.0, 0.0]),
+    humanoid_fixture_part([-5.0, 2.0, 0.0]),
+    humanoid_fixture_part([5.0, 2.0, 0.0]),
+    humanoid_fixture_part([-2.0, 12.0, 0.0]),
+    humanoid_fixture_part([2.0, 12.0, 0.0]),
+];
+
 #[test]
 fn skeleton_model_parts_match_vanilla_26_1_body_layer() {
+    // The skeleton builds a named-children tree (`head` -> `hat`, `body`, the arms/legs), so the
+    // head look resolves the `head` child by name; the geometry is asserted on the per-part unified
+    // cube consts (colored tint + textured uv/tex/mirror).
     assert_eq!(
         SKELETON_HAT[0],
-        ModelCubeDesc {
-            min: [-4.5, -8.5, -4.5],
-            size: [9.0, 9.0, 9.0],
-            color: SKELETON_BONE,
-        }
+        ModelCube::new(
+            [-4.5, -8.5, -4.5],
+            [9.0, 9.0, 9.0],
+            SKELETON_BONE,
+            [8.0, 8.0, 8.0],
+            [32.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(SKELETON_PARTS.len(), 6);
-    assert_eq!(SKELETON_PARTS[0].pose, PART_POSE_ZERO);
-    assert_eq!(SKELETON_PARTS[0].cubes, SKELETON_HEAD.as_slice());
-    assert_eq!(
-        SKELETON_PARTS[0].children,
-        SKELETON_HEAD_CHILDREN.as_slice()
-    );
-    assert_part(
-        &SKELETON_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SKELETON_BODY.as_slice(),
-    );
-    assert_part(
-        &SKELETON_PARTS[2],
-        [-5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SKELETON_ARM.as_slice(),
-    );
-    assert_part(
-        &SKELETON_PARTS[3],
-        [5.0, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SKELETON_ARM.as_slice(),
-    );
-    assert_part(
-        &SKELETON_PARTS[4],
-        [-2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SKELETON_LEG.as_slice(),
-    );
-    assert_part(
-        &SKELETON_PARTS[5],
-        [2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SKELETON_LEG.as_slice(),
-    );
+    assert_eq!(SKELETON_HEAD[0].size, [8.0, 8.0, 8.0]);
+    assert_eq!(SKELETON_BODY[0].size, [8.0, 12.0, 4.0]);
+    assert_eq!(SKELETON_RIGHT_ARM[0].size, [2.0, 12.0, 2.0]);
+    assert!(!SKELETON_RIGHT_ARM[0].mirror);
+    assert!(SKELETON_LEFT_ARM[0].mirror);
+    assert_eq!(SKELETON_RIGHT_LEG[0].size, [2.0, 12.0, 2.0]);
+    assert!(!SKELETON_RIGHT_LEG[0].mirror);
+    assert!(SKELETON_LEFT_LEG[0].mirror);
 }
 
 #[test]
@@ -153,13 +160,16 @@ fn skeleton_texture_refs_match_vanilla_renderers() {
 
 #[test]
 fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
+    // The base body geometry comes from the unified `SkeletonModel` tree, so the base pass parts are
+    // vestigial (`&[]`). The clothing pass keeps its parts — the genuine geometry the textured-only
+    // `SkeletonClothingModel` is built from.
     let base = skeleton_textured_layer_passes(None);
     assert_eq!(base.len(), 1);
     assert_eq!(base[0].kind, EntityModelLayerKind::SkeletonBase);
     assert_eq!(base[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(base[0].model_layer, MODEL_LAYER_SKELETON);
     assert_eq!(base[0].texture, SKELETON_TEXTURE_REF);
-    assert_eq!(base[0].parts, SKELETON_TEXTURED_PARTS.as_slice());
+    assert!(base[0].parts.is_empty());
     assert_eq!(base[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(base[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((base[0].collector_order, base[0].submit_sequence), (0, 0));
@@ -168,11 +178,12 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(stray.len(), 2);
     assert_eq!(stray[0].model_layer, MODEL_LAYER_STRAY);
     assert_eq!(stray[0].texture, STRAY_TEXTURE_REF);
-    assert_eq!(stray[0].parts, SKELETON_TEXTURED_PARTS.as_slice());
+    assert!(stray[0].parts.is_empty());
     assert_eq!(stray[1].kind, EntityModelLayerKind::SkeletonClothing);
     assert_eq!(stray[1].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(stray[1].model_layer, MODEL_LAYER_STRAY_OUTER_LAYER);
     assert_eq!(stray[1].texture, STRAY_OVERLAY_TEXTURE_REF);
+    // The clothing pass parts are NOT nulled — they feed `SkeletonClothingModel`.
     assert_eq!(stray[1].parts, STRAY_OUTER_TEXTURED_PARTS.as_slice());
     assert_eq!(stray[1].visibility, EntityModelLayerVisibility::All);
     assert_eq!(stray[1].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -182,20 +193,20 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(parched.len(), 1);
     assert_eq!(parched[0].model_layer, MODEL_LAYER_PARCHED);
     assert_eq!(parched[0].texture, PARCHED_TEXTURE_REF);
-    assert_eq!(parched[0].parts, PARCHED_TEXTURED_PARTS.as_slice());
+    assert!(parched[0].parts.is_empty());
 
     let wither = skeleton_textured_layer_passes(Some(SkeletonModelFamily::WitherSkeleton));
     assert_eq!(wither.len(), 1);
     assert_eq!(wither[0].model_layer, MODEL_LAYER_WITHER_SKELETON);
     assert_eq!(wither[0].texture, WITHER_SKELETON_TEXTURE_REF);
-    assert_eq!(wither[0].parts, SKELETON_TEXTURED_PARTS.as_slice());
+    assert!(wither[0].parts.is_empty());
 
     let bogged =
         skeleton_textured_layer_passes(Some(SkeletonModelFamily::Bogged { sheared: false }));
     assert_eq!(bogged.len(), 2);
     assert_eq!(bogged[0].model_layer, MODEL_LAYER_BOGGED);
     assert_eq!(bogged[0].texture, BOGGED_TEXTURE_REF);
-    assert_eq!(bogged[0].parts, BOGGED_TEXTURED_PARTS.as_slice());
+    assert!(bogged[0].parts.is_empty());
     assert_eq!(bogged[1].kind, EntityModelLayerKind::SkeletonClothing);
     assert_eq!(bogged[1].model_layer, MODEL_LAYER_BOGGED_OUTER_LAYER);
     assert_eq!(bogged[1].texture, BOGGED_OVERLAY_TEXTURE_REF);
@@ -208,10 +219,7 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     let sheared_bogged =
         skeleton_textured_layer_passes(Some(SkeletonModelFamily::Bogged { sheared: true }));
     assert_eq!(sheared_bogged.len(), 2);
-    assert_eq!(
-        sheared_bogged[0].parts,
-        BOGGED_SHEARED_TEXTURED_PARTS.as_slice()
-    );
+    assert!(sheared_bogged[0].parts.is_empty());
     assert_eq!(
         sheared_bogged[1].parts,
         BOGGED_OUTER_TEXTURED_PARTS.as_slice()
@@ -220,144 +228,38 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
 
 #[test]
 fn skeleton_variant_parts_match_vanilla_26_1_body_layers() {
-    assert_eq!(
-        PARCHED_BODY,
-        [
-            ModelCubeDesc {
-                min: [-4.0, 0.0, -2.0],
-                size: [8.0, 12.0, 4.0],
-                color: PARCHED_BONE,
-            },
-            ModelCubeDesc {
-                min: [-4.0, 10.0, -2.0],
-                size: [8.0, 1.0, 4.0],
-                color: PARCHED_BONE,
-            },
-            ModelCubeDesc {
-                min: [-4.025, -0.025, -2.025],
-                size: [8.05, 12.05, 4.05],
-                color: PARCHED_BONE,
-            },
-        ]
-    );
-    assert_eq!(
-        PARCHED_HEAD[1],
-        ModelCubeDesc {
-            min: [-4.2, -8.2, -4.2],
-            size: [8.4, 8.4, 8.4],
-            color: PARCHED_BONE,
-        }
-    );
+    // The parched/bogged variants build named-children trees too: parched lists the body first with
+    // an empty hat child; bogged parents the hat (+ mushrooms, hidden when sheared) under the head.
+    // The geometry is asserted on the per-part unified cube consts.
+    assert_eq!(PARCHED_BODY[0].size, [8.0, 12.0, 4.0]);
+    assert_eq!(PARCHED_BODY[1].size, [8.0, 1.0, 4.0]);
+    // The inflated overlay cube keeps the base box as uv_size.
+    assert_eq!(PARCHED_BODY[2].size, [8.05, 12.05, 4.05]);
+    assert_eq!(PARCHED_BODY[2].uv_size, [8.0, 12.0, 4.0]);
+    assert_eq!(PARCHED_HEAD[1].size, [8.4, 8.4, 8.4]);
+    assert_eq!(PARCHED_HEAD[1].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(PARCHED_RIGHT_ARM[1].size, [3.0, 12.0, 3.0]);
+    assert_eq!(PARCHED_LEFT_ARM[1].size, [3.0, 12.0, 3.0]);
+    assert_eq!(PARCHED_RIGHT_LEG[1].size, [3.0, 12.0, 3.0]);
 
-    assert_eq!(PARCHED_PARTS.len(), 6);
-    assert_part_tree(
-        &PARCHED_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PARCHED_HEAD.as_slice(),
-        PARCHED_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &PARCHED_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PARCHED_EMPTY_HAT.as_slice(),
-    );
-    assert_part(
-        &PARCHED_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PARCHED_BODY.as_slice(),
-    );
-    assert_part(
-        &PARCHED_PARTS[2],
-        [-5.5, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PARCHED_RIGHT_ARM.as_slice(),
-    );
-    assert_part(
-        &PARCHED_PARTS[3],
-        [5.5, 2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PARCHED_LEFT_ARM.as_slice(),
-    );
-    assert_part(
-        &PARCHED_PARTS[4],
-        [-2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PARCHED_LEG.as_slice(),
-    );
-    assert_part(
-        &PARCHED_PARTS[5],
-        [2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        PARCHED_LEG.as_slice(),
-    );
-
+    // The bogged mushroom planes (flat 6x4x0 quads) and the bone body cubes.
     assert_eq!(
         BOGGED_RED_MUSHROOM_PLANE[0],
-        ModelCubeDesc {
-            min: [-3.0, -3.0, 0.0],
-            size: [6.0, 4.0, 0.0],
-            color: BOGGED_RED_MUSHROOM_COLOR,
-        }
+        ModelCube::new(
+            [-3.0, -3.0, 0.0],
+            [6.0, 4.0, 0.0],
+            BOGGED_RED_MUSHROOM_COLOR,
+            [6.0, 4.0, 0.0],
+            [50.0, 16.0],
+            false,
+        )
     );
-    assert_eq!(BOGGED_PARTS.len(), 6);
-    assert_part_tree(
-        &BOGGED_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BOGGED_HEAD.as_slice(),
-        BOGGED_HEAD_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BOGGED_HEAD_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BOGGED_HAT.as_slice(),
-    );
-    assert_part_tree(
-        &BOGGED_HEAD_CHILDREN[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        &[],
-        BOGGED_MUSHROOM_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &BOGGED_MUSHROOM_CHILDREN[0],
-        [3.0, -8.0, 3.0],
-        [0.0, std::f32::consts::FRAC_PI_4, 0.0],
-        BOGGED_RED_MUSHROOM_PLANE.as_slice(),
-    );
-    assert_part(
-        &BOGGED_MUSHROOM_CHILDREN[1],
-        [3.0, -8.0, 3.0],
-        [0.0, std::f32::consts::FRAC_PI_4 * 3.0, 0.0],
-        BOGGED_RED_MUSHROOM_PLANE.as_slice(),
-    );
-    assert_part(
-        &BOGGED_MUSHROOM_CHILDREN[2],
-        [-3.0, -8.0, -3.0],
-        [0.0, std::f32::consts::FRAC_PI_4, 0.0],
-        BOGGED_BROWN_MUSHROOM_PLANE.as_slice(),
-    );
-    assert_part(
-        &BOGGED_MUSHROOM_CHILDREN[5],
-        [-2.0, -1.0, 4.0],
-        [
-            -std::f32::consts::FRAC_PI_2,
-            0.0,
-            std::f32::consts::FRAC_PI_4 * 3.0,
-        ],
-        BOGGED_BROWN_TOP_MUSHROOM_PLANE.as_slice(),
-    );
-    assert_part_tree(
-        &BOGGED_SHEARED_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BOGGED_HEAD.as_slice(),
-        BOGGED_HAT_CHILDREN.as_slice(),
-    );
+    assert_eq!(BOGGED_BROWN_MUSHROOM_PLANE[0].size, [6.0, 4.0, 0.0]);
+    assert_eq!(BOGGED_BROWN_TOP_MUSHROOM_PLANE[0].size, [6.0, 4.0, 0.0]);
+    assert_eq!(BOGGED_HEAD[0].size, [8.0, 8.0, 8.0]);
+    assert_eq!(BOGGED_BODY[0].size, [8.0, 12.0, 4.0]);
+    assert!(BOGGED_LEFT_ARM[0].mirror);
+    assert!(BOGGED_LEFT_LEG[0].mirror);
 }
 
 #[test]
@@ -372,50 +274,32 @@ fn skeleton_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_BOGGED, "minecraft:bogged#main");
     assert_eq!(MODEL_LAYER_STRAY_OUTER_LAYER, "minecraft:stray#outer");
     assert_eq!(MODEL_LAYER_BOGGED_OUTER_LAYER, "minecraft:bogged#outer");
-    assert_eq!(
-        SKELETON_TEXTURED_RIGHT_ARM[0],
-        TexturedModelCubeDesc {
-            min: [-1.0, -2.0, -1.0],
-            size: [2.0, 12.0, 2.0],
-            uv_size: [2.0, 12.0, 2.0],
-            tex: [40.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(SKELETON_TEXTURED_LEFT_ARM[0].tex, [40.0, 16.0]);
-    assert!(SKELETON_TEXTURED_LEFT_ARM[0].mirror);
-    assert_eq!(SKELETON_TEXTURED_RIGHT_LEG[0].tex, [0.0, 16.0]);
-    assert!(SKELETON_TEXTURED_LEFT_LEG[0].mirror);
-    assert_eq!(SKELETON_TEXTURED_PARTS[0].pose, SKELETON_PARTS[0].pose);
-    assert_eq!(
-        SKELETON_TEXTURED_PARTS[0].children,
-        SKELETON_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
+    // The base skeleton-family UVs are now carried on the unified cubes' `.tex` field. The left
+    // arm/leg mirror the right's texOffs.
+    assert_eq!(SKELETON_RIGHT_ARM[0].tex, [40.0, 16.0]);
+    assert!(!SKELETON_RIGHT_ARM[0].mirror);
+    assert_eq!(SKELETON_LEFT_ARM[0].tex, [40.0, 16.0]);
+    assert!(SKELETON_LEFT_ARM[0].mirror);
+    assert_eq!(SKELETON_RIGHT_LEG[0].tex, [0.0, 16.0]);
+    assert!(SKELETON_LEFT_LEG[0].mirror);
+    assert_eq!(SKELETON_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(SKELETON_HAT[0].tex, [32.0, 0.0]);
 
-    assert_eq!(PARCHED_TEXTURED_BODY[1].tex, [28.0, 0.0]);
-    assert_eq!(PARCHED_TEXTURED_BODY[2].tex, [16.0, 48.0]);
-    assert_eq!(PARCHED_TEXTURED_BODY[2].uv_size, [8.0, 12.0, 4.0]);
-    assert_eq!(PARCHED_TEXTURED_HEAD[1].tex, [0.0, 32.0]);
-    assert_eq!(PARCHED_TEXTURED_RIGHT_ARM[1].tex, [42.0, 33.0]);
-    assert_eq!(PARCHED_TEXTURED_LEFT_ARM[0].tex, [56.0, 16.0]);
-    assert_eq!(PARCHED_TEXTURED_LEFT_ARM[1].tex, [40.0, 48.0]);
-    assert_eq!(PARCHED_TEXTURED_RIGHT_LEG[1].tex, [0.0, 49.0]);
-    assert_eq!(PARCHED_TEXTURED_LEFT_LEG[1].tex, [4.0, 49.0]);
+    assert_eq!(PARCHED_BODY[1].tex, [28.0, 0.0]);
+    assert_eq!(PARCHED_BODY[2].tex, [16.0, 48.0]);
+    assert_eq!(PARCHED_BODY[2].uv_size, [8.0, 12.0, 4.0]);
+    assert_eq!(PARCHED_HEAD[1].tex, [0.0, 32.0]);
+    assert_eq!(PARCHED_RIGHT_ARM[1].tex, [42.0, 33.0]);
+    assert_eq!(PARCHED_LEFT_ARM[0].tex, [56.0, 16.0]);
+    assert_eq!(PARCHED_LEFT_ARM[1].tex, [40.0, 48.0]);
+    assert_eq!(PARCHED_RIGHT_LEG[1].tex, [0.0, 49.0]);
+    assert_eq!(PARCHED_LEFT_LEG[1].tex, [4.0, 49.0]);
 
-    assert_eq!(BOGGED_TEXTURED_RED_MUSHROOM_PLANE[0].tex, [50.0, 16.0]);
-    assert_eq!(BOGGED_TEXTURED_BROWN_MUSHROOM_PLANE[0].tex, [50.0, 22.0]);
-    assert_eq!(
-        BOGGED_TEXTURED_BROWN_TOP_MUSHROOM_PLANE[0].tex,
-        [50.0, 28.0]
-    );
-    assert_eq!(
-        BOGGED_TEXTURED_PARTS[0].children,
-        BOGGED_TEXTURED_HEAD_CHILDREN.as_slice()
-    );
-    assert_eq!(
-        BOGGED_SHEARED_TEXTURED_PARTS[0].children,
-        BOGGED_TEXTURED_HAT_CHILDREN.as_slice()
-    );
+    assert_eq!(BOGGED_RED_MUSHROOM_PLANE[0].tex, [50.0, 16.0]);
+    assert_eq!(BOGGED_BROWN_MUSHROOM_PLANE[0].tex, [50.0, 22.0]);
+    assert_eq!(BOGGED_BROWN_TOP_MUSHROOM_PLANE[0].tex, [50.0, 28.0]);
+    assert_eq!(BOGGED_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(BOGGED_HAT[0].tex, [32.0, 0.0]);
 
     assert_eq!(
         STRAY_OUTER_TEXTURED_HEAD[0],
@@ -731,10 +615,10 @@ fn humanoid_limb_swing_parts_assign_vanilla_skeleton_leg_phases_by_side() {
     // SkeletonModel extends HumanoidModel, so the legs swing via the inherited
     // HumanoidModel.setupAnim: rightLeg.xRot = cos(pos * 0.6662) * 1.4 * speed (in
     // phase), leftLeg.xRot = cos(pos * 0.6662 + π) * 1.4 * speed (out of phase).
-    // SKELETON_PARTS lists rightLeg (offset x = -2) at index 4 and leftLeg (x = +2)
+    // SKELETON_HUMANOID_FIXTURE lists rightLeg (offset x = -2) at index 4 and leftLeg (x = +2)
     // at index 5. With pos = 0, speed = 1: rightLeg = 1.4, leftLeg = -1.4.
     let posed = humanoid_limb_swing_parts(
-        Cow::Borrowed(&SKELETON_PARTS),
+        Cow::Borrowed(&SKELETON_HUMANOID_FIXTURE),
         HUMANOID_LEG_PART_INDICES,
         0.0,
         1.0,
@@ -751,13 +635,19 @@ fn humanoid_limb_swing_parts_assign_vanilla_skeleton_leg_phases_by_side() {
     );
     // humanoid_limb_swing_parts only swings the legs; the arms (indices 2, 3) are
     // posed separately by humanoid_arm_swing_parts, so this helper leaves them at rest.
-    assert_eq!(posed[2].pose.rotation, SKELETON_PARTS[2].pose.rotation);
-    assert_eq!(posed[3].pose.rotation, SKELETON_PARTS[3].pose.rotation);
+    assert_eq!(
+        posed[2].pose.rotation,
+        SKELETON_HUMANOID_FIXTURE[2].pose.rotation
+    );
+    assert_eq!(
+        posed[3].pose.rotation,
+        SKELETON_HUMANOID_FIXTURE[3].pose.rotation
+    );
 
     // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 1.4 * speed,
     // including the 0.6662 frequency factor.
     let posed = humanoid_limb_swing_parts(
-        Cow::Borrowed(&SKELETON_PARTS),
+        Cow::Borrowed(&SKELETON_HUMANOID_FIXTURE),
         HUMANOID_LEG_PART_INDICES,
         1.5,
         0.5,
@@ -943,12 +833,12 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
     // state, inherits the HumanoidModel.setupAnim arm swing:
     //   rightArm.xRot = cos(pos * 0.6662 + π) * 2.0 * speed * 0.5
     //   leftArm.xRot  = cos(pos * 0.6662)     * 2.0 * speed * 0.5
-    // plus the always-on idle bob (AnimationUtils.bobModelPart). SKELETON_PARTS lists
+    // plus the always-on idle bob (AnimationUtils.bobModelPart). SKELETON_HUMANOID_FIXTURE lists
     // rightArm (offset x = -5) at index 2 and leftArm (x = +5) at index 3. At ageInTicks = 0
     // the bob's xRot term is sin(0) * 0.05 = 0, so the xRot is pure swing; with pos = 0,
     // speed = 1: rightArm = -1.0, leftArm = +1.0 — the opposite phase to the same-side leg.
     let posed = humanoid_arm_swing_parts(
-        Cow::Borrowed(&SKELETON_PARTS),
+        Cow::Borrowed(&SKELETON_HUMANOID_FIXTURE),
         HUMANOID_ARM_PART_INDICES,
         0.0,
         1.0,
@@ -968,25 +858,33 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
     // scale * (cos(0) * 0.05 + 0.05) = ±0.1 (right arm +, left arm -), accumulated onto the
     // arm's rest zRot. The swing leaves zRot untouched, so this isolates the bob baseline.
     assert!(
-        (posed[2].pose.rotation[2] - (SKELETON_PARTS[2].pose.rotation[2] + 0.1)).abs() < 1e-5,
+        (posed[2].pose.rotation[2] - (SKELETON_HUMANOID_FIXTURE[2].pose.rotation[2] + 0.1)).abs()
+            < 1e-5,
         "right arm idle-bob zRot baseline: {}",
         posed[2].pose.rotation[2]
     );
     assert!(
-        (posed[3].pose.rotation[2] - (SKELETON_PARTS[3].pose.rotation[2] - 0.1)).abs() < 1e-5,
+        (posed[3].pose.rotation[2] - (SKELETON_HUMANOID_FIXTURE[3].pose.rotation[2] - 0.1)).abs()
+            < 1e-5,
         "left arm idle-bob zRot baseline: {}",
         posed[3].pose.rotation[2]
     );
     // humanoid_arm_swing_parts only poses the arms; the legs (indices 4, 5) are posed
     // separately, so this helper leaves them at rest.
-    assert_eq!(posed[4].pose.rotation, SKELETON_PARTS[4].pose.rotation);
-    assert_eq!(posed[5].pose.rotation, SKELETON_PARTS[5].pose.rotation);
+    assert_eq!(
+        posed[4].pose.rotation,
+        SKELETON_HUMANOID_FIXTURE[4].pose.rotation
+    );
+    assert_eq!(
+        posed[5].pose.rotation,
+        SKELETON_HUMANOID_FIXTURE[5].pose.rotation
+    );
 
     // A general (pos, speed) reproduces cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5,
     // including the 0.6662 frequency factor and the 0.5 amplitude scale (ageInTicks = 0
     // keeps the bob's xRot term zero).
     let posed = humanoid_arm_swing_parts(
-        Cow::Borrowed(&SKELETON_PARTS),
+        Cow::Borrowed(&SKELETON_HUMANOID_FIXTURE),
         HUMANOID_ARM_PART_INDICES,
         1.5,
         0.5,
@@ -1006,7 +904,7 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
     // with scale +1 for the right arm (x < 0) and -1 for the left.
     let age = 31.4_f32;
     let resting = humanoid_arm_swing_parts(
-        Cow::Borrowed(&SKELETON_PARTS),
+        Cow::Borrowed(&SKELETON_HUMANOID_FIXTURE),
         HUMANOID_ARM_PART_INDICES,
         3.0,
         0.0,
@@ -1016,22 +914,30 @@ fn humanoid_arm_swing_parts_assign_vanilla_skeleton_arm_phases_by_side() {
     let bob_x = (age * 0.067).sin() * 0.05;
     let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
     assert!(
-        (resting[2].pose.rotation[0] - (SKELETON_PARTS[2].pose.rotation[0] + bob_x)).abs() < 1e-5,
+        (resting[2].pose.rotation[0] - (SKELETON_HUMANOID_FIXTURE[2].pose.rotation[0] + bob_x))
+            .abs()
+            < 1e-5,
         "right arm idle-bob xRot: {}",
         resting[2].pose.rotation[0]
     );
     assert!(
-        (resting[2].pose.rotation[2] - (SKELETON_PARTS[2].pose.rotation[2] + bob_z)).abs() < 1e-5,
+        (resting[2].pose.rotation[2] - (SKELETON_HUMANOID_FIXTURE[2].pose.rotation[2] + bob_z))
+            .abs()
+            < 1e-5,
         "right arm idle-bob zRot: {}",
         resting[2].pose.rotation[2]
     );
     assert!(
-        (resting[3].pose.rotation[0] - (SKELETON_PARTS[3].pose.rotation[0] - bob_x)).abs() < 1e-5,
+        (resting[3].pose.rotation[0] - (SKELETON_HUMANOID_FIXTURE[3].pose.rotation[0] - bob_x))
+            .abs()
+            < 1e-5,
         "left arm idle-bob xRot mirrored: {}",
         resting[3].pose.rotation[0]
     );
     assert!(
-        (resting[3].pose.rotation[2] - (SKELETON_PARTS[3].pose.rotation[2] - bob_z)).abs() < 1e-5,
+        (resting[3].pose.rotation[2] - (SKELETON_HUMANOID_FIXTURE[3].pose.rotation[2] - bob_z))
+            .abs()
+            < 1e-5,
         "left arm idle-bob zRot mirrored: {}",
         resting[3].pose.rotation[2]
     );
