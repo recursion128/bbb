@@ -223,7 +223,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Sniffer => {
                 // Colored-only so far (no texture-backed sniffer yet), so this arm always emits.
-                emit_sniffer_model(&mut mesh, *instance);
+                SnifferModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Warden => {
                 // Colored-only so far (no texture-backed warden yet), so this arm always emits.
@@ -742,94 +746,6 @@ fn emit_guardian_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     let tail1_t = head_t * part_pose_transform(GUARDIAN_TAIL1_POSE);
     emit_model_cubes_at_pose(mesh, head_t, GUARDIAN_TAIL1_POSE, &GUARDIAN_TAIL1);
     emit_model_cubes_at_pose(mesh, tail1_t, GUARDIAN_TAIL2_POSE, &GUARDIAN_TAIL2);
-}
-
-fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `SnifferModel` is a nested hierarchy (`bone` → body/legs, body → head →
-    // ears/nose/beak). `setupAnim` sets `head.xRot/yRot` from the plain look, then applies a walk:
-    // while not searching it samples `SNIFFER_WALK` via `applyWalk(..., 9, 100)`, rocking the body,
-    // the head (the walk pitch ADDS onto the look), the two ears, and the six legs. A still sniffer
-    // samples amplitude 0, collapsing to the bind pose plus the head look. The `bone → body → head`
-    // spine and the six legs are hand-walked. The search-walk variant (gated on the un-synced
-    // `isSearching`) and the dig / long-sniff / stand-up / happy / scenting keyframe animations stay
-    // deferred. Sniffer uses `LivingEntityRenderer.setupRotations`.
-    let root = entity_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let (seconds, scale) = keyframe_walk_sample(
-        &SNIFFER_WALK,
-        instance.render_state.walk_animation_pos,
-        instance.render_state.walk_animation_speed,
-        SNIFFER_WALK_SPEED_FACTOR,
-        SNIFFER_WALK_SCALE_FACTOR,
-    );
-    let animated = |bone: &str, bind: PartPose| {
-        let (position, rotation) = sample_bone_offsets(&SNIFFER_WALK, bone, seconds, scale);
-        keyframe_animated_pose(bind, position, rotation)
-    };
-
-    // `bone` (the lone root, no cubes) is not animated; it parents the body and the six legs.
-    let bone = &SNIFFER_PARTS[0];
-    let bone_t = root * part_pose_transform(bone.pose);
-
-    // `body` (bone child 0): the walk sway/dip, carrying the head.
-    let body = &bone.children[0];
-    let body_t = bone_t * part_pose_transform(animated("body", body.pose));
-    for cube in body.cubes {
-        emit_model_cube(mesh, body_t, *cube);
-    }
-
-    // `head` (body child 0): the plain look (set) plus the walk pitch (added). The walk has no head
-    // position channel, so the bind offset is kept.
-    let head = &body.children[0];
-    let (_, head_walk_rot) = sample_bone_offsets(&SNIFFER_WALK, "head", seconds, scale);
-    let head_pose = PartPose {
-        offset: head.pose.offset,
-        rotation: [
-            head_pitch.to_radians() + head_walk_rot[0],
-            head_yaw.to_radians() + head_walk_rot[1],
-            head.pose.rotation[2] + head_walk_rot[2],
-        ],
-    };
-    let head_t = body_t * part_pose_transform(head_pose);
-    for cube in head.cubes {
-        emit_model_cube(mesh, head_t, *cube);
-    }
-
-    // The head's children: the two ears take a walk z-roll; the nose and lower beak ride the head.
-    for (index, bone_name) in [
-        (0, Some("left_ear")),
-        (1, Some("right_ear")),
-        (2, None),
-        (3, None),
-    ] {
-        let child = &head.children[index];
-        let pose = match bone_name {
-            Some(name) => animated(name, child.pose),
-            None => child.pose,
-        };
-        emit_model_part(mesh, &ModelPartDesc { pose, ..*child }, head_t);
-    }
-
-    // The six legs (bone children 1..=6) take their walk rotation + position.
-    for (index, bone_name) in [
-        (1, "right_front_leg"),
-        (2, "right_mid_leg"),
-        (3, "right_hind_leg"),
-        (4, "left_front_leg"),
-        (5, "left_mid_leg"),
-        (6, "left_hind_leg"),
-    ] {
-        let leg = &bone.children[index];
-        emit_model_part(
-            mesh,
-            &ModelPartDesc {
-                pose: animated(bone_name, leg.pose),
-                ..*leg
-            },
-            bone_t,
-        );
-    }
 }
 
 fn emit_warden_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

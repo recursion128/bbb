@@ -1,11 +1,14 @@
 use super::super::keyframe::{
-    degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition, AnimationTarget,
-    BoneAnimation, Keyframe, KeyframeInterpolation,
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_walk_sample, pos_vec,
+    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
+    Keyframe, KeyframeInterpolation,
 };
 use super::{
     bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, SNIFFER_BROWN,
     SNIFFER_NOSE,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `SnifferModel.createBodyLayer` (atlas 192×192). The mesh root holds one `bone`
 // part at `offset(0, 5, 0)` parenting the body and the six legs; `body` parents the head, which
@@ -324,3 +327,78 @@ pub(in crate::entity_models) const SNIFFER_WALK: AnimationDefinition = Animation
 /// the sample time, `WALK_ANIMATION_SCALE_FACTOR` the amplitude).
 pub(in crate::entity_models) const SNIFFER_WALK_SPEED_FACTOR: f32 = 9.0;
 pub(in crate::entity_models) const SNIFFER_WALK_SCALE_FACTOR: f32 = 100.0;
+
+/// Mutable sniffer model, mirroring vanilla `SnifferModel`. The cubeless `bone` root (parenting the
+/// body and the six legs; `body` parents the head, which parents the two ears, nose, and beak) hangs
+/// off a synthetic root, built from the baked [`SNIFFER_PARTS`] geometry. Colored-only: `setup_anim`
+/// sets the head look, then adds the looping `SNIFFER_WALK` cycle onto the body, head, ears, and the
+/// six legs (the search-walk variant and the dig / sniff / stand-up keyframes stay deferred).
+pub(in crate::entity_models) struct SnifferModel {
+    root: ModelPart,
+}
+
+impl SnifferModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(&SNIFFER_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SnifferModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `SnifferModel.setupAnim` sets `head.xRot/yRot` from the plain look, then runs
+        // `applyWalk(..., 9, 100)`: the body sways/dips, the head walk pitch ADDS onto the look, the
+        // two ears z-roll, and the six legs swing. A still sniffer samples amplitude 0, collapsing to
+        // the bind pose plus the head look. The nose and beak ride the head; the `bone` root holds.
+        let head_pitch = instance.render_state.head_pitch.to_radians();
+        let head_yaw = instance.render_state.head_yaw.to_radians();
+        let (seconds, scale) = keyframe_walk_sample(
+            &SNIFFER_WALK,
+            instance.render_state.walk_animation_pos,
+            instance.render_state.walk_animation_speed,
+            SNIFFER_WALK_SPEED_FACTOR,
+            SNIFFER_WALK_SCALE_FACTOR,
+        );
+        let animate = |part: &mut ModelPart, bone: &str| {
+            let (position, rotation) = sample_bone_offsets(&SNIFFER_WALK, bone, seconds, scale);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+        };
+
+        let bone = self.root.child_at_mut(0);
+        {
+            let body = bone.child_at_mut(0);
+            animate(body, "body");
+
+            let head = body.child_at_mut(0);
+            let (_, head_walk_rot) = sample_bone_offsets(&SNIFFER_WALK, "head", seconds, scale);
+            head.pose.rotation = [
+                head_pitch + head_walk_rot[0],
+                head_yaw + head_walk_rot[1],
+                head.pose.rotation[2] + head_walk_rot[2],
+            ];
+
+            // The two ears z-roll with the walk; the nose (2) and beak (3) ride the head.
+            animate(head.child_at_mut(0), "left_ear");
+            animate(head.child_at_mut(1), "right_ear");
+        }
+        for (index, bone_name) in [
+            (1, "right_front_leg"),
+            (2, "right_mid_leg"),
+            (3, "right_hind_leg"),
+            (4, "left_front_leg"),
+            (5, "left_mid_leg"),
+            (6, "left_hind_leg"),
+        ] {
+            animate(bone.child_at_mut(index), bone_name);
+        }
+    }
+}
