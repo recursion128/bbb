@@ -1,45 +1,78 @@
-use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    STRIDER_LEG, STRIDER_MAROON,
-};
+use super::{PartPose, PART_POSE_ZERO, STRIDER_LEG, STRIDER_MAROON};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `AdultStriderModel.createBodyLayer` (atlas 64×128). The mesh root parents the
 // two legs and the body directly; the six bristles hang under the body. The legs and body are
 // repositioned/rotated by `StriderModel.setupAnim` + `AdultStriderModel.customAnimations`, so
 // their poses are built per frame from the offset constants and the animation curves below.
-pub(in crate::entity_models) const STRIDER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-8.0, -6.0, -8.0],
-    size: [16.0, 14.0, 16.0],
-    color: STRIDER_MAROON,
-}];
+// Each cube carries both render paths' data: the colored debug tint (`STRIDER_MAROON` /
+// `STRIDER_LEG`) and the textured `uv_size` / `texOffs` / `mirror` (`CubeDeformation.NONE`, so
+// `uv_size == size`).
+pub(in crate::entity_models) const STRIDER_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-8.0, -6.0, -8.0],
+    [16.0, 14.0, 16.0],
+    STRIDER_MAROON,
+    [16.0, 14.0, 16.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const STRIDER_RIGHT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -2.0],
-    size: [4.0, 16.0, 4.0],
-    color: STRIDER_LEG,
-}];
+pub(in crate::entity_models) const STRIDER_RIGHT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -2.0],
+    [4.0, 16.0, 4.0],
+    STRIDER_LEG,
+    [4.0, 16.0, 4.0],
+    [0.0, 32.0],
+    false,
+)];
 
-pub(in crate::entity_models) const STRIDER_LEFT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -2.0],
-    size: [4.0, 16.0, 4.0],
-    color: STRIDER_LEG,
-}];
+pub(in crate::entity_models) const STRIDER_LEFT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -2.0],
+    [4.0, 16.0, 4.0],
+    STRIDER_LEG,
+    [4.0, 16.0, 4.0],
+    [0.0, 55.0],
+    false,
+)];
 
 // Bristles are zero-thickness `12×0×16` planes. The right bristles are mirrored (box at
-// `-12`), the left are not (box at `0`).
-pub(in crate::entity_models) const STRIDER_RIGHT_BRISTLE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-12.0, 0.0, 0.0],
-    size: [12.0, 0.0, 16.0],
-    color: STRIDER_MAROON,
-}];
+// `-12`), the left are not (box at `0`); each bristle carries its own `texOffs`, so the three
+// right bristles and the three left bristles get distinct cubes.
+const fn strider_right_bristle(tex: [f32; 2]) -> ModelCube {
+    ModelCube::new(
+        [-12.0, 0.0, 0.0],
+        [12.0, 0.0, 16.0],
+        STRIDER_MAROON,
+        [12.0, 0.0, 16.0],
+        tex,
+        true,
+    )
+}
 
-pub(in crate::entity_models) const STRIDER_LEFT_BRISTLE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [12.0, 0.0, 16.0],
-    color: STRIDER_MAROON,
-}];
+const fn strider_left_bristle(tex: [f32; 2]) -> ModelCube {
+    ModelCube::new(
+        [0.0, 0.0, 0.0],
+        [12.0, 0.0, 16.0],
+        STRIDER_MAROON,
+        [12.0, 0.0, 16.0],
+        tex,
+        false,
+    )
+}
+
+pub(in crate::entity_models) const STRIDER_RIGHT_TOP_BRISTLE: [ModelCube; 1] =
+    [strider_right_bristle([16.0, 33.0])];
+pub(in crate::entity_models) const STRIDER_RIGHT_MIDDLE_BRISTLE: [ModelCube; 1] =
+    [strider_right_bristle([16.0, 49.0])];
+pub(in crate::entity_models) const STRIDER_RIGHT_BOTTOM_BRISTLE: [ModelCube; 1] =
+    [strider_right_bristle([16.0, 65.0])];
+pub(in crate::entity_models) const STRIDER_LEFT_TOP_BRISTLE: [ModelCube; 1] =
+    [strider_left_bristle([16.0, 33.0])];
+pub(in crate::entity_models) const STRIDER_LEFT_MIDDLE_BRISTLE: [ModelCube; 1] =
+    [strider_left_bristle([16.0, 49.0])];
+pub(in crate::entity_models) const STRIDER_LEFT_BOTTOM_BRISTLE: [ModelCube; 1] =
+    [strider_left_bristle([16.0, 65.0])];
 
 /// Adult body base height (`customAnimations` sets `body.y = 2.0` before the bob).
 pub(in crate::entity_models) const STRIDER_BODY_BASE_Y: f32 = 2.0;
@@ -76,30 +109,51 @@ pub(in crate::entity_models) const STRIDER_LEFT_BOTTOM_BRISTLE_POSE: PartPose = 
 
 // Vanilla 26.1 `BabyStriderModel.createBodyLayer` (atlas 32×32). Same root layout (legs +
 // body, three bristles under the body), smaller geometry, and the bristles flap on `xRot`.
-pub(in crate::entity_models) const STRIDER_BABY_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.5, -3.75, -4.0],
-    size: [7.0, 7.0, 8.0],
-    color: STRIDER_MAROON,
-}];
+pub(in crate::entity_models) const STRIDER_BABY_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-3.5, -3.75, -4.0],
+    [7.0, 7.0, 8.0],
+    STRIDER_MAROON,
+    [7.0, 7.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const STRIDER_BABY_RIGHT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, 0.0, -1.0],
-    size: [2.0, 4.0, 2.0],
-    color: STRIDER_LEG,
-}];
+pub(in crate::entity_models) const STRIDER_BABY_RIGHT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 4.0, 2.0],
+    STRIDER_LEG,
+    [2.0, 4.0, 2.0],
+    [0.0, 24.0],
+    false,
+)];
 
-pub(in crate::entity_models) const STRIDER_BABY_LEFT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, 0.0, -1.0],
-    size: [2.0, 4.0, 2.0],
-    color: STRIDER_LEG,
-}];
+pub(in crate::entity_models) const STRIDER_BABY_LEFT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 4.0, 2.0],
+    STRIDER_LEG,
+    [2.0, 4.0, 2.0],
+    [8.0, 24.0],
+    false,
+)];
 
-// Baby bristles are zero-thickness `7×3×0` planes.
-pub(in crate::entity_models) const STRIDER_BABY_BRISTLE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.5, -2.5, 0.0],
-    size: [7.0, 3.0, 0.0],
-    color: STRIDER_MAROON,
-}];
+// Baby bristles are zero-thickness `7×3×0` planes; each carries its own `texOffs`.
+const fn strider_baby_bristle(tex: [f32; 2]) -> ModelCube {
+    ModelCube::new(
+        [-3.5, -2.5, 0.0],
+        [7.0, 3.0, 0.0],
+        STRIDER_MAROON,
+        [7.0, 3.0, 0.0],
+        tex,
+        false,
+    )
+}
+
+pub(in crate::entity_models) const STRIDER_BABY_FRONT_BRISTLE: [ModelCube; 1] =
+    [strider_baby_bristle([0.0, 15.0])];
+pub(in crate::entity_models) const STRIDER_BABY_MIDDLE_BRISTLE: [ModelCube; 1] =
+    [strider_baby_bristle([0.0, 18.0])];
+pub(in crate::entity_models) const STRIDER_BABY_BACK_BRISTLE: [ModelCube; 1] =
+    [strider_baby_bristle([0.0, 21.0])];
 
 /// Baby body base height (`customAnimations` sets `body.y = 17.25` before the bob).
 pub(in crate::entity_models) const STRIDER_BABY_BODY_BASE_Y: f32 = 17.25;
@@ -183,113 +237,6 @@ pub(in crate::entity_models) fn strider_bristle_bottom_flow(flow: f32, age_in_ti
     flow * 1.3 + 0.05 * (age_in_ticks * -0.4).sin()
 }
 
-// Textured counterparts of the adult strider cubes (atlas 64×128). The right bristles are
-// mirrored; each bristle carries its own `texOffs`.
-pub(in crate::entity_models) const STRIDER_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-8.0, -6.0, -8.0],
-        size: [16.0, 14.0, 16.0],
-        uv_size: [16.0, 14.0, 16.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 0.0, -2.0],
-        size: [4.0, 16.0, 4.0],
-        uv_size: [4.0, 16.0, 4.0],
-        tex: [0.0, 32.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-2.0, 0.0, -2.0],
-        size: [4.0, 16.0, 4.0],
-        uv_size: [4.0, 16.0, 4.0],
-        tex: [0.0, 55.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_TOP_BRISTLE: [TexturedModelCubeDesc; 1] =
-    [strider_textured_right_bristle([16.0, 33.0])];
-pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE: [TexturedModelCubeDesc;
-    1] = [strider_textured_right_bristle([16.0, 49.0])];
-pub(in crate::entity_models) const STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE: [TexturedModelCubeDesc;
-    1] = [strider_textured_right_bristle([16.0, 65.0])];
-pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_TOP_BRISTLE: [TexturedModelCubeDesc; 1] =
-    [strider_textured_left_bristle([16.0, 33.0])];
-pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE: [TexturedModelCubeDesc;
-    1] = [strider_textured_left_bristle([16.0, 49.0])];
-pub(in crate::entity_models) const STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE: [TexturedModelCubeDesc;
-    1] = [strider_textured_left_bristle([16.0, 65.0])];
-
-const fn strider_textured_right_bristle(tex: [f32; 2]) -> TexturedModelCubeDesc {
-    TexturedModelCubeDesc {
-        min: [-12.0, 0.0, 0.0],
-        size: [12.0, 0.0, 16.0],
-        uv_size: [12.0, 0.0, 16.0],
-        tex,
-        mirror: true,
-    }
-}
-
-const fn strider_textured_left_bristle(tex: [f32; 2]) -> TexturedModelCubeDesc {
-    TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [12.0, 0.0, 16.0],
-        uv_size: [12.0, 0.0, 16.0],
-        tex,
-        mirror: false,
-    }
-}
-
-// Textured counterparts of the baby strider cubes (atlas 32×32).
-pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-3.5, -3.75, -4.0],
-        size: [7.0, 7.0, 8.0],
-        uv_size: [7.0, 7.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_RIGHT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, 4.0, 2.0],
-        uv_size: [2.0, 4.0, 2.0],
-        tex: [0.0, 24.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_LEFT_LEG: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-1.0, 0.0, -1.0],
-        size: [2.0, 4.0, 2.0],
-        uv_size: [2.0, 4.0, 2.0],
-        tex: [8.0, 24.0],
-        mirror: false,
-    }];
-
-pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_FRONT_BRISTLE: [TexturedModelCubeDesc; 1] =
-    [strider_baby_textured_bristle([0.0, 15.0])];
-pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE: [TexturedModelCubeDesc;
-    1] = [strider_baby_textured_bristle([0.0, 18.0])];
-pub(in crate::entity_models) const STRIDER_BABY_TEXTURED_BACK_BRISTLE: [TexturedModelCubeDesc; 1] =
-    [strider_baby_textured_bristle([0.0, 21.0])];
-
-const fn strider_baby_textured_bristle(tex: [f32; 2]) -> TexturedModelCubeDesc {
-    TexturedModelCubeDesc {
-        min: [-3.5, -2.5, 0.0],
-        size: [7.0, 3.0, 0.0],
-        uv_size: [7.0, 3.0, 0.0],
-        tex,
-        mirror: false,
-    }
-}
-
 // The strider legs and body carry per-frame offsets/rotations (set absolutely in `setup_anim`); these
 // are their bind poses (the rest offsets, which `strider_leg_y`/`strider_body_y` return at speed 0).
 const STRIDER_RIGHT_LEG_POSE: PartPose = PartPose {
@@ -317,187 +264,122 @@ const STRIDER_BABY_BODY_POSE: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
-// Colored adult strider tree: right leg, left leg, body (with its six bristles), in the emit order.
-// Mirrors vanilla `AdultStriderModel.createBodyLayer`. The three right bristles share one colored cube
-// (their textured UVs differ); same for the left.
-const STRIDER_BODY_BRISTLE_CHILDREN: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: STRIDER_RIGHT_TOP_BRISTLE_POSE,
-        cubes: &STRIDER_RIGHT_BRISTLE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_RIGHT_MIDDLE_BRISTLE_POSE,
-        cubes: &STRIDER_RIGHT_BRISTLE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_RIGHT_BOTTOM_BRISTLE_POSE,
-        cubes: &STRIDER_RIGHT_BRISTLE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_LEFT_TOP_BRISTLE_POSE,
-        cubes: &STRIDER_LEFT_BRISTLE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_LEFT_MIDDLE_BRISTLE_POSE,
-        cubes: &STRIDER_LEFT_BRISTLE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
-        cubes: &STRIDER_LEFT_BRISTLE,
-        children: &[],
-    },
-];
-const STRIDER_PARTS: [ModelPartDesc; 3] = [
-    ModelPartDesc {
-        pose: STRIDER_RIGHT_LEG_POSE,
-        cubes: &STRIDER_RIGHT_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_LEFT_LEG_POSE,
-        cubes: &STRIDER_LEFT_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_BODY_POSE,
-        cubes: &STRIDER_BODY,
-        children: &STRIDER_BODY_BRISTLE_CHILDREN,
-    },
-];
-const STRIDER_TEXTURED_BODY_BRISTLE_CHILDREN: [TexturedModelPartDesc; 6] = [
-    TexturedModelPartDesc {
-        pose: STRIDER_RIGHT_TOP_BRISTLE_POSE,
-        cubes: &STRIDER_TEXTURED_RIGHT_TOP_BRISTLE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_RIGHT_MIDDLE_BRISTLE_POSE,
-        cubes: &STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_RIGHT_BOTTOM_BRISTLE_POSE,
-        cubes: &STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_LEFT_TOP_BRISTLE_POSE,
-        cubes: &STRIDER_TEXTURED_LEFT_TOP_BRISTLE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_LEFT_MIDDLE_BRISTLE_POSE,
-        cubes: &STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
-        cubes: &STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE,
-        children: &[],
-    },
-];
-const STRIDER_TEXTURED_PARTS: [TexturedModelPartDesc; 3] = [
-    TexturedModelPartDesc {
-        pose: STRIDER_RIGHT_LEG_POSE,
-        cubes: &STRIDER_TEXTURED_RIGHT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_LEFT_LEG_POSE,
-        cubes: &STRIDER_TEXTURED_LEFT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_BODY_POSE,
-        cubes: &STRIDER_TEXTURED_BODY,
-        children: &STRIDER_TEXTURED_BODY_BRISTLE_CHILDREN,
-    },
-];
+/// Builds the unified adult strider tree: the synthetic root parents the right leg, left leg, and
+/// body (the emit order), with the body parenting its six bristles (right top/middle/bottom then left
+/// top/middle/bottom). Mirrors vanilla `AdultStriderModel.createBodyLayer`. Each cube carries both the
+/// colored tint and the textured UV, so one tree drives both render paths.
+fn strider_adult_root() -> ModelPart {
+    let body = ModelPart::new(
+        STRIDER_BODY_POSE,
+        STRIDER_BODY.to_vec(),
+        vec![
+            (
+                "right_top_bristle",
+                ModelPart::leaf(
+                    STRIDER_RIGHT_TOP_BRISTLE_POSE,
+                    STRIDER_RIGHT_TOP_BRISTLE.to_vec(),
+                ),
+            ),
+            (
+                "right_middle_bristle",
+                ModelPart::leaf(
+                    STRIDER_RIGHT_MIDDLE_BRISTLE_POSE,
+                    STRIDER_RIGHT_MIDDLE_BRISTLE.to_vec(),
+                ),
+            ),
+            (
+                "right_bottom_bristle",
+                ModelPart::leaf(
+                    STRIDER_RIGHT_BOTTOM_BRISTLE_POSE,
+                    STRIDER_RIGHT_BOTTOM_BRISTLE.to_vec(),
+                ),
+            ),
+            (
+                "left_top_bristle",
+                ModelPart::leaf(
+                    STRIDER_LEFT_TOP_BRISTLE_POSE,
+                    STRIDER_LEFT_TOP_BRISTLE.to_vec(),
+                ),
+            ),
+            (
+                "left_middle_bristle",
+                ModelPart::leaf(
+                    STRIDER_LEFT_MIDDLE_BRISTLE_POSE,
+                    STRIDER_LEFT_MIDDLE_BRISTLE.to_vec(),
+                ),
+            ),
+            (
+                "left_bottom_bristle",
+                ModelPart::leaf(
+                    STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
+                    STRIDER_LEFT_BOTTOM_BRISTLE.to_vec(),
+                ),
+            ),
+        ],
+    );
+    ModelPart::new(
+        PART_POSE_ZERO,
+        Vec::new(),
+        vec![
+            (
+                "right_leg",
+                ModelPart::leaf(STRIDER_RIGHT_LEG_POSE, STRIDER_RIGHT_LEG.to_vec()),
+            ),
+            (
+                "left_leg",
+                ModelPart::leaf(STRIDER_LEFT_LEG_POSE, STRIDER_LEFT_LEG.to_vec()),
+            ),
+            ("body", body),
+        ],
+    )
+}
 
-// Colored baby strider tree: right leg, left leg, body (with its three bristles, which flap on `xRot`).
-// Mirrors vanilla `BabyStriderModel.createBodyLayer`.
-const STRIDER_BABY_BODY_BRISTLE_CHILDREN: [ModelPartDesc; 3] = [
-    ModelPartDesc {
-        pose: STRIDER_BABY_FRONT_BRISTLE_POSE,
-        cubes: &STRIDER_BABY_BRISTLE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_BABY_MIDDLE_BRISTLE_POSE,
-        cubes: &STRIDER_BABY_BRISTLE,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_BABY_BACK_BRISTLE_POSE,
-        cubes: &STRIDER_BABY_BRISTLE,
-        children: &[],
-    },
-];
-const STRIDER_BABY_PARTS: [ModelPartDesc; 3] = [
-    ModelPartDesc {
-        pose: STRIDER_BABY_RIGHT_LEG_POSE,
-        cubes: &STRIDER_BABY_RIGHT_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_BABY_LEFT_LEG_POSE,
-        cubes: &STRIDER_BABY_LEFT_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: STRIDER_BABY_BODY_POSE,
-        cubes: &STRIDER_BABY_BODY,
-        children: &STRIDER_BABY_BODY_BRISTLE_CHILDREN,
-    },
-];
-const STRIDER_BABY_TEXTURED_BODY_BRISTLE_CHILDREN: [TexturedModelPartDesc; 3] = [
-    TexturedModelPartDesc {
-        pose: STRIDER_BABY_FRONT_BRISTLE_POSE,
-        cubes: &STRIDER_BABY_TEXTURED_FRONT_BRISTLE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_BABY_MIDDLE_BRISTLE_POSE,
-        cubes: &STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_BABY_BACK_BRISTLE_POSE,
-        cubes: &STRIDER_BABY_TEXTURED_BACK_BRISTLE,
-        children: &[],
-    },
-];
-const STRIDER_BABY_TEXTURED_PARTS: [TexturedModelPartDesc; 3] = [
-    TexturedModelPartDesc {
-        pose: STRIDER_BABY_RIGHT_LEG_POSE,
-        cubes: &STRIDER_BABY_TEXTURED_RIGHT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_BABY_LEFT_LEG_POSE,
-        cubes: &STRIDER_BABY_TEXTURED_LEFT_LEG,
-        children: &[],
-    },
-    TexturedModelPartDesc {
-        pose: STRIDER_BABY_BODY_POSE,
-        cubes: &STRIDER_BABY_TEXTURED_BODY,
-        children: &STRIDER_BABY_TEXTURED_BODY_BRISTLE_CHILDREN,
-    },
-];
-
-/// Selects the colored and textured const trees for an adult or baby strider, zipped into the unified
-/// tree by [`StriderModel::new`].
-fn strider_part_trees(baby: bool) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
-    if baby {
-        (&STRIDER_BABY_PARTS, &STRIDER_BABY_TEXTURED_PARTS)
-    } else {
-        (&STRIDER_PARTS, &STRIDER_TEXTURED_PARTS)
-    }
+/// Builds the unified baby strider tree: the synthetic root parents the right leg, left leg, and body
+/// (the emit order), with the body parenting its three bristles (front, middle, back), which flap on
+/// `xRot`. Mirrors vanilla `BabyStriderModel.createBodyLayer`.
+fn strider_baby_root() -> ModelPart {
+    let body = ModelPart::new(
+        STRIDER_BABY_BODY_POSE,
+        STRIDER_BABY_BODY.to_vec(),
+        vec![
+            (
+                "front_bristle",
+                ModelPart::leaf(
+                    STRIDER_BABY_FRONT_BRISTLE_POSE,
+                    STRIDER_BABY_FRONT_BRISTLE.to_vec(),
+                ),
+            ),
+            (
+                "middle_bristle",
+                ModelPart::leaf(
+                    STRIDER_BABY_MIDDLE_BRISTLE_POSE,
+                    STRIDER_BABY_MIDDLE_BRISTLE.to_vec(),
+                ),
+            ),
+            (
+                "back_bristle",
+                ModelPart::leaf(
+                    STRIDER_BABY_BACK_BRISTLE_POSE,
+                    STRIDER_BABY_BACK_BRISTLE.to_vec(),
+                ),
+            ),
+        ],
+    );
+    ModelPart::new(
+        PART_POSE_ZERO,
+        Vec::new(),
+        vec![
+            (
+                "right_leg",
+                ModelPart::leaf(STRIDER_BABY_RIGHT_LEG_POSE, STRIDER_BABY_RIGHT_LEG.to_vec()),
+            ),
+            (
+                "left_leg",
+                ModelPart::leaf(STRIDER_BABY_LEFT_LEG_POSE, STRIDER_BABY_LEFT_LEG.to_vec()),
+            ),
+            ("body", body),
+        ],
+    )
 }
 
 /// Applies the vanilla `StriderModel.setupAnim` + `{Adult,Baby}StriderModel.customAnimations` to the
@@ -529,7 +411,7 @@ fn apply_strider_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelIn
         )
     };
 
-    let right_leg = root.child_at_mut(0);
+    let right_leg = root.child_mut("right_leg");
     right_leg.pose.offset = [
         right_leg_x,
         strider_leg_y(leg_base_y, pos, speed, true),
@@ -541,7 +423,7 @@ fn apply_strider_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelIn
         strider_leg_z_rot(pos, speed, true),
     ];
 
-    let left_leg = root.child_at_mut(1);
+    let left_leg = root.child_mut("left_leg");
     left_leg.pose.offset = [
         left_leg_x,
         strider_leg_y(leg_base_y, pos, speed, false),
@@ -553,7 +435,7 @@ fn apply_strider_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelIn
         strider_leg_z_rot(pos, speed, false),
     ];
 
-    let body = root.child_at_mut(2);
+    let body = root.child_mut("body");
     body.pose.offset = [
         0.0,
         strider_body_y(body_base_y, body_bob_mul, pos, speed),
@@ -566,25 +448,30 @@ fn apply_strider_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelIn
     let middle = strider_bristle_middle_flow(flow, age);
     let bottom = strider_bristle_bottom_flow(flow, age);
     if baby {
-        // The three baby bristles flap on `xRot` (no rest roll), in [front, middle, back] order.
-        for (index, add) in [top, middle, bottom].into_iter().enumerate() {
-            body.child_at_mut(index).pose.rotation[0] += add;
-        }
+        // The three baby bristles flap on `xRot` (no rest roll), in [front, middle, back] order. The
+        // `+=` is relative to each bristle's bind pose.
+        body.child_mut("front_bristle").pose.rotation[0] += top;
+        body.child_mut("middle_bristle").pose.rotation[0] += middle;
+        body.child_mut("back_bristle").pose.rotation[0] += bottom;
     } else {
         // The six adult bristles flow on `zRot`: right top/middle/bottom then left top/middle/bottom.
-        for (index, add) in [top, middle, bottom, top, middle, bottom]
-            .into_iter()
-            .enumerate()
-        {
-            body.child_at_mut(index).pose.rotation[2] += add;
-        }
+        // Each `+=` adds to the bristle's non-zero rest `zRot`.
+        body.child_mut("right_top_bristle").pose.rotation[2] += top;
+        body.child_mut("right_middle_bristle").pose.rotation[2] += middle;
+        body.child_mut("right_bottom_bristle").pose.rotation[2] += bottom;
+        body.child_mut("left_top_bristle").pose.rotation[2] += top;
+        body.child_mut("left_middle_bristle").pose.rotation[2] += middle;
+        body.child_mut("left_bottom_bristle").pose.rotation[2] += bottom;
     }
 }
 
 /// Mutable strider model, mirroring vanilla `AdultStriderModel` / `BabyStriderModel`. The unified tree
-/// is zipped from the const trees selected by `baby` ([`strider_part_trees`]); `setup_anim` runs
-/// [`apply_strider_anim`]. The same posed tree drives the colored fallback and the cutout textured
-/// layer; the cold/suffocating texture and the saddle layer live outside the model.
+/// is built once with named children selected by `baby` ([`strider_adult_root`] /
+/// [`strider_baby_root`]): the synthetic root → (`right_leg`, `left_leg`, `body`), with `body`
+/// parenting the bristles. Each cube carries both the colored tint and the textured UV, so one tree
+/// drives both render paths; `setup_anim` runs [`apply_strider_anim`]. The same posed tree drives the
+/// colored fallback and the cutout textured layer; the cold/suffocating texture and the saddle layer
+/// live outside the model.
 pub(in crate::entity_models) struct StriderModel {
     root: ModelPart,
     baby: bool,
@@ -592,11 +479,12 @@ pub(in crate::entity_models) struct StriderModel {
 
 impl StriderModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
-        let (colored, textured) = strider_part_trees(baby);
-        Self {
-            root: ModelPart::root_from_descs(colored, textured),
-            baby,
-        }
+        let root = if baby {
+            strider_baby_root()
+        } else {
+            strider_adult_root()
+        };
+        Self { root, baby }
     }
 }
 

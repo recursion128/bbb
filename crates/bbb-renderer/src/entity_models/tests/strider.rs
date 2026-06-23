@@ -1,25 +1,42 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn strider_adult_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `AdultStriderModel.createBodyLayer` (atlas 64×128).
+    // Vanilla `AdultStriderModel.createBodyLayer` (atlas 64×128). Each unified cube carries both the
+    // colored geometry/tint and the textured `uv_size` / `texOffs` / `mirror`.
     assert_eq!(
         STRIDER_BODY[0],
-        ModelCubeDesc {
-            min: [-8.0, -6.0, -8.0],
-            size: [16.0, 14.0, 16.0],
-            color: STRIDER_MAROON,
-        }
+        ModelCube::new(
+            [-8.0, -6.0, -8.0],
+            [16.0, 14.0, 16.0],
+            STRIDER_MAROON,
+            [16.0, 14.0, 16.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(STRIDER_RIGHT_LEG[0].min, [-2.0, 0.0, -2.0]);
     assert_eq!(STRIDER_RIGHT_LEG[0].size, [4.0, 16.0, 4.0]);
+    assert_eq!(STRIDER_RIGHT_LEG[0].tex, [0.0, 32.0]);
     assert_eq!(STRIDER_LEFT_LEG[0].size, [4.0, 16.0, 4.0]);
+    assert_eq!(STRIDER_LEFT_LEG[0].tex, [0.0, 55.0]);
 
-    // Bristles are zero-thickness 12×0×16 planes; the right one's box starts at -12 (mirrored).
-    assert_eq!(STRIDER_RIGHT_BRISTLE[0].min, [-12.0, 0.0, 0.0]);
-    assert_eq!(STRIDER_RIGHT_BRISTLE[0].size, [12.0, 0.0, 16.0]);
-    assert_eq!(STRIDER_LEFT_BRISTLE[0].min, [0.0, 0.0, 0.0]);
-    assert_eq!(STRIDER_LEFT_BRISTLE[0].size, [12.0, 0.0, 16.0]);
+    // Bristles are zero-thickness 12×0×16 planes; the right ones' box starts at -12 (mirrored), the
+    // left ones at 0. Each bristle carries its own `texOffs(16, 33/49/65)`.
+    assert_eq!(STRIDER_RIGHT_TOP_BRISTLE[0].min, [-12.0, 0.0, 0.0]);
+    assert_eq!(STRIDER_RIGHT_TOP_BRISTLE[0].size, [12.0, 0.0, 16.0]);
+    assert_eq!(STRIDER_RIGHT_TOP_BRISTLE[0].tex, [16.0, 33.0]);
+    assert!(STRIDER_RIGHT_TOP_BRISTLE[0].mirror);
+    assert_eq!(STRIDER_RIGHT_MIDDLE_BRISTLE[0].tex, [16.0, 49.0]);
+    assert_eq!(STRIDER_RIGHT_BOTTOM_BRISTLE[0].tex, [16.0, 65.0]);
+    assert_eq!(STRIDER_LEFT_TOP_BRISTLE[0].min, [0.0, 0.0, 0.0]);
+    assert_eq!(STRIDER_LEFT_TOP_BRISTLE[0].size, [12.0, 0.0, 16.0]);
+    assert_eq!(STRIDER_LEFT_TOP_BRISTLE[0].tex, [16.0, 33.0]);
+    assert!(!STRIDER_LEFT_TOP_BRISTLE[0].mirror);
+    assert_eq!(STRIDER_LEFT_MIDDLE_BRISTLE[0].tex, [16.0, 49.0]);
+    assert_eq!(STRIDER_LEFT_BOTTOM_BRISTLE[0].tex, [16.0, 65.0]);
 
     // Offsets and bristle rest rolls.
     assert_eq!(STRIDER_BODY_BASE_Y, 2.0);
@@ -45,12 +62,19 @@ fn strider_baby_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `BabyStriderModel.createBodyLayer` (atlas 32×32).
     assert_eq!(STRIDER_BABY_BODY[0].min, [-3.5, -3.75, -4.0]);
     assert_eq!(STRIDER_BABY_BODY[0].size, [7.0, 7.0, 8.0]);
+    assert_eq!(STRIDER_BABY_BODY[0].tex, [0.0, 0.0]);
     assert_eq!(STRIDER_BABY_RIGHT_LEG[0].size, [2.0, 4.0, 2.0]);
+    assert_eq!(STRIDER_BABY_RIGHT_LEG[0].tex, [0.0, 24.0]);
     assert_eq!(STRIDER_BABY_LEFT_LEG[0].size, [2.0, 4.0, 2.0]);
+    assert_eq!(STRIDER_BABY_LEFT_LEG[0].tex, [8.0, 24.0]);
 
-    // Baby bristles are zero-thickness 7×3×0 planes that flap on `xRot` (no rest roll).
-    assert_eq!(STRIDER_BABY_BRISTLE[0].min, [-3.5, -2.5, 0.0]);
-    assert_eq!(STRIDER_BABY_BRISTLE[0].size, [7.0, 3.0, 0.0]);
+    // Baby bristles are zero-thickness 7×3×0 planes that flap on `xRot` (no rest roll); each carries
+    // its own `texOffs(0, 15/18/21)`.
+    assert_eq!(STRIDER_BABY_FRONT_BRISTLE[0].min, [-3.5, -2.5, 0.0]);
+    assert_eq!(STRIDER_BABY_FRONT_BRISTLE[0].size, [7.0, 3.0, 0.0]);
+    assert_eq!(STRIDER_BABY_FRONT_BRISTLE[0].tex, [0.0, 15.0]);
+    assert_eq!(STRIDER_BABY_MIDDLE_BRISTLE[0].tex, [0.0, 18.0]);
+    assert_eq!(STRIDER_BABY_BACK_BRISTLE[0].tex, [0.0, 21.0]);
 
     assert_eq!(STRIDER_BABY_BODY_BASE_Y, 17.25);
     assert_eq!(STRIDER_BABY_LEG_BASE_Y, 20.0);
@@ -214,33 +238,6 @@ fn strider_texture_refs_match_vanilla_renderer() {
             size: [32, 32],
         })
     );
-}
-
-#[test]
-fn strider_textured_cubes_match_vanilla_body_layer_uvs() {
-    // Adult: body `texOffs(0, 0)`, legs `texOffs(0, 32)` / `texOffs(0, 55)`, and the six
-    // bristles `texOffs(16, 33/49/65)` (right mirrored, left not).
-    assert_eq!(STRIDER_TEXTURED_BODY[0].tex, [0.0, 0.0]);
-    assert_eq!(STRIDER_TEXTURED_BODY[0].uv_size, [16.0, 14.0, 16.0]);
-    assert_eq!(STRIDER_TEXTURED_RIGHT_LEG[0].tex, [0.0, 32.0]);
-    assert_eq!(STRIDER_TEXTURED_LEFT_LEG[0].tex, [0.0, 55.0]);
-    assert_eq!(STRIDER_TEXTURED_RIGHT_TOP_BRISTLE[0].tex, [16.0, 33.0]);
-    assert!(STRIDER_TEXTURED_RIGHT_TOP_BRISTLE[0].mirror);
-    assert_eq!(STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE[0].tex, [16.0, 49.0]);
-    assert_eq!(STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE[0].tex, [16.0, 65.0]);
-    assert_eq!(STRIDER_TEXTURED_LEFT_TOP_BRISTLE[0].tex, [16.0, 33.0]);
-    assert!(!STRIDER_TEXTURED_LEFT_TOP_BRISTLE[0].mirror);
-    assert_eq!(STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE[0].tex, [16.0, 49.0]);
-    assert_eq!(STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE[0].tex, [16.0, 65.0]);
-
-    // Baby: body `texOffs(0, 0)`, legs `texOffs(0, 24)` / `texOffs(8, 24)`, three bristles
-    // `texOffs(0, 15/18/21)`.
-    assert_eq!(STRIDER_BABY_TEXTURED_BODY[0].tex, [0.0, 0.0]);
-    assert_eq!(STRIDER_BABY_TEXTURED_RIGHT_LEG[0].tex, [0.0, 24.0]);
-    assert_eq!(STRIDER_BABY_TEXTURED_LEFT_LEG[0].tex, [8.0, 24.0]);
-    assert_eq!(STRIDER_BABY_TEXTURED_FRONT_BRISTLE[0].tex, [0.0, 15.0]);
-    assert_eq!(STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE[0].tex, [0.0, 18.0]);
-    assert_eq!(STRIDER_BABY_TEXTURED_BACK_BRISTLE[0].tex, [0.0, 21.0]);
 }
 
 #[test]
