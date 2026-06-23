@@ -1,6 +1,5 @@
 use super::{
-    bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc, ModelPartDesc,
-    AXOLOTL_BODY, AXOLOTL_GILLS,
+    model_cube as cube, ModelCubeDesc, PartPose, AXOLOTL_BODY, AXOLOTL_GILLS, PART_POSE_ZERO,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -20,161 +19,299 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // ----- Adult -----
 
 // `body` (offset (0, 19.5, 5)): the 8×4×10 trunk plus a 0×5×9 dorsal fin plane.
-const ADULT_AXOLOTL_BODY_CUBES: [ModelCubeDesc; 2] = [
+pub(in crate::entity_models) const ADULT_AXOLOTL_BODY_CUBES: [ModelCubeDesc; 2] = [
     cube([-4.0, -2.0, -9.0], [8.0, 4.0, 10.0], AXOLOTL_BODY),
     cube([0.0, -3.0, -8.0], [0.0, 5.0, 9.0], AXOLOTL_BODY),
 ];
 
 // `head` (offset (0, 0, -9)): the 8×5×5 skull (`CubeDeformation(0.001)` fudge baked in).
-const ADULT_AXOLOTL_HEAD_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_HEAD_CUBES: [ModelCubeDesc; 1] = [cube(
     [-4.001, -3.001, -5.001],
     [8.002, 5.002, 5.002],
     AXOLOTL_BODY,
 )];
 
 // The three gill planes (top 8×3×0, and the two 3×7×0 side frills), all fudge-inflated.
-const ADULT_AXOLOTL_TOP_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_TOP_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
     [-4.001, -3.001, -0.001],
     [8.002, 3.002, 0.002],
     AXOLOTL_GILLS,
 )];
-const ADULT_AXOLOTL_LEFT_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
     [-3.001, -5.001, -0.001],
     [3.002, 7.002, 0.002],
     AXOLOTL_GILLS,
 )];
-const ADULT_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
     [-0.001, -5.001, -0.001],
     [3.002, 7.002, 0.002],
     AXOLOTL_GILLS,
 )];
 
 // The 3×5×0 leg planes — the right legs use the `-2` origin, the left legs the `-1` origin.
-const ADULT_AXOLOTL_RIGHT_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
     [-2.001, -0.001, -0.001],
     [3.002, 5.002, 0.002],
     AXOLOTL_BODY,
 )];
-const ADULT_AXOLOTL_LEFT_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
     [-1.001, -0.001, -0.001],
     [3.002, 5.002, 0.002],
     AXOLOTL_BODY,
 )];
 
 // `tail` (offset (0, 0, 1)): the 0×5×12 tail fin plane.
-const ADULT_AXOLOTL_TAIL_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const ADULT_AXOLOTL_TAIL_CUBES: [ModelCubeDesc; 1] =
     [cube([0.0, -3.0, 0.0], [0.0, 5.0, 12.0], AXOLOTL_BODY)];
 
-const ADULT_AXOLOTL_HEAD_CHILDREN: [ModelPartDesc; 3] = [
-    part([0.0, -3.0, -1.0], &ADULT_AXOLOTL_TOP_GILLS_CUBES, &[]),
-    part([-4.0, 0.0, -1.0], &ADULT_AXOLOTL_LEFT_GILLS_CUBES, &[]),
-    part([4.0, 0.0, -1.0], &ADULT_AXOLOTL_RIGHT_GILLS_CUBES, &[]),
-];
+/// `body` part pose: `PartPose.offset(0, 19.5, 5)`. The body parents the head (with the three gills),
+/// the four leg planes, and the tail fin; only the `body` itself is turned (by yaw) in `setup_anim`,
+/// so its children ride along index-named.
+pub(in crate::entity_models) const ADULT_AXOLOTL_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 19.5, 5.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `head` part pose: `PartPose.offset(0, 0, -9)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 0.0, -9.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `top_gills` part pose: `PartPose.offset(0, -3, -1)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_TOP_GILLS_POSE: PartPose = PartPose {
+    offset: [0.0, -3.0, -1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_gills` part pose: `PartPose.offset(-4, 0, -1)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_GILLS_POSE: PartPose = PartPose {
+    offset: [-4.0, 0.0, -1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_gills` part pose: `PartPose.offset(4, 0, -1)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_GILLS_POSE: PartPose = PartPose {
+    offset: [4.0, 0.0, -1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_front_leg` part pose: `PartPose.offset(-3.5, 1, -1)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [-3.5, 1.0, -1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_front_leg` part pose: `PartPose.offset(3.5, 1, -1)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [3.5, 1.0, -1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_hind_leg` part pose: `PartPose.offset(-3.5, 1, -8)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [-3.5, 1.0, -8.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_hind_leg` part pose: `PartPose.offset(3.5, 1, -8)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [3.5, 1.0, -8.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `tail` part pose: `PartPose.offset(0, 0, 1)`.
+pub(in crate::entity_models) const ADULT_AXOLOTL_TAIL_POSE: PartPose = PartPose {
+    offset: [0.0, 0.0, 1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-const ADULT_AXOLOTL_BODY_CHILDREN: [ModelPartDesc; 6] = [
-    part(
-        [0.0, 0.0, -9.0],
+/// Builds the adult axolotl's cube-bearing `body` part (parenting the index-named head — itself
+/// parenting the three gill planes — the four leg planes, and the tail fin), in vanilla order.
+fn adult_axolotl_body() -> ModelPart {
+    let head = ModelPart::colored(
+        ADULT_AXOLOTL_HEAD_POSE,
         &ADULT_AXOLOTL_HEAD_CUBES,
-        &ADULT_AXOLOTL_HEAD_CHILDREN,
-    ),
-    part([-3.5, 1.0, -1.0], &ADULT_AXOLOTL_RIGHT_LEG_CUBES, &[]),
-    part([3.5, 1.0, -1.0], &ADULT_AXOLOTL_LEFT_LEG_CUBES, &[]),
-    part([-3.5, 1.0, -8.0], &ADULT_AXOLOTL_RIGHT_LEG_CUBES, &[]),
-    part([3.5, 1.0, -8.0], &ADULT_AXOLOTL_LEFT_LEG_CUBES, &[]),
-    part([0.0, 0.0, 1.0], &ADULT_AXOLOTL_TAIL_CUBES, &[]),
-];
-
-pub(in crate::entity_models) const ADULT_AXOLOTL_PARTS: [ModelPartDesc; 1] = [part(
-    [0.0, 19.5, 5.0],
-    &ADULT_AXOLOTL_BODY_CUBES,
-    &ADULT_AXOLOTL_BODY_CHILDREN,
-)];
+        vec![
+            ModelPart::leaf_colored(ADULT_AXOLOTL_TOP_GILLS_POSE, &ADULT_AXOLOTL_TOP_GILLS_CUBES),
+            ModelPart::leaf_colored(
+                ADULT_AXOLOTL_LEFT_GILLS_POSE,
+                &ADULT_AXOLOTL_LEFT_GILLS_CUBES,
+            ),
+            ModelPart::leaf_colored(
+                ADULT_AXOLOTL_RIGHT_GILLS_POSE,
+                &ADULT_AXOLOTL_RIGHT_GILLS_CUBES,
+            ),
+        ],
+    );
+    ModelPart::colored(
+        ADULT_AXOLOTL_BODY_POSE,
+        &ADULT_AXOLOTL_BODY_CUBES,
+        vec![
+            head,
+            ModelPart::leaf_colored(
+                ADULT_AXOLOTL_RIGHT_FRONT_LEG_POSE,
+                &ADULT_AXOLOTL_RIGHT_LEG_CUBES,
+            ),
+            ModelPart::leaf_colored(
+                ADULT_AXOLOTL_LEFT_FRONT_LEG_POSE,
+                &ADULT_AXOLOTL_LEFT_LEG_CUBES,
+            ),
+            ModelPart::leaf_colored(
+                ADULT_AXOLOTL_RIGHT_HIND_LEG_POSE,
+                &ADULT_AXOLOTL_RIGHT_LEG_CUBES,
+            ),
+            ModelPart::leaf_colored(
+                ADULT_AXOLOTL_LEFT_HIND_LEG_POSE,
+                &ADULT_AXOLOTL_LEFT_LEG_CUBES,
+            ),
+            ModelPart::leaf_colored(ADULT_AXOLOTL_TAIL_POSE, &ADULT_AXOLOTL_TAIL_CUBES),
+        ],
+    )
+}
 
 // ----- Baby -----
 
 // `body` (offset (0, -1.25, 1.75) under the root bone): the 4×2×6 trunk plus a 0×3×5 dorsal fin.
-const BABY_AXOLOTL_BODY_CUBES: [ModelCubeDesc; 2] = [
+pub(in crate::entity_models) const BABY_AXOLOTL_BODY_CUBES: [ModelCubeDesc; 2] = [
     cube([-2.0, -0.75, -2.75], [4.0, 2.0, 6.0], AXOLOTL_BODY),
     cube([0.0, -1.75, -2.75], [0.0, 3.0, 5.0], AXOLOTL_BODY),
 ];
 
 // The 3×0×1 horizontal leg planes (the right hind leg is a doubly-rotated pivot/cube pair).
-const BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
     [cube([-3.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
-const BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES: [ModelCubeDesc; 1] =
     [cube([0.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
-const BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
     [cube([0.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
-const BABY_AXOLOTL_LEFT_HIND_LEG_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_HIND_LEG_CUBES: [ModelCubeDesc; 1] =
     [cube([0.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
 
 // `tail` (offset (0, -0.25, 3.25)): the 0×3×8 tail fin plane.
-const BABY_AXOLOTL_TAIL_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_TAIL_CUBES: [ModelCubeDesc; 1] =
     [cube([0.0, -1.5, -1.0], [0.0, 3.0, 8.0], AXOLOTL_BODY)];
 
 // `head` (offset (0, 0.25, -2.75)): the 6×3×4 skull.
-const BABY_AXOLOTL_HEAD_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_HEAD_CUBES: [ModelCubeDesc; 1] =
     [cube([-3.0, -2.0, -4.0], [6.0, 3.0, 4.0], AXOLOTL_BODY)];
 
 // The three gill planes (two 3×5×0 side frills and the 6×3×0 top frill).
-const BABY_AXOLOTL_LEFT_GILLS_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_GILLS_CUBES: [ModelCubeDesc; 1] =
     [cube([0.0, -3.5, 0.0], [3.0, 5.0, 0.0], AXOLOTL_GILLS)];
-const BABY_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCubeDesc; 1] =
     [cube([-3.0, -3.5, 0.0], [3.0, 5.0, 0.0], AXOLOTL_GILLS)];
-const BABY_AXOLOTL_TOP_GILLS_CUBES: [ModelCubeDesc; 1] =
+pub(in crate::entity_models) const BABY_AXOLOTL_TOP_GILLS_CUBES: [ModelCubeDesc; 1] =
     [cube([-3.0, -3.0, 0.0], [6.0, 3.0, 0.0], AXOLOTL_GILLS)];
 
-// `right_hind_leg` is a bare pivot rotated `(yRot, zRot) = (π/2, π/2)`; its `right_leg_r1` child
-// carries the cube under a further `(xRot, zRot) = (-π/2, π/2)` rotation.
-const BABY_AXOLOTL_RIGHT_HIND_LEG_CHILDREN: [ModelPartDesc; 1] = [rpart(
-    [0.0, 0.0, 0.0],
-    [-1.5708, 0.0, 1.5708],
-    &BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES,
-    &[],
-)];
+/// Baby `root` bone pose: `PartPose.offset(0, 24, 0)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_ROOT_POSE: PartPose = PartPose {
+    offset: [0.0, 24.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `body` part pose: `PartPose.offset(0, -1.25, 1.75)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, -1.25, 1.75],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `right_front_leg` part pose: `PartPose.offset(-2, 0.25, -1.25)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [-2.0, 0.25, -1.25],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `right_hind_leg` bare pivot pose: `PartPose.offsetAndRotation(-2, 0.25, 1.75, 0, π/2, π/2)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [-2.0, 0.25, 1.75],
+    rotation: [0.0, 1.5708, 1.5708],
+};
+/// Baby `right_leg_r1` cube pose: `PartPose.offsetAndRotation(0, 0, 0, -π/2, 0, π/2)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_LEG_R1_POSE: PartPose = PartPose {
+    offset: [0.0, 0.0, 0.0],
+    rotation: [-1.5708, 0.0, 1.5708],
+};
+/// Baby `left_front_leg` part pose: `PartPose.offset(2, 0.25, -1.25)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_FRONT_LEG_POSE: PartPose = PartPose {
+    offset: [2.0, 0.25, -1.25],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `left_hind_leg` part pose: `PartPose.offset(2, 0.25, 1.75)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_HIND_LEG_POSE: PartPose = PartPose {
+    offset: [2.0, 0.25, 1.75],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `tail` part pose: `PartPose.offset(0, -0.25, 3.25)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_TAIL_POSE: PartPose = PartPose {
+    offset: [0.0, -0.25, 3.25],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `head` part pose: `PartPose.offset(0, 0.25, -2.75)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 0.25, -2.75],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `left_gills` part pose: `PartPose.offset(3, -0.5, -2)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_GILLS_POSE: PartPose = PartPose {
+    offset: [3.0, -0.5, -2.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `right_gills` part pose: `PartPose.offset(-3, -0.5, -2)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_GILLS_POSE: PartPose = PartPose {
+    offset: [-3.0, -0.5, -2.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// Baby `top_gills` part pose: `PartPose.offset(0, -2, -2)`.
+pub(in crate::entity_models) const BABY_AXOLOTL_TOP_GILLS_POSE: PartPose = PartPose {
+    offset: [0.0, -2.0, -2.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-const BABY_AXOLOTL_HEAD_CHILDREN: [ModelPartDesc; 3] = [
-    part([3.0, -0.5, -2.0], &BABY_AXOLOTL_LEFT_GILLS_CUBES, &[]),
-    part([-3.0, -0.5, -2.0], &BABY_AXOLOTL_RIGHT_GILLS_CUBES, &[]),
-    part([0.0, -2.0, -2.0], &BABY_AXOLOTL_TOP_GILLS_CUBES, &[]),
-];
-
-const BABY_AXOLOTL_BODY_CHILDREN: [ModelPartDesc; 6] = [
-    part(
-        [-2.0, 0.25, -1.25],
-        &BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES,
-        &[],
-    ),
-    rpart(
-        [-2.0, 0.25, 1.75],
-        [0.0, 1.5708, 1.5708],
-        &[],
-        &BABY_AXOLOTL_RIGHT_HIND_LEG_CHILDREN,
-    ),
-    part([2.0, 0.25, -1.25], &BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES, &[]),
-    part([2.0, 0.25, 1.75], &BABY_AXOLOTL_LEFT_HIND_LEG_CUBES, &[]),
-    part([0.0, -0.25, 3.25], &BABY_AXOLOTL_TAIL_CUBES, &[]),
-    part(
-        [0.0, 0.25, -2.75],
+/// Builds the baby axolotl's `root` bone parenting the cube-bearing `body` (which parents the four
+/// index-named leg pivots — the right hind leg being a doubly-rotated pivot/cube pair — the tail fin,
+/// and the head with its three gill planes), in vanilla order.
+fn baby_axolotl_root() -> ModelPart {
+    let head = ModelPart::colored(
+        BABY_AXOLOTL_HEAD_POSE,
         &BABY_AXOLOTL_HEAD_CUBES,
-        &BABY_AXOLOTL_HEAD_CHILDREN,
-    ),
-];
-
-const BABY_AXOLOTL_ROOT_CHILDREN: [ModelPartDesc; 1] = [part(
-    [0.0, -1.25, 1.75],
-    &BABY_AXOLOTL_BODY_CUBES,
-    &BABY_AXOLOTL_BODY_CHILDREN,
-)];
-
-pub(in crate::entity_models) const BABY_AXOLOTL_PARTS: [ModelPartDesc; 1] =
-    [part([0.0, 24.0, 0.0], &[], &BABY_AXOLOTL_ROOT_CHILDREN)];
+        vec![
+            ModelPart::leaf_colored(BABY_AXOLOTL_LEFT_GILLS_POSE, &BABY_AXOLOTL_LEFT_GILLS_CUBES),
+            ModelPart::leaf_colored(
+                BABY_AXOLOTL_RIGHT_GILLS_POSE,
+                &BABY_AXOLOTL_RIGHT_GILLS_CUBES,
+            ),
+            ModelPart::leaf_colored(BABY_AXOLOTL_TOP_GILLS_POSE, &BABY_AXOLOTL_TOP_GILLS_CUBES),
+        ],
+    );
+    let right_hind_leg = ModelPart::new(
+        BABY_AXOLOTL_RIGHT_HIND_LEG_POSE,
+        Vec::new(),
+        vec![(
+            "right_leg_r1",
+            ModelPart::leaf_colored(
+                BABY_AXOLOTL_RIGHT_LEG_R1_POSE,
+                &BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES,
+            ),
+        )],
+    );
+    let body = ModelPart::colored(
+        BABY_AXOLOTL_BODY_POSE,
+        &BABY_AXOLOTL_BODY_CUBES,
+        vec![
+            ModelPart::leaf_colored(
+                BABY_AXOLOTL_RIGHT_FRONT_LEG_POSE,
+                &BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES,
+            ),
+            right_hind_leg,
+            ModelPart::leaf_colored(
+                BABY_AXOLOTL_LEFT_FRONT_LEG_POSE,
+                &BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES,
+            ),
+            ModelPart::leaf_colored(
+                BABY_AXOLOTL_LEFT_HIND_LEG_POSE,
+                &BABY_AXOLOTL_LEFT_HIND_LEG_CUBES,
+            ),
+            ModelPart::leaf_colored(BABY_AXOLOTL_TAIL_POSE, &BABY_AXOLOTL_TAIL_CUBES),
+            head,
+        ],
+    );
+    ModelPart::new(BABY_AXOLOTL_ROOT_POSE, Vec::new(), vec![("body", body)])
+}
 
 /// Mutable axolotl model, mirroring vanilla `AdultAxolotlModel` / `BabyAxolotlModel`. The single
-/// `body` root (with its nested hierarchy) hangs off a synthetic root, built from the baked
-/// adult/baby [`ADULT_AXOLOTL_PARTS`] / [`BABY_AXOLOTL_PARTS`] geometry selected at construction.
-/// Colored-only: `setup_anim` turns the adult body toward the look yaw (the blended procedural
-/// sways, the mirror-leg copy, and the baby keyframe animations stay deferred).
+/// `body` root (adult) or `root → body` bone (baby), with its nested index-named hierarchy, hangs off
+/// a synthetic root, built from the baked adult/baby colored geometry selected at construction.
+/// Colored-only: `setup_anim` turns the adult body toward the look yaw via `child_mut("body")` (the
+/// blended procedural sways, the mirror-leg copy, and the baby keyframe animations stay deferred).
 pub(in crate::entity_models) struct AxolotlModel {
     root: ModelPart,
     baby: bool,
@@ -182,13 +319,14 @@ pub(in crate::entity_models) struct AxolotlModel {
 
 impl AxolotlModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
-        let parts: &[ModelPartDesc] = if baby {
-            &BABY_AXOLOTL_PARTS
+        let body_root = if baby {
+            baby_axolotl_root()
         } else {
-            &ADULT_AXOLOTL_PARTS
+            adult_axolotl_body()
         };
+        let name = if baby { "root" } else { "body" };
         Self {
-            root: ModelPart::root_from_colored_descs(parts),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![(name, body_root)]),
             baby,
         }
     }
@@ -209,7 +347,7 @@ impl EntityModel for AxolotlModel {
         // is `+=` onto the bind, so it collapses to the bind pose at a level gaze. The baby model
         // never applies it (its keyframe swims stay deferred), so only the adult body turns.
         if !self.baby {
-            self.root.child_at_mut(0).pose.rotation[1] +=
+            self.root.child_mut("body").pose.rotation[1] +=
                 instance.render_state.head_yaw.to_radians();
         }
     }
