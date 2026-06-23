@@ -1739,11 +1739,15 @@ When an agent does any of the following, update this file in the same slice:
       reproducing the static pose. `EndCrystalRenderer` is a plain `EntityRenderer` (not a
       `LivingEntityRenderer`, so no body-yaw / setup-rotations flip), applying only `scale(2.0)` +
       `translate(0, -0.5, 0)`; this is captured by the dedicated `end_crystal_model_root_transform`. Every
-      `EndCrystalModel.setupAnim` motion is deferred — the `outer_glass`/`inner_glass`/`cube` diagonal spin
-      (`Axis.YP.rotationDegrees(ageInTicks · 3) · ...`), the `EndCrystalRenderer.getY` vertical bob, the
-      `base.visible = showsBottom` toggle (the base is emitted at its default-visible rest), and the
-      `submitCrystalBeams` beam to the dragon. The texture-backed path is deferred, so the colored debug path
-      renders the magenta glass, the bright core, and the dark base with three tints
+      `EndCrystalModel.setupAnim` `base.visible = showsBottom` toggle IS reproduced: the bottom slab
+      (`END_CRYSTAL_PARTS[0]`) is gated on the synced `EndCrystal.DATA_SHOW_BOTTOM` boolean (data id 9,
+      default `true`), so a crystal with `ShowBottom = false` (e.g. the four end-spike crystals that heal the
+      dragon) drops the slab while the glass/core stack stays, with native-projection + renderer tests pinning
+      the face/vertex drop and the default-true. The remaining `EndCrystalModel.setupAnim` motion is deferred
+      — the `outer_glass`/`inner_glass`/`cube` diagonal spin (`Axis.YP.rotationDegrees(ageInTicks · 3) · ...`),
+      the `EndCrystalRenderer.getY` vertical bob, and the `submitCrystalBeams` beam to the dragon. The
+      texture-backed path is deferred, so the colored debug path renders the magenta glass, the bright core,
+      and the dark base with three tints
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
       `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw

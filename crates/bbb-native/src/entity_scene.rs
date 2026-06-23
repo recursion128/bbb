@@ -244,6 +244,9 @@ const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
 /// Vanilla `Turtle.LAYING_EGG` data id (19): the synced boolean declared right after `HAS_EGG`.
 const TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
+/// Vanilla `EndCrystal.DATA_SHOW_BOTTOM` data id (9): EndCrystal extends Entity directly (0-7),
+/// then declares `DATA_BEAM_TARGET` (8) and `DATA_SHOW_BOTTOM` (9). Synced boolean, default `true`.
+const END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
 /// `TamableAnimal` `DATA_FLAGS_ID` sitting bit (`isInSittingPose()` reads `& 1`).
 const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
@@ -423,6 +426,10 @@ fn entity_model_instance(
         ))
         .with_turtle_has_egg(turtle_has_egg(source.entity_type_id, &source.data_values))
         .with_turtle_laying_egg(turtle_laying_egg(
+            source.entity_type_id,
+            &source.data_values,
+        ))
+        .with_end_crystal_shows_bottom(end_crystal_shows_bottom(
             source.entity_type_id,
             &source.data_values,
         ))
@@ -1074,6 +1081,17 @@ fn turtle_laying_egg(
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
         && entity_data_bool(values, TURTLE_LAYING_EGG_DATA_ID, false)
+}
+
+/// Vanilla `EndCrystalRenderState.showsBottom = EndCrystal.showsBottom()` (the synced
+/// `DATA_SHOW_BOTTOM` boolean, id 9, default `true`). Gated to the end-crystal type; a crystal
+/// without the synced value keeps the vanilla `true` default (the bottom slab is shown).
+fn end_crystal_shows_bottom(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id != VANILLA_ENTITY_TYPE_END_CRYSTAL_ID
+        || entity_data_bool(values, END_CRYSTAL_SHOW_BOTTOM_DATA_ID, true)
 }
 
 fn donkey_model_kind(
@@ -2317,6 +2335,53 @@ mod tests {
             values: vec![protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true)],
         }));
         assert!(!laying(&world, 152));
+    }
+
+    #[test]
+    fn entity_model_instances_project_end_crystal_shows_bottom() {
+        // Vanilla EndCrystal.DATA_SHOW_BOTTOM (BOOLEAN id 9, default true) and
+        // EndCrystalRenderState.showsBottom = entity.showsBottom().
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            160,
+            VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // A non-crystal: the field defaults true (it is unused and never reads id 9).
+        world.apply_add_entity(protocol_add_entity(
+            161,
+            VANILLA_ENTITY_TYPE_BAT_ID,
+            [2.0, 64.0, -2.0],
+        ));
+
+        let shows_bottom = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .end_crystal_shows_bottom
+        };
+
+        // No synced value → the vanilla default `true` (the bottom slab is shown).
+        assert!(shows_bottom(&world, 160));
+
+        // Clearing DATA_SHOW_BOTTOM hides the base slab.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 160,
+            values: vec![protocol_bool_data(END_CRYSTAL_SHOW_BOTTOM_DATA_ID, false)],
+        }));
+        assert!(!shows_bottom(&world, 160));
+
+        // Re-setting it shows the base again.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 160,
+            values: vec![protocol_bool_data(END_CRYSTAL_SHOW_BOTTOM_DATA_ID, true)],
+        }));
+        assert!(shows_bottom(&world, 160));
+
+        // A non-crystal keeps the default `true` (unused).
+        assert!(shows_bottom(&world, 161));
     }
 
     #[test]

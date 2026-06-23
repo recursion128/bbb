@@ -1614,11 +1614,16 @@ fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
 
 fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `EndCrystalModel` is the base slab plus the concentric glass/core stack (the per-part
-    // `withScale` baked into the cube dimensions). The diagonal spin, the vertical bob, and the
-    // `showsBottom` toggle are deferred, so the bind-pose part tree is emitted at the static
-    // `EndCrystalRenderer` transform (`scale(2.0)` + `translate(0, -0.5, 0)`, no living flip).
+    // `withScale` baked into the cube dimensions). The diagonal spin and the vertical bob are
+    // deferred, so the bind-pose part tree is emitted at the static `EndCrystalRenderer` transform
+    // (`scale(2.0)` + `translate(0, -0.5, 0)`, no living flip). `EndCrystalModel.setupAnim` hides
+    // the base slab (`END_CRYSTAL_PARTS[0]`) when `!showsBottom`, leaving the glass/core stack.
     let root = end_crystal_model_root_transform(instance);
-    emit_model_parts(mesh, &END_CRYSTAL_PARTS, root);
+    if instance.render_state.end_crystal_shows_bottom {
+        emit_model_parts(mesh, &END_CRYSTAL_PARTS, root);
+    } else {
+        emit_model_parts(mesh, &END_CRYSTAL_PARTS[1..], root);
+    }
 }
 
 fn emit_evoker_fangs_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

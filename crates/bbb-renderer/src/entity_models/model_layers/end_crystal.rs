@@ -10,10 +10,11 @@ use super::{
 // cumulative through the hierarchy (`inner_glass` renders at 0.875×, the core at 0.875 · 0.765625 =
 // 0.669921875×). Since every glass part shares the same `(0, 24, 0)` centre and the rest pose has no
 // rotation, the uniform scales are baked into the centred cube dimensions (a scaled centred cube is
-// a smaller centred cube), exactly reproducing the static pose. The whole `EndCrystalModel.setupAnim`
-// is deferred: the `outer_glass`/`inner_glass`/`cube` diagonal spin (`Axis.YP.rotationDegrees(
-// ageInTicks · 3) · ...`), the `getY` vertical bob, and the `base.visible = showsBottom` toggle (the
-// base is emitted at its default-visible rest). `EndCrystalRenderer` is a plain `EntityRenderer` with
+// a smaller centred cube), exactly reproducing the static pose. The `EndCrystalModel.setupAnim`
+// `base.visible = showsBottom` toggle IS reproduced (the base slab — `END_CRYSTAL_PARTS[0]` — is
+// gated on the synced `showsBottom` state); the `outer_glass`/`inner_glass`/`cube` diagonal spin
+// (`Axis.YP.rotationDegrees(ageInTicks · 3) · ...`) and the `getY` vertical bob remain deferred.
+// `EndCrystalRenderer` is a plain `EntityRenderer` with
 // only the `scale(2.0)` + `translate(0, -0.5, 0)` transform (no `LivingEntityRenderer` flip). The
 // texture-backed path is deferred, so the colored debug path renders the magenta glass, the bright
 // core, and the dark base with three tints.

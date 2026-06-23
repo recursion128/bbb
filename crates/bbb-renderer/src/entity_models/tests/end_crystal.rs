@@ -70,3 +70,33 @@ fn end_crystal_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(END_CRYSTAL_BASE, 1.0)));
 }
+
+#[test]
+fn end_crystal_hides_base_when_shows_bottom_false() {
+    // Vanilla `EndCrystalModel.setupAnim`: `base.visible = showsBottom`. The default instance
+    // shows the base (vanilla default `true`); clearing `showsBottom` drops the base slab
+    // (`END_CRYSTAL_PARTS[0]`, one cube): 24→18 faces, 96→72 vertices, 144→108 indices, and the
+    // base tint disappears while the glass/core stack is untouched.
+    let shown = entity_model_mesh(&[EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0)]);
+    assert_eq!(shown.opaque_faces, 24);
+
+    let hidden = entity_model_mesh(
+        &[EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0)
+            .with_end_crystal_shows_bottom(false)],
+    );
+    assert_eq!(hidden.opaque_faces, 18);
+    assert_eq!(hidden.vertices.len(), 72);
+    assert_eq!(hidden.indices.len(), 108);
+    assert!(!hidden
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(END_CRYSTAL_BASE, 1.0)));
+    assert!(hidden
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(END_CRYSTAL_GLASS, 1.0)));
+    assert!(hidden
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(END_CRYSTAL_CORE, 1.0)));
+}

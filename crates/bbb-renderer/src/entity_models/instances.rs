@@ -195,6 +195,12 @@ pub struct EntityRenderState {
     /// digging. `false` for a turtle that is not laying and every non-turtle entity. Applies to
     /// adults and babies alike (the amplitude lives in the base model).
     pub turtle_laying_egg: bool,
+    /// Vanilla `EndCrystalRenderState.showsBottom` (the synced `EndCrystal.DATA_SHOW_BOTTOM`
+    /// boolean, default `true`): `EndCrystalModel.setupAnim` sets `base.visible = showsBottom`, so
+    /// the bottom slab is drawn when `true` and hidden when `false` (e.g. the four end-spike
+    /// crystals that heal the dragon). Defaults `true` (vanilla default) for every non-crystal
+    /// entity, where it is unused.
+    pub end_crystal_shows_bottom: bool,
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
@@ -266,6 +272,7 @@ impl EntityRenderState {
             parrot_sitting: false,
             turtle_has_egg: false,
             turtle_laying_egg: false,
+            end_crystal_shows_bottom: true,
             squid_tentacle_angle: 0.0,
             squid_x_body_rot: 0.0,
             squid_z_body_rot: 0.0,
@@ -480,6 +487,11 @@ impl EntityModelInstance {
 
     pub fn with_turtle_laying_egg(mut self, turtle_laying_egg: bool) -> Self {
         self.render_state.turtle_laying_egg = turtle_laying_egg;
+        self
+    }
+
+    pub fn with_end_crystal_shows_bottom(mut self, end_crystal_shows_bottom: bool) -> Self {
+        self.render_state.end_crystal_shows_bottom = end_crystal_shows_bottom;
         self
     }
 
@@ -1366,6 +1378,7 @@ mod tests {
                 parrot_sitting: false,
                 turtle_has_egg: false,
                 turtle_laying_egg: false,
+                end_crystal_shows_bottom: true,
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
