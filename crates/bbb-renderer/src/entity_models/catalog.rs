@@ -292,6 +292,11 @@ pub enum EntityModelKind {
     /// `FoxRenderState` state and stay deferred, as do the red/snow variant textures and the
     /// `BabyFoxModel` mesh.
     Fox,
+    /// `NautilusModel` (a custom `EntityModel`, the new rideable nautilus) at its `createBodyMesh` rest
+    /// pose. The `setupAnim` body look — clamped to ±10° — is reproduced; the looping
+    /// `NautilusAnimation.SWIMMING` keyframe undulation, the variant textures, the saddle / armor / coral
+    /// layers, and the distinct baby `createBabyBodyLayer` mesh are deferred.
+    Nautilus,
     /// `AdultRabbitModel` at its `createBodyLayer` rest pose (the `body`/`backlegs` roots, the head
     /// nested under `body`). `RabbitModel.setupAnim` turns the head by the look angles (reproduced).
     /// The looping `RabbitAnimation.HOP` and `IDLE_HEAD_TILT` keyframe animations need un-projected

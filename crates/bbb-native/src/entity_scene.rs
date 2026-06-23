@@ -685,7 +685,8 @@ fn entity_model_kind_with_time_and_registries(
             llama_model_kind(LlamaModelFamily::TraderLlama, data_values)
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
@@ -927,6 +928,18 @@ fn fox_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityMo
         quadruped(QuadrupedModelFamily::Wolf, true)
     } else {
         EntityModelKind::Fox
+    }
+}
+
+/// Vanilla `NautilusRenderer` (an `AgeableMobRenderer`) picks `NautilusModel` for an adult and the
+/// distinct `createBabyBodyLayer` mesh for a baby. The adult renders through the dedicated
+/// [`EntityModelKind::Nautilus`]; the baby still falls back to the horse-shaped proxy until its body
+/// layer is modeled (the zombie nautilus, a separate `ZombieNautilusModel`, keeps the proxy too).
+fn nautilus_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    if ageable_baby(values) {
+        quadruped(QuadrupedModelFamily::Horse, true)
+    } else {
+        EntityModelKind::Nautilus
     }
 }
 
@@ -5478,8 +5491,21 @@ mod tests {
                 baby: false
             }
         );
+        // The adult nautilus renders through its dedicated `NautilusModel`; the baby (a distinct
+        // `createBabyBodyLayer` mesh) and the zombie nautilus (a separate model) keep the horse proxy.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
+            EntityModelKind::Nautilus
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            quadruped(QuadrupedModelFamily::Horse, true)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),
             quadruped(QuadrupedModelFamily::Horse, false)
         );
     }
@@ -5519,10 +5545,6 @@ mod tests {
                 family: CamelModelFamily::CamelHusk,
                 baby: false
             }
-        );
-        assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
-            quadruped(QuadrupedModelFamily::Horse, false)
         );
     }
 

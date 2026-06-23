@@ -44,6 +44,7 @@ mod llama;
 mod llama_spit;
 mod minecart;
 mod model;
+mod nautilus;
 mod no_render;
 mod panda;
 mod parrot;

@@ -260,6 +260,7 @@ impl EntityModelKind {
             Self::Feline { cat: true } => "feline_cat",
             Self::Feline { cat: false } => "feline_ocelot",
             Self::Fox => "fox",
+            Self::Nautilus => "nautilus",
             Self::Rabbit => "rabbit",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,

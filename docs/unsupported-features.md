@@ -2057,6 +2057,24 @@ When an agent does any of the following, update this file in the same slice:
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred
       entity lighting
+    - adult nautilus entities as renderer-owned vanilla 26.1 `NautilusModel.createBodyMesh()` geometry on
+      the colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type id `88` out of
+      the nautilus/zombie-nautilus horse-shaped quadruped proxy — the adult maps to the new
+      `EntityModelKind::Nautilus`, replacing the horse-shaped stand-in with the real mesh of this new
+      rideable mob (the baby, a distinct `createBabyBodyLayer` mesh, and the zombie nautilus, a separate
+      `ZombieNautilusModel`, both stay on the horse proxy as documented follow-ups). The static rest-pose
+      hierarchy is emitted directly (atlas 128×128): one cubeless `root` pivot at `offset(0, 29, -6)`
+      parenting the `shell` at `offset(0, -13, 5)` (the 14×10×16 dome, the 14×8×20 whorl, and a 14×8×0 rear
+      fin plane) and the `body` at `offset(0, -8.5, 12.3)` (the 10×8×14 trunk plus its 10×8×0 fin plane),
+      the body parenting the three mouth boxes (`upper_mouth` / `lower_mouth` deflated by the vanilla
+      `CubeDeformation(-0.001)`, `inner_mouth` undeformed) — eight cubes. The `NautilusModel.setupAnim`
+      body look is reproduced: `applyBodyRotation` sets `body.yRot/xRot` from the projected
+      `head_yaw/head_pitch` clamped to ±10°, turning the body and its mouths (the shell holds). The looping
+      `NautilusAnimation.SWIMMING` keyframe undulation (always on, applied via `applyWalk` with the idle
+      baseline `walkAnimationSpeed + 0.2`) needs the keyframe machinery plus an `AnimationState`, so it
+      stays deferred. The variant textures, the saddle / armor / coral layers, and the baby mesh live on
+      the deferred texture-backed / baby paths, so the colored debug path renders a tan shell over a pale
+      body. The texture-backed path remains unsupported (this is a colored-first slice)
     - adult fox entities as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) now splits vanilla type id `54` out of the
       cat/ocelot/fox wolf-shaped quadruped proxy — the adult maps to the new `EntityModelKind::Fox`,

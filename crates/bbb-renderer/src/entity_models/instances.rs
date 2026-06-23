@@ -1217,6 +1217,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Fox, position, y_rot)
     }
 
+    pub fn nautilus(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Nautilus, position, y_rot)
+    }
+
     #[cfg(test)]
     pub fn polar_bear_standing(
         entity_id: i32,
