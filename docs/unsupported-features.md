@@ -1871,6 +1871,17 @@ When an agent does any of the following, update this file in the same slice:
       / `head_pitch` and captured by `trident_model_root_transform`. The enchant-foil overlay pass and the
       texture-backed path are deferred, so the colored debug path renders the pole/base in teal and the
       spikes lighter
+    - wither skull entities as renderer-owned vanilla 26.1 `WitherSkullRenderer.createSkullLayer()`
+      (`SkullModel`) geometry on the colored path: the native entity scene (`entity_scene.rs`) projects
+      vanilla type id `147` to the new `EntityModelKind::WitherSkull`, replacing the former placeholder
+      bounds box. The static `head` part is emitted directly (atlas 64×64): one 8×8×8 box
+      (`addBox(-4, -8, -4, 8, 8, 8)`) at ZERO — a single cube. `SkullModel.setupAnim` turns the head by
+      the projectile's flight `yRot`/`xRot`; since the part sits at ZERO that facing folds into the root
+      transform, together with the `WitherSkullRenderer` `scale(-1, -1, 1)` flip — `scale(-1, -1, 1) ·
+      Ry(yRot) · Rx(xRot)`, projected through the instance's `body_rot` / `head_pitch` and captured by
+      `wither_skull_model_root_transform` (a plain `EntityRenderer`, so no `-1.501` y-offset or render
+      scale). The `wither.png` / `wither_invulnerable.png` textures and the `isDangerous` swap between
+      them are deferred, so the colored debug path renders the skull as one dark tint
     - llama spit entities as renderer-owned vanilla 26.1 `LlamaSpitModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `79` to the new
       `EntityModelKind::LlamaSpit`, replacing the former placeholder bounds box. The static `main` part is

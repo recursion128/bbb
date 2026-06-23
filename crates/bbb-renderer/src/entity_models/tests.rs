@@ -81,6 +81,7 @@ mod warden;
 mod wind_charge;
 mod witch;
 mod wither;
+mod wither_skull;
 mod wolf;
 mod zombie;
 

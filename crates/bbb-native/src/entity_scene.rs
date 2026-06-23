@@ -863,9 +863,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => {
-            placeholder("todo_wither_skull_bounds", 0.3125, 0.3125, 0.3125)
-        }
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => EntityModelKind::WitherSkull,
         _ => placeholder("todo_unknown_entity_type_bounds", 0.75, 0.75, 0.75),
     }
 }
@@ -4808,6 +4806,18 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_TRIDENT_ID, &[]),
             EntityModelKind::Trident
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_maps_wither_skull_to_real_model() {
+        // The wither skull was a placeholder box; it now resolves to the real `SkullModel`. Its flight
+        // facing comes from the projected yaw/pitch (a plain `EntityRenderer`); the wither /
+        // invulnerable textures and the `isDangerous` swap are deferred entity-side state, so no synced
+        // data is read.
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, &[]),
+            EntityModelKind::WitherSkull
         );
     }
 

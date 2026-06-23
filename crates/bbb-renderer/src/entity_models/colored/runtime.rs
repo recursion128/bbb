@@ -28,8 +28,8 @@ use super::transforms::{
     salmon_model_root_transform, scaled_model_root_transform, shulker_bullet_model_root_transform,
     slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
     tropical_fish_model_root_transform, villager_adult_model_root_transform,
-    wind_charge_model_root_transform, wither_skeleton_model_root_transform, GIANT_SCALE,
-    HUSK_SCALE,
+    wind_charge_model_root_transform, wither_skeleton_model_root_transform,
+    wither_skull_model_root_transform, GIANT_SCALE, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -343,6 +343,15 @@ fn entity_model_mesh_with_options(
                     &mut mesh,
                     instance,
                     llama_spit_model_root_transform(*instance),
+                );
+            }
+            EntityModelKind::WitherSkull => {
+                // The skull's flight facing folds into the root transform (single part at ZERO), so the
+                // mesh is static; colored-only (the wither / invulnerable textures are deferred).
+                StaticModel::new(&WITHER_SKULL_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    wither_skull_model_root_transform(*instance),
                 );
             }
             EntityModelKind::ShulkerBullet => {

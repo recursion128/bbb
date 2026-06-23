@@ -254,6 +254,21 @@ pub(in crate::entity_models) fn llama_spit_model_root_transform(
         * Mat4::from_rotation_z(instance.render_state.head_pitch.to_radians())
 }
 
+/// Vanilla `WitherSkullRenderer.submit`: a plain `EntityRenderer` that applies `scale(-1, -1, 1)` then
+/// submits the `SkullModel`, whose `setupAnim` turns the single `head` by the flight `yRot`/`xRot`
+/// (`head.yRot = yRot`, `head.xRot = xRot`). Since the head sits at ZERO that facing folds into the
+/// root: `scale(-1, -1, 1) · Ry(yRot) · Rx(xRot)`, the yaw/pitch projected through `body_rot` /
+/// `head_pitch`. There is no `-1.501` y-offset or render scale (it is not a `LivingEntityRenderer`); the
+/// `isDangerous` wither / invulnerable textures are deferred (colored-first).
+pub(in crate::entity_models) fn wither_skull_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
+        * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
+}
+
 /// Vanilla `ShulkerBulletRenderer.submit` reduced to its non-animated parts: the constant
 /// `translate(0, 0.15, 0)` lift and the `scale(-0.5, -0.5, 0.5)` (the flip + half size), followed by
 /// the `ShulkerBulletModel.setupAnim` facing (`main.yRot = yRot`, `main.xRot = xRot`, here folded

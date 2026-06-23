@@ -168,6 +168,11 @@ pub enum EntityModelKind {
     /// geometry is complete; the enchant-foil overlay and the texture are deferred.
     /// `ThrownTridentRenderer` orients it along its flight.
     Trident,
+    /// `SkullModel` at `WitherSkullRenderer.createSkullLayer` — a single 8×8×8 `head` box. `setupAnim`
+    /// turns the head by the projectile's flight `yRot`/`xRot` (reproduced via the root transform, since
+    /// the part sits at ZERO). `WitherSkullRenderer` orients it along its flight; the `wither.png` /
+    /// `wither_invulnerable.png` textures and the `isDangerous` swap are deferred.
+    WitherSkull,
     /// `LlamaSpitModel` — a single `main` part of seven 2×2×2 boxes forming a cross. The model has
     /// no `setupAnim`, so the geometry is complete; only the texture-backed path is deferred.
     /// `LlamaSpitRenderer` orients it along its flight.
