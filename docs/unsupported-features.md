@@ -1655,15 +1655,16 @@ When an agent does any of the following, update this file in the same slice:
       look is reproduced: `setupAnim` clamps the projected look to vanilla's bounds (pitch `head.xRot` to
       [-22.5, 25], yaw `head.yRot` to [-32.5, 32.5] degrees) and turns the body-nested head pivot so the
       snout and both ears inherit the turn; the look is skipped while hiding (the head is balled up). The
-      adult `applyWalk` is also reproduced: while not hiding, `setupAnim` samples the looping 1.4583 s
-      `ArmadilloAnimation.ARMADILLO_WALK` via `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)` —
-      the body rolls (a CatmullRom z-sway with a small y-bob) carrying the tail and head, the four legs swing
-      (rotation + position), the tail rocks, and the head channel adds a small z-roll onto the look it already
-      tracks (a still armadillo samples amplitude 0, collapsing to the bind pose plus the head look). The baby
-      `applyWalk` (`BabyArmadilloAnimation.ARMADILLO_BABY_WALK`, a different cycle and topology) stays
-      deferred, so the baby takes only the head look. The texture-backed path remains unsupported (this is a
-      colored-first slice; the colored debug path approximates the armored body/legs with one brown tint and
-      the soft head/ears/tail with a tan tint)
+      `applyWalk` is also reproduced: while not hiding, `setupAnim` samples the looping 1.4583 s walk cycle
+      via `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)` — the body rolls (a CatmullRom z-sway
+      with a small y-bob) carrying the tail and head, the four legs swing (rotation + position), the tail
+      rocks, and the head channel adds a small z-roll onto the look it already tracks (a still armadillo
+      samples amplitude 0, collapsing to the bind pose plus the head look). Both the adult
+      (`ArmadilloAnimation.ARMADILLO_WALK`) and the baby (`BabyArmadilloAnimation.ARMADILLO_BABY_WALK`, the
+      same seven bones at slightly different timestamps) walks are reproduced, sharing one hand-walked
+      `body → tail/head` + four-leg pass. The texture-backed path remains unsupported (this is a colored-first
+      slice; the colored debug path approximates the armored body/legs with one brown tint and the soft
+      head/ears/tail with a tan tint)
     - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /
       `BabyAxolotlModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `7` to the new `EntityModelKind::Axolotl { baby }`,

@@ -1772,20 +1772,18 @@ fn emit_armadillo_model(
     // shell-ball `cube` — the head, ears, and front legs stay drawn — so the rolled-up part tree is
     // emitted instead, with no head look. While NOT hiding, `setupAnim` sets the clamped head look
     // (`head.xRot/yRot` clamped to [-22.5, 25] / [-32.5, 32.5]) on the body-nested head pivot, then
-    // `applyWalk` rocks the body, tail, four legs, and head as the armadillo moves. The adult walk
-    // ([`ARMADILLO_WALK`]) is hand-walked; the baby walk (`ARMADILLO_BABY_WALK`, a different
-    // cycle/topology) and the roll-out / roll-up / peek keyframe transitions stay deferred, so the
-    // baby only takes the head look. The baby flag (synced `AgeableMob.DATA_BABY_ID`) selects the
-    // baby body layer, as in the vanilla `AgeableMobRenderer`. Armadillo uses
-    // `LivingEntityRenderer.setupRotations`.
+    // `applyWalk` rocks the body, tail, four legs, and head as the armadillo moves. Both the adult
+    // ([`ARMADILLO_WALK`]) and the baby ([`ARMADILLO_BABY_WALK`]) walks are hand-walked; the
+    // roll-out / roll-up / peek keyframe transitions stay deferred. The baby flag (synced
+    // `AgeableMob.DATA_BABY_ID`) selects the baby body layer, as in the vanilla `AgeableMobRenderer`.
+    // Armadillo uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    let parts: &[ModelPartDesc] = match (baby, rolled_up) {
-        (false, false) => &ADULT_ARMADILLO_PARTS,
-        (true, false) => &BABY_ARMADILLO_PARTS,
-        (false, true) => &ADULT_ARMADILLO_ROLLED_PARTS,
-        (true, true) => &BABY_ARMADILLO_ROLLED_PARTS,
-    };
     if rolled_up {
+        let parts: &[ModelPartDesc] = if baby {
+            &BABY_ARMADILLO_ROLLED_PARTS
+        } else {
+            &ADULT_ARMADILLO_ROLLED_PARTS
+        };
         emit_model_parts(mesh, parts, root);
         return;
     }
@@ -1793,56 +1791,49 @@ fn emit_armadillo_model(
         instance.render_state.head_yaw,
         instance.render_state.head_pitch,
     );
-    if !baby {
-        emit_armadillo_adult_walk(mesh, instance, root, head_yaw, head_pitch);
-        return;
-    }
-    if head_look_at_rest(head_yaw, head_pitch) {
-        emit_model_parts(mesh, parts, root);
+    let (parts, walk): (&[ModelPartDesc], &AnimationDefinition) = if baby {
+        (&BABY_ARMADILLO_PARTS, &ARMADILLO_BABY_WALK)
     } else {
-        emit_model_parts_with_head_look(
-            mesh,
-            parts,
-            root,
-            ARMADILLO_HEAD_PART_PATH,
-            head_yaw,
-            head_pitch,
-        );
-    }
+        (&ADULT_ARMADILLO_PARTS, &ARMADILLO_WALK)
+    };
+    emit_armadillo_walk(mesh, instance, root, parts, walk, head_yaw, head_pitch);
 }
 
-fn emit_armadillo_adult_walk(
+fn emit_armadillo_walk(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
     root: Mat4,
+    parts: &[ModelPartDesc],
+    walk: &AnimationDefinition,
     head_yaw: f32,
     head_pitch: f32,
 ) {
-    // The adult walk is sampled via `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`: the
-    // `body` rolls (a CatmullRom z-sway with a small y-bob) carrying the tail and head, the four legs
-    // swing (rotation + position), the `tail` rocks, and the `head` channel adds a z-roll onto the
-    // clamped look. A still armadillo samples amplitude 0, collapsing to the bind pose plus the head
-    // look. The `body → tail/head` spine and the four legs are hand-walked.
+    // The walk is sampled via `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`: the `body`
+    // rolls (a CatmullRom z-sway with a small y-bob) carrying the tail and head, the four legs swing
+    // (rotation + position), the `tail` rocks, and the `head` channel adds a z-roll onto the clamped
+    // look. A still armadillo samples amplitude 0, collapsing to the bind pose plus the head look. The
+    // adult and baby share this `body → tail/head` + four-leg topology, so one hand-walk serves both.
     let (seconds, scale) = keyframe_walk_sample(
-        &ARMADILLO_WALK,
+        walk,
         instance.render_state.walk_animation_pos,
         instance.render_state.walk_animation_speed,
         ARMADILLO_WALK_SPEED_FACTOR,
         ARMADILLO_WALK_SCALE_FACTOR,
     );
     let animated = |bone: &str, bind: PartPose| {
-        let (position, rotation) = sample_bone_offsets(&ARMADILLO_WALK, bone, seconds, scale);
+        let (position, rotation) = sample_bone_offsets(walk, bone, seconds, scale);
         keyframe_animated_pose(bind, position, rotation)
     };
 
     // `body` (root child 0): the walk roll/bob, carrying the tail and head.
-    let body = &ADULT_ARMADILLO_PARTS[0];
+    let body = &parts[0];
     let body_t = root * part_pose_transform(animated("body", body.pose));
     for cube in body.cubes {
         emit_model_cube(mesh, body_t, *cube);
     }
 
-    // `tail` (body child 0): the walk rock added onto its bind pitch.
+    // `tail` (body child 0): the walk rock added onto its bind pitch (the baby tail also carries its
+    // stub cube, which has no walk channel of its own).
     let tail = &body.children[0];
     emit_model_part(
         mesh,
@@ -1856,7 +1847,7 @@ fn emit_armadillo_adult_walk(
     // `head` (body child 1): the clamped look (set) plus the walk z-roll (added). The walk has no
     // head position channel, so the bind offset is kept.
     let head = &body.children[1];
-    let (_, head_walk_rot) = sample_bone_offsets(&ARMADILLO_WALK, "head", seconds, scale);
+    let (_, head_walk_rot) = sample_bone_offsets(walk, "head", seconds, scale);
     let head_pose = PartPose {
         offset: head.pose.offset,
         rotation: [
@@ -1881,7 +1872,7 @@ fn emit_armadillo_adult_walk(
         (3, "right_front_leg"),
         (4, "left_front_leg"),
     ] {
-        let leg = &ADULT_ARMADILLO_PARTS[index];
+        let leg = &parts[index];
         emit_model_part(
             mesh,
             &ModelPartDesc {

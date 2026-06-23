@@ -362,3 +362,85 @@ fn armadillo_walk_moves_the_limbs_and_composes_with_the_look() {
         "the legs share the same walk regardless of the look"
     );
 }
+
+#[test]
+fn baby_armadillo_walk_animation_matches_vanilla_definition() {
+    // Vanilla `BabyArmadilloAnimation.ARMADILLO_BABY_WALK`: 1.4583 s looping, the same seven bones and
+    // 82 keyframes as the adult, with slightly different keyframe timestamps.
+    assert_eq!(ARMADILLO_BABY_WALK.length_seconds, 1.4583);
+    assert!(ARMADILLO_BABY_WALK.looping);
+    assert_eq!(ARMADILLO_BABY_WALK.bones.len(), 7);
+    let keyframes: usize = ARMADILLO_BABY_WALK
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 82);
+
+    // The baby `body` z-sway is CatmullRom: at its t=0.3 keyframe it reaches `degreeVec(0, 0, 6.81)`.
+    let (_, body_rot) = sample_bone_offsets(&ARMADILLO_BABY_WALK, "body", 0.3, 1.0);
+    assert!(
+        (body_rot[2] - 6.81_f32.to_radians()).abs() < 1.0e-4,
+        "baby body z-roll was {}",
+        body_rot[2]
+    );
+
+    // The hind legs start a half-cycle apart, same as the adult (`degreeVec(±50, 0, 0)` at t=0).
+    let (_, rhl_rot) = sample_bone_offsets(&ARMADILLO_BABY_WALK, "right_hind_leg", 0.0, 1.0);
+    let (_, lhl_rot) = sample_bone_offsets(&ARMADILLO_BABY_WALK, "left_hind_leg", 0.0, 1.0);
+    assert!((rhl_rot[0] - (-50.0_f32).to_radians()).abs() < 1.0e-5);
+    assert!((lhl_rot[0] - 50.0_f32.to_radians()).abs() < 1.0e-5);
+}
+
+#[test]
+fn baby_armadillo_walk_moves_the_limbs_and_composes_with_the_look() {
+    // The baby shares the adult's `body → tail/head` + four-leg topology, so its head subtree is the
+    // same [72, 144) span. A still baby collapses to the bind pose; a walking baby samples
+    // ARMADILLO_BABY_WALK, and the head walk roll composes onto the look.
+    let still = entity_model_mesh(&[EntityModelInstance::armadillo(
+        79,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        false,
+    )]);
+    let walking = entity_model_mesh(&[EntityModelInstance::armadillo(
+        80,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        false,
+    )
+    .with_walk_animation(5.0, 1.0)]);
+    assert_eq!(still.vertices.len(), walking.vertices.len());
+    assert_ne!(
+        still.vertices, walking.vertices,
+        "the walking baby rocks its body and legs"
+    );
+
+    let walking_looking = entity_model_mesh(&[EntityModelInstance::armadillo(
+        81,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        false,
+    )
+    .with_walk_animation(5.0, 1.0)
+    .with_head_look(30.0, -15.0)]);
+    assert_ne!(
+        walking.vertices[72..144],
+        walking_looking.vertices[72..144],
+        "the look composes onto the walking baby head"
+    );
+    assert_eq!(
+        walking.vertices[..72],
+        walking_looking.vertices[..72],
+        "the body and tail share the same walk regardless of the look"
+    );
+    assert_eq!(
+        walking.vertices[144..],
+        walking_looking.vertices[144..],
+        "the legs share the same walk regardless of the look"
+    );
+}
