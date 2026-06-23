@@ -1,61 +1,41 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn blaze_parts_match_vanilla_26_1_body_layer() {
-    // Vanilla BlazeModel.createBodyLayer: an 8x8x8 head at PartPose.ZERO plus twelve rods,
-    // each the shared 2x8x2 `rod` CubeListBuilder addBox(0, 0, 0, 2, 8, 2). The rod layer
-    // offsets are placeholders (setupAnim overwrites them every frame), so only the head's
-    // rest pose and the cube extents are layer-stable.
-    assert_eq!(BLAZE_PARTS.len(), 13);
+fn blaze_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla BlazeModel.createBodyLayer: an 8x8x8 head at PartPose.ZERO plus twelve rods, each the
+    // shared 2x8x2 `rod` CubeListBuilder addBox(0, 0, 0, 2, 8, 2). The rod layer offsets are
+    // placeholders (setupAnim overwrites them every frame), so only the cube extents are
+    // layer-stable. Each unified cube carries the colored tint (`BLAZE_ORANGE`) and the textured UV.
     assert_eq!(BLAZE_ROD_COUNT, 12);
 
-    assert_part(
-        &BLAZE_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        BLAZE_HEAD_CUBE.as_slice(),
-    );
-    assert_eq!(BLAZE_HEAD_CUBE[0].min, [-4.0, -4.0, -4.0]);
-    assert_eq!(BLAZE_HEAD_CUBE[0].size, [8.0, 8.0, 8.0]);
-
-    for index in 0..BLAZE_ROD_COUNT {
-        let part = &BLAZE_PARTS[index + 1];
-        assert_eq!(part.cubes.len(), 1);
-        assert_eq!(part.cubes[0].min, [0.0, 0.0, 0.0]);
-        assert_eq!(part.cubes[0].size, [2.0, 8.0, 2.0]);
-    }
-}
-
-#[test]
-fn blaze_textured_parts_match_vanilla_model_layer_uv_sources() {
-    assert_eq!(MODEL_LAYER_BLAZE, "minecraft:blaze#main");
-    assert_eq!(BLAZE_TEXTURE_REF.size, [64, 32]);
-    assert_eq!(BLAZE_TEXTURED_PARTS.len(), 13);
     // Head: texOffs(0, 0), 8x8x8.
     assert_eq!(
-        BLAZE_TEXTURED_HEAD_CUBE[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -4.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
+        BLAZE_HEAD_CUBE[0],
+        ModelCube::new(
+            [-4.0, -4.0, -4.0],
+            [8.0, 8.0, 8.0],
+            BLAZE_ORANGE,
+            [8.0, 8.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     // Vanilla reuses one texOffs(0, 16) `rod` builder for all twelve rods.
-    for index in 0..BLAZE_ROD_COUNT {
-        let part = &BLAZE_TEXTURED_PARTS[index + 1];
-        assert_eq!(
-            part.cubes[0],
-            TexturedModelCubeDesc {
-                min: [0.0, 0.0, 0.0],
-                size: [2.0, 8.0, 2.0],
-                uv_size: [2.0, 8.0, 2.0],
-                tex: [0.0, 16.0],
-                mirror: false,
-            }
-        );
-    }
+    assert_eq!(
+        BLAZE_ROD_CUBE[0],
+        ModelCube::new(
+            [0.0, 0.0, 0.0],
+            [2.0, 8.0, 2.0],
+            BLAZE_ORANGE,
+            [2.0, 8.0, 2.0],
+            [0.0, 16.0],
+            false,
+        )
+    );
+    assert_eq!(MODEL_LAYER_BLAZE, "minecraft:blaze#main");
+    assert_eq!(BLAZE_TEXTURE_REF.size, [64, 32]);
 }
 
 #[test]
@@ -66,7 +46,7 @@ fn blaze_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_BLAZE);
     assert_eq!(passes[0].texture, BLAZE_TEXTURE_REF);
-    assert_eq!(passes[0].parts, BLAZE_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(

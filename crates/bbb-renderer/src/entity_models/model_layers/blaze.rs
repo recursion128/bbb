@@ -1,105 +1,45 @@
-use super::{
-    head_look_at_rest, head_look_pose, ModelCubeDesc, ModelPartDesc, TexturedModelCubeDesc,
-    TexturedModelPartDesc, PART_POSE_ZERO,
-};
+use super::{head_look_at_rest, head_look_pose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // The blaze fallback paints the head and rods a single fiery orange.
 pub(in crate::entity_models) const BLAZE_ORANGE: [f32; 4] = [0.94, 0.55, 0.10, 1.0];
 
 pub(in crate::entity_models) const MODEL_LAYER_BLAZE: &str = "minecraft:blaze#main";
 
-pub(in crate::entity_models) const BLAZE_HEAD_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, -4.0, -4.0],
-    size: [8.0, 8.0, 8.0],
-    color: BLAZE_ORANGE,
-}];
+// Vanilla 26.1 ModelLayers.BLAZE: BlazeModel.createBodyLayer() — an 8x8x8 head plus twelve rods, all
+// positioned by `BlazeModel.setupAnim` from `ageInTicks`. Each cube carries both render paths' data:
+// the colored debug tint (`BLAZE_ORANGE`) and the textured `uv_size` / `texOffs`.
+//
+// Head: texOffs(0, 0), 8x8x8.
+pub(in crate::entity_models) const BLAZE_HEAD_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -4.0, -4.0],
+    [8.0, 8.0, 8.0],
+    BLAZE_ORANGE,
+    [8.0, 8.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-// Vanilla reuses one `rod` CubeListBuilder for all twelve rods: addBox(0, 0, 0, 2, 8, 2).
-pub(in crate::entity_models) const BLAZE_ROD_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 0.0, 0.0],
-    size: [2.0, 8.0, 2.0],
-    color: BLAZE_ORANGE,
-}];
-
-const BLAZE_ROD_PART: ModelPartDesc = ModelPartDesc {
-    // The rod offsets are overwritten every frame by `blaze_rod_offset`, so the layer rest
-    // offset is irrelevant; vanilla never displays the un-posed rods.
-    pose: PART_POSE_ZERO,
-    cubes: &BLAZE_ROD_CUBE,
-    children: &[],
-};
-
-// Vanilla 26.1 ModelLayers.BLAZE: BlazeModel.createBodyLayer() — a head plus twelve rods,
-// all positioned by `BlazeModel.setupAnim` from `ageInTicks`.
-pub(in crate::entity_models) const BLAZE_PARTS: [ModelPartDesc; 13] = [
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &BLAZE_HEAD_CUBE,
-        children: &[],
-    },
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-    BLAZE_ROD_PART,
-];
-
-pub(in crate::entity_models) const BLAZE_TEXTURED_HEAD_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [-4.0, -4.0, -4.0],
-        size: [8.0, 8.0, 8.0],
-        uv_size: [8.0, 8.0, 8.0],
-        tex: [0.0, 0.0],
-        mirror: false,
-    }];
-
-// Vanilla reuses `texOffs(0, 16)` for every rod, so all twelve sample the same region.
-pub(in crate::entity_models) const BLAZE_TEXTURED_ROD_CUBE: [TexturedModelCubeDesc; 1] =
-    [TexturedModelCubeDesc {
-        min: [0.0, 0.0, 0.0],
-        size: [2.0, 8.0, 2.0],
-        uv_size: [2.0, 8.0, 2.0],
-        tex: [0.0, 16.0],
-        mirror: false,
-    }];
-
-const BLAZE_TEXTURED_ROD_PART: TexturedModelPartDesc = TexturedModelPartDesc {
-    pose: PART_POSE_ZERO,
-    cubes: &BLAZE_TEXTURED_ROD_CUBE,
-    children: &[],
-};
-
-pub(in crate::entity_models) const BLAZE_TEXTURED_PARTS: [TexturedModelPartDesc; 13] = [
-    TexturedModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &BLAZE_TEXTURED_HEAD_CUBE,
-        children: &[],
-    },
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-    BLAZE_TEXTURED_ROD_PART,
-];
+// Vanilla reuses one `rod` CubeListBuilder for all twelve rods: `texOffs(0, 16)` addBox(0, 0, 0, 2, 8, 2).
+pub(in crate::entity_models) const BLAZE_ROD_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [2.0, 8.0, 2.0],
+    BLAZE_ORANGE,
+    [2.0, 8.0, 2.0],
+    [0.0, 16.0],
+    false,
+)];
 
 /// The number of rods in the blaze body layer (parts `1..=12`; part `0` is the head).
 pub(in crate::entity_models) const BLAZE_ROD_COUNT: usize = 12;
+
+/// Vanilla `BlazeModel.createBodyLayer` rod child names, in order `rod0..rod11`. `child_mut` needs
+/// `&'static` names, so the twelve rods draw their names from this const array.
+const BLAZE_ROD_NAMES: [&str; BLAZE_ROD_COUNT] = [
+    "rod0", "rod1", "rod2", "rod3", "rod4", "rod5", "rod6", "rod7", "rod8", "rod9", "rod10",
+    "rod11",
+];
 
 /// Vanilla `BlazeModel.setupAnim` rod placement: the twelve rods orbit in three rings of
 /// four, their `x`/`y`/`z` offsets SET every frame from `ageInTicks`. Ring 0 (rods 0..4) at
@@ -131,19 +71,31 @@ pub(in crate::entity_models) fn blaze_rod_offset(index: usize, age_in_ticks: f32
     [angle.cos() * radius, y, angle.sin() * radius]
 }
 
-/// Mutable blaze model, mirroring vanilla `BlazeModel`. The unified tree is zipped from the baked
-/// colored ([`BLAZE_PARTS`]) and textured ([`BLAZE_TEXTURED_PARTS`]) trees: child 0 is the head,
-/// children 1..=[`BLAZE_ROD_COUNT`] are the orbiting rods. `setup_anim` follows the head look angles
-/// ([`head_look_pose`]) and SETs every rod offset from `ageInTicks` ([`blaze_rod_offset`]). A blaze
-/// floats, so there is no walk swing, and there is no `MeshTransformer` scaling (unit model root).
+/// Mutable blaze model, mirroring vanilla `BlazeModel`. The unified tree is built once with named
+/// children: the `head` plus the twelve orbiting `rod0..rod11`. `setup_anim` follows the head look
+/// angles ([`head_look_pose`]) and SETs every rod offset from `ageInTicks` ([`blaze_rod_offset`]). A
+/// blaze floats, so there is no walk swing, and there is no `MeshTransformer` scaling (unit model
+/// root). The rod layer rest offsets are irrelevant (`PART_POSE_ZERO`); vanilla never displays the
+/// un-posed rods since `setup_anim` overwrites every offset each frame.
 pub(in crate::entity_models) struct BlazeModel {
     root: ModelPart,
 }
 
 impl BlazeModel {
     pub(in crate::entity_models) fn new() -> Self {
+        let mut children: Vec<(&'static str, ModelPart)> = Vec::with_capacity(1 + BLAZE_ROD_COUNT);
+        children.push((
+            "head",
+            ModelPart::leaf(PART_POSE_ZERO, BLAZE_HEAD_CUBE.to_vec()),
+        ));
+        for &name in &BLAZE_ROD_NAMES {
+            children.push((
+                name,
+                ModelPart::leaf(PART_POSE_ZERO, BLAZE_ROD_CUBE.to_vec()),
+            ));
+        }
         Self {
-            root: ModelPart::root_from_descs(&BLAZE_PARTS, &BLAZE_TEXTURED_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
 }
@@ -162,11 +114,11 @@ impl EntityModel for BlazeModel {
         let head_yaw = instance.render_state.head_yaw;
         let head_pitch = instance.render_state.head_pitch;
         if !head_look_at_rest(head_yaw, head_pitch) {
-            let head = self.root.child_at_mut(0);
+            let head = self.root.child_mut("head");
             head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
         }
-        for index in 0..BLAZE_ROD_COUNT {
-            self.root.child_at_mut(index + 1).pose.offset = blaze_rod_offset(index, age_in_ticks);
+        for (index, &name) in BLAZE_ROD_NAMES.iter().enumerate() {
+            self.root.child_mut(name).pose.offset = blaze_rod_offset(index, age_in_ticks);
         }
     }
 }
