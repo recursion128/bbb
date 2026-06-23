@@ -16,31 +16,31 @@ use super::{
     geometry::{
         emit_textured_model_cube, emit_textured_model_part, emit_textured_model_parts,
         fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
-        EntityModelTexturedMesh, ModelPartDesc, PartPose, TexturedModelPartDesc, PART_POSE_ZERO,
+        EntityModelTexturedMesh, PartPose, TexturedModelPartDesc, PART_POSE_ZERO,
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        apply_wolf_sitting_pose, armor_stand_textured_cube, camel_clamped_head_look,
-        head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
-        humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
-        parched_head_part_index, quadruped_leg_swing_pose, skeleton_head_part_index,
-        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        AllayModel, BatModel, BeeModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel,
-        CodModel, CowModel, CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel,
-        GoatModel, HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel,
-        MagmaCubeModel, MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel,
-        PolarBearModel, PufferfishModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel,
-        SilverfishModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel,
-        SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel, TurtleModel,
-        VexModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel,
-        ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS,
-        ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF,
-        BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR,
-        COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
-        SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
-        TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+        apply_wolf_sitting_pose, camel_clamped_head_look, head_first_part_index, head_look_at_rest,
+        head_look_pose, humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
+        limb_swing_at_rest, parched_head_part_index, quadruped_leg_swing_pose,
+        skeleton_head_part_index, wolf_angry_tail_pose, wolf_sitting_part_roles,
+        wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, ArmorStandModel, BatModel,
+        BeeModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
+        CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
+        HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
+        MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
+        PufferfishModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel,
+        SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel,
+        StriderModel, TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel,
+        VillagerModel, WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel,
+        ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
+        BABY_CAMEL_WALK_LAYOUT, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF,
+        BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
+        DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
+        STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
+        TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
@@ -1375,61 +1375,22 @@ fn emit_armor_stand_textured_model(
     pose: ArmorStandModelPose,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Mirrors the colored `emit_armor_stand_model`: vanilla `ArmorStandModel.setupAnim` poses
-    // each part from the synced pose (degrees), hides the arms/base plate by visibility, and
-    // yaws the base plate by `-yRot`. The body, both body sticks, and the shoulder stick all
-    // share the body pose. The geometry comes from the shared colored parts so the colored and
-    // textured meshes stay identical; only the UVs differ.
+    // The unified `ArmorStandModel` tree drives both render paths; `new` selects the small / full layer
+    // and `setup_anim` poses each part from the synced pose (degrees), hides the arms / base plate by
+    // visibility, and yaws the base plate by `-bodyRot`. Draws into the cutout mesh.
     let Some(entry) = entity_model_texture_atlas_entry(atlas, ARMOR_STAND_TEXTURE_REF) else {
         return;
     };
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
-    let parts: &[ModelPartDesc] = if small {
-        &SMALL_ARMOR_STAND_PARTS
-    } else {
-        &ARMOR_STAND_PARTS
-    };
     let transform = entity_model_root_transform(instance);
-    let mut emit_part = |index: usize, rotation: [f32; 3]| {
-        let part = &parts[index];
-        let cube = armor_stand_textured_cube(part, ARMOR_STAND_PART_UVS[index]);
-        let part_pose = PartPose {
-            offset: part.pose.offset,
-            rotation,
-        };
-        emit_textured_model_cube(
-            mesh,
-            transform * part_pose_transform(part_pose),
-            cube,
-            ARMOR_STAND_TEXTURE_REF,
-            entry.uv,
-            [1.0, 1.0, 1.0, 1.0],
-        );
-    };
-
-    let body = degrees_to_radians3(pose.body);
-    emit_part(0, degrees_to_radians3(pose.head));
-    emit_part(1, body);
-    if show_arms {
-        emit_part(2, degrees_to_radians3(pose.right_arm));
-        emit_part(3, degrees_to_radians3(pose.left_arm));
-    }
-    emit_part(4, degrees_to_radians3(pose.right_leg));
-    emit_part(5, degrees_to_radians3(pose.left_leg));
-    emit_part(6, body);
-    emit_part(7, body);
-    emit_part(8, body);
-    if show_base_plate {
-        emit_part(9, [0.0, -instance.render_state.body_rot.to_radians(), 0.0]);
-    }
-}
-
-fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
-    [
-        rotation[0].to_radians(),
-        rotation[1].to_radians(),
-        rotation[2].to_radians(),
-    ]
+    let mut model = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+        transform,
+        ARMOR_STAND_TEXTURE_REF,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+    );
 }
 
 fn emit_zombie_textured_model(

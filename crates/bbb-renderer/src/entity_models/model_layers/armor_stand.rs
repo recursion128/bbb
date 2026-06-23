@@ -1,4 +1,7 @@
 use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, PART_POSE_ZERO};
+use crate::entity_models::catalog::ArmorStandModelPose;
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const ARMOR_STAND_WOOD: [f32; 4] = [0.55, 0.36, 0.19, 1.0];
 
@@ -323,5 +326,103 @@ pub(in crate::entity_models) fn armor_stand_textured_cube(
         uv_size: uv.uv_size,
         tex: uv.tex,
         mirror: uv.mirror,
+    }
+}
+
+fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
+    [
+        rotation[0].to_radians(),
+        rotation[1].to_radians(),
+        rotation[2].to_radians(),
+    ]
+}
+
+/// Mutable armor-stand model, mirroring vanilla `ArmorStandModel`. The ten parts hang off a synthetic
+/// root; each unified cube takes its geometry/color from the shared colored part and its UV from the
+/// matching [`ARMOR_STAND_PART_UVS`] row, so one tree drives both render paths. `new` selects the small
+/// or full layer; `setup_anim` poses each part from the synced [`ArmorStandModelPose`] (degrees), hides
+/// the arms / base plate by visibility (`showArms` / `showBasePlate`), and yaws the base plate by
+/// `-bodyRot`. The body, both body sticks, and the shoulder stick all share the body pose.
+pub(in crate::entity_models) struct ArmorStandModel {
+    root: ModelPart,
+    show_arms: bool,
+    show_base_plate: bool,
+    pose: ArmorStandModelPose,
+}
+
+impl ArmorStandModel {
+    pub(in crate::entity_models) fn new(
+        small: bool,
+        show_arms: bool,
+        show_base_plate: bool,
+        pose: ArmorStandModelPose,
+    ) -> Self {
+        let parts = if small {
+            &SMALL_ARMOR_STAND_PARTS
+        } else {
+            &ARMOR_STAND_PARTS
+        };
+        let children = parts
+            .iter()
+            .zip(ARMOR_STAND_PART_UVS.iter())
+            .map(|(part, uv)| {
+                // Geometry/color from the shared colored part; UV from the matching row (the same
+                // `armor_stand_textured_cube` mapping the textured tests assert against).
+                let cube = part.cubes[0];
+                let textured = armor_stand_textured_cube(part, *uv);
+                ModelPart::leaf(
+                    part.pose,
+                    vec![ModelCube::new(
+                        cube.min,
+                        cube.size,
+                        cube.color,
+                        textured.uv_size,
+                        textured.tex,
+                        textured.mirror,
+                    )],
+                )
+            })
+            .collect();
+        Self {
+            root: ModelPart::root_from_parts(children),
+            show_arms,
+            show_base_plate,
+            pose,
+        }
+    }
+}
+
+impl EntityModel for ArmorStandModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let pose = self.pose;
+        let body = degrees_to_radians3(pose.body);
+        self.root.child_at_mut(0).pose.rotation = degrees_to_radians3(pose.head);
+        self.root.child_at_mut(1).pose.rotation = body;
+        if self.show_arms {
+            self.root.child_at_mut(2).pose.rotation = degrees_to_radians3(pose.right_arm);
+            self.root.child_at_mut(3).pose.rotation = degrees_to_radians3(pose.left_arm);
+        } else {
+            self.root.child_at_mut(2).visible = false;
+            self.root.child_at_mut(3).visible = false;
+        }
+        self.root.child_at_mut(4).pose.rotation = degrees_to_radians3(pose.right_leg);
+        self.root.child_at_mut(5).pose.rotation = degrees_to_radians3(pose.left_leg);
+        self.root.child_at_mut(6).pose.rotation = body;
+        self.root.child_at_mut(7).pose.rotation = body;
+        self.root.child_at_mut(8).pose.rotation = body;
+        if self.show_base_plate {
+            self.root.child_at_mut(9).pose.rotation =
+                [0.0, -instance.render_state.body_rot.to_radians(), 0.0];
+        } else {
+            self.root.child_at_mut(9).visible = false;
+        }
     }
 }
