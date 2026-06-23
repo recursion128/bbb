@@ -298,6 +298,56 @@ impl ModelPart {
         }
     }
 
+    /// Builds a colored-only [`ModelPart`] subtree from a [`ModelPartDesc`] tree — the colored
+    /// counterpart of [`ModelPart::from_textured_desc`] for an entity with no textured path (the
+    /// parrot, shulker, …). Each cube reuses its baked color; the textured UV is an unused
+    /// placeholder, since only [`ModelPart::render_colored`] is ever called. Children are addressed
+    /// positionally (named by index).
+    pub(in crate::entity_models) fn from_colored_desc(colored: &ModelPartDesc) -> Self {
+        let cubes = colored
+            .cubes
+            .iter()
+            .map(ModelCube::from_colored_desc)
+            .collect();
+        let children = colored
+            .children
+            .iter()
+            .enumerate()
+            .map(|(index, child)| {
+                (
+                    INDEX_CHILD_NAMES[index],
+                    ModelPart::from_colored_desc(child),
+                )
+            })
+            .collect();
+        Self {
+            pose: colored.pose,
+            default_pose: colored.pose,
+            cubes,
+            children,
+            visible: true,
+        }
+    }
+
+    /// Builds a colored-only root [`ModelPart`] over a flat list of sibling [`ModelPartDesc`] trees —
+    /// the colored counterpart of [`ModelPart::root_from_textured_descs`] for an entity with no
+    /// textured path. The siblings hang off a synthetic identity root, addressed positionally via
+    /// [`ModelPart::child_at_mut`].
+    pub(in crate::entity_models) fn root_from_colored_descs(colored: &[ModelPartDesc]) -> Self {
+        let children = colored
+            .iter()
+            .enumerate()
+            .map(|(index, part)| (INDEX_CHILD_NAMES[index], ModelPart::from_colored_desc(part)))
+            .collect();
+        Self {
+            pose: super::geometry::PART_POSE_ZERO,
+            default_pose: super::geometry::PART_POSE_ZERO,
+            cubes: Vec::new(),
+            children,
+            visible: true,
+        }
+    }
+
     /// Builds a synthetic identity root over a flat list of already-built sibling parts, named by
     /// index for positional [`ModelPart::child_at_mut`] access. The runtime counterpart of
     /// [`ModelPart::root_from_descs`] for a model whose parts are computed at construction (the

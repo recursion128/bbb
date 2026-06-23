@@ -1,4 +1,5 @@
 use super::*;
+use crate::entity_models::model::EntityModel;
 
 fn count_cubes(parts: &[ModelPartDesc]) -> usize {
     parts
@@ -62,29 +63,50 @@ fn parrot_geometry_matches_vanilla_26_1_body_layer() {
 fn parrot_sitting_pose_matches_vanilla_prepare() {
     use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
 
-    // Standing keeps the bind pose unchanged.
-    assert_eq!(parrot_pose_parts(false), PARROT_PARTS.to_vec());
+    // Standing with a neutral gaze keeps every part at its bind pose: `setup_anim` applies only the
+    // head look (identity at rest) and the walk swing (identity at rest).
+    let mut standing = ParrotModel::new();
+    standing.prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0));
+    let standing_root = standing.root_mut();
+    for i in 0..PARROT_PARTS.len() {
+        let part = standing_root.child_at_mut(i);
+        assert_eq!(
+            part.pose.offset, PARROT_PARTS[i].pose.offset,
+            "part {i} offset"
+        );
+        assert_eq!(
+            part.pose.rotation, PARROT_PARTS[i].pose.rotation,
+            "part {i} rotation"
+        );
+    }
 
     // SITTING = `ParrotModel.prepare(SITTING)`: every part raises `y += 1.9`, the tail pitches
     // `xRot += π/6`, the wings tuck to `zRot = ±0.0873`, and the legs fold `xRot += π/2`.
-    let sitting = parrot_pose_parts(true);
-    for (i, part) in sitting.iter().enumerate() {
+    let mut sitting = ParrotModel::new();
+    sitting
+        .prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true));
+    let root = sitting.root_mut();
+    for i in 0..PARROT_PARTS.len() {
         assert!(
-            (part.pose.offset[1] - (PARROT_PARTS[i].pose.offset[1] + 1.9)).abs() < 1.0e-6,
+            (root.child_at_mut(i).pose.offset[1] - (PARROT_PARTS[i].pose.offset[1] + 1.9)).abs()
+                < 1.0e-6,
             "part {i} should raise y by 1.9"
         );
     }
     // tail (index 1): xRot = 1.015 + π/6.
-    assert!((sitting[1].pose.rotation[0] - (1.015 + FRAC_PI_6)).abs() < 1.0e-6);
+    assert!((root.child_at_mut(1).pose.rotation[0] - (1.015 + FRAC_PI_6)).abs() < 1.0e-6);
     // wings (2 left, 3 right): zRot set to ∓0.0873.
-    assert!((sitting[2].pose.rotation[2] - (-0.0873)).abs() < 1.0e-6);
-    assert!((sitting[3].pose.rotation[2] - 0.0873).abs() < 1.0e-6);
+    assert!((root.child_at_mut(2).pose.rotation[2] - (-0.0873)).abs() < 1.0e-6);
+    assert!((root.child_at_mut(3).pose.rotation[2] - 0.0873).abs() < 1.0e-6);
     // legs (5 left, 6 right): xRot = -0.0299 + π/2.
-    assert!((sitting[5].pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
-    assert!((sitting[6].pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
-    // `prepare(SITTING)` only translates the head (index 4); the look rotation is applied later in
-    // `emit_parrot_model`, so the pose helper itself leaves the head rotation at bind.
-    assert_eq!(sitting[4].pose.rotation, PARROT_PARTS[4].pose.rotation);
+    assert!((root.child_at_mut(5).pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
+    assert!((root.child_at_mut(6).pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
+    // `prepare(SITTING)` only translates the head (index 4); with a neutral gaze the head look
+    // leaves the head rotation at bind.
+    assert_eq!(
+        root.child_at_mut(4).pose.rotation,
+        PARROT_PARTS[4].pose.rotation
+    );
 }
 
 #[test]

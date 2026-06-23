@@ -1,7 +1,9 @@
 use super::{
-    bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc, ModelPartDesc,
-    PartPose, PARROT_BEAK, PARROT_BODY,
+    apply_head_look, bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc,
+    ModelPartDesc, PartPose, PARROT_BEAK, PARROT_BODY,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `ParrotModel.createBodyLayer` (atlas 32×32). The mesh root holds seven sibling parts
 // (body, tail, the two wings, head, and the two legs); the head parents the upper-head block, the
@@ -112,27 +114,22 @@ pub(in crate::entity_models) const PARROT_PARTS: [ModelPartDesc; 7] = [
 /// SITTING); only the un-projected PARTY pose would overwrite it.
 pub(in crate::entity_models) const PARROT_HEAD_PART_INDEX: usize = 4;
 
-/// Vanilla `ParrotModel.prepare(SITTING)` applied to the bind-pose part tree (part order body,
-/// tail, left_wing, right_wing, head, left_leg, right_leg): every part raises `y += 1.9`, the legs
-/// fold `xRot += π/2`, the tail pitches `xRot += π/6`, and the wings tuck to `zRot = ±0.0873` (set,
-/// not added). The `setupAnim` `SITTING` branch adds nothing more. Returns the STANDING bind pose
-/// unchanged when not sitting.
-pub(in crate::entity_models) fn parrot_pose_parts(sitting: bool) -> Vec<ModelPartDesc> {
-    let mut parts = PARROT_PARTS.to_vec();
-    if !sitting {
-        return parts;
-    }
+/// Vanilla `ParrotModel.prepare(SITTING)` applied in place to the model root's seven sibling parts
+/// (part order body, tail, left_wing, right_wing, head, left_leg, right_leg): every part raises
+/// `y += 1.9`, the tail pitches `xRot += π/6`, the wings tuck to `zRot = ±0.0873` (set, not added),
+/// and the legs fold `xRot += π/2`. The `setupAnim` `SITTING` branch adds nothing more.
+fn apply_parrot_sitting_pose(root: &mut ModelPart) {
     const SIT_Y: f32 = 1.9;
     const WING_TUCK_Z_ROT: f32 = 0.0873;
-    for part in parts.iter_mut() {
-        part.pose.offset[1] += SIT_Y;
+    for index in 0..PARROT_PARTS.len() {
+        root.child_at_mut(index).pose.offset[1] += SIT_Y;
     }
-    parts[1].pose.rotation[0] += std::f32::consts::FRAC_PI_6; // tail pitch += π/6
-    parts[2].pose.rotation[2] = -WING_TUCK_Z_ROT; // left wing tuck
-    parts[3].pose.rotation[2] = WING_TUCK_Z_ROT; // right wing tuck
-    parts[5].pose.rotation[0] += std::f32::consts::FRAC_PI_2; // left leg fold += π/2
-    parts[6].pose.rotation[0] += std::f32::consts::FRAC_PI_2; // right leg fold += π/2
-    parts
+    root.child_at_mut(PARROT_TAIL_PART_INDEX).pose.rotation[0] += std::f32::consts::FRAC_PI_6;
+    root.child_at_mut(2).pose.rotation[2] = -WING_TUCK_Z_ROT; // left wing tuck
+    root.child_at_mut(3).pose.rotation[2] = WING_TUCK_Z_ROT; // right wing tuck
+    for index in PARROT_LEG_PART_INDICES {
+        root.child_at_mut(index).pose.rotation[0] += std::f32::consts::FRAC_PI_2;
+    }
 }
 
 /// The `tail` is the second sibling and the two legs are the sixth/seventh; `ParrotModel.setupAnim`
@@ -183,5 +180,59 @@ pub(in crate::entity_models) fn parrot_tail_swing_pose(
             base.rotation[1],
             base.rotation[2],
         ],
+    }
+}
+
+/// Mutable parrot model, mirroring vanilla `ParrotModel`. Its seven sibling parts hang off a
+/// synthetic root, each built from the baked [`PARROT_PARTS`] geometry. Colored-only (no textured
+/// path yet): `setup_anim` applies the head look at every projected pose, then either the
+/// `prepare(SITTING)` perch re-pose or the STANDING tail/leg walk swing.
+pub(in crate::entity_models) struct ParrotModel {
+    root: ModelPart,
+}
+
+impl ParrotModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_colored_descs(&PARROT_PARTS),
+        }
+    }
+}
+
+impl EntityModel for ParrotModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `ParrotModel.setupAnim` sets the head look first (applied at every projected pose),
+        // then runs the per-pose switch: SITTING re-poses the whole tree via `prepare(SITTING)` and
+        // stops, while STANDING adds the tail/leg walk swing onto the baked pitch. The wing flap and
+        // body/head bob (the un-projected `flapAngle`), the FLYING leg pitch, and the PARTY dance
+        // stay deferred. Both the head look (identity at a neutral gaze) and the swing (identity at
+        // rest) collapse to the bind pose, so they apply unconditionally.
+        let sitting = instance.render_state.parrot_sitting;
+        if sitting {
+            apply_parrot_sitting_pose(&mut self.root);
+        }
+        apply_head_look(
+            self.root.child_at_mut(PARROT_HEAD_PART_INDEX),
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        );
+        if !sitting {
+            let walk_pos = instance.render_state.walk_animation_pos;
+            let walk_speed = instance.render_state.walk_animation_speed;
+            let tail = self.root.child_at_mut(PARROT_TAIL_PART_INDEX);
+            tail.pose = parrot_tail_swing_pose(tail.pose, walk_pos, walk_speed);
+            for index in PARROT_LEG_PART_INDICES {
+                let leg = self.root.child_at_mut(index);
+                leg.pose = parrot_leg_swing_pose(leg.pose, walk_pos, walk_speed);
+            }
+        }
     }
 }

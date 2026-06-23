@@ -234,7 +234,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Parrot => {
                 // Colored-only so far (no texture-backed parrot yet), so this arm always emits.
-                emit_parrot_model(&mut mesh, *instance);
+                ParrotModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Shulker => {
                 // Colored-only so far (no texture-backed shulker yet), so this arm always emits.
@@ -1163,42 +1167,6 @@ fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     );
     let mut parts = TADPOLE_PARTS.to_vec();
     parts[TADPOLE_TAIL_PART_INDEX].pose.rotation[1] = tail_yrot;
-    emit_model_parts(mesh, &parts, root);
-}
-
-fn emit_parrot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `ParrotModel` is seven static sibling parts (body, tail, wings, head with its beak /
-    // crest children, legs) at their baked rest poses. The SITTING perch pose is projected:
-    // `Parrot.isInSittingPose()` (the synced `TamableAnimal.DATA_FLAGS_ID` sitting bit) runs
-    // `prepare(SITTING)`, which raises every part `y += 1.9`, folds the legs (`xRot += π/2`),
-    // pitches the tail (`xRot += π/6`), and tucks the wings (`zRot = ±0.0873`); the `setupAnim`
-    // `SITTING` branch then adds nothing more. `setupAnim` also sets `head.xRot/yRot` from the look
-    // angles before the per-pose switch, so the head look applies at both projected poses (STANDING
-    // and SITTING) — reproduced here on the top-level head part. The STANDING walk swing is also
-    // reproduced: the legs add `xRot += cos(pos·0.6662 [+π])·1.4·speed` (left in phase, right out)
-    // and the tail adds `xRot += cos(pos·0.6662)·0.3·speed` onto their baked pitch (the swing is
-    // reached only through the STANDING fall-through, so a sitting parrot skips it). The wing flap
-    // and the body/tail/head flap bob need the un-projected `flapAngle`, and the PARTY dance and
-    // FLYING leg pitch are not projected, so they stay deferred. Parrot uses a plain
-    // `MobRenderer`/`LivingEntityRenderer.setupRotations`.
-    let root = entity_model_root_transform(instance);
-    let sitting = instance.render_state.parrot_sitting;
-    let mut parts = parrot_pose_parts(sitting);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    if !head_look_at_rest(head_yaw, head_pitch) {
-        parts[PARROT_HEAD_PART_INDEX].pose =
-            head_look_pose(parts[PARROT_HEAD_PART_INDEX].pose, head_yaw, head_pitch);
-    }
-    let walk_pos = instance.render_state.walk_animation_pos;
-    let walk_speed = instance.render_state.walk_animation_speed;
-    if !sitting && !limb_swing_at_rest(walk_speed) {
-        parts[PARROT_TAIL_PART_INDEX].pose =
-            parrot_tail_swing_pose(parts[PARROT_TAIL_PART_INDEX].pose, walk_pos, walk_speed);
-        for index in PARROT_LEG_PART_INDICES {
-            parts[index].pose = parrot_leg_swing_pose(parts[index].pose, walk_pos, walk_speed);
-        }
-    }
     emit_model_parts(mesh, &parts, root);
 }
 
