@@ -1,7 +1,10 @@
 use super::{
+    apply_head_look, head_first_part_index, spider_leg_swing_pose, spider_leg_swing_roles,
     ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
     SPIDER_DARK,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_SPIDER: &str = "minecraft:spider#main";
 pub(in crate::entity_models) const MODEL_LAYER_CAVE_SPIDER: &str = "minecraft:cave_spider#main";
@@ -246,3 +249,47 @@ pub(in crate::entity_models) const SPIDER_TEXTURED_PARTS: [TexturedModelPartDesc
         children: &[],
     },
 ];
+
+/// Mutable spider model, mirroring vanilla `SpiderModel` (shared by the cave spider, which differs
+/// only by its smaller root transform). The unified tree is zipped from the colored ([`SPIDER_PARTS`])
+/// and textured ([`SPIDER_TEXTURED_PARTS`]) const trees. `setup_anim` looks the head (part `0`,
+/// [`apply_head_look`]) and sweeps/steps the eight legs ([`spider_leg_swing_pose`] at the
+/// [`spider_leg_swing_roles`] indices). Both the base and eyes textured passes read this one posed
+/// tree.
+pub(in crate::entity_models) struct SpiderModel {
+    root: ModelPart,
+}
+
+impl SpiderModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&SPIDER_PARTS, &SPIDER_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SpiderModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(head_first_part_index()),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        let limb_swing = render_state.walk_animation_pos;
+        let limb_swing_amount = render_state.walk_animation_speed;
+        for (index, phase, side_sign) in spider_leg_swing_roles() {
+            let leg = self.root.child_at_mut(index);
+            leg.pose =
+                spider_leg_swing_pose(leg.pose, phase, side_sign, limb_swing, limb_swing_amount);
+        }
+    }
+}

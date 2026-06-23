@@ -33,18 +33,18 @@ use super::{
         parched_head_part_index, phantom_flap_time, phantom_tail_pose, phantom_tail_x_rot,
         phantom_wing_pose, phantom_wing_z_rot, pufferfish_fin_pose, pufferfish_parts,
         pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, sheep_head_at_rest,
-        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index, spider_leg_swing_pose,
-        spider_leg_swing_roles, squid_textured_model_parts, strider_animation_speed,
-        strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
-        strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
-        strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
-        vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
-        CreeperModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel,
-        IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PigModel,
-        PiglinModel, PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SilverfishModel,
-        SkeletonModel, SnowGolemModel, VillagerModel, WanderingTraderModel, WitchModel,
-        ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        sheep_head_part_index, sheep_head_pose, skeleton_head_part_index,
+        squid_textured_model_parts, strider_animation_speed, strider_body_y, strider_body_z_rot,
+        strider_bristle_bottom_flow, strider_bristle_flow, strider_bristle_middle_flow,
+        strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y, strider_leg_z_rot,
+        tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel,
+        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
+        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PigModel, PiglinModel,
+        PlayerModel, PolarBearModel, RavagerModel, SalmonModel, SilverfishModel, SkeletonModel,
+        SnowGolemModel, SpiderModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
+        ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
         ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
         ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
@@ -2094,47 +2094,26 @@ fn emit_spider_textured_model(
     cave: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `SpiderModel.setupAnim`: full head look, then the eight legs sweep about
-    // their yRot and step about their zRot (`spider_leg_swing_pose`). Both the base and
-    // eyes passes carry every part, so the swing is applied per pass. The cave spider
-    // shares the model and differs only by its smaller root transform.
-    let head_index = head_first_part_index();
+    // The unified `SpiderModel` tree drives both render paths; `setup_anim` looks the head and
+    // sweeps/steps the eight legs once. Both the base and eyes passes read this one posed tree. The
+    // cave spider shares the model and differs only by its smaller root transform.
     let transform = if cave {
         cave_spider_model_root_transform(instance)
     } else {
         entity_model_root_transform(instance)
     };
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let mut model = SpiderModel::new();
+    model.prepare(&instance);
     for pass in spider_textured_layer_passes(cave) {
-        if head_resting && legs_resting {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-            continue;
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-        }
-        if !legs_resting {
-            for (index, phase, side_sign) in spider_leg_swing_roles() {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose = spider_leg_swing_pose(
-                        leg.pose,
-                        phase,
-                        side_sign,
-                        limb_swing,
-                        limb_swing_amount,
-                    );
-                }
-            }
-        }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 
