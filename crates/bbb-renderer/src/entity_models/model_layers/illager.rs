@@ -1,5 +1,5 @@
 use super::{
-    apply_half_amplitude_leg_swing_named, apply_head_look, humanoid_arm_swing_pose, PartPose,
+    apply_half_amplitude_leg_swing, apply_head_look, humanoid_arm_swing_pose, PartPose,
     ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
@@ -273,7 +273,7 @@ fn illager_is_spellcasting(instance: &EntityModelInstance, family: IllagerModelF
 /// Mutable illager model, mirroring vanilla `IllagerModel`/`SpellcasterIllagerModel` shared by the
 /// evoker, vindicator, illusioner, and pillager. The unified tree is built for `family`/`spellcasting`
 /// with the vanilla child names. `setup_anim` looks the head ([`apply_head_look`] on `head`) and swings
-/// the legs at the villager-family half amplitude ([`apply_half_amplitude_leg_swing_named`]); the
+/// the legs at the villager-family half amplitude ([`apply_half_amplitude_leg_swing`]); the
 /// pillager additionally swings its separate arms at the `HumanoidModel` amplitude
 /// ([`humanoid_arm_swing_pose`] on `right_arm`/`left_arm`), while a spellcasting evoker/illusioner
 /// instead raises both arms into the `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). The
@@ -316,7 +316,7 @@ impl EntityModel for IllagerModel {
         );
         let limb_swing = render_state.walk_animation_pos;
         let limb_swing_amount = render_state.walk_animation_speed;
-        apply_half_amplitude_leg_swing_named(&mut self.root, limb_swing, limb_swing_amount);
+        apply_half_amplitude_leg_swing(&mut self.root, limb_swing, limb_swing_amount);
         if self.spellcasting {
             // Vanilla overwrites both separate arms' rotations with the spellcasting pose, so it
             // overrides even at rest.

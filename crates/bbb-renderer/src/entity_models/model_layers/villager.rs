@@ -1,5 +1,5 @@
 use super::{
-    apply_half_amplitude_leg_swing_named, apply_head_look, PartPose, PART_POSE_ZERO, VILLAGER_ROBE,
+    apply_half_amplitude_leg_swing, apply_head_look, PartPose, PART_POSE_ZERO, VILLAGER_ROBE,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
@@ -425,7 +425,7 @@ fn villager_tree(baby: bool) -> ModelPart {
 /// Mutable villager model, mirroring vanilla `VillagerModel`/`BabyVillagerModel`. The unified tree is
 /// built for the selected `baby` layout with the vanilla child names. `setup_anim` looks the head
 /// ([`apply_head_look`] on `head`) and swings the legs at the villager-family half amplitude
-/// ([`apply_half_amplitude_leg_swing_named`]). The combined `arms` part and the unhappy head shake
+/// ([`apply_half_amplitude_leg_swing`]). The combined `arms` part and the unhappy head shake
 /// defer.
 pub(in crate::entity_models) struct VillagerModel {
     root: ModelPart,
@@ -455,7 +455,7 @@ impl EntityModel for VillagerModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_half_amplitude_leg_swing_named(
+        apply_half_amplitude_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
@@ -467,7 +467,7 @@ impl EntityModel for VillagerModel {
 /// `VillagerModel` layer. The unified tree is built with the vanilla child names (`head`, `body`, the
 /// combined `arms`, `right_leg`, `left_leg`). `setup_anim` looks the head ([`apply_head_look`] on
 /// `head`) and swings the legs at the villager-family half amplitude
-/// ([`apply_half_amplitude_leg_swing_named`]). The held-item arm pose and the combined `arms` part
+/// ([`apply_half_amplitude_leg_swing`]). The held-item arm pose and the combined `arms` part
 /// defer.
 pub(in crate::entity_models) struct WanderingTraderModel {
     root: ModelPart,
@@ -497,7 +497,7 @@ impl EntityModel for WanderingTraderModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_half_amplitude_leg_swing_named(
+        apply_half_amplitude_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

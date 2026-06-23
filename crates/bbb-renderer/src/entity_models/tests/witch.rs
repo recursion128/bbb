@@ -1,111 +1,60 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn witch_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`. The hat-tip (`hat4`) and mole keep the base UV box against their
+    // inflated geometry.
     assert_eq!(
         WITCH_HEAD[0],
-        ModelCubeDesc {
-            min: [-4.0, -10.0, -4.0],
-            size: [8.0, 10.0, 8.0],
-            color: WITCH_ROBE,
-        }
+        ModelCube::new(
+            [-4.0, -10.0, -4.0],
+            [8.0, 10.0, 8.0],
+            WITCH_ROBE,
+            [8.0, 10.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
     assert_eq!(
         WITCH_HAT_4[0],
-        ModelCubeDesc {
-            min: [-0.25, -0.25, -0.25],
-            size: [1.5, 2.5, 1.5],
-            color: WITCH_HAT_COLOR,
-        }
+        ModelCube::new(
+            [-0.25, -0.25, -0.25],
+            [1.5, 2.5, 1.5],
+            WITCH_HAT_COLOR,
+            [1.0, 2.0, 1.0],
+            [0.0, 95.0],
+            false,
+        )
     );
     assert_eq!(
         WITCH_MOLE[0],
-        ModelCubeDesc {
-            min: [0.25, 3.25, -6.5],
-            size: [0.5, 0.5, 0.5],
-            color: WITCH_ROBE,
-        }
+        ModelCube::new(
+            [0.25, 3.25, -6.5],
+            [0.5, 0.5, 0.5],
+            WITCH_ROBE,
+            [1.0, 1.0, 1.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-
-    assert_eq!(WITCH_PARTS.len(), 5);
-    assert_part_tree(
-        &WITCH_PARTS[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        WITCH_HEAD.as_slice(),
-        WITCH_HEAD_CHILDREN.as_slice(),
+    // The nested hat chain (`hat` -> `hat2` -> `hat3` -> `hat4`) and the nose/mole carry their bind
+    // poses; the head look, leg swing, and nose bob resolve their parts by name.
+    assert_eq!(WITCH_HAT_POSE.offset, [-5.0, -10.03125, -5.0]);
+    assert_eq!(WITCH_HAT_2_POSE.rotation, [-0.05235988, 0.0, 0.02617994]);
+    assert_eq!(WITCH_HAT_3_POSE.rotation, [-0.10471976, 0.0, 0.05235988]);
+    assert_eq!(
+        WITCH_HAT_4_POSE.rotation,
+        [-(std::f32::consts::PI / 15.0), 0.0, 0.10471976]
     );
-    assert_part_tree(
-        &WITCH_HEAD_CHILDREN[0],
-        [-5.0, -10.03125, -5.0],
-        [0.0, 0.0, 0.0],
-        WITCH_HAT.as_slice(),
-        WITCH_HAT_CHILDREN.as_slice(),
-    );
-    assert_part_tree(
-        &WITCH_HAT_CHILDREN[0],
-        [1.75, -4.0, 2.0],
-        [-0.05235988, 0.0, 0.02617994],
-        WITCH_HAT_2.as_slice(),
-        WITCH_HAT_2_CHILDREN.as_slice(),
-    );
-    assert_part_tree(
-        &WITCH_HAT_2_CHILDREN[0],
-        [1.75, -4.0, 2.0],
-        [-0.10471976, 0.0, 0.05235988],
-        WITCH_HAT_3.as_slice(),
-        WITCH_HAT_3_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &WITCH_HAT_3_CHILDREN[0],
-        [1.75, -2.0, 2.0],
-        [-(std::f32::consts::PI / 15.0), 0.0, 0.10471976],
-        WITCH_HAT_4.as_slice(),
-    );
-    assert_part_tree(
-        &WITCH_HEAD_CHILDREN[1],
-        [0.0, -2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        WITCH_NOSE.as_slice(),
-        WITCH_NOSE_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &WITCH_NOSE_CHILDREN[0],
-        [0.0, -2.0, 0.0],
-        [0.0, 0.0, 0.0],
-        WITCH_MOLE.as_slice(),
-    );
-    assert_part_tree(
-        &WITCH_PARTS[1],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        WITCH_BODY.as_slice(),
-        WITCH_BODY_CHILDREN.as_slice(),
-    );
-    assert_part(
-        &WITCH_BODY_CHILDREN[0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        WITCH_JACKET.as_slice(),
-    );
-    assert_part(
-        &WITCH_PARTS[2],
-        [0.0, 3.0, -1.0],
-        [-0.75, 0.0, 0.0],
-        WITCH_ARMS.as_slice(),
-    );
-    assert_part(
-        &WITCH_PARTS[3],
-        [-2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        WITCH_LEG.as_slice(),
-    );
-    assert_part(
-        &WITCH_PARTS[4],
-        [2.0, 12.0, 0.0],
-        [0.0, 0.0, 0.0],
-        WITCH_LEG.as_slice(),
-    );
+    assert_eq!(WITCH_NOSE_POSE.offset, [0.0, -2.0, 0.0]);
+    assert_eq!(WITCH_MOLE_POSE.offset, [0.0, -2.0, 0.0]);
+    assert_eq!(WITCH_ARMS[1].tex, [44.0, 22.0]);
+    assert!(WITCH_ARMS[1].mirror);
+    assert!(!WITCH_RIGHT_LEG[0].mirror);
+    assert!(WITCH_LEFT_LEG[0].mirror);
 }
 
 #[test]
@@ -142,7 +91,7 @@ fn witch_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_WITCH);
     assert_eq!(passes[0].texture, WITCH_TEXTURE_REF);
-    assert_eq!(passes[0].parts, WITCH_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -155,57 +104,19 @@ fn witch_textured_layer_pass_matches_vanilla_renderer_model_layer() {
 fn witch_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_WITCH, "minecraft:witch#main");
     assert_eq!(WITCH_TEXTURE_REF.size, [64, 128]);
-    assert_eq!(WITCH_TEXTURED_PARTS.len(), 5);
-    assert_eq!(
-        WITCH_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -10.0, -4.0],
-            size: [8.0, 10.0, 8.0],
-            uv_size: [8.0, 10.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        WITCH_TEXTURED_HAT_4[0],
-        TexturedModelCubeDesc {
-            min: [-0.25, -0.25, -0.25],
-            size: [1.5, 2.5, 1.5],
-            uv_size: [1.0, 2.0, 1.0],
-            tex: [0.0, 95.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        WITCH_TEXTURED_MOLE[0],
-        TexturedModelCubeDesc {
-            min: [0.25, 3.25, -6.5],
-            size: [0.5, 0.5, 0.5],
-            uv_size: [1.0, 1.0, 1.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        WITCH_TEXTURED_LEFT_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, 0.0, -2.0],
-            size: [4.0, 12.0, 4.0],
-            uv_size: [4.0, 12.0, 4.0],
-            tex: [0.0, 22.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(WITCH_TEXTURED_PARTS[0].pose, WITCH_PARTS[0].pose);
-    assert_eq!(
-        WITCH_TEXTURED_HEAD_CHILDREN[0].pose,
-        WITCH_HEAD_CHILDREN[0].pose
-    );
-    assert_eq!(
-        WITCH_TEXTURED_HAT_3_CHILDREN[0].pose,
-        WITCH_HAT_3_CHILDREN[0].pose
-    );
-    assert_eq!(WITCH_TEXTURED_PARTS[4].pose, WITCH_PARTS[4].pose);
+    // The unified cubes carry the textured UV sources (`uv_size`/`texOffs`/`mirror`) merged into the
+    // colored geometry.
+    assert_eq!(WITCH_HEAD[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(WITCH_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(WITCH_HAT_4[0].uv_size, [1.0, 2.0, 1.0]);
+    assert_eq!(WITCH_HAT_4[0].tex, [0.0, 95.0]);
+    assert_eq!(WITCH_MOLE[0].uv_size, [1.0, 1.0, 1.0]);
+    assert_eq!(WITCH_MOLE[0].tex, [0.0, 0.0]);
+    assert_eq!(WITCH_LEFT_LEG[0].uv_size, [4.0, 12.0, 4.0]);
+    assert_eq!(WITCH_LEFT_LEG[0].tex, [0.0, 22.0]);
+    assert!(WITCH_LEFT_LEG[0].mirror);
+    assert_eq!(WITCH_JACKET[0].uv_size, [8.0, 20.0, 6.0]);
+    assert_eq!(WITCH_JACKET[0].tex, [0.0, 38.0]);
 }
 
 #[test]
@@ -325,9 +236,8 @@ fn witch_nose_bob_pose_matches_vanilla_formula() {
     //   nose.xRot = sin(ageInTicks * speed) * 4.5°;
     //   nose.zRot = cos(ageInTicks * speed) * 2.5°.
     // Both are SET absolutely (the base nose pose carries rotation [0, 0, 0]); the yRot and
-    // the offset are preserved. The nose is head child 1, after the hat.
-    assert_eq!(WITCH_NOSE_CHILD_INDEX, 1);
-    let base = WITCH_HEAD_CHILDREN[WITCH_NOSE_CHILD_INDEX].pose;
+    // the offset are preserved. The nose is the head's `nose` child (after the hat chain).
+    let base = WITCH_NOSE_POSE;
     assert_eq!(base.offset, [0.0, -2.0, 0.0]);
     assert_eq!(base.rotation, [0.0, 0.0, 0.0]);
 

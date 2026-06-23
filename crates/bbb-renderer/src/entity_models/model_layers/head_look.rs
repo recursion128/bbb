@@ -25,22 +25,6 @@ pub(in crate::entity_models) const fn piglin_head_part_index(baby_layout: bool) 
     }
 }
 
-/// Head-part index for the `VillagerModel`/`IllagerModel`/`WitchModel` family.
-/// The adult villager, wandering trader, witch, and illager body layers list the
-/// head first; the baby villager layout lists the arms container and legs first,
-/// so the head is at index 3. (Witch and illagers have no baby layout.) The villager
-/// and illager now build named-children trees and resolve the head by name; this is
-/// retained only as the reference the head-look unit test asserts the witch's
-/// head-first layout against.
-#[cfg(test)]
-pub(in crate::entity_models) const fn villager_head_part_index(baby: bool) -> usize {
-    if baby {
-        3
-    } else {
-        0
-    }
-}
-
 /// `PlayerModel` head-part index. The wide and slim player body layers list the
 /// head first; visibility filtering only toggles the overlay children, never the
 /// base part order.
@@ -462,10 +446,6 @@ pub(in crate::entity_models) fn piglin_ear_flap_pose(
     }
 }
 
-/// Index of the nose within the witch head's children. `WitchModel` lists the hat at `0`
-/// and the nose (which parents the mole) at `1`.
-pub(in crate::entity_models) const WITCH_NOSE_CHILD_INDEX: usize = 1;
-
 /// Vanilla `WitchModel.setupAnim` idle nose bob: a per-entity `speed = 0.01 * (entityId %
 /// 10)` drives `nose.xRot = sin(ageInTicks * speed) * 4.5°` and `nose.zRot =
 /// cos(ageInTicks * speed) * 2.5°` (degrees → radians), *set* absolutely (overriding the
@@ -523,31 +503,11 @@ pub(in crate::entity_models) fn half_amplitude_leg_swing_pose(
 }
 
 /// Vanilla villager-family (`VillagerModel`/`IllagerModel`/`WitchModel`) leg swing applied to a model
-/// root's leg children at `leg_indices` ([`half_amplitude_leg_swing_pose`]). A no-op while the limbs
-/// are at rest (`walkAnimationSpeed == 0`).
+/// root's two named leg children `right_leg`/`left_leg` ([`half_amplitude_leg_swing_pose`]). Shared by
+/// the villager-family models, which build a unified tree with the vanilla child names. A no-op while
+/// the limbs are at rest (`walkAnimationSpeed == 0`). The swing resolves each leg's phase from its own
+/// offset, so the two names may be declared in any order.
 pub(in crate::entity_models) fn apply_half_amplitude_leg_swing(
-    root: &mut ModelPart,
-    leg_indices: [usize; 2],
-    walk_animation_pos: f32,
-    walk_animation_speed: f32,
-) {
-    if limb_swing_at_rest(walk_animation_speed) {
-        return;
-    }
-    for index in leg_indices {
-        let leg = root.child_at_mut(index);
-        leg.pose =
-            half_amplitude_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
-    }
-}
-
-/// Vanilla villager-family (`VillagerModel`/`IllagerModel`/`WitchModel`) leg swing applied to a
-/// model root's two named leg children `right_leg`/`left_leg` ([`half_amplitude_leg_swing_pose`]).
-/// The named counterpart of [`apply_half_amplitude_leg_swing`] for the villager-family models that
-/// build a unified tree with the vanilla child names. A no-op while the limbs are at rest
-/// (`walkAnimationSpeed == 0`). The swing resolves each leg's phase from its own offset, so the two
-/// names may be declared in any order.
-pub(in crate::entity_models) fn apply_half_amplitude_leg_swing_named(
     root: &mut ModelPart,
     walk_animation_pos: f32,
     walk_animation_speed: f32,

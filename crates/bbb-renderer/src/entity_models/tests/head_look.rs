@@ -37,15 +37,6 @@ fn head_part_indices_match_vanilla_body_layers() {
         BOGGED_HEAD.as_slice()
     );
 
-    // Adult villager/wandering-trader/witch/illager list the head first; the
-    // baby villager layout lists arms/legs first, with the head at index 3.
-    assert_eq!(villager_head_part_index(false), 0);
-    assert_eq!(villager_head_part_index(true), 3);
-    assert_eq!(
-        WITCH_PARTS[villager_head_part_index(false)].cubes,
-        WITCH_HEAD.as_slice()
-    );
-
     // The wide and slim player layers both list the head first.
     assert_eq!(player_head_part_index(), 0);
     assert_eq!(
