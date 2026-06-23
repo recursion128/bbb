@@ -189,8 +189,8 @@ impl ModelPart {
     /// textured tree reuses the colored poses). Each unified cube takes its geometry/color from the
     /// colored cube and its UV from the paired textured cube. This lets a dual-path entity reuse its
     /// existing baked cube consts verbatim while collapsing its two hand-walked `emit_*` functions
-    /// into one mutable tree driven by a single `setup_anim`. Children are addressed positionally via
-    /// [`ModelPart::child_at_mut`] (named by index). Panics if the two trees disagree in shape.
+    /// into one mutable tree driven by a single `setup_anim`. Children are named by index. Panics if
+    /// the two trees disagree in shape.
     pub(in crate::entity_models) fn from_descs(
         colored: &ModelPartDesc,
         textured: &TexturedModelPartDesc,
@@ -270,8 +270,8 @@ impl ModelPart {
     }
 
     /// Builds a colored-only root [`ModelPart`] over a flat list of sibling [`ModelPartDesc`] trees,
-    /// for an entity with no textured path. The siblings hang off a synthetic identity root, addressed
-    /// positionally via [`ModelPart::child_at_mut`].
+    /// for an entity with no textured path. The siblings hang off a synthetic identity root, named by
+    /// index.
     pub(in crate::entity_models) fn root_from_colored_descs(colored: &[ModelPartDesc]) -> Self {
         let children = colored
             .iter()
@@ -288,9 +288,8 @@ impl ModelPart {
     }
 
     /// Builds a synthetic identity root over a flat list of already-built sibling parts, named by
-    /// index for positional [`ModelPart::child_at_mut`] access. For a model whose parts are computed at
-    /// construction (the pufferfish puff states pick one of three part lists) rather than declared as
-    /// `&'static` descs.
+    /// index. For a model whose parts are computed at construction rather than declared as `&'static`
+    /// descs.
     pub(in crate::entity_models) fn root_from_parts(children: Vec<ModelPart>) -> Self {
         let children = children
             .into_iter()
@@ -304,12 +303,6 @@ impl ModelPart {
             children,
             visible: true,
         }
-    }
-
-    /// Vanilla `ModelPart.getChild` by position: a mutable handle to the `index`-th direct child.
-    /// Pairs with the entities' existing `*_PART_INDEX` constants. Panics if out of range.
-    pub(in crate::entity_models) fn child_at_mut(&mut self, index: usize) -> &mut ModelPart {
-        &mut self.children[index].1
     }
 
     /// Vanilla `ModelPart.resetPose` over the whole subtree: restores the bind pose and visibility
