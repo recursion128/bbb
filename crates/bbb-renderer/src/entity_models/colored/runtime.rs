@@ -2126,18 +2126,14 @@ fn emit_boat_model(
     family: BoatModelFamily,
     chest: bool,
 ) {
-    let transform = boat_model_root_transform(instance);
-    if family == BoatModelFamily::Bamboo {
-        emit_model_parts(mesh, &RAFT_COMMON_PARTS, transform);
-        if chest {
-            emit_model_parts(mesh, &RAFT_CHEST_PARTS, transform);
-        }
-    } else {
-        emit_model_parts(mesh, &BOAT_COMMON_PARTS, transform);
-        if chest {
-            emit_model_parts(mesh, &BOAT_CHEST_PARTS, transform);
-        }
-    }
+    // The unified `BoatModel` tree drives both render paths; `new` selects the boat / raft / chest tree.
+    // The boat is a static mesh (the vanilla paddle swing is deferred), so the colored fallback just
+    // renders the baked wood-colored tree at its bind pose.
+    BoatModel::new(family, chest).prepare_and_render(
+        mesh,
+        &instance,
+        boat_model_root_transform(instance),
+    );
 }
 
 fn emit_placeholder_bounds_model(

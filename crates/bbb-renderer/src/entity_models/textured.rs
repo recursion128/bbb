@@ -25,7 +25,7 @@ use super::{
         limb_swing_at_rest, parched_head_part_index, quadruped_leg_swing_pose,
         skeleton_head_part_index, wolf_angry_tail_pose, wolf_sitting_part_roles,
         wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, ArmorStandModel, BatModel,
-        BeeModel, BlazeModel, BreezeModel, CamelModel, ChickenModel, CodModel, CowModel,
+        BeeModel, BlazeModel, BoatModel, BreezeModel, CamelModel, ChickenModel, CodModel, CowModel,
         CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
         HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
         MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
@@ -390,9 +390,21 @@ fn emit_boat_textured_model(
     chest: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `BoatModel` tree drives both render paths; `new` selects the boat / raft / chest tree.
+    // The boat is a single cutout pass; the per-family / chest texture comes from the pass.
     let transform = boat_model_root_transform(instance);
+    let mut model = BoatModel::new(family, chest);
+    model.prepare(&instance);
     for pass in boat_textured_layer_passes(family, chest) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
     }
 }
 
