@@ -1,4 +1,4 @@
-use super::{apply_quadruped_leg_swing_named, PartPose, PART_POSE_ZERO, SHEEP_WOOL};
+use super::{apply_quadruped_leg_swing, PartPose, PART_POSE_ZERO, SHEEP_WOOL};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -354,7 +354,7 @@ fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInst
             render_state.head_pitch,
         );
     }
-    apply_quadruped_leg_swing_named(
+    apply_quadruped_leg_swing(
         root,
         render_state.walk_animation_pos,
         render_state.walk_animation_speed,

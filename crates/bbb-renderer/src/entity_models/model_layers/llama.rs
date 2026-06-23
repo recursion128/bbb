@@ -1,6 +1,4 @@
-use super::{
-    apply_head_look, apply_quadruped_leg_swing_named, PartPose, LLAMA_CREAMY, PART_POSE_ZERO,
-};
+use super::{apply_head_look, apply_quadruped_leg_swing, PartPose, LLAMA_CREAMY, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -274,7 +272,7 @@ fn llama_tree(baby: bool, has_chest: bool) -> ModelPart {
 /// Mutable llama model, mirroring vanilla `LlamaModel` (a `QuadrupedModel`, shared by the trader
 /// llama). The unified tree is built for `baby`/`has_chest` ([`llama_tree`]) with the vanilla child
 /// names. `setup_anim` looks the head ([`apply_head_look`] on `head`) and swings the four legs
-/// ([`apply_quadruped_leg_swing_named`]). The family/variant choose only the recolor or texture; the
+/// ([`apply_quadruped_leg_swing`]). The family/variant choose only the recolor or texture; the
 /// chest visibility rides the tree choice.
 pub(in crate::entity_models) struct LlamaModel {
     root: ModelPart,
@@ -304,7 +302,7 @@ impl EntityModel for LlamaModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_quadruped_leg_swing_named(
+        apply_quadruped_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

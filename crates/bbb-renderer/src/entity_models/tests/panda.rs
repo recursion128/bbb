@@ -1,51 +1,34 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn panda_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `PandaModel.createBodyLayer` (atlas 64×64): six flat root parts in `QuadrupedModel`
-    // order — head, body, and four legs.
-    assert_eq!(PANDA_PARTS.len(), 6);
+    // Vanilla `PandaModel.createBodyLayer` (atlas 64×64): the head (carrying the skull, muzzle, and two
+    // ears), the pitched body, and four legs sharing one box — nine cubes, built into the named tree.
 
     // `head` (offset (0, 11.5, -17)): the 13×10×9 skull, the 7×5×2 muzzle, and the two 5×4×1 ears.
-    let head = &PANDA_PARTS[0];
-    assert_eq!(head.pose.offset, [0.0, 11.5, -17.0]);
-    assert_eq!(head.pose.rotation, [0.0, 0.0, 0.0]);
-    assert_eq!(head.cubes.len(), 4);
-    assert_eq!(head.cubes[0].min, [-6.5, -5.0, -4.0]);
-    assert_eq!(head.cubes[0].size, [13.0, 10.0, 9.0]);
-    assert_eq!(head.cubes[1].min, [-3.5, 0.0, -6.0]);
-    assert_eq!(head.cubes[1].size, [7.0, 5.0, 2.0]);
-    assert_eq!(head.cubes[2].min, [3.5, -8.0, -1.0]);
-    assert_eq!(head.cubes[3].min, [-8.5, -8.0, -1.0]);
-    assert_eq!(head.cubes[2].size, [5.0, 4.0, 1.0]);
-    assert!(head.children.is_empty());
+    assert_eq!(PANDA_HEAD_POSE.offset, [0.0, 11.5, -17.0]);
+    assert_eq!(PANDA_HEAD_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_eq!(PANDA_HEAD_CUBES.len(), 4);
+    assert_eq!(PANDA_HEAD_CUBES[0].min, [-6.5, -5.0, -4.0]);
+    assert_eq!(PANDA_HEAD_CUBES[0].size, [13.0, 10.0, 9.0]);
+    assert_eq!(PANDA_HEAD_CUBES[1].min, [-3.5, 0.0, -6.0]);
+    assert_eq!(PANDA_HEAD_CUBES[1].size, [7.0, 5.0, 2.0]);
+    assert_eq!(PANDA_HEAD_CUBES[2].min, [3.5, -8.0, -1.0]);
+    assert_eq!(PANDA_HEAD_CUBES[3].min, [-8.5, -8.0, -1.0]);
+    assert_eq!(PANDA_HEAD_CUBES[2].size, [5.0, 4.0, 1.0]);
 
     // `body` (offset (0, 10, 0), pitched π/2): the 19×26×13 trunk.
-    let body = &PANDA_PARTS[1];
-    assert_eq!(body.pose.offset, [0.0, 10.0, 0.0]);
-    assert_eq!(body.pose.rotation, [std::f32::consts::FRAC_PI_2, 0.0, 0.0]);
-    assert_eq!(body.cubes[0].min, [-9.5, -13.0, -6.5]);
-    assert_eq!(body.cubes[0].size, [19.0, 26.0, 13.0]);
+    assert_eq!(PANDA_BODY_POSE.offset, [0.0, 10.0, 0.0]);
+    assert_eq!(
+        PANDA_BODY_POSE.rotation,
+        [std::f32::consts::FRAC_PI_2, 0.0, 0.0]
+    );
+    assert_eq!(PANDA_BODY_CUBES[0].min, [-9.5, -13.0, -6.5]);
+    assert_eq!(PANDA_BODY_CUBES[0].size, [19.0, 26.0, 13.0]);
 
-    // The four legs share one 6×9×6 box; right-hind/left-hind at z=9, right-front/left-front at z=-9.
-    assert_eq!(PANDA_PARTS[2].pose.offset, [-5.5, 15.0, 9.0]);
-    assert_eq!(PANDA_PARTS[3].pose.offset, [5.5, 15.0, 9.0]);
-    assert_eq!(PANDA_PARTS[4].pose.offset, [-5.5, 15.0, -9.0]);
-    assert_eq!(PANDA_PARTS[5].pose.offset, [5.5, 15.0, -9.0]);
-    for leg in &PANDA_PARTS[2..6] {
-        assert_eq!(leg.cubes[0].min, [-3.0, 0.0, -3.0]);
-        assert_eq!(leg.cubes[0].size, [6.0, 9.0, 6.0]);
-    }
-
-    // Nine cubes (head 4, body 1, four legs 1 each).
-    assert_eq!(count_cubes(&PANDA_PARTS), 9);
+    // The four legs share one 6×9×6 box.
+    assert_eq!(PANDA_LEG_CUBES[0].min, [-3.0, 0.0, -3.0]);
+    assert_eq!(PANDA_LEG_CUBES[0].size, [6.0, 9.0, 6.0]);
 }
 
 #[test]
@@ -147,29 +130,21 @@ fn panda_walk_swings_only_the_legs() {
 fn baby_panda_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `BabyPandaModel.createBodyLayer` (atlas 64×64): the `QuadrupedModel` baby convention lists
     // the body FIRST then the head, and the baby body carries no π/2 pitch.
-    assert_eq!(BABY_PANDA_PARTS.len(), 6);
 
-    // `body` (0, no pitch): the 9×7×11 trunk.
-    let body = &BABY_PANDA_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 18.5, 2.5]);
-    assert_eq!(body.pose.rotation, [0.0, 0.0, 0.0]);
-    assert_eq!(body.cubes[0].size, [9.0, 7.0, 11.0]);
+    // `body` (no pitch): the 9×7×11 trunk.
+    assert_eq!(BABY_PANDA_BODY_POSE.offset, [0.0, 18.5, 2.5]);
+    assert_eq!(BABY_PANDA_BODY_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_eq!(BABY_PANDA_BODY_CUBES[0].size, [9.0, 7.0, 11.0]);
 
-    // `head` (1): the 7×6×5 skull, the 4×2×1 muzzle, and the two 3×3×1 ears.
-    let head = &BABY_PANDA_PARTS[1];
-    assert_eq!(head.pose.offset, [0.0, 19.0, -3.0]);
-    assert_eq!(head.cubes.len(), 4);
-    assert_eq!(head.cubes[0].size, [7.0, 6.0, 5.0]);
-    assert_eq!(head.cubes[2].min, [-4.5, -4.0, -3.5]);
-    assert_eq!(head.cubes[3].min, [1.5, -4.0, -3.5]);
+    // `head`: the 7×6×5 skull, the 4×2×1 muzzle, and the two 3×3×1 ears.
+    assert_eq!(BABY_PANDA_HEAD_POSE.offset, [0.0, 19.0, -3.0]);
+    assert_eq!(BABY_PANDA_HEAD_CUBES.len(), 4);
+    assert_eq!(BABY_PANDA_HEAD_CUBES[0].size, [7.0, 6.0, 5.0]);
+    assert_eq!(BABY_PANDA_HEAD_CUBES[2].min, [-4.5, -4.0, -3.5]);
+    assert_eq!(BABY_PANDA_HEAD_CUBES[3].min, [1.5, -4.0, -3.5]);
 
-    // The four legs (2..=5), the 3×2×3 box.
-    assert_eq!(BABY_PANDA_PARTS[2].pose.offset, [-3.0, 22.0, 6.5]);
-    assert_eq!(BABY_PANDA_PARTS[5].pose.offset, [3.0, 22.0, -1.5]);
-    assert_eq!(BABY_PANDA_PARTS[2].cubes[0].size, [3.0, 2.0, 3.0]);
-
-    // Nine cubes (head 4, body 1, four legs).
-    assert_eq!(count_cubes(&BABY_PANDA_PARTS), 9);
+    // The four legs share the 3×2×3 box.
+    assert_eq!(BABY_PANDA_LEG_CUBES[0].size, [3.0, 2.0, 3.0]);
 }
 
 #[test]

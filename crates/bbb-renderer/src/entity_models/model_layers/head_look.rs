@@ -194,30 +194,12 @@ pub(in crate::entity_models) fn apply_head_look(
     head.pose = head_look_pose(head.pose, head_yaw_deg, head_pitch_deg);
 }
 
-/// Vanilla `QuadrupedModel.setupAnim` leg swing applied to a model root's four leg children at
-/// `leg_indices` ([`quadruped_leg_swing_pose`]). A no-op while the limbs are at rest
-/// (`walkAnimationSpeed == 0`), matching the static leg pose.
-pub(in crate::entity_models) fn apply_quadruped_leg_swing(
-    root: &mut ModelPart,
-    leg_indices: [usize; 4],
-    walk_animation_pos: f32,
-    walk_animation_speed: f32,
-) {
-    if limb_swing_at_rest(walk_animation_speed) {
-        return;
-    }
-    for index in leg_indices {
-        let leg = root.child_at_mut(index);
-        leg.pose = quadruped_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
-    }
-}
-
 /// Vanilla `QuadrupedModel.setupAnim` leg swing applied to a model root's four named leg children
-/// ([`quadruped_leg_swing_pose`]). The named counterpart of [`apply_quadruped_leg_swing`] for the
-/// quadruped family models that build a unified tree with the vanilla `QuadrupedModel` child names.
-/// A no-op while the limbs are at rest (`walkAnimationSpeed == 0`). The swing resolves each leg's
-/// phase from its own offset, so the four names may be declared in any order.
-pub(in crate::entity_models) fn apply_quadruped_leg_swing_named(
+/// ([`quadruped_leg_swing_pose`]). Shared by the quadruped family models, which build a unified tree
+/// with the vanilla `QuadrupedModel` child names. A no-op while the limbs are at rest
+/// (`walkAnimationSpeed == 0`). The swing resolves each leg's phase from its own offset, so the four
+/// names may be declared in any order.
+pub(in crate::entity_models) fn apply_quadruped_leg_swing(
     root: &mut ModelPart,
     walk_animation_pos: f32,
     walk_animation_speed: f32,

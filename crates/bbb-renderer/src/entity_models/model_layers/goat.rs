@@ -1,5 +1,5 @@
 use super::{
-    apply_head_look, apply_quadruped_leg_swing_named, PartPose, GOAT_BEARD, GOAT_HORN, GOAT_WHITE,
+    apply_head_look, apply_quadruped_leg_swing, PartPose, GOAT_BEARD, GOAT_HORN, GOAT_WHITE,
     PART_POSE_ZERO,
 };
 use crate::entity_models::instances::EntityModelInstance;
@@ -372,7 +372,7 @@ fn baby_goat_tree() -> ModelPart {
 
 /// Mutable goat model, mirroring vanilla `GoatModel` (a `QuadrupedModel`). The unified tree is built
 /// with the vanilla child names for the selected `baby` layout. `setup_anim` looks the head
-/// ([`apply_head_look`] on `head`), swings the four legs ([`apply_quadruped_leg_swing_named`]), and
+/// ([`apply_head_look`] on `head`), swings the four legs ([`apply_quadruped_leg_swing`]), and
 /// toggles each horn (a `head` child) via the [`ModelPart::visible`] flag from the `left_horn`/
 /// `right_horn` flags — vanilla hides the screaming-goat-only horns a polled goat lacks. The ramming
 /// head tilt is a deferred event animation.
@@ -413,7 +413,7 @@ impl EntityModel for GoatModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_quadruped_leg_swing_named(
+        apply_quadruped_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

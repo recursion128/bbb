@@ -1,6 +1,4 @@
-use super::{
-    apply_head_look, apply_quadruped_leg_swing_named, PartPose, CREEPER_GREEN, PART_POSE_ZERO,
-};
+use super::{apply_head_look, apply_quadruped_leg_swing, PartPose, CREEPER_GREEN, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -55,7 +53,7 @@ fn creeper_leg(offset: [f32; 3]) -> ModelPart {
 /// Mutable creeper model, mirroring vanilla `CreeperModel`. The unified tree is built once with the
 /// vanilla `QuadrupedModel` child names: `head`, `body`, then the four legs. `setup_anim` follows the
 /// head look ([`apply_head_look`] on `head`) and applies the standard `QuadrupedModel` leg swing
-/// ([`apply_quadruped_leg_swing_named`]). The `CreeperRenderer.scale` swell inflate-and-flicker is
+/// ([`apply_quadruped_leg_swing`]). The `CreeperRenderer.scale` swell inflate-and-flicker is
 /// folded into the root transform (`creeper_model_root_transform`); the powered charge layer is
 /// deferred.
 pub(in crate::entity_models) struct CreeperModel {
@@ -100,7 +98,7 @@ impl EntityModel for CreeperModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_quadruped_leg_swing_named(
+        apply_quadruped_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

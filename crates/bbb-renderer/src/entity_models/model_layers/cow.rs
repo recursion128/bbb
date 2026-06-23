@@ -1,4 +1,4 @@
-use super::{apply_head_look, apply_quadruped_leg_swing_named, PartPose, PART_POSE_ZERO};
+use super::{apply_head_look, apply_quadruped_leg_swing, PartPose, PART_POSE_ZERO};
 use crate::entity_models::catalog::CowModelVariant;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
@@ -413,7 +413,7 @@ fn leg_body(cubes: &[ModelCube]) -> ModelPart {
 
 /// Mutable cow model, mirroring vanilla `CowModel` (a `QuadrupedModel`). The unified tree is built
 /// for the selected `variant`/`baby` layout with the vanilla child names. `setup_anim` looks the
-/// head ([`apply_head_look`] on `head`) and swings the four legs ([`apply_quadruped_leg_swing_named`]).
+/// head ([`apply_head_look`] on `head`) and swings the four legs ([`apply_quadruped_leg_swing`]).
 pub(in crate::entity_models) struct CowModel {
     root: ModelPart,
 }
@@ -442,7 +442,7 @@ impl EntityModel for CowModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_quadruped_leg_swing_named(
+        apply_quadruped_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,

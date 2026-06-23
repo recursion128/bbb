@@ -1,5 +1,5 @@
 use super::{
-    apply_head_look, apply_quadruped_leg_swing_named, PartPose, PART_POSE_ZERO, POLAR_BEAR_WHITE,
+    apply_head_look, apply_quadruped_leg_swing, PartPose, PART_POSE_ZERO, POLAR_BEAR_WHITE,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
@@ -311,7 +311,7 @@ pub(in crate::entity_models) fn apply_polar_bear_standing_pose(
 /// Mutable polar bear model, mirroring vanilla `PolarBearModel` (a `QuadrupedModel`). The unified tree
 /// is built for the selected `baby` layout with the vanilla child names ([`polar_bear_tree`]).
 /// `setup_anim` runs the `QuadrupedModel` head look ([`apply_head_look`] on `head`) and four-leg swing
-/// ([`apply_quadruped_leg_swing_named`]), then — when standing — adds the rear-up deltas on top
+/// ([`apply_quadruped_leg_swing`]), then — when standing — adds the rear-up deltas on top
 /// ([`apply_polar_bear_standing_pose`] over [`polar_bear_standing_part_roles`]), driven by the
 /// projected `standScale`. The per-size scale (adult only) lives in the root transform.
 pub(in crate::entity_models) struct PolarBearModel {
@@ -344,7 +344,7 @@ impl EntityModel for PolarBearModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        apply_quadruped_leg_swing_named(
+        apply_quadruped_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
