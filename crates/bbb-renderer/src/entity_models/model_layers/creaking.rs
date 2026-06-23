@@ -3,7 +3,7 @@ use super::super::keyframe::{
     sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
     Keyframe, KeyframeInterpolation,
 };
-use super::{bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, CREAKING_BARK};
+use super::{model_cube as cube, ModelCubeDesc, PartPose, CREAKING_BARK, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
 
@@ -19,7 +19,7 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // (`createEyesLayer`, the `head` part only) and the texture-backed path are also deferred.
 
 // `head`: the 6×10×6 skull, the 6×3×6 brow, and two 9×14×0 antler/branch planes.
-const CREAKING_HEAD_CUBES: [ModelCubeDesc; 4] = [
+pub(in crate::entity_models) const CREAKING_HEAD_CUBES: [ModelCubeDesc; 4] = [
     cube([-3.0, -10.0, -3.0], [6.0, 10.0, 6.0], CREAKING_BARK),
     cube([-3.0, -13.0, -3.0], [6.0, 3.0, 6.0], CREAKING_BARK),
     cube([3.0, -13.0, 0.0], [9.0, 14.0, 0.0], CREAKING_BARK),
@@ -27,61 +27,126 @@ const CREAKING_HEAD_CUBES: [ModelCubeDesc; 4] = [
 ];
 
 // `body`: the 6×13×5 trunk plus the 6×7×5 upper block.
-const CREAKING_BODY_CUBES: [ModelCubeDesc; 2] = [
+pub(in crate::entity_models) const CREAKING_BODY_CUBES: [ModelCubeDesc; 2] = [
     cube([0.0, -3.0, -3.0], [6.0, 13.0, 5.0], CREAKING_BARK),
     cube([-6.0, -4.0, -3.0], [6.0, 7.0, 5.0], CREAKING_BARK),
 ];
 
 // `right_arm`: a 3×21×3 limb plus a 3×4×3 hand.
-const CREAKING_RIGHT_ARM_CUBES: [ModelCubeDesc; 2] = [
+pub(in crate::entity_models) const CREAKING_RIGHT_ARM_CUBES: [ModelCubeDesc; 2] = [
     cube([-2.0, -1.5, -1.5], [3.0, 21.0, 3.0], CREAKING_BARK),
     cube([-2.0, 19.5, -1.5], [3.0, 4.0, 3.0], CREAKING_BARK),
 ];
 
 // `left_arm`: a 3×16×3 limb with a 3×4×3 shoulder block and a 3×4×3 hand.
-const CREAKING_LEFT_ARM_CUBES: [ModelCubeDesc; 3] = [
+pub(in crate::entity_models) const CREAKING_LEFT_ARM_CUBES: [ModelCubeDesc; 3] = [
     cube([0.0, -1.0, -1.5], [3.0, 16.0, 3.0], CREAKING_BARK),
     cube([0.0, -5.0, -1.5], [3.0, 4.0, 3.0], CREAKING_BARK),
     cube([0.0, 15.0, -1.5], [3.0, 4.0, 3.0], CREAKING_BARK),
 ];
 
 // `left_leg`: a 3×16×3 limb plus a 5×0×9 foot plane.
-const CREAKING_LEFT_LEG_CUBES: [ModelCubeDesc; 2] = [
+pub(in crate::entity_models) const CREAKING_LEFT_LEG_CUBES: [ModelCubeDesc; 2] = [
     cube([-1.5, 0.0, -1.5], [3.0, 16.0, 3.0], CREAKING_BARK),
     cube([-1.5, 15.7, -4.5], [5.0, 0.0, 9.0], CREAKING_BARK),
 ];
 
 // `right_leg`: a 3×19×3 limb, a 5×0×9 foot plane, and a 3×3×3 hip block.
-const CREAKING_RIGHT_LEG_CUBES: [ModelCubeDesc; 3] = [
+pub(in crate::entity_models) const CREAKING_RIGHT_LEG_CUBES: [ModelCubeDesc; 3] = [
     cube([-3.0, -1.5, -1.5], [3.0, 19.0, 3.0], CREAKING_BARK),
     cube([-5.0, 17.2, -4.5], [5.0, 0.0, 9.0], CREAKING_BARK),
     cube([-3.0, -4.5, -1.5], [3.0, 3.0, 3.0], CREAKING_BARK),
 ];
 
-// `upper_body` children: head, body, and the two arms.
-const CREAKING_UPPER_BODY_CHILDREN: [ModelPartDesc; 4] = [
-    part([-3.0, -11.0, 0.0], &CREAKING_HEAD_CUBES, &[]),
-    part([0.0, -7.0, 1.0], &CREAKING_BODY_CUBES, &[]),
-    part([-7.0, -9.5, 1.5], &CREAKING_RIGHT_ARM_CUBES, &[]),
-    part([6.0, -9.0, 0.5], &CREAKING_LEFT_ARM_CUBES, &[]),
-];
+/// Vanilla `CreakingModel.createBodyLayer` rest-pose hierarchy, rooted at the `root` part. Sixteen
+/// cubes. Each part's bind pose:
+/// `root` part pose: `PartPose.offset(0, 24, 0)`.
+pub(in crate::entity_models) const CREAKING_ROOT_POSE: PartPose = PartPose {
+    offset: [0.0, 24.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `upper_body` empty pivot pose: `PartPose.offset(-1, -19, 0)`.
+pub(in crate::entity_models) const CREAKING_UPPER_BODY_POSE: PartPose = PartPose {
+    offset: [-1.0, -19.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `head` part pose: `PartPose.offset(-3, -11, 0)`.
+pub(in crate::entity_models) const CREAKING_HEAD_POSE: PartPose = PartPose {
+    offset: [-3.0, -11.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `body` part pose: `PartPose.offset(0, -7, 1)`.
+pub(in crate::entity_models) const CREAKING_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, -7.0, 1.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_arm` part pose: `PartPose.offset(-7, -9.5, 1.5)`.
+pub(in crate::entity_models) const CREAKING_RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-7.0, -9.5, 1.5],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_arm` part pose: `PartPose.offset(6, -9, 0.5)`.
+pub(in crate::entity_models) const CREAKING_LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [6.0, -9.0, 0.5],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `left_leg` part pose: `PartPose.offset(1.5, -16, 0.5)`.
+pub(in crate::entity_models) const CREAKING_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [1.5, -16.0, 0.5],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `right_leg` part pose: `PartPose.offset(-1, -17.5, 0.5)`.
+pub(in crate::entity_models) const CREAKING_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-1.0, -17.5, 0.5],
+    rotation: [0.0, 0.0, 0.0],
+};
 
-// `root` children: the `upper_body` pivot and the two legs.
-const CREAKING_ROOT_CHILDREN: [ModelPartDesc; 3] = [
-    part([-1.0, -19.0, 0.0], &[], &CREAKING_UPPER_BODY_CHILDREN),
-    part([1.5, -16.0, 0.5], &CREAKING_LEFT_LEG_CUBES, &[]),
-    part([-1.0, -17.5, 0.5], &CREAKING_RIGHT_LEG_CUBES, &[]),
-];
-
-/// Vanilla `CreakingModel.createBodyLayer` rest-pose hierarchy, rooted at the `root` part
-/// (`offset(0, 24, 0)`). Sixteen cubes.
-pub(in crate::entity_models) const CREAKING_PARTS: [ModelPartDesc; 1] =
-    [part([0.0, 24.0, 0.0], &[], &CREAKING_ROOT_CHILDREN)];
+/// Builds the creaking's named part tree: the cubeless `root` pivot parenting the cubeless
+/// `upper_body` pivot (which parents `head`, `body`, `right_arm`, `left_arm`) and the two legs.
+fn creaking_root() -> ModelPart {
+    let upper_body = ModelPart::new(
+        CREAKING_UPPER_BODY_POSE,
+        Vec::new(),
+        vec![
+            (
+                "head",
+                ModelPart::leaf_colored(CREAKING_HEAD_POSE, &CREAKING_HEAD_CUBES),
+            ),
+            (
+                "body",
+                ModelPart::leaf_colored(CREAKING_BODY_POSE, &CREAKING_BODY_CUBES),
+            ),
+            (
+                "right_arm",
+                ModelPart::leaf_colored(CREAKING_RIGHT_ARM_POSE, &CREAKING_RIGHT_ARM_CUBES),
+            ),
+            (
+                "left_arm",
+                ModelPart::leaf_colored(CREAKING_LEFT_ARM_POSE, &CREAKING_LEFT_ARM_CUBES),
+            ),
+        ],
+    );
+    ModelPart::new(
+        CREAKING_ROOT_POSE,
+        Vec::new(),
+        vec![
+            ("upper_body", upper_body),
+            (
+                "left_leg",
+                ModelPart::leaf_colored(CREAKING_LEFT_LEG_POSE, &CREAKING_LEFT_LEG_CUBES),
+            ),
+            (
+                "right_leg",
+                ModelPart::leaf_colored(CREAKING_RIGHT_LEG_POSE, &CREAKING_RIGHT_LEG_CUBES),
+            ),
+        ],
+    )
+}
 
 // ----- `CreakingAnimation.CREAKING_WALK` (length 1.125s, looping). All keyframes are LINEAR. The
-// animated bones map to the part tree as: `upper_body` = root child 0, `left_leg`/`right_leg` = root
-// children 1/2, `head`/`right_arm`/`left_arm` = upper_body children 0/2/3 (the `body`, child 1, is
-// not animated). The `head` rotation channel adds onto the head look. -----
+// animated bones map to the named part tree as: `upper_body`, `left_leg`, `right_leg` (the `root`
+// children) and `head`, `right_arm`, `left_arm` (the `upper_body` children); the `body` is not
+// animated. The `head` rotation channel adds onto the head look. -----
 
 const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
 
@@ -220,9 +285,10 @@ pub(in crate::entity_models) const CREAKING_WALK: AnimationDefinition = Animatio
 
 /// Mutable creaking model, mirroring vanilla `CreakingModel`. The cubeless `root` part (parenting
 /// the empty `upper_body` pivot and the two legs; `upper_body` parents head, body, and two arms)
-/// hangs off a synthetic root, built from the baked [`CREAKING_PARTS`] geometry. Colored-only:
+/// hangs off a synthetic root, built from the baked colored geometry with named children. Colored-only:
 /// `setup_anim` sets the head look, then adds the looping `CREAKING_WALK` cycle onto the upper body,
-/// head, arms, and legs (the attack / invulnerable / death keyframes stay deferred).
+/// head, arms, and legs (the attack / invulnerable / death keyframes stay deferred), addressing each
+/// bone via `child_mut`.
 pub(in crate::entity_models) struct CreakingModel {
     root: ModelPart,
 }
@@ -230,7 +296,7 @@ pub(in crate::entity_models) struct CreakingModel {
 impl CreakingModel {
     pub(in crate::entity_models) fn new() -> Self {
         Self {
-            root: ModelPart::root_from_colored_descs(&CREAKING_PARTS),
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("root", creaking_root())]),
         }
     }
 }
@@ -264,13 +330,13 @@ impl EntityModel for CreakingModel {
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 
-        let creaking_root = self.root.child_at_mut(0);
+        let creaking_root = self.root.child_mut("root");
         {
-            let upper_body = creaking_root.child_at_mut(0);
+            let upper_body = creaking_root.child_mut("upper_body");
             animate(upper_body, "upper_body");
 
             // head: the look (set) plus the walk rotation (added); the walk has no head position.
-            let head = upper_body.child_at_mut(0);
+            let head = upper_body.child_mut("head");
             let (_, head_walk_rot) = sample_bone_offsets(&CREAKING_WALK, "head", seconds, scale);
             head.pose.rotation = [
                 head_pitch + head_walk_rot[0],
@@ -278,11 +344,11 @@ impl EntityModel for CreakingModel {
                 head.pose.rotation[2] + head_walk_rot[2],
             ];
 
-            // body (child 1) holds; the two arms take the walk rotation.
-            animate(upper_body.child_at_mut(2), "right_arm");
-            animate(upper_body.child_at_mut(3), "left_arm");
+            // `body` holds; the two arms take the walk rotation.
+            animate(upper_body.child_mut("right_arm"), "right_arm");
+            animate(upper_body.child_mut("left_arm"), "left_arm");
         }
-        animate(creaking_root.child_at_mut(1), "left_leg");
-        animate(creaking_root.child_at_mut(2), "right_leg");
+        animate(creaking_root.child_mut("left_leg"), "left_leg");
+        animate(creaking_root.child_mut("right_leg"), "right_leg");
     }
 }
