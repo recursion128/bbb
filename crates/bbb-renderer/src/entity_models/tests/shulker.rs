@@ -77,6 +77,29 @@ fn shulker_lid_opens_with_projected_peek() {
 }
 
 #[test]
+fn shulker_head_tracks_look_angles() {
+    // Vanilla `ShulkerModel.setupAnim` poses the head (part 2, emitted last → vertices 48..72)
+    // with `head.xRot = xRot` and `head.yRot = (yHeadRot − 180 − yBodyRot) = head_yaw − 180`. The
+    // lid (0..24) and base (24..48) never move with the look. A 60° look tilts the head off the
+    // axis-aligned rest (head_yaw 0 → yRot −180, which is axis-aligned for the symmetric head cube).
+    let base = EntityModelInstance::shulker(1130, [0.0, 64.0, 0.0], 0.0);
+    let base_mesh = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(60.0, 0.0)]);
+    assert_eq!(base_mesh.vertices.len(), 72);
+    assert_eq!(looking.vertices.len(), 72);
+    // The lid and base are untouched by the head look.
+    assert_eq!(base_mesh.vertices[..48], looking.vertices[..48]);
+    // The head re-poses with the yaw.
+    assert_ne!(base_mesh.vertices[48..], looking.vertices[48..]);
+
+    // The pitch maps to the head's xRot (a different axis than the yaw), so it re-poses the head
+    // distinctly and still leaves the lid/base untouched.
+    let pitched = entity_model_mesh(&[base.with_head_look(0.0, -25.0)]);
+    assert_eq!(base_mesh.vertices[..48], pitched.vertices[..48]);
+    assert_ne!(pitched.vertices[48..], looking.vertices[48..]);
+}
+
+#[test]
 fn shulker_mesh_uses_vanilla_body_layer_geometry() {
     // 3 cubes → 18 faces / 72 vertices / 108 indices; the shell carries the shell tint and the head
     // carries its own yellow tint.

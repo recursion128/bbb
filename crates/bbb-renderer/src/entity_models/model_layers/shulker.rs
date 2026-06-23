@@ -7,14 +7,16 @@ use super::{
 // parts: the 16×12×16 lid and the 16×8×16 base (both at `offset(0, 24, 0)`), and the 6×6×6 head at
 // `offset(0, 12, 0)`. The closed rest pose equals this bind pose — `ShulkerModel.setupAnim` sets the
 // lid back to `y = 16 + sin((0.5 + peekAmount) * π) * 8`, which is exactly `24` when `peekAmount = 0`.
-// The peek open/close is now driven from the projected `Shulker.getClientPeekAmount` (see
-// [`emit_shulker_model`](crate::entity_models::colored::runtime)). The head look (`head.xRot/yRot`)
-// stays deferred — its non-standard `(yHeadRot − 180 − yBodyRot)` formula needs the entity-side head
-// yaw the native scene does not project. The `ShulkerRenderer.setupRotations` attach-face rotation
-// (`attachFace.getOpposite()`, the identity for a floor shulker) and the `bodyRot + 180` body-yaw
-// inversion read the entity-side `attachFace`/yaw state, which the native scene does not yet project,
-// so the floor rest pose is emitted. The sixteen dye-color variants live on the deferred
-// texture-backed path, so the colored debug path renders a purple shell tint plus a yellow head tint.
+// The peek open/close and the head look are now driven from the projected peek and head angles (see
+// [`emit_shulker_model`](crate::entity_models::colored::runtime)). The head look uses the vanilla
+// non-standard `head.yRot = (yHeadRot − 180 − yBodyRot)`, which equals the projected `head_yaw − 180`;
+// it is vanilla-correct for a floor shulker because bbb's standard root differs from the shulker's
+// `bodyRot + 180` root by a 180° rotation the 180°-symmetric square shell hides. The
+// `ShulkerRenderer.setupRotations` non-floor attach-face rotation (`attachFace.getOpposite()`, the
+// identity for a floor shulker) and the `bodyRot + 180` body-yaw inversion read the entity-side
+// `attachFace`/yaw state, which the native scene does not yet project, so the floor rest orientation
+// is emitted. The sixteen dye-color variants live on the deferred texture-backed path, so the colored
+// debug path renders a purple shell tint plus a yellow head tint.
 
 // `lid`: the 16×12×16 upper shell.
 const SHULKER_LID_CUBES: [ModelCubeDesc; 1] =

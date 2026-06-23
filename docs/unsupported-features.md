@@ -1668,11 +1668,16 @@ When an agent does any of the following, update this file in the same slice:
       `ShulkerModel.setupAnim`'s `lid.y = 16 + sin((0.5 + peek)·π)·8` (plus the `sin(ageInTicks·0.1)·0.7`
       open-lid bob once past half-open) and the `lid.yRot = (−1 + sin(bs))⁴ · π · 0.125` twist above
       `peek > 0.3`; at `peek = 0` the lid sits back at its `y = 24` bind offset, so the closed pose equals
-      the bind pose. The head look (`head.xRot/yRot`) stays deferred — its non-standard
-      `(yHeadRot − 180 − yBodyRot)` formula needs the entity-side head yaw the native scene does not
-      project. The `ShulkerRenderer.setupRotations` attach-face rotation (`attachFace.getOpposite().getRotation()`,
-      the identity for a floor shulker) and the `bodyRot + 180` body-yaw inversion read the entity-side
-      `attachFace`/yaw state, which the native scene does not yet project, so the floor rest pose is emitted
+      the bind pose. The head look is now applied: `head.xRot = xRot`, `head.yRot = (yHeadRot − 180 −
+      yBodyRot)`, which equals the already-projected `head_yaw − 180` (a 360° offset is a no-op
+      rotation). The `−180` is vanilla's cancel for `ShulkerRenderer.setupRotations`' `bodyRot + 180`;
+      bbb keeps the standard `180 − bodyRot` root, whose floor-shulker orientation differs from vanilla's
+      by exactly 180° about Y — invisible on the 180°-symmetric square shell — so the head-vs-shell angle
+      reproduces vanilla for the floor (`attachFace = DOWN`) case. The `ShulkerRenderer.setupRotations`
+      non-floor attach-face rotation (`attachFace.getOpposite().getRotation()`, the identity for a floor
+      shulker), the `bodyRot + 180` body-yaw inversion, and the Dinnerbone-negated head sign read the
+      entity-side `attachFace`/yaw state the native scene does not yet project, so the floor rest pose is
+      emitted
       (the geometry is exact; only the wall/ceiling attach orientation is deferred). The sixteen dye-color
       variants live on the deferred texture-backed path, so the colored debug path renders a purple shell
       tint plus a yellow head tint. The texture-backed path remains unsupported (this is a colored-first
