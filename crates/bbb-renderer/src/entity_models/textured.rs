@@ -6,7 +6,7 @@ use super::{
     catalog::{
         ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant,
         CowModelVariant, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, HoglinModelFamily,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, HoglinModelFamily,
         IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
         TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
@@ -16,22 +16,20 @@ use super::{
     geometry::{
         emit_textured_model_cube, emit_textured_model_part, emit_textured_model_parts,
         fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
-        EntityModelTexturedMesh, ModelPartDesc, PartPose, TexturedModelCubeDesc,
-        TexturedModelPartDesc, PART_POSE_ZERO,
+        EntityModelTexturedMesh, ModelPartDesc, PartPose, TexturedModelPartDesc, PART_POSE_ZERO,
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        apply_wolf_sitting_pose, armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot,
-        bee_bone_x_rot, bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot,
-        camel_clamped_head_look, head_first_part_index, head_look_at_rest, head_look_pose,
-        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_leg_swing_pose,
-        limb_swing_at_rest, parched_head_part_index, pufferfish_fin_pose, pufferfish_parts,
-        pufferfish_right_fin_z_rot, quadruped_leg_swing_pose, skeleton_head_part_index,
-        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        AllayModel, BatModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel,
-        CowModel, CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
+        apply_wolf_sitting_pose, armor_stand_textured_cube, camel_clamped_head_look,
+        head_first_part_index, head_look_at_rest, head_look_pose, humanoid_arm_bob_pose,
+        humanoid_arm_swing_pose, humanoid_leg_swing_pose, limb_swing_at_rest,
+        parched_head_part_index, pufferfish_fin_pose, pufferfish_parts, pufferfish_right_fin_z_rot,
+        quadruped_leg_swing_pose, skeleton_head_part_index, wolf_angry_tail_pose,
+        wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, BatModel,
+        BeeModel, BlazeModel, BreezeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel,
+        CreeperModel, DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel,
         HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel,
         MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel,
         RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel, SkeletonModel,
@@ -39,19 +37,8 @@ use super::{
         TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
         WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT,
         ALLAY_TEXTURE_REF, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF,
-        BABY_CAMEL_WALK_LAYOUT, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
-        BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
-        BEE_BABY_MIDDLE_LEGS_POSE, BEE_BABY_RIGHT_WING_POSE, BEE_BABY_STINGER_POSE,
-        BEE_BABY_TEXTURED_BACK_LEGS, BEE_BABY_TEXTURED_BODY, BEE_BABY_TEXTURED_BONE,
-        BEE_BABY_TEXTURED_FRONT_LEGS, BEE_BABY_TEXTURED_LEFT_WING, BEE_BABY_TEXTURED_MIDDLE_LEGS,
-        BEE_BABY_TEXTURED_RIGHT_WING, BEE_BABY_TEXTURED_STINGER, BEE_BABY_TEXTURE_REF,
-        BEE_BACK_LEGS_POSE, BEE_BODY_POSE, BEE_BONE_POSE, BEE_FRONT_LEGS_POSE,
-        BEE_LEFT_ANTENNA_POSE, BEE_LEFT_WING_POSE, BEE_MIDDLE_LEGS_POSE, BEE_MID_LEG_FLYING_X_ROT,
-        BEE_RIGHT_ANTENNA_POSE, BEE_RIGHT_WING_POSE, BEE_STINGER_POSE, BEE_TEXTURED_BACK_LEGS,
-        BEE_TEXTURED_BODY, BEE_TEXTURED_FRONT_LEGS, BEE_TEXTURED_LEFT_ANTENNA,
-        BEE_TEXTURED_LEFT_WING, BEE_TEXTURED_MIDDLE_LEGS, BEE_TEXTURED_RIGHT_ANTENNA,
-        BEE_TEXTURED_RIGHT_WING, BEE_TEXTURED_STINGER, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF,
-        CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
+        BABY_CAMEL_WALK_LAYOUT, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF,
+        BREEZE_TEXTURE_REF, CAMEL_WALK_SCALE_FACTOR, CAMEL_WALK_SPEED_FACTOR, COD_TEXTURE_REF,
         DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
         SMALL_ARMOR_STAND_PARTS, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
         TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
@@ -765,23 +752,6 @@ fn emit_squid_textured_model(
     );
 }
 
-/// Emit one cube group at `parent · pose` into a textured mesh, mirroring the colored
-/// [`emit_model_cubes_at_pose`] but for the textured atlas path. Used by the hand-emitted
-/// nested hierarchies (vex, allay) where the animated children are not `&'static` parts.
-fn emit_textured_cubes_at_pose(
-    mesh: &mut EntityModelTexturedMesh,
-    parent_transform: Mat4,
-    pose: PartPose,
-    cubes: &[TexturedModelCubeDesc],
-    texture: EntityModelTextureRef,
-    uv: EntityModelUvRect,
-) {
-    let transform = parent_transform * part_pose_transform(pose);
-    for cube in cubes {
-        emit_textured_model_cube(mesh, transform, *cube, texture, uv, [1.0, 1.0, 1.0, 1.0]);
-    }
-}
-
 /// The textured vex base layer. The unified [`VexModel`] tree runs the shared `VexModel.setupAnim`
 /// (head look, charging/idle body + arms, wing flap) and draws into the translucent mesh. The
 /// charging texture swap and the held-item arms are deferred entity-side state, and the vanilla
@@ -953,6 +923,10 @@ fn emit_bee_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    // The unified `BeeModel` tree drives both render paths; `setup_anim` flaps the wings, rocks the
+    // non-angry bob, splays the legs to `π/4` while airborne, and hides the stinger once stung. The
+    // textured base layer draws into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`); the
+    // baby uses a distinct texture.
     let texture = if baby {
         BEE_BABY_TEXTURE_REF
     } else {
@@ -961,235 +935,15 @@ fn emit_bee_textured_model(
     let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
         return;
     };
-    let uv = entry.uv;
-
-    // Mirror the colored `emit_bee_model`: while airborne the wings flap and the non-angry bob
-    // rocks the bone/legs/antennae; on the ground the model rests. Draws the textured base layer
-    // into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`).
-    let age = instance.render_state.age_in_ticks;
-    let flying = !instance.render_state.on_ground;
-    // An angry airborne bee flaps but skips `bobUpAndDown` (see the colored path).
-    let bob = flying && !instance.render_state.bee_angry;
-    let root = entity_model_root_transform(instance);
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Cutout);
-
-    // Bone pivot (root child).
-    let bone_bind = if baby {
-        BEE_BABY_BONE_POSE
-    } else {
-        BEE_BONE_POSE
-    };
-    let bone_pose = if bob {
-        PartPose {
-            offset: [
-                bone_bind.offset[0],
-                bone_bind.offset[1] + bee_bone_y_delta(age),
-                bone_bind.offset[2],
-            ],
-            rotation: [bee_bone_x_rot(age), 0.0, 0.0],
-        }
-    } else {
-        bone_bind
-    };
-    let bone_t = root * part_pose_transform(bone_pose);
-    if baby {
-        emit_textured_cubes_at_pose(mesh, root, bone_pose, &BEE_BABY_TEXTURED_BONE, texture, uv);
-    }
-
-    // Body (bone child) carries the stinger and, on adults, the antennae.
-    let body_pose = if baby {
-        BEE_BABY_BODY_POSE
-    } else {
-        BEE_BODY_POSE
-    };
-    let body_t = bone_t * part_pose_transform(body_pose);
-    emit_textured_cubes_at_pose(
-        mesh,
-        bone_t,
-        body_pose,
-        if baby {
-            &BEE_BABY_TEXTURED_BODY
-        } else {
-            &BEE_TEXTURED_BODY
-        },
+    let transform = entity_model_root_transform(instance);
+    let mut model = BeeModel::new(baby);
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+        transform,
         texture,
-        uv,
-    );
-    // The stinger cube is drawn only while the bee still carries it (`stinger.visible`).
-    if instance.render_state.bee_has_stinger {
-        emit_textured_cubes_at_pose(
-            mesh,
-            body_t,
-            if baby {
-                BEE_BABY_STINGER_POSE
-            } else {
-                BEE_STINGER_POSE
-            },
-            if baby {
-                &BEE_BABY_TEXTURED_STINGER
-            } else {
-                &BEE_TEXTURED_STINGER
-            },
-            texture,
-            uv,
-        );
-    }
-    if !baby {
-        let antenna_x_rot = if bob { bee_antenna_x_rot(age) } else { 0.0 };
-        emit_textured_cubes_at_pose(
-            mesh,
-            body_t,
-            PartPose {
-                offset: BEE_LEFT_ANTENNA_POSE.offset,
-                rotation: [antenna_x_rot, 0.0, 0.0],
-            },
-            &BEE_TEXTURED_LEFT_ANTENNA,
-            texture,
-            uv,
-        );
-        emit_textured_cubes_at_pose(
-            mesh,
-            body_t,
-            PartPose {
-                offset: BEE_RIGHT_ANTENNA_POSE.offset,
-                rotation: [antenna_x_rot, 0.0, 0.0],
-            },
-            &BEE_TEXTURED_RIGHT_ANTENNA,
-            texture,
-            uv,
-        );
-    }
-
-    // Wings (bone children): the flap overrides the bind yaw to 0 and drives `zRot`.
-    let (right_wing_pose, left_wing_pose, right_wing, left_wing): (
-        _,
-        _,
-        &[TexturedModelCubeDesc],
-        _,
-    ) = if baby {
-        (
-            BEE_BABY_RIGHT_WING_POSE,
-            BEE_BABY_LEFT_WING_POSE,
-            &BEE_BABY_TEXTURED_RIGHT_WING,
-            &BEE_BABY_TEXTURED_LEFT_WING,
-        )
-    } else {
-        (
-            BEE_RIGHT_WING_POSE,
-            BEE_LEFT_WING_POSE,
-            &BEE_TEXTURED_RIGHT_WING,
-            &BEE_TEXTURED_LEFT_WING,
-        )
-    };
-    let wing_z_rot = bee_wing_z_rot(age);
-    emit_textured_cubes_at_pose(
-        mesh,
-        bone_t,
-        if flying {
-            PartPose {
-                offset: right_wing_pose.offset,
-                rotation: [right_wing_pose.rotation[0], 0.0, wing_z_rot],
-            }
-        } else {
-            right_wing_pose
-        },
-        right_wing,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        bone_t,
-        if flying {
-            PartPose {
-                offset: left_wing_pose.offset,
-                rotation: [left_wing_pose.rotation[0], 0.0, -wing_z_rot],
-            }
-        } else {
-            left_wing_pose
-        },
-        left_wing,
-        texture,
-        uv,
-    );
-
-    // Legs (bone children): airborne, all three splay to `π/4`; the non-angry bob then overrides
-    // the front/back pair, while an angry bee holds all three at `π/4`.
-    let (front_x, mid_x, back_x) = if flying {
-        (
-            if bob {
-                bee_front_leg_x_rot(age)
-            } else {
-                BEE_MID_LEG_FLYING_X_ROT
-            },
-            BEE_MID_LEG_FLYING_X_ROT,
-            if bob {
-                bee_back_leg_x_rot(age)
-            } else {
-                BEE_MID_LEG_FLYING_X_ROT
-            },
-        )
-    } else {
-        (0.0, 0.0, 0.0)
-    };
-    let (front_pose, mid_pose, back_pose, front_cubes, mid_cubes, back_cubes): (
-        _,
-        _,
-        _,
-        &[TexturedModelCubeDesc],
-        &[TexturedModelCubeDesc],
-        &[TexturedModelCubeDesc],
-    ) = if baby {
-        (
-            BEE_BABY_FRONT_LEGS_POSE,
-            BEE_BABY_MIDDLE_LEGS_POSE,
-            BEE_BABY_BACK_LEGS_POSE,
-            &BEE_BABY_TEXTURED_FRONT_LEGS,
-            &BEE_BABY_TEXTURED_MIDDLE_LEGS,
-            &BEE_BABY_TEXTURED_BACK_LEGS,
-        )
-    } else {
-        (
-            BEE_FRONT_LEGS_POSE,
-            BEE_MIDDLE_LEGS_POSE,
-            BEE_BACK_LEGS_POSE,
-            &BEE_TEXTURED_FRONT_LEGS,
-            &BEE_TEXTURED_MIDDLE_LEGS,
-            &BEE_TEXTURED_BACK_LEGS,
-        )
-    };
-    emit_textured_cubes_at_pose(
-        mesh,
-        bone_t,
-        PartPose {
-            offset: front_pose.offset,
-            rotation: [front_x, 0.0, 0.0],
-        },
-        front_cubes,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        bone_t,
-        PartPose {
-            offset: mid_pose.offset,
-            rotation: [mid_x, 0.0, 0.0],
-        },
-        mid_cubes,
-        texture,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        bone_t,
-        PartPose {
-            offset: back_pose.offset,
-            rotation: [back_x, 0.0, 0.0],
-        },
-        back_cubes,
-        texture,
-        uv,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
     );
 }
 
