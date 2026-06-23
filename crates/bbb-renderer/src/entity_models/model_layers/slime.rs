@@ -1,6 +1,8 @@
 use super::{
     ModelCubeDesc, ModelPartDesc, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const SLIME_GREEN: [f32; 4] = [0.42, 0.82, 0.30, 1.0];
 pub(in crate::entity_models) const SLIME_FEATURE_DARK: [f32; 4] = [0.16, 0.28, 0.10, 1.0];
@@ -379,3 +381,33 @@ pub(in crate::entity_models) const MAGMA_CUBE_TEXTURED_PARTS: [TexturedModelPart
         children: &[],
     },
 ];
+
+/// Mutable magma cube model, mirroring vanilla `LavaSlimeModel`. The unified tree is zipped from the
+/// baked colored ([`MAGMA_CUBE_PARTS`]) and textured ([`MAGMA_CUBE_TEXTURED_PARTS`]) trees: eight outer
+/// segments plus the inner core. Vanilla `LavaSlimeModel.setupAnim` stretches the segments by the
+/// interpolated `squish` (`oSquish`→`squish`); that squish is server-authoritative state not carried on
+/// the render state, so it stays deferred and `setup_anim` is a no-op — the model renders its rest pose.
+/// The per-size scale lives in the root transform (`magma_cube_model_root_transform`).
+pub(in crate::entity_models) struct MagmaCubeModel {
+    root: ModelPart,
+}
+
+impl MagmaCubeModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&MAGMA_CUBE_PARTS, &MAGMA_CUBE_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for MagmaCubeModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}

@@ -106,7 +106,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::MagmaCube { size } => {
                 if !skip_texture_backed_entities {
-                    emit_magma_cube_model(&mut mesh, *instance, size);
+                    MagmaCubeModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        magma_cube_model_root_transform(*instance, size),
+                    );
                 }
             }
             EntityModelKind::Ghast => {
@@ -505,14 +509,6 @@ fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, s
         mesh,
         &SLIME_PARTS,
         slime_model_root_transform(instance, size),
-    );
-}
-
-fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
-    emit_model_parts(
-        mesh,
-        &MAGMA_CUBE_PARTS,
-        magma_cube_model_root_transform(instance, size),
     );
 }
 
