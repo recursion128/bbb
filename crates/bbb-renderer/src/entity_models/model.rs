@@ -9,9 +9,11 @@ use super::instances::EntityModelInstance;
 use super::{EntityModelTextureRef, EntityModelUvRect};
 
 /// Vanilla child parts are addressed by name; the descs the migration zips from carry none, so a
-/// zipped child is named by its index. Sixteen covers the widest part in the entity catalog.
-const INDEX_CHILD_NAMES: [&str; 16] = [
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
+/// zipped child is named by its index. Twenty-four covers the widest part in the entity catalog (the
+/// ender dragon's nineteen root parts).
+const INDEX_CHILD_NAMES: [&str; 24] = [
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16",
+    "17", "18", "19", "20", "21", "22", "23",
 ];
 
 /// A unified model cube carrying both render paths' data, mirroring a vanilla `ModelPart.Cube`. The

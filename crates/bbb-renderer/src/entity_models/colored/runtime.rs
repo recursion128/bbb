@@ -362,8 +362,13 @@ fn entity_model_mesh_with_options(
                 );
             }
             EntityModelKind::EnderDragon => {
-                // Colored-only so far (no texture-backed ender dragon yet), so this arm always emits.
-                emit_ender_dragon_model(&mut mesh, *instance);
+                // Static (the whole procedural `setupAnim` — flight-history spine, wing flap, jaw,
+                // root bounce — is deferred); colored-only.
+                StaticModel::new(&ENDER_DRAGON_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    ender_dragon_model_root_transform(*instance),
+                );
             }
             EntityModelKind::NoRender => {
                 // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
@@ -766,15 +771,6 @@ fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     for cube in END_CRYSTAL_PARTS[3].cubes {
         emit_model_cube(mesh, core_t, *cube);
     }
-}
-
-fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `EnderDragonModel` is a deep static hierarchy at its bind layout (head/jaw, the neck
-    // and tail spine segments, the body with wings and legs). The whole `setupAnim` is procedural
-    // (the flight-history neck/tail placement, the wing flap, the jaw, the root bounce) and deferred,
-    // so the bind-pose part tree is emitted directly at the `EnderDragonRenderer` transform.
-    let root = ender_dragon_model_root_transform(instance);
-    emit_model_parts(mesh, &ENDER_DRAGON_PARTS, root);
 }
 
 fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
