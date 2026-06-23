@@ -1,80 +1,54 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn adult_rabbit_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `AdultRabbitModel.createBodyLayer` (atlas 64×64): the mesh root holds the `body`
     // (pitched -0.3927, carrying the tail, head, and the cubeless `frontlegs` pivot) and the
     // cubeless `backlegs` pivot (carrying the two hind legs, each parenting a haunch).
-    assert_eq!(ADULT_RABBIT_PARTS.len(), 2);
 
     // `body` (offset (0, 23, 4), rot -0.3927): the 8×6×10 torso.
-    let body = &ADULT_RABBIT_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 23.0, 4.0]);
-    assert_eq!(body.pose.rotation, [-0.3927, 0.0, 0.0]);
-    assert_eq!(body.cubes.len(), 1);
-    assert_eq!(body.cubes[0].min, [-4.0, -6.0, -9.0]);
-    assert_eq!(body.cubes[0].size, [8.0, 6.0, 10.0]);
-    assert_eq!(body.children.len(), 3);
+    assert_eq!(RABBIT_BODY_POSE.offset, [0.0, 23.0, 4.0]);
+    assert_eq!(RABBIT_BODY_POSE.rotation, [-0.3927, 0.0, 0.0]);
+    assert_eq!(RABBIT_BODY_CUBES.len(), 1);
+    assert_eq!(RABBIT_BODY_CUBES[0].min, [-4.0, -6.0, -9.0]);
+    assert_eq!(RABBIT_BODY_CUBES[0].size, [8.0, 6.0, 10.0]);
 
     // `tail` (offset (0, -4.9916, 0.0125)): the 4×4×4 puff.
-    let tail = &body.children[0];
-    assert_eq!(tail.pose.offset, [0.0, -4.9916, 0.0125]);
-    assert_eq!(tail.cubes[0].size, [4.0, 4.0, 4.0]);
+    assert_eq!(RABBIT_TAIL_POSE.offset, [0.0, -4.9916, 0.0125]);
+    assert_eq!(RABBIT_TAIL_CUBES[0].size, [4.0, 4.0, 4.0]);
 
     // `head` (offset (0, -5.2929, -8.1213), rot 0.3927): the 5×5×5 skull parenting the two ears.
-    let head = &body.children[1];
-    assert_eq!(head.pose.offset, [0.0, -5.2929, -8.1213]);
-    assert_eq!(head.pose.rotation, [0.3927, 0.0, 0.0]);
-    assert_eq!(head.cubes[0].min, [-2.5, -3.0, -4.0]);
-    assert_eq!(head.cubes[0].size, [5.0, 5.0, 5.0]);
-    assert_eq!(head.children.len(), 2);
+    assert_eq!(RABBIT_HEAD_POSE.offset, [0.0, -5.2929, -8.1213]);
+    assert_eq!(RABBIT_HEAD_POSE.rotation, [0.3927, 0.0, 0.0]);
+    assert_eq!(RABBIT_HEAD_CUBES[0].min, [-2.5, -3.0, -4.0]);
+    assert_eq!(RABBIT_HEAD_CUBES[0].size, [5.0, 5.0, 5.0]);
     // The two 2×5×1 ears share their box, differing only in the pivot X sign.
-    assert_eq!(head.children[0].pose.offset, [1.5, -3.7071, -0.8787]);
-    assert_eq!(head.children[1].pose.offset, [-1.5, -3.7071, -0.8787]);
-    assert_eq!(head.children[0].cubes[0].min, [-1.0, -4.2929, -0.1213]);
-    assert_eq!(head.children[0].cubes[0].size, [2.0, 5.0, 1.0]);
+    assert_eq!(RABBIT_RIGHT_EAR_POSE.offset, [1.5, -3.7071, -0.8787]);
+    assert_eq!(RABBIT_LEFT_EAR_POSE.offset, [-1.5, -3.7071, -0.8787]);
+    assert_eq!(RABBIT_EAR_CUBES[0].min, [-1.0, -4.2929, -0.1213]);
+    assert_eq!(RABBIT_EAR_CUBES[0].size, [2.0, 5.0, 1.0]);
 
     // `frontlegs` (offset (0, -1.5349, -6.3108)): a cubeless pivot parenting the two front legs.
-    let front_legs = &body.children[2];
-    assert_eq!(front_legs.pose.offset, [0.0, -1.5349, -6.3108]);
-    assert!(front_legs.cubes.is_empty());
-    assert_eq!(front_legs.children.len(), 2);
+    assert_eq!(RABBIT_FRONTLEGS_POSE.offset, [0.0, -1.5349, -6.3108]);
     // Both 2×4×2 legs share the 0.3927 pitch; the right leg's box is nudged -0.9 on X.
-    assert_eq!(front_legs.children[0].pose.offset, [-2.0, 1.9239, 0.3827]);
-    assert_eq!(front_legs.children[0].pose.rotation, [0.3927, 0.0, 0.0]);
-    assert_eq!(front_legs.children[0].cubes[0].min, [-0.9, -1.0, -0.9]);
-    assert_eq!(front_legs.children[0].cubes[0].size, [2.0, 4.0, 2.0]);
-    assert_eq!(front_legs.children[1].pose.offset, [2.0, 1.9239, 0.4827]);
-    assert_eq!(front_legs.children[1].cubes[0].min, [-1.0, -1.0, -1.0]);
+    assert_eq!(RABBIT_RIGHT_FRONT_LEG_POSE.offset, [-2.0, 1.9239, 0.3827]);
+    assert_eq!(RABBIT_RIGHT_FRONT_LEG_POSE.rotation, [0.3927, 0.0, 0.0]);
+    assert_eq!(RABBIT_RIGHT_FRONT_LEG_CUBES[0].min, [-0.9, -1.0, -0.9]);
+    assert_eq!(RABBIT_RIGHT_FRONT_LEG_CUBES[0].size, [2.0, 4.0, 2.0]);
+    assert_eq!(RABBIT_LEFT_FRONT_LEG_POSE.offset, [2.0, 1.9239, 0.4827]);
+    assert_eq!(RABBIT_LEFT_FRONT_LEG_CUBES[0].min, [-1.0, -1.0, -1.0]);
 
     // `backlegs` (offset (0, 23, 4)): a cubeless pivot parenting the two hind legs.
-    let back_legs = &ADULT_RABBIT_PARTS[1];
-    assert_eq!(back_legs.pose.offset, [0.0, 23.0, 4.0]);
-    assert!(back_legs.cubes.is_empty());
-    assert_eq!(back_legs.children.len(), 2);
+    assert_eq!(RABBIT_BACKLEGS_POSE.offset, [0.0, 23.0, 4.0]);
 
     // Each hind leg is a cubeless pivot; its haunch carries the only cube, yawed ±0.3927.
-    let right_hind = &back_legs.children[0];
-    assert_eq!(right_hind.pose.offset, [-3.0, 0.5, 0.0]);
-    assert!(right_hind.cubes.is_empty());
-    let right_haunch = &right_hind.children[0];
-    assert_eq!(right_haunch.pose.offset, [0.0, -0.5, 0.0]);
-    assert_eq!(right_haunch.pose.rotation, [0.0, 0.3927, 0.0]);
-    assert_eq!(right_haunch.cubes[0].min, [-1.0, 0.0, -5.0]);
-    assert_eq!(right_haunch.cubes[0].size, [2.0, 1.0, 6.0]);
-    let left_hind = &back_legs.children[1];
-    assert_eq!(left_hind.pose.offset, [3.0, 0.5, 0.0]);
-    assert_eq!(left_hind.children[0].pose.rotation, [0.0, -0.3927, 0.0]);
-
-    // Nine cubes (body, tail, head, two ears, two front legs, two haunches).
-    assert_eq!(count_cubes(&ADULT_RABBIT_PARTS), 9);
+    assert_eq!(RABBIT_RIGHT_HIND_LEG_POSE.offset, [-3.0, 0.5, 0.0]);
+    assert_eq!(RABBIT_RIGHT_HAUNCH_POSE.offset, [0.0, -0.5, 0.0]);
+    assert_eq!(RABBIT_RIGHT_HAUNCH_POSE.rotation, [0.0, 0.3927, 0.0]);
+    assert_eq!(RABBIT_HAUNCH_CUBES[0].min, [-1.0, 0.0, -5.0]);
+    assert_eq!(RABBIT_HAUNCH_CUBES[0].size, [2.0, 1.0, 6.0]);
+    assert_eq!(RABBIT_LEFT_HIND_LEG_POSE.offset, [3.0, 0.5, 0.0]);
+    assert_eq!(RABBIT_LEFT_HAUNCH_POSE.rotation, [0.0, -0.3927, 0.0]);
 }
 
 #[test]
@@ -149,55 +123,35 @@ fn rabbit_head_look_turns_only_the_head_subtree() {
 #[test]
 fn baby_rabbit_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `BabyRabbitModel.createBodyLayer` (atlas 32×32): a deeper `_r1`-nested layout. The
-    // cubeless `body` pivot parents body_r1 (0), tail (1), head (2), frontlegs (3); the head is `body`'s
+    // cubeless `body` pivot parents `body_r1` / `tail` / `head` / `frontlegs`; the head is `body`'s
     // THIRD child (unlike the adult's second).
-    assert_eq!(BABY_RABBIT_PARTS.len(), 2);
-    let body = &BABY_RABBIT_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 23.0, 1.6]);
-    assert!(body.cubes.is_empty());
-    assert_eq!(body.children.len(), 4);
+    assert_eq!(BABY_RABBIT_BODY_POSE.offset, [0.0, 23.0, 1.6]);
 
     // `body_r1` (pitched -0.5236): the 4×3×6 trunk.
-    let body_r1 = &body.children[0];
-    assert_eq!(body_r1.pose.rotation, [-0.5236, 0.0, 0.0]);
-    assert_eq!(body_r1.cubes[0].size, [4.0, 3.0, 6.0]);
+    assert_eq!(BABY_RABBIT_BODY_R1_POSE.rotation, [-0.5236, 0.0, 0.0]);
+    assert_eq!(BABY_RABBIT_BODY_CUBES[0].size, [4.0, 3.0, 6.0]);
 
     // `tail` (cubeless) parents the pitched `tail_r1`.
-    let tail_r1 = &body.children[1].children[0];
-    assert_eq!(tail_r1.pose.rotation, [-0.5236, 0.0, 0.0]);
-    assert_eq!(tail_r1.cubes[0].size, [3.0, 3.0, 3.0]);
+    assert_eq!(BABY_RABBIT_TAIL_R1_POSE.rotation, [-0.5236, 0.0, 0.0]);
+    assert_eq!(BABY_RABBIT_TAIL_CUBES[0].size, [3.0, 3.0, 3.0]);
 
-    // `head` (index 2): the 5×4×4 skull parenting the two 2×4×1 ears.
-    let head = &body.children[2];
-    assert_eq!(head.pose.offset, [0.0, -5.0, -2.6]);
-    assert_eq!(head.cubes[0].size, [5.0, 4.0, 4.0]);
-    assert_eq!(head.children.len(), 2);
-    assert_eq!(head.children[0].pose.offset, [-1.5, -3.5, -0.5]);
-    assert_eq!(head.children[0].cubes[0].size, [2.0, 4.0, 1.0]);
+    // `head`: the 5×4×4 skull parenting the two 2×4×1 ears.
+    assert_eq!(BABY_RABBIT_HEAD_POSE.offset, [0.0, -5.0, -2.6]);
+    assert_eq!(BABY_RABBIT_HEAD_CUBES[0].size, [5.0, 4.0, 4.0]);
+    assert_eq!(BABY_RABBIT_RIGHT_EAR_POSE.offset, [-1.5, -3.5, -0.5]);
+    assert_eq!(BABY_RABBIT_EAR_CUBES[0].size, [2.0, 4.0, 1.0]);
 
     // `frontlegs` (cubeless) → each front leg (cubeless, pitched 0.3927) → its `_r1` cube.
-    let front_legs = &body.children[3];
-    assert!(front_legs.cubes.is_empty());
-    let left_front_leg = &front_legs.children[0];
-    assert_eq!(left_front_leg.pose.offset, [1.0, 1.0, -0.5]);
-    assert_eq!(left_front_leg.pose.rotation, [0.3927, 0.0, 0.0]);
-    assert_eq!(
-        left_front_leg.children[0].pose.rotation,
-        [-0.3927, 0.0, 0.0]
-    );
-    assert_eq!(left_front_leg.children[0].cubes[0].size, [1.0, 3.0, 1.0]);
+    assert_eq!(BABY_RABBIT_LEFT_FRONT_LEG_POSE.offset, [1.0, 1.0, -0.5]);
+    assert_eq!(BABY_RABBIT_LEFT_FRONT_LEG_POSE.rotation, [0.3927, 0.0, 0.0]);
+    assert_eq!(BABY_RABBIT_FRONT_LEG_R1_POSE.rotation, [-0.3927, 0.0, 0.0]);
+    assert_eq!(BABY_RABBIT_FRONT_LEG_CUBES[0].size, [1.0, 3.0, 1.0]);
 
     // `backlegs` (cubeless) → each hind leg (cubeless, yawed π) → its yawed haunch.
-    let back_legs = &BABY_RABBIT_PARTS[1];
-    assert_eq!(back_legs.pose.offset, [0.0, 23.0, 2.0]);
-    let left_hind = &back_legs.children[0];
-    assert_eq!(left_hind.pose.rotation, [0.0, 3.1416, 0.0]);
-    let left_haunch = &left_hind.children[0];
-    assert_eq!(left_haunch.pose.rotation, [0.0, -0.7854, 0.0]);
-    assert_eq!(left_haunch.cubes[0].size, [2.0, 1.0, 3.0]);
-
-    // Nine cubes.
-    assert_eq!(count_cubes(&BABY_RABBIT_PARTS), 9);
+    assert_eq!(BABY_RABBIT_BACKLEGS_POSE.offset, [0.0, 23.0, 2.0]);
+    assert_eq!(BABY_RABBIT_LEFT_HIND_LEG_POSE.rotation, [0.0, 3.1416, 0.0]);
+    assert_eq!(BABY_RABBIT_LEFT_HAUNCH_POSE.rotation, [0.0, -0.7854, 0.0]);
+    assert_eq!(BABY_RABBIT_HAUNCH_CUBES[0].size, [2.0, 1.0, 3.0]);
 }
 
 #[test]

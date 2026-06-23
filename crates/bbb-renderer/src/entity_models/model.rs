@@ -180,6 +180,25 @@ impl ModelPart {
         }
     }
 
+    /// A colored-only part carrying both `cubes` (from baked [`ModelCubeDesc`] geometry) and NAMED
+    /// `children` — the named-children counterpart of [`ModelPart::colored`], for a colored-only model
+    /// whose cube-bearing parent (head, body, …) parents children that `setup_anim` addresses by name
+    /// (the frog's `body` arms, the sniffer's `head` ears, the warden's `body` head and `head`
+    /// tendrils, …). Pairs with [`ModelPart::child_mut`] instead of positional `child_at_mut`.
+    pub(in crate::entity_models) fn colored_named(
+        pose: PartPose,
+        cubes: &[ModelCubeDesc],
+        children: Vec<(&'static str, ModelPart)>,
+    ) -> Self {
+        Self {
+            pose,
+            default_pose: pose,
+            cubes: cubes.iter().map(ModelCube::from_colored_desc).collect(),
+            children,
+            visible: true,
+        }
+    }
+
     /// Builds a unified [`ModelPart`] subtree by zipping a colored [`ModelPartDesc`] tree with its
     /// matching textured [`TexturedModelPartDesc`] tree (the two share structure and bind poses; the
     /// textured tree reuses the colored poses). Each unified cube takes its geometry/color from the
