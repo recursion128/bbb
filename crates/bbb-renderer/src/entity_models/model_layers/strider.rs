@@ -1,4 +1,9 @@
-use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, STRIDER_LEG, STRIDER_MAROON};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    STRIDER_LEG, STRIDER_MAROON,
+};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `AdultStriderModel.createBodyLayer` (atlas 64×128). The mesh root parents the
 // two legs and the body directly; the six bristles hang under the body. The legs and body are
@@ -282,5 +287,329 @@ const fn strider_baby_textured_bristle(tex: [f32; 2]) -> TexturedModelCubeDesc {
         uv_size: [7.0, 3.0, 0.0],
         tex,
         mirror: false,
+    }
+}
+
+// The strider legs and body carry per-frame offsets/rotations (set absolutely in `setup_anim`); these
+// are their bind poses (the rest offsets, which `strider_leg_y`/`strider_body_y` return at speed 0).
+const STRIDER_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [STRIDER_RIGHT_LEG_X, STRIDER_LEG_BASE_Y, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const STRIDER_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [STRIDER_LEFT_LEG_X, STRIDER_LEG_BASE_Y, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const STRIDER_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, STRIDER_BODY_BASE_Y, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const STRIDER_BABY_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [STRIDER_BABY_RIGHT_LEG_X, STRIDER_BABY_LEG_BASE_Y, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const STRIDER_BABY_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [STRIDER_BABY_LEFT_LEG_X, STRIDER_BABY_LEG_BASE_Y, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const STRIDER_BABY_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, STRIDER_BABY_BODY_BASE_Y, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+
+// Colored adult strider tree: right leg, left leg, body (with its six bristles), in the emit order.
+// Mirrors vanilla `AdultStriderModel.createBodyLayer`. The three right bristles share one colored cube
+// (their textured UVs differ); same for the left.
+const STRIDER_BODY_BRISTLE_CHILDREN: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: STRIDER_RIGHT_TOP_BRISTLE_POSE,
+        cubes: &STRIDER_RIGHT_BRISTLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_RIGHT_MIDDLE_BRISTLE_POSE,
+        cubes: &STRIDER_RIGHT_BRISTLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_RIGHT_BOTTOM_BRISTLE_POSE,
+        cubes: &STRIDER_RIGHT_BRISTLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_LEFT_TOP_BRISTLE_POSE,
+        cubes: &STRIDER_LEFT_BRISTLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_LEFT_MIDDLE_BRISTLE_POSE,
+        cubes: &STRIDER_LEFT_BRISTLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
+        cubes: &STRIDER_LEFT_BRISTLE,
+        children: &[],
+    },
+];
+const STRIDER_PARTS: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: STRIDER_RIGHT_LEG_POSE,
+        cubes: &STRIDER_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_LEFT_LEG_POSE,
+        cubes: &STRIDER_LEFT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_BODY_POSE,
+        cubes: &STRIDER_BODY,
+        children: &STRIDER_BODY_BRISTLE_CHILDREN,
+    },
+];
+const STRIDER_TEXTURED_BODY_BRISTLE_CHILDREN: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: STRIDER_RIGHT_TOP_BRISTLE_POSE,
+        cubes: &STRIDER_TEXTURED_RIGHT_TOP_BRISTLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_RIGHT_MIDDLE_BRISTLE_POSE,
+        cubes: &STRIDER_TEXTURED_RIGHT_MIDDLE_BRISTLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_RIGHT_BOTTOM_BRISTLE_POSE,
+        cubes: &STRIDER_TEXTURED_RIGHT_BOTTOM_BRISTLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_LEFT_TOP_BRISTLE_POSE,
+        cubes: &STRIDER_TEXTURED_LEFT_TOP_BRISTLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_LEFT_MIDDLE_BRISTLE_POSE,
+        cubes: &STRIDER_TEXTURED_LEFT_MIDDLE_BRISTLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_LEFT_BOTTOM_BRISTLE_POSE,
+        cubes: &STRIDER_TEXTURED_LEFT_BOTTOM_BRISTLE,
+        children: &[],
+    },
+];
+const STRIDER_TEXTURED_PARTS: [TexturedModelPartDesc; 3] = [
+    TexturedModelPartDesc {
+        pose: STRIDER_RIGHT_LEG_POSE,
+        cubes: &STRIDER_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_LEFT_LEG_POSE,
+        cubes: &STRIDER_TEXTURED_LEFT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_BODY_POSE,
+        cubes: &STRIDER_TEXTURED_BODY,
+        children: &STRIDER_TEXTURED_BODY_BRISTLE_CHILDREN,
+    },
+];
+
+// Colored baby strider tree: right leg, left leg, body (with its three bristles, which flap on `xRot`).
+// Mirrors vanilla `BabyStriderModel.createBodyLayer`.
+const STRIDER_BABY_BODY_BRISTLE_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: STRIDER_BABY_FRONT_BRISTLE_POSE,
+        cubes: &STRIDER_BABY_BRISTLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_BABY_MIDDLE_BRISTLE_POSE,
+        cubes: &STRIDER_BABY_BRISTLE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_BABY_BACK_BRISTLE_POSE,
+        cubes: &STRIDER_BABY_BRISTLE,
+        children: &[],
+    },
+];
+const STRIDER_BABY_PARTS: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: STRIDER_BABY_RIGHT_LEG_POSE,
+        cubes: &STRIDER_BABY_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_BABY_LEFT_LEG_POSE,
+        cubes: &STRIDER_BABY_LEFT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: STRIDER_BABY_BODY_POSE,
+        cubes: &STRIDER_BABY_BODY,
+        children: &STRIDER_BABY_BODY_BRISTLE_CHILDREN,
+    },
+];
+const STRIDER_BABY_TEXTURED_BODY_BRISTLE_CHILDREN: [TexturedModelPartDesc; 3] = [
+    TexturedModelPartDesc {
+        pose: STRIDER_BABY_FRONT_BRISTLE_POSE,
+        cubes: &STRIDER_BABY_TEXTURED_FRONT_BRISTLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_BABY_MIDDLE_BRISTLE_POSE,
+        cubes: &STRIDER_BABY_TEXTURED_MIDDLE_BRISTLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_BABY_BACK_BRISTLE_POSE,
+        cubes: &STRIDER_BABY_TEXTURED_BACK_BRISTLE,
+        children: &[],
+    },
+];
+const STRIDER_BABY_TEXTURED_PARTS: [TexturedModelPartDesc; 3] = [
+    TexturedModelPartDesc {
+        pose: STRIDER_BABY_RIGHT_LEG_POSE,
+        cubes: &STRIDER_BABY_TEXTURED_RIGHT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_BABY_LEFT_LEG_POSE,
+        cubes: &STRIDER_BABY_TEXTURED_LEFT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: STRIDER_BABY_BODY_POSE,
+        cubes: &STRIDER_BABY_TEXTURED_BODY,
+        children: &STRIDER_BABY_TEXTURED_BODY_BRISTLE_CHILDREN,
+    },
+];
+
+/// Selects the colored and textured const trees for an adult or baby strider, zipped into the unified
+/// tree by [`StriderModel::new`].
+fn strider_part_trees(baby: bool) -> (&'static [ModelPartDesc], &'static [TexturedModelPartDesc]) {
+    if baby {
+        (&STRIDER_BABY_PARTS, &STRIDER_BABY_TEXTURED_PARTS)
+    } else {
+        (&STRIDER_PARTS, &STRIDER_TEXTURED_PARTS)
+    }
+}
+
+/// Applies the vanilla `StriderModel.setupAnim` + `{Adult,Baby}StriderModel.customAnimations` to the
+/// unified tree: the legs swing (`xRot`) / roll (`zRot`) / lift (`y`) in opposition, the body tracks
+/// the look and sways (`zRot`) / bobs (`y`), and the bristles flow with the walk plus an `ageInTicks`
+/// ripple — the adult's six bristles on `zRot`, the baby's three on `xRot`. The ridden pose and the
+/// saddle are deferred entity-side state.
+fn apply_strider_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+    let age = instance.render_state.age_in_ticks;
+    let pos = instance.render_state.walk_animation_pos;
+    let speed = strider_animation_speed(instance.render_state.walk_animation_speed);
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+    let (leg_base_y, body_base_y, body_bob_mul, right_leg_x, left_leg_x) = if baby {
+        (
+            STRIDER_BABY_LEG_BASE_Y,
+            STRIDER_BABY_BODY_BASE_Y,
+            1.0,
+            STRIDER_BABY_RIGHT_LEG_X,
+            STRIDER_BABY_LEFT_LEG_X,
+        )
+    } else {
+        (
+            STRIDER_LEG_BASE_Y,
+            STRIDER_BODY_BASE_Y,
+            2.0,
+            STRIDER_RIGHT_LEG_X,
+            STRIDER_LEFT_LEG_X,
+        )
+    };
+
+    let right_leg = root.child_at_mut(0);
+    right_leg.pose.offset = [
+        right_leg_x,
+        strider_leg_y(leg_base_y, pos, speed, true),
+        0.0,
+    ];
+    right_leg.pose.rotation = [
+        strider_leg_x_rot(pos, speed, true),
+        0.0,
+        strider_leg_z_rot(pos, speed, true),
+    ];
+
+    let left_leg = root.child_at_mut(1);
+    left_leg.pose.offset = [
+        left_leg_x,
+        strider_leg_y(leg_base_y, pos, speed, false),
+        0.0,
+    ];
+    left_leg.pose.rotation = [
+        strider_leg_x_rot(pos, speed, false),
+        0.0,
+        strider_leg_z_rot(pos, speed, false),
+    ];
+
+    let body = root.child_at_mut(2);
+    body.pose.offset = [
+        0.0,
+        strider_body_y(body_base_y, body_bob_mul, pos, speed),
+        0.0,
+    ];
+    body.pose.rotation = [head_pitch, head_yaw, strider_body_z_rot(pos, speed)];
+
+    let flow = strider_bristle_flow(pos, speed);
+    let top = strider_bristle_top_flow(flow, age);
+    let middle = strider_bristle_middle_flow(flow, age);
+    let bottom = strider_bristle_bottom_flow(flow, age);
+    if baby {
+        // The three baby bristles flap on `xRot` (no rest roll), in [front, middle, back] order.
+        for (index, add) in [top, middle, bottom].into_iter().enumerate() {
+            body.child_at_mut(index).pose.rotation[0] += add;
+        }
+    } else {
+        // The six adult bristles flow on `zRot`: right top/middle/bottom then left top/middle/bottom.
+        for (index, add) in [top, middle, bottom, top, middle, bottom]
+            .into_iter()
+            .enumerate()
+        {
+            body.child_at_mut(index).pose.rotation[2] += add;
+        }
+    }
+}
+
+/// Mutable strider model, mirroring vanilla `AdultStriderModel` / `BabyStriderModel`. The unified tree
+/// is zipped from the const trees selected by `baby` ([`strider_part_trees`]); `setup_anim` runs
+/// [`apply_strider_anim`]. The same posed tree drives the colored fallback and the cutout textured
+/// layer; the cold/suffocating texture and the saddle layer live outside the model.
+pub(in crate::entity_models) struct StriderModel {
+    root: ModelPart,
+    baby: bool,
+}
+
+impl StriderModel {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let (colored, textured) = strider_part_trees(baby);
+        Self {
+            root: ModelPart::root_from_descs(colored, textured),
+            baby,
+        }
+    }
+}
+
+impl EntityModel for StriderModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_strider_anim(&mut self.root, self.baby, instance);
     }
 }
