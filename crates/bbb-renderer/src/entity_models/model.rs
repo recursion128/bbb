@@ -67,22 +67,6 @@ impl ModelCube {
         }
     }
 
-    /// A textured-only cube (an overlay layer with no colored debug variant — the tropical fish
-    /// pattern, the slime outer shell, …): the geometry/UV come from the textured desc and the
-    /// `color` is an unused placeholder because [`ModelPart::render_colored`] is never called for a
-    /// textured-only model.
-    #[allow(dead_code)]
-    fn from_textured_desc(desc: &TexturedModelCubeDesc) -> Self {
-        Self {
-            min: desc.min,
-            size: desc.size,
-            color: [0.0, 0.0, 0.0, 0.0],
-            uv_size: desc.uv_size,
-            tex: desc.tex,
-            mirror: desc.mirror,
-        }
-    }
-
     fn colored_desc(&self) -> ModelCubeDesc {
         ModelCubeDesc {
             min: self.min,
@@ -255,104 +239,10 @@ impl ModelPart {
         }
     }
 
-    /// Builds a unified root [`ModelPart`] over a flat list of sibling colored/textured part trees
-    /// (the common vanilla layout where `createBodyLayer` returns several root parts). The siblings
-    /// hang off a synthetic identity root and are addressed positionally via
-    /// [`ModelPart::child_at_mut`]. Retained as the generic dual-path desc-zip root builder now that
-    /// every dual-path entity builds its tree imperatively with named children.
-    #[allow(dead_code)]
-    pub(in crate::entity_models) fn root_from_descs(
-        colored: &[ModelPartDesc],
-        textured: &[TexturedModelPartDesc],
-    ) -> Self {
-        assert_eq!(
-            colored.len(),
-            textured.len(),
-            "colored/textured root part counts diverge"
-        );
-        let children = colored
-            .iter()
-            .zip(textured.iter())
-            .enumerate()
-            .map(|(index, (colored_part, textured_part))| {
-                (
-                    INDEX_CHILD_NAMES[index],
-                    ModelPart::from_descs(colored_part, textured_part),
-                )
-            })
-            .collect();
-        Self {
-            pose: super::geometry::PART_POSE_ZERO,
-            default_pose: super::geometry::PART_POSE_ZERO,
-            cubes: Vec::new(),
-            children,
-            visible: true,
-        }
-    }
-
-    /// Builds a textured-only [`ModelPart`] subtree from a [`TexturedModelPartDesc`] tree, for an
-    /// overlay layer that has no colored debug variant (the tropical fish pattern, the slime outer
-    /// shell, …). Each cube's colored color is an unused placeholder; only [`ModelPart::render_textured`]
-    /// is ever called on the result. Children are addressed positionally (named by index).
-    #[allow(dead_code)]
-    pub(in crate::entity_models) fn from_textured_desc(textured: &TexturedModelPartDesc) -> Self {
-        let cubes = textured
-            .cubes
-            .iter()
-            .map(ModelCube::from_textured_desc)
-            .collect();
-        let children = textured
-            .children
-            .iter()
-            .enumerate()
-            .map(|(index, child)| {
-                (
-                    INDEX_CHILD_NAMES[index],
-                    ModelPart::from_textured_desc(child),
-                )
-            })
-            .collect();
-        Self {
-            pose: textured.pose,
-            default_pose: textured.pose,
-            cubes,
-            children,
-            visible: true,
-        }
-    }
-
-    /// Builds a textured-only root [`ModelPart`] over a flat list of sibling [`TexturedModelPartDesc`]
-    /// trees — the textured counterpart of [`ModelPart::root_from_descs`] for an overlay layer with no
-    /// colored variant. The siblings hang off a synthetic identity root, addressed positionally via
-    /// [`ModelPart::child_at_mut`].
-    #[allow(dead_code)]
-    pub(in crate::entity_models) fn root_from_textured_descs(
-        textured: &[TexturedModelPartDesc],
-    ) -> Self {
-        let children = textured
-            .iter()
-            .enumerate()
-            .map(|(index, part)| {
-                (
-                    INDEX_CHILD_NAMES[index],
-                    ModelPart::from_textured_desc(part),
-                )
-            })
-            .collect();
-        Self {
-            pose: super::geometry::PART_POSE_ZERO,
-            default_pose: super::geometry::PART_POSE_ZERO,
-            cubes: Vec::new(),
-            children,
-            visible: true,
-        }
-    }
-
-    /// Builds a colored-only [`ModelPart`] subtree from a [`ModelPartDesc`] tree — the colored
-    /// counterpart of [`ModelPart::from_textured_desc`] for an entity with no textured path (the
-    /// parrot, shulker, …). Each cube reuses its baked color; the textured UV is an unused
-    /// placeholder, since only [`ModelPart::render_colored`] is ever called. Children are addressed
-    /// positionally (named by index).
+    /// Builds a colored-only [`ModelPart`] subtree from a [`ModelPartDesc`] tree, for an entity with
+    /// no textured path (the parrot, shulker, …). Each cube reuses its baked color; the textured UV is
+    /// an unused placeholder, since only [`ModelPart::render_colored`] is ever called. Children are
+    /// addressed positionally (named by index).
     pub(in crate::entity_models) fn from_colored_desc(colored: &ModelPartDesc) -> Self {
         let cubes = colored
             .cubes
@@ -379,10 +269,9 @@ impl ModelPart {
         }
     }
 
-    /// Builds a colored-only root [`ModelPart`] over a flat list of sibling [`ModelPartDesc`] trees —
-    /// the colored counterpart of [`ModelPart::root_from_textured_descs`] for an entity with no
-    /// textured path. The siblings hang off a synthetic identity root, addressed positionally via
-    /// [`ModelPart::child_at_mut`].
+    /// Builds a colored-only root [`ModelPart`] over a flat list of sibling [`ModelPartDesc`] trees,
+    /// for an entity with no textured path. The siblings hang off a synthetic identity root, addressed
+    /// positionally via [`ModelPart::child_at_mut`].
     pub(in crate::entity_models) fn root_from_colored_descs(colored: &[ModelPartDesc]) -> Self {
         let children = colored
             .iter()
@@ -399,9 +288,9 @@ impl ModelPart {
     }
 
     /// Builds a synthetic identity root over a flat list of already-built sibling parts, named by
-    /// index for positional [`ModelPart::child_at_mut`] access. The runtime counterpart of
-    /// [`ModelPart::root_from_descs`] for a model whose parts are computed at construction (the
-    /// pufferfish puff states pick one of three part lists) rather than declared as `&'static` descs.
+    /// index for positional [`ModelPart::child_at_mut`] access. For a model whose parts are computed at
+    /// construction (the pufferfish puff states pick one of three part lists) rather than declared as
+    /// `&'static` descs.
     pub(in crate::entity_models) fn root_from_parts(children: Vec<ModelPart>) -> Self {
         let children = children
             .into_iter()
