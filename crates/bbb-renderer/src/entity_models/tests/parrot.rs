@@ -1,83 +1,69 @@
 use super::*;
 use crate::entity_models::model::EntityModel;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn parrot_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `ParrotModel.createBodyLayer` (atlas 32×32): seven sibling root parts — body, tail,
-    // two wings, head (parenting head2, the two beak halves, and the crest feather), two legs.
-    assert_eq!(PARROT_PARTS.len(), 7);
+    // Vanilla `ParrotModel.createBodyLayer` (atlas 32×32): seven named sibling root parts — body,
+    // tail, two wings, head (parenting head2, the two beak halves, and the crest feather), two legs.
 
     // `body` (3×6×3) pitched by 0.4937 rad.
-    let body = &PARROT_PARTS[0];
-    assert_eq!(body.pose.offset, [0.0, 16.5, -3.0]);
-    assert_eq!(body.pose.rotation, [0.4937, 0.0, 0.0]);
-    assert_eq!(body.cubes[0].size, [3.0, 6.0, 3.0]);
+    assert_eq!(PARROT_BODY_POSE.offset, [0.0, 16.5, -3.0]);
+    assert_eq!(PARROT_BODY_POSE.rotation, [0.4937, 0.0, 0.0]);
+    assert_eq!(PARROT_BODY_CUBES[0].size, [3.0, 6.0, 3.0]);
 
     // `tail` (3×4×1) pitched by 1.015 rad.
-    let tail = &PARROT_PARTS[1];
-    assert_eq!(tail.pose.offset, [0.0, 21.07, 1.16]);
-    assert_eq!(tail.pose.rotation, [1.015, 0.0, 0.0]);
-    assert_eq!(tail.cubes[0].size, [3.0, 4.0, 1.0]);
+    assert_eq!(PARROT_TAIL_POSE.offset, [0.0, 21.07, 1.16]);
+    assert_eq!(PARROT_TAIL_POSE.rotation, [1.015, 0.0, 0.0]);
+    assert_eq!(PARROT_TAIL_CUBES[0].size, [3.0, 4.0, 1.0]);
 
     // The two 1×5×3 wings: mirrored pivots, both flipped yRot = -π.
-    let left_wing = &PARROT_PARTS[2];
-    let right_wing = &PARROT_PARTS[3];
-    assert_eq!(left_wing.pose.offset, [1.5, 16.94, -2.76]);
+    assert_eq!(PARROT_LEFT_WING_POSE.offset, [1.5, 16.94, -2.76]);
     assert_eq!(
-        left_wing.pose.rotation,
+        PARROT_LEFT_WING_POSE.rotation,
         [-0.6981, -std::f32::consts::PI, 0.0]
     );
-    assert_eq!(right_wing.pose.offset, [-1.5, 16.94, -2.76]);
-    assert_eq!(right_wing.cubes[0].size, [1.0, 5.0, 3.0]);
+    assert_eq!(PARROT_RIGHT_WING_POSE.offset, [-1.5, 16.94, -2.76]);
+    assert_eq!(PARROT_WING_CUBES[0].size, [1.0, 5.0, 3.0]);
 
     // `head` (2×3×2) at offset (0, 15.69, -2.76), parenting four cubes.
-    let head = &PARROT_PARTS[4];
-    assert_eq!(head.pose.offset, [0.0, 15.69, -2.76]);
-    assert_eq!(head.cubes[0].size, [2.0, 3.0, 2.0]);
-    assert_eq!(head.children.len(), 4);
+    assert_eq!(PARROT_HEAD_POSE.offset, [0.0, 15.69, -2.76]);
+    assert_eq!(PARROT_HEAD_CUBES[0].size, [2.0, 3.0, 2.0]);
     // head2 2×1×4, beak1 / beak2 1×2×1, the crest feather 0×5×4 pitched by -0.2214 rad.
-    assert_eq!(head.children[0].cubes[0].size, [2.0, 1.0, 4.0]);
-    assert_eq!(head.children[1].cubes[0].size, [1.0, 2.0, 1.0]);
-    assert_eq!(head.children[3].pose.rotation, [-0.2214, 0.0, 0.0]);
-    assert_eq!(head.children[3].cubes[0].size, [0.0, 5.0, 4.0]);
+    assert_eq!(PARROT_HEAD2_CUBES[0].size, [2.0, 1.0, 4.0]);
+    assert_eq!(PARROT_BEAK1_CUBES[0].size, [1.0, 2.0, 1.0]);
+    assert_eq!(PARROT_FEATHER_POSE.rotation, [-0.2214, 0.0, 0.0]);
+    assert_eq!(PARROT_FEATHER_CUBES[0].size, [0.0, 5.0, 4.0]);
 
     // The two 1×2×1 legs at the mirrored pivots, both pitched by -0.0299 rad.
-    let left_leg = &PARROT_PARTS[5];
-    let right_leg = &PARROT_PARTS[6];
-    assert_eq!(left_leg.pose.offset, [1.0, 22.0, -1.05]);
-    assert_eq!(left_leg.pose.rotation, [-0.0299, 0.0, 0.0]);
-    assert_eq!(right_leg.pose.offset, [-1.0, 22.0, -1.05]);
-
-    // Eleven cubes total.
-    assert_eq!(count_cubes(&PARROT_PARTS), 11);
+    assert_eq!(PARROT_LEFT_LEG_POSE.offset, [1.0, 22.0, -1.05]);
+    assert_eq!(PARROT_LEFT_LEG_POSE.rotation, [-0.0299, 0.0, 0.0]);
+    assert_eq!(PARROT_RIGHT_LEG_POSE.offset, [-1.0, 22.0, -1.05]);
 }
 
 #[test]
 fn parrot_sitting_pose_matches_vanilla_prepare() {
     use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
 
+    // The seven named root parts and their bind poses, in vanilla `addOrReplaceChild` order.
+    let parts = [
+        ("body", PARROT_BODY_POSE),
+        ("tail", PARROT_TAIL_POSE),
+        ("left_wing", PARROT_LEFT_WING_POSE),
+        ("right_wing", PARROT_RIGHT_WING_POSE),
+        ("head", PARROT_HEAD_POSE),
+        ("left_leg", PARROT_LEFT_LEG_POSE),
+        ("right_leg", PARROT_RIGHT_LEG_POSE),
+    ];
+
     // Standing with a neutral gaze keeps every part at its bind pose: `setup_anim` applies only the
     // head look (identity at rest) and the walk swing (identity at rest).
     let mut standing = ParrotModel::new();
     standing.prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0));
     let standing_root = standing.root_mut();
-    for i in 0..PARROT_PARTS.len() {
-        let part = standing_root.child_at_mut(i);
-        assert_eq!(
-            part.pose.offset, PARROT_PARTS[i].pose.offset,
-            "part {i} offset"
-        );
-        assert_eq!(
-            part.pose.rotation, PARROT_PARTS[i].pose.rotation,
-            "part {i} rotation"
-        );
+    for (name, pose) in parts {
+        let part = standing_root.child_mut(name);
+        assert_eq!(part.pose.offset, pose.offset, "part {name} offset");
+        assert_eq!(part.pose.rotation, pose.rotation, "part {name} rotation");
     }
 
     // SITTING = `ParrotModel.prepare(SITTING)`: every part raises `y += 1.9`, the tail pitches
@@ -86,26 +72,25 @@ fn parrot_sitting_pose_matches_vanilla_prepare() {
     sitting
         .prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true));
     let root = sitting.root_mut();
-    for i in 0..PARROT_PARTS.len() {
+    for (name, pose) in parts {
         assert!(
-            (root.child_at_mut(i).pose.offset[1] - (PARROT_PARTS[i].pose.offset[1] + 1.9)).abs()
-                < 1.0e-6,
-            "part {i} should raise y by 1.9"
+            (root.child_mut(name).pose.offset[1] - (pose.offset[1] + 1.9)).abs() < 1.0e-6,
+            "part {name} should raise y by 1.9"
         );
     }
-    // tail (index 1): xRot = 1.015 + π/6.
-    assert!((root.child_at_mut(1).pose.rotation[0] - (1.015 + FRAC_PI_6)).abs() < 1.0e-6);
-    // wings (2 left, 3 right): zRot set to ∓0.0873.
-    assert!((root.child_at_mut(2).pose.rotation[2] - (-0.0873)).abs() < 1.0e-6);
-    assert!((root.child_at_mut(3).pose.rotation[2] - 0.0873).abs() < 1.0e-6);
-    // legs (5 left, 6 right): xRot = -0.0299 + π/2.
-    assert!((root.child_at_mut(5).pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
-    assert!((root.child_at_mut(6).pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
-    // `prepare(SITTING)` only translates the head (index 4); with a neutral gaze the head look
-    // leaves the head rotation at bind.
+    // tail: xRot = 1.015 + π/6.
+    assert!((root.child_mut("tail").pose.rotation[0] - (1.015 + FRAC_PI_6)).abs() < 1.0e-6);
+    // wings: zRot set to ∓0.0873.
+    assert!((root.child_mut("left_wing").pose.rotation[2] - (-0.0873)).abs() < 1.0e-6);
+    assert!((root.child_mut("right_wing").pose.rotation[2] - 0.0873).abs() < 1.0e-6);
+    // legs: xRot = -0.0299 + π/2.
+    assert!((root.child_mut("left_leg").pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
+    assert!((root.child_mut("right_leg").pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
+    // `prepare(SITTING)` only translates the head; with a neutral gaze the head look leaves the head
+    // rotation at bind.
     assert_eq!(
-        root.child_at_mut(4).pose.rotation,
-        PARROT_PARTS[4].pose.rotation
+        root.child_mut("head").pose.rotation,
+        PARROT_HEAD_POSE.rotation
     );
 }
 
@@ -168,29 +153,29 @@ fn parrot_walk_swing_matches_vanilla_setup_anim() {
     let speed = 0.75_f32;
     let phase = pos * 0.6662;
 
-    // The left leg (index 5, offset x = +1.0) swings in phase, the right (index 6, x = -1.0) a
-    // half-cycle out, both added onto the baked -0.0299 pitch.
-    let left = parrot_leg_swing_pose(PARROT_PARTS[5].pose, pos, speed);
-    let right = parrot_leg_swing_pose(PARROT_PARTS[6].pose, pos, speed);
+    // The left leg (offset x = +1.0) swings in phase, the right (x = -1.0) a half-cycle out, both
+    // added onto the baked -0.0299 pitch.
+    let left = parrot_leg_swing_pose(PARROT_LEFT_LEG_POSE, pos, speed);
+    let right = parrot_leg_swing_pose(PARROT_RIGHT_LEG_POSE, pos, speed);
     assert!((left.rotation[0] - (-0.0299 + phase.cos() * 1.4 * speed)).abs() < 1.0e-6);
     assert!((right.rotation[0] - (-0.0299 + (phase + PI).cos() * 1.4 * speed)).abs() < 1.0e-6);
     // The pivot and the other rotation axes are untouched.
-    assert_eq!(left.offset, PARROT_PARTS[5].pose.offset);
-    assert_eq!(left.rotation[1], PARROT_PARTS[5].pose.rotation[1]);
-    assert_eq!(left.rotation[2], PARROT_PARTS[5].pose.rotation[2]);
+    assert_eq!(left.offset, PARROT_LEFT_LEG_POSE.offset);
+    assert_eq!(left.rotation[1], PARROT_LEFT_LEG_POSE.rotation[1]);
+    assert_eq!(left.rotation[2], PARROT_LEFT_LEG_POSE.rotation[2]);
 
-    // The tail (index 1) adds cos(phase)·0.3·speed onto the baked 1.015 pitch.
-    let tail = parrot_tail_swing_pose(PARROT_PARTS[1].pose, pos, speed);
+    // The tail adds cos(phase)·0.3·speed onto the baked 1.015 pitch.
+    let tail = parrot_tail_swing_pose(PARROT_TAIL_POSE, pos, speed);
     assert!((tail.rotation[0] - (1.015 + phase.cos() * 0.3 * speed)).abs() < 1.0e-6);
 
     // At rest (speed 0) every swing collapses to the baked pose.
     assert_eq!(
-        parrot_leg_swing_pose(PARROT_PARTS[5].pose, pos, 0.0).rotation,
-        PARROT_PARTS[5].pose.rotation
+        parrot_leg_swing_pose(PARROT_LEFT_LEG_POSE, pos, 0.0).rotation,
+        PARROT_LEFT_LEG_POSE.rotation
     );
     assert_eq!(
-        parrot_tail_swing_pose(PARROT_PARTS[1].pose, pos, 0.0).rotation,
-        PARROT_PARTS[1].pose.rotation
+        parrot_tail_swing_pose(PARROT_TAIL_POSE, pos, 0.0).rotation,
+        PARROT_TAIL_POSE.rotation
     );
 }
 
