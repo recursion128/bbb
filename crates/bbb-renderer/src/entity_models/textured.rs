@@ -13,36 +13,33 @@ use super::{
     cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
     entity_model_root_transform,
     geometry::{
-        emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
-        part_pose_transform, EntityModelTexturedMesh, TexturedModelPartDesc,
+        fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
+        EntityModelTexturedMesh,
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        apply_wolf_sitting_pose, head_first_part_index, head_look_at_rest, head_look_pose,
-        limb_swing_at_rest, quadruped_leg_swing_pose, skeleton_family_head_index,
-        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        AllayModel, ArmorStandModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel,
-        CamelModel, ChickenModel, CodModel, CowModel, CreeperModel, DolphinModel, EndermanModel,
-        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
-        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel, PigModel,
-        PiglinModel, PlayerModel, PolarBearModel, PufferfishModel, RavagerModel, SalmonModel,
-        SheepFurModel, SheepModel, SilverfishModel, SkeletonClothingModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel,
-        TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
-        WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF,
-        ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF,
-        BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF,
-        PUFFERFISH_TEXTURE_REF, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
-        TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+        skeleton_family_head_index, AllayModel, ArmorStandModel, BatModel, BeeModel, BlazeModel,
+        BoatModel, BreezeModel, CamelModel, ChickenModel, CodModel, CowModel, CreeperModel,
+        DolphinModel, EndermanModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel,
+        HoglinModel, IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel,
+        PhantomModel, PigModel, PiglinModel, PlayerModel, PolarBearModel, PufferfishModel,
+        RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel,
+        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel,
+        SpiderModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
+        TurtleModel, VexModel, VillagerModel, WanderingTraderModel, WitchModel, WolfModel,
+        ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
+        BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF,
+        COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
+        STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
+        TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
-use glam::Mat4;
 
 mod layers;
 #[cfg(test)]
@@ -62,8 +59,7 @@ pub(super) use layers::{
     spider_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
     witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
-    EntityModelLayerRenderType,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
 };
 
 pub(super) struct EntityModelTexturedMeshes {
@@ -1672,72 +1668,22 @@ fn emit_wolf_textured_model(
     collar_color: Option<EntityDyeColor>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `WolfModel.setupAnim` (adult and baby) sets `tail.yRot` (angry → 0, else the
-    // wag), then either folds into the sitting pose or swings the four legs with the
-    // `QuadrupedModel` diagonal phase, then applies the head look, then sets `tail.xRot =
-    // tailAngle` — the `π/5` rest droop for an untamed wolf or the tame/health droop `(0.55
-    // - damageRatio * 0.4) * π` from `wolf_tail_angle`. A sitting wolf (`isSitting`) tilts
-    // its body and tucks its legs (`setSittingPose`) instead of the leg swing; the head
-    // still follows the look. Every pass (base, collar) shares the body-layer part layout,
-    // so the poses apply per pass. The adult layer lists the legs at [3, 4, 5, 6] and the
-    // tail at 7 (head/body/mane at 0/1/2); the baby layer drops the mane, so the legs are at
-    // [2, 3, 4, 5] and the tail at 6. The water-shake body roll is deferred.
-    let leg_indices: [usize; 4] = if baby { [2, 3, 4, 5] } else { [3, 4, 5, 6] };
-    let tail_index = wolf_tail_part_index(baby);
-    let head_index = head_first_part_index();
+    // The unified `WolfModel` tree drives both render paths; `setup_anim` looks the head, folds the
+    // sitting pose or swings the four legs, and sets the tail angle/wag (angry → raised). Every pass
+    // (base, collar) shares the body-layer layout, so both re-render the same posed tree; the collar dye
+    // pass supplies its tinted texture. The water-shake body roll is deferred.
     let transform = entity_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let tail_angle = instance.render_state.wolf_tail_angle;
-    let sitting = instance.render_state.wolf_sitting;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let limbs_resting = limb_swing_at_rest(limb_swing_amount);
+    let mut model = WolfModel::new(baby, angry);
+    model.prepare(&instance);
     for pass in wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color) {
-        // A sitting or angry wolf always re-poses (the sitting fold / tail raise override the
-        // layer rest even when standing); a standing non-angry one re-poses only when the wag
-        // or the `tail_angle` droop moves the tail off its layer rest pose, so an untamed
-        // standing wolf can still take the borrow fast path.
-        let tail_moves = angry
-            || sitting
-            || pass.parts.get(tail_index).is_some_and(|tail| {
-                wolf_tail_swing_pose(tail.pose, tail_angle, limb_swing, limb_swing_amount)
-                    != tail.pose
-            });
-        if head_resting && limbs_resting && !tail_moves {
-            emit_textured_layer_pass(meshes, &pass, transform, atlas);
-        } else {
-            let mut parts = pass.parts.to_vec();
-            if !head_resting {
-                if let Some(head) = parts.get_mut(head_index) {
-                    head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-                }
-            }
-            if sitting {
-                for (index, role) in wolf_sitting_part_roles(baby) {
-                    if let Some(part) = parts.get_mut(index) {
-                        apply_wolf_sitting_pose(&mut part.pose, role, baby);
-                    }
-                }
-            } else if !limbs_resting {
-                for index in leg_indices {
-                    if let Some(leg) = parts.get_mut(index) {
-                        leg.pose =
-                            quadruped_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                    }
-                }
-            }
-            if let Some(tail) = parts.get_mut(tail_index) {
-                // The sitting role already lifted the tail offset (if sitting); layer on the
-                // normal tail rotation, which preserves the offset.
-                tail.pose = if angry {
-                    wolf_angry_tail_pose(tail.pose)
-                } else {
-                    wolf_tail_swing_pose(tail.pose, tail_angle, limb_swing, limb_swing_amount)
-                };
-            }
-            emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }
@@ -1802,35 +1748,6 @@ fn emit_skeleton_textured_model(
                 .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
         }
     }
-}
-
-fn emit_textured_layer_pass(
-    meshes: &mut EntityModelTexturedMeshes,
-    pass: &EntityModelLayerPass,
-    transform: Mat4,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    emit_textured_layer_pass_with_parts(meshes, pass, pass.parts, transform, atlas);
-}
-
-fn emit_textured_layer_pass_with_parts(
-    meshes: &mut EntityModelTexturedMeshes,
-    pass: &EntityModelLayerPass,
-    parts: &[TexturedModelPartDesc],
-    transform: Mat4,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-        return;
-    };
-    emit_textured_model_parts(
-        meshes.mesh_mut(pass.render_type),
-        parts,
-        transform,
-        pass.texture,
-        entry.uv,
-        pass.tint,
-    );
 }
 
 fn entity_model_texture_atlas_entry(

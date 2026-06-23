@@ -193,19 +193,6 @@ pub(super) fn emit_model_parts_with_color(
     }
 }
 
-pub(super) fn emit_textured_model_parts(
-    mesh: &mut EntityModelTexturedMesh,
-    parts: &[TexturedModelPartDesc],
-    parent_transform: Mat4,
-    texture: EntityModelTextureRef,
-    uv_rect: EntityModelUvRect,
-    tint: [f32; 4],
-) {
-    for part in parts {
-        emit_textured_model_part(mesh, part, parent_transform, texture, uv_rect, tint);
-    }
-}
-
 pub(super) fn emit_model_cubes_at_pose(
     mesh: &mut EntityModelMesh,
     parent_transform: Mat4,
@@ -228,21 +215,6 @@ pub(super) fn emit_model_part(
         emit_model_cube(mesh, transform, *cube);
     }
     emit_model_parts(mesh, part.children, transform);
-}
-
-pub(super) fn emit_textured_model_part(
-    mesh: &mut EntityModelTexturedMesh,
-    part: &TexturedModelPartDesc,
-    parent_transform: Mat4,
-    texture: EntityModelTextureRef,
-    uv_rect: EntityModelUvRect,
-    tint: [f32; 4],
-) {
-    let transform = parent_transform * part_pose_transform(part.pose);
-    for cube in part.cubes {
-        emit_textured_model_cube(mesh, transform, *cube, texture, uv_rect, tint);
-    }
-    emit_textured_model_parts(mesh, part.children, transform, texture, uv_rect, tint);
 }
 
 pub(super) fn emit_model_part_with_color(

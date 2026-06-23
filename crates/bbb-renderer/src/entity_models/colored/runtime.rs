@@ -1619,7 +1619,10 @@ fn emit_skeleton_variant_model(
 /// Applies the vanilla `QuadrupedModel.setupAnim` leg swing
 /// ([`quadruped_leg_swing_pose`]) to a colored layer's four leg parts at
 /// `leg_indices`. Borrows the static parts unchanged at rest
-/// (`walkAnimationSpeed == 0`).
+/// (`walkAnimationSpeed == 0`). The quadruped models now swing their legs through their
+/// `setup_anim` directly, so this `Cow`-slice variant is retained only as the reference the
+/// leg-phase unit test asserts against.
+#[cfg(test)]
 pub(in crate::entity_models) fn quadruped_limb_swing_parts(
     parts: Cow<'_, [ModelPartDesc]>,
     leg_indices: [usize; 4],
@@ -1776,134 +1779,15 @@ fn emit_wolf_model(
     baby: bool,
     angry: bool,
 ) {
-    let parts: &[ModelPartDesc] = if baby {
-        &BABY_WOLF_PARTS
-    } else {
-        &ADULT_WOLF_PARTS
-    };
-    // Vanilla `WolfModel.setupAnim` (shared by adult and baby) sets `tail.yRot` (angry → 0,
-    // else the wag), then either folds into the sitting pose or swings the four legs with
-    // the `QuadrupedModel` diagonal phase `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, then
-    // applies the head look, then sets `tail.xRot = tailAngle` — the `π/5` rest droop for an
-    // untamed wolf or the tame/health droop `(0.55 - damageRatio * 0.4) * π` projected into
-    // `wolf_tail_angle`. A sitting wolf (`isSitting`) tilts its body and tucks its legs
-    // (`setSittingPose`) instead of the leg swing; the head still follows the look. The
-    // water-shake body roll is deferred.
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let tail_angle = instance.render_state.wolf_tail_angle;
-    let tail_index = wolf_tail_part_index(baby);
-    let head_looked = head_first_colored_head_look_parts(parts, instance);
-    let posed = if instance.render_state.wolf_sitting {
-        wolf_sitting_parts(
-            head_looked,
-            baby,
-            angry,
-            tail_angle,
-            limb_swing,
-            limb_swing_amount,
-        )
-    } else {
-        let legs_and_head = quadruped_limb_swing_parts(
-            head_looked,
-            wolf_leg_part_indices(baby),
-            limb_swing,
-            limb_swing_amount,
-        );
-        if angry {
-            wolf_angry_tail_parts(legs_and_head, tail_index)
-        } else {
-            wolf_tail_wag_parts(
-                legs_and_head,
-                tail_index,
-                tail_angle,
-                limb_swing,
-                limb_swing_amount,
-            )
-        }
-    };
-    emit_model_parts(mesh, &posed, entity_model_root_transform(instance));
-}
-
-/// Folds a colored wolf layer into the vanilla `WolfModel.setSittingPose`: the body, hind
-/// legs, front legs, and tail are repositioned ([`apply_wolf_sitting_pose`]) instead of
-/// swinging the legs, and the tail still carries its normal `tailAngle`/wag rotation on top
-/// of the sitting offset lift.
-fn wolf_sitting_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    baby: bool,
-    angry: bool,
-    tail_angle: f32,
-    limb_swing: f32,
-    limb_swing_amount: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    let mut owned = parts.into_owned();
-    for (index, role) in wolf_sitting_part_roles(baby) {
-        if let Some(part) = owned.get_mut(index) {
-            apply_wolf_sitting_pose(&mut part.pose, role, baby);
-        }
-    }
-    let tail_index = wolf_tail_part_index(baby);
-    if let Some(tail) = owned.get_mut(tail_index) {
-        // The sitting role already lifted the tail offset; layer on the normal tail
-        // rotation (both helpers preserve the offset).
-        tail.pose = if angry {
-            wolf_angry_tail_pose(tail.pose)
-        } else {
-            wolf_tail_swing_pose(tail.pose, tail_angle, limb_swing, limb_swing_amount)
-        };
-    }
-    Cow::Owned(owned)
-}
-
-/// Holds the wolf tail straight and raised for an angry wolf ([`wolf_angry_tail_pose`]).
-/// Unlike the wag, this always re-poses the tail (the `1.5393804` raise overrides the
-/// layer's `π/5` rest droop even when standing).
-fn wolf_angry_tail_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    tail_index: usize,
-) -> Cow<'_, [ModelPartDesc]> {
-    let mut owned = parts.into_owned();
-    if let Some(tail) = owned.get_mut(tail_index) {
-        tail.pose = wolf_angry_tail_pose(tail.pose);
-    }
-    Cow::Owned(owned)
-}
-
-/// Applies the vanilla `WolfModel.setupAnim` tail wag ([`wolf_tail_swing_pose`]) to a
-/// colored wolf layer's tail part. Borrows the static parts unchanged when the resulting
-/// pose is byte-identical to the layer rest — a standing (`walkAnimationSpeed == 0`) wolf
-/// whose `tail_angle` equals the layer's `π/5` rest droop (i.e. an untamed wolf).
-fn wolf_tail_wag_parts(
-    parts: Cow<'_, [ModelPartDesc]>,
-    tail_index: usize,
-    tail_angle: f32,
-    limb_swing: f32,
-    limb_swing_amount: f32,
-) -> Cow<'_, [ModelPartDesc]> {
-    let Some(base) = parts.get(tail_index) else {
-        return parts;
-    };
-    let posed = wolf_tail_swing_pose(base.pose, tail_angle, limb_swing, limb_swing_amount);
-    if posed == base.pose {
-        return parts;
-    }
-    let mut owned = parts.into_owned();
-    owned[tail_index].pose = posed;
-    Cow::Owned(owned)
-}
-
-/// The four leg part indices in the wolf body layers. The adult layer lists the head,
-/// body, and mane (`upper_body`) at `0`/`1`/`2` then the legs at `[3, 4, 5, 6]`; the
-/// baby layer drops the mane, so the head and body sit at `0`/`1` and the legs at
-/// `[2, 3, 4, 5]`. [`quadruped_leg_swing_pose`] resolves each leg's phase from its
-/// offset, so only the slot positions differ.
-fn wolf_leg_part_indices(baby: bool) -> [usize; 4] {
-    if baby {
-        [2, 3, 4, 5]
-    } else {
-        [3, 4, 5, 6]
-    }
+    // The unified `WolfModel` tree drives both render paths; `setup_anim` looks the head, folds the
+    // `setSittingPose` or swings the four legs at the `QuadrupedModel` diagonal phase, then sets the
+    // tail `xRot = tailAngle` + wag `yRot` (angry → the raised constant, no wag). The water-shake body
+    // roll is deferred. The colored fallback renders the baked wolf-gray tree.
+    WolfModel::new(baby, angry).prepare_and_render(
+        mesh,
+        &instance,
+        entity_model_root_transform(instance),
+    );
 }
 
 fn emit_quadruped_model(
@@ -2055,21 +1939,6 @@ fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance
     // the clamped arms/legs, overrides the arms when carrying a block, and applies the creepy
     // head/hat shift.
     EndermanModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-/// Applies the vanilla `setupAnim` head look to a standalone head-first colored
-/// model's head part (index 0): creeper, spider/cave spider, enderman, iron
-/// golem, snow golem.
-fn head_first_colored_head_look_parts(
-    parts: &[ModelPartDesc],
-    instance: EntityModelInstance,
-) -> Cow<'_, [ModelPartDesc]> {
-    colored_head_look_parts(
-        parts,
-        head_first_part_index(),
-        instance.render_state.head_yaw,
-        instance.render_state.head_pitch,
-    )
 }
 
 fn emit_boat_model(
