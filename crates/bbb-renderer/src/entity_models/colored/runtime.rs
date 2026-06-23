@@ -135,7 +135,11 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Silverfish => {
                 if !skip_texture_backed_entities {
-                    emit_silverfish_model(&mut mesh, *instance);
+                    SilverfishModel::new().prepare_and_render(
+                        &mut mesh,
+                        instance,
+                        entity_model_root_transform(*instance),
+                    );
                 }
             }
             EntityModelKind::Vex => {
@@ -549,24 +553,6 @@ fn emit_blaze_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     }
     for index in 0..BLAZE_ROD_COUNT {
         parts[index + 1].pose.offset = blaze_rod_offset(index, age_in_ticks);
-    }
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
-}
-
-fn emit_silverfish_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `SilverfishModel.setupAnim` wiggles all seven body segments from `ageInTicks`
-    // every frame (`silverfish_segment_pose`), then the three overlay layers copy segments
-    // 2/4/1 (`silverfish_layer_pose` per `SILVERFISH_LAYER_RULES`). There is no head look or
-    // walk swing, and no MeshTransformer scaling (unit model root).
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let mut parts = SILVERFISH_PARTS.to_vec();
-    for index in 0..SILVERFISH_SEGMENT_COUNT {
-        parts[index].pose = silverfish_segment_pose(parts[index].pose, index, age_in_ticks);
-    }
-    for (layer, &(source, copy_x)) in SILVERFISH_LAYER_RULES.iter().enumerate() {
-        let source_pose = parts[source].pose;
-        let part = &mut parts[SILVERFISH_SEGMENT_COUNT + layer];
-        part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
     }
     emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }

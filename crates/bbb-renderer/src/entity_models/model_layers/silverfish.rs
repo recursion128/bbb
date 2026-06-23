@@ -1,4 +1,6 @@
 use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // The silverfish fallback paints its body a stony gray.
 pub(in crate::entity_models) const SILVERFISH_GRAY: [f32; 4] = [0.50, 0.50, 0.53, 1.0];
@@ -236,5 +238,46 @@ pub(in crate::entity_models) fn silverfish_layer_pose(
             base.offset[2],
         ],
         rotation: [base.rotation[0], source.rotation[1], base.rotation[2]],
+    }
+}
+
+/// Mutable silverfish model, mirroring vanilla `SilverfishModel`. The unified tree is zipped from the
+/// baked colored ([`SILVERFISH_PARTS`]) and textured ([`SILVERFISH_TEXTURED_PARTS`]) trees: the first
+/// [`SILVERFISH_SEGMENT_COUNT`] children are the body segments, followed by the [`SILVERFISH_LAYER_COUNT`]
+/// overlay parts. `setup_anim` first wiggles every segment from `ageInTicks` ([`silverfish_segment_pose`]),
+/// then copies each overlay's pose from its already-animated source segment per [`SILVERFISH_LAYER_RULES`]
+/// ([`silverfish_layer_pose`]). There is no head look or walk swing, and no `MeshTransformer` scaling.
+pub(in crate::entity_models) struct SilverfishModel {
+    root: ModelPart,
+}
+
+impl SilverfishModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&SILVERFISH_PARTS, &SILVERFISH_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for SilverfishModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let age_in_ticks = instance.render_state.age_in_ticks;
+        for index in 0..SILVERFISH_SEGMENT_COUNT {
+            let segment = self.root.child_at_mut(index);
+            segment.pose = silverfish_segment_pose(segment.pose, index, age_in_ticks);
+        }
+        for (layer, &(source, copy_x)) in SILVERFISH_LAYER_RULES.iter().enumerate() {
+            let source_pose = self.root.child_at_mut(source).pose;
+            let part = self.root.child_at_mut(SILVERFISH_SEGMENT_COUNT + layer);
+            part.pose = silverfish_layer_pose(part.pose, source_pose, copy_x);
+        }
     }
 }
