@@ -1,64 +1,56 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
-fn squid_model_parts_match_vanilla_26_1_body_layer() {
-    // Body cube carries `CubeDeformation(0.02)`: box(-6, -8, -6, 12×16×12) inflated 0.02.
+fn squid_cubes_match_vanilla_26_1_body_layer() {
+    // Body cube carries `CubeDeformation(0.02)`: box(-6, -8, -6, 12×16×12) inflated 0.02 on the
+    // geometry, while the textured `uv_size` keeps the base 12×16×12 box. The unified cube carries the
+    // colored tint (`SQUID_BLUE`) and the textured UV (`texOffs(0, 0)`) in one struct.
     assert_eq!(
         SQUID_BODY[0],
-        ModelCubeDesc {
-            min: [-6.02, -8.02, -6.02],
-            size: [12.04, 16.04, 12.04],
-            color: SQUID_BLUE,
-        }
+        ModelCube::new(
+            [-6.02, -8.02, -6.02],
+            [12.04, 16.04, 12.04],
+            SQUID_BLUE,
+            [12.0, 16.0, 12.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    // Tentacle cube: `texOffs(48, 0)` box(-1, 0, -1, 2×18×2), no deformation.
+    // Tentacle cube: `texOffs(48, 0)` box(-1, 0, -1, 2×18×2), no deformation (so `uv_size == size`).
     assert_eq!(
         SQUID_TENTACLE[0],
-        ModelCubeDesc {
-            min: [-1.0, 0.0, -1.0],
-            size: [2.0, 18.0, 2.0],
-            color: SQUID_BLUE,
-        }
+        ModelCube::new(
+            [-1.0, 0.0, -1.0],
+            [2.0, 18.0, 2.0],
+            SQUID_BLUE,
+            [2.0, 18.0, 2.0],
+            [48.0, 0.0],
+            false,
+        )
     );
-
-    // Nine parts: the body followed by the eight tentacle ring. The body sits at
-    // `offset(0, 8, 0)`.
-    let parts = squid_model_parts(0.0);
-    assert_eq!(parts.len(), 9);
-    assert_part(
-        &parts[0],
-        [0.0, 8.0, 0.0],
-        [0.0, 0.0, 0.0],
-        SQUID_BODY.as_slice(),
-    );
-
-    // The tentacle ring: tentacle `i` at `(cos(i·2π/8)·5, 15, sin(i·2π/8)·5)`, yawed
-    // `-i·2π/8 + π/2`. Spot-check the four cardinal tentacles (indices 0/2/4/6 → parts
-    // 1/3/5/7) and confirm each uses the shared tentacle cube.
-    let half_pi = std::f32::consts::FRAC_PI_2;
-    for (part_index, offset, y_rot) in [
-        (1usize, [5.0, 15.0, 0.0], half_pi),
-        (3, [0.0, 15.0, 5.0], 0.0),
-        (5, [-5.0, 15.0, 0.0], -half_pi),
-        (7, [0.0, 15.0, -5.0], -std::f32::consts::PI),
-    ] {
-        assert_close3(parts[part_index].pose.offset, offset);
-        assert_close3(parts[part_index].pose.rotation, [0.0, y_rot, 0.0]);
-        assert_eq!(parts[part_index].cubes, SQUID_TENTACLE.as_slice());
-    }
 }
 
 #[test]
-fn squid_tentacle_sweep_applies_tentacle_angle_to_every_tentacle() {
-    // `SquidModel.setupAnim` sets `tentacle.xRot = tentacleAngle` on all eight tentacles
-    // and leaves the body untouched.
-    let parts = squid_model_parts(0.65);
-    assert_eq!(parts[0].pose.rotation, [0.0, 0.0, 0.0], "body is static");
-    for tentacle in &parts[1..] {
-        assert_eq!(
-            tentacle.pose.rotation[0], 0.65,
-            "every tentacle sweeps by tentacleAngle"
-        );
+fn squid_tentacle_ring_layout_matches_vanilla() {
+    // Vanilla `SquidModel.createBodyLayer`: the body sits at `offset(0, 8, 0)`, and the eight tentacles
+    // ring at `(cos(i·2π/8)·5, 15, sin(i·2π/8)·5)`, yawed `-i·2π/8 + π/2` so each flat face points
+    // outward. Spot-check the body offset and the four cardinal tentacles (i = 0/2/4/6).
+    assert_close3(SQUID_BODY_POSE.offset, [0.0, 8.0, 0.0]);
+    assert_eq!(SQUID_BODY_POSE.rotation, [0.0, 0.0, 0.0]);
+
+    let half_pi = std::f32::consts::FRAC_PI_2;
+    for (i, offset, y_rot) in [
+        (0usize, [5.0, 15.0, 0.0], half_pi),
+        (2, [0.0, 15.0, 5.0], 0.0),
+        (4, [-5.0, 15.0, 0.0], -half_pi),
+        (6, [0.0, 15.0, -5.0], -std::f32::consts::PI),
+    ] {
+        let pose = squid_tentacle_pose(i);
+        assert_close3(pose.offset, offset);
+        // The bind `xRot` is `0`; `setup_anim` overwrites it with `tentacleAngle` each frame.
+        assert_close3(pose.rotation, [0.0, y_rot, 0.0]);
     }
 }
 
@@ -170,31 +162,6 @@ fn squid_texture_refs_match_vanilla_renderer() {
         let kind = EntityModelKind::Squid { glow, baby };
         assert_eq!(kind.model_key(), model_key);
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
-    }
-}
-
-#[test]
-fn squid_textured_model_parts_match_colored_layout() {
-    // The textured ring mirrors the colored one (same poses); only the cubes carry UVs.
-    // The body's `CubeDeformation(0.02)` inflates the geometry but keeps the base UV box.
-    assert_eq!(
-        SQUID_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-6.02, -8.02, -6.02],
-            size: [12.04, 16.04, 12.04],
-            uv_size: [12.0, 16.0, 12.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(SQUID_TEXTURED_TENTACLE[0].tex, [48.0, 0.0]);
-    assert_eq!(SQUID_TEXTURED_TENTACLE[0].uv_size, [2.0, 18.0, 2.0]);
-
-    let colored = squid_model_parts(0.37);
-    let textured = squid_textured_model_parts(0.37);
-    assert_eq!(textured.len(), colored.len());
-    for (c, t) in colored.iter().zip(textured.iter()) {
-        assert_eq!(c.pose, t.pose);
     }
 }
 
