@@ -1,4 +1,6 @@
-use super::{ModelCubeDesc, PartPose, GUARDIAN_BODY, GUARDIAN_EYE};
+use super::{head_look_pose, ModelCubeDesc, PartPose, GUARDIAN_BODY, GUARDIAN_EYE, PART_POSE_ZERO};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `GuardianModel.createBodyLayer` (atlas 64×64). The whole model hangs off a
 // single `head` part (`PartPose.ZERO`) carrying the body shell, twelve spikes, the eye, and the
@@ -125,5 +127,62 @@ pub(in crate::entity_models) fn guardian_spike_bind_pose(i: usize) -> PartPose {
             std::f32::consts::PI * GUARDIAN_SPIKE_Y_ROT[i],
             std::f32::consts::PI * GUARDIAN_SPIKE_Z_ROT[i],
         ],
+    }
+}
+
+/// Builds the guardian's `head` part tree: the body shell carries the twelve spikes, the eye, and
+/// the three-segment tail chain (`tail0` → `tail1` → `tail2`) as children, in vanilla emit order.
+fn guardian_head_part() -> ModelPart {
+    let mut children: Vec<ModelPart> = (0..GUARDIAN_SPIKE_X.len())
+        .map(|i| ModelPart::leaf_colored(guardian_spike_bind_pose(i), &GUARDIAN_SPIKE))
+        .collect();
+    children.push(ModelPart::leaf_colored(
+        GUARDIAN_EYE_POSE,
+        &GUARDIAN_EYE_CUBE,
+    ));
+
+    let tail2 = ModelPart::leaf_colored(GUARDIAN_TAIL2_POSE, &GUARDIAN_TAIL2);
+    let tail1 = ModelPart::colored(GUARDIAN_TAIL1_POSE, &GUARDIAN_TAIL1, vec![tail2]);
+    let tail0 = ModelPart::colored(PART_POSE_ZERO, &GUARDIAN_TAIL0, vec![tail1]);
+    children.push(tail0);
+
+    ModelPart::colored(PART_POSE_ZERO, &GUARDIAN_HEAD, children)
+}
+
+/// Mutable guardian model, mirroring vanilla `GuardianModel`. The whole guardian hangs off the
+/// single `head` root part (body shell + twelve spikes + eye + three-segment tail), so the head IS
+/// the model root. The elder variant is the same tree at the 2.35× scaled root transform (applied at
+/// the call site). Colored-only: `setup_anim` turns the head — and with it the whole guardian — to
+/// the look angles (the spike pulse, eye tracking, tail sway, and attack beam stay deferred).
+pub(in crate::entity_models) struct GuardianModel {
+    root: ModelPart,
+}
+
+impl GuardianModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: guardian_head_part(),
+        }
+    }
+}
+
+impl EntityModel for GuardianModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `GuardianModel.setupAnim` sets `head.yRot/xRot` from the plain look; every part is
+        // a child of `head`, so the whole guardian turns with it. The head's bind pose is ZERO, so a
+        // level gaze collapses to the bind pose and the look applies every frame.
+        self.root.pose = head_look_pose(
+            self.root.pose,
+            instance.render_state.head_yaw,
+            instance.render_state.head_pitch,
+        );
     }
 }

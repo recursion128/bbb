@@ -154,6 +154,30 @@ impl ModelPart {
         )
     }
 
+    /// A colored-only part carrying both `cubes` (from baked [`ModelCubeDesc`] geometry) and
+    /// `children` — the non-leaf counterpart of [`ModelPart::leaf_colored`], for a colored-only
+    /// model whose tree is assembled at construction (the guardian, whose twelve spikes carry
+    /// computed bind poses) rather than declared as a `&'static` desc tree. Children are named by
+    /// index.
+    pub(in crate::entity_models) fn colored(
+        pose: PartPose,
+        cubes: &[ModelCubeDesc],
+        children: Vec<ModelPart>,
+    ) -> Self {
+        let children = children
+            .into_iter()
+            .enumerate()
+            .map(|(index, child)| (INDEX_CHILD_NAMES[index], child))
+            .collect();
+        Self {
+            pose,
+            default_pose: pose,
+            cubes: cubes.iter().map(ModelCube::from_colored_desc).collect(),
+            children,
+            visible: true,
+        }
+    }
+
     /// Builds a unified [`ModelPart`] subtree by zipping a colored [`ModelPartDesc`] tree with its
     /// matching textured [`TexturedModelPartDesc`] tree (the two share structure and bind poses; the
     /// textured tree reuses the colored poses). Each unified cube takes its geometry/color from the

@@ -201,8 +201,14 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Guardian { elder } => {
                 // Colored-only so far (no texture-backed guardian yet), so this arm is always
-                // emitted rather than gated behind `skip_texture_backed_entities`.
-                emit_guardian_model(&mut mesh, *instance, elder);
+                // emitted rather than gated behind `skip_texture_backed_entities`. The elder is the
+                // same mesh scaled 2.35× at the root.
+                let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
+                GuardianModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    mesh_transformer_scaled_model_root_transform(*instance, scale),
+                );
             }
             EntityModelKind::Frog => {
                 // Colored-only so far (no texture-backed frog yet), so this arm is always emitted.
@@ -722,37 +728,6 @@ fn emit_dolphin_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance,
     // uses `LivingEntityRenderer.setupRotations`.
     let root = mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
     DolphinModel::new().prepare_and_render(mesh, &instance, root);
-}
-
-fn emit_guardian_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, elder: bool) {
-    // Vanilla `GuardianModel` hangs the whole model off one `head` part (`PartPose.ZERO`): the
-    // body shell, twelve spikes, the eye, and the nested three-segment tail. The elder guardian
-    // is the same mesh scaled 2.35× by `ELDER_GUARDIAN_SCALE` (a `MeshTransformer`, composed at
-    // the root). `setupAnim` sets `head.yRot/xRot` from the plain look, and since every part is a
-    // child of `head` the whole guardian turns with it — reproduced by folding `head_look_pose`
-    // into `head_t`. The spike age pulse + `spikesAnimation` withdrawal, the eye tracking, the tail
-    // sway, and the attack beam are deferred, so those stay at their rest pose.
-    let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let base_root = mesh_transformer_scaled_model_root_transform(instance, scale);
-    let head_t = if head_look_at_rest(head_yaw, head_pitch) {
-        base_root
-    } else {
-        base_root * part_pose_transform(head_look_pose(PART_POSE_ZERO, head_yaw, head_pitch))
-    };
-
-    emit_model_cubes_at_pose(mesh, head_t, PART_POSE_ZERO, &GUARDIAN_HEAD);
-    for i in 0..GUARDIAN_SPIKE_X.len() {
-        emit_model_cubes_at_pose(mesh, head_t, guardian_spike_bind_pose(i), &GUARDIAN_SPIKE);
-    }
-    emit_model_cubes_at_pose(mesh, head_t, GUARDIAN_EYE_POSE, &GUARDIAN_EYE_CUBE);
-
-    // Tail: tail0 (`PartPose.ZERO`) → tail1 → tail2.
-    emit_model_cubes_at_pose(mesh, head_t, PART_POSE_ZERO, &GUARDIAN_TAIL0);
-    let tail1_t = head_t * part_pose_transform(GUARDIAN_TAIL1_POSE);
-    emit_model_cubes_at_pose(mesh, head_t, GUARDIAN_TAIL1_POSE, &GUARDIAN_TAIL1);
-    emit_model_cubes_at_pose(mesh, tail1_t, GUARDIAN_TAIL2_POSE, &GUARDIAN_TAIL2);
 }
 
 fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

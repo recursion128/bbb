@@ -193,18 +193,6 @@ pub(super) fn emit_model_parts_with_color(
     }
 }
 
-pub(super) fn emit_model_cubes_at_pose(
-    mesh: &mut EntityModelMesh,
-    parent_transform: Mat4,
-    pose: PartPose,
-    cubes: &[ModelCubeDesc],
-) {
-    let transform = parent_transform * part_pose_transform(pose);
-    for cube in cubes {
-        emit_model_cube(mesh, transform, *cube);
-    }
-}
-
 pub(super) fn emit_model_part(
     mesh: &mut EntityModelMesh,
     part: &ModelPartDesc,
