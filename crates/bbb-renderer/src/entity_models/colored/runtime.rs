@@ -317,12 +317,20 @@ fn entity_model_mesh_with_options(
                 );
             }
             EntityModelKind::ShulkerBullet => {
-                // Colored-only so far (no texture-backed shulker bullet yet), so this arm always emits.
-                emit_shulker_bullet_model(&mut mesh, *instance);
+                // Static (the age-driven tumble and the outer-shell pass are deferred); colored-only.
+                StaticModel::new(&SHULKER_BULLET_PARTS).prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    shulker_bullet_model_root_transform(*instance),
+                );
             }
             EntityModelKind::WindCharge => {
                 // Colored-only so far (no texture-backed wind charge yet), so this arm always emits.
-                emit_wind_charge_model(&mut mesh, *instance);
+                WindChargeModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    wind_charge_model_root_transform(*instance),
+                );
             }
             EntityModelKind::EnderDragon => {
                 // Colored-only so far (no texture-backed ender dragon yet), so this arm always emits.
@@ -1227,31 +1235,6 @@ fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     for cube in END_CRYSTAL_PARTS[3].cubes {
         emit_model_cube(mesh, core_t, *cube);
     }
-}
-
-fn emit_shulker_bullet_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `ShulkerBulletModel` is a single `main` part of three interlocking slabs. The geometry
-    // and the facing are emitted at the `ShulkerBulletRenderer` static transform (lift + flip/half
-    // scale + the `setupAnim` yaw/pitch); the age-driven tumble and the translucent outer-shell pass
-    // are deferred.
-    let root = shulker_bullet_model_root_transform(instance);
-    emit_model_parts(mesh, &SHULKER_BULLET_PARTS, root);
-}
-
-fn emit_wind_charge_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `WindChargeModel` is the `bone` root (no cubes) parenting the `wind` shell and the
-    // `wind_charge` core. `setupAnim` counter-spins them off `ageInTicks`: `wind.yRot = age·16°` (a
-    // set that overwrites the -π/4 bind) and `windCharge.yRot = -age·16°`. The bone carries no cubes,
-    // so its two children are posed and emitted at the position-only `WindChargeRenderer` transform;
-    // the translucent scrolling texture stays deferred.
-    let root = wind_charge_model_root_transform(instance);
-    let bone = &WIND_CHARGE_PARTS[0];
-    let bone_t = root * part_pose_transform(bone.pose);
-    let spin = wind_charge_spin_yrot(instance.render_state.age_in_ticks);
-    let mut children = bone.children.to_vec();
-    children[WIND_CHARGE_WIND_CHILD_INDEX].pose.rotation[1] = spin;
-    children[WIND_CHARGE_CORE_CHILD_INDEX].pose.rotation[1] = -spin;
-    emit_model_parts(mesh, &children, bone_t);
 }
 
 fn emit_ender_dragon_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
