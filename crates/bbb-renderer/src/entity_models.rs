@@ -4,6 +4,7 @@ mod geometry;
 mod gpu;
 mod instances;
 mod keyframe;
+mod model;
 mod model_layers;
 mod textured;
 

@@ -6,6 +6,7 @@ use super::super::catalog::{sheep_wool_render_color, *};
 use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
 use super::super::keyframe::*;
+use super::super::model::EntityModel;
 use super::super::model_layers::*;
 use super::armor_stand::emit_armor_stand_model;
 use super::mounts::{
@@ -216,7 +217,12 @@ fn entity_model_mesh_with_options(
             }
             EntityModelKind::Wither => {
                 // Colored-only so far (no texture-backed wither yet), so this arm always emits.
-                emit_wither_model(&mut mesh, *instance);
+                // First entity on the mutable `ModelPart` tree: build, run `setup_anim`, render.
+                WitherModel::new().prepare_and_render(
+                    &mut mesh,
+                    instance,
+                    entity_model_root_transform(*instance),
+                );
             }
             EntityModelKind::Giant => {
                 // Colored-only so far (no texture-backed giant yet), so this arm always emits.
@@ -2121,28 +2127,6 @@ fn emit_shulker_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
     parts[2].pose.rotation[1] = (instance.render_state.head_yaw - 180.0).to_radians();
     let root = entity_model_root_transform(instance);
     emit_model_parts(mesh, &parts, root);
-}
-
-fn emit_wither_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `WitherBossModel` is six sibling parts (shoulders, ribcage, tail, the three heads).
-    // The ribcage and tail breathe via `wither_breathing_poses` (`anim = cos(ageInTicks * 0.1)`); the
-    // center head (part 3) follows the plain `head_look_pose` (`centerHead.yRot/xRot =
-    // state.yRot/xRot`). The two side heads' target tracking and the invulnerable-shimmer overlay
-    // layer are deferred. Wither uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let mut parts = WITHER_PARTS.to_vec();
-    let (ribcage_pose, tail_pose) = wither_breathing_poses(instance.render_state.age_in_ticks);
-    parts[WITHER_RIBCAGE_PART_INDEX].pose = ribcage_pose;
-    parts[WITHER_TAIL_PART_INDEX].pose = tail_pose;
-    if !head_look_at_rest(head_yaw, head_pitch) {
-        parts[WITHER_CENTER_HEAD_PART_INDEX].pose = head_look_pose(
-            parts[WITHER_CENTER_HEAD_PART_INDEX].pose,
-            head_yaw,
-            head_pitch,
-        );
-    }
-    emit_model_parts(mesh, &parts, entity_model_root_transform(instance));
 }
 
 fn emit_giant_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

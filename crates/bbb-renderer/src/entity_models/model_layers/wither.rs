@@ -1,7 +1,10 @@
 use super::{
-    bind_part as part, bind_part_rot as rpart, model_cube as cube, ModelCubeDesc, ModelPartDesc,
-    PartPose, WITHER_BODY, WITHER_HEAD,
+    bind_part as part, bind_part_rot as rpart, head_look_at_rest, head_look_pose,
+    model_cube as cube, ModelCubeDesc, ModelPartDesc, PartPose, PART_POSE_ZERO, WITHER_BODY,
+    WITHER_HEAD,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` (atlas 64×64). The mesh root
 // holds six sibling parts: the shoulders bar, the ribcage (its spine plus three rib bars), the
@@ -94,4 +97,59 @@ pub(in crate::entity_models) fn wither_breathing_poses(age_in_ticks: f32) -> (Pa
         rotation: [(0.265 + 0.1 * anim) * PI, 0.0, 0.0],
     };
     (ribcage, tail)
+}
+
+/// Mutable wither model, mirroring vanilla `WitherBossModel`. Its six sibling parts hang off a
+/// synthetic root (vanilla `WitherBossModel`'s `root`); each is built from the baked [`WITHER_PARTS`]
+/// geometry. This is the first entity migrated to the shared [`ModelPart`] tree, replacing the
+/// hand-walked `emit_wither_model`: `setup_anim` mutates the named parts exactly as
+/// `WitherBossModel.setupAnim` does, and the trait renders the tree in one pass.
+pub(in crate::entity_models) struct WitherModel {
+    root: ModelPart,
+}
+
+impl WitherModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        let leaf =
+            |index: usize| ModelPart::leaf(WITHER_PARTS[index].pose, WITHER_PARTS[index].cubes);
+        let root = ModelPart::new(
+            PART_POSE_ZERO,
+            &[],
+            vec![
+                ("shoulders", leaf(0)),
+                ("ribcage", leaf(WITHER_RIBCAGE_PART_INDEX)),
+                ("tail", leaf(WITHER_TAIL_PART_INDEX)),
+                ("center_head", leaf(WITHER_CENTER_HEAD_PART_INDEX)),
+                ("right_head", leaf(4)),
+                ("left_head", leaf(5)),
+            ],
+        );
+        Self { root }
+    }
+}
+
+impl EntityModel for WitherModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `WitherBossModel.setupAnim`: the ribcage and tail breathe with `ageInTicks`
+        // ([`wither_breathing_poses`]), then the center head tracks the look angles. The two side
+        // heads' `DATA_TARGET_*` tracking stays deferred (they keep their bind pose).
+        let (ribcage_pose, tail_pose) = wither_breathing_poses(instance.render_state.age_in_ticks);
+        self.root.child_mut("ribcage").pose = ribcage_pose;
+        self.root.child_mut("tail").pose = tail_pose;
+
+        let head_yaw = instance.render_state.head_yaw;
+        let head_pitch = instance.render_state.head_pitch;
+        if !head_look_at_rest(head_yaw, head_pitch) {
+            let center_head = self.root.child_mut("center_head");
+            center_head.pose = head_look_pose(center_head.pose, head_yaw, head_pitch);
+        }
+    }
 }

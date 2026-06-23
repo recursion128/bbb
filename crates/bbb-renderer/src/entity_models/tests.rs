@@ -41,6 +41,7 @@ mod limb_swing;
 mod llama;
 mod llama_spit;
 mod minecart;
+mod model;
 mod no_render;
 mod parrot;
 mod phantom;
