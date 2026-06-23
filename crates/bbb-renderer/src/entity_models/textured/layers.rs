@@ -232,14 +232,16 @@ pub(in crate::entity_models) fn camel_textured_layer_passes(
 pub(in crate::entity_models) fn llama_textured_layer_passes(
     variant: LlamaVariant,
     baby: bool,
-    has_chest: bool,
+    // The chest no longer changes the layer pass (geometry comes from the unified model tree, whose
+    // chest visibility rides the `has_chest` tree choice in `LlamaModel::new`); kept for API symmetry.
+    _has_chest: bool,
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::LlamaBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: llama_model_layer(baby),
         texture: llama_texture_ref(variant, baby),
-        parts: llama_textured_model_parts(baby, has_chest),
+        parts: &[],
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
@@ -1148,16 +1150,6 @@ fn llama_model_layer(baby: bool) -> &'static str {
         MODEL_LAYER_LLAMA_BABY
     } else {
         MODEL_LAYER_LLAMA
-    }
-}
-
-fn llama_textured_model_parts(baby: bool, has_chest: bool) -> &'static [TexturedModelPartDesc] {
-    if baby {
-        &BABY_LLAMA_TEXTURED_PARTS
-    } else if has_chest {
-        &ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST
-    } else {
-        &ADULT_LLAMA_TEXTURED_PARTS
     }
 }
 

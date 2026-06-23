@@ -1,108 +1,38 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn llama_model_parts_match_vanilla_26_1_body_layers() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`.
     assert_eq!(
         ADULT_LLAMA_HEAD[0],
-        ModelCubeDesc {
-            min: [-2.0, -14.0, -10.0],
-            size: [4.0, 4.0, 9.0],
-            color: LLAMA_CREAMY,
-        }
+        ModelCube::new(
+            [-2.0, -14.0, -10.0],
+            [4.0, 4.0, 9.0],
+            LLAMA_CREAMY,
+            [4.0, 4.0, 9.0],
+            [0.0, 0.0],
+            false,
+        )
     );
+    assert_eq!(ADULT_LLAMA_HEAD[1].size, [8.0, 18.0, 6.0]);
+    assert_eq!(ADULT_LLAMA_BODY[0].size, [12.0, 18.0, 10.0]);
+    assert_eq!(ADULT_LLAMA_LEG[0].size, [4.0, 14.0, 4.0]);
+    assert_eq!(ADULT_LLAMA_RIGHT_CHEST_POSE.offset, [-8.5, 3.0, 3.0]);
     assert_eq!(
-        ADULT_LLAMA_HEAD[1],
-        ModelCubeDesc {
-            min: [-4.0, -16.0, -6.0],
-            size: [8.0, 18.0, 6.0],
-            color: LLAMA_CREAMY,
-        }
+        ADULT_LLAMA_RIGHT_CHEST_POSE.rotation,
+        [0.0, std::f32::consts::FRAC_PI_2, 0.0]
     );
-    assert_eq!(ADULT_LLAMA_PARTS.len(), 6);
-    assert_part(
-        &ADULT_LLAMA_PARTS[0],
-        [0.0, 7.0, -6.0],
-        [0.0, 0.0, 0.0],
-        ADULT_LLAMA_HEAD.as_slice(),
-    );
-    assert_part(
-        &ADULT_LLAMA_PARTS[1],
-        [0.0, 5.0, 2.0],
-        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
-        ADULT_LLAMA_BODY.as_slice(),
-    );
-    assert_part(
-        &ADULT_LLAMA_RIGHT_CHEST_PART,
-        [-8.5, 3.0, 3.0],
-        [0.0, std::f32::consts::FRAC_PI_2, 0.0],
-        LLAMA_CHEST.as_slice(),
-    );
-    assert_part(
-        &ADULT_LLAMA_LEFT_CHEST_PART,
-        [5.5, 3.0, 3.0],
-        [0.0, std::f32::consts::FRAC_PI_2, 0.0],
-        LLAMA_CHEST.as_slice(),
-    );
-    assert_eq!(ADULT_LLAMA_PARTS_WITH_CHEST.len(), 8);
-    for (part, expected_offset) in [
-        (&ADULT_LLAMA_PARTS[2], [-3.5, 10.0, 6.0]),
-        (&ADULT_LLAMA_PARTS[3], [3.5, 10.0, 6.0]),
-        (&ADULT_LLAMA_PARTS[4], [-3.5, 10.0, -5.0]),
-        (&ADULT_LLAMA_PARTS[5], [3.5, 10.0, -5.0]),
-    ] {
-        assert_part(
-            part,
-            expected_offset,
-            [0.0, 0.0, 0.0],
-            ADULT_LLAMA_LEG.as_slice(),
-        );
-    }
+    assert_eq!(ADULT_LLAMA_LEFT_CHEST_POSE.offset, [5.5, 3.0, 3.0]);
+    assert_eq!(LLAMA_RIGHT_CHEST[0].size, [8.0, 8.0, 3.0]);
 
-    assert_eq!(
-        BABY_LLAMA_HEAD[0],
-        ModelCubeDesc {
-            min: [-3.0, -9.0, -4.0],
-            size: [6.0, 11.0, 4.0],
-            color: LLAMA_CREAMY,
-        }
-    );
-    assert_eq!(BABY_LLAMA_PARTS.len(), 6);
-    assert_part(
-        &BABY_LLAMA_PARTS[0],
-        [0.0, 12.0, -4.0],
-        [0.0, 0.0, 0.0],
-        BABY_LLAMA_HEAD.as_slice(),
-    );
-    assert_part(
-        &BABY_LLAMA_PARTS[5],
-        [0.0, 14.0, 2.5],
-        [0.0, 0.0, 0.0],
-        BABY_LLAMA_BODY.as_slice(),
-    );
-    for (part, expected_offset, expected_cubes) in [
-        (
-            &BABY_LLAMA_PARTS[1],
-            [-2.5, 16.5, 4.5],
-            BABY_LLAMA_RIGHT_LEG.as_slice(),
-        ),
-        (
-            &BABY_LLAMA_PARTS[2],
-            [2.5, 16.5, 4.5],
-            BABY_LLAMA_LEFT_LEG.as_slice(),
-        ),
-        (
-            &BABY_LLAMA_PARTS[3],
-            [-2.5, 16.5, -3.5],
-            BABY_LLAMA_RIGHT_LEG.as_slice(),
-        ),
-        (
-            &BABY_LLAMA_PARTS[4],
-            [2.5, 16.5, -3.5],
-            BABY_LLAMA_LEFT_LEG.as_slice(),
-        ),
-    ] {
-        assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
-    }
+    assert_eq!(BABY_LLAMA_HEAD[0].size, [6.0, 11.0, 4.0]);
+    assert_eq!(BABY_LLAMA_BODY[0].size, [8.0, 6.0, 13.0]);
+    // The baby legs are split right/left by their x-min (right -1.4, left -1.6).
+    assert_eq!(BABY_LLAMA_RIGHT_HIND_LEG[0].min[0], -1.4);
+    assert_eq!(BABY_LLAMA_LEFT_HIND_LEG[0].min[0], -1.6);
 }
 
 #[test]
@@ -381,122 +311,57 @@ fn llama_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult[0].kind, EntityModelLayerKind::LlamaBase);
     assert_eq!(adult[0].model_layer, MODEL_LAYER_LLAMA);
     assert_eq!(adult[0].texture, LLAMA_CREAMY_TEXTURE_REF);
-    assert_eq!(adult[0].parts, ADULT_LLAMA_TEXTURED_PARTS.as_slice());
+    assert!(adult[0].parts.is_empty());
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
 
     let adult_chest = llama_textured_layer_passes(LlamaVariant::White, false, true);
     assert_eq!(adult_chest[0].model_layer, MODEL_LAYER_LLAMA);
     assert_eq!(adult_chest[0].texture, LLAMA_WHITE_TEXTURE_REF);
-    assert_eq!(
-        adult_chest[0].parts,
-        ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST.as_slice()
-    );
+    assert!(adult_chest[0].parts.is_empty());
 
     let baby = llama_textured_layer_passes(LlamaVariant::Brown, true, false);
     assert_eq!(baby[0].model_layer, MODEL_LAYER_LLAMA_BABY);
     assert_eq!(baby[0].texture, LLAMA_BROWN_BABY_TEXTURE_REF);
-    assert_eq!(baby[0].parts, BABY_LLAMA_TEXTURED_PARTS.as_slice());
+    assert!(baby[0].parts.is_empty());
 
-    // A baby never shows a chest in vanilla; the chest flag must not change its parts.
+    // A baby never shows a chest in vanilla; the chest flag must not change its texture.
     let baby_chest = llama_textured_layer_passes(LlamaVariant::Gray, true, true);
     assert_eq!(baby_chest[0].texture, LLAMA_GRAY_BABY_TEXTURE_REF);
-    assert_eq!(baby_chest[0].parts, BABY_LLAMA_TEXTURED_PARTS.as_slice());
+    assert!(baby_chest[0].parts.is_empty());
 }
 
 #[test]
 fn llama_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_LLAMA, "minecraft:llama#main");
     assert_eq!(MODEL_LAYER_LLAMA_BABY, "minecraft:llama_baby#main");
 
     // Adult `LlamaModel.createBodyLayer` (atlas 128×64): head box, neck, the two ears
     // sharing `texOffs(17, 0)` unmirrored, the body, both chests, and the shared leg.
-    assert_eq!(
-        ADULT_LLAMA_TEXTURED_HEAD[1],
-        TexturedModelCubeDesc {
-            min: [-4.0, -16.0, -6.0],
-            size: [8.0, 18.0, 6.0],
-            uv_size: [8.0, 18.0, 6.0],
-            tex: [0.0, 14.0],
-            mirror: false,
-        }
-    );
+    assert_eq!(ADULT_LLAMA_HEAD[1].uv_size, [8.0, 18.0, 6.0]);
+    assert_eq!(ADULT_LLAMA_HEAD[1].tex, [0.0, 14.0]);
     // Both ears share `texOffs(17, 0)`, unmirrored, and the same box size — only their
     // x position differs (right ear at -4, left ear at +1), so they sample the same texels.
-    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[2].tex, [17.0, 0.0]);
-    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[3].tex, [17.0, 0.0]);
-    assert!(!ADULT_LLAMA_TEXTURED_HEAD[2].mirror && !ADULT_LLAMA_TEXTURED_HEAD[3].mirror);
-    assert_eq!(
-        ADULT_LLAMA_TEXTURED_HEAD[2].size,
-        ADULT_LLAMA_TEXTURED_HEAD[3].size
-    );
-    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[2].min[0], -4.0);
-    assert_eq!(ADULT_LLAMA_TEXTURED_HEAD[3].min[0], 1.0);
-    assert_eq!(
-        ADULT_LLAMA_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-6.0, -10.0, -7.0],
-            size: [12.0, 18.0, 10.0],
-            uv_size: [12.0, 18.0, 10.0],
-            tex: [29.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(ADULT_LLAMA_TEXTURED_RIGHT_CHEST[0].tex, [45.0, 28.0]);
-    assert_eq!(ADULT_LLAMA_TEXTURED_LEFT_CHEST[0].tex, [45.0, 41.0]);
-    assert_eq!(
-        ADULT_LLAMA_TEXTURED_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, 0.0, -2.0],
-            size: [4.0, 14.0, 4.0],
-            uv_size: [4.0, 14.0, 4.0],
-            tex: [29.0, 29.0],
-            mirror: false,
-        }
-    );
+    assert_eq!(ADULT_LLAMA_HEAD[2].tex, [17.0, 0.0]);
+    assert_eq!(ADULT_LLAMA_HEAD[3].tex, [17.0, 0.0]);
+    assert!(!ADULT_LLAMA_HEAD[2].mirror && !ADULT_LLAMA_HEAD[3].mirror);
+    assert_eq!(ADULT_LLAMA_HEAD[2].size, ADULT_LLAMA_HEAD[3].size);
+    assert_eq!(ADULT_LLAMA_HEAD[2].min[0], -4.0);
+    assert_eq!(ADULT_LLAMA_HEAD[3].min[0], 1.0);
+    assert_eq!(ADULT_LLAMA_BODY[0].tex, [29.0, 0.0]);
+    assert_eq!(LLAMA_RIGHT_CHEST[0].tex, [45.0, 28.0]);
+    assert_eq!(LLAMA_LEFT_CHEST[0].tex, [45.0, 41.0]);
+    assert_eq!(ADULT_LLAMA_LEG[0].tex, [29.0, 29.0]);
 
     // Baby `BabyLlamaModel.createBodyLayer` (atlas 64×64): each leg has its own
     // `texOffs` (right/left, hind/front), unlike the adult's single shared leg cube.
-    assert_eq!(
-        BABY_LLAMA_TEXTURED_HEAD[2],
-        TexturedModelCubeDesc {
-            min: [0.5, -11.0, -3.0],
-            size: [2.0, 2.0, 2.0],
-            uv_size: [2.0, 2.0, 2.0],
-            tex: [20.0, 4.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(BABY_LLAMA_TEXTURED_RIGHT_HIND_LEG[0].tex, [0.0, 45.0]);
-    assert_eq!(BABY_LLAMA_TEXTURED_LEFT_HIND_LEG[0].tex, [12.0, 45.0]);
-    assert_eq!(BABY_LLAMA_TEXTURED_RIGHT_FRONT_LEG[0].tex, [0.0, 34.0]);
-    assert_eq!(BABY_LLAMA_TEXTURED_LEFT_FRONT_LEG[0].tex, [12.0, 34.0]);
-    assert_eq!(BABY_LLAMA_TEXTURED_RIGHT_HIND_LEG[0].min[0], -1.4);
-    assert_eq!(BABY_LLAMA_TEXTURED_LEFT_HIND_LEG[0].min[0], -1.6);
-    assert_eq!(
-        BABY_LLAMA_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -3.0, -8.5],
-            size: [8.0, 6.0, 13.0],
-            uv_size: [8.0, 6.0, 13.0],
-            tex: [0.0, 15.0],
-            mirror: false,
-        }
-    );
-
-    // The textured part trees reuse the colored part poses, in the colored layouts.
-    assert_eq!(ADULT_LLAMA_TEXTURED_PARTS.len(), 6);
-    assert_eq!(ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST.len(), 8);
-    assert_eq!(
-        ADULT_LLAMA_TEXTURED_PARTS[0].pose,
-        ADULT_LLAMA_PARTS[0].pose
-    );
-    assert_eq!(
-        ADULT_LLAMA_TEXTURED_PARTS_WITH_CHEST[2].pose,
-        ADULT_LLAMA_RIGHT_CHEST_PART.pose
-    );
-    assert_eq!(BABY_LLAMA_TEXTURED_PARTS.len(), 6);
-    assert_eq!(BABY_LLAMA_TEXTURED_PARTS[5].pose, BABY_LLAMA_PARTS[5].pose);
+    assert_eq!(BABY_LLAMA_HEAD[2].tex, [20.0, 4.0]);
+    assert_eq!(BABY_LLAMA_RIGHT_HIND_LEG[0].tex, [0.0, 45.0]);
+    assert_eq!(BABY_LLAMA_LEFT_HIND_LEG[0].tex, [12.0, 45.0]);
+    assert_eq!(BABY_LLAMA_RIGHT_FRONT_LEG[0].tex, [0.0, 34.0]);
+    assert_eq!(BABY_LLAMA_LEFT_FRONT_LEG[0].tex, [12.0, 34.0]);
+    assert_eq!(BABY_LLAMA_BODY[0].tex, [0.0, 15.0]);
 }
 
 #[test]
