@@ -44,14 +44,14 @@ use super::{
         strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow, strider_bristle_flow,
         strider_bristle_middle_flow, strider_bristle_top_flow, strider_leg_x_rot, strider_leg_y,
         strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
-        vex_moving_arm_z_bob, villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
+        vex_moving_arm_z_bob, villager_head_part_index, wolf_angry_tail_pose,
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
         zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel, CreeperModel,
         EndermiteModel, GhastModel, HappyGhastModel, IronGolemModel, MagmaCubeModel, MinecartModel,
         RavagerModel, SalmonModel, SilverfishModel, SnowGolemModel, WanderingTraderModel,
-        ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        WitchModel, ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE,
+        ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
+        ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
         BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
@@ -118,7 +118,6 @@ use super::{
         VEX_RIGHT_ARM_POSE, VEX_RIGHT_WING_POSE, VEX_ROOT_POSE, VEX_TEXTURED_BODY,
         VEX_TEXTURED_HEAD, VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING, VEX_TEXTURED_RIGHT_ARM,
         VEX_TEXTURED_RIGHT_WING, VEX_TEXTURE_REF, VEX_WING_X_ROT, VEX_WING_Z_ROT,
-        WITCH_NOSE_CHILD_INDEX,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
@@ -2351,81 +2350,21 @@ fn emit_witch_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `WitchModel.setupAnim` runs the villager head look and the half-amplitude
-    // leg swing (legs at `[3, 4]`), then bobs the nose continuously
-    // (`witch_nose_bob_pose`, driven by `ageInTicks` and the entity id). The nose is a
-    // `&'static` head child, so the head subtree is always hand-emitted with the bobbed
-    // nose — its zRot is `cos(...) * 2.5°`, which is never at rest, so there is no static
-    // fast path. The `isHoldingItem` nose hold pose and the combined `arms` part defer.
-    let head_index = villager_head_part_index(false);
+    // The unified `WitchModel` tree drives both render paths; `setup_anim` looks the head, swings the
+    // legs at the villager-family half amplitude, and bobs the nose (the head's nose child, so it
+    // inherits the head look). The `isHoldingItem` nose hold pose and combined `arms` part defer.
     let transform = villager_adult_model_root_transform(instance);
-    let head_yaw = instance.render_state.head_yaw;
-    let head_pitch = instance.render_state.head_pitch;
-    let limb_swing = instance.render_state.walk_animation_pos;
-    let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let head_resting = head_look_at_rest(head_yaw, head_pitch);
-    let legs_resting = limb_swing_at_rest(limb_swing_amount);
-    let age_in_ticks = instance.render_state.age_in_ticks;
-    let entity_id = instance.entity_id;
+    let mut model = WitchModel::new();
+    model.prepare(&instance);
     for pass in witch_textured_layer_passes() {
-        let mut parts = pass.parts.to_vec();
-        if !head_resting {
-            if let Some(head) = parts.get_mut(head_index) {
-                head.pose = head_look_pose(head.pose, head_yaw, head_pitch);
-            }
-        }
-        if !legs_resting {
-            for index in VILLAGER_ADULT_LEG_PART_INDICES {
-                if let Some(leg) = parts.get_mut(index) {
-                    leg.pose =
-                        half_amplitude_leg_swing_pose(leg.pose, limb_swing, limb_swing_amount);
-                }
-            }
-        }
-        // The nose is a child of the head, whose children list is static, so emit the head
-        // subtree by hand with the bobbed nose (the hat rides unchanged; the mole rides the
-        // nose as its own child).
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let mesh = meshes.mesh_mut(pass.render_type);
-        for (index, part) in parts.iter().enumerate() {
-            if index == head_index {
-                let head_transform = transform * part_pose_transform(part.pose);
-                for cube in part.cubes {
-                    emit_textured_model_cube(
-                        mesh,
-                        head_transform,
-                        *cube,
-                        pass.texture,
-                        entry.uv,
-                        pass.tint,
-                    );
-                }
-                let mut children = part.children.to_vec();
-                children[WITCH_NOSE_CHILD_INDEX].pose = witch_nose_bob_pose(
-                    children[WITCH_NOSE_CHILD_INDEX].pose,
-                    age_in_ticks,
-                    entity_id,
-                );
-                emit_textured_model_parts(
-                    mesh,
-                    &children,
-                    head_transform,
-                    pass.texture,
-                    entry.uv,
-                    pass.tint,
-                );
-            } else {
-                emit_textured_model_parts(
-                    mesh,
-                    std::slice::from_ref(part),
-                    transform,
-                    pass.texture,
-                    entry.uv,
-                    pass.tint,
-                );
-            }
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
     }
 }

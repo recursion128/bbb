@@ -1,7 +1,10 @@
 use super::{
-    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-    PART_POSE_ZERO, WITCH_HAT_COLOR, WITCH_ROBE,
+    apply_half_amplitude_leg_swing, apply_head_look, witch_nose_bob_pose, ModelCubeDesc,
+    ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
+    WITCH_HAT_COLOR, WITCH_NOSE_CHILD_INDEX, WITCH_ROBE,
 };
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_WITCH: &str = "minecraft:witch#main";
 
@@ -381,3 +384,55 @@ pub(in crate::entity_models) const WITCH_TEXTURED_PARTS: [TexturedModelPartDesc;
         children: &[],
     },
 ];
+
+/// Adult villager-layer leg part indices the witch shares (head/body/nose at `0`/`1`/`2`, legs last).
+const WITCH_LEG_PART_INDICES: [usize; 2] = [3, 4];
+
+/// Mutable witch model, mirroring vanilla `WitchModel`. The unified tree is zipped from the baked
+/// colored ([`WITCH_PARTS`]) and textured ([`WITCH_TEXTURED_PARTS`]) trees: child 0 is the head (which
+/// parents the hat, nose, and mole), child 1 the body, children 3/4 the legs (the villager-family
+/// layout). `setup_anim` looks the head ([`apply_head_look`]), swings the legs at the villager-family
+/// half amplitude ([`apply_half_amplitude_leg_swing`]), then bobs the nose continuously
+/// ([`witch_nose_bob_pose`], driven by `ageInTicks` and the entity id) — reached as the head's nose
+/// child so it inherits the head look. The `isHoldingItem` nose hold pose and combined `arms` defer.
+pub(in crate::entity_models) struct WitchModel {
+    root: ModelPart,
+}
+
+impl WitchModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&WITCH_PARTS, &WITCH_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for WitchModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        apply_head_look(
+            self.root.child_at_mut(0),
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        apply_half_amplitude_leg_swing(
+            &mut self.root,
+            WITCH_LEG_PART_INDICES,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+        let nose = self
+            .root
+            .child_at_mut(0)
+            .child_at_mut(WITCH_NOSE_CHILD_INDEX);
+        nose.pose = witch_nose_bob_pose(nose.pose, render_state.age_in_ticks, instance.entity_id);
+    }
+}
