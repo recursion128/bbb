@@ -1,4 +1,6 @@
 use super::{ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // The endermite fallback paints its four chitin segments a dark End purple.
 pub(in crate::entity_models) const ENDERMITE_PURPLE: [f32; 4] = [0.18, 0.10, 0.24, 1.0];
@@ -155,5 +157,39 @@ pub(in crate::entity_models) fn endermite_segment_pose(
     PartPose {
         offset: [x, base.offset[1], base.offset[2]],
         rotation: [base.rotation[0], y_rot, base.rotation[2]],
+    }
+}
+
+/// Mutable endermite model, mirroring vanilla `EndermiteModel`. The unified tree is zipped from the
+/// baked colored ([`ENDERMITE_PARTS`]) and textured ([`ENDERMITE_TEXTURED_PARTS`]) trees; `setup_anim`
+/// wiggles all four chitin segments from `ageInTicks` ([`endermite_segment_pose`]). There is no head
+/// look or walk swing, and no `MeshTransformer` scaling (unit model root).
+pub(in crate::entity_models) struct EndermiteModel {
+    root: ModelPart,
+}
+
+impl EndermiteModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&ENDERMITE_PARTS, &ENDERMITE_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for EndermiteModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let age_in_ticks = instance.render_state.age_in_ticks;
+        for index in 0..ENDERMITE_SEGMENT_COUNT {
+            let segment = self.root.child_at_mut(index);
+            segment.pose = endermite_segment_pose(segment.pose, index, age_in_ticks);
+        }
     }
 }

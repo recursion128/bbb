@@ -29,15 +29,15 @@ use super::{
         bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, blaze_rod_offset,
         camel_clamped_head_look, chicken_leg_part_indices, cow_head_part_index, dolphin_wave,
         enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
-        endermite_segment_pose, ghast_tentacle_x_rot, half_amplitude_leg_swing_pose,
-        head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
-        head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
-        humanoid_arm_bob_pose, humanoid_arm_swing_pose, humanoid_crouch_arm_pose,
-        humanoid_crouch_body_pose, humanoid_crouch_head_pose, humanoid_crouch_leg_pose,
-        humanoid_leg_swing_pose, illager_spellcast_arm_pose, iron_golem_walk_part_roles,
-        iron_golem_walk_pose, limb_swing_at_rest, parched_head_part_index, phantom_flap_time,
-        phantom_tail_pose, phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot,
-        pig_head_part_index, piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
+        ghast_tentacle_x_rot, half_amplitude_leg_swing_pose, head_first_part_index,
+        head_look_at_rest, head_look_pose, head_look_yaw_pose, head_yaw_at_rest,
+        hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose, humanoid_arm_bob_pose,
+        humanoid_arm_swing_pose, humanoid_crouch_arm_pose, humanoid_crouch_body_pose,
+        humanoid_crouch_head_pose, humanoid_crouch_leg_pose, humanoid_leg_swing_pose,
+        illager_spellcast_arm_pose, iron_golem_walk_part_roles, iron_golem_walk_pose,
+        limb_swing_at_rest, parched_head_part_index, phantom_flap_time, phantom_tail_pose,
+        phantom_tail_x_rot, phantom_wing_pose, phantom_wing_z_rot, pig_head_part_index,
+        piglin_ear_flap_pose, piglin_head_part_index, player_head_part_index,
         polar_bear_head_part_index, polar_bear_standing_part_roles, pufferfish_fin_pose,
         pufferfish_parts, pufferfish_right_fin_z_rot, quadruped_leg_swing_pose,
         ravager_head_child_index, ravager_leg_swing_pose, ravager_neck_part_index,
@@ -50,12 +50,12 @@ use super::{
         strider_leg_z_rot, tropical_fish_tail_yrot, turtle_leg_rotation, vex_left_wing_y_rot,
         vex_moving_arm_z_bob, villager_head_part_index, witch_nose_bob_pose, wolf_angry_tail_pose,
         wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
-        zombie_arm_held_out_pose, CamelWalkLayout, CodModel, SalmonModel, ADULT_CAMEL_WALK_LAYOUT,
-        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
-        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
-        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
-        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
-        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
+        zombie_arm_held_out_pose, CamelWalkLayout, CodModel, EndermiteModel, SalmonModel,
+        ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
+        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
+        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
+        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
         BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
         BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
         BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
@@ -2964,16 +2964,21 @@ fn emit_endermite_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `EndermiteModel.setupAnim` wiggles all four chitin segments from `ageInTicks`
-    // every frame (`endermite_segment_pose`); there is no head look or walk swing.
-    let age_in_ticks = instance.render_state.age_in_ticks;
+    // The unified `EndermiteModel` tree drives both render paths; `setup_anim` wiggles the four
+    // chitin segments once. The layer pass supplies the texture / render type / tint.
     let transform = entity_model_root_transform(instance);
+    let mut model = EndermiteModel::new();
+    model.prepare(&instance);
     for pass in endermite_textured_layer_passes() {
-        let mut parts = pass.parts.to_vec();
-        for (index, part) in parts.iter_mut().enumerate() {
-            part.pose = endermite_segment_pose(part.pose, index, age_in_ticks);
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
         }
-        emit_textured_layer_pass_with_parts(meshes, &pass, &parts, transform, atlas);
     }
 }
 
