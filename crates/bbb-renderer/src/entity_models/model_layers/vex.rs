@@ -1,4 +1,8 @@
-use super::{ModelCubeDesc, PartPose, TexturedModelCubeDesc, VEX_GREY};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, VEX_GREY,
+};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `VexModel.createBodyLayer` (atlas 32×32). The model root is the `root` part
 // at `(0, -2.5, 0)`; `head` and `body` hang under it, and the arms and wings are children
@@ -176,3 +180,162 @@ pub(in crate::entity_models) const VEX_TEXTURED_RIGHT_WING: [TexturedModelCubeDe
         tex: [16.0, 14.0],
         mirror: false,
     }];
+
+// Colored vex tree: `root` (the static pivot, no cubes) → `head`, `body`; `body` → right arm, left
+// arm, left wing, right wing (the emit order, preserved for byte-identical meshes). Mirrors vanilla
+// `VexModel.createBodyLayer`. Zipped with the textured tree by `VexModel::new`; the dynamic poses
+// (head look, charging body/arms, wing flap) are applied in `setup_anim`.
+const VEX_BODY_CHILDREN: [ModelPartDesc; 4] = [
+    ModelPartDesc {
+        pose: VEX_RIGHT_ARM_POSE,
+        cubes: &VEX_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: VEX_LEFT_ARM_POSE,
+        cubes: &VEX_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: VEX_LEFT_WING_POSE,
+        cubes: &VEX_WING,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: VEX_RIGHT_WING_POSE,
+        cubes: &VEX_WING,
+        children: &[],
+    },
+];
+const VEX_ROOT_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: VEX_HEAD_POSE,
+        cubes: &VEX_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: VEX_BODY_POSE,
+        cubes: &VEX_BODY,
+        children: &VEX_BODY_CHILDREN,
+    },
+];
+pub(in crate::entity_models) const VEX_PARTS: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: VEX_ROOT_POSE,
+    cubes: &[],
+    children: &VEX_ROOT_CHILDREN,
+}];
+
+// Textured counterpart of `VEX_PARTS` (same hierarchy and bind poses, UV cubes — the left wing's UV
+// is mirrored, so the two wings use distinct textured cubes).
+const VEX_TEXTURED_BODY_CHILDREN: [TexturedModelPartDesc; 4] = [
+    TexturedModelPartDesc {
+        pose: VEX_RIGHT_ARM_POSE,
+        cubes: &VEX_TEXTURED_RIGHT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: VEX_LEFT_ARM_POSE,
+        cubes: &VEX_TEXTURED_LEFT_ARM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: VEX_LEFT_WING_POSE,
+        cubes: &VEX_TEXTURED_LEFT_WING,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: VEX_RIGHT_WING_POSE,
+        cubes: &VEX_TEXTURED_RIGHT_WING,
+        children: &[],
+    },
+];
+const VEX_TEXTURED_ROOT_CHILDREN: [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: VEX_HEAD_POSE,
+        cubes: &VEX_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: VEX_BODY_POSE,
+        cubes: &VEX_TEXTURED_BODY,
+        children: &VEX_TEXTURED_BODY_CHILDREN,
+    },
+];
+pub(in crate::entity_models) const VEX_TEXTURED_PARTS: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: VEX_ROOT_POSE,
+        cubes: &[],
+        children: &VEX_TEXTURED_ROOT_CHILDREN,
+    }];
+
+/// Applies the vanilla `VexModel.setupAnim` pose to the unified tree: the head look, the body charging
+/// level / idle tilt, the arm charging raise / idle hold (both with the shared `vex_moving_arm_z_bob`),
+/// and the wing flap. The held-item arm variant (`xRot = π·7/6`) is deferred, so this is the
+/// both-hands-empty branch. Every value is set absolutely, reproducing the hand-walked emit exactly.
+fn apply_vex_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
+    let age = instance.render_state.age_in_ticks;
+    let charging = instance.render_state.vex_charging;
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+    let bob = vex_moving_arm_z_bob(age);
+    let left_wing_yrot = vex_left_wing_y_rot(age);
+    let (right_arm_rot, left_arm_rot) = if charging {
+        (
+            [
+                VEX_ARM_CHARGING_X_ROT,
+                VEX_ARM_CHARGING_Y_ROT,
+                -VEX_ARM_CHARGING_Z_ROT - bob,
+            ],
+            [
+                VEX_ARM_CHARGING_X_ROT,
+                -VEX_ARM_CHARGING_Y_ROT,
+                VEX_ARM_CHARGING_Z_ROT + bob,
+            ],
+        )
+    } else {
+        (
+            [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],
+            [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)],
+        )
+    };
+
+    let vex_root = root.child_at_mut(0);
+    vex_root.child_at_mut(0).pose.rotation = [head_pitch, head_yaw, 0.0];
+
+    let body = vex_root.child_at_mut(1);
+    body.pose.rotation = [if charging { 0.0 } else { VEX_BODY_X_ROT }, 0.0, 0.0];
+    body.child_at_mut(0).pose.rotation = right_arm_rot;
+    body.child_at_mut(1).pose.rotation = left_arm_rot;
+    body.child_at_mut(2).pose.rotation = [VEX_WING_X_ROT, left_wing_yrot, -VEX_WING_Z_ROT];
+    body.child_at_mut(3).pose.rotation = [VEX_WING_X_ROT, -left_wing_yrot, VEX_WING_Z_ROT];
+}
+
+/// Mutable vex model, mirroring vanilla `VexModel`. The unified tree is zipped from the `root` →
+/// (head, body → arms/wings) hierarchy ([`VEX_PARTS`] / [`VEX_TEXTURED_PARTS`]); `setup_anim` runs
+/// [`apply_vex_anim`]. The same posed tree drives the colored fallback and the single translucent
+/// textured layer (the full-bright block light is deferred lighting).
+pub(in crate::entity_models) struct VexModel {
+    root: ModelPart,
+}
+
+impl VexModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::root_from_descs(&VEX_PARTS, &VEX_TEXTURED_PARTS),
+        }
+    }
+}
+
+impl EntityModel for VexModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_vex_anim(&mut self.root, instance);
+    }
+}

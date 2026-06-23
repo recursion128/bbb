@@ -32,20 +32,19 @@ use super::{
         strider_animation_speed, strider_body_y, strider_body_z_rot, strider_bristle_bottom_flow,
         strider_bristle_flow, strider_bristle_middle_flow, strider_bristle_top_flow,
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, turtle_leg_rotation,
-        vex_left_wing_y_rot, vex_moving_arm_z_bob, wolf_angry_tail_pose, wolf_sitting_part_roles,
-        wolf_tail_part_index, wolf_tail_swing_pose, AllayModel, BlazeModel, CamelWalkLayout,
-        ChickenModel, CodModel, CowModel, CreeperModel, EndermanModel, EndermiteModel, GhastModel,
-        GoatModel, HappyGhastModel, HoglinModel, IllagerModel, IronGolemModel, LlamaModel,
-        MagmaCubeModel, MinecartModel, PhantomModel, PigModel, PiglinModel, PlayerModel,
-        PolarBearModel, RavagerModel, SalmonModel, SheepFurModel, SheepModel, SilverfishModel,
-        SkeletonModel, SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel,
-        TropicalFishModel, TropicalFishPatternModel, VillagerModel, WanderingTraderModel,
-        WitchModel, ZombieModel, ZombieVariantModel, ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
-        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
-        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
-        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
-        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index, wolf_tail_swing_pose,
+        AllayModel, BlazeModel, CamelWalkLayout, ChickenModel, CodModel, CowModel, CreeperModel,
+        EndermanModel, EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel,
+        IllagerModel, IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel,
+        PigModel, PiglinModel, PlayerModel, PolarBearModel, RavagerModel, SalmonModel,
+        SheepFurModel, SheepModel, SilverfishModel, SkeletonModel, SlimeModel, SlimeOuterModel,
+        SnowGolemModel, SpiderModel, SquidModel, TropicalFishModel, TropicalFishPatternModel,
+        VexModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel, ZombieVariantModel,
+        ADULT_CAMEL_WALK_LAYOUT, ALLAY_TEXTURE_REF, ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS,
+        ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING,
+        BAT_HEAD_POSE, BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
+        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
+        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -92,11 +91,7 @@ use super::{
         TURTLE_TEXTURED_BODY, TURTLE_TEXTURED_EGG_BELLY, TURTLE_TEXTURED_HEAD,
         TURTLE_TEXTURED_LEFT_FRONT_LEG, TURTLE_TEXTURED_LEFT_HIND_LEG,
         TURTLE_TEXTURED_RIGHT_FRONT_LEG, TURTLE_TEXTURED_RIGHT_HIND_LEG, TURTLE_TEXTURE_REF,
-        VEX_ARM_CHARGING_X_ROT, VEX_ARM_CHARGING_Y_ROT, VEX_ARM_CHARGING_Z_ROT, VEX_ARM_REST_Z_ROT,
-        VEX_BODY_POSE, VEX_BODY_X_ROT, VEX_HEAD_POSE, VEX_LEFT_ARM_POSE, VEX_LEFT_WING_POSE,
-        VEX_RIGHT_ARM_POSE, VEX_RIGHT_WING_POSE, VEX_ROOT_POSE, VEX_TEXTURED_BODY,
-        VEX_TEXTURED_HEAD, VEX_TEXTURED_LEFT_ARM, VEX_TEXTURED_LEFT_WING, VEX_TEXTURED_RIGHT_ARM,
-        VEX_TEXTURED_RIGHT_WING, VEX_TEXTURE_REF, VEX_WING_X_ROT, VEX_WING_Z_ROT,
+        VEX_TEXTURE_REF,
     },
     phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
@@ -824,13 +819,10 @@ fn emit_textured_cubes_at_pose(
     }
 }
 
-/// The textured vex base layer. The arms and wings hang under the body and are swayed by
-/// the vanilla `VexModel.setupAnim` (idle / non-charging), so the part list is animated
-/// per frame and the hierarchy is walked by hand exactly like the colored
-/// [`emit_vex_model`]. Vex uses `RenderTypes::entityTranslucent`, so it draws into the
-/// translucent mesh. The charging texture/pose and the held-item arms are deferred
-/// entity-side state, and the vanilla full-bright block light (`getBlockLightLevel` → 15)
-/// is deferred lighting.
+/// The textured vex base layer. The unified [`VexModel`] tree runs the shared `VexModel.setupAnim`
+/// (head look, charging/idle body + arms, wing flap) and draws into the translucent mesh. The
+/// charging texture swap and the held-item arms are deferred entity-side state, and the vanilla
+/// full-bright block light (`getBlockLightLevel` → 15) is deferred lighting.
 fn emit_vex_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -839,113 +831,15 @@ fn emit_vex_textured_model(
     let Some(entry) = entity_model_texture_atlas_entry(atlas, VEX_TEXTURE_REF) else {
         return;
     };
-    let uv = entry.uv;
-    let age = instance.render_state.age_in_ticks;
-    let charging = instance.render_state.vex_charging;
-    let root = entity_model_root_transform(instance) * part_pose_transform(VEX_ROOT_POSE);
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::Translucent);
-
-    // Head (child of root) tracks the look yaw/pitch.
-    let head_pose = PartPose {
-        offset: VEX_HEAD_POSE.offset,
-        rotation: [
-            instance.render_state.head_pitch.to_radians(),
-            instance.render_state.head_yaw.to_radians(),
-            0.0,
-        ],
-    };
-    emit_textured_cubes_at_pose(
-        mesh,
-        root,
-        head_pose,
-        &VEX_TEXTURED_HEAD,
+    let transform = entity_model_root_transform(instance);
+    let mut model = VexModel::new();
+    model.prepare(&instance);
+    model.root().render_textured(
+        meshes.mesh_mut(EntityModelLayerRenderType::Translucent),
+        transform,
         VEX_TEXTURE_REF,
-        uv,
-    );
-
-    // Body (child of root) levels while charging, else holds the idle tilt; it carries the
-    // arms and wings. While `Vex.isCharging`, `setArmsCharging` raises both arms (the
-    // both-hands-empty branch — held items are not projected, so the held-item arm variant
-    // `xRot = π·7/6` stays deferred).
-    let body_pose = PartPose {
-        offset: VEX_BODY_POSE.offset,
-        rotation: [if charging { 0.0 } else { VEX_BODY_X_ROT }, 0.0, 0.0],
-    };
-    let body_t = root * part_pose_transform(body_pose);
-    emit_textured_cubes_at_pose(
-        mesh,
-        root,
-        body_pose,
-        &VEX_TEXTURED_BODY,
-        VEX_TEXTURE_REF,
-        uv,
-    );
-
-    let bob = vex_moving_arm_z_bob(age);
-    let (right_arm_rot, left_arm_rot) = if charging {
-        (
-            [
-                VEX_ARM_CHARGING_X_ROT,
-                VEX_ARM_CHARGING_Y_ROT,
-                -VEX_ARM_CHARGING_Z_ROT - bob,
-            ],
-            [
-                VEX_ARM_CHARGING_X_ROT,
-                -VEX_ARM_CHARGING_Y_ROT,
-                VEX_ARM_CHARGING_Z_ROT + bob,
-            ],
-        )
-    } else {
-        (
-            [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],
-            [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)],
-        )
-    };
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: VEX_RIGHT_ARM_POSE.offset,
-            rotation: right_arm_rot,
-        },
-        &VEX_TEXTURED_RIGHT_ARM,
-        VEX_TEXTURE_REF,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: VEX_LEFT_ARM_POSE.offset,
-            rotation: left_arm_rot,
-        },
-        &VEX_TEXTURED_LEFT_ARM,
-        VEX_TEXTURE_REF,
-        uv,
-    );
-
-    let left_wing_yrot = vex_left_wing_y_rot(age);
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: VEX_LEFT_WING_POSE.offset,
-            rotation: [VEX_WING_X_ROT, left_wing_yrot, -VEX_WING_Z_ROT],
-        },
-        &VEX_TEXTURED_LEFT_WING,
-        VEX_TEXTURE_REF,
-        uv,
-    );
-    emit_textured_cubes_at_pose(
-        mesh,
-        body_t,
-        PartPose {
-            offset: VEX_RIGHT_WING_POSE.offset,
-            rotation: [VEX_WING_X_ROT, -left_wing_yrot, VEX_WING_Z_ROT],
-        },
-        &VEX_TEXTURED_RIGHT_WING,
-        VEX_TEXTURE_REF,
-        uv,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
     );
 }
 
