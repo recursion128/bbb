@@ -49,10 +49,10 @@ use super::{
         turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
         witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
         wolf_tail_swing_pose, zombie_arm_held_out_pose, BlazeModel, CamelWalkLayout, CodModel,
-        EndermiteModel, GhastModel, HappyGhastModel, MagmaCubeModel, SalmonModel, SilverfishModel,
-        ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE,
-        ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE,
-        ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
+        CreeperModel, EndermiteModel, GhastModel, HappyGhastModel, MagmaCubeModel, SalmonModel,
+        SilverfishModel, ADULT_CAMEL_WALK_LAYOUT, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE,
+        ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
+        ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
         ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
         ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_WALK_LAYOUT,
         BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
@@ -2171,19 +2171,23 @@ fn emit_creeper_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // Vanilla `CreeperModel.setupAnim` leg swing is the standard `QuadrupedModel`
-    // formula (legs at [2, 3, 4, 5]), so reuse the quadruped textured pass emitter
-    // (full head look + leg swing). The `CreeperRenderer.scale` swell inflate-and-flicker
-    // is folded into the root transform; the powered charge layer is deferred.
-    emit_quadruped_textured_passes(
-        meshes,
-        creeper_textured_layer_passes(),
-        head_first_part_index(),
-        QUADRUPED_LEG_PART_INDICES,
-        creeper_model_root_transform(instance),
-        instance,
-        atlas,
-    );
+    // The unified `CreeperModel` tree drives both render paths; `setup_anim` follows the head look and
+    // applies the standard `QuadrupedModel` leg swing once. The swell is folded into the root
+    // transform; the powered charge layer is deferred.
+    let transform = creeper_model_root_transform(instance);
+    let mut model = CreeperModel::new();
+    model.prepare(&instance);
+    for pass in creeper_textured_layer_passes() {
+        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+            model.root().render_textured(
+                meshes.mesh_mut(pass.render_type),
+                transform,
+                pass.texture,
+                entry.uv,
+                pass.tint,
+            );
+        }
+    }
 }
 
 fn emit_spider_textured_model(

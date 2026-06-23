@@ -1,4 +1,5 @@
 use super::PartPose;
+use crate::entity_models::model::ModelPart;
 
 /// Plain `QuadrupedModel` head-part index for the cow body layer. The cow mesh
 /// lists the head first for both the adult and the baby layer.
@@ -207,6 +208,35 @@ pub(in crate::entity_models) fn quadruped_leg_swing_pose(
             base.rotation[1],
             base.rotation[2],
         ],
+    }
+}
+
+/// Vanilla shared `setupAnim` head look applied to a model part: sets the head's pitch/yaw from the
+/// look angles ([`head_look_pose`]). The quadruped/humanoid families assign `head.xRot`/`head.yRot`
+/// unconditionally every frame; the head's bind pose carries no head rotation, so the angles are set.
+pub(in crate::entity_models) fn apply_head_look(
+    head: &mut ModelPart,
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
+) {
+    head.pose = head_look_pose(head.pose, head_yaw_deg, head_pitch_deg);
+}
+
+/// Vanilla `QuadrupedModel.setupAnim` leg swing applied to a model root's four leg children at
+/// `leg_indices` ([`quadruped_leg_swing_pose`]). A no-op while the limbs are at rest
+/// (`walkAnimationSpeed == 0`), matching the static leg pose.
+pub(in crate::entity_models) fn apply_quadruped_leg_swing(
+    root: &mut ModelPart,
+    leg_indices: [usize; 4],
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    for index in leg_indices {
+        let leg = root.child_at_mut(index);
+        leg.pose = quadruped_leg_swing_pose(leg.pose, walk_animation_pos, walk_animation_speed);
     }
 }
 
