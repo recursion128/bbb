@@ -792,22 +792,10 @@ pub(in crate::entity_models) fn iron_golem_walk_pose(
     }
 }
 
-/// The iron golem body-layer part indices paired with their walk roles: the head and
-/// body occupy `0`/`1`, then the right/left arm and right/left leg. The arms sit at
-/// part offset `x = 0`, so the role is fixed by slot rather than offset sign.
-pub(in crate::entity_models) const fn iron_golem_walk_part_roles() -> [(usize, IronGolemWalkPart); 4]
-{
-    [
-        (2, IronGolemWalkPart::RightArm),
-        (3, IronGolemWalkPart::LeftArm),
-        (4, IronGolemWalkPart::RightLeg),
-        (5, IronGolemWalkPart::LeftLeg),
-    ]
-}
-
-/// Vanilla `IronGolemModel.setupAnim` walk swing applied to a model root's arm/leg children at
-/// [`iron_golem_walk_part_roles`] ([`iron_golem_walk_pose`]). A no-op while the limbs are at rest
-/// (`walkAnimationSpeed == 0`).
+/// Vanilla `IronGolemModel.setupAnim` walk swing applied to a model root's named arm/leg children
+/// `right_arm`/`left_arm`/`right_leg`/`left_leg` ([`iron_golem_walk_pose`]). The arms sit at part
+/// offset `x = 0`, so each limb's walk role is fixed by name rather than offset sign. A no-op while
+/// the limbs are at rest (`walkAnimationSpeed == 0`).
 pub(in crate::entity_models) fn apply_iron_golem_walk(
     root: &mut ModelPart,
     walk_animation_pos: f32,
@@ -816,8 +804,13 @@ pub(in crate::entity_models) fn apply_iron_golem_walk(
     if limb_swing_at_rest(walk_animation_speed) {
         return;
     }
-    for (index, part) in iron_golem_walk_part_roles() {
-        let limb = root.child_at_mut(index);
+    for (name, part) in [
+        ("right_arm", IronGolemWalkPart::RightArm),
+        ("left_arm", IronGolemWalkPart::LeftArm),
+        ("right_leg", IronGolemWalkPart::RightLeg),
+        ("left_leg", IronGolemWalkPart::LeftLeg),
+    ] {
+        let limb = root.child_mut(name);
         limb.pose = iron_golem_walk_pose(limb.pose, walk_animation_pos, walk_animation_speed, part);
     }
 }

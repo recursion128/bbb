@@ -48,18 +48,11 @@ fn head_part_indices_match_vanilla_body_layers() {
         PLAYER_HEAD.as_slice()
     );
 
-    // Standalone head-first models (iron/snow golem) list the head as part 0. (The creeper,
-    // enderman and spider now build named-children trees, so their head look resolves the `head`
-    // child by name rather than this index.)
+    // Standalone head-first models list the head as part 0. (The creeper, enderman, spider, and now
+    // the iron/snow golem build named-children trees, so their head look resolves the `head` child by
+    // name rather than this index; the constant is retained for the remaining index-addressed
+    // head-first layouts.)
     assert_eq!(head_first_part_index(), 0);
-    assert_eq!(
-        IRON_GOLEM_PARTS[head_first_part_index()].cubes,
-        IRON_GOLEM_HEAD.as_slice()
-    );
-    assert_eq!(
-        SNOW_GOLEM_PARTS[head_first_part_index()].cubes,
-        SNOW_GOLEM_HEAD.as_slice()
-    );
 
     // (The hoglin now builds a named-children tree, so its head look resolves the `head`
     // child by name rather than an index — the adult layer lists the body first, the baby

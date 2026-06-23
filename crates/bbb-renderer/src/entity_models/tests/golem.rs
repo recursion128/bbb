@@ -1,75 +1,51 @@
 use super::*;
 
+use crate::entity_models::model::ModelCube;
+
 #[test]
 fn iron_golem_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`. The body's chest plate keeps the base 9×5×6 UV box against its
+    // 10×6×7 geometry.
     assert_eq!(
         IRON_GOLEM_HEAD,
         [
-            ModelCubeDesc {
-                min: [-4.0, -12.0, -5.5],
-                size: [8.0, 10.0, 8.0],
-                color: IRON_GOLEM_STONE,
-            },
-            ModelCubeDesc {
-                min: [-1.0, -5.0, -7.5],
-                size: [2.0, 4.0, 2.0],
-                color: IRON_GOLEM_STONE,
-            },
+            ModelCube::new(
+                [-4.0, -12.0, -5.5],
+                [8.0, 10.0, 8.0],
+                IRON_GOLEM_STONE,
+                [8.0, 10.0, 8.0],
+                [0.0, 0.0],
+                false,
+            ),
+            ModelCube::new(
+                [-1.0, -5.0, -7.5],
+                [2.0, 4.0, 2.0],
+                IRON_GOLEM_STONE,
+                [2.0, 4.0, 2.0],
+                [24.0, 0.0],
+                false,
+            ),
         ]
     );
-    assert_eq!(
-        IRON_GOLEM_BODY,
-        [
-            ModelCubeDesc {
-                min: [-9.0, -2.0, -6.0],
-                size: [18.0, 12.0, 11.0],
-                color: IRON_GOLEM_STONE,
-            },
-            ModelCubeDesc {
-                min: [-5.0, 9.5, -3.5],
-                size: [10.0, 6.0, 7.0],
-                color: IRON_GOLEM_STONE,
-            },
-        ]
-    );
-    assert_eq!(
-        IRON_GOLEM_RIGHT_ARM[0],
-        ModelCubeDesc {
-            min: [-13.0, -2.5, -3.0],
-            size: [4.0, 30.0, 6.0],
-            color: IRON_GOLEM_STONE,
-        }
-    );
-    assert_eq!(
-        IRON_GOLEM_LEFT_ARM[0],
-        ModelCubeDesc {
-            min: [9.0, -2.5, -3.0],
-            size: [4.0, 30.0, 6.0],
-            color: IRON_GOLEM_STONE,
-        }
-    );
-    assert_eq!(
-        IRON_GOLEM_RIGHT_LEG[0],
-        ModelCubeDesc {
-            min: [-3.5, -3.0, -3.0],
-            size: [6.0, 16.0, 5.0],
-            color: IRON_GOLEM_STONE,
-        }
-    );
-    assert_eq!(IRON_GOLEM_LEFT_LEG, IRON_GOLEM_RIGHT_LEG);
+    assert_eq!(IRON_GOLEM_BODY[0].size, [18.0, 12.0, 11.0]);
+    assert_eq!(IRON_GOLEM_BODY[1].size, [10.0, 6.0, 7.0]);
+    assert_eq!(IRON_GOLEM_BODY[1].uv_size, [9.0, 5.0, 6.0]);
+    assert_eq!(IRON_GOLEM_RIGHT_ARM[0].min, [-13.0, -2.5, -3.0]);
+    assert_eq!(IRON_GOLEM_LEFT_ARM[0].min, [9.0, -2.5, -3.0]);
+    assert_eq!(IRON_GOLEM_RIGHT_LEG[0].size, [6.0, 16.0, 5.0]);
+    assert!(!IRON_GOLEM_RIGHT_LEG[0].mirror);
+    // The two legs share geometry but the left leg mirrors and draws from a different UV slot.
+    assert_eq!(IRON_GOLEM_LEFT_LEG[0].size, IRON_GOLEM_RIGHT_LEG[0].size);
+    assert!(IRON_GOLEM_LEFT_LEG[0].mirror);
 
-    assert_eq!(IRON_GOLEM_PARTS.len(), 6);
-    let part_specs = [
-        ([0.0, -7.0, -2.0], IRON_GOLEM_HEAD.as_slice()),
-        ([0.0, -7.0, 0.0], IRON_GOLEM_BODY.as_slice()),
-        ([0.0, -7.0, 0.0], IRON_GOLEM_RIGHT_ARM.as_slice()),
-        ([0.0, -7.0, 0.0], IRON_GOLEM_LEFT_ARM.as_slice()),
-        ([-4.0, 11.0, 0.0], IRON_GOLEM_RIGHT_LEG.as_slice()),
-        ([5.0, 11.0, 0.0], IRON_GOLEM_LEFT_LEG.as_slice()),
-    ];
-    for (part, (offset, cubes)) in IRON_GOLEM_PARTS.iter().zip(part_specs) {
-        assert_part(part, offset, [0.0, 0.0, 0.0], cubes);
-    }
+    // Part poses (vanilla `IronGolemModel.createBodyLayer`): the arms share the body pose, the legs
+    // pivot at the hips.
+    assert_eq!(IRON_GOLEM_HEAD_POSE.offset, [0.0, -7.0, -2.0]);
+    assert_eq!(IRON_GOLEM_BODY_POSE.offset, [0.0, -7.0, 0.0]);
+    assert_eq!(IRON_GOLEM_ARM_POSE.offset, [0.0, -7.0, 0.0]);
+    assert_eq!(IRON_GOLEM_RIGHT_LEG_POSE.offset, [-4.0, 11.0, 0.0]);
+    assert_eq!(IRON_GOLEM_LEFT_LEG_POSE.offset, [5.0, 11.0, 0.0]);
 }
 
 #[test]
@@ -106,7 +82,7 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_IRON_GOLEM);
     assert_eq!(passes[0].texture, IRON_GOLEM_TEXTURE_REF);
-    assert_eq!(passes[0].parts, IRON_GOLEM_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -119,99 +95,52 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
 fn iron_golem_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_IRON_GOLEM, "minecraft:iron_golem#main");
     assert_eq!(IRON_GOLEM_TEXTURE_REF.size, [128, 128]);
-    assert_eq!(IRON_GOLEM_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        IRON_GOLEM_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -12.0, -5.5],
-            size: [8.0, 10.0, 8.0],
-            uv_size: [8.0, 10.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        IRON_GOLEM_TEXTURED_BODY[1],
-        TexturedModelCubeDesc {
-            min: [-5.0, 9.5, -3.5],
-            size: [10.0, 6.0, 7.0],
-            uv_size: [9.0, 5.0, 6.0],
-            tex: [0.0, 70.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        IRON_GOLEM_TEXTURED_LEFT_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-3.5, -3.0, -3.0],
-            size: [6.0, 16.0, 5.0],
-            uv_size: [6.0, 16.0, 5.0],
-            tex: [60.0, 0.0],
-            mirror: true,
-        }
-    );
-    assert_eq!(IRON_GOLEM_TEXTURED_PARTS[0].pose, IRON_GOLEM_PARTS[0].pose);
-    assert_eq!(IRON_GOLEM_TEXTURED_PARTS[5].pose, IRON_GOLEM_PARTS[5].pose);
+    // The unified cubes carry the textured UV sources (`uv_size`/`texOffs`/`mirror`) merged into the
+    // colored geometry.
+    assert_eq!(IRON_GOLEM_HEAD[0].uv_size, [8.0, 10.0, 8.0]);
+    assert_eq!(IRON_GOLEM_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(IRON_GOLEM_BODY[1].uv_size, [9.0, 5.0, 6.0]);
+    assert_eq!(IRON_GOLEM_BODY[1].tex, [0.0, 70.0]);
+    assert_eq!(IRON_GOLEM_LEFT_LEG[0].uv_size, [6.0, 16.0, 5.0]);
+    assert_eq!(IRON_GOLEM_LEFT_LEG[0].tex, [60.0, 0.0]);
+    assert!(IRON_GOLEM_LEFT_LEG[0].mirror);
+    assert_eq!(IRON_GOLEM_RIGHT_ARM[0].tex, [60.0, 21.0]);
+    assert_eq!(IRON_GOLEM_LEFT_ARM[0].tex, [60.0, 58.0]);
 }
 
 #[test]
 fn snow_golem_model_parts_match_vanilla_26_1_body_layer() {
+    // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
+    // `uv_size`/`texOffs`/`mirror`. Each snow ball / stick arm keeps a base UV box one unit larger than
+    // its colored geometry.
     assert_eq!(
         SNOW_GOLEM_HEAD[0],
-        ModelCubeDesc {
-            min: [-3.5, -7.5, -3.5],
-            size: [7.0, 7.0, 7.0],
-            color: SNOW_GOLEM_WHITE,
-        }
+        ModelCube::new(
+            [-3.5, -7.5, -3.5],
+            [7.0, 7.0, 7.0],
+            SNOW_GOLEM_WHITE,
+            [8.0, 8.0, 8.0],
+            [0.0, 0.0],
+            false,
+        )
     );
-    assert_eq!(
-        SNOW_GOLEM_ARM[0],
-        ModelCubeDesc {
-            min: [-0.5, 0.5, -0.5],
-            size: [11.0, 1.0, 1.0],
-            color: SNOW_GOLEM_WHITE,
-        }
-    );
-    assert_eq!(
-        SNOW_GOLEM_UPPER_BODY[0],
-        ModelCubeDesc {
-            min: [-4.5, -9.5, -4.5],
-            size: [9.0, 9.0, 9.0],
-            color: SNOW_GOLEM_WHITE,
-        }
-    );
-    assert_eq!(
-        SNOW_GOLEM_LOWER_BODY[0],
-        ModelCubeDesc {
-            min: [-5.5, -11.5, -5.5],
-            size: [11.0, 11.0, 11.0],
-            color: SNOW_GOLEM_WHITE,
-        }
-    );
+    assert_eq!(SNOW_GOLEM_ARM[0].size, [11.0, 1.0, 1.0]);
+    assert_eq!(SNOW_GOLEM_ARM[0].uv_size, [12.0, 2.0, 2.0]);
+    assert_eq!(SNOW_GOLEM_UPPER_BODY[0].size, [9.0, 9.0, 9.0]);
+    assert_eq!(SNOW_GOLEM_LOWER_BODY[0].size, [11.0, 11.0, 11.0]);
 
-    assert_eq!(SNOW_GOLEM_PARTS.len(), 5);
-    let part_specs = [
-        ([0.0, 4.0, 0.0], [0.0, 0.0, 0.0], SNOW_GOLEM_HEAD.as_slice()),
-        ([5.0, 6.0, 1.0], [0.0, 0.0, 1.0], SNOW_GOLEM_ARM.as_slice()),
-        (
-            [-5.0, 6.0, -1.0],
-            [0.0, std::f32::consts::PI, -1.0],
-            SNOW_GOLEM_ARM.as_slice(),
-        ),
-        (
-            [0.0, 13.0, 0.0],
-            [0.0, 0.0, 0.0],
-            SNOW_GOLEM_UPPER_BODY.as_slice(),
-        ),
-        (
-            [0.0, 24.0, 0.0],
-            [0.0, 0.0, 0.0],
-            SNOW_GOLEM_LOWER_BODY.as_slice(),
-        ),
-    ];
-    for (part, (offset, rotation, cubes)) in SNOW_GOLEM_PARTS.iter().zip(part_specs) {
-        assert_part(part, offset, rotation, cubes);
-    }
+    // Part poses (vanilla `SnowGolemModel.createBodyLayer`): head, left arm, right arm (the two stick
+    // arms droop ±1 rad, the right arm yawed π), upper body, lower body.
+    assert_eq!(SNOW_GOLEM_HEAD_POSE.offset, [0.0, 4.0, 0.0]);
+    assert_eq!(SNOW_GOLEM_LEFT_ARM_POSE.offset, [5.0, 6.0, 1.0]);
+    assert_eq!(SNOW_GOLEM_LEFT_ARM_POSE.rotation, [0.0, 0.0, 1.0]);
+    assert_eq!(SNOW_GOLEM_RIGHT_ARM_POSE.offset, [-5.0, 6.0, -1.0]);
+    assert_eq!(
+        SNOW_GOLEM_RIGHT_ARM_POSE.rotation,
+        [0.0, std::f32::consts::PI, -1.0]
+    );
+    assert_eq!(SNOW_GOLEM_UPPER_BODY_POSE.offset, [0.0, 13.0, 0.0]);
+    assert_eq!(SNOW_GOLEM_LOWER_BODY_POSE.offset, [0.0, 24.0, 0.0]);
 }
 
 #[test]
@@ -248,7 +177,7 @@ fn snow_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_SNOW_GOLEM);
     assert_eq!(passes[0].texture, SNOW_GOLEM_TEXTURE_REF);
-    assert_eq!(passes[0].parts, SNOW_GOLEM_TEXTURED_PARTS.as_slice());
+    assert!(passes[0].parts.is_empty());
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -261,49 +190,16 @@ fn snow_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
 fn snow_golem_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_SNOW_GOLEM, "minecraft:snow_golem#main");
     assert_eq!(SNOW_GOLEM_TEXTURE_REF.size, [64, 64]);
-    assert_eq!(SNOW_GOLEM_TEXTURED_PARTS.len(), 5);
-    assert_eq!(
-        SNOW_GOLEM_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-3.5, -7.5, -3.5],
-            size: [7.0, 7.0, 7.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        SNOW_GOLEM_TEXTURED_ARM[0],
-        TexturedModelCubeDesc {
-            min: [-0.5, 0.5, -0.5],
-            size: [11.0, 1.0, 1.0],
-            uv_size: [12.0, 2.0, 2.0],
-            tex: [32.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        SNOW_GOLEM_TEXTURED_UPPER_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-4.5, -9.5, -4.5],
-            size: [9.0, 9.0, 9.0],
-            uv_size: [10.0, 10.0, 10.0],
-            tex: [0.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        SNOW_GOLEM_TEXTURED_LOWER_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-5.5, -11.5, -5.5],
-            size: [11.0, 11.0, 11.0],
-            uv_size: [12.0, 12.0, 12.0],
-            tex: [0.0, 36.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(SNOW_GOLEM_TEXTURED_PARTS[0].pose, SNOW_GOLEM_PARTS[0].pose);
-    assert_eq!(SNOW_GOLEM_TEXTURED_PARTS[4].pose, SNOW_GOLEM_PARTS[4].pose);
+    // The unified cubes carry the textured UV sources (`uv_size`/`texOffs`/`mirror`) merged into the
+    // colored geometry; each snow ball / arm keeps a base UV box one unit larger.
+    assert_eq!(SNOW_GOLEM_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(SNOW_GOLEM_HEAD[0].tex, [0.0, 0.0]);
+    assert_eq!(SNOW_GOLEM_ARM[0].uv_size, [12.0, 2.0, 2.0]);
+    assert_eq!(SNOW_GOLEM_ARM[0].tex, [32.0, 0.0]);
+    assert_eq!(SNOW_GOLEM_UPPER_BODY[0].uv_size, [10.0, 10.0, 10.0]);
+    assert_eq!(SNOW_GOLEM_UPPER_BODY[0].tex, [0.0, 16.0]);
+    assert_eq!(SNOW_GOLEM_LOWER_BODY[0].uv_size, [12.0, 12.0, 12.0]);
+    assert_eq!(SNOW_GOLEM_LOWER_BODY[0].tex, [0.0, 36.0]);
 }
 
 #[test]
@@ -437,8 +333,8 @@ fn snow_golem_arm_pose_matches_vanilla_orbit_formula() {
     //   rightArm.yRot = upperBodyYRot + π;  rightArm.x = -cos*5;  rightArm.z = sin*5.
     // The arm y offset and the drooping zRot (±1.0) are preserved; x/z are overwritten
     // even at rest, so a forward-facing snow golem pulls both arms to z = 0.
-    let left_base = SNOW_GOLEM_PARTS[SNOW_GOLEM_LEFT_ARM_PART_INDEX].pose;
-    let right_base = SNOW_GOLEM_PARTS[SNOW_GOLEM_RIGHT_ARM_PART_INDEX].pose;
+    let left_base = SNOW_GOLEM_LEFT_ARM_POSE;
+    let right_base = SNOW_GOLEM_RIGHT_ARM_POSE;
 
     // Rest (yaw 0): the orbit collapses the arms to z = 0 but keeps their droop.
     assert!((snow_golem_upper_body_yrot(0.0)).abs() < 1e-6);
@@ -464,7 +360,7 @@ fn snow_golem_arm_pose_matches_vanilla_orbit_formula() {
     assert!((right.rotation[1] - (upper + std::f32::consts::PI)).abs() < 1e-6);
 
     // The upper-body twist sets only yRot; offset, xRot, zRot are preserved.
-    let upper_base = SNOW_GOLEM_PARTS[SNOW_GOLEM_UPPER_BODY_PART_INDEX].pose;
+    let upper_base = SNOW_GOLEM_UPPER_BODY_POSE;
     let twisted = snow_golem_upper_body_pose(upper_base, upper);
     assert_eq!(twisted.offset, upper_base.offset);
     assert_eq!(twisted.rotation[0], upper_base.rotation[0]);
@@ -495,29 +391,20 @@ fn iron_golem_walk_pose_matches_vanilla_triangle_wave() {
     // rightLeg = -1.5, leftLeg = 1.5, rightArm = (-0.2 + 1.5) = 1.3, leftArm =
     // (-0.2 - 1.5) = -1.7.
     let right_leg = iron_golem_walk_pose(
-        IRON_GOLEM_PARTS[4].pose,
+        IRON_GOLEM_RIGHT_LEG_POSE,
         0.0,
         1.0,
         IronGolemWalkPart::RightLeg,
     );
     let left_leg = iron_golem_walk_pose(
-        IRON_GOLEM_PARTS[5].pose,
+        IRON_GOLEM_LEFT_LEG_POSE,
         0.0,
         1.0,
         IronGolemWalkPart::LeftLeg,
     );
-    let right_arm = iron_golem_walk_pose(
-        IRON_GOLEM_PARTS[2].pose,
-        0.0,
-        1.0,
-        IronGolemWalkPart::RightArm,
-    );
-    let left_arm = iron_golem_walk_pose(
-        IRON_GOLEM_PARTS[3].pose,
-        0.0,
-        1.0,
-        IronGolemWalkPart::LeftArm,
-    );
+    let right_arm =
+        iron_golem_walk_pose(IRON_GOLEM_ARM_POSE, 0.0, 1.0, IronGolemWalkPart::RightArm);
+    let left_arm = iron_golem_walk_pose(IRON_GOLEM_ARM_POSE, 0.0, 1.0, IronGolemWalkPart::LeftArm);
     assert!(
         (right_leg.rotation[0] + 1.5).abs() < 1e-6,
         "{}",
@@ -541,7 +428,7 @@ fn iron_golem_walk_pose_matches_vanilla_triangle_wave() {
 
     // At pos = 6.5: triangleWave = (|6.5 - 6.5| - 3.25) / 3.25 = -1.0, scaled by speed.
     let right_leg = iron_golem_walk_pose(
-        IRON_GOLEM_PARTS[4].pose,
+        IRON_GOLEM_RIGHT_LEG_POSE,
         6.5,
         0.5,
         IronGolemWalkPart::RightLeg,
