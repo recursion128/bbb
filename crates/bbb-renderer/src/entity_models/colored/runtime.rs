@@ -1482,13 +1482,71 @@ fn emit_frog_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &FROG_PARTS, root);
 }
 
+/// Emits a nested part tree, applying [`head_look_pose`] to the single part reached by walking
+/// `head_path` (a sequence of child indices from `parts`). Every part not on the path is emitted at
+/// its bind pose; the head part is emitted with the look folded into its pose, so its children (ears
+/// /nose/etc.) inherit the rotation exactly as in vanilla. Used by models whose head is nested below
+/// the root (creaking, sniffer), where the static `&'static` child slices cannot be swapped for an
+/// owned clone the way a flat parts array can.
+fn emit_model_parts_with_head_look(
+    mesh: &mut EntityModelMesh,
+    parts: &[ModelPartDesc],
+    transform: Mat4,
+    head_path: &[usize],
+    head_yaw: f32,
+    head_pitch: f32,
+) {
+    for (index, part) in parts.iter().enumerate() {
+        if head_path.first() != Some(&index) {
+            emit_model_part(mesh, part, transform);
+            continue;
+        }
+        if head_path.len() == 1 {
+            // This part is the head: fold the look into its pose and emit it (children inherit it).
+            let looked = ModelPartDesc {
+                pose: head_look_pose(part.pose, head_yaw, head_pitch),
+                ..*part
+            };
+            emit_model_part(mesh, &looked, transform);
+        } else {
+            // The head is deeper: emit this part's own cubes, then recurse into its children.
+            let part_transform = transform * part_pose_transform(part.pose);
+            for cube in part.cubes {
+                emit_model_cube(mesh, part_transform, *cube);
+            }
+            emit_model_parts_with_head_look(
+                mesh,
+                part.children,
+                part_transform,
+                &head_path[1..],
+                head_yaw,
+                head_pitch,
+            );
+        }
+    }
+}
+
 fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `CreakingModel` is a static nested hierarchy at rest (`root` → upper_body/legs,
-    // upper_body → head/body/arms). All of `CreakingModel.setupAnim` (head look, walk, attack,
-    // invulnerable, death) is deferred, so the bind-pose part tree is emitted directly. Creaking
-    // uses `LivingEntityRenderer.setupRotations`.
+    // Vanilla `CreakingModel` is a nested hierarchy (`root` → upper_body/legs, upper_body →
+    // head/body/arms). `setupAnim` sets `head.xRot/yRot` from the plain look; the walk, attack,
+    // invulnerable, and death keyframe animations are deferred. The head is nested two levels under
+    // the root ([`CREAKING_HEAD_PART_PATH`]), so the look is applied through
+    // [`emit_model_parts_with_head_look`]. Creaking uses `LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    emit_model_parts(mesh, &CREAKING_PARTS, root);
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    if head_look_at_rest(head_yaw, head_pitch) {
+        emit_model_parts(mesh, &CREAKING_PARTS, root);
+    } else {
+        emit_model_parts_with_head_look(
+            mesh,
+            &CREAKING_PARTS,
+            root,
+            CREAKING_HEAD_PART_PATH,
+            head_yaw,
+            head_pitch,
+        );
+    }
 }
 
 fn emit_sniffer_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

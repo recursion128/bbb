@@ -71,3 +71,26 @@ fn creaking_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(CREAKING_BARK, 1.0)));
 }
+
+#[test]
+fn creaking_head_follows_look_angles() {
+    // Vanilla `CreakingModel.setupAnim` sets `head.xRot/yRot` from the plain look. The head is
+    // nested root → upper_body → head ([`CREAKING_HEAD_PART_PATH`]) and is emitted first — its four
+    // cubes (skull, brow, two antler planes) are vertices [0, 96). A non-zero look re-poses only the
+    // head subtree; the body, the two arms, and the two legs stay at bind.
+    assert_eq!(CREAKING_HEAD_PART_PATH, &[0, 0, 0]);
+    let base = EntityModelInstance::creaking(941, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]);
+    let looking = entity_model_mesh(&[base.with_head_look(35.0, -20.0)]);
+    assert_eq!(rest.vertices.len(), looking.vertices.len());
+    assert_ne!(
+        rest.vertices[..96],
+        looking.vertices[..96],
+        "the head turns with the look"
+    );
+    assert_eq!(
+        rest.vertices[96..],
+        looking.vertices[96..],
+        "the body, arms, and legs stay at bind"
+    );
+}

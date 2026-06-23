@@ -2,11 +2,12 @@ use super::{bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc,
 
 // Vanilla 26.1 `CreakingModel.createBodyLayer` (atlas 64×64). The mesh root holds one `root` part
 // at `offset(0, 24, 0)` parenting `upper_body` and the two legs; `upper_body` (an empty pivot)
-// parents the head (with its two antler/branch planes), the body, and the two arms. Every
-// `setupAnim` animation — the head look, walk (`applyWalk`), attack, invulnerable, and death
-// keyframe animations — is deferred, so the model renders at this rest pose (fittingly, the
-// creaking freezes into a statue while observed). The emissive eyes layer
-// (`createEyesLayer`, the `head` part only) and the texture-backed path are also deferred.
+// parents the head (with its two antler/branch planes), the body, and the two arms. `setupAnim`
+// sets `head.xRot/yRot` from the plain look (reproduced through the projected look angles); the
+// walk (`applyWalk`), attack, invulnerable, and death keyframe animations are deferred, so the rest
+// of the model renders at this rest pose (fittingly, the creaking freezes into a statue while
+// observed). The emissive eyes layer (`createEyesLayer`, the `head` part only) and the
+// texture-backed path are also deferred.
 
 // `head`: the 6×10×6 skull, the 6×3×6 brow, and two 9×14×0 antler/branch planes.
 const CREAKING_HEAD_CUBES: [ModelCubeDesc; 4] = [
@@ -67,3 +68,7 @@ const CREAKING_ROOT_CHILDREN: [ModelPartDesc; 3] = [
 /// (`offset(0, 24, 0)`). Sixteen cubes.
 pub(in crate::entity_models) const CREAKING_PARTS: [ModelPartDesc; 1] =
     [part([0.0, 24.0, 0.0], &[], &CREAKING_ROOT_CHILDREN)];
+
+/// Child-index path from [`CREAKING_PARTS`] to the `head` part: root (`0`) → `upper_body` (child
+/// `0`) → `head` (child `0`). Used to apply the plain head look to the nested head.
+pub(in crate::entity_models) const CREAKING_HEAD_PART_PATH: &[usize] = &[0, 0, 0];
