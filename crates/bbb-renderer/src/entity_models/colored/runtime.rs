@@ -1522,12 +1522,16 @@ fn emit_tadpole_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 
 fn emit_parrot_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `ParrotModel` is seven static sibling parts (body, tail, wings, head with its beak /
-    // crest children, legs) at their baked rest poses. All of `ParrotModel.setupAnim` (the head
-    // look, the per-pose `prepare` offsets, the leg/tail walk swing, the wing flap, the flap bob,
-    // and the PARTY dance) is deferred, so the STANDING bind-pose part tree is emitted directly.
-    // Parrot uses a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+    // crest children, legs) at their baked rest poses. The SITTING perch pose is now projected:
+    // `Parrot.isInSittingPose()` (the synced `TamableAnimal.DATA_FLAGS_ID` sitting bit) runs
+    // `prepare(SITTING)`, which raises every part `y += 1.9`, folds the legs (`xRot += π/2`),
+    // pitches the tail (`xRot += π/6`), and tucks the wings (`zRot = ±0.0873`); the `setupAnim`
+    // `SITTING` branch then adds nothing more. The head look, the STANDING/FLYING leg+wing+tail
+    // walk swing / flap bob, and the PARTY dance stay deferred. Parrot uses a plain
+    // `MobRenderer`/`LivingEntityRenderer.setupRotations`.
     let root = entity_model_root_transform(instance);
-    emit_model_parts(mesh, &PARROT_PARTS, root);
+    let parts = parrot_pose_parts(instance.render_state.parrot_sitting);
+    emit_model_parts(mesh, &parts, root);
 }
 
 fn emit_shulker_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

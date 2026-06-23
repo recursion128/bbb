@@ -407,6 +407,7 @@ fn entity_model_instance(
             game_time,
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
+        .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
         .with_creeper_swelling(source.creeper_swelling)
         .with_shulker_peek(source.shulker_peek)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
@@ -1010,6 +1011,15 @@ fn wolf_tail_angle(
 /// entities (and other tamables that are not yet modelled) report `false`.
 fn wolf_sitting(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
+        && (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_SITTING_FLAG)
+            != 0
+}
+
+/// Vanilla `ParrotModel.getPose == SITTING` (`Parrot.isInSittingPose()`): the `TamableAnimal`
+/// `DATA_FLAGS_ID` sitting bit (id 18, the same byte the wolf uses for `isSitting`). Only the
+/// parrot renders the `prepare(SITTING)` perch pose, so non-parrot entities report `false`.
+fn parrot_sitting(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID
         && (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_SITTING_FLAG)
             != 0
 }
@@ -4888,6 +4898,58 @@ mod tests {
             !standing[0].render_state.wolf_sitting,
             "a standing wolf does not project wolf_sitting"
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_parrot_sitting_flag_from_world() {
+        // Vanilla `ParrotModel.getPose == SITTING` = `Parrot.isInSittingPose()` = the same
+        // `TamableAnimal.DATA_FLAGS_ID` bit 1 (id 18) the wolf uses. A sitting parrot projects
+        // `parrot_sitting`; the projection is gated to the parrot, so the same flag byte on
+        // another tamable (wolf) never sets `parrot_sitting`.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            150,
+            VANILLA_ENTITY_TYPE_PARROT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            151,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            [2.0, 64.0, -2.0],
+        ));
+
+        let parrot_sitting = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .parrot_sitting
+        };
+
+        // A standing parrot projects parrot_sitting = false.
+        assert!(!parrot_sitting(&world, 150));
+
+        // Setting the TamableAnimal sitting bit projects through to the perch pose.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 150,
+            values: vec![protocol_byte_data(
+                TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                TAMABLE_ANIMAL_SITTING_FLAG,
+            )],
+        }));
+        assert!(parrot_sitting(&world, 150));
+
+        // The same sitting bit on a non-parrot (wolf) does NOT project parrot_sitting — the
+        // derivation is gated to the parrot type.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 151,
+            values: vec![protocol_byte_data(
+                TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                TAMABLE_ANIMAL_TAME_FLAG | TAMABLE_ANIMAL_SITTING_FLAG,
+            )],
+        }));
+        assert!(!parrot_sitting(&world, 151));
     }
 
     #[test]

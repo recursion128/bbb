@@ -6,12 +6,15 @@ use super::{
 // Vanilla 26.1 `ParrotModel.createBodyLayer` (atlas 32×32). The mesh root holds seven sibling parts
 // (body, tail, the two wings, head, and the two legs); the head parents the upper-head block, the
 // two beak halves, and the crest feather. Most parts carry a baked rest rotation (the wings are
-// additionally flipped `yRot = -π`). Every `ParrotModel.setupAnim` motion is deferred — the head
-// look, the per-pose `prepare` offsets (the FLYING leg pitch, the SITTING crouch), the leg walk
-// swing, the wing flap (`zRot = ±(0.0873 + flapAngle)`), the body/tail/head flap bob, and the PARTY
-// dance — so the model renders at this STANDING rest pose. The five `Parrot.Variant` colors live on
-// the deferred texture-backed path, so the colored debug path renders one body tint plus a beak
-// tint. Parrot uses a plain `MobRenderer` with no transform overrides.
+// additionally flipped `yRot = -π`). The SITTING perch pose is now projected (see
+// [`parrot_pose_parts`](crate::entity_models::colored::runtime)): `prepare(SITTING)` raises every
+// part `y += 1.9`, folds the legs `xRot += π/2`, pitches the tail `xRot += π/6`, and tucks the wings
+// to `zRot = ±0.0873`. The remaining `ParrotModel.setupAnim` motion is deferred — the head look, the
+// FLYING leg pitch, the leg walk swing, the wing flap (`zRot = ±(0.0873 + flapAngle)`), the
+// body/tail/head flap bob, and the PARTY dance — so a non-sitting parrot renders at this STANDING rest
+// pose. The five `Parrot.Variant` colors live on the deferred texture-backed path, so the colored
+// debug path renders one body tint plus a beak tint. Parrot uses a plain `MobRenderer` with no
+// transform overrides.
 
 // `body`: the 3×6×3 torso.
 const PARROT_BODY_CUBES: [ModelCubeDesc; 1] =
@@ -102,3 +105,26 @@ pub(in crate::entity_models) const PARROT_PARTS: [ModelPartDesc; 7] = [
         &[],
     ),
 ];
+
+/// Vanilla `ParrotModel.prepare(SITTING)` applied to the bind-pose part tree (part order body,
+/// tail, left_wing, right_wing, head, left_leg, right_leg): every part raises `y += 1.9`, the legs
+/// fold `xRot += π/2`, the tail pitches `xRot += π/6`, and the wings tuck to `zRot = ±0.0873` (set,
+/// not added). The `setupAnim` `SITTING` branch adds nothing more. Returns the STANDING bind pose
+/// unchanged when not sitting.
+pub(in crate::entity_models) fn parrot_pose_parts(sitting: bool) -> Vec<ModelPartDesc> {
+    let mut parts = PARROT_PARTS.to_vec();
+    if !sitting {
+        return parts;
+    }
+    const SIT_Y: f32 = 1.9;
+    const WING_TUCK_Z_ROT: f32 = 0.0873;
+    for part in parts.iter_mut() {
+        part.pose.offset[1] += SIT_Y;
+    }
+    parts[1].pose.rotation[0] += std::f32::consts::FRAC_PI_6; // tail pitch += π/6
+    parts[2].pose.rotation[2] = -WING_TUCK_Z_ROT; // left wing tuck
+    parts[3].pose.rotation[2] = WING_TUCK_Z_ROT; // right wing tuck
+    parts[5].pose.rotation[0] += std::f32::consts::FRAC_PI_2; // left leg fold += π/2
+    parts[6].pose.rotation[0] += std::f32::consts::FRAC_PI_2; // right leg fold += π/2
+    parts
+}

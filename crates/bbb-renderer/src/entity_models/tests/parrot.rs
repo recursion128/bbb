@@ -59,6 +59,49 @@ fn parrot_geometry_matches_vanilla_26_1_body_layer() {
 }
 
 #[test]
+fn parrot_sitting_pose_matches_vanilla_prepare() {
+    use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
+
+    // Standing keeps the bind pose unchanged.
+    assert_eq!(parrot_pose_parts(false), PARROT_PARTS.to_vec());
+
+    // SITTING = `ParrotModel.prepare(SITTING)`: every part raises `y += 1.9`, the tail pitches
+    // `xRot += π/6`, the wings tuck to `zRot = ±0.0873`, and the legs fold `xRot += π/2`.
+    let sitting = parrot_pose_parts(true);
+    for (i, part) in sitting.iter().enumerate() {
+        assert!(
+            (part.pose.offset[1] - (PARROT_PARTS[i].pose.offset[1] + 1.9)).abs() < 1.0e-6,
+            "part {i} should raise y by 1.9"
+        );
+    }
+    // tail (index 1): xRot = 1.015 + π/6.
+    assert!((sitting[1].pose.rotation[0] - (1.015 + FRAC_PI_6)).abs() < 1.0e-6);
+    // wings (2 left, 3 right): zRot set to ∓0.0873.
+    assert!((sitting[2].pose.rotation[2] - (-0.0873)).abs() < 1.0e-6);
+    assert!((sitting[3].pose.rotation[2] - 0.0873).abs() < 1.0e-6);
+    // legs (5 left, 6 right): xRot = -0.0299 + π/2.
+    assert!((sitting[5].pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
+    assert!((sitting[6].pose.rotation[0] - (-0.0299 + FRAC_PI_2)).abs() < 1.0e-6);
+    // The head (index 4) only translates (the look pose stays deferred), no rotation change.
+    assert_eq!(sitting[4].pose.rotation, PARROT_PARTS[4].pose.rotation);
+}
+
+#[test]
+fn parrot_sitting_mesh_differs_from_standing() {
+    // The perched parrot re-poses every part (raise + fold), so its mesh differs from standing
+    // while keeping the same 11-cube vertex count.
+    let standing = entity_model_mesh(&[EntityModelInstance::parrot(981, [0.0, 64.0, 0.0], 0.0)]);
+    let sitting = entity_model_mesh(&[
+        EntityModelInstance::parrot(982, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true)
+    ]);
+    assert_eq!(standing.vertices.len(), sitting.vertices.len());
+    assert_ne!(
+        standing.vertices, sitting.vertices,
+        "the sitting parrot perches lower with folded legs"
+    );
+}
+
+#[test]
 fn parrot_mesh_uses_vanilla_body_layer_geometry() {
     // The body carries the body tint; the two beak halves carry the beak tint.
     let parrot = entity_model_mesh(&[EntityModelInstance::parrot(980, [0.0, 64.0, 0.0], 0.0)]);

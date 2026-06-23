@@ -1652,9 +1652,13 @@ When an agent does any of the following, update this file in the same slice:
       0.4937 rad), the 3×4×1 tail (pitched 1.015 rad), the two 1×5×3 wings (pitched -0.6981 rad and flipped
       `yRot = -π`), the 2×3×2 head, and the two 1×2×1 legs (pitched -0.0299 rad) — with the head parenting
       the 2×1×4 upper-head block, the two 1×2×1 beak halves, and the 0×5×4 crest feather (pitched -0.2214
-      rad) — eleven cubes. Every `ParrotModel.setupAnim` motion is deferred: the head look (`head.xRot/yRot`),
-      the per-pose `prepare` offsets (the FLYING leg pitch, the SITTING crouch), the leg/tail walk swing, the
-      wing flap (`zRot = ±(0.0873 + flapAngle)`), the body/tail/head flap bob, and the PARTY dance. The five
+      rad) — eleven cubes. The SITTING perch pose is now projected: `Parrot.isInSittingPose()` (the synced
+      `TamableAnimal.DATA_FLAGS_ID` bit 1, data id `18`, gated to the parrot type) runs `prepare(SITTING)` —
+      every part raises `y += 1.9`, the legs fold `xRot += π/2`, the tail pitches `xRot += π/6`, and the wings
+      tuck to `zRot = ±0.0873` (the `setupAnim` SITTING branch adds nothing more). The remaining
+      `ParrotModel.setupAnim` motion stays deferred: the head look (`head.xRot/yRot`), the FLYING leg pitch,
+      the leg/tail walk swing, the wing flap (`zRot = ±(0.0873 + flapAngle)`), the body/tail/head flap bob, and
+      the PARTY dance. The five
       `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) live on the deferred
       texture-backed path, so the colored debug path renders one body tint plus a beak tint. The
       texture-backed path remains unsupported (this is a colored-first slice)

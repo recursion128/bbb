@@ -172,6 +172,12 @@ pub struct EntityRenderState {
     /// folds its legs and tilts its body (`WolfModel.setSittingPose`) instead of swinging
     /// its legs. `false` for a standing wolf and every non-wolf entity.
     pub wolf_sitting: bool,
+    /// Vanilla `ParrotRenderState.pose == SITTING` (`Parrot.isInSittingPose()`, the
+    /// `TamableAnimal.DATA_FLAGS_ID` sitting bit): a perched parrot, whose
+    /// `ParrotModel.prepare(SITTING)` raises every part `y += 1.9`, folds the legs
+    /// (`xRot += π/2`), pitches the tail (`xRot += π/6`), and tucks the wings (`zRot = ±0.0873`).
+    /// `false` for a standing parrot and every non-parrot entity.
+    pub parrot_sitting: bool,
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
@@ -239,6 +245,7 @@ impl EntityRenderState {
             is_crouching: false,
             wolf_tail_angle: std::f32::consts::PI / 5.0,
             wolf_sitting: false,
+            parrot_sitting: false,
             squid_tentacle_angle: 0.0,
             squid_x_body_rot: 0.0,
             squid_z_body_rot: 0.0,
@@ -433,6 +440,11 @@ impl EntityModelInstance {
 
     pub fn with_wolf_tail_angle(mut self, wolf_tail_angle: f32) -> Self {
         self.render_state.wolf_tail_angle = wolf_tail_angle;
+        self
+    }
+
+    pub fn with_parrot_sitting(mut self, parrot_sitting: bool) -> Self {
+        self.render_state.parrot_sitting = parrot_sitting;
         self
     }
 
@@ -1315,6 +1327,7 @@ mod tests {
                 is_crouching: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
+                parrot_sitting: false,
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
