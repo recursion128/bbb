@@ -332,7 +332,7 @@ When an agent does any of the following, update this file in the same slice:
       head pitch, the camel's sit/dash-entangled gait, and the tail's `ageInTicks` yRot wag
       stay deferred). The remaining
       slices consume them
-      in the other model families' `setupAnim` (the camel; fish; other birds; etc., plus
+      in the other model families' `setupAnim` (fish; other birds; etc., plus
       the `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
       walk-driven swing (its `setupAnim` is the head-yaw twist/orbit, now implemented).
     - deferred slots to add with their own slices, each carrying real vanilla
@@ -956,12 +956,14 @@ When an agent does any of the following, update this file in the same slice:
       husk reuses the adult `camel#main` mesh), normal camel adult/baby model
       selection, camel_husk adult-only renderer selection, zero-thickness tail
       cubes, official camel (128×128) / camel_baby (64×64) / camel_husk (128×128)
-      texture references, texture-backed base layer pass emission, and the official
-      PNG atlas upload/bind/sample path (colored and textured, both at the static
-      rest pose); saddle equipment layers, the `CamelModel.setupAnim` keyframe
-      walk/sit/standup/idle/dash animations and the direct head yaw/pitch clamp
-      (which would require the deferred `KeyframeAnimation` framework and camel head
-      tracking), and lighting remain unsupported
+      texture references, texture-backed base layer pass emission, the official
+      PNG atlas upload/bind/sample path, and the `CamelModel.applyHeadRotation`
+      clamped head yaw/pitch tracking applied to the body-nested head (`yRot` clamped
+      to [-30, 30], `xRot` to [-25, 45] degrees) on both the colored and textured
+      paths; saddle equipment layers, the `CamelModel.setupAnim` keyframe
+      walk/sit/standup/idle/dash animations and the `jumpCooldown` extra-pitch head
+      boost (which would require the deferred `KeyframeAnimation` framework and the
+      un-projected jump-cooldown state), and lighting remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader

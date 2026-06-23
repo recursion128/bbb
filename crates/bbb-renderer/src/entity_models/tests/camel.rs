@@ -319,10 +319,10 @@ fn camel_textured_model_parts_match_vanilla_model_layer_uv_sources() {
 
 #[test]
 fn camel_textured_mesh_matches_static_vanilla_pose() {
-    // Vanilla `CamelModel.setupAnim` drives the limbs via baked `KeyframeAnimation`s and a
-    // direct head clamp, none of which the colored path applies. The textured path matches
-    // that static pose, so its meshes carry the full body-layer geometry (12 adult cubes /
-    // 11 baby cubes, 24 vertices each) and are inert under head look and walk animation.
+    // Vanilla `CamelModel.setupAnim` drives the limbs via baked `KeyframeAnimation`s plus a
+    // direct head clamp. The keyframe animations are deferred, so the textured meshes carry the
+    // full body-layer geometry (12 adult cubes / 11 baby cubes, 24 vertices each) and are inert
+    // under walk animation (the head look is exercised separately below).
     let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
     let adult =
         EntityModelInstance::camel(700, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
@@ -356,11 +356,74 @@ fn camel_textured_mesh_matches_static_vanilla_pose() {
             .collect::<Vec<_>>()
     );
 
-    // Head look and walk animation are deferred, so the mesh is byte-identical to rest.
-    let yawed = entity_model_textured_mesh(&[adult.with_head_look(40.0, -20.0)], &atlas);
+    // The keyframe walk animation is still deferred, so walking is byte-identical to rest.
     let walking = entity_model_textured_mesh(&[adult.with_walk_animation(0.0, 1.0)], &atlas);
-    assert_eq!(adult_mesh.vertices, yawed.vertices);
     assert_eq!(adult_mesh.vertices, walking.vertices);
+}
+
+/// The adult camel's depth-first emit order: body `[0, 24)`, hump `[24, 48)`, the zero-thickness
+/// tail plane `[48, 72)`, the three head cubes and two ears `[72, 192)`, then the four legs
+/// `[192, 288)`. The head sits nested under the body, so a head look turns only `[72, 192)`.
+const ADULT_CAMEL_HEAD_VERTEX_RANGE: std::ops::Range<usize> = 72..192;
+
+#[test]
+fn camel_head_look_turns_only_the_nested_head_subtree() {
+    // Vanilla `CamelModel.applyHeadRotation` drives `head.yRot/xRot` from the clamped look. The
+    // head is `body.getChild("head")`, so the body, hump, tail, and legs stay put while the head
+    // cubes and their ear children turn. This must hold on both the colored and textured paths.
+    let head = ADULT_CAMEL_HEAD_VERTEX_RANGE;
+    let rest =
+        EntityModelInstance::camel(710, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+    let looked = rest.with_head_look(40.0, -20.0);
+
+    let rest_colored = entity_model_mesh(&[rest]);
+    let looked_colored = entity_model_mesh(&[looked]);
+    assert_eq!(rest_colored.vertices.len(), looked_colored.vertices.len());
+    assert_eq!(
+        rest_colored.vertices[..head.start],
+        looked_colored.vertices[..head.start],
+        "the body/hump/tail stay put"
+    );
+    assert_ne!(
+        rest_colored.vertices[head.clone()],
+        looked_colored.vertices[head.clone()],
+        "the nested head subtree turns"
+    );
+    assert_eq!(
+        rest_colored.vertices[head.end..],
+        looked_colored.vertices[head.end..],
+        "the legs stay put"
+    );
+
+    let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
+    let rest_textured = entity_model_textured_mesh(&[rest], &atlas);
+    let looked_textured = entity_model_textured_mesh(&[looked], &atlas);
+    assert_eq!(rest_textured.vertices.len(), looked_textured.vertices.len());
+    assert_eq!(
+        rest_textured.vertices[..head.start],
+        looked_textured.vertices[..head.start],
+        "the body/hump/tail stay put"
+    );
+    assert_ne!(
+        rest_textured.vertices[head.clone()],
+        looked_textured.vertices[head.clone()],
+        "the nested head subtree turns"
+    );
+    assert_eq!(
+        rest_textured.vertices[head.end..],
+        looked_textured.vertices[head.end..],
+        "the legs stay put"
+    );
+}
+
+#[test]
+fn camel_head_look_clamps_to_vanilla_range() {
+    // Vanilla `CamelModel.applyHeadRotation`: `yRot = clamp(yRot, -30, 30)`,
+    // `xRot = clamp(xRot, -25, 45)`, in degrees. Inside the range the angle passes through.
+    assert_eq!(camel_clamped_head_look(0.0, 0.0), (0.0, 0.0));
+    assert_eq!(camel_clamped_head_look(12.0, 20.0), (12.0, 20.0));
+    assert_eq!(camel_clamped_head_look(50.0, 60.0), (30.0, 45.0));
+    assert_eq!(camel_clamped_head_look(-50.0, -60.0), (-30.0, -25.0));
 }
 
 fn camel_texture_images() -> Vec<EntityModelTextureImage> {

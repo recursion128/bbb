@@ -13,9 +13,10 @@ use super::{
     cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
     entity_model_root_transform,
     geometry::{
-        emit_textured_model_cube, emit_textured_model_parts, fill_entity_textured_light,
-        fill_entity_textured_overlay, part_pose_transform, EntityModelTexturedMesh, ModelPartDesc,
-        PartPose, TexturedModelCubeDesc, TexturedModelPartDesc, PART_POSE_ZERO,
+        emit_textured_model_cube, emit_textured_model_part, emit_textured_model_parts,
+        fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
+        EntityModelTexturedMesh, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+        TexturedModelPartDesc, PART_POSE_ZERO,
     },
     ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
@@ -25,8 +26,8 @@ use super::{
         allay_wing_rest_x_rot, apply_polar_bear_standing_pose, apply_wolf_sitting_pose,
         armor_stand_textured_cube, bee_antenna_x_rot, bee_back_leg_x_rot, bee_bone_x_rot,
         bee_bone_y_delta, bee_front_leg_x_rot, bee_wing_z_rot, blaze_rod_offset,
-        chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index, dolphin_wave,
-        enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
+        camel_clamped_head_look, chicken_leg_part_indices, cod_tail_fin_yrot, cow_head_part_index,
+        dolphin_wave, enderman_arm_swing_pose, enderman_carried_arm_pose, enderman_leg_swing_pose,
         endermite_segment_pose, ghast_tentacle_x_rot, half_amplitude_leg_swing_pose,
         head_first_part_index, head_look_at_rest, head_look_pose, head_look_yaw_pose,
         head_yaw_at_rest, hoglin_ear_sway_pose, hoglin_head_part_index, hoglin_leg_swing_pose,
@@ -48,15 +49,16 @@ use super::{
         strider_leg_x_rot, strider_leg_y, strider_leg_z_rot, tropical_fish_tail_yrot,
         turtle_leg_rotation, vex_left_wing_y_rot, vex_moving_arm_z_bob, villager_head_part_index,
         witch_nose_bob_pose, wolf_angry_tail_pose, wolf_sitting_part_roles, wolf_tail_part_index,
-        wolf_tail_swing_pose, zombie_arm_held_out_pose, ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE,
-        ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE, ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE,
-        ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY, ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM,
-        ALLAY_TEXTURED_RIGHT_ARM, ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE,
-        ARMOR_STAND_PARTS, ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_GOAT_HEAD_INDEX,
-        BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE, BAT_LEFT_EAR_POSE,
-        BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING, BAT_RIGHT_EAR_POSE,
-        BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY, BAT_TEXTURED_FEET,
-        BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
+        wolf_tail_swing_pose, zombie_arm_held_out_pose, ADULT_CAMEL_HEAD_PART_PATH,
+        ADULT_GOAT_HEAD_INDEX, ALLAY_BODY_POSE, ALLAY_HEAD_POSE, ALLAY_LEFT_ARM_POSE,
+        ALLAY_LEFT_WING_POSE, ALLAY_RIGHT_ARM_POSE, ALLAY_RIGHT_WING_POSE, ALLAY_TEXTURED_BODY,
+        ALLAY_TEXTURED_HEAD, ALLAY_TEXTURED_LEFT_ARM, ALLAY_TEXTURED_RIGHT_ARM,
+        ALLAY_TEXTURED_WING, ALLAY_TEXTURE_REF, ALLAY_WING_Y_ROT_BASE, ARMOR_STAND_PARTS,
+        ARMOR_STAND_PART_UVS, ARMOR_STAND_TEXTURE_REF, BABY_CAMEL_HEAD_PART_PATH,
+        BABY_GOAT_HEAD_INDEX, BAT_BODY_POSE, BAT_FEET_POSE, BAT_FLYING, BAT_HEAD_POSE,
+        BAT_LEFT_EAR_POSE, BAT_LEFT_WING_POSE, BAT_LEFT_WING_TIP_POSE, BAT_RESTING,
+        BAT_RIGHT_EAR_POSE, BAT_RIGHT_WING_POSE, BAT_RIGHT_WING_TIP_POSE, BAT_TEXTURED_BODY,
+        BAT_TEXTURED_FEET, BAT_TEXTURED_HEAD, BAT_TEXTURED_LEFT_EAR, BAT_TEXTURED_LEFT_WING,
         BAT_TEXTURED_LEFT_WING_TIP, BAT_TEXTURED_RIGHT_EAR, BAT_TEXTURED_RIGHT_WING,
         BAT_TEXTURED_RIGHT_WING_TIP, BAT_TEXTURE_REF, BEE_BABY_BACK_LEGS_POSE, BEE_BABY_BODY_POSE,
         BEE_BABY_BONE_POSE, BEE_BABY_FRONT_LEGS_POSE, BEE_BABY_LEFT_WING_POSE,
@@ -542,9 +544,9 @@ fn emit_cow_textured_model(
 
 /// The textured camel base layer. Vanilla `CamelModel.setupAnim` drives every limb via
 /// baked `KeyframeAnimation`s (walk/sit/standup/idle/dash) plus a direct head yaw/pitch
-/// clamp, none of which the colored path applies; the textured path matches that static
-/// pose. The camel husk shares the adult mesh, differing only in texture. The keyframe
-/// animations and head rotation remain deferred.
+/// clamp ([`camel_clamped_head_look`]). The head look is reproduced here; the keyframe
+/// animations remain deferred. The camel husk shares the adult mesh, differing only in
+/// texture.
 fn emit_camel_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -553,8 +555,23 @@ fn emit_camel_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = entity_model_root_transform(instance);
+    let (head_yaw, head_pitch) = camel_clamped_head_look(
+        instance.render_state.head_yaw,
+        instance.render_state.head_pitch,
+    );
+    let head_path = if family == CamelModelFamily::Camel && baby {
+        BABY_CAMEL_HEAD_PART_PATH
+    } else {
+        ADULT_CAMEL_HEAD_PART_PATH
+    };
     for pass in camel_textured_layer_passes(family, baby) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        if head_look_at_rest(head_yaw, head_pitch) {
+            emit_textured_layer_pass(meshes, &pass, transform, atlas);
+        } else {
+            emit_textured_layer_pass_with_head_look(
+                meshes, &pass, transform, atlas, head_path, head_yaw, head_pitch,
+            );
+        }
     }
 }
 
@@ -3520,6 +3537,81 @@ fn emit_textured_layer_pass_with_parts(
         entry.uv,
         pass.tint,
     );
+}
+
+/// Emit a layer pass with the look applied to the head subtree on `head_path` (the textured twin of
+/// the colored `emit_model_parts_with_color_and_head_look`). Used by entities whose head is nested
+/// under another part — the camel's head sits under the body, so a flat part-index swap won't reach
+/// it.
+fn emit_textured_layer_pass_with_head_look(
+    meshes: &mut EntityModelTexturedMeshes,
+    pass: &EntityModelLayerPass,
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+    head_path: &[usize],
+    head_yaw: f32,
+    head_pitch: f32,
+) {
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+        return;
+    };
+    emit_textured_model_parts_with_head_look(
+        meshes.mesh_mut(pass.render_type),
+        pass.parts,
+        transform,
+        pass.texture,
+        entry.uv,
+        pass.tint,
+        head_path,
+        head_yaw,
+        head_pitch,
+    );
+}
+
+/// Like [`emit_textured_model_parts`], but the subtree reached by `head_path` has the look applied
+/// to its leaf head part (whose own children inherit it). Recurses down the path so a head nested
+/// arbitrarily deep is posed without mutating the `&'static` child arrays.
+#[allow(clippy::too_many_arguments)]
+fn emit_textured_model_parts_with_head_look(
+    mesh: &mut EntityModelTexturedMesh,
+    parts: &[TexturedModelPartDesc],
+    parent_transform: Mat4,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+    head_path: &[usize],
+    head_yaw: f32,
+    head_pitch: f32,
+) {
+    for (index, part) in parts.iter().enumerate() {
+        if head_path.first() != Some(&index) {
+            emit_textured_model_part(mesh, part, parent_transform, texture, uv_rect, tint);
+            continue;
+        }
+        if head_path.len() == 1 {
+            let looked = TexturedModelPartDesc {
+                pose: head_look_pose(part.pose, head_yaw, head_pitch),
+                ..*part
+            };
+            emit_textured_model_part(mesh, &looked, parent_transform, texture, uv_rect, tint);
+        } else {
+            let part_transform = parent_transform * part_pose_transform(part.pose);
+            for cube in part.cubes {
+                emit_textured_model_cube(mesh, part_transform, *cube, texture, uv_rect, tint);
+            }
+            emit_textured_model_parts_with_head_look(
+                mesh,
+                part.children,
+                part_transform,
+                texture,
+                uv_rect,
+                tint,
+                &head_path[1..],
+                head_yaw,
+                head_pitch,
+            );
+        }
+    }
 }
 
 fn entity_model_texture_atlas_entry(

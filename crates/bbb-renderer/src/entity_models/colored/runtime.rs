@@ -1526,6 +1526,47 @@ fn emit_model_parts_with_head_look(
     }
 }
 
+/// Like [`emit_model_parts_with_head_look`], but tinting every cube with a single `color` (the
+/// `emit_model_parts_with_color` path). Used by the camel, whose colored debug mesh is tinted by the
+/// camel/husk family color and whose head is nested under the body.
+pub(in crate::entity_models::colored) fn emit_model_parts_with_color_and_head_look(
+    mesh: &mut EntityModelMesh,
+    parts: &[ModelPartDesc],
+    transform: Mat4,
+    color: [f32; 4],
+    head_path: &[usize],
+    head_yaw: f32,
+    head_pitch: f32,
+) {
+    for (index, part) in parts.iter().enumerate() {
+        if head_path.first() != Some(&index) {
+            emit_model_part_with_color(mesh, part, transform, color);
+            continue;
+        }
+        if head_path.len() == 1 {
+            let looked = ModelPartDesc {
+                pose: head_look_pose(part.pose, head_yaw, head_pitch),
+                ..*part
+            };
+            emit_model_part_with_color(mesh, &looked, transform, color);
+        } else {
+            let part_transform = transform * part_pose_transform(part.pose);
+            for cube in part.cubes {
+                emit_model_cube_with_color(mesh, part_transform, *cube, color);
+            }
+            emit_model_parts_with_color_and_head_look(
+                mesh,
+                part.children,
+                part_transform,
+                color,
+                &head_path[1..],
+                head_yaw,
+                head_pitch,
+            );
+        }
+    }
+}
+
 fn emit_creaking_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     // Vanilla `CreakingModel` is a nested hierarchy (`root` → upper_body/legs, upper_body →
     // head/body/arms). `setupAnim` sets `head.xRot/yRot` from the plain look; the walk, attack,

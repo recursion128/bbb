@@ -298,6 +298,27 @@ pub(in crate::entity_models) const BABY_CAMEL_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
+/// Child-index path from [`ADULT_CAMEL_PARTS`] to the `head` part: body (`0`) → `head` (child `2`,
+/// after the hump and tail). The baby body lists only the tail before the head, so its head is child
+/// `1` ([`BABY_CAMEL_HEAD_PART_PATH`]). Used to apply the clamped head look to the nested head.
+pub(in crate::entity_models) const ADULT_CAMEL_HEAD_PART_PATH: &[usize] = &[0, 2];
+pub(in crate::entity_models) const BABY_CAMEL_HEAD_PART_PATH: &[usize] = &[0, 1];
+
+/// Vanilla `CamelModel.applyHeadRotation`: the net head look clamped to `yRot ∈ [-30, 30]` and
+/// `xRot ∈ [-25, 45]` (a camel turns its long neck only so far) before `head.yRot/xRot` are set from
+/// the clamped degrees. Returns the clamped `(yaw, pitch)` in degrees. The transient `jumpCooldown`
+/// extra-pitch boost (`45 * jumpCooldown / 55`, re-clamped to `70`) needs the un-projected
+/// `jumpCooldown` render state and is deferred.
+pub(in crate::entity_models) fn camel_clamped_head_look(
+    head_yaw_deg: f32,
+    head_pitch_deg: f32,
+) -> (f32, f32) {
+    (
+        head_yaw_deg.clamp(-30.0, 30.0),
+        head_pitch_deg.clamp(-25.0, 45.0),
+    )
+}
+
 // Vanilla 26.1 `ModelLayers.CAMEL` / `CAMEL_BABY` (`CamelRenderer`,
 // `CamelHuskRenderer`). The camel husk shares the adult camel's baked mesh; only the
 // texture differs, so it reuses the `camel#main` layer/parts.
