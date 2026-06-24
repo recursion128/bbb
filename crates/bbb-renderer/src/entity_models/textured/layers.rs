@@ -712,10 +712,14 @@ pub(in crate::entity_models) fn parrot_textured_layer_passes(
     )]
 }
 
-pub(in crate::entity_models) fn shulker_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn shulker_textured_layer_passes(
+    color: Option<EntityDyeColor>,
+) -> Vec<EntityModelLayerPass> {
+    // `ShulkerRenderer.getTextureLocation`: the default `shulker.png` when uncolored, else the dyed
+    // `shulker_<color>.png`.
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        SHULKER_TEXTURE_REF,
+        shulker_texture_ref(color),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

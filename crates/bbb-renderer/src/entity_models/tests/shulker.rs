@@ -48,7 +48,7 @@ fn shulker_lid_pose_matches_vanilla_setup_anim() {
 fn shulker_lid_opens_with_projected_peek() {
     // A closed shulker (peek 0) equals the bind-pose mesh; opening the lid (peek > 0) re-poses
     // the lid only, so the mesh differs while keeping the same 3-cube vertex count.
-    let closed = EntityModelInstance::shulker(1121, [0.0, 64.0, 0.0], 0.0);
+    let closed = EntityModelInstance::shulker(1121, [0.0, 64.0, 0.0], 0.0, None);
     let closed_mesh = entity_model_mesh(&[closed]);
     let default_mesh = entity_model_mesh(&[closed.with_shulker_peek(0.0)]);
     assert_eq!(closed_mesh.vertices, default_mesh.vertices);
@@ -67,7 +67,7 @@ fn shulker_head_tracks_look_angles() {
     // with `head.xRot = xRot` and `head.yRot = (yHeadRot − 180 − yBodyRot) = head_yaw − 180`. The
     // lid (0..24) and base (24..48) never move with the look. A 60° look tilts the head off the
     // axis-aligned rest (head_yaw 0 → yRot −180, which is axis-aligned for the symmetric head cube).
-    let base = EntityModelInstance::shulker(1130, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::shulker(1130, [0.0, 64.0, 0.0], 0.0, None);
     let base_mesh = entity_model_mesh(&[base]);
     let looking = entity_model_mesh(&[base.with_head_look(60.0, 0.0)]);
     assert_eq!(base_mesh.vertices.len(), 72);
@@ -88,7 +88,12 @@ fn shulker_head_tracks_look_angles() {
 fn shulker_mesh_uses_vanilla_body_layer_geometry() {
     // 3 cubes → 18 faces / 72 vertices / 108 indices; the shell carries the shell tint and the head
     // carries its own yellow tint.
-    let shulker = entity_model_mesh(&[EntityModelInstance::shulker(1120, [0.0, 64.0, 0.0], 0.0)]);
+    let shulker = entity_model_mesh(&[EntityModelInstance::shulker(
+        1120,
+        [0.0, 64.0, 0.0],
+        0.0,
+        None,
+    )]);
     assert_eq!(shulker.opaque_faces, 18);
     assert_eq!(shulker.vertices.len(), 72);
     assert_eq!(shulker.indices.len(), 108);
@@ -104,19 +109,53 @@ fn shulker_mesh_uses_vanilla_body_layer_geometry() {
 
 #[test]
 fn shulker_textured_render_matches_vanilla_renderer() {
-    let passes = shulker_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
-    assert_eq!(passes[0].texture, SHULKER_TEXTURE_REF);
+    // `ShulkerRenderer.getTextureLocation`: an uncolored shulker (`None`) uses the default texture,
+    // and each of the sixteen `DyeColor`s its own `shulker_<color>.png`.
+    let colors = [
+        EntityDyeColor::White,
+        EntityDyeColor::Orange,
+        EntityDyeColor::Magenta,
+        EntityDyeColor::LightBlue,
+        EntityDyeColor::Yellow,
+        EntityDyeColor::Lime,
+        EntityDyeColor::Pink,
+        EntityDyeColor::Gray,
+        EntityDyeColor::LightGray,
+        EntityDyeColor::Cyan,
+        EntityDyeColor::Purple,
+        EntityDyeColor::Blue,
+        EntityDyeColor::Brown,
+        EntityDyeColor::Green,
+        EntityDyeColor::Red,
+        EntityDyeColor::Black,
+    ];
+    for color in std::iter::once(None).chain(colors.map(Some)) {
+        let texture = shulker_texture_ref(color);
+        let passes = shulker_textured_layer_passes(color);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(
+            EntityModelKind::Shulker { color }.vanilla_texture_ref(),
+            Some(texture)
+        );
+        assert!(entity_model_texture_refs().contains(&texture));
+    }
     assert_eq!(
-        EntityModelKind::Shulker.vanilla_texture_ref(),
-        Some(EntityModelTextureRef {
+        shulker_texture_ref(None),
+        EntityModelTextureRef {
             path: "textures/entity/shulker/shulker.png",
             size: [64, 64],
-        })
+        }
     );
-    assert!(entity_model_texture_refs().contains(&SHULKER_TEXTURE_REF));
-    assert_eq!(shulker_entity_texture_refs(), &[SHULKER_TEXTURE_REF]);
+    assert_eq!(
+        shulker_texture_ref(Some(EntityDyeColor::Red)),
+        EntityModelTextureRef {
+            path: "textures/entity/shulker/shulker_red.png",
+            size: [64, 64],
+        }
+    );
+    assert_eq!(shulker_entity_texture_refs().len(), 17);
 
     let images: Vec<EntityModelTextureImage> = shulker_entity_texture_refs()
         .iter()
@@ -128,7 +167,12 @@ fn shulker_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::shulker(900, [0.0, 64.0, 0.0], 0.0)],
+        &[EntityModelInstance::shulker(
+            900,
+            [0.0, 64.0, 0.0],
+            0.0,
+            None,
+        )],
         &atlas,
     );
     assert!(!mesh.vertices.is_empty());

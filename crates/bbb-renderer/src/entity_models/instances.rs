@@ -837,8 +837,18 @@ impl EntityModelInstance {
         )
     }
 
-    pub fn shulker(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Shulker, position, y_rot)
+    pub fn shulker(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        color: Option<EntityDyeColor>,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Shulker { color },
+            position,
+            y_rot,
+        )
     }
 
     pub fn wither(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

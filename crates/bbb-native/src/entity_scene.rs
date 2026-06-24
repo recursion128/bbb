@@ -268,6 +268,10 @@ const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Rabbit.DATA_TYPE_ID (18, INT): the first `Rabbit` accessor (`Rabbit extends Animal`),
 // holding the `Rabbit.Variant` id (note EVIL is id 99).
 const RABBIT_TYPE_DATA_ID: u8 = 18;
+// Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
+// accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
+// and `null` (the default, byte 16) otherwise.
+const SHULKER_COLOR_DATA_ID: u8 = 18;
 // Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
 // accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
 // (18) / DATA_OWNERUUID_ID (19).
@@ -930,7 +934,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SALMON_ID => EntityModelKind::Salmon {
             size: salmon_model_size(data_values),
         },
-        VANILLA_ENTITY_TYPE_SHULKER_ID => EntityModelKind::Shulker,
+        VANILLA_ENTITY_TYPE_SHULKER_ID => shulker_model_kind(data_values),
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => EntityModelKind::ShulkerBullet,
         VANILLA_ENTITY_TYPE_SILVERFISH_ID => EntityModelKind::Silverfish,
         VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {
@@ -985,6 +989,17 @@ fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entit
         toast: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
             .is_some_and(|name| name == "Toast"),
     }
+}
+
+/// Vanilla `Shulker.getColor()` reads `DATA_COLOR_ID` (18, byte): `0..=15` map to the dye,
+/// everything else (the default byte 16) is `null`, which `ShulkerRenderer.getTextureLocation`
+/// renders with the uncolored `shulker.png`.
+fn shulker_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    let color_id = entity_data_byte(values, SHULKER_COLOR_DATA_ID, 16);
+    let color = (0..=15)
+        .contains(&color_id)
+        .then(|| EntityDyeColor::from_vanilla_id(color_id as i32));
+    EntityModelKind::Shulker { color }
 }
 
 /// Vanilla `ParrotRenderer.getVariantTexture` selects the parrot colour from `Parrot.getVariant()`
@@ -5251,13 +5266,36 @@ mod tests {
 
     #[test]
     fn entity_model_kind_maps_shulker_to_real_model() {
-        // The shulker was a placeholder bounds box; it now resolves to the real `ShulkerModel` at
-        // its closed rest pose. The peek open/close, head look, attach-face rotation, and the
-        // sixteen dye-color variants are deferred entity-side state, so no synced data is read.
+        // The shulker resolves to the real `ShulkerModel` at its closed rest pose, textured by the
+        // dye colour read from `DATA_COLOR_ID` (18). With no synced colour it defaults to the
+        // uncolored texture (`None`). The peek open/close, head look, and attach-face rotation stay
+        // deferred entity-side state.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_ID, &[]),
-            EntityModelKind::Shulker
+            EntityModelKind::Shulker { color: None }
         );
+        // Byte 16 (the vanilla default) is the uncolored shulker; 0..=15 select a dye.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SHULKER_ID,
+                &[protocol_byte_data(SHULKER_COLOR_DATA_ID, 16)]
+            ),
+            EntityModelKind::Shulker { color: None }
+        );
+        for (id, color) in [
+            (0, EntityDyeColor::White),
+            (4, EntityDyeColor::Yellow),
+            (11, EntityDyeColor::Blue),
+            (15, EntityDyeColor::Black),
+        ] {
+            assert_eq!(
+                entity_model_kind(
+                    VANILLA_ENTITY_TYPE_SHULKER_ID,
+                    &[protocol_byte_data(SHULKER_COLOR_DATA_ID, id)]
+                ),
+                EntityModelKind::Shulker { color: Some(color) }
+            );
+        }
     }
 
     #[test]

@@ -554,11 +554,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &parrot_textured_layer_passes(variant),
         ),
-        EntityModelKind::Shulker => sink.model(
+        EntityModelKind::Shulker { color } => sink.model(
             ShulkerModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &shulker_textured_layer_passes(),
+            &shulker_textured_layer_passes(color),
         ),
         EntityModelKind::Wither => sink.model(
             WitherModel::new(),

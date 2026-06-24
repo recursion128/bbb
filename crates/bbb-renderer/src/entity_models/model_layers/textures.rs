@@ -1,6 +1,7 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
-    AxolotlModelVariant, FoxModelVariant, FrogModelVariant, ParrotModelVariant, RabbitModelVariant,
+    AxolotlModelVariant, EntityDyeColor, FoxModelVariant, FrogModelVariant, ParrotModelVariant,
+    RabbitModelVariant,
 };
 
 mod equine;
@@ -757,7 +758,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 224] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 240] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -837,6 +838,22 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PARROT_YELLOW_BLUE_TEXTURE_REF,
     PARROT_GRAY_TEXTURE_REF,
     SHULKER_TEXTURE_REF,
+    SHULKER_WHITE_TEXTURE_REF,
+    SHULKER_ORANGE_TEXTURE_REF,
+    SHULKER_MAGENTA_TEXTURE_REF,
+    SHULKER_LIGHT_BLUE_TEXTURE_REF,
+    SHULKER_YELLOW_TEXTURE_REF,
+    SHULKER_LIME_TEXTURE_REF,
+    SHULKER_PINK_TEXTURE_REF,
+    SHULKER_GRAY_TEXTURE_REF,
+    SHULKER_LIGHT_GRAY_TEXTURE_REF,
+    SHULKER_CYAN_TEXTURE_REF,
+    SHULKER_PURPLE_TEXTURE_REF,
+    SHULKER_BLUE_TEXTURE_REF,
+    SHULKER_BROWN_TEXTURE_REF,
+    SHULKER_GREEN_TEXTURE_REF,
+    SHULKER_RED_TEXTURE_REF,
+    SHULKER_BLACK_TEXTURE_REF,
     ENDER_DRAGON_TEXTURE_REF,
     NAUTILUS_TEXTURE_REF,
     NAUTILUS_BABY_TEXTURE_REF,
@@ -1723,14 +1740,136 @@ pub fn parrot_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 
 // bbb's `EntityModelKind::Shulker` is a unit variant (no dye colour), so only the default (uncoloured)
 // shulker texture is selectable; the 16 dyed shulker textures need an enum extension to wire.
+// The shulker texture set (`ShulkerRenderer.getTextureLocation`): the default `shulker.png` (used by
+// an uncolored shulker, `DATA_COLOR_ID == 16`) plus the sixteen dyed textures in `DyeColor` id order.
 pub(in crate::entity_models) const SHULKER_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/shulker/shulker.png",
         size: [64, 64],
     };
+pub(in crate::entity_models) const SHULKER_WHITE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_white.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_ORANGE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_orange.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_MAGENTA_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_magenta.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_LIGHT_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_light_blue.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_YELLOW_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_yellow.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_LIME_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_lime.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_PINK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_pink.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_gray.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_LIGHT_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_light_gray.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_CYAN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_cyan.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_PURPLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_purple.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_blue.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_BROWN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_brown.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_GREEN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_green.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_RED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_red.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const SHULKER_BLACK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker_black.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) fn shulker_texture_ref(
+    color: Option<EntityDyeColor>,
+) -> EntityModelTextureRef {
+    match color {
+        None => SHULKER_TEXTURE_REF,
+        Some(EntityDyeColor::White) => SHULKER_WHITE_TEXTURE_REF,
+        Some(EntityDyeColor::Orange) => SHULKER_ORANGE_TEXTURE_REF,
+        Some(EntityDyeColor::Magenta) => SHULKER_MAGENTA_TEXTURE_REF,
+        Some(EntityDyeColor::LightBlue) => SHULKER_LIGHT_BLUE_TEXTURE_REF,
+        Some(EntityDyeColor::Yellow) => SHULKER_YELLOW_TEXTURE_REF,
+        Some(EntityDyeColor::Lime) => SHULKER_LIME_TEXTURE_REF,
+        Some(EntityDyeColor::Pink) => SHULKER_PINK_TEXTURE_REF,
+        Some(EntityDyeColor::Gray) => SHULKER_GRAY_TEXTURE_REF,
+        Some(EntityDyeColor::LightGray) => SHULKER_LIGHT_GRAY_TEXTURE_REF,
+        Some(EntityDyeColor::Cyan) => SHULKER_CYAN_TEXTURE_REF,
+        Some(EntityDyeColor::Purple) => SHULKER_PURPLE_TEXTURE_REF,
+        Some(EntityDyeColor::Blue) => SHULKER_BLUE_TEXTURE_REF,
+        Some(EntityDyeColor::Brown) => SHULKER_BROWN_TEXTURE_REF,
+        Some(EntityDyeColor::Green) => SHULKER_GREEN_TEXTURE_REF,
+        Some(EntityDyeColor::Red) => SHULKER_RED_TEXTURE_REF,
+        Some(EntityDyeColor::Black) => SHULKER_BLACK_TEXTURE_REF,
+    }
+}
 
-pub(in crate::entity_models) const SHULKER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [SHULKER_TEXTURE_REF];
+pub(in crate::entity_models) const SHULKER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 17] = [
+    SHULKER_TEXTURE_REF,
+    SHULKER_WHITE_TEXTURE_REF,
+    SHULKER_ORANGE_TEXTURE_REF,
+    SHULKER_MAGENTA_TEXTURE_REF,
+    SHULKER_LIGHT_BLUE_TEXTURE_REF,
+    SHULKER_YELLOW_TEXTURE_REF,
+    SHULKER_LIME_TEXTURE_REF,
+    SHULKER_PINK_TEXTURE_REF,
+    SHULKER_GRAY_TEXTURE_REF,
+    SHULKER_LIGHT_GRAY_TEXTURE_REF,
+    SHULKER_CYAN_TEXTURE_REF,
+    SHULKER_PURPLE_TEXTURE_REF,
+    SHULKER_BLUE_TEXTURE_REF,
+    SHULKER_BROWN_TEXTURE_REF,
+    SHULKER_GREEN_TEXTURE_REF,
+    SHULKER_RED_TEXTURE_REF,
+    SHULKER_BLACK_TEXTURE_REF,
+];
 
 pub fn shulker_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SHULKER_ENTITY_TEXTURE_REFS

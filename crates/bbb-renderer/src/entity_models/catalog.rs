@@ -146,10 +146,13 @@ pub enum EntityModelKind {
     Parrot {
         variant: ParrotModelVariant,
     },
-    /// `ShulkerModel` at its `createBodyLayer` closed rest pose. The peek open/close, the head look,
-    /// the `ShulkerRenderer.setupRotations` attach-face rotation and body-yaw inversion, and the
-    /// sixteen dye-color variants are deferred.
-    Shulker,
+    /// `ShulkerModel` at its `createBodyLayer` closed rest pose, textured by dye colour
+    /// (`ShulkerRenderer.getTextureLocation`: `None` → the default `shulker.png`, else
+    /// `shulker_<color>.png`). The peek open/close, the head look, and the
+    /// `ShulkerRenderer.setupRotations` attach-face rotation and body-yaw inversion are deferred.
+    Shulker {
+        color: Option<EntityDyeColor>,
+    },
     /// `WitherBossModel` at its `createBodyLayer` bind rest pose, rendered at the vanilla 2.0× scale
     /// with the spawn-charge shrink and `wither_invulnerable.png` texture flicker. The procedural
     /// ribcage/tail breathing sway and the center/side head look are reproduced; the side heads' target
