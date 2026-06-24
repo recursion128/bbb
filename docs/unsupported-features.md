@@ -1917,9 +1917,9 @@ When an agent does any of the following, update this file in the same slice:
       part is emitted directly (atlas 64×32): three interlocking slabs (`texOffs(0, 0)` 8×8×2,
       `texOffs(0, 10)` 2×8×8, `texOffs(20, 0)` 8×2×8). `ShulkerBulletModel.setupAnim` orients `main` by the
       bullet's yaw/pitch — reproduced through the instance's `body_rot` / `head_pitch` — and the
-      `ShulkerBulletRenderer` constant `translate(0, 0.15, 0)` + `scale(-0.5, -0.5, 0.5)` are captured by
-      `shulker_bullet_model_root_transform`. The `ageInTicks`-driven tumble (`Ry(sin(t·0.1)·180) ·
-      Rx(cos(t·0.1)·180) · Rz(sin(t·0.15)·360)`), the second translucent 1.5× outer-shell pass, and the
+      `ShulkerBulletRenderer.submit` `translate(0, 0.15, 0)` + the `ageInTicks`-driven tumble
+      (`Ry(sin(t·0.1)·180°) · Rx(cos(t·0.1)·180°) · Rz(sin(t·0.15)·360°)`) + `scale(-0.5, -0.5, 0.5)` are
+      captured by `shulker_bullet_model_root_transform`. The second translucent 1.5× outer-shell pass and the
       texture-backed path are deferred, so the colored debug path renders the three slabs with one tint
     - wind charge and breeze wind charge entities as renderer-owned vanilla 26.1
       `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
@@ -2006,10 +2006,16 @@ When an agent does any of the following, update this file in the same slice:
       (64x32) / baby (32x32) texture references, the hand-emitted texture-backed
       render path over the procedural ring, and the official PNG atlas
       upload/bind/sample path (colored and textured). The glow-squid emissive overlay
-      and `GlowSquidRenderer` darken-ticks light boost, the entity-side movement
-      projection that populates `xBodyRot`/`zBodyRot`/`tentacleAngle` (the renderer
-      consumes them but the `Squid.aiStep` swim integration is not yet projected),
-      lighting, and overlay remain unsupported
+      and `GlowSquidRenderer` darken-ticks light boost, lighting, and overlay remain
+      unsupported. The `Squid.aiStep` swim integration IS now projected client-side
+      (a `SquidAnimationState` accumulator in `entities/animations.rs`: `tentacleSpeed`
+      seeded from the entity id via the Java `Random` LCG, the `tentacleMovement`
+      half-cycle clamped at `2π` with the server event-`19` reset, `tentacleAngle =
+      sin(s²·π)·π·0.25`, `rotateSpeed` evolving `1.0`/`·0.8`/`·0.99`, `zBodyRot +=
+      π·rotateSpeed·1.5`, and `xBodyRot` easing toward `-atan2(horizontal, dm.y)` from
+      the synced velocity — all lerped by partial tick and projected world → native →
+      renderer); only the out-of-water suffocating branch and the movement-derived
+      body yaw (`yBodyRot`) remain deferred
     - cod entities are wired end to end: the native entity scene (`entity_scene.rs`)
       projects vanilla type id `27` to the real `CodModel`, replacing the former
       placeholder box. Renderer-owned vanilla 26.1 `CodModel.createBodyLayer()`
