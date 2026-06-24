@@ -63,6 +63,8 @@ fn rabbit_mesh_uses_vanilla_body_layer_geometry() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        RabbitModelVariant::Brown,
+        false,
     )]);
     assert_eq!(rabbit.opaque_faces, 54);
     assert_eq!(rabbit.vertices.len(), 216);
@@ -83,6 +85,8 @@ fn rabbit_colored_runtime_skips_the_texture_backed_rabbit() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        RabbitModelVariant::Brown,
+        false,
     )];
     assert!(!entity_model_mesh(&instances).vertices.is_empty());
     assert!(entity_model_colored_runtime_mesh(&instances)
@@ -96,7 +100,14 @@ fn rabbit_head_look_turns_only_the_head_subtree() {
     // head's baked 0.3927 pitch, since vanilla assigns rather than adds). The head is `body`'s
     // second child, so only the head and its two ears turn. Pre-order emit: body/tail `[0, 48)`,
     // the head plus its two ears `[48, 120)`, then the front legs and haunches `[120, 216)`.
-    let rest = EntityModelInstance::rabbit(702, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = EntityModelInstance::rabbit(
+        702,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        RabbitModelVariant::Brown,
+        false,
+    );
     let looked = rest.with_head_look(35.0, -25.0);
     let rest_mesh = entity_model_mesh(&[rest]);
     let looked_mesh = entity_model_mesh(&[looked]);
@@ -163,7 +174,14 @@ fn baby_rabbit_mesh_and_head_look() {
     // The baby has the same pre-order cube layout as the adult (body/tail `[0, 48)`, head + ears
     // `[48, 120)`, legs + haunches `[120, 216)`), so the head look isolates the head subtree, and the
     // baby mesh is more compact than the adult.
-    let rest = EntityModelInstance::rabbit(710, [0.0, 64.0, 0.0], 0.0, true);
+    let rest = EntityModelInstance::rabbit(
+        710,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        RabbitModelVariant::Brown,
+        false,
+    );
     let baby = entity_model_mesh(&[rest]);
     assert_eq!(baby.vertices.len(), 216);
     assert!(baby
@@ -181,6 +199,8 @@ fn baby_rabbit_mesh_and_head_look() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        RabbitModelVariant::Brown,
+        false,
     )]);
     let (adult_min, adult_max) = mesh_extents(&adult);
     let (baby_min, baby_max) = mesh_extents(&baby);
@@ -189,43 +209,95 @@ fn baby_rabbit_mesh_and_head_look() {
 
 #[test]
 fn rabbit_exposes_stable_model_keys() {
-    assert_eq!(
-        EntityModelKind::Rabbit { baby: false }.model_key(),
-        "rabbit"
-    );
-    assert_eq!(
-        EntityModelKind::Rabbit { baby: true }.model_key(),
-        "rabbit_baby"
-    );
+    // The model key tracks only the body layout (adult/baby); the colour variant and the Toast
+    // override share geometry.
+    for variant in [RabbitModelVariant::Brown, RabbitModelVariant::Evil] {
+        for toast in [false, true] {
+            assert_eq!(
+                EntityModelKind::Rabbit {
+                    baby: false,
+                    variant,
+                    toast
+                }
+                .model_key(),
+                "rabbit"
+            );
+            assert_eq!(
+                EntityModelKind::Rabbit {
+                    baby: true,
+                    variant,
+                    toast
+                }
+                .model_key(),
+                "rabbit_baby"
+            );
+        }
+    }
 }
 
 #[test]
 fn rabbit_textured_render_matches_vanilla_renderer() {
+    // `RabbitRenderer.getTextureLocation`: the seven `Rabbit.Variant` colours × {adult, baby}, with
+    // the `Toast` named-rabbit override (which ignores the variant).
+    let variants = [
+        RabbitModelVariant::Brown,
+        RabbitModelVariant::White,
+        RabbitModelVariant::Black,
+        RabbitModelVariant::WhiteSplotched,
+        RabbitModelVariant::Gold,
+        RabbitModelVariant::Salt,
+        RabbitModelVariant::Evil,
+    ];
+    for variant in variants {
+        for baby in [false, true] {
+            for toast in [false, true] {
+                let texture = rabbit_texture_ref(variant, baby, toast);
+                assert_eq!(
+                    rabbit_textured_layer_passes(variant, baby, toast)[0].texture,
+                    texture
+                );
+                assert_eq!(
+                    rabbit_textured_layer_passes(variant, baby, toast)[0].render_type,
+                    EntityModelLayerRenderType::Cutout
+                );
+                assert_eq!(
+                    EntityModelKind::Rabbit {
+                        baby,
+                        variant,
+                        toast
+                    }
+                    .vanilla_texture_ref(),
+                    Some(texture)
+                );
+                assert!(entity_model_texture_refs().contains(&texture));
+            }
+        }
+    }
+    // The Toast override resolves to the same texture regardless of the colour variant.
     assert_eq!(
-        rabbit_textured_layer_passes(false)[0].texture,
-        RABBIT_TEXTURE_REF
+        rabbit_texture_ref(RabbitModelVariant::Evil, false, true),
+        rabbit_texture_ref(RabbitModelVariant::Gold, false, true)
     );
-    assert_eq!(
-        rabbit_textured_layer_passes(true)[0].texture,
-        RABBIT_BABY_TEXTURE_REF
-    );
-    assert_eq!(
-        rabbit_textured_layer_passes(false)[0].render_type,
-        EntityModelLayerRenderType::Cutout
-    );
-    assert_eq!(
-        EntityModelKind::Rabbit { baby: false }.vanilla_texture_ref(),
-        Some(RABBIT_TEXTURE_REF)
-    );
-    assert_eq!(
-        EntityModelKind::Rabbit { baby: true }.vanilla_texture_ref(),
-        Some(RABBIT_BABY_TEXTURE_REF)
-    );
-    assert!(entity_model_texture_refs().contains(&RABBIT_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&RABBIT_BABY_TEXTURE_REF));
     assert_eq!(
         rabbit_entity_texture_refs(),
-        &[RABBIT_TEXTURE_REF, RABBIT_BABY_TEXTURE_REF]
+        &[
+            RABBIT_BROWN_TEXTURE_REF,
+            RABBIT_BROWN_BABY_TEXTURE_REF,
+            RABBIT_WHITE_TEXTURE_REF,
+            RABBIT_WHITE_BABY_TEXTURE_REF,
+            RABBIT_BLACK_TEXTURE_REF,
+            RABBIT_BLACK_BABY_TEXTURE_REF,
+            RABBIT_WHITE_SPLOTCHED_TEXTURE_REF,
+            RABBIT_WHITE_SPLOTCHED_BABY_TEXTURE_REF,
+            RABBIT_GOLD_TEXTURE_REF,
+            RABBIT_GOLD_BABY_TEXTURE_REF,
+            RABBIT_SALT_TEXTURE_REF,
+            RABBIT_SALT_BABY_TEXTURE_REF,
+            RABBIT_CAERBANNOG_TEXTURE_REF,
+            RABBIT_CAERBANNOG_BABY_TEXTURE_REF,
+            RABBIT_TOAST_TEXTURE_REF,
+            RABBIT_TOAST_BABY_TEXTURE_REF,
+        ]
     );
 
     let images: Vec<EntityModelTextureImage> = rabbit_entity_texture_refs()
@@ -244,6 +316,8 @@ fn rabbit_textured_render_matches_vanilla_renderer() {
                 [0.0, 64.0, 0.0],
                 0.0,
                 baby,
+                RabbitModelVariant::Gold,
+                false,
             )],
             &atlas,
         );

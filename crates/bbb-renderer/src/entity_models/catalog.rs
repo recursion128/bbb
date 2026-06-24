@@ -331,12 +331,15 @@ pub enum EntityModelKind {
         baby: bool,
     },
     /// `AdultRabbitModel` / `BabyRabbitModel` at their `createBodyLayer` rest pose (`baby` selects the
-    /// baby body layout — a deeper `_r1`-nested hierarchy whose head is `body`'s third child).
-    /// `RabbitModel.setupAnim` turns the head by the look angles (reproduced). The looping
-    /// `RabbitAnimation.HOP` / `BabyRabbitAnimation` and `IDLE_HEAD_TILT` keyframe animations need
-    /// un-projected `AnimationState`s, and the seven `Rabbit.Variant` textures are deferred.
+    /// baby body layout — a deeper `_r1`-nested hierarchy whose head is `body`'s third child),
+    /// textured by the seven `Rabbit.Variant` colours × age, with the `toast` named-rabbit override
+    /// (`RabbitRenderer.getTextureLocation`). `RabbitModel.setupAnim` turns the head by the look
+    /// angles (reproduced). The looping `RabbitAnimation.HOP` / `BabyRabbitAnimation` and
+    /// `IDLE_HEAD_TILT` keyframe animations need un-projected `AnimationState`s and stay deferred.
     Rabbit {
         baby: bool,
+        variant: RabbitModelVariant,
+        toast: bool,
     },
     Quadruped {
         family: QuadrupedModelFamily,
@@ -909,6 +912,36 @@ impl AxolotlModelVariant {
             3 => Self::Cyan,
             4 => Self::Blue,
             _ => Self::Lucy,
+        }
+    }
+}
+
+/// Vanilla `Rabbit.Variant` (the synced `DATA_TYPE_ID` int): the seven rabbit colours, sharing one
+/// `RabbitModel` and differing by texture × age (`RabbitRenderer.RABBIT_LOCATIONS`). `EVIL` (the
+/// killer bunny) uses the `caerbannog` texture. `BROWN` is the vanilla `DEFAULT`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RabbitModelVariant {
+    Brown,
+    White,
+    Black,
+    WhiteSplotched,
+    Gold,
+    Salt,
+    Evil,
+}
+
+impl RabbitModelVariant {
+    /// Vanilla `Rabbit.Variant.byId` (`ByIdMap.sparse` over the discontinuous ids, defaulting to
+    /// `BROWN`): note `EVIL` is id `99`, the others `0..=5`.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::White,
+            2 => Self::Black,
+            3 => Self::WhiteSplotched,
+            4 => Self::Gold,
+            5 => Self::Salt,
+            99 => Self::Evil,
+            _ => Self::Brown,
         }
     }
 }

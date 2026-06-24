@@ -281,8 +281,8 @@ impl EntityModelKind {
             Self::Fox { baby: true, .. } => "fox_baby",
             Self::Nautilus { baby: false } => "nautilus",
             Self::Nautilus { baby: true } => "nautilus_baby",
-            Self::Rabbit { baby: false } => "rabbit",
-            Self::Rabbit { baby: true } => "rabbit_baby",
+            Self::Rabbit { baby: false, .. } => "rabbit",
+            Self::Rabbit { baby: true, .. } => "rabbit_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -407,8 +407,11 @@ impl EntityModelKind {
             // so this representative ref is the idle texture (`fox_textured_layer_passes` picks the
             // sleeping cell at render time).
             Self::Fox { baby, variant } => Some(fox_texture_ref(variant, baby, false)),
-            Self::Rabbit { baby: false } => Some(RABBIT_TEXTURE_REF),
-            Self::Rabbit { baby: true } => Some(RABBIT_BABY_TEXTURE_REF),
+            Self::Rabbit {
+                baby,
+                variant,
+                toast,
+            } => Some(rabbit_texture_ref(variant, baby, toast)),
             Self::Feline {
                 cat: true,
                 baby: false,

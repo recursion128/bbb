@@ -1237,8 +1237,24 @@ impl EntityModelInstance {
         )
     }
 
-    pub fn rabbit(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
-        Self::new(entity_id, EntityModelKind::Rabbit { baby }, position, y_rot)
+    pub fn rabbit(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        variant: RabbitModelVariant,
+        toast: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Rabbit {
+                baby,
+                variant,
+                toast,
+            },
+            position,
+            y_rot,
+        )
     }
 
     pub fn panda(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {

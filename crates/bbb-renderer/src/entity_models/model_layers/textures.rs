@@ -1,6 +1,6 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
-    AxolotlModelVariant, FoxModelVariant, FrogModelVariant, ParrotModelVariant,
+    AxolotlModelVariant, FoxModelVariant, FrogModelVariant, ParrotModelVariant, RabbitModelVariant,
 };
 
 mod equine;
@@ -757,7 +757,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 210] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 224] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -860,8 +860,22 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     FOX_SNOW_BABY_TEXTURE_REF,
     FOX_SNOW_SLEEP_TEXTURE_REF,
     FOX_SNOW_SLEEP_BABY_TEXTURE_REF,
-    RABBIT_TEXTURE_REF,
-    RABBIT_BABY_TEXTURE_REF,
+    RABBIT_BROWN_TEXTURE_REF,
+    RABBIT_BROWN_BABY_TEXTURE_REF,
+    RABBIT_WHITE_TEXTURE_REF,
+    RABBIT_WHITE_BABY_TEXTURE_REF,
+    RABBIT_BLACK_TEXTURE_REF,
+    RABBIT_BLACK_BABY_TEXTURE_REF,
+    RABBIT_WHITE_SPLOTCHED_TEXTURE_REF,
+    RABBIT_WHITE_SPLOTCHED_BABY_TEXTURE_REF,
+    RABBIT_GOLD_TEXTURE_REF,
+    RABBIT_GOLD_BABY_TEXTURE_REF,
+    RABBIT_SALT_TEXTURE_REF,
+    RABBIT_SALT_BABY_TEXTURE_REF,
+    RABBIT_CAERBANNOG_TEXTURE_REF,
+    RABBIT_CAERBANNOG_BABY_TEXTURE_REF,
+    RABBIT_TOAST_TEXTURE_REF,
+    RABBIT_TOAST_BABY_TEXTURE_REF,
     FELINE_CAT_TEXTURE_REF,
     FELINE_CAT_BABY_TEXTURE_REF,
     FELINE_OCELOT_TEXTURE_REF,
@@ -1929,18 +1943,137 @@ pub fn fox_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &FOX_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const RABBIT_TEXTURE_REF: EntityModelTextureRef =
+// The rabbit texture matrix (`RabbitRenderer.RABBIT_LOCATIONS` / `BABY_RABBIT_LOCATIONS`): the seven
+// `Rabbit.Variant` colours × {adult 64×64, baby 32×32}, plus the `Toast` named-rabbit override
+// (`getTextureLocation` returns `toast`/`toast_baby` when `checkMagicName(entity, "Toast")`). EVIL
+// uses the `caerbannog` texture.
+pub(in crate::entity_models) const RABBIT_BROWN_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/rabbit/rabbit_brown.png",
         size: [64, 64],
     };
-pub(in crate::entity_models) const RABBIT_BABY_TEXTURE_REF: EntityModelTextureRef =
+pub(in crate::entity_models) const RABBIT_BROWN_BABY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/rabbit/rabbit_brown_baby.png",
         size: [32, 32],
     };
-pub(in crate::entity_models) const RABBIT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [RABBIT_TEXTURE_REF, RABBIT_BABY_TEXTURE_REF];
+pub(in crate::entity_models) const RABBIT_WHITE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_white.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_WHITE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_white_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const RABBIT_BLACK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_black.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_BLACK_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_black_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const RABBIT_WHITE_SPLOTCHED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_white_splotched.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_WHITE_SPLOTCHED_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_white_splotched_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const RABBIT_GOLD_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_gold.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_GOLD_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_gold_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const RABBIT_SALT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_salt.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_SALT_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_salt_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const RABBIT_CAERBANNOG_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_caerbannog.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_CAERBANNOG_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_caerbannog_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const RABBIT_TOAST_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_toast.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_TOAST_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_toast_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) fn rabbit_texture_ref(
+    variant: RabbitModelVariant,
+    baby: bool,
+    toast: bool,
+) -> EntityModelTextureRef {
+    if toast {
+        return if baby {
+            RABBIT_TOAST_BABY_TEXTURE_REF
+        } else {
+            RABBIT_TOAST_TEXTURE_REF
+        };
+    }
+    match (variant, baby) {
+        (RabbitModelVariant::Brown, false) => RABBIT_BROWN_TEXTURE_REF,
+        (RabbitModelVariant::Brown, true) => RABBIT_BROWN_BABY_TEXTURE_REF,
+        (RabbitModelVariant::White, false) => RABBIT_WHITE_TEXTURE_REF,
+        (RabbitModelVariant::White, true) => RABBIT_WHITE_BABY_TEXTURE_REF,
+        (RabbitModelVariant::Black, false) => RABBIT_BLACK_TEXTURE_REF,
+        (RabbitModelVariant::Black, true) => RABBIT_BLACK_BABY_TEXTURE_REF,
+        (RabbitModelVariant::WhiteSplotched, false) => RABBIT_WHITE_SPLOTCHED_TEXTURE_REF,
+        (RabbitModelVariant::WhiteSplotched, true) => RABBIT_WHITE_SPLOTCHED_BABY_TEXTURE_REF,
+        (RabbitModelVariant::Gold, false) => RABBIT_GOLD_TEXTURE_REF,
+        (RabbitModelVariant::Gold, true) => RABBIT_GOLD_BABY_TEXTURE_REF,
+        (RabbitModelVariant::Salt, false) => RABBIT_SALT_TEXTURE_REF,
+        (RabbitModelVariant::Salt, true) => RABBIT_SALT_BABY_TEXTURE_REF,
+        (RabbitModelVariant::Evil, false) => RABBIT_CAERBANNOG_TEXTURE_REF,
+        (RabbitModelVariant::Evil, true) => RABBIT_CAERBANNOG_BABY_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) const RABBIT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 16] = [
+    RABBIT_BROWN_TEXTURE_REF,
+    RABBIT_BROWN_BABY_TEXTURE_REF,
+    RABBIT_WHITE_TEXTURE_REF,
+    RABBIT_WHITE_BABY_TEXTURE_REF,
+    RABBIT_BLACK_TEXTURE_REF,
+    RABBIT_BLACK_BABY_TEXTURE_REF,
+    RABBIT_WHITE_SPLOTCHED_TEXTURE_REF,
+    RABBIT_WHITE_SPLOTCHED_BABY_TEXTURE_REF,
+    RABBIT_GOLD_TEXTURE_REF,
+    RABBIT_GOLD_BABY_TEXTURE_REF,
+    RABBIT_SALT_TEXTURE_REF,
+    RABBIT_SALT_BABY_TEXTURE_REF,
+    RABBIT_CAERBANNOG_TEXTURE_REF,
+    RABBIT_CAERBANNOG_BABY_TEXTURE_REF,
+    RABBIT_TOAST_TEXTURE_REF,
+    RABBIT_TOAST_BABY_TEXTURE_REF,
+];
 pub fn rabbit_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &RABBIT_ENTITY_TEXTURE_REFS
 }

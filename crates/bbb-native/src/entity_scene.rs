@@ -6,10 +6,10 @@ use bbb_renderer::{
     ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelInstance,
     EntityModelKind, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HumanoidModelFamily,
     IllagerModelFamily, LlamaModelFamily, LlamaVariant, ParrotModelVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize, SelectionBox, SelectionOutline,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
+    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -265,6 +265,9 @@ const FOX_TYPE_DATA_ID: u8 = 18;
 // Vanilla Axolotl.DATA_VARIANT (18, INT): the first `Axolotl` accessor (`Axolotl extends Animal`),
 // holding the `Axolotl.Variant` id; DATA_PLAYING_DEAD / FROM_BUCKET follow at 19/20.
 const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
+// Vanilla Rabbit.DATA_TYPE_ID (18, INT): the first `Rabbit` accessor (`Rabbit extends Animal`),
+// holding the `Rabbit.Variant` id (note EVIL is id 99).
+const RABBIT_TYPE_DATA_ID: u8 = 18;
 // Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
 // accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
 // (18) / DATA_OWNERUUID_ID (19).
@@ -972,10 +975,15 @@ fn humanoid(family: HumanoidModelFamily, baby: bool) -> EntityModelKind {
 }
 
 /// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby; both
-/// render through the dedicated [`EntityModelKind::Rabbit`] (`baby` selecting the body layout).
+/// render through the dedicated [`EntityModelKind::Rabbit`] (`baby` selecting the body layout),
+/// textured by the `Rabbit.Variant` colour (`DATA_TYPE_ID`, 18) with the `Toast` custom-name override
+/// (`RabbitRenderer.checkMagicName(entity, "Toast")`).
 fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
     EntityModelKind::Rabbit {
         baby: ageable_baby(values),
+        variant: RabbitModelVariant::from_id(entity_data_int(values, RABBIT_TYPE_DATA_ID, 0)),
+        toast: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
+            .is_some_and(|name| name == "Toast"),
     }
 }
 
@@ -5628,17 +5636,78 @@ mod tests {
                 }
             );
         }
-        // The rabbit (adult and baby) renders through its dedicated `AdultRabbitModel` / `BabyRabbitModel`.
+        // The rabbit (adult and baby) renders through its dedicated `AdultRabbitModel` / `BabyRabbitModel`,
+        // textured by the `Rabbit.Variant` colour (`DATA_TYPE_ID`, 18) plus the Toast name override.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_RABBIT_ID, &[]),
-            EntityModelKind::Rabbit { baby: false }
+            EntityModelKind::Rabbit {
+                baby: false,
+                variant: RabbitModelVariant::Brown,
+                toast: false
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_RABBIT_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Rabbit { baby: true }
+            EntityModelKind::Rabbit {
+                baby: true,
+                variant: RabbitModelVariant::Brown,
+                toast: false
+            }
+        );
+        // `DATA_TYPE_ID` (18, int) selects the colour via `Rabbit.Variant.byId` (sparse; EVIL = 99).
+        for (id, variant) in [
+            (0, RabbitModelVariant::Brown),
+            (1, RabbitModelVariant::White),
+            (2, RabbitModelVariant::Black),
+            (3, RabbitModelVariant::WhiteSplotched),
+            (4, RabbitModelVariant::Gold),
+            (5, RabbitModelVariant::Salt),
+            (99, RabbitModelVariant::Evil),
+            (7, RabbitModelVariant::Brown),
+        ] {
+            assert_eq!(
+                entity_model_kind(
+                    VANILLA_ENTITY_TYPE_RABBIT_ID,
+                    &[protocol_int_data(RABBIT_TYPE_DATA_ID, id)]
+                ),
+                EntityModelKind::Rabbit {
+                    baby: false,
+                    variant,
+                    toast: false
+                }
+            );
+        }
+        // The custom name "Toast" flips the toast override; any other name does not.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_RABBIT_ID,
+                &[protocol_optional_component_data(
+                    ENTITY_CUSTOM_NAME_DATA_ID,
+                    Some("Toast")
+                )]
+            ),
+            EntityModelKind::Rabbit {
+                baby: false,
+                variant: RabbitModelVariant::Brown,
+                toast: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_RABBIT_ID,
+                &[protocol_optional_component_data(
+                    ENTITY_CUSTOM_NAME_DATA_ID,
+                    Some("toast")
+                )]
+            ),
+            EntityModelKind::Rabbit {
+                baby: false,
+                variant: RabbitModelVariant::Brown,
+                toast: false
+            }
         );
     }
 

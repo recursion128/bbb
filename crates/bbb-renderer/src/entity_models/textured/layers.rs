@@ -6,8 +6,8 @@ use super::super::{
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
         FoxModelVariant, FrogModelVariant, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
         ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern,
+        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern,
     },
     model_layers::*,
 };
@@ -782,15 +782,15 @@ pub(in crate::entity_models) fn fox_textured_layer_passes(
 }
 
 pub(in crate::entity_models) fn rabbit_textured_layer_passes(
+    variant: RabbitModelVariant,
     baby: bool,
+    toast: bool,
 ) -> Vec<EntityModelLayerPass> {
+    // `RabbitRenderer.getTextureLocation` picks the colour × age cell, overridden by `toast`/
+    // `toast_baby` for the `Toast` named rabbit.
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        if baby {
-            RABBIT_BABY_TEXTURE_REF
-        } else {
-            RABBIT_TEXTURE_REF
-        },
+        rabbit_texture_ref(variant, baby, toast),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }
