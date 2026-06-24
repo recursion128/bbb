@@ -9,7 +9,6 @@ use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
 use super::super::model::EntityModel;
 use super::super::model_layers::*;
-use super::armor_stand::emit_armor_stand_model;
 use super::mounts::{
     emit_camel_model, emit_donkey_model, emit_horse_model, emit_llama_model,
     emit_undead_horse_model,
@@ -18,11 +17,10 @@ use super::selection::{
     hoglin_model_color, humanoid_model_color, piglin_model_color, quadruped_model_color,
 };
 use super::transforms::{
-    cod_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
+    end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    pufferfish_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, tropical_fish_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    scaled_model_root_transform, slime_model_root_transform, squid_model_root_transform,
+    tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -74,66 +72,9 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::Humanoid { family, baby } => {
                     emit_humanoid_model(&mut mesh, *instance, family, baby)
                 }
-                EntityModelKind::ArmorStand {
-                    small,
-                    show_arms,
-                    show_base_plate,
-                    pose,
-                } => {
-                    if !skip_texture_backed_entities {
-                        emit_armor_stand_model(
-                            &mut mesh,
-                            *instance,
-                            small,
-                            show_arms,
-                            show_base_plate,
-                            pose,
-                        );
-                    }
-                }
                 EntityModelKind::Slime { size } => {
                     if !skip_texture_backed_entities {
                         emit_slime_model(&mut mesh, *instance, size);
-                    }
-                }
-                EntityModelKind::Vex => {
-                    if !skip_texture_backed_entities {
-                        emit_vex_model(&mut mesh, *instance);
-                    }
-                }
-                EntityModelKind::Allay => {
-                    if !skip_texture_backed_entities {
-                        emit_allay_model(&mut mesh, *instance);
-                    }
-                }
-                EntityModelKind::Strider { baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_strider_model(&mut mesh, *instance, baby);
-                    }
-                }
-                EntityModelKind::Turtle { baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_turtle_model(&mut mesh, *instance, baby);
-                    }
-                }
-                EntityModelKind::Bat => {
-                    if !skip_texture_backed_entities {
-                        emit_bat_model(&mut mesh, *instance);
-                    }
-                }
-                EntityModelKind::Bee { baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_bee_model(&mut mesh, *instance, baby);
-                    }
-                }
-                EntityModelKind::Breeze => {
-                    if !skip_texture_backed_entities {
-                        emit_breeze_model(&mut mesh, *instance);
-                    }
-                }
-                EntityModelKind::Dolphin { baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_dolphin_model(&mut mesh, *instance, baby);
                     }
                 }
                 EntityModelKind::EndCrystal => {
@@ -143,11 +84,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::NoRender => {
                     // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
                     // model, so this arm emits nothing — exact parity with vanilla.
-                }
-                EntityModelKind::Pufferfish { puff_state } => {
-                    if !skip_texture_backed_entities {
-                        emit_pufferfish_model(&mut mesh, *instance, puff_state);
-                    }
                 }
                 EntityModelKind::ZombieVariant { family, baby } => {
                     // The husk, drowned, and zombie villager all have wired texture-backed paths now.
@@ -224,16 +160,6 @@ fn entity_model_mesh_with_options(
                         emit_squid_model(&mut mesh, *instance, glow, baby);
                     }
                 }
-                EntityModelKind::Cod => {
-                    if !skip_texture_backed_entities {
-                        let in_water = instance.render_state.in_water;
-                        CodModel::new().prepare_and_render(
-                            &mut mesh,
-                            instance,
-                            cod_model_root_transform(*instance, in_water),
-                        );
-                    }
-                }
                 EntityModelKind::TropicalFish {
                     shape, base_color, ..
                 } => {
@@ -267,80 +193,6 @@ fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, s
     let transform = slime_model_root_transform(instance, size);
     SlimeModel::new().prepare_and_render(mesh, &instance, transform);
     SlimeOuterModel::new().prepare_and_render(mesh, &instance, transform);
-}
-
-fn emit_vex_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The unified `VexModel` tree drives both render paths; `setup_anim` runs the vanilla
-    // `VexModel.setupAnim` pose (head look, charging body level / idle tilt, charging arm raise / idle
-    // hold, wing flap). The held-item arm variant is deferred. Vex uses `LivingEntityRenderer.setupRotations`.
-    VexModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-fn emit_allay_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The unified `AllayModel` tree drives both render paths; `setup_anim` runs the vanilla
-    // `AllayModel.setupAnim` non-dancing, empty-handed idle / flying pose (root bob, head look, body
-    // flying tilt, arm idle bob, wing flap). The dance pose and held-item arms are deferred. Allay
-    // uses `LivingEntityRenderer.setupRotations`.
-    AllayModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-fn emit_strider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    // The unified `StriderModel` tree drives both render paths; `setup_anim` swings/rolls/lifts the
-    // legs, sways and bobs the body (tracking the look), and flows the bristles (adult six on `zRot`,
-    // baby three on `xRot`) with the walk plus an `ageInTicks` ripple. The ridden pose, saddle layer,
-    // and cold texture are deferred. Strider uses `LivingEntityRenderer.setupRotations`.
-    StriderModel::new(baby).prepare_and_render(
-        mesh,
-        &instance,
-        entity_model_root_transform(instance),
-    );
-}
-
-fn emit_turtle_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    // The unified `TurtleModel` tree drives both render paths; `setup_anim` tracks the head look and
-    // swings the legs (`TurtleModel.setupAnim` land walk / water paddle), and shows the adult
-    // `egg_belly` overlay when `hasEgg`. When the adult carries an egg, vanilla also drops the whole
-    // model `root.y--`; that lives in the root transform here. Turtle uses
-    // `LivingEntityRenderer.setupRotations`.
-    let has_egg = !baby && instance.render_state.turtle_has_egg;
-    let mut root = entity_model_root_transform(instance);
-    if has_egg {
-        root *= part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE);
-    }
-    TurtleModel::new(baby).prepare_and_render(mesh, &instance, root);
-}
-
-fn emit_bat_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The unified `BatModel` tree drives both render paths; `setup_anim` samples the looping
-    // `BatAnimation.BAT_FLYING` wing flap / body bob, or, while `isResting`, the `BAT_RESTING` hanging
-    // pose with the head turned by the look yaw. The exact animation start tick is deferred. Bat uses
-    // `LivingEntityRenderer.setupRotations`.
-    BatModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-fn emit_bee_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    // The unified `BeeModel` tree drives both render paths; `setup_anim` flaps the wings, rocks the
-    // non-angry `bobUpAndDown` (bone/legs/antennae), splays the legs to `π/4` while airborne, and
-    // hides the stinger once the bee has stung. The rolled-up fall pose (`rollAmount`) is deferred
-    // entity-side state. Bee uses `LivingEntityRenderer.setupRotations`.
-    BeeModel::new(baby).prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-fn emit_breeze_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The unified `BreezeModel` tree drives both render paths; `setup_anim` samples the looping
-    // `BreezeAnimation.IDLE` from `age_in_ticks` (head bob + rods spin). The translucent wind layer,
-    // the emissive eyes, and the shoot/slide/inhale/jump action animations are deferred entity-side
-    // state. Breeze uses `LivingEntityRenderer.setupRotations`.
-    BreezeModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-fn emit_dolphin_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
-    // The unified `DolphinModel` tree drives both render paths; `setup_anim` steers the body by the
-    // look pitch/yaw and adds the swim body tilt and tail/tail-fin wave while moving. The baby uses
-    // the `MeshTransformer.scaling(0.5)` body layer; the held-item carry layer is deferred. Dolphin
-    // uses `LivingEntityRenderer.setupRotations`.
-    let root = mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
-    DolphinModel::new().prepare_and_render(mesh, &instance, root);
 }
 
 fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -379,18 +231,6 @@ fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     for cube in END_CRYSTAL_PARTS[3].cubes {
         emit_model_cube(mesh, core_t, *cube);
     }
-}
-
-fn emit_pufferfish_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    puff_state: i32,
-) {
-    // The unified `PufferfishModel` tree drives both render paths; `new` picks the small/mid/big parts
-    // by puff state and `setup_anim` wiggles its two fins on `ageInTicks`. The body bob lives in the
-    // pufferfish root transform.
-    let root = pufferfish_model_root_transform(instance);
-    PufferfishModel::new(puff_state).prepare_and_render(mesh, &instance, root);
 }
 
 fn emit_tropical_fish_model(

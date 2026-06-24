@@ -87,6 +87,34 @@ pub(in crate::entity_models) struct EntityModelLayerPass {
     pub(in crate::entity_models) submit_sequence: u32,
 }
 
+impl EntityModelLayerPass {
+    /// A single render pass carrying only the fields the renderer consumes (render type, texture,
+    /// tint). The routing-only fields (kind/model_layer/visibility/collector_order/submit_sequence)
+    /// get placeholder defaults; they are never read for a single-tree uniform entity. Used by the
+    /// shared dispatch for entities whose textured render is one plain pass.
+    pub(in crate::entity_models) fn base(
+        render_type: EntityModelLayerRenderType,
+        texture: EntityModelTextureRef,
+        tint: [f32; 4],
+    ) -> Self {
+        Self {
+            // `kind` selects which model tree a multi-tree emit walks; a single-tree uniform entity
+            // never branches on it, so this is a neutral "base body" placeholder. `PlayerBase` is the
+            // canonical base-body layer kind reused here.
+            kind: EntityModelLayerKind::PlayerBase,
+            render_type,
+            // `model_layer` is the vestigial vanilla layer key; the renderer drives geometry off the
+            // unified tree and never reads it, so the empty string is a safe placeholder.
+            model_layer: "",
+            texture,
+            visibility: EntityModelLayerVisibility::All,
+            tint,
+            collector_order: 0,
+            submit_sequence: 0,
+        }
+    }
+}
+
 pub(in crate::entity_models) fn boat_textured_layer_passes(
     family: BoatModelFamily,
     chest: bool,

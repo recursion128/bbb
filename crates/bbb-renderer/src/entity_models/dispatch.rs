@@ -13,29 +13,35 @@ use glam::Mat4;
 use super::catalog::{CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout};
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
-    creeper_model_root_transform, ender_dragon_model_root_transform, entity_model_root_transform,
-    evoker_fangs_model_root_transform, ghast_model_root_transform,
+    cod_model_root_transform, creeper_model_root_transform, ender_dragon_model_root_transform,
+    entity_model_root_transform, evoker_fangs_model_root_transform, ghast_model_root_transform,
     happy_ghast_model_root_transform, leash_knot_model_root_transform,
     llama_spit_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
-    polar_bear_model_root_transform, salmon_model_root_transform,
+    polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, trident_model_root_transform,
     villager_adult_model_root_transform, wind_charge_model_root_transform,
     wither_skull_model_root_transform, GIANT_SCALE,
 };
-use super::geometry::EntityModelMesh;
+use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
 use super::model::{EntityModel, StaticModel};
 use super::model_layers::{
-    ArmadilloModel, AxolotlModel, BlazeModel, BoatModel, ChickenModel, CowModel, CreakingModel,
-    CreeperModel, EndermanModel, EndermiteModel, FelineModel, FoxModel, FrogModel, GhastModel,
+    AllayModel, ArmadilloModel, ArmorStandModel, AxolotlModel, BatModel, BeeModel, BlazeModel,
+    BoatModel, BreezeModel, ChickenModel, CodModel, CowModel, CreakingModel, CreeperModel,
+    DolphinModel, EndermanModel, EndermiteModel, FelineModel, FoxModel, FrogModel, GhastModel,
     GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel, MagmaCubeModel,
     MinecartModel, NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel,
-    RabbitModel, RavagerModel, SalmonModel, ShulkerModel, SilverfishModel, SnifferModel,
-    SnowGolemModel, SpiderModel, TadpoleModel, VillagerModel, WanderingTraderModel, WardenModel,
-    WindChargeModel, WitchModel, WitherModel, WolfModel, ZombieModel, ARROW_PARTS,
-    ENDER_DRAGON_PARTS, EVOKER_FANGS_PARTS, FELINE_CAT_SCALE, GUARDIAN_ELDER_SCALE,
-    LEASH_KNOT_PARTS, LLAMA_SPIT_PARTS, SHULKER_BULLET_PARTS, TRIDENT_PARTS, WITHER_SKULL_PARTS,
+    PufferfishModel, RabbitModel, RavagerModel, SalmonModel, ShulkerModel, SilverfishModel,
+    SnifferModel, SnowGolemModel, SpiderModel, StriderModel, TadpoleModel, TurtleModel, VexModel,
+    VillagerModel, WanderingTraderModel, WardenModel, WindChargeModel, WitchModel, WitherModel,
+    WolfModel, ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, ARROW_PARTS,
+    BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF,
+    DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, ENDER_DRAGON_PARTS, EVOKER_FANGS_PARTS,
+    FELINE_CAT_SCALE, GUARDIAN_ELDER_SCALE, LEASH_KNOT_PARTS, LLAMA_SPIT_PARTS,
+    PUFFERFISH_TEXTURE_REF, SHULKER_BULLET_PARTS, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
+    TRIDENT_PARTS, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
+    VEX_TEXTURE_REF, WITHER_SKULL_PARTS,
 };
 use super::textured::{
     blaze_textured_layer_passes, boat_textured_layer_passes, chicken_textured_layer_passes,
@@ -49,7 +55,7 @@ use super::textured::{
     snow_golem_textured_layer_passes, spider_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
     wolf_textured_layer_passes, zombie_textured_layer_passes, EntityModelLayerPass,
-    EntityModelTexturedMeshes,
+    EntityModelLayerRenderType, EntityModelTexturedMeshes,
 };
 
 /// A render-path-agnostic sink for a "uniform" entity (one model under one root transform, with its
@@ -321,6 +327,163 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &enderman_textured_layer_passes(),
         ),
+
+        // ---- Both-uniform single-pass: one plain `render_textured_pass`, no `*_textured_layer_passes` fn ----
+        EntityModelKind::ArmorStand {
+            small,
+            show_arms,
+            show_base_plate,
+            pose,
+        } => sink.model(
+            ArmorStandModel::new(small, show_arms, show_base_plate, pose),
+            entity_model_root_transform(*instance),
+            instance,
+            &[EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Cutout,
+                ARMOR_STAND_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+            )],
+        ),
+        EntityModelKind::Vex => sink.model(
+            VexModel::new(),
+            entity_model_root_transform(*instance),
+            instance,
+            &[EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Translucent,
+                VEX_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+            )],
+        ),
+        EntityModelKind::Allay => sink.model(
+            AllayModel::new(),
+            entity_model_root_transform(*instance),
+            instance,
+            &[EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Translucent,
+                ALLAY_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+            )],
+        ),
+        EntityModelKind::Strider { baby } => {
+            let texture = if baby {
+                STRIDER_BABY_TEXTURE_REF
+            } else {
+                STRIDER_TEXTURE_REF
+            };
+            sink.model(
+                StriderModel::new(baby),
+                entity_model_root_transform(*instance),
+                instance,
+                &[EntityModelLayerPass::base(
+                    EntityModelLayerRenderType::Cutout,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                )],
+            )
+        }
+        EntityModelKind::Bat => sink.model(
+            BatModel::new(),
+            entity_model_root_transform(*instance),
+            instance,
+            &[EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Cutout,
+                BAT_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+            )],
+        ),
+        EntityModelKind::Bee { baby } => {
+            let texture = if baby {
+                BEE_BABY_TEXTURE_REF
+            } else {
+                BEE_TEXTURE_REF
+            };
+            sink.model(
+                BeeModel::new(baby),
+                entity_model_root_transform(*instance),
+                instance,
+                &[EntityModelLayerPass::base(
+                    EntityModelLayerRenderType::Cutout,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                )],
+            )
+        }
+        EntityModelKind::Breeze => sink.model(
+            BreezeModel::new(),
+            entity_model_root_transform(*instance),
+            instance,
+            &[EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Translucent,
+                BREEZE_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+            )],
+        ),
+        EntityModelKind::Cod => {
+            let in_water = instance.render_state.in_water;
+            sink.model(
+                CodModel::new(),
+                cod_model_root_transform(*instance, in_water),
+                instance,
+                &[EntityModelLayerPass::base(
+                    EntityModelLayerRenderType::Cutout,
+                    COD_TEXTURE_REF,
+                    [1.0, 1.0, 1.0, 1.0],
+                )],
+            )
+        }
+        EntityModelKind::Pufferfish { puff_state } => sink.model(
+            PufferfishModel::new(puff_state),
+            pufferfish_model_root_transform(*instance),
+            instance,
+            &[EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Cutout,
+                PUFFERFISH_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+            )],
+        ),
+        EntityModelKind::Turtle { baby } => {
+            let texture = if baby {
+                TURTLE_BABY_TEXTURE_REF
+            } else {
+                TURTLE_TEXTURE_REF
+            };
+            let has_egg = !baby && instance.render_state.turtle_has_egg;
+            let mut transform = entity_model_root_transform(*instance);
+            if has_egg {
+                transform *= part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE);
+            }
+            sink.model(
+                TurtleModel::new(baby),
+                transform,
+                instance,
+                &[EntityModelLayerPass::base(
+                    EntityModelLayerRenderType::Cutout,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                )],
+            )
+        }
+        EntityModelKind::Dolphin { baby } => {
+            let texture = if baby {
+                DOLPHIN_BABY_TEXTURE_REF
+            } else {
+                DOLPHIN_TEXTURE_REF
+            };
+            let transform = mesh_transformer_scaled_model_root_transform(
+                *instance,
+                if baby { 0.5 } else { 1.0 },
+            );
+            sink.model(
+                DolphinModel::new(),
+                transform,
+                instance,
+                &[EntityModelLayerPass::base(
+                    EntityModelLayerRenderType::Cutout,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                )],
+            )
+        }
 
         // ---- Colored-only uniform (no textured arm): empty passes, textured side is a no-op ----
         EntityModelKind::Guardian { elder } => {

@@ -3,33 +3,22 @@ use super::model::EntityModel;
 use super::{
     catalog::squid_texture_ref,
     catalog::{
-        ArmorStandModelPose, CamelModelFamily, EntityDyeColor, EntityModelKind,
-        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        HoglinModelFamily, LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
-        ZombieVariantModelFamily,
+        CamelModelFamily, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, HoglinModelFamily, LlamaVariant,
+        PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
     },
-    cod_model_root_transform, entity_model_root_transform,
-    geometry::{
-        fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
-        EntityModelTexturedMesh,
-    },
+    entity_model_root_transform,
+    geometry::{fill_entity_textured_light, fill_entity_textured_overlay, EntityModelTexturedMesh},
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        AllayModel, ArmorStandModel, BatModel, BeeModel, BreezeModel, CamelModel, CodModel,
-        DolphinModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, PufferfishModel,
-        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
-        SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
-        TurtleModel, VexModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
-        BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF,
-        COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
-        STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
-        TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+        CamelModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
+        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
+        TropicalFishModel, TropicalFishPatternModel, ZombieVariantModel,
     },
-    player_model_root_transform, pufferfish_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, tropical_fish_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
+    tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::Mat4;
 
@@ -136,9 +125,6 @@ pub(super) fn entity_model_textured_meshes(
                 EntityModelKind::Squid { glow, baby } => {
                     emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
                 }
-                EntityModelKind::Cod => {
-                    emit_cod_textured_model(&mut meshes, *instance, atlas);
-                }
                 EntityModelKind::TropicalFish {
                     shape,
                     base_color,
@@ -155,48 +141,8 @@ pub(super) fn entity_model_textured_meshes(
                         atlas,
                     );
                 }
-                EntityModelKind::Vex => {
-                    emit_vex_textured_model(&mut meshes, *instance, atlas);
-                }
-                EntityModelKind::Allay => {
-                    emit_allay_textured_model(&mut meshes, *instance, atlas);
-                }
-                EntityModelKind::Strider { baby } => {
-                    emit_strider_textured_model(&mut meshes, *instance, baby, atlas);
-                }
-                EntityModelKind::Turtle { baby } => {
-                    emit_turtle_textured_model(&mut meshes, *instance, baby, atlas);
-                }
-                EntityModelKind::Bat => {
-                    emit_bat_textured_model(&mut meshes, *instance, atlas);
-                }
-                EntityModelKind::Bee { baby } => {
-                    emit_bee_textured_model(&mut meshes, *instance, baby, atlas);
-                }
-                EntityModelKind::Breeze => {
-                    emit_breeze_textured_model(&mut meshes, *instance, atlas);
-                }
-                EntityModelKind::Dolphin { baby } => {
-                    emit_dolphin_textured_model(&mut meshes, *instance, baby, atlas);
-                }
                 EntityModelKind::Slime { size } => {
                     emit_slime_textured_model(&mut meshes, *instance, size, atlas);
-                }
-                EntityModelKind::ArmorStand {
-                    small,
-                    show_arms,
-                    show_base_plate,
-                    pose,
-                } => {
-                    emit_armor_stand_textured_model(
-                        &mut meshes,
-                        *instance,
-                        small,
-                        show_arms,
-                        show_base_plate,
-                        pose,
-                        atlas,
-                    );
                 }
                 EntityModelKind::ZombieVariant {
                     family: ZombieVariantModelFamily::Husk,
@@ -218,9 +164,6 @@ pub(super) fn entity_model_textured_meshes(
                 }
                 EntityModelKind::Piglin { family, baby } => {
                     emit_piglin_textured_model(&mut meshes, *instance, family, baby, atlas);
-                }
-                EntityModelKind::Pufferfish { puff_state } => {
-                    emit_pufferfish_textured_model(&mut meshes, *instance, puff_state, atlas);
                 }
                 EntityModelKind::Hoglin { family, baby } => {
                     emit_hoglin_textured_model(&mut meshes, *instance, family, baby, atlas);
@@ -339,32 +282,6 @@ fn emit_camel_textured_model(
     );
 }
 
-/// The textured cod base layer. The cod parts are static, so the body/head/nose/fins
-/// emit through the standard pass while only the tail fin is re-posed by the vanilla
-/// `CodModel.setupAnim` sway; the swim wiggle and out-of-water flop live in
-/// [`cod_model_root_transform`].
-fn emit_cod_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `CodModel` tree drives both render paths: `setup_anim` sways the tail fin once,
-    // and the textured pass walks the posed tree (vanilla `CodRenderer` is a single cutout layer).
-    let in_water = instance.render_state.in_water;
-    let transform = cod_model_root_transform(instance, in_water);
-    let mut model = CodModel::new();
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        COD_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
 /// The textured tropical fish base layer plus the `TropicalFishPatternLayer` overlay. The unified
 /// [`TropicalFishModel`] (base body) and [`TropicalFishPatternModel`] (the overlay, inflated by
 /// `FISH_PATTERN_DEFORMATION`) trees both run the shared `TropicalFish{Small,Large}Model.setupAnim`
@@ -432,229 +349,6 @@ fn emit_squid_textured_model(
     );
 }
 
-/// The textured vex base layer. The unified [`VexModel`] tree runs the shared `VexModel.setupAnim`
-/// (head look, charging/idle body + arms, wing flap) and draws into the translucent mesh. The
-/// charging texture swap and the held-item arms are deferred entity-side state, and the vanilla
-/// full-bright block light (`getBlockLightLevel` → 15) is deferred lighting.
-fn emit_vex_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let transform = entity_model_root_transform(instance);
-    let mut model = VexModel::new();
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Translucent,
-        VEX_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-/// The textured allay base layer. Like the vex, the arms and wings hang under the body and
-/// are swayed by the vanilla `AllayModel.setupAnim` (non-dancing idle / flying pose) plus
-/// the vertical root bob, so the part list is animated per frame and the hierarchy is walked
-/// by hand exactly like the colored [`emit_allay_model`]. Allay uses
-/// `RenderTypes::entityTranslucent`, so it draws into the translucent mesh. The dance pose
-/// (`isDancing`/`isSpinning`) and held-item arms are deferred entity-side state, and the
-/// vanilla full-bright block light (`getBlockLightLevel` → 15) is deferred lighting.
-fn emit_allay_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `AllayModel` tree drives both render paths; `setup_anim` runs the shared
-    // `AllayModel.setupAnim` idle/flying pose. Allay draws into a single translucent layer.
-    let transform = entity_model_root_transform(instance);
-    let mut model = AllayModel::new();
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Translucent,
-        ALLAY_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-/// The textured strider base layer. The unified [`StriderModel`] tree (selected by `baby`) runs the
-/// shared `StriderModel.setupAnim` (legs swing/roll/lift, body sway/bob/look, bristle flow) and draws
-/// into the cutout mesh. The ridden pose, the saddle layer, and the cold/suffocating texture are
-/// deferred entity-side state.
-fn emit_strider_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let texture = if baby {
-        STRIDER_BABY_TEXTURE_REF
-    } else {
-        STRIDER_TEXTURE_REF
-    };
-    let transform = entity_model_root_transform(instance);
-    let mut model = StriderModel::new(baby);
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-/// The textured turtle base layer. The head tracks the look, the body holds its fixed shell
-/// tilt, and the four legs walk (land) or paddle (water) per [`turtle_leg_rotation`], so the
-/// part list is animated per frame and emitted by hand exactly like the colored
-/// [`emit_turtle_model`]. Turtle uses the default `RenderTypes::entityCutout`, so it draws into
-/// the cutout mesh. The adult `egg_belly` overlay shell + `root.y--` shift follow `hasEgg`; only
-/// `AdultTurtleModel` has them, so they are gated on `!baby` (the baby model has no egg belly).
-/// The egg-laying leg amplitude stays deferred entity-side state.
-fn emit_turtle_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `TurtleModel` tree drives both render paths; `setup_anim` tracks the head look,
-    // swings the legs, and shows the adult `egg_belly` overlay when `hasEgg`. The `root.y--` egg drop
-    // lives in the root transform. The base layer draws into the cutout mesh.
-    let texture = if baby {
-        TURTLE_BABY_TEXTURE_REF
-    } else {
-        TURTLE_TEXTURE_REF
-    };
-    let has_egg = !baby && instance.render_state.turtle_has_egg;
-    let mut transform = entity_model_root_transform(instance);
-    if has_egg {
-        transform *= part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE);
-    }
-    let mut model = TurtleModel::new(baby);
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-fn emit_bat_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `BatModel` tree drives both render paths; `setup_anim` samples the looping
-    // `BatAnimation.BAT_FLYING` (or the `BAT_RESTING` hanging pose while `isResting`) and turns the
-    // resting head by the look yaw. The base layer draws into the cutout mesh (vanilla
-    // `RenderTypes::entityCutoutCull`).
-    let transform = entity_model_root_transform(instance);
-    let mut model = BatModel::new();
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        BAT_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-fn emit_bee_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `BeeModel` tree drives both render paths; `setup_anim` flaps the wings, rocks the
-    // non-angry bob, splays the legs to `π/4` while airborne, and hides the stinger once stung. The
-    // textured base layer draws into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`); the
-    // baby uses a distinct texture.
-    let texture = if baby {
-        BEE_BABY_TEXTURE_REF
-    } else {
-        BEE_TEXTURE_REF
-    };
-    let transform = entity_model_root_transform(instance);
-    let mut model = BeeModel::new(baby);
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-fn emit_breeze_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `BreezeModel` tree drives both render paths; `setup_anim` samples the looping
-    // `BreezeAnimation.IDLE`. The base body draws into the translucent mesh (vanilla `BreezeModel`
-    // uses `RenderTypes::entityTranslucent`).
-    let transform = entity_model_root_transform(instance);
-    let mut model = BreezeModel::new();
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Translucent,
-        BREEZE_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-fn emit_dolphin_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `DolphinModel` tree drives both render paths; `setup_anim` steers the body and waves
-    // the tail. The base body draws into the cutout mesh (the `DolphinModel` default
-    // `RenderTypes::entityCutoutNoCull`). The baby uses the `MeshTransformer.scaling(0.5)` layer and a
-    // distinct texture.
-    let texture = if baby {
-        DOLPHIN_BABY_TEXTURE_REF
-    } else {
-        DOLPHIN_TEXTURE_REF
-    };
-    let transform =
-        mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
-    let mut model = DolphinModel::new();
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
 /// The textured llama base layer. The trader llama shares this geometry/texture; its distinguishing
 /// `LlamaDecorLayer` overlay is a deferred equipment layer, so `family` is not consumed here. The
 /// unified `LlamaModel` tree drives both render paths; `setup_anim` is the standard `QuadrupedModel`
@@ -710,33 +404,6 @@ fn emit_slime_textured_model(
             );
         }
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn emit_armor_stand_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    small: bool,
-    show_arms: bool,
-    show_base_plate: bool,
-    pose: ArmorStandModelPose,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `ArmorStandModel` tree drives both render paths; `new` selects the small / full layer
-    // and `setup_anim` poses each part from the synced pose (degrees), hides the arms / base plate by
-    // visibility, and yaws the base plate by `-bodyRot`. Draws into the cutout mesh.
-    let transform = entity_model_root_transform(instance);
-    let mut model = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        ARMOR_STAND_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
 }
 
 fn emit_husk_textured_model(
@@ -829,29 +496,6 @@ fn emit_piglin_textured_model(
         &model,
         transform,
         piglin_textured_layer_passes(family, baby_layout),
-        atlas,
-    );
-}
-
-fn emit_pufferfish_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    puff_state: i32,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `PufferfishModel` tree drives both render paths; `new` picks the small/mid/big parts
-    // by puff state and `setup_anim` wiggles its two fins on `ageInTicks`. A single cutout pass over
-    // `pufferfish.png` (no eyes layer).
-    let transform = pufferfish_model_root_transform(instance);
-    let mut model = PufferfishModel::new(puff_state);
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::Cutout,
-        PUFFERFISH_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
         atlas,
     );
 }

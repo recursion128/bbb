@@ -10,17 +10,17 @@ mod model_layers;
 mod textured;
 
 pub use catalog::*;
-use colored::{
-    cod_model_root_transform, entity_model_colored_runtime_mesh, entity_model_root_transform,
-    mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    pufferfish_model_root_transform, slime_model_root_transform, squid_model_root_transform,
-    tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
-};
 #[cfg(test)]
 use colored::{
     death_fall_factor, entity_flip_degrees, entity_model_mesh, humanoid_arm_swing_parts,
     humanoid_limb_swing_parts, quadruped_leg_x_rotations, quadruped_limb_swing_parts,
     HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
+};
+use colored::{
+    entity_model_colored_runtime_mesh, entity_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, player_model_root_transform,
+    slime_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use geometry::*;
 #[cfg(test)]
