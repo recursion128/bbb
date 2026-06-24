@@ -615,6 +615,12 @@ impl EntityStore {
             frog_croak_seconds: client_animations
                 .animations
                 .frog_croak_seconds(partial_ticks),
+            // Vanilla `Frog.jumpAnimationState`: the elapsed seconds since `Pose.LONG_JUMPING`
+            // started, or `-1.0` for a non-jumping frog (only the frog is given a jump animation
+            // state).
+            frog_jump_seconds: client_animations
+                .animations
+                .frog_jump_seconds(partial_ticks),
             sniffer_animation_id,
             sniffer_animation_seconds,
             // Vanilla `Armadillo.shouldHideInShell` + the rollUp/rollOut transition timers: the

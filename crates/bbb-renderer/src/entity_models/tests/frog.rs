@@ -184,3 +184,68 @@ fn frog_croak_shows_and_poses_the_pouch_off_the_hidden_bind_pose() {
     ]);
     assert_eq!(cleared.vertices, resting.vertices);
 }
+
+#[test]
+fn frog_jump_animation_matches_vanilla_definition() {
+    // Vanilla `FrogAnimation.FROG_JUMP`: 0.5s, NOT looping, five bones (body, the two arms, the two
+    // legs), each with a ROTATION and a POSITION channel of two constant keyframes (10 channels, 20
+    // keyframes total).
+    assert_eq!(FROG_JUMP.length_seconds, 0.5);
+    assert!(!FROG_JUMP.looping);
+    assert_eq!(FROG_JUMP.bones.len(), 5);
+    let bones: Vec<&str> = FROG_JUMP.bones.iter().map(|bone| bone.bone).collect();
+    assert_eq!(
+        bones,
+        ["body", "left_arm", "right_arm", "left_leg", "right_leg"]
+    );
+    let keyframes: usize = FROG_JUMP
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 20);
+
+    // The static hold pose: the body tips back `-22.5°`, the arms tuck back `-56.14°` and lift `+1`
+    // y (`posVec` negates y, so the offset is `-1`), and the legs cock `45°`. Sampling anywhere in
+    // `[0, 0.5]` returns the same constant pose.
+    const RAD: f32 = std::f32::consts::PI / 180.0;
+    let (body_pos, body_rot) = sample_bone_offsets(&FROG_JUMP, "body", 0.0, 1.0);
+    assert_eq!(body_pos, [0.0, 0.0, 0.0]);
+    assert!((body_rot[0] - -22.5 * RAD).abs() < 1.0e-6);
+    let (arm_pos, arm_rot) = sample_bone_offsets(&FROG_JUMP, "left_arm", 0.5, 1.0);
+    assert!((arm_pos[1] - -1.0).abs() < 1.0e-6);
+    assert!((arm_rot[0] - -56.14 * RAD).abs() < 1.0e-4);
+    let (_, leg_rot) = sample_bone_offsets(&FROG_JUMP, "right_leg", 0.25, 1.0);
+    assert!((leg_rot[0] - 45.0 * RAD).abs() < 1.0e-6);
+}
+
+#[test]
+fn frog_jump_reposes_the_limbs_off_the_bind_pose() {
+    // A non-jumping frog (`-1.0` sentinel) renders the plain bind/walk-rest pose.
+    let resting = entity_model_mesh(&[EntityModelInstance::frog(960, [0.0, 64.0, 0.0], 0.0)]);
+
+    // A long-jumping frog tips the body and tucks the limbs into the hold pose: the same 15 cubes
+    // (no pouch), but re-posed off the bind pose.
+    let jumping = entity_model_mesh(&[
+        EntityModelInstance::frog(961, [0.0, 64.0, 0.0], 0.0).with_frog_jump_seconds(0.0)
+    ]);
+    assert_eq!(jumping.opaque_faces, resting.opaque_faces);
+    assert_eq!(jumping.vertices.len(), resting.vertices.len());
+    assert_ne!(
+        jumping.vertices, resting.vertices,
+        "the long-jumping frog re-poses its body, arms, and legs"
+    );
+
+    // The hold pose is constant across the 0.5s window, so a later sample matches.
+    let later = entity_model_mesh(&[
+        EntityModelInstance::frog(962, [0.0, 64.0, 0.0], 0.0).with_frog_jump_seconds(0.25)
+    ]);
+    assert_eq!(later.vertices, jumping.vertices);
+
+    // An explicit `-1.0` (the not-jumping sentinel) leaves the frog at the bind pose.
+    let cleared = entity_model_mesh(&[
+        EntityModelInstance::frog(963, [0.0, 64.0, 0.0], 0.0).with_frog_jump_seconds(-1.0)
+    ]);
+    assert_eq!(cleared.vertices, resting.vertices);
+}

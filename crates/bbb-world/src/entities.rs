@@ -367,6 +367,13 @@ pub struct EntityModelSourceState {
     /// entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub frog_croak_seconds: f32,
+    /// Vanilla frog jump timing (`FrogRenderState.jumpAnimationState`, the triggered `AnimationState`
+    /// started/stopped by the synced `Pose.LONG_JUMPING`): the elapsed seconds since the long-jump
+    /// started, which `FrogModel.setupAnim` uses to sample the `FrogAnimation.FROG_JUMP` animation.
+    /// Projected only for the frog and `-1.0` (the stopped-animation sentinel, so no keyframe is
+    /// applied) for a non-jumping frog and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub frog_jump_seconds: f32,
     /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
     /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered
     /// keyframe is playing (`FEELING_HAPPY`/`SCENTING`/`SNIFFING`/`DIGGING`/`RISING`), which

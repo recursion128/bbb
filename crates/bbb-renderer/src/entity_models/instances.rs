@@ -278,6 +278,12 @@ entity_render_state! {
     /// (the sentinel for a stopped `croakAnimationState`) for every other entity and for a
     /// non-croaking frog, so the pouch stays hidden and no keyframe is applied.
     (with_frog_croak_seconds) frog_croak_seconds: f32 = -1.0;
+    /// Vanilla frog jump timing (`FrogRenderState.jumpAnimationState` driven by the synced
+    /// `Pose.LONG_JUMPING`): the elapsed seconds since the long-jump started, projected for
+    /// `FrogModel.setupAnim`, which samples the triggered `FrogAnimation.FROG_JUMP` POSITION/ROTATION
+    /// pose onto the body, arms, and legs. `-1.0` (the sentinel for a stopped `jumpAnimationState`)
+    /// for every other entity and for a non-jumping frog, so no keyframe is applied.
+    (with_frog_jump_seconds) frog_jump_seconds: f32 = -1.0;
     /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
     /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered keyframe
     /// is playing (`FEELING_HAPPY=1`/`SCENTING=2`/`SNIFFING=3`/`DIGGING=5`/`RISING=6`), which
@@ -1420,6 +1426,7 @@ mod tests {
                 camel_sit_pose_seconds: -1.0,
                 camel_standup_seconds: -1.0,
                 frog_croak_seconds: -1.0,
+                frog_jump_seconds: -1.0,
                 sniffer_animation_id: -1,
                 sniffer_animation_seconds: -1.0,
                 armadillo_is_hiding_in_shell: false,

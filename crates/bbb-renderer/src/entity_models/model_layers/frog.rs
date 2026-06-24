@@ -422,12 +422,102 @@ pub(in crate::entity_models) const FROG_CROAK: AnimationDefinition = AnimationDe
     bones: &FROG_CROAK_BONES,
 };
 
+// ----- `FrogAnimation.FROG_JUMP` (length 0.5s, NOT looping). A static long-jump hold pose: every
+// channel holds one value across both `0.0` and `0.5` keyframes (LINEAR). The `body` tips back
+// `-22.5°`; the two arms tuck back `-56.14°` and lift `+1` y; the two legs cock `45°`. `posVec`
+// negates the y axis and `degreeVec` converts to radians. -----
+
+const FROG_JUMP_BODY_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(-22.5, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-22.5, 0.0, 0.0), LINEAR),
+];
+const FROG_JUMP_BODY_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const FROG_JUMP_LEFT_ARM_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(-56.14, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-56.14, 0.0, 0.0), LINEAR),
+];
+const FROG_JUMP_LEFT_ARM_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, 1.0, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 1.0, 0.0), LINEAR),
+];
+const FROG_JUMP_RIGHT_ARM_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(-56.14, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-56.14, 0.0, 0.0), LINEAR),
+];
+const FROG_JUMP_RIGHT_ARM_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, 1.0, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 1.0, 0.0), LINEAR),
+];
+const FROG_JUMP_LEFT_LEG_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(45.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(45.0, 0.0, 0.0), LINEAR),
+];
+const FROG_JUMP_LEFT_LEG_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const FROG_JUMP_RIGHT_LEG_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(45.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(45.0, 0.0, 0.0), LINEAR),
+];
+const FROG_JUMP_RIGHT_LEG_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const FROG_JUMP_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_JUMP_BODY_ROT), pos(&FROG_JUMP_BODY_POS)];
+const FROG_JUMP_LEFT_ARM_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_JUMP_LEFT_ARM_ROT), pos(&FROG_JUMP_LEFT_ARM_POS)];
+const FROG_JUMP_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_JUMP_RIGHT_ARM_ROT), pos(&FROG_JUMP_RIGHT_ARM_POS)];
+const FROG_JUMP_LEFT_LEG_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_JUMP_LEFT_LEG_ROT), pos(&FROG_JUMP_LEFT_LEG_POS)];
+const FROG_JUMP_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_JUMP_RIGHT_LEG_ROT), pos(&FROG_JUMP_RIGHT_LEG_POS)];
+
+const FROG_JUMP_BONES: [BoneAnimation; 5] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &FROG_JUMP_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &FROG_JUMP_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &FROG_JUMP_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &FROG_JUMP_LEFT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &FROG_JUMP_RIGHT_LEG_CHANNELS,
+    },
+];
+
+/// Vanilla `FrogAnimation.FROG_JUMP`: the triggered 0.5s long-jump hold pose (NOT looping), sampled
+/// by `FrogModel.setupAnim` via `jumpAnimation.apply(jumpAnimationState, ageInTicks)` (before the
+/// croak) while the frog is in `Pose.LONG_JUMPING`. The renderer applies it only when the projected
+/// `frog_jump_seconds >= 0`.
+pub(in crate::entity_models) const FROG_JUMP: AnimationDefinition = AnimationDefinition {
+    length_seconds: 0.5,
+    looping: false,
+    bones: &FROG_JUMP_BONES,
+};
+
 /// Mutable frog model, mirroring vanilla `FrogModel`. The cubeless `root` part (parenting `body`
 /// and the two legs; `body` parents the head, croaking_body pouch, tongue, and two arms) hangs off
 /// a synthetic root, built from the baked colored geometry as a named-children tree. Colored-only:
-/// `setup_anim` applies the looping `FROG_WALK` keyframe cycle to the body, arms, and legs, and the
-/// triggered `FROG_CROAK` pouch animation while croaking (the jump / tongue / swim animations stay
-/// deferred).
+/// `setup_anim` applies the looping `FROG_WALK` keyframe cycle to the body, arms, and legs, the
+/// triggered `FROG_JUMP` long-jump hold pose while long-jumping, and the triggered `FROG_CROAK`
+/// pouch animation while croaking (the tongue / swim animations stay deferred).
 pub(in crate::entity_models) struct FrogModel {
     root: ModelPart,
 }
@@ -464,6 +554,21 @@ impl EntityModel for FrogModel {
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 
+        // Vanilla `FrogModel.setupAnim` applies `jumpAnimation.apply(jumpAnimationState, ageInTicks)`
+        // first (before the croak). The projected `frog_jump_seconds` carries the elapsed seconds
+        // since the long-jump started, or `-1` when the frog is not long-jumping (the
+        // `jumpAnimationState` is stopped). While jumping, the static `FROG_JUMP` POSITION/ROTATION
+        // hold pose is added onto the walk pose of the body, arms, and legs; otherwise it is skipped.
+        let jump_seconds = instance.render_state.frog_jump_seconds;
+        let jump = |part: &mut ModelPart, bone: &str| {
+            if jump_seconds < 0.0 {
+                return;
+            }
+            let elapsed = keyframe_elapsed_seconds(&FROG_JUMP, jump_seconds);
+            let (position, rotation) = sample_bone_offsets(&FROG_JUMP, bone, elapsed, 1.0);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+        };
+
         // Vanilla `FrogModel.setupAnim` then runs `croakAnimation.apply(croakAnimationState,
         // ageInTicks)` and `croakingBody.visible = croakAnimationState.isStarted()`. The projected
         // `frog_croak_seconds` carries the elapsed seconds since the croak started, or `-1` when the
@@ -476,8 +581,17 @@ impl EntityModel for FrogModel {
         {
             let body = frog_root.child_mut("body");
             animate(body, "body");
-            animate(body.child_mut("left_arm"), "left_arm");
-            animate(body.child_mut("right_arm"), "right_arm");
+            jump(body, "body");
+            {
+                let left_arm = body.child_mut("left_arm");
+                animate(left_arm, "left_arm");
+                jump(left_arm, "left_arm");
+            }
+            {
+                let right_arm = body.child_mut("right_arm");
+                animate(right_arm, "right_arm");
+                jump(right_arm, "right_arm");
+            }
 
             let croaking_body = body.child_mut("croaking_body");
             if croak_seconds >= 0.0 {
@@ -491,7 +605,15 @@ impl EntityModel for FrogModel {
                 croaking_body.visible = false;
             }
         }
-        animate(frog_root.child_mut("left_leg"), "left_leg");
-        animate(frog_root.child_mut("right_leg"), "right_leg");
+        {
+            let left_leg = frog_root.child_mut("left_leg");
+            animate(left_leg, "left_leg");
+            jump(left_leg, "left_leg");
+        }
+        {
+            let right_leg = frog_root.child_mut("right_leg");
+            animate(right_leg, "right_leg");
+            jump(right_leg, "right_leg");
+        }
     }
 }

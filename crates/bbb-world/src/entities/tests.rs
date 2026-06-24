@@ -2471,6 +2471,56 @@ fn entity_model_sources_project_frog_croak_seconds() {
 }
 
 #[test]
+fn entity_model_sources_project_frog_jump_seconds() {
+    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
+    // Vanilla `Pose.LONG_JUMPING(6, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated`
+    // starts `jumpAnimationState` when the pose becomes LONG_JUMPING and stops it otherwise.
+    const VANILLA_POSE_STANDING_ID: i32 = 0;
+    const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
+    let jump = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 55)
+            .unwrap()
+            .frog_jump_seconds
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        55,
+        VANILLA_ENTITY_TYPE_FROG_ID,
+    ));
+
+    // A frog not in `Pose.LONG_JUMPING` projects the `-1.0` stopped sentinel (no keyframe applied).
+    assert_eq!(jump(&store, 1.0), -1.0);
+
+    // Entering `Pose.LONG_JUMPING` starts the timer at the current age, so the elapsed seconds begin
+    // at `0` (plus the partial tick): vanilla `((ageInTicks - startTick)) / 20`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_LONG_JUMPING_ID)],
+    }));
+    assert!((jump(&store, 0.0) - 0.0).abs() < 1.0e-6);
+    // The partial tick folds into the live age (`(0 + 0.5) / 20`).
+    assert!((jump(&store, 0.5) - 0.025).abs() < 1.0e-6);
+
+    // Each client tick advances the elapsed seconds by `1 / 20 = 0.05` (the age climbs, the start
+    // tick is fixed).
+    store.advance_entity_client_animations(1);
+    assert!((jump(&store, 0.0) - 0.05).abs() < 1.0e-6);
+    store.advance_entity_client_animations(4);
+    assert!((jump(&store, 0.0) - 0.25).abs() < 1.0e-6);
+
+    // Leaving `Pose.LONG_JUMPING` stops the animation, returning the `-1.0` sentinel.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_STANDING_ID)],
+    }));
+    assert_eq!(jump(&store, 1.0), -1.0);
+}
+
+#[test]
 fn entity_model_sources_project_sniffer_state_animation() {
     const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
     // Vanilla `Sniffer.DATA_STATE` (id 18), the `Sniffer.State` ordinal VarInt;

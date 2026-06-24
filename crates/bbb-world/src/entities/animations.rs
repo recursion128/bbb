@@ -35,6 +35,10 @@ const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 /// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
 /// CROAKING, tickCount)`).
 const VANILLA_POSE_CROAKING_ID: i32 = 8;
+/// Vanilla `Pose.LONG_JUMPING` ordinal (`Pose.LONG_JUMPING(6, …)`), the synced `DATA_POSE` int value
+/// that `Frog.onSyncedDataUpdated` reads to start/stop `jumpAnimationState` (`pose == LONG_JUMPING`
+/// starts it, otherwise stops it).
+const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
 const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
 /// Vanilla `Sniffer.DATA_STATE`, the synced `EntityDataSerializers.SNIFFER_STATE` accessor serialized
 /// as the `Sniffer.State` ordinal VarInt. The accessor sits at id 18 (Entity 0–7, LivingEntity 8–14,
@@ -168,6 +172,8 @@ pub struct EntityClientAnimationState {
     pub fox: Option<FoxAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_croak: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frog_jump: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1277,14 +1283,24 @@ impl EntityClientAnimationState {
             }
             VANILLA_ENTITY_TYPE_FROG_ID => {
                 // Vanilla `Frog.onSyncedDataUpdated`: when `DATA_POSE` changes, the croak animation
-                // is `animateWhen(pose == CROAKING, tickCount)` — started on the rising edge into
-                // `Pose.CROAKING` and stopped otherwise. The frog's `aiStep` runs client-side for
-                // remote entities, so the synced pose drives the croak directly.
-                let croaking = entity_data_pose(data_values) == VANILLA_POSE_CROAKING_ID;
+                // is `animateWhen(pose == CROAKING, tickCount)` and the jump animation is started
+                // when `pose == LONG_JUMPING` and stopped otherwise — both started on the rising edge
+                // into their pose and stopped on leaving it. The frog's `aiStep` runs client-side for
+                // remote entities, so the synced pose drives both directly.
+                let pose = entity_data_pose(data_values);
+                let croaking = pose == VANILLA_POSE_CROAKING_ID;
                 if let Some(croak) = self.frog_croak.as_mut() {
                     croak.animate_when(croaking, self.age_ticks);
                 } else if croaking {
                     self.frog_croak = Some(KeyframeAnimationState {
+                        start_age: Some(self.age_ticks),
+                    });
+                }
+                let jumping = pose == VANILLA_POSE_LONG_JUMPING_ID;
+                if let Some(jump) = self.frog_jump.as_mut() {
+                    jump.animate_when(jumping, self.age_ticks);
+                } else if jumping {
+                    self.frog_jump = Some(KeyframeAnimationState {
                         start_age: Some(self.age_ticks),
                     });
                 }
@@ -1516,6 +1532,17 @@ impl EntityClientAnimationState {
     /// a non-negative value by the 3.0s length before sampling.
     pub fn frog_croak_seconds(&self, partial_tick: f32) -> f32 {
         self.frog_croak
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The frog jump's elapsed seconds since `Pose.LONG_JUMPING` started (vanilla
+    /// `jumpAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for
+    /// `FrogModel.setupAnim`. Returns `-1.0` (the stopped-animation sentinel) for a
+    /// non-jumping frog and every other entity, so the renderer applies no `FROG_JUMP`
+    /// keyframe; a non-negative value is sampled against the 0.5s definition.
+    pub fn frog_jump_seconds(&self, partial_tick: f32) -> f32 {
+        self.frog_jump
             .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
             .unwrap_or(-1.0)
     }

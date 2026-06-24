@@ -1620,10 +1620,16 @@ When an agent does any of the following, update this file in the same slice:
       seconds since the croak started (or the `-1.0` not-croaking sentinel). While croaking,
       `FrogModel.setupAnim` shows the `croaking_body` pouch and samples `FROG_CROAK`'s POSITION channel
       (the pouch lifts) and SCALE channel (it puffs `(1.3, 2.1, 1.6)` twice and rests collapsed) via the
-      new `AnimationChannel.Targets.SCALE` keyframe target and per-part `ModelPart.scale`. The jump
-      (`Pose.LONG_JUMPING`), tongue (needs `DATA_TONGUE_TARGET_ID` prey targeting), and the in-water
-      swim/idle keyframe animations (swimIdle needs `isInWater`, not projected into the tick) need their
-      own un-projected `AnimationState`s and stay deferred, as does the swim-walk variant
+      new `AnimationChannel.Targets.SCALE` keyframe target and per-part `ModelPart.scale`. The triggered
+      `FrogAnimation.FROG_JUMP` long-jump animation is reproduced the same way: the client `frog_jump`
+      `KeyframeAnimationState` is started/stopped from the synced `Pose.LONG_JUMPING` (id `6`) and
+      projects the elapsed seconds since the long-jump started (or the `-1.0` not-jumping sentinel).
+      While long-jumping, `FrogModel.setupAnim` applies `FROG_JUMP` (0.5 s, not looping) before the
+      croak — a static hold pose that tips the `body` back `-22.5°`, tucks the two arms back `-56.14°`
+      and lifts them `+1` y, and cocks the two legs `45°`, folded additively onto the walk pose. The
+      tongue (needs `DATA_TONGUE_TARGET_ID` prey targeting) and the in-water swim/idle keyframe
+      animations (swimIdle needs `isInWater`, not projected into the tick) need their own un-projected
+      `AnimationState`s and stay deferred, as does the swim-walk variant
       (`applyWalk(..., 1.0, 2.5)` while `isSwimming`). The
       texture-backed path and the three frog texture variants
       (temperate/warm/cold, `FrogVariant`) also remain unsupported (this is a colored-first slice;
