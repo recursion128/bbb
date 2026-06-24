@@ -2269,8 +2269,8 @@ When an agent does any of the following, update this file in the same slice:
       `AdultFelineModel.createBodyMesh()` / `BabyFelineModel.createBodyMesh()` geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now splits vanilla type ids `21` (cat) and `91`
       (ocelot) out of the cat/ocelot/fox wolf-shaped quadruped proxy — both adults and both babies map to
-      the new `EntityModelKind::Feline { cat, baby }` (the `cat` flag selecting the adult cat layer's 0.8
-      `MeshTransformer.scaling` via the root transform; the ocelot and both babies are unscaled),
+      the new `EntityModelKind::Feline { cat, baby, cat_variant }` (the `cat` flag selecting the adult cat
+      layer's 0.8 `MeshTransformer.scaling` via the root transform; the ocelot and both babies are unscaled),
       replacing the wolf-shaped stand-in with the real feline mesh (the fox keeps the wolf proxy —
       `FoxModel` is a distinct non-feline mesh). The adult rest-pose hierarchy is emitted directly (atlas
       64×32, `CubeDeformation.NONE`): eight root parts — the `head` at `offset(0, 15, -9)` (the 5×4×5
@@ -2291,9 +2291,13 @@ When an agent does any of the following, update this file in the same slice:
       `walk_animation_pos/speed`, on both adult and baby). The rest stays deferred: the `tail2` walk wobble
       that adds onto the droop, plus the `isCrouching` / `isSprinting` / `isSitting` / `lieDownAmount` / `relaxStateOneAmount` poses,
       all reading un-projected `FelineRenderState` fields, as does the `AgeableMobRenderer` `0.4` baby
-      render scale. The cat-breed / ocelot textures and the cat collar layer live on the deferred
-      texture-backed path, so the colored debug path renders one tan tint. The texture-backed path remains
-      unsupported (this is a colored-first slice)
+      render scale. The textured path is now wired: `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
+      projected — via the registry-holder mapping shared with chicken/cow/pig/frog — onto one of the eleven
+      vanilla breeds (tabby/black/red/siamese/british_shorthair/calico/persian/ragdoll/white/jellie/all_black),
+      falling back to the bootstrap order (tabby=0..all_black=10, default BLACK) before the dynamic
+      `cat_variant` registry arrives; the ocelot keeps its single breed-less texture. This makes the feline
+      texture set a 24-entry matrix (eleven breeds × adult/baby + ocelot × adult/baby), bumping the master
+      `ENTITY_MODEL_TEXTURE_REFS` array to 260. Only the cat collar layer stays deferred
     - mooshroom entities (adult and baby) as renderer-owned vanilla 26.1 cow-body geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now maps vanilla type id `86` (adult and baby) to
       the new `EntityModelKind::Mooshroom` (`baby` selecting the layout), replacing the generic six-cube
