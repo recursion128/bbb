@@ -5,9 +5,9 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // Vanilla 26.1 `TadpoleModel.createBodyLayer` (atlas 16×16). The mesh root holds two named sibling
 // parts: a 3×2×3 `body` box at `offset(0, 22, -3)` and a 0×2×7 `tail` fin plane at `offset(0, 22, 0)`.
 // The only `TadpoleModel.setupAnim` motion is the tail yaw sway ([`tadpole_tail_yrot`]), reproduced
-// from the projected `age_in_ticks` + `in_water`. Colored-only (no textured path yet), so the cubes
-// stay [`ModelCubeDesc`] and the tree is assembled from `leaf_colored`. Tadpole uses a plain
-// `MobRenderer` with no transform overrides.
+// from the projected `age_in_ticks` + `in_water`. Each unified cube carries both the colored debug
+// tint and the textured `uv_size` / `texOffs`. Tadpole uses a plain `MobRenderer` with no transform
+// overrides.
 
 // `body`: the 3×2×3 box at texOffs(0, 0). Each unified cube carries the colored tint and the textured
 // `uv_size` / `texOffs`.
