@@ -777,8 +777,13 @@ impl EntityModelInstance {
         )
     }
 
-    pub fn creaking(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Creaking, position, y_rot)
+    pub fn creaking(entity_id: i32, position: [f32; 3], y_rot: f32, eyes_glowing: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Creaking { eyes_glowing },
+            position,
+            y_rot,
+        )
     }
 
     pub fn sniffer(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

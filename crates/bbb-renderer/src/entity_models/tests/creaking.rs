@@ -39,7 +39,12 @@ fn creaking_geometry_matches_vanilla_26_1_body_layer() {
 #[test]
 fn creaking_mesh_uses_vanilla_body_layer_geometry() {
     // 16 cubes → 96 faces / 384 vertices / 576 indices, all in the bark tint.
-    let creaking = entity_model_mesh(&[EntityModelInstance::creaking(940, [0.0, 64.0, 0.0], 0.0)]);
+    let creaking = entity_model_mesh(&[EntityModelInstance::creaking(
+        940,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
     assert_eq!(creaking.opaque_faces, 96);
     assert_eq!(creaking.vertices.len(), 384);
     assert_eq!(creaking.indices.len(), 576);
@@ -55,7 +60,7 @@ fn creaking_head_follows_look_angles() {
     // nested root → upper_body → head (emitted first) — its four cubes (skull, brow, two antler
     // planes) are vertices [0, 96). With the walk at rest (speed 0 ⇒ amplitude 0), a non-zero look
     // re-poses only the head subtree; the body, the two arms, and the two legs stay at bind.
-    let base = EntityModelInstance::creaking(941, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::creaking(941, [0.0, 64.0, 0.0], 0.0, false);
     let rest = entity_model_mesh(&[base]);
     let looking = entity_model_mesh(&[base.with_head_look(35.0, -20.0)]);
     assert_eq!(rest.vertices.len(), looking.vertices.len());
@@ -110,10 +115,17 @@ fn creaking_walk_moves_the_limbs_and_composes_with_the_look() {
     // A still creaking (walk speed 0) samples the cycle at amplitude 0, collapsing to the bind pose;
     // a walking creaking samples CREAKING_WALK across the upper body, arms, and legs. The vertex
     // count is preserved.
-    let still = entity_model_mesh(&[EntityModelInstance::creaking(942, [0.0, 64.0, 0.0], 0.0)]);
-    let walking = entity_model_mesh(&[
-        EntityModelInstance::creaking(943, [0.0, 64.0, 0.0], 0.0).with_walk_animation(5.0, 1.0)
-    ]);
+    let still = entity_model_mesh(&[EntityModelInstance::creaking(
+        942,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    let walking =
+        entity_model_mesh(&[
+            EntityModelInstance::creaking(943, [0.0, 64.0, 0.0], 0.0, false)
+                .with_walk_animation(5.0, 1.0),
+        ]);
     assert_eq!(still.vertices.len(), walking.vertices.len());
     assert_ne!(
         still.vertices, walking.vertices,
@@ -123,9 +135,11 @@ fn creaking_walk_moves_the_limbs_and_composes_with_the_look() {
     // The head walk channel adds onto the look, so a walking + looking creaking differs from one
     // that only walks (the head re-poses further).
     let walking_looking =
-        entity_model_mesh(&[EntityModelInstance::creaking(944, [0.0, 64.0, 0.0], 0.0)
-            .with_walk_animation(5.0, 1.0)
-            .with_head_look(30.0, -15.0)]);
+        entity_model_mesh(&[
+            EntityModelInstance::creaking(944, [0.0, 64.0, 0.0], 0.0, false)
+                .with_walk_animation(5.0, 1.0)
+                .with_head_look(30.0, -15.0),
+        ]);
     assert_ne!(
         walking.vertices[..96],
         walking_looking.vertices[..96],
@@ -135,19 +149,29 @@ fn creaking_walk_moves_the_limbs_and_composes_with_the_look() {
 
 #[test]
 fn creaking_textured_render_matches_vanilla_renderer() {
-    let passes = creaking_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
-    assert_eq!(passes[0].texture, CREAKING_TEXTURE_REF);
+    // An inactive creaking renders just the cutout base body.
+    let dormant = creaking_textured_layer_passes(false);
+    assert_eq!(dormant.len(), 1);
+    assert_eq!(dormant[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(dormant[0].texture, CREAKING_TEXTURE_REF);
+    // An active creaking adds the emissive `creaking_eyes.png` eyes overlay.
+    let glowing = creaking_textured_layer_passes(true);
+    assert_eq!(glowing.len(), 2);
+    assert_eq!(glowing[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(glowing[1].texture, CREAKING_EYES_TEXTURE_REF);
     assert_eq!(
-        EntityModelKind::Creaking.vanilla_texture_ref(),
+        EntityModelKind::Creaking { eyes_glowing: true }.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/creaking/creaking.png",
             size: [64, 64],
         })
     );
     assert!(entity_model_texture_refs().contains(&CREAKING_TEXTURE_REF));
-    assert_eq!(creaking_entity_texture_refs(), &[CREAKING_TEXTURE_REF]);
+    assert!(entity_model_texture_refs().contains(&CREAKING_EYES_TEXTURE_REF));
+    assert_eq!(
+        creaking_entity_texture_refs(),
+        &[CREAKING_TEXTURE_REF, CREAKING_EYES_TEXTURE_REF]
+    );
 
     let images: Vec<EntityModelTextureImage> = creaking_entity_texture_refs()
         .iter()
@@ -159,7 +183,12 @@ fn creaking_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::creaking(900, [0.0, 64.0, 0.0], 0.0)],
+        &[EntityModelInstance::creaking(
+            900,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+        )],
         &atlas,
     );
     assert!(!mesh.vertices.is_empty());

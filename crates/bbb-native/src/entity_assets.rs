@@ -167,6 +167,7 @@ mod tests {
                 "textures/entity/illager/evoker_fangs.png",
                 "textures/entity/tadpole/tadpole.png",
                 "textures/entity/creaking/creaking.png",
+                "textures/entity/creaking/creaking_eyes.png",
                 "textures/entity/sniffer/sniffer.png",
                 "textures/entity/parrot/parrot_red_blue.png",
                 "textures/entity/parrot/parrot_blue.png",

@@ -758,7 +758,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 275] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 276] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -831,6 +831,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     EVOKER_FANGS_TEXTURE_REF,
     TADPOLE_TEXTURE_REF,
     CREAKING_TEXTURE_REF,
+    CREAKING_EYES_TEXTURE_REF,
     SNIFFER_TEXTURE_REF,
     PARROT_RED_BLUE_TEXTURE_REF,
     PARROT_BLUE_TEXTURE_REF,
@@ -1698,9 +1699,16 @@ pub(in crate::entity_models) const CREAKING_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/creaking/creaking.png",
         size: [64, 64],
     };
+// Vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`: the glowing-eye overlay, shown when the
+// creaking is active (`creaking_eyes.png`, re-rendering the whole model in the eyes render type).
+pub(in crate::entity_models) const CREAKING_EYES_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/creaking/creaking_eyes.png",
+        size: [64, 64],
+    };
 
-pub(in crate::entity_models) const CREAKING_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [CREAKING_TEXTURE_REF];
+pub(in crate::entity_models) const CREAKING_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [CREAKING_TEXTURE_REF, CREAKING_EYES_TEXTURE_REF];
 
 pub fn creaking_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &CREAKING_ENTITY_TEXTURE_REFS

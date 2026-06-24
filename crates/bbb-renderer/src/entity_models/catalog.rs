@@ -109,8 +109,12 @@ pub enum EntityModelKind {
         variant: FrogModelVariant,
     },
     /// `CreakingModel` at its `createBodyLayer` rest pose. The head look, walk, attack,
-    /// invulnerable, and death keyframe animations and the emissive eyes layer are deferred.
-    Creaking,
+    /// invulnerable, and death keyframe animations are deferred. The emissive eyes layer IS projected:
+    /// `eyes_glowing` (the synced `isActive()` flag) shows the `creaking_eyes.png` overlay; the
+    /// tearing-down death-flicker (`hasGlowingEyes`) stays deferred.
+    Creaking {
+        eyes_glowing: bool,
+    },
     /// `SnifferModel` at its `createBodyLayer` rest pose. The head look, search/walk, and the
     /// dig / long-sniff / stand-up / happy / scenting keyframe animations are deferred.
     Sniffer,

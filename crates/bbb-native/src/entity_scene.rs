@@ -296,6 +296,10 @@ const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
 const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
+/// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
+/// after `Mob.DATA_MOB_FLAGS_ID` (15) come `CAN_MOVE` (16) / `IS_ACTIVE` (17) / `IS_TEARING_DOWN`
+/// (18). The renderer's `eyesGlowing` is `isActive()` for a live creaking (the death-flicker is deferred).
+const CREAKING_IS_ACTIVE_DATA_ID: u8 = 17;
 /// Vanilla `Turtle.HAS_EGG` data id (18): the synced boolean, the turtle's first own accessor
 /// after `AgeableMob.DATA_BABY_ID` (16) and `AGE_LOCKED` (17).
 const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
@@ -879,7 +883,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
         VANILLA_ENTITY_TYPE_COD_ID => EntityModelKind::Cod,
-        VANILLA_ENTITY_TYPE_CREAKING_ID => EntityModelKind::Creaking,
+        VANILLA_ENTITY_TYPE_CREAKING_ID => EntityModelKind::Creaking {
+            eyes_glowing: entity_data_bool(data_values, CREAKING_IS_ACTIVE_DATA_ID, false),
+        },
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => EntityModelKind::Dolphin {
             baby: ageable_baby(data_values),
         },
@@ -4427,12 +4433,21 @@ mod tests {
     #[test]
     fn entity_model_kind_maps_creaking_to_real_model() {
         // The creaking was a placeholder render box; it now resolves to the real `CreakingModel`
-        // at its rest pose. The head look, walk, attack, invulnerable, and death keyframe
-        // animations and the emissive eyes layer are deferred entity-side state, so no synced
-        // data is read.
+        // at its rest pose. The head look, walk, attack, invulnerable, and death keyframe animations
+        // are deferred entity-side state. The emissive eyes layer IS projected: `eyes_glowing` tracks
+        // the synced `IS_ACTIVE` flag (17), defaulting to dormant with no data.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CREAKING_ID, &[]),
-            EntityModelKind::Creaking
+            EntityModelKind::Creaking {
+                eyes_glowing: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+                &[protocol_bool_data(CREAKING_IS_ACTIVE_DATA_ID, true)]
+            ),
+            EntityModelKind::Creaking { eyes_glowing: true }
         );
     }
 

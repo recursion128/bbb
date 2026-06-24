@@ -685,12 +685,24 @@ pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityMod
     )]
 }
 
-pub(in crate::entity_models) fn creaking_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
+pub(in crate::entity_models) fn creaking_textured_layer_passes(
+    eyes_glowing: bool,
+) -> Vec<EntityModelLayerPass> {
+    let mut passes = vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
         CREAKING_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )];
+    // Vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`: an active creaking re-renders the whole
+    // model with the emissive `creaking_eyes.png` in the eyes render type (alpha `1.0` when glowing).
+    if eyes_glowing {
+        passes.push(EntityModelLayerPass::base(
+            EntityModelLayerRenderType::Eyes,
+            CREAKING_EYES_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+        ));
+    }
+    passes
 }
 
 pub(in crate::entity_models) fn sniffer_textured_layer_passes() -> Vec<EntityModelLayerPass> {

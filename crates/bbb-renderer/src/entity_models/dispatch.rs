@@ -512,11 +512,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &frog_textured_layer_passes(variant),
         ),
-        EntityModelKind::Creaking => sink.model(
+        EntityModelKind::Creaking { eyes_glowing } => sink.model(
             CreakingModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &creaking_textured_layer_passes(),
+            &creaking_textured_layer_passes(eyes_glowing),
         ),
         EntityModelKind::Sniffer => sink.model(
             SnifferModel::new(),
