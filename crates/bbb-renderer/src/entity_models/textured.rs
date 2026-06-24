@@ -232,7 +232,7 @@ pub(super) fn entity_model_textured_meshes(
         emit_wither_energy_swirl(&mut meshes, *instance, atlas);
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
-        emit_zombie_armor(&mut meshes, *instance, atlas);
+        emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
         let light = instance.render_state.shader_light();
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
@@ -536,17 +536,17 @@ fn emit_humanoid_armor(
     }
 }
 
-/// The adult zombie's worn armor. The base zombie is emitted by the shared dispatch; here we rebuild
-/// and pose an identical `ZombieModel` purely to read its limb poses, then drape the armor pieces on
-/// it. Baby zombies wear a distinct baby armor mesh (`createBabyArmorMesh`), deferred for now.
-fn emit_zombie_armor(
+/// Worn armor for the standard-`HumanoidModel` armor wearers (vanilla `HumanoidModel.createArmorMeshSet`,
+/// `INNER 0.5` / `OUTER 1.0`). The base body is emitted by the shared dispatch / bespoke emits; here we
+/// rebuild and pose an identical host humanoid model purely to read its limb poses, then drape the armor
+/// pieces on it ([`emit_humanoid_armor`]). Covered: the zombie family (zombie, husk, drowned, zombie
+/// villager), the skeleton family (skeleton, stray, wither/normal/bogged), and the player. DEFERRED:
+/// baby variants (a distinct `createBabyArmorMesh`) and the piglin (a `1.02` armor deformation).
+fn emit_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    if !matches!(instance.kind, EntityModelKind::Zombie { baby: false }) {
-        return;
-    }
     let render_state = &instance.render_state;
     if render_state.head_armor.is_none()
         && render_state.chest_armor.is_none()
@@ -555,10 +555,51 @@ fn emit_zombie_armor(
     {
         return;
     }
-    let transform = entity_model_root_transform(instance);
-    let mut host = ZombieModel::new(false);
-    host.prepare(&instance);
-    emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+    match instance.kind {
+        EntityModelKind::Zombie { baby: false } => {
+            let mut host = ZombieModel::new(false);
+            host.prepare(&instance);
+            let transform = entity_model_root_transform(instance);
+            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+        }
+        EntityModelKind::ZombieVariant {
+            family,
+            baby: false,
+        } => {
+            // The husk wears the `HUSK_SCALE` mesh-transformer scale; the other variants render at 1.0×.
+            let transform = if matches!(family, ZombieVariantModelFamily::Husk) {
+                mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+            } else {
+                entity_model_root_transform(instance)
+            };
+            let mut host = ZombieVariantModel::new(family, false);
+            host.prepare(&instance);
+            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+        }
+        EntityModelKind::Skeleton => {
+            let mut host = SkeletonModel::new(None);
+            host.prepare(&instance);
+            let transform = entity_model_root_transform(instance);
+            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+        }
+        EntityModelKind::SkeletonVariant { family } => {
+            let transform = if matches!(family, SkeletonModelFamily::WitherSkeleton) {
+                wither_skeleton_model_root_transform(instance)
+            } else {
+                entity_model_root_transform(instance)
+            };
+            let mut host = SkeletonModel::new(Some(family));
+            host.prepare(&instance);
+            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+        }
+        EntityModelKind::Player { slim, .. } => {
+            let mut host = PlayerModel::new(slim);
+            host.prepare(&instance);
+            let transform = player_model_root_transform(instance);
+            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+        }
+        _ => {}
+    }
 }
 
 fn emit_squid_textured_model(

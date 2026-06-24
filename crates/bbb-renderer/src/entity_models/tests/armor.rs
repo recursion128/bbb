@@ -148,6 +148,60 @@ fn single_armor_slot_emits_only_its_pieces() {
 }
 
 #[test]
+fn standard_humanoid_wearers_all_drape_armor() {
+    let atlas = iron_armor_atlas();
+    let full_iron = |instance: EntityModelInstance| {
+        instance
+            .with_head_armor(Some(EntityArmorMaterial::Iron))
+            .with_chest_armor(Some(EntityArmorMaterial::Iron))
+            .with_legs_armor(Some(EntityArmorMaterial::Iron))
+            .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    };
+    // Each standard-`HumanoidModel` armor wearer (zombie family, skeleton family, player) drapes the
+    // same 10-cube / 240-vertex armor set; the armor delta is independent of the base body texture.
+    let wearers = [
+        EntityModelInstance::skeleton(80, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::zombie_variant(
+            81,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Drowned,
+            false,
+        ),
+        EntityModelInstance::zombie_variant(
+            82,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Husk,
+            false,
+        ),
+        EntityModelInstance::player(83, [0.0, 64.0, 0.0], 0.0, false),
+    ];
+    for instance in wearers {
+        let bare = entity_model_textured_meshes(&[instance], &atlas);
+        let armored = entity_model_textured_meshes(&[full_iron(instance)], &atlas);
+        assert_eq!(
+            armored.cutout.vertices.len() - bare.cutout.vertices.len(),
+            240,
+            "{:?} drapes the four armor pieces",
+            instance.kind
+        );
+    }
+
+    // A baby husk wears a distinct baby armor mesh (deferred), so it drapes nothing.
+    let baby_husk = EntityModelInstance::zombie_variant(
+        84,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::Husk,
+        true,
+    );
+    let bare = entity_model_textured_meshes(&[baby_husk], &atlas);
+    let armored = entity_model_textured_meshes(&[full_iron(baby_husk)], &atlas);
+    assert_eq!(bare.cutout.vertices.len(), armored.cutout.vertices.len());
+}
+
+#[test]
 fn baby_zombie_armor_is_deferred() {
     let atlas = iron_armor_atlas();
     // The baby zombie wears a distinct baby armor mesh, deferred for now — its cutout is unchanged

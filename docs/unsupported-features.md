@@ -1104,16 +1104,20 @@ When an agent does any of the following, update this file in the same slice:
       (`ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`: leather, copper, chainmail, iron, gold, diamond,
       turtle_scute, netherite) resolve to their `textures/entity/equipment/humanoid/<asset>.png`
       (head/chest/feet) and `humanoid_leggings/<asset>.png` (legs) textures, stitched into the entity
-      atlas. The adult zombie is the first wearer (`EntityModelKind::Zombie { baby: false }`); other
-      humanoids and the baby armor mesh (`createBabyArmorMesh`) are pending coverage. The cross-crate
+      atlas. The standard-`HumanoidModel` armor wearers are covered (`emit_worn_humanoid_armor` dispatch):
+      the zombie family (zombie, husk with `HUSK_SCALE`, drowned, zombie villager), the skeleton family
+      (skeleton, stray, wither/bogged), and the player — each rebuilds its posed host model and drapes the
+      armor. Pending coverage: the baby armor mesh (`createBabyArmorMesh`, a distinct waist/feet tree) and
+      the piglin (a `1.02` armor deformation). The cross-crate
       equipment projection is now wired end-to-end (framework slice 2): `bbb_pack`'s item registry parses
       each `.humanoidArmor(ArmorMaterials.<MAT>, ...)` item to its equipment-asset name
       (`humanoid_armor_asset`), the native layer installs an item id → material table
       (`set_item_armor_materials`), and `WorldStore::entity_model_sources_at_partial_tick` resolves the
       worn item in each armor slot of the entity's `SetEquipment` to a material, projecting
       `head/chest/legs/feet_armor` onto the render source which the native scene maps to the renderer's
-      `EntityArmorMaterial`. So an iron-clad adult zombie now renders its armor live. STILL DEFERRED: the
-      enchant-glint, armor-trim, and leather-dye tint passes, baby armor, and non-zombie humanoid wearers
+      `EntityArmorMaterial`. So iron-clad zombies, skeletons, and players now render their armor live.
+      STILL DEFERRED: the enchant-glint, armor-trim, and leather-dye tint passes; baby armor; and the
+      piglin / mob-specific armor models
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla
