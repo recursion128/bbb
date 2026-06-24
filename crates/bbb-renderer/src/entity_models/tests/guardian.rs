@@ -136,6 +136,32 @@ fn elder_guardian_is_the_guardian_mesh_scaled_up() {
 }
 
 #[test]
+fn guardian_spikes_pulse_with_age() {
+    // Vanilla `GuardianModel.setupAnim` pulses each spike's offset by
+    // `1 + cos(ageInTicks · 1.5 + i) · 0.01`, so the spikes breathe in and out as the entity ages.
+    // The pulse tracks the age phase, and `ageInTicks = 0` is the baked bind pose (`cos(i)`).
+    let base = EntityModelInstance::guardian(995, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = entity_model_mesh(&[base]); // ageInTicks = 0 (bind)
+    let aged = entity_model_mesh(&[base.with_age_in_ticks(10.0)]);
+    assert_eq!(rest.vertices.len(), aged.vertices.len());
+    assert_ne!(
+        rest.vertices, aged.vertices,
+        "the spikes pulse in and out with the entity age"
+    );
+
+    // The pulse advances with the age phase (a later age gives a different spike pose again).
+    let aged_later = entity_model_mesh(&[base.with_age_in_ticks(20.0)]);
+    assert_ne!(aged.vertices, aged_later.vertices);
+
+    // `ageInTicks = 0` reproduces the baked bind spike pose (the `createBodyLayer` phase `cos(i)`).
+    let zero = entity_model_mesh(&[base.with_age_in_ticks(0.0)]);
+    assert_eq!(
+        zero.vertices, rest.vertices,
+        "ageInTicks = 0 is the bind spike pose"
+    );
+}
+
+#[test]
 fn guardian_whole_body_turns_with_the_look() {
     // Vanilla `GuardianModel.setupAnim` sets `head.yRot/xRot` from the plain look, and every part
     // (body shell, spikes, eye, tail) hangs off `head`, so the whole guardian rotates with the look.

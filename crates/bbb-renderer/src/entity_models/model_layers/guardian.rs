@@ -110,12 +110,14 @@ pub(in crate::entity_models) const GUARDIAN_TAIL2_POSE: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
-/// Vanilla `GuardianModel.createBodyLayer` places spike `i` at `getSpike{X,Y,Z}(i, 0, 0)` with
-/// rotation `PI * SPIKE_{X,Y,Z}_ROT[i]`, where `getSpikeOffset(i, 0, 0) = 1 + cos(i) * 0.01`
-/// and the Y base adds 16. This is the spike rest pose; the `setupAnim` age pulse
-/// (`cos(ageInTicks · 1.5 + i)`) and the `spikesAnimation` withdrawal are deferred.
-pub(in crate::entity_models) fn guardian_spike_bind_pose(i: usize) -> PartPose {
-    let offset = 1.0 + (i as f32).cos() * 0.01;
+/// Vanilla `GuardianModel` spike `i` at `getSpike{X,Y,Z}(i, _, ageInTicks)` with rotation
+/// `PI * SPIKE_{X,Y,Z}_ROT[i]`, where `getSpikeOffset(i, _, ageInTicks) = 1 + cos(ageInTicks · 1.5 + i)
+/// · 0.01` and the Y base adds 16. So the spikes slowly pulse in and out with the entity age:
+/// `createBodyLayer` bakes the bind pose at `ageInTicks = 0` (`cos(i)`), and `setupAnim` re-poses
+/// each spike every frame with the live phase. (The `spikesAnimation` attack withdrawal that scales
+/// the `0.01` amplitude stays deferred, so the full amplitude always applies.)
+pub(in crate::entity_models) fn guardian_spike_pose(i: usize, age_pulse: f32) -> PartPose {
+    let offset = 1.0 + (age_pulse + i as f32).cos() * 0.01;
     PartPose {
         offset: [
             GUARDIAN_SPIKE_X[i] * offset,
@@ -129,6 +131,17 @@ pub(in crate::entity_models) fn guardian_spike_bind_pose(i: usize) -> PartPose {
         ],
     }
 }
+
+/// The spike rest pose — the age pulse evaluated at `ageInTicks = 0` (`cos(i)`) — used to build the
+/// bind tree before `setupAnim` re-poses the spikes with the live age phase.
+pub(in crate::entity_models) fn guardian_spike_bind_pose(i: usize) -> PartPose {
+    guardian_spike_pose(i, 0.0)
+}
+
+/// The twelve spikes are the head's first twelve children (built before the eye and tail), so they
+/// carry the index child names `"0"`..=`"11"`.
+const GUARDIAN_SPIKE_CHILD_NAMES: [&str; 12] =
+    ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
 
 /// Builds the guardian's `head` part tree: the body shell carries the twelve spikes, the eye, and
 /// the three-segment tail chain (`tail0` → `tail1` → `tail2`) as children, in vanilla emit order.
@@ -153,7 +166,8 @@ fn guardian_head_part() -> ModelPart {
 /// single `head` root part (body shell + twelve spikes + eye + three-segment tail), so the head IS
 /// the model root. The elder variant is the same tree at the 2.35× scaled root transform (applied at
 /// the call site). Colored-only: `setup_anim` turns the head — and with it the whole guardian — to
-/// the look angles (the spike pulse, eye tracking, tail sway, and attack beam stay deferred).
+/// the look angles and pulses the twelve spikes in and out with the entity age (eye tracking, tail
+/// sway, and attack beam stay deferred).
 pub(in crate::entity_models) struct GuardianModel {
     root: ModelPart,
 }
@@ -184,5 +198,13 @@ impl EntityModel for GuardianModel {
             instance.render_state.head_yaw,
             instance.render_state.head_pitch,
         );
+        // Vanilla `setupAnim` also pulses each of the twelve spikes in and out by
+        // `getSpikeOffset(i, _, ageInTicks) = 1 + cos(ageInTicks · 1.5 + i) · 0.01`. The spikes are
+        // the head's first twelve children, in build order, so they re-pose with the live age phase.
+        let age_pulse = instance.render_state.age_in_ticks * 1.5;
+        for i in 0..GUARDIAN_SPIKE_X.len() {
+            self.root.child_mut(GUARDIAN_SPIKE_CHILD_NAMES[i]).pose =
+                guardian_spike_pose(i, age_pulse);
+        }
     }
 }

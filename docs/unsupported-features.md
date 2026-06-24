@@ -1574,11 +1574,13 @@ When an agent does any of the following, update this file in the same slice:
       scale). The head look (`head.yRot/xRot = state.yRot/xRot`) IS reproduced — every part hangs off
       `head`, so folding `head_look_pose` into `head_t` turns the whole guardian with the projected
       `head_yaw` / `head_pitch`, with a test pinning that both the guardian and the scaled elder turn.
-      The remaining `GuardianModel.setupAnim` is deferred — the spike age pulse
-      (`getSpikeOffset = 1 + cos(ageInTicks · 1.5 + i) · 0.01`) and the `spikesAnimation` withdrawal
-      (`(1 - spikesAnimation) · 0.55`), the eye target tracking
-      (`lookAtPosition`/`lookDirection`/`eyePosition`), the tail sway (`tailAnimation`), and the
-      `GuardianRenderer` attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
+      `GuardianModel.setupAnim` also pulses each spike in and out with the projected `ageInTicks`
+      (`getSpikeOffset = 1 + cos(ageInTicks · 1.5 + i) · 0.01`, the spikes being the head's first
+      twelve children), with a test pinning that the spikes move with the age phase and that
+      `ageInTicks = 0` reproduces the baked bind pose. The remaining `setupAnim` / renderer motion is
+      deferred — the `spikesAnimation` withdrawal (`(1 - spikesAnimation) · 0.55`), the eye target
+      tracking (`lookAtPosition`/`lookDirection`/`eyePosition`), the tail sway (`tailAnimation`), and
+      the `GuardianRenderer` attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
       which read entity-side state not yet projected. The texture-backed path
       (`textures/entity/guardian/guardian.png`) and its lighting/overlay also remain unsupported
       (this is a colored-first slice; the colored debug path approximates the body with a single
