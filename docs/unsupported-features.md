@@ -1610,8 +1610,8 @@ When an agent does any of the following, update this file in the same slice:
       (this is a colored-first slice; the colored debug path approximates the body with a single
       teal tint and the eye with a pink tint)
     - frog entities as renderer-owned vanilla 26.1 `FrogModel.createBodyLayer()` geometry on the
-      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `55` to
-      the new `EntityModelKind::Frog`, replacing the former placeholder box. The static
+      textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `55` to
+      `EntityModelKind::Frog { variant }`, replacing the former placeholder box. The static
       rest-pose hierarchy is emitted directly (atlas 48×48): the `root` part at `offset(0, 24, 0)`
       parents `body` (the 7×3×9 box + 7×0×9 underside plane) and the two legs; `body` parents the
       head (7×0×9 plane + 7×3×9 box) with its `eyes` pivot and two 3×2×3 eyes, the `croaking_body`
@@ -1650,11 +1650,12 @@ When an agent does any of the following, update this file in the same slice:
       `-0.5` y, and the two legs swing out and sink `-1` y, folded additively onto the walk pose. The
       tongue (needs `DATA_TONGUE_TARGET_ID` prey targeting) stays deferred, as do the moving in-water
       swim cycle (`FROG_SWIM` via `applyWalk(..., 1.0, 2.5)` while `isSwimming`) and the ground walk
-      cycle's own un-projected limb-swing (`Frog.updateWalkAnimation`). The
-      texture-backed path and the three frog texture variants
-      (temperate/warm/cold, `FrogVariant`) also remain unsupported (this is a colored-first slice;
-      the colored debug path approximates the body with one orange-tan tint and the eyes with a
-      gold tint)
+      cycle's own un-projected limb-swing (`Frog.updateWalkAnimation`). The textured path now binds
+      the three `FrogVariant` temperature textures (`frog_temperate`/`frog_warm`/`frog_cold.png`):
+      the native scene reads `DATA_VARIANT_ID` (18, `Holder<FrogVariant>`) and resolves the registry
+      id against the synced `minecraft:frog_variant` registry (static `FrogVariants.bootstrap`
+      fallback temperate=0/warm=1/cold=2), so `FrogRenderer.getTextureLocation`'s per-variant asset
+      is matched; only the tongue prey-targeting and the moving swim/walk limb-swing stay deferred
     - creaking entities as renderer-owned vanilla 26.1 `CreakingModel.createBodyLayer()` geometry
       on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id
       `31` to the new `EntityModelKind::Creaking`, replacing the former placeholder box. The static
@@ -1830,8 +1831,8 @@ When an agent does any of the following, update this file in the same slice:
       colored-first slice; the colored debug path approximates the body with one dark tint and the tail fin
       with a lighter tint)
     - parrot entities as renderer-owned vanilla 26.1 `ParrotModel.createBodyLayer()` geometry on the
-      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `98` to the new
-      `EntityModelKind::Parrot`, replacing the former placeholder bounds box. The static STANDING rest-pose
+      textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `98` to
+      `EntityModelKind::Parrot { variant }`, replacing the former placeholder bounds box. The static STANDING rest-pose
       hierarchy is emitted directly (atlas 32×32): seven sibling root parts — the 3×6×3 body (pitched
       0.4937 rad), the 3×4×1 tail (pitched 1.015 rad), the two 1×5×3 wings (pitched -0.6981 rad and flipped
       `yRot = -π`), the 2×3×2 head, and the two 1×2×1 legs (pitched -0.0299 rad) — with the head parenting
@@ -1861,9 +1862,11 @@ When an agent does any of the following, update this file in the same slice:
       `prepare(FLYING)` additionally pitches both legs `xRot += 2π/9`, and FLYING skips the STANDING leg walk
       swing. Still deferred: the PARTY pose (needs the un-projected `isPartyParrot()` jukebox-proximity state)
       and the ON_SHOULDER pose (needs the shoulder-riding render path) — a party/shoulder parrot falls back to
-      STANDING/FLYING. The five `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) live on
-      the deferred texture-backed path, so the colored debug path renders one body tint plus a beak tint. The
-      texture-backed path remains unsupported (this is a colored-first slice)
+      STANDING/FLYING. The five `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) are now
+      bound on the textured path: the native scene reads the synced `DATA_VARIANT_ID` (20, int — after
+      `AgeableMob.AGE_LOCKED` at 17 and the two `TamableAnimal` accessors at 18/19) and `Parrot.Variant.byId`
+      selects the per-colour texture (`parrot_red_blue` / `_blue` / `_green` / `_yellow_blue` / `parrot_grey.png`),
+      matching `ParrotRenderer.getVariantTexture`
     - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to the new
       `EntityModelKind::Shulker`, replacing the former placeholder bounds box. The hierarchy is emitted
