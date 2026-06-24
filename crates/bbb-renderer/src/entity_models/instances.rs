@@ -804,10 +804,16 @@ impl EntityModelInstance {
         )
     }
 
-    pub fn axolotl(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+    pub fn axolotl(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        variant: AxolotlModelVariant,
+    ) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Axolotl { baby },
+            EntityModelKind::Axolotl { baby, variant },
             position,
             y_rot,
         )

@@ -89,6 +89,7 @@ fn axolotl_mesh_selects_adult_or_baby_body_layer() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        AxolotlModelVariant::Lucy,
     )]);
     assert!(adult
         .vertices
@@ -104,6 +105,7 @@ fn axolotl_mesh_selects_adult_or_baby_body_layer() {
         [0.0, 64.0, 0.0],
         0.0,
         true,
+        AxolotlModelVariant::Lucy,
     )]);
     assert!(baby
         .vertices
@@ -131,12 +133,16 @@ fn axolotl_adult_body_turns_toward_the_look_yaw() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        AxolotlModelVariant::Lucy,
     )]);
-    let adult_yawed =
-        entity_model_mesh(&[
-            EntityModelInstance::axolotl(83, [0.0, 64.0, 0.0], 0.0, false)
-                .with_head_look(40.0, 0.0),
-        ]);
+    let adult_yawed = entity_model_mesh(&[EntityModelInstance::axolotl(
+        83,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        AxolotlModelVariant::Lucy,
+    )
+    .with_head_look(40.0, 0.0)]);
     assert_eq!(adult_rest.vertices.len(), adult_yawed.vertices.len());
     assert_ne!(
         adult_rest.vertices, adult_yawed.vertices,
@@ -145,11 +151,14 @@ fn axolotl_adult_body_turns_toward_the_look_yaw() {
 
     // The pitch feeds only the deferred swimming sways (line 77 uses `yRot` alone), so a pure-pitch
     // look leaves the body at rest.
-    let adult_pitched =
-        entity_model_mesh(&[
-            EntityModelInstance::axolotl(84, [0.0, 64.0, 0.0], 0.0, false)
-                .with_head_look(0.0, -25.0),
-        ]);
+    let adult_pitched = entity_model_mesh(&[EntityModelInstance::axolotl(
+        84,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        AxolotlModelVariant::Lucy,
+    )
+    .with_head_look(0.0, -25.0)]);
     assert_eq!(
         adult_rest.vertices, adult_pitched.vertices,
         "pitch alone does not turn the adult body"
@@ -161,12 +170,16 @@ fn axolotl_adult_body_turns_toward_the_look_yaw() {
         [0.0, 64.0, 0.0],
         0.0,
         true,
+        AxolotlModelVariant::Lucy,
     )]);
-    let baby_looked =
-        entity_model_mesh(&[
-            EntityModelInstance::axolotl(86, [0.0, 64.0, 0.0], 0.0, true)
-                .with_head_look(40.0, -25.0),
-        ]);
+    let baby_looked = entity_model_mesh(&[EntityModelInstance::axolotl(
+        86,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        AxolotlModelVariant::Lucy,
+    )
+    .with_head_look(40.0, -25.0)]);
     assert_eq!(
         baby_rest.vertices, baby_looked.vertices,
         "the baby axolotl ignores the look"
@@ -175,31 +188,45 @@ fn axolotl_adult_body_turns_toward_the_look_yaw() {
 
 #[test]
 fn axolotl_textured_render_matches_vanilla_renderer() {
-    assert_eq!(
-        axolotl_textured_layer_passes(false)[0].texture,
-        AXOLOTL_TEXTURE_REF
-    );
-    assert_eq!(
-        axolotl_textured_layer_passes(true)[0].texture,
-        AXOLOTL_BABY_TEXTURE_REF
-    );
-    assert_eq!(
-        axolotl_textured_layer_passes(false)[0].render_type,
-        EntityModelLayerRenderType::Cutout
-    );
-    assert_eq!(
-        EntityModelKind::Axolotl { baby: false }.vanilla_texture_ref(),
-        Some(AXOLOTL_TEXTURE_REF)
-    );
-    assert_eq!(
-        EntityModelKind::Axolotl { baby: true }.vanilla_texture_ref(),
-        Some(AXOLOTL_BABY_TEXTURE_REF)
-    );
-    assert!(entity_model_texture_refs().contains(&AXOLOTL_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&AXOLOTL_BABY_TEXTURE_REF));
+    // `AxolotlRenderer.TEXTURE_BY_TYPE`: the five `Axolotl.Variant` colours × {adult, baby}.
+    for variant in [
+        AxolotlModelVariant::Lucy,
+        AxolotlModelVariant::Wild,
+        AxolotlModelVariant::Gold,
+        AxolotlModelVariant::Cyan,
+        AxolotlModelVariant::Blue,
+    ] {
+        for baby in [false, true] {
+            let texture = axolotl_texture_ref(variant, baby);
+            assert_eq!(
+                axolotl_textured_layer_passes(variant, baby)[0].texture,
+                texture
+            );
+            assert_eq!(
+                axolotl_textured_layer_passes(variant, baby)[0].render_type,
+                EntityModelLayerRenderType::Cutout
+            );
+            assert_eq!(
+                EntityModelKind::Axolotl { baby, variant }.vanilla_texture_ref(),
+                Some(texture)
+            );
+            assert!(entity_model_texture_refs().contains(&texture));
+        }
+    }
     assert_eq!(
         axolotl_entity_texture_refs(),
-        &[AXOLOTL_TEXTURE_REF, AXOLOTL_BABY_TEXTURE_REF]
+        &[
+            AXOLOTL_LUCY_TEXTURE_REF,
+            AXOLOTL_LUCY_BABY_TEXTURE_REF,
+            AXOLOTL_WILD_TEXTURE_REF,
+            AXOLOTL_WILD_BABY_TEXTURE_REF,
+            AXOLOTL_GOLD_TEXTURE_REF,
+            AXOLOTL_GOLD_BABY_TEXTURE_REF,
+            AXOLOTL_CYAN_TEXTURE_REF,
+            AXOLOTL_CYAN_BABY_TEXTURE_REF,
+            AXOLOTL_BLUE_TEXTURE_REF,
+            AXOLOTL_BLUE_BABY_TEXTURE_REF,
+        ]
     );
 
     let images: Vec<EntityModelTextureImage> = axolotl_entity_texture_refs()
@@ -218,6 +245,7 @@ fn axolotl_textured_render_matches_vanilla_renderer() {
                 [0.0, 64.0, 0.0],
                 0.0,
                 baby,
+                AxolotlModelVariant::Cyan,
             )],
             &atlas,
         );

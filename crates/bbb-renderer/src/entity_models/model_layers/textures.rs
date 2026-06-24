@@ -1,5 +1,7 @@
 use super::super::EntityModelTextureRef;
-use crate::entity_models::catalog::{FoxModelVariant, FrogModelVariant, ParrotModelVariant};
+use crate::entity_models::catalog::{
+    AxolotlModelVariant, FoxModelVariant, FrogModelVariant, ParrotModelVariant,
+};
 
 mod equine;
 
@@ -755,7 +757,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 202] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 210] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -840,8 +842,16 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     NAUTILUS_BABY_TEXTURE_REF,
     PANDA_TEXTURE_REF,
     PANDA_BABY_TEXTURE_REF,
-    AXOLOTL_TEXTURE_REF,
-    AXOLOTL_BABY_TEXTURE_REF,
+    AXOLOTL_LUCY_TEXTURE_REF,
+    AXOLOTL_LUCY_BABY_TEXTURE_REF,
+    AXOLOTL_WILD_TEXTURE_REF,
+    AXOLOTL_WILD_BABY_TEXTURE_REF,
+    AXOLOTL_GOLD_TEXTURE_REF,
+    AXOLOTL_GOLD_BABY_TEXTURE_REF,
+    AXOLOTL_CYAN_TEXTURE_REF,
+    AXOLOTL_CYAN_BABY_TEXTURE_REF,
+    AXOLOTL_BLUE_TEXTURE_REF,
+    AXOLOTL_BLUE_BABY_TEXTURE_REF,
     FOX_RED_TEXTURE_REF,
     FOX_RED_BABY_TEXTURE_REF,
     FOX_RED_SLEEP_TEXTURE_REF,
@@ -1760,18 +1770,88 @@ pub fn panda_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &PANDA_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const AXOLOTL_TEXTURE_REF: EntityModelTextureRef =
+// The axolotl texture matrix (`AxolotlRenderer.TEXTURE_BY_TYPE`): the five `Axolotl.Variant` colours
+// × {adult 64×64, baby 32×32}. `getTextureLocation` picks `axolotl_<name>.png` /
+// `axolotl_<name>_baby.png` from the variant and `isBaby`.
+pub(in crate::entity_models) const AXOLOTL_LUCY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/axolotl/axolotl_lucy.png",
         size: [64, 64],
     };
-pub(in crate::entity_models) const AXOLOTL_BABY_TEXTURE_REF: EntityModelTextureRef =
+pub(in crate::entity_models) const AXOLOTL_LUCY_BABY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/axolotl/axolotl_lucy_baby.png",
         size: [32, 32],
     };
-pub(in crate::entity_models) const AXOLOTL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [AXOLOTL_TEXTURE_REF, AXOLOTL_BABY_TEXTURE_REF];
+pub(in crate::entity_models) const AXOLOTL_WILD_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_wild.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const AXOLOTL_WILD_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_wild_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const AXOLOTL_GOLD_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_gold.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const AXOLOTL_GOLD_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_gold_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const AXOLOTL_CYAN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_cyan.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const AXOLOTL_CYAN_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_cyan_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const AXOLOTL_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_blue.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const AXOLOTL_BLUE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_blue_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) fn axolotl_texture_ref(
+    variant: AxolotlModelVariant,
+    baby: bool,
+) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (AxolotlModelVariant::Lucy, false) => AXOLOTL_LUCY_TEXTURE_REF,
+        (AxolotlModelVariant::Lucy, true) => AXOLOTL_LUCY_BABY_TEXTURE_REF,
+        (AxolotlModelVariant::Wild, false) => AXOLOTL_WILD_TEXTURE_REF,
+        (AxolotlModelVariant::Wild, true) => AXOLOTL_WILD_BABY_TEXTURE_REF,
+        (AxolotlModelVariant::Gold, false) => AXOLOTL_GOLD_TEXTURE_REF,
+        (AxolotlModelVariant::Gold, true) => AXOLOTL_GOLD_BABY_TEXTURE_REF,
+        (AxolotlModelVariant::Cyan, false) => AXOLOTL_CYAN_TEXTURE_REF,
+        (AxolotlModelVariant::Cyan, true) => AXOLOTL_CYAN_BABY_TEXTURE_REF,
+        (AxolotlModelVariant::Blue, false) => AXOLOTL_BLUE_TEXTURE_REF,
+        (AxolotlModelVariant::Blue, true) => AXOLOTL_BLUE_BABY_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) const AXOLOTL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 10] = [
+    AXOLOTL_LUCY_TEXTURE_REF,
+    AXOLOTL_LUCY_BABY_TEXTURE_REF,
+    AXOLOTL_WILD_TEXTURE_REF,
+    AXOLOTL_WILD_BABY_TEXTURE_REF,
+    AXOLOTL_GOLD_TEXTURE_REF,
+    AXOLOTL_GOLD_BABY_TEXTURE_REF,
+    AXOLOTL_CYAN_TEXTURE_REF,
+    AXOLOTL_CYAN_BABY_TEXTURE_REF,
+    AXOLOTL_BLUE_TEXTURE_REF,
+    AXOLOTL_BLUE_BABY_TEXTURE_REF,
+];
 pub fn axolotl_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &AXOLOTL_ENTITY_TEXTURE_REFS
 }

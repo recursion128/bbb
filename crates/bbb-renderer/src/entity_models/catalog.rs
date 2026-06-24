@@ -128,11 +128,13 @@ pub enum EntityModelKind {
         rolled_up: bool,
     },
     /// `AdultAxolotlModel` / `BabyAxolotlModel` at their `createBodyLayer` rest pose (`baby`
-    /// selects the baby body layer). The body yaw, the swimming / water-hovering / ground-crawling
-    /// / lay-still procedural sways and baby keyframe animations, the play-dead pose, the
-    /// mirror-leg copy, and the five color variants are deferred.
+    /// selects the baby body layer), textured by the five `Axolotl.Variant` colors × age
+    /// (`AxolotlRenderer.TEXTURE_BY_TYPE`). The body yaw, the swimming / water-hovering /
+    /// ground-crawling / lay-still procedural sways and baby keyframe animations, the play-dead
+    /// pose, and the mirror-leg copy are deferred.
     Axolotl {
         baby: bool,
+        variant: AxolotlModelVariant,
     },
     /// `TadpoleModel` at its `createBodyLayer` rest pose. The tail yaw sway (`tail.yRot`) is
     /// deferred.
@@ -881,6 +883,32 @@ impl FoxModelVariant {
         match id {
             1 => Self::Snow,
             _ => Self::Red,
+        }
+    }
+}
+
+/// Vanilla `Axolotl.Variant` (the synced `DATA_VARIANT` int): the five axolotl colours, sharing one
+/// `AxolotlModel` and differing by texture × age (`AxolotlRenderer.TEXTURE_BY_TYPE`). `LUCY` is the
+/// vanilla `DEFAULT`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AxolotlModelVariant {
+    Lucy,
+    Wild,
+    Gold,
+    Cyan,
+    Blue,
+}
+
+impl AxolotlModelVariant {
+    /// Vanilla `Axolotl.Variant.byId` (`ByIdMap.continuous` with `OutOfBoundsStrategy.ZERO`): maps
+    /// the synced `DATA_VARIANT` int to a colour, folding out-of-range ids back to `LUCY`.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Wild,
+            2 => Self::Gold,
+            3 => Self::Cyan,
+            4 => Self::Blue,
+            _ => Self::Lucy,
         }
     }
 }

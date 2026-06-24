@@ -536,11 +536,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &armadillo_textured_layer_passes(baby),
         ),
-        EntityModelKind::Axolotl { baby } => sink.model(
+        EntityModelKind::Axolotl { baby, variant } => sink.model(
             AxolotlModel::new(baby),
             entity_model_root_transform(*instance),
             instance,
-            &axolotl_textured_layer_passes(baby),
+            &axolotl_textured_layer_passes(variant, baby),
         ),
         EntityModelKind::Tadpole => sink.model(
             TadpoleModel::new(),

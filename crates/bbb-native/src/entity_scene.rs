@@ -2,13 +2,14 @@ use bbb_protocol::packets::{
     EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind,
 };
 use bbb_renderer::{
-    ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-    DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant,
-    FrogModelVariant, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily,
-    LlamaVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose,
-    SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
-    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ArmorStandModelPose, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
+    ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelInstance,
+    EntityModelKind, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HumanoidModelFamily,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, ParrotModelVariant, PigModelVariant,
+    PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize, SelectionBox, SelectionOutline,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -261,6 +262,9 @@ const FROG_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Fox.DATA_TYPE_ID (18, INT): the first `Fox` accessor (`Fox extends Animal`), holding the
 // `Fox.Variant` id; `Fox.DATA_FLAGS_ID` follows at 19.
 const FOX_TYPE_DATA_ID: u8 = 18;
+// Vanilla Axolotl.DATA_VARIANT (18, INT): the first `Axolotl` accessor (`Axolotl extends Animal`),
+// holding the `Axolotl.Variant` id; DATA_PLAYING_DEAD / FROM_BUCKET follow at 19/20.
+const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
 // accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
 // (18) / DATA_OWNERUUID_ID (19).
@@ -833,6 +837,11 @@ fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityModelKind::Axolotl {
             baby: ageable_baby(data_values),
+            variant: AxolotlModelVariant::from_id(entity_data_int(
+                data_values,
+                AXOLOTL_VARIANT_DATA_ID,
+                0,
+            )),
         },
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
         VANILLA_ENTITY_TYPE_BEE_ID => EntityModelKind::Bee {
@@ -5145,20 +5154,46 @@ mod tests {
     fn entity_model_kind_projects_axolotl_baby_from_data() {
         // The axolotl was a placeholder bounds box; it now resolves to the real `AdultAxolotlModel`
         // / `BabyAxolotlModel`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default
-        // adult), as in the vanilla `AgeableMobRenderer`. The body yaw, the procedural / keyframe
-        // swim-walk-idle animations, the play-dead pose, the mirror-leg copy, and the five color
-        // variants are deferred entity-side state.
+        // adult), as in the vanilla `AgeableMobRenderer`, and textured by the `Axolotl.Variant`
+        // colour read from `DATA_VARIANT` (index 18). The body yaw, the procedural / keyframe
+        // swim-walk-idle animations, the play-dead pose, and the mirror-leg copy stay deferred.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_AXOLOTL_ID, &[]),
-            EntityModelKind::Axolotl { baby: false }
+            EntityModelKind::Axolotl {
+                baby: false,
+                variant: AxolotlModelVariant::Lucy
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_AXOLOTL_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Axolotl { baby: true }
+            EntityModelKind::Axolotl {
+                baby: true,
+                variant: AxolotlModelVariant::Lucy
+            }
         );
+        // `DATA_VARIANT` (18, int) selects the colour via `Axolotl.Variant.byId`.
+        for (id, variant) in [
+            (0, AxolotlModelVariant::Lucy),
+            (1, AxolotlModelVariant::Wild),
+            (2, AxolotlModelVariant::Gold),
+            (3, AxolotlModelVariant::Cyan),
+            (4, AxolotlModelVariant::Blue),
+            (5, AxolotlModelVariant::Lucy),
+        ] {
+            assert_eq!(
+                entity_model_kind(
+                    VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+                    &[protocol_int_data(AXOLOTL_VARIANT_DATA_ID, id)]
+                ),
+                EntityModelKind::Axolotl {
+                    baby: false,
+                    variant
+                }
+            );
+        }
     }
 
     #[test]
