@@ -2147,10 +2147,12 @@ When an agent does any of the following, update this file in the same slice:
       (`head.xRot/yRot` set from the projected `head_yaw/head_pitch`, turning only the head) is reproduced
       on both, as is the adult's not-sitting standing tail droop (`tail2.xRot = 1.7278761`, a real change
       from the bind that the deferred walk wobble would add onto); the baby's identical `tail2` assignment
-      is a no-op (its lower tail is cubeless), so the baby's only reproduced pose is the head look.
-      Everything else stays deferred: the bespoke feline walk leg swing (its own mirrored phase and
-      amplitude-1.0 formula, distinct from the `QuadrupedModel` `1.4` rule) and the `tail2` walk wobble,
-      plus the `isCrouching` / `isSprinting` / `isSitting` / `lieDownAmount` / `relaxStateOneAmount` poses,
+      is a no-op (its lower tail is cubeless), so the baby's only reproduced standing pose is the head
+      look. The bespoke feline walk leg swing is now reproduced too (each leg `xRot = cos(pos·0.6662
+      [+π])·1.0·speed` at the shorter `1.0` amplitude, keyed by leg NAME to the MIRROR of the
+      `QuadrupedModel` diagonal — left-hind/right-front in phase — consuming the projected
+      `walk_animation_pos/speed`, on both adult and baby). The rest stays deferred: the `tail2` walk wobble
+      that adds onto the droop, plus the `isCrouching` / `isSprinting` / `isSitting` / `lieDownAmount` / `relaxStateOneAmount` poses,
       all reading un-projected `FelineRenderState` fields, as does the `AgeableMobRenderer` `0.4` baby
       render scale. The cat-breed / ocelot textures and the cat collar layer live on the deferred
       texture-backed path, so the colored debug path renders one tan tint. The texture-backed path remains

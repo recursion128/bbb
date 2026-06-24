@@ -1,5 +1,6 @@
 use super::{
-    apply_head_look, model_cube as cube, ModelCubeDesc, PartPose, FELINE_TAN, PART_POSE_ZERO,
+    apply_head_look, limb_swing_at_rest, model_cube as cube, ModelCubeDesc, PartPose, FELINE_TAN,
+    PART_POSE_ZERO,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -276,6 +277,31 @@ impl FelineModel {
     }
 }
 
+/// Vanilla `AdultFelineModel`/`BabyFelineModel.setupAnim` walk leg swing: each leg's `xRot = cos(pos·
+/// 0.6662 [+ π]) · 1.0 · speed`. The feline uses the MIRROR of the `QuadrupedModel` diagonal at the
+/// shorter `1.0` amplitude (vs the `1.4` rule) — the left-hind & right-front legs swing in phase and the
+/// right-hind & left-front a half-cycle out (the opposite of the standard right-hind/left-front pairing),
+/// keyed by leg NAME. The base leg pose carries no `xRot`, so it is set (not accumulated). A no-op while
+/// at rest. The `tail2` walk wobble that vanilla adds on top stays deferred.
+fn apply_feline_leg_swing(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    let phase = walk_animation_pos * 0.6662;
+    for (name, phase_offset) in [
+        ("left_hind_leg", 0.0),
+        ("right_front_leg", 0.0),
+        ("right_hind_leg", std::f32::consts::PI),
+        ("left_front_leg", std::f32::consts::PI),
+    ] {
+        root.child_mut(name).pose.rotation[0] = (phase + phase_offset).cos() * walk_animation_speed;
+    }
+}
+
 impl EntityModel for FelineModel {
     fn root(&self) -> &ModelPart {
         &self.root
@@ -298,5 +324,12 @@ impl EntityModel for FelineModel {
         if !self.baby {
             self.root.child_mut("tail2").pose.rotation[0] = FELINE_TAIL2_REST_X_ROT;
         }
+        // The four legs sweep with the gait (the sitting / crouching / sprinting branches that alter it
+        // are deferred, so the swing applies whenever the feline is moving).
+        apply_feline_leg_swing(
+            &mut self.root,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
     }
 }

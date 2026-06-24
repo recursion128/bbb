@@ -179,6 +179,33 @@ fn feline_head_look_turns_only_the_head() {
 }
 
 #[test]
+fn feline_legs_swing_with_the_gait() {
+    // Vanilla `AdultFelineModel.setupAnim` sweeps the four legs by `cos(pos·0.6662 [+π])·1.0·speed`
+    // (the mirror of the QuadrupedModel diagonal: left-hind/right-front in phase). The head (vertices
+    // `[0, 96)`) is untouched by the swing; the legs move.
+    let rest = EntityModelInstance::feline(520, [0.0, 64.0, 0.0], 0.0, false, false);
+    let walking = rest.with_walk_animation(3.0, 0.8);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let walk_mesh = entity_model_mesh(&[walking]);
+    assert_eq!(rest_mesh.vertices.len(), walk_mesh.vertices.len());
+    assert_ne!(
+        rest_mesh.vertices, walk_mesh.vertices,
+        "the legs swing with the gait"
+    );
+    assert_eq!(
+        rest_mesh.vertices[..96],
+        walk_mesh.vertices[..96],
+        "the head is untouched by the leg swing"
+    );
+
+    // The swing advances with the walk position, and is a no-op at zero speed.
+    let walk_later = entity_model_mesh(&[rest.with_walk_animation(6.0, 0.8)]);
+    assert_ne!(walk_mesh.vertices, walk_later.vertices);
+    let still = entity_model_mesh(&[rest.with_walk_animation(3.0, 0.0)]);
+    assert_eq!(still.vertices, rest_mesh.vertices);
+}
+
+#[test]
 fn baby_feline_head_look_turns_only_the_head() {
     // The baby head is also the first root part (four cubes → vertices `[0, 96)`). Everything below it
     // holds — the baby's `tail2` droop is a no-op (it is cubeless), so the rest of the mesh is rigid.
