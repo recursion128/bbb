@@ -23,81 +23,150 @@ pub struct SleepingPose {
     pub bed_offset: [f32; 2],
 }
 
-/// Per-frame projection of the vanilla `LivingEntityRenderState` (and its
-/// `EntityRenderState` base) fields that the renderer entity pass consumes.
+/// Generates the [`EntityRenderState`] struct, its `defaults()`/`resting()`
+/// constructors, and the single-field `with_*` builders on
+/// [`EntityModelInstance`] from one per-field declaration, so adding an
+/// animation field is a single line instead of edits at three sites (struct
+/// field, `resting()` default, builder).
 ///
-/// Vanilla renders entities from a render-state snapshot extracted once per
-/// frame in `EntityRenderer.extractRenderState`, not from the live entity. This
-/// struct is the matching projection and the single landing spot for the
-/// per-frame rotation, pose, and animation values shared across model families.
-/// Pipeline work added later (block+sky `lightCoords`, hurt/white
-/// `OverlayTexture`, `walkAnimationPos`/`walkAnimationSpeed` limb-swing, head
-/// `yRot`/`xRot` look, `ageScale`) extends this one structure instead of growing
-/// ad hoc fields on [`EntityModelInstance`].
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct EntityRenderState {
+/// Each entry is `$(#[doc...])* (with_$name) $name: $ty = $default;` and gets a
+/// `pub` struct field (with its doc comments forwarded verbatim), a default in
+/// `defaults()`, and a `pub fn with_$name(self, $name: $ty) -> Self` setter
+/// that assigns `self.render_state.$name`. The builder name is spelled out in
+/// the leading parens (always `with_<name>`) because declarative macros cannot
+/// synthesize the `with_` identifier without a proc-macro helper. Write empty
+/// parens `()` instead to skip the setter for fields driven by `resting`'s
+/// parameter or by a hand-written multi-field convenience builder (e.g.
+/// `with_head_look`).
+macro_rules! entity_render_state {
+    (
+        $(
+            $(#[$meta:meta])*
+            ($($with:ident)?) $name:ident : $ty:ty = $default:expr
+        );* $(;)?
+    ) => {
+        /// Per-frame projection of the vanilla `LivingEntityRenderState` (and its
+        /// `EntityRenderState` base) fields that the renderer entity pass consumes.
+        ///
+        /// Vanilla renders entities from a render-state snapshot extracted once per
+        /// frame in `EntityRenderer.extractRenderState`, not from the live entity. This
+        /// struct is the matching projection and the single landing spot for the
+        /// per-frame rotation, pose, and animation values shared across model families.
+        /// Pipeline work added later (block+sky `lightCoords`, hurt/white
+        /// `OverlayTexture`, `walkAnimationPos`/`walkAnimationSpeed` limb-swing, head
+        /// `yRot`/`xRot` look, `ageScale`) extends this one structure instead of growing
+        /// ad hoc fields on [`EntityModelInstance`].
+        #[derive(Debug, Clone, Copy, PartialEq)]
+        pub struct EntityRenderState {
+            $(
+                $(#[$meta])*
+                pub $name: $ty,
+            )*
+        }
+
+        impl EntityRenderState {
+            /// The resting per-field defaults shared by every entity before the
+            /// scene projects per-frame poses and sampled light. [`resting`]
+            /// overrides only `body_rot`.
+            ///
+            /// [`resting`]: Self::resting
+            fn defaults() -> Self {
+                Self {
+                    $($name: $default,)*
+                }
+            }
+
+            /// Builds the resting render state for an entity facing `body_rot`
+            /// degrees: head aligned with the body (no look), no eat-grass head
+            /// pose, an all-fours polar bear stance, and full-bright light.
+            /// Per-frame animation poses and sampled light are layered on by the
+            /// entity scene projection.
+            fn resting(body_rot: f32) -> Self {
+                Self {
+                    body_rot,
+                    ..Self::defaults()
+                }
+            }
+        }
+
+        impl EntityModelInstance {
+            $(
+                $(
+                    /// Sets the matching [`EntityRenderState`] field (single-field
+                    /// render-state builder; see the field for the vanilla reference).
+                    pub fn $with(mut self, $name: $ty) -> Self {
+                        self.render_state.$name = $name;
+                        self
+                    }
+                )?
+            )*
+        }
+    };
+}
+
+entity_render_state! {
     /// Vanilla `LivingEntityRenderState.bodyRot`: the interpolated body yaw, in
     /// degrees, that orients the model root transform. The entity scene folds the
     /// `LivingEntityRenderer.setupRotations` freezing body shake into this value.
-    pub body_rot: f32,
+    () body_rot: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.yRot`: the net head yaw in degrees
     /// (`Mth.wrapDegrees(headRot - bodyRot)`), i.e. the head turn relative to the
     /// body that models apply as `head.yRot = yRot * π/180`. `0.0` when the head
     /// is aligned with the body. The entity scene projects it from the canonical
     /// head/body yaw.
-    pub head_yaw: f32,
+    () head_yaw: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.xRot`: the head pitch in degrees
     /// (`entity.getXRot`), applied as `head.xRot = xRot * π/180`. `0.0` when the
     /// head is level.
-    pub head_pitch: f32,
+    () head_pitch: f32 = 0.0;
     /// Per-frame sheep eat-grass head pose (`Sheep.getHeadEatPositionScale` /
     /// `getHeadEatAngleScale`). [`SheepHeadEatPose::NONE`] for every non-sheep
     /// entity and for a sheep that is not currently eating.
-    pub head_eat: SheepHeadEatPose,
+    (with_head_eat) head_eat: SheepHeadEatPose = SheepHeadEatPose::NONE;
     /// Per-frame polar bear standing-rear scale
     /// (`PolarBear.getStandingAnimationScale`, `0.0..=1.0`). `0.0` for every
     /// other entity and for a polar bear on all fours.
-    pub polar_bear_stand_scale: f32,
+    (with_polar_bear_stand_scale) polar_bear_stand_scale: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.deathTime` (`entity.deathTime > 0 ?
     /// entity.deathTime + partialTick : 0`): the lerped death-animation counter
     /// that tips a dying living entity over in `LivingEntityRenderer.setupRotations`
     /// (`Axis.ZP.rotationDegrees(sqrt(min((deathTime-1)/20*1.6, 1)) *
     /// getFlipDegrees())`). `0.0` for every entity that is alive.
-    pub death_time: f32,
+    (with_death_time) death_time: f32 = 0.0;
     /// Vanilla `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block,
     /// sky)`): the packed block+sky light sampled at the entity's light-probe
     /// block position. Defaults to [`ENTITY_FULL_BRIGHT_LIGHT_COORDS`]; the
     /// entity scene projects the sampled value with the on-fire override.
-    pub light_coords: u32,
+    (with_light_coords) light_coords: u32 = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
     /// Vanilla `LivingEntityRenderState.hasRedOverlay` (`hurtTime > 0`): selects
     /// the red row of `OverlayTexture` so the entity flashes red when hurt.
-    pub has_red_overlay: bool,
+    (with_has_red_overlay) has_red_overlay: bool = false;
     /// Vanilla `CreeperRenderer.getWhiteOverlayProgress` (`0.0..=1.0`): selects
     /// the white-flash column of `OverlayTexture` so a priming creeper flashes
     /// white. `0.0` for every entity that is not flashing white.
-    pub white_overlay_progress: f32,
+    (with_white_overlay_progress) white_overlay_progress: f32 = 0.0;
     /// Vanilla `CreeperRenderState.swelling` (`Creeper.getSwelling`, lerped): the raw
     /// fuse progress that `CreeperRenderer.scale` inflates the model by while a creeper
     /// primes to explode. `0.0` for every non-creeper entity and a creeper at rest, where
     /// the swell scale is the identity.
-    pub creeper_swelling: f32,
+    (with_creeper_swelling) creeper_swelling: f32 = 0.0;
     /// Vanilla `ShulkerRenderState.peekAmount` (`Shulker.getClientPeekAmount`, lerped): the
     /// client peek that `ShulkerModel.setupAnim` opens the lid by — `lid.y = 16 + sin((0.5 +
     /// peek)·π)·8` (plus an `ageInTicks` bob above `0.5`) and a `lid.yRot` twist above `0.3`.
     /// `0.0` (closed/bind pose, `lid.y = 24`) for every non-shulker and a shut shulker.
-    pub shulker_peek: f32,
+    (with_shulker_peek) shulker_peek: f32 = 0.0;
     /// Vanilla `WardenRenderState.tendrilAnimation` (`Warden.getTendrilAnimation`, lerped): the
     /// `0..=1` tendril pulse that `WardenModel.animateTendrils` swings the two antennae by —
     /// `leftTendril.xRot = tendrilAnimation · cos(ageInTicks · 2.25) · π · 0.1`, the right negated.
     /// `0.0` (bind pose, antennae still) for every non-warden and a warden at rest.
-    pub tendril_animation: f32,
+    (with_tendril_animation) tendril_animation: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
     /// branch `Axis.XP.rotationDegrees(-90 - xRot)` then
     /// `Axis.YP.rotationDegrees(ageInTicks * -75)`. `None` for every entity that is
     /// not spinning (the death tip-over takes precedence over this branch).
-    pub auto_spin_age_ticks: Option<f32>,
+    (with_auto_spin_age_ticks) auto_spin_age_ticks: Option<f32> = None;
     /// Vanilla `LivingEntityRenderState.isUpsideDown` Dinnerbone/Grumm flip: when
     /// the entity is upside down, `Some(boundingBoxHeight)` drives the
     /// `LivingEntityRenderer.setupRotations` branch `translate(0, (bbHeight + 0.1) /
@@ -106,188 +175,139 @@ pub struct EntityRenderState {
     /// model scale is applied innermost), so the `/ entityScale` is unnecessary.
     /// `None` for every entity that is not upside down (death and the riptide spin
     /// both take precedence over this branch).
-    pub upside_down_height: Option<f32>,
+    (with_upside_down_height) upside_down_height: Option<f32> = None;
     /// Vanilla `LivingEntityRenderState.hasPose(Pose.SLEEPING)`: when sleeping in a
     /// bed, the renderer skips the `180 - bodyRot` yaw and lays the model down via
     /// [`SleepingPose`]. `None` for every entity that is not sleeping. Death and
     /// the riptide spin take precedence over this branch; this branch takes
     /// precedence over the upside-down flip.
-    pub sleeping: Option<SleepingPose>,
+    (with_sleeping) sleeping: Option<SleepingPose> = None;
     /// Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the `SCALE`
     /// attribute): the uniform model scale `LivingEntityRenderer.submit` applies as
     /// `poseStack.scale(scale, scale, scale)` before `setupRotations`. `1.0` for an
     /// entity at its default size.
-    pub scale: f32,
+    (with_scale) scale: f32 = 1.0;
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that models feed into the `cos(animationPos * 0.6662 ...)` leg/arm sway in
     /// `setupAnim`. `0.0` for a standing entity.
-    pub walk_animation_pos: f32,
+    () walk_animation_pos: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.walkAnimationSpeed`
     /// (`WalkAnimationState.speed(partialTick)`): the lerped limb-swing amplitude
     /// (`0.0..=1.0`) that scales the sway in `setupAnim`. `0.0` for a standing
     /// entity, leaving the model in its rest pose.
-    pub walk_animation_speed: f32,
+    () walk_animation_speed: f32 = 0.0;
     /// Vanilla `EntityRenderState.ageInTicks` (`entity.tickCount + partialTick`): the
     /// lerped per-frame age that drives continuous idle animations (e.g. the
     /// `AbstractPiglinModel` ear flap). `0.0` until the entity scene projects it.
-    pub age_in_ticks: f32,
+    (with_age_in_ticks) age_in_ticks: f32 = 0.0;
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): deepens the held-out
     /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs
     /// `-π / 2.25` calm). `false` for every calm or non-zombie-family entity.
-    pub is_aggressive: bool,
+    (with_is_aggressive) is_aggressive: bool = false;
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
     /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
     /// ±0.05`). `false` for every other entity.
-    pub enderman_carrying: bool,
+    (with_enderman_carrying) enderman_carrying: bool = false;
     /// Vanilla `EndermanRenderState.isCreepy`: the enderman is staring at a player, so
     /// `EndermanModel.setupAnim` drops the head (`y -= 5`) and raises the hat (`y += 5`)
     /// into the open-mouth screech pose. `false` for every other entity.
-    pub enderman_creepy: bool,
+    (with_enderman_creepy) enderman_creepy: bool = false;
     /// Vanilla `BatRenderState.isResting`: the bat is hanging at rest, so `BatModel.setupAnim`
     /// applies the `BatAnimation.BAT_RESTING` upside-down pose (and a head look) instead of
     /// the flying flap. `false` for every other entity (and for a flying bat).
-    pub bat_resting: bool,
+    (with_bat_resting) bat_resting: bool = false;
     /// Vanilla `BeeRenderState.hasStinger` (`!Bee.hasStung()`): whether the bee still carries
     /// its stinger cube, which `BeeModel.setupAnim` toggles via `stinger.visible`. `true` for
     /// every other entity and for a bee that has not stung; `false` only for a bee that has
     /// lost its stinger.
-    pub bee_has_stinger: bool,
+    (with_bee_has_stinger) bee_has_stinger: bool = true;
     /// Vanilla `BeeRenderState.isAngry` (`Bee.isAngry()`): an angry bee skips
     /// `BeeModel.bobUpAndDown`, so its body, front/back legs and antennae hold still (the wing
     /// flap continues). `false` for every other entity and for a calm bee.
-    pub bee_angry: bool,
+    (with_bee_angry) bee_angry: bool = false;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
     /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
     /// The held-item arm variant (`xRot = π·7/6`) stays deferred pending held-item projection.
-    pub vex_charging: bool,
+    (with_vex_charging) vex_charging: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
     /// (`zRot = ±3π/4`, `xRot = cos(ageInTicks · 0.6662) · 0.25`). `false` for every other entity
     /// and for an idle illager (which shows the static CROSSED arms).
-    pub illager_spellcasting: bool,
+    (with_illager_spellcasting) illager_spellcasting: bool = false;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
-    pub is_crouching: bool,
+    (with_is_crouching) is_crouching: bool = false;
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
     /// is the constant `40`); an untamed wolf returns the `π/5` default. Defaults to the
     /// `π/5` rest droop, matching the wolf tail layer's base pose, so a non-wolf or
     /// wild wolf is unaffected.
-    pub wolf_tail_angle: f32,
+    (with_wolf_tail_angle) wolf_tail_angle: f32 = std::f32::consts::PI / 5.0;
     /// Vanilla `WolfRenderState.isSitting` (`Wolf.isInSittingPose()`): a sitting wolf
     /// folds its legs and tilts its body (`WolfModel.setSittingPose`) instead of swinging
     /// its legs. `false` for a standing wolf and every non-wolf entity.
-    pub wolf_sitting: bool,
+    (with_wolf_sitting) wolf_sitting: bool = false;
     /// Vanilla `ParrotRenderState.pose == SITTING` (`Parrot.isInSittingPose()`, the
     /// `TamableAnimal.DATA_FLAGS_ID` sitting bit): a perched parrot, whose
     /// `ParrotModel.prepare(SITTING)` raises every part `y += 1.9`, folds the legs
     /// (`xRot += π/2`), pitches the tail (`xRot += π/6`), and tucks the wings (`zRot = ±0.0873`).
     /// `false` for a standing parrot and every non-parrot entity.
-    pub parrot_sitting: bool,
+    (with_parrot_sitting) parrot_sitting: bool = false;
     /// Vanilla `TurtleRenderState.hasEgg` (`!isBaby() && Turtle.hasEgg()`, the synced `HAS_EGG`
     /// boolean): a gravid adult turtle, whose `AdultTurtleModel.setupAnim` shows the `egg_belly`
     /// overlay cube and drops the whole model `root.y--` by one unit. `false` for a turtle
     /// without an egg, every baby turtle, and every non-turtle entity.
-    pub turtle_has_egg: bool,
+    (with_turtle_has_egg) turtle_has_egg: bool = false;
     /// Vanilla `TurtleRenderState.isLayingEgg` (the synced `Turtle.LAYING_EGG` boolean): a
     /// nesting turtle, whose shared `TurtleModel.setupAnim` quadruples the front legs' land yaw
     /// frequency (`layEgg = 4`) and doubles their amplitude (`layEggAmplitude = 2`) to mime
     /// digging. `false` for a turtle that is not laying and every non-turtle entity. Applies to
     /// adults and babies alike (the amplitude lives in the base model).
-    pub turtle_laying_egg: bool,
+    (with_turtle_laying_egg) turtle_laying_egg: bool = false;
     /// Vanilla `EndCrystalRenderState.showsBottom` (the synced `EndCrystal.DATA_SHOW_BOTTOM`
     /// boolean, default `true`): `EndCrystalModel.setupAnim` sets `base.visible = showsBottom`, so
     /// the bottom slab is drawn when `true` and hidden when `false` (e.g. the four end-spike
     /// crystals that heal the dragon). Defaults `true` (vanilla default) for every non-crystal
     /// entity, where it is unused.
-    pub end_crystal_shows_bottom: bool,
+    (with_end_crystal_shows_bottom) end_crystal_shows_bottom: bool = true;
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
     /// entity.
-    pub squid_tentacle_angle: f32,
+    (with_squid_tentacle_angle) squid_tentacle_angle: f32 = 0.0;
     /// Vanilla `SquidRenderState.xBodyRot` (`Mth.lerp(partialTick, xBodyRotO,
     /// xBodyRot)`, degrees): the squid swim pitch `SquidRenderer.setupRotations` applies
     /// as `Axis.XP.rotationDegrees(xBodyRot)` after the body yaw. Tracks the movement
     /// direction while swimming and drifts toward `-90` while idle. `0.0` at rest and
     /// for every non-squid entity.
-    pub squid_x_body_rot: f32,
+    () squid_x_body_rot: f32 = 0.0;
     /// Vanilla `SquidRenderState.zBodyRot` (`Mth.lerp(partialTick, zBodyRotO,
     /// zBodyRot)`, degrees): the squid swim roll `SquidRenderer.setupRotations` applies
     /// as `Axis.YP.rotationDegrees(zBodyRot)` after the pitch. Accumulates while
     /// swimming. `0.0` at rest and for every non-squid entity.
-    pub squid_z_body_rot: f32,
+    () squid_z_body_rot: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.isInWater` (`entity.isInWaterOrBubble()`): a fish
     /// out of water thrashes harder and flops onto its side. `CodModel.setupAnim` scales
     /// its tail sway by `1.0` in water / `1.5` out, and `CodRenderer.setupRotations` adds
     /// the beached `RotZ(90)` flop when `false`. `false` (the Java default) for every
     /// entity until the entity scene projects `entity.isInWater()`.
-    pub in_water: bool,
+    (with_in_water) in_water: bool = false;
     /// Vanilla `Entity.onGround()`: combined with [`in_water`](Self::in_water) to drive the
     /// vanilla `TurtleRenderer` `isOnLand = !isInWater && onGround` walk/swim leg branch.
     /// `false` (the Java default) for every entity until the entity scene projects it.
-    pub on_ground: bool,
+    (with_on_ground) on_ground: bool = false;
     /// Vanilla `DolphinRenderState.isMoving` (`getDeltaMovement().horizontalDistanceSqr() >
     /// 1e-7`): drives the `DolphinModel.setupAnim` swim body tilt / tail wave. `false` for a
     /// stationary entity until the entity scene projects it.
-    pub is_moving: bool,
+    (with_is_moving) is_moving: bool = false;
 }
 
 impl EntityRenderState {
-    /// Builds the resting render state for an entity facing `body_rot` degrees:
-    /// head aligned with the body (no look), no eat-grass head pose, an all-fours
-    /// polar bear stance, and full-bright light. Per-frame animation poses and
-    /// sampled light are layered on by the entity scene projection.
-    fn resting(body_rot: f32) -> Self {
-        Self {
-            body_rot,
-            head_yaw: 0.0,
-            head_pitch: 0.0,
-            head_eat: SheepHeadEatPose::NONE,
-            polar_bear_stand_scale: 0.0,
-            death_time: 0.0,
-            light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-            has_red_overlay: false,
-            white_overlay_progress: 0.0,
-            creeper_swelling: 0.0,
-            shulker_peek: 0.0,
-            tendril_animation: 0.0,
-            auto_spin_age_ticks: None,
-            upside_down_height: None,
-            sleeping: None,
-            scale: 1.0,
-            walk_animation_pos: 0.0,
-            walk_animation_speed: 0.0,
-            age_in_ticks: 0.0,
-            is_aggressive: false,
-            enderman_carrying: false,
-            enderman_creepy: false,
-            bat_resting: false,
-            bee_has_stinger: true,
-            bee_angry: false,
-            vex_charging: false,
-            illager_spellcasting: false,
-            is_crouching: false,
-            wolf_tail_angle: std::f32::consts::PI / 5.0,
-            wolf_sitting: false,
-            parrot_sitting: false,
-            turtle_has_egg: false,
-            turtle_laying_egg: false,
-            end_crystal_shows_bottom: true,
-            squid_tentacle_angle: 0.0,
-            squid_x_body_rot: 0.0,
-            squid_z_body_rot: 0.0,
-            in_water: false,
-            on_ground: false,
-            is_moving: false,
-        }
-    }
-
     /// Projects the packed light coords into the renderer per-vertex lightmap
     /// input `[block, sky]`, each normalized to `0.0..=1.0`, mirroring the
     /// terrain mesh's `[block/15, sky/15]` shader light.
@@ -328,11 +348,6 @@ impl EntityModelInstance {
         }
     }
 
-    pub fn with_head_eat(mut self, head_eat: SheepHeadEatPose) -> Self {
-        self.render_state.head_eat = head_eat;
-        self
-    }
-
     /// Sets the head-look projection (vanilla `LivingEntityRenderState.yRot` /
     /// `.xRot`, both in degrees): the net head yaw relative to the body and the
     /// head pitch. Consumed by model families with a head part (currently the
@@ -340,81 +355,6 @@ impl EntityModelInstance {
     pub fn with_head_look(mut self, head_yaw: f32, head_pitch: f32) -> Self {
         self.render_state.head_yaw = head_yaw;
         self.render_state.head_pitch = head_pitch;
-        self
-    }
-
-    pub fn with_polar_bear_stand_scale(mut self, polar_bear_stand_scale: f32) -> Self {
-        self.render_state.polar_bear_stand_scale = polar_bear_stand_scale;
-        self
-    }
-
-    /// Sets the death-animation counter (vanilla `LivingEntityRenderState.deathTime`,
-    /// the lerped `entity.deathTime + partialTick`). Drives the
-    /// `LivingEntityRenderer.setupRotations` tip-over flip for a dying entity.
-    pub fn with_death_time(mut self, death_time: f32) -> Self {
-        self.render_state.death_time = death_time;
-        self
-    }
-
-    pub fn with_light_coords(mut self, light_coords: u32) -> Self {
-        self.render_state.light_coords = light_coords;
-        self
-    }
-
-    pub fn with_has_red_overlay(mut self, has_red_overlay: bool) -> Self {
-        self.render_state.has_red_overlay = has_red_overlay;
-        self
-    }
-
-    pub fn with_creeper_swelling(mut self, creeper_swelling: f32) -> Self {
-        self.render_state.creeper_swelling = creeper_swelling;
-        self
-    }
-
-    pub fn with_shulker_peek(mut self, shulker_peek: f32) -> Self {
-        self.render_state.shulker_peek = shulker_peek;
-        self
-    }
-
-    pub fn with_tendril_animation(mut self, tendril_animation: f32) -> Self {
-        self.render_state.tendril_animation = tendril_animation;
-        self
-    }
-
-    pub fn with_white_overlay_progress(mut self, white_overlay_progress: f32) -> Self {
-        self.render_state.white_overlay_progress = white_overlay_progress;
-        self
-    }
-
-    /// Sets the riptide auto-spin projection (vanilla
-    /// `LivingEntityRenderState.isAutoSpinAttack` plus the lerped `ageInTicks`).
-    /// Drives the `LivingEntityRenderer.setupRotations` trident-spin branch.
-    pub fn with_auto_spin_age_ticks(mut self, auto_spin_age_ticks: Option<f32>) -> Self {
-        self.render_state.auto_spin_age_ticks = auto_spin_age_ticks;
-        self
-    }
-
-    /// Sets the Dinnerbone/Grumm upside-down projection (vanilla
-    /// `LivingEntityRenderState.isUpsideDown` plus `boundingBoxHeight`). Drives the
-    /// `LivingEntityRenderer.setupRotations` upside-down branch.
-    pub fn with_upside_down_height(mut self, upside_down_height: Option<f32>) -> Self {
-        self.render_state.upside_down_height = upside_down_height;
-        self
-    }
-
-    /// Sets the sleeping-in-bed projection (vanilla
-    /// `LivingEntityRenderState.hasPose(Pose.SLEEPING)`). Drives the
-    /// `LivingEntityRenderer.setupRotations`/`submit` sleeping branch.
-    pub fn with_sleeping(mut self, sleeping: Option<SleepingPose>) -> Self {
-        self.render_state.sleeping = sleeping;
-        self
-    }
-
-    /// Sets the uniform model scale (vanilla `LivingEntityRenderState.scale`,
-    /// `LivingEntity.getScale`). Drives the `LivingEntityRenderer.submit`
-    /// `poseStack.scale` applied before `setupRotations`.
-    pub fn with_scale(mut self, scale: f32) -> Self {
-        self.render_state.scale = scale;
         self
     }
 
@@ -431,109 +371,9 @@ impl EntityModelInstance {
         self
     }
 
-    pub fn with_age_in_ticks(mut self, age_in_ticks: f32) -> Self {
-        self.render_state.age_in_ticks = age_in_ticks;
-        self
-    }
-
-    pub fn with_is_aggressive(mut self, is_aggressive: bool) -> Self {
-        self.render_state.is_aggressive = is_aggressive;
-        self
-    }
-
-    pub fn with_enderman_carrying(mut self, enderman_carrying: bool) -> Self {
-        self.render_state.enderman_carrying = enderman_carrying;
-        self
-    }
-
-    pub fn with_enderman_creepy(mut self, enderman_creepy: bool) -> Self {
-        self.render_state.enderman_creepy = enderman_creepy;
-        self
-    }
-
-    pub fn with_bat_resting(mut self, bat_resting: bool) -> Self {
-        self.render_state.bat_resting = bat_resting;
-        self
-    }
-
-    pub fn with_bee_has_stinger(mut self, bee_has_stinger: bool) -> Self {
-        self.render_state.bee_has_stinger = bee_has_stinger;
-        self
-    }
-
-    pub fn with_bee_angry(mut self, bee_angry: bool) -> Self {
-        self.render_state.bee_angry = bee_angry;
-        self
-    }
-
-    pub fn with_vex_charging(mut self, vex_charging: bool) -> Self {
-        self.render_state.vex_charging = vex_charging;
-        self
-    }
-
-    pub fn with_illager_spellcasting(mut self, illager_spellcasting: bool) -> Self {
-        self.render_state.illager_spellcasting = illager_spellcasting;
-        self
-    }
-
-    pub fn with_is_crouching(mut self, is_crouching: bool) -> Self {
-        self.render_state.is_crouching = is_crouching;
-        self
-    }
-
-    pub fn with_wolf_tail_angle(mut self, wolf_tail_angle: f32) -> Self {
-        self.render_state.wolf_tail_angle = wolf_tail_angle;
-        self
-    }
-
-    pub fn with_parrot_sitting(mut self, parrot_sitting: bool) -> Self {
-        self.render_state.parrot_sitting = parrot_sitting;
-        self
-    }
-
-    pub fn with_turtle_has_egg(mut self, turtle_has_egg: bool) -> Self {
-        self.render_state.turtle_has_egg = turtle_has_egg;
-        self
-    }
-
-    pub fn with_turtle_laying_egg(mut self, turtle_laying_egg: bool) -> Self {
-        self.render_state.turtle_laying_egg = turtle_laying_egg;
-        self
-    }
-
-    pub fn with_end_crystal_shows_bottom(mut self, end_crystal_shows_bottom: bool) -> Self {
-        self.render_state.end_crystal_shows_bottom = end_crystal_shows_bottom;
-        self
-    }
-
-    pub fn with_wolf_sitting(mut self, wolf_sitting: bool) -> Self {
-        self.render_state.wolf_sitting = wolf_sitting;
-        self
-    }
-
-    pub fn with_squid_tentacle_angle(mut self, squid_tentacle_angle: f32) -> Self {
-        self.render_state.squid_tentacle_angle = squid_tentacle_angle;
-        self
-    }
-
     pub fn with_squid_body_tilt(mut self, x_body_rot: f32, z_body_rot: f32) -> Self {
         self.render_state.squid_x_body_rot = x_body_rot;
         self.render_state.squid_z_body_rot = z_body_rot;
-        self
-    }
-
-    pub fn with_on_ground(mut self, on_ground: bool) -> Self {
-        self.render_state.on_ground = on_ground;
-        self
-    }
-
-    pub fn with_is_moving(mut self, is_moving: bool) -> Self {
-        self.render_state.is_moving = is_moving;
-        self
-    }
-
-    pub fn with_in_water(mut self, in_water: bool) -> Self {
-        self.render_state.in_water = in_water;
         self
     }
 
