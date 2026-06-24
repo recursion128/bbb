@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 283] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 284] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -972,6 +972,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     WARDEN_BIOLUMINESCENT_TEXTURE_REF,
     WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
     WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+    WARDEN_HEART_TEXTURE_REF,
     FROG_TEMPERATE_TEXTURE_REF,
     FROG_WARM_TEXTURE_REF,
     FROG_COLD_TEXTURE_REF,
@@ -2756,8 +2757,7 @@ pub(in crate::entity_models) const WARDEN_TEXTURE_REF: EntityModelTextureRef =
         size: [128, 128],
     };
 // Vanilla `WardenRenderer`'s always-on bioluminescent emissive layer (alpha 1.0): the warden's
-// glowing body markings. The pulsating-spots / heart / tendril emissive layers pulse on per-tick
-// alpha and stay deferred.
+// glowing body markings, restricted by `createBioluminescentLayer` to the head, arms, and legs.
 pub(in crate::entity_models) const WARDEN_BIOLUMINESCENT_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/warden/warden_bioluminescent_layer.png",
@@ -2775,11 +2775,19 @@ pub(in crate::entity_models) const WARDEN_PULSATING_SPOTS_2_TEXTURE_REF: EntityM
         path: "textures/entity/warden/warden_pulsating_spots_2.png",
         size: [128, 128],
     };
-pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
+// Vanilla `WardenRenderer`'s heart emissive layer: the chest heart that pulses on each heartbeat at
+// the lerped `heartAnimation` alpha (`createHeartLayer` retains only the body).
+pub(in crate::entity_models) const WARDEN_HEART_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/warden/warden_heart.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
     WARDEN_TEXTURE_REF,
     WARDEN_BIOLUMINESCENT_TEXTURE_REF,
     WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
     WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+    WARDEN_HEART_TEXTURE_REF,
 ];
 pub fn warden_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WARDEN_ENTITY_TEXTURE_REFS

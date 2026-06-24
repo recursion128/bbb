@@ -555,6 +555,7 @@ fn entity_model_instance(
         .with_creeper_swelling(source.creeper_swelling)
         .with_shulker_peek(source.shulker_peek)
         .with_tendril_animation(source.tendril_animation)
+        .with_heart_animation(source.heart_animation)
         .with_warden_roar_seconds(source.warden_roar_seconds)
         .with_warden_sniff_seconds(source.warden_sniff_seconds)
         .with_warden_attack_seconds(source.warden_attack_seconds)
@@ -2244,6 +2245,32 @@ mod tests {
             instances[0].render_state.tendril_animation,
             7.0 / 10.0,
             "the projected tendril pulse drives the WardenModel.animateTendrils antenna sway"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_warden_heart_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            96,
+            VANILLA_ENTITY_TYPE_WARDEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        // A warden between heartbeats projects no heart pulse, so the heart overlay's alpha is 0.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(resting[0].render_state.heart_animation, 0.0);
+
+        // With no synced anger, vanilla `Warden.getHeartBeatDelay()` is the calm 40, so the heartbeat
+        // (`tickCount % 40 == 0`) first fires on the 40th client tick: `heartAnimation = 10`, then
+        // `heartAnimationO = 10; heartAnimation--`, leaving the pair (10, 9). At partialTick 1.0
+        // `getHeartAnimation` lerps to 9/10.
+        world.advance_entity_client_animations(40);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert_eq!(
+            instances[0].render_state.heart_animation,
+            9.0 / 10.0,
+            "the projected heartbeat pulse drives the warden heart emissive overlay's alpha"
         );
     }
 

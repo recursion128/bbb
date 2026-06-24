@@ -19,7 +19,9 @@ use super::{
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
-use crate::entities::animations::{entity_animation_uses_in_water, guardian_is_moving};
+use crate::entities::animations::{
+    entity_animation_uses_in_water, guardian_is_moving, warden_heartbeat_delay,
+};
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
     vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
@@ -725,6 +727,9 @@ impl EntityStore {
             tendril_animation: client_animations
                 .animations
                 .warden_tendril_animation(partial_ticks),
+            heart_animation: client_animations
+                .animations
+                .warden_heart_animation(partial_ticks),
             // Vanilla `Warden`'s four triggered combat keyframe one-shots (roar/sniff pose-driven,
             // attack/sonic-boom event-driven): the elapsed seconds since each started, or `-1.0`
             // when stopped (only the warden is given a combat animation state).
@@ -1156,6 +1161,7 @@ impl EntityStore {
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
                 let in_water = in_water_by_id.get(&identity.id).copied().unwrap_or(false);
                 let is_moving = guardian_is_moving(&metadata.data_values);
+                let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1164,6 +1170,7 @@ impl EntityStore {
                     is_baby,
                     in_water,
                     is_moving,
+                    warden_heartbeat_delay,
                 );
             }
         }

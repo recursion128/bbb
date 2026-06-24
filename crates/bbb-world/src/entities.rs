@@ -573,6 +573,11 @@ pub struct EntityModelSourceState {
     /// every non-warden entity and for a warden whose tendrils are at rest.
     #[serde(default)]
     pub tendril_animation: f32,
+    /// Vanilla `WardenRenderState.heartAnimation` (`Warden.getHeartAnimation(partialTick)`): the
+    /// lerped heartbeat pulse (`0..=1`) that drives the warden heart emissive overlay's alpha.
+    /// `0.0` for every non-warden entity and between a warden's heartbeats.
+    #[serde(default)]
+    pub heart_animation: f32,
     /// Vanilla `Warden.roarAnimationState` elapsed seconds (`Pose.ROARING`-driven, the 4.2s
     /// `WARDEN_ROAR`), sampled by `WardenModel.setupAnim`'s `roarAnimation.apply`. `-1.0` (the
     /// stopped-animation sentinel) for a non-roaring warden and every other entity.

@@ -160,6 +160,10 @@ entity_render_state! {
     /// `leftTendril.xRot = tendrilAnimation · cos(ageInTicks · 2.25) · π · 0.1`, the right negated.
     /// `0.0` (bind pose, antennae still) for every non-warden and a warden at rest.
     (with_tendril_animation) tendril_animation: f32 = 0.0;
+    /// Vanilla `WardenRenderState.heartAnimation` (`Warden.getHeartAnimation`, lerped): the `0..=1`
+    /// heartbeat pulse that scales the warden heart emissive overlay's alpha. `0.0` (heart dark) for
+    /// every non-warden and between a warden's heartbeats.
+    (with_heart_animation) heart_animation: f32 = 0.0;
     /// Vanilla `Warden.roarAnimationState` elapsed seconds (`Pose.ROARING`-driven, the 4.2s
     /// `WARDEN_ROAR`): `WardenModel.setupAnim` applies `roarAnimation.apply(roarAnimationState,
     /// ageInTicks)`, which the renderer mirrors by sampling `WARDEN_ROAR` at these seconds when
@@ -1522,6 +1526,7 @@ mod tests {
                 creeper_swelling: 0.0,
                 shulker_peek: 0.0,
                 tendril_animation: 0.0,
+                heart_animation: 0.0,
                 warden_roar_seconds: -1.0,
                 warden_sniff_seconds: -1.0,
                 warden_attack_seconds: -1.0,

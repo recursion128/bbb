@@ -1752,21 +1752,25 @@ When an agent does any of the following, update this file in the same slice:
       booming re-pose vs bind and differently from each other. DEFERRED: the `EMERGING` (13) / `DIGGING` (14)
       spawn/despawn one-shots (`WARDEN_EMERGE`, 6.68s, ~270 lines; `WARDEN_DIG`, 5.0s, ~180 lines) are large
       and rarely seen — a clean follow-up; their pose ordinals are tracked but only update `prev_pose`. The
-      base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), together with four of the five
+      base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), together with all five
       `WardenEmissiveLayer`s as eyes-render-type passes (the eyes pipeline being emissive + alpha-blended, so a
       pass `tint[3]` scales output alpha directly, matching vanilla `entityTranslucentEmissive` — no new
-      pipeline). Each overlay is baked by vanilla `WardenModel.create{Bioluminescent,PulsatingSpots,Tendrils}Layer`
-      as a `retainExactParts` subset of the one body mesh, reproduced by a new
-      `ModelPart::render_textured_retained` (a retained part draws its own cubes and its whole subtree is dropped
-      — vanilla `clearRecursively` — so a retained ancestor short-circuits its descendants) selected per pass via
-      `EntityModelLayerVisibility::RetainedParts`: the always-on bioluminescent overlay
-      (`WARDEN_BIOLUMINESCENT_TEXTURE_REF`, alpha 1.0, head/arms/legs); the two pulsating-spots overlays
-      (`WARDEN_PULSATING_SPOTS_1/2_TEXTURE_REF`, body/legs — `body`'s retention drops its head/arm children — each
-      fading on `max(0, cos(ageInTicks·0.045 + phase)·0.25)`, phase `0` and `π`, off the projected
-      `age_in_ticks`); and the tendril overlay (reusing `WARDEN_TEXTURE_REF` over the two tendril planes at the
-      lerped `tendril_animation` alpha). The remaining `WardenEmissiveLayer` — the heart (needs `heartAnimation`
-      projected, parallel to `tendril_animation`) — stays deferred. The colored debug path stays as a fallback
-      (it approximates the body with one dark-teal tint and the tendrils with a brighter cyan tint)
+      pipeline). Each overlay is baked by vanilla
+      `WardenModel.create{Bioluminescent,PulsatingSpots,Tendrils,Heart}Layer` as a `retainExactParts` subset of
+      the one body mesh, reproduced by a new `ModelPart::render_textured_retained` (a retained part draws its own
+      cubes and its whole subtree is dropped — vanilla `clearRecursively` — so a retained ancestor short-circuits
+      its descendants) selected per pass via `EntityModelLayerVisibility::RetainedParts`: the always-on
+      bioluminescent overlay (`WARDEN_BIOLUMINESCENT_TEXTURE_REF`, alpha 1.0, head/arms/legs); the two
+      pulsating-spots overlays (`WARDEN_PULSATING_SPOTS_1/2_TEXTURE_REF`, body/legs — `body`'s retention drops its
+      head/arm children — each fading on `max(0, cos(ageInTicks·0.045 + phase)·0.25)`, phase `0` and `π`, off the
+      projected `age_in_ticks`); the tendril overlay (reusing `WARDEN_TEXTURE_REF` over the two tendril planes at
+      the lerped `tendril_animation` alpha); and the heart overlay (`WARDEN_HEART_TEXTURE_REF`, body only, at the
+      lerped `heart_animation` alpha). `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`
+      heartbeat: `bbb-world` resets it to `10` whenever `tickCount % getHeartBeatDelay() == 0` (the delay
+      `40 - floor(clamp(clientAngerLevel/80, 0, 1)·30)` shrinking from `40` calm to `10` fully angry off the
+      synced `CLIENT_ANGER_LEVEL`), decrements it each client tick, and exposes it lerped `/10` like
+      `Warden.getHeartAnimation`. With every `WardenEmissiveLayer` now wired, the colored debug path remains only
+      as a fallback (it approximates the body with one dark-teal tint and the tendrils with a brighter cyan tint)
     - armadillo entities as renderer-owned vanilla 26.1 `AdultArmadilloModel` /
       `BabyArmadilloModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `4` to the new `EntityModelKind::Armadillo { baby }`,

@@ -142,6 +142,17 @@ const WARDEN_TENDRIL_ANIMATION_TICKS: i32 = 10;
 /// Vanilla `Warden.handleEntityEvent` resets `tendrilAnimation` to `10` on event
 /// id `61` (a received vibration signal).
 const WARDEN_TENDRIL_EVENT_ID: i8 = 61;
+/// Vanilla `Warden`: the client resets `heartAnimation` to `10` on each heartbeat
+/// and decrements it toward `0` each tick; `getHeartAnimation` divides the lerped
+/// value by `10`. Shares the `tendrilAnimation` range, hence the same `10` cap.
+const WARDEN_HEART_ANIMATION_TICKS: i32 = 10;
+/// Vanilla `Warden.CLIENT_ANGER_LEVEL` (`getClientAngerLevel()`): the warden's
+/// first own synced accessor after `Entity` (`0..=7`), `LivingEntity` (`8..=14`)
+/// and `Mob` (`15`); `Monster` adds none. An `Integer`, default `0`.
+const WARDEN_ANGER_LEVEL_DATA_ID: u8 = 16;
+/// Vanilla `AngerLevel.ANGRY.getMinimumAnger()`: the anger at which the heartbeat
+/// reaches its fastest, used to normalise `getHeartBeatDelay`.
+const WARDEN_ANGRY_MINIMUM_ANGER: i32 = 80;
 /// Vanilla `Pose.ROARING` ordinal, the synced `DATA_POSE` int value that
 /// `Warden.onSyncedDataUpdated` reads to `.start()` the `roarAnimationState` when
 /// the pose CHANGES to it (the 4.2s `WARDEN_ROAR` keyframe animation).
@@ -201,6 +212,8 @@ pub struct EntityClientAnimationState {
     pub creeper_swell: Option<CreeperSwellAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warden_tendril: Option<WardenTendrilAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warden_heart: Option<WardenHeartAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warden_combat: Option<WardenCombatAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -474,6 +487,22 @@ pub struct WardenTendrilAnimationState {
     /// Vanilla `Warden.tendrilAnimationO`.
     pub previous: i32,
     /// Vanilla `Warden.tendrilAnimation`.
+    pub current: i32,
+}
+
+/// Canonical client-side warden heart animation, mirroring vanilla
+/// `Warden.heartAnimation`/`heartAnimationO`. Unlike the event-driven tendril, the
+/// heart is a free-running heartbeat: `Warden.tick` resets `current` to
+/// [`WARDEN_HEART_ANIMATION_TICKS`] whenever `tickCount % getHeartBeatDelay() == 0`
+/// (the delay shrinking from `40` toward `10` as the synced anger rises), then each
+/// tick saves the previous value and decrements `current` toward `0`.
+/// `getHeartAnimation` lerps the pair and divides by `10`, driving the renderer
+/// warden heart emissive overlay's alpha.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct WardenHeartAnimationState {
+    /// Vanilla `Warden.heartAnimationO`.
+    pub previous: i32,
+    /// Vanilla `Warden.heartAnimation`.
     pub current: i32,
 }
 
@@ -963,6 +992,30 @@ impl WardenTendrilAnimationState {
     fn tendril_animation(self, partial_tick: f32) -> f32 {
         let lerped = self.previous as f32 + partial_tick * (self.current - self.previous) as f32;
         lerped / WARDEN_TENDRIL_ANIMATION_TICKS as f32
+    }
+}
+
+impl WardenHeartAnimationState {
+    /// Vanilla `Warden.tick` client branch: a heartbeat (`tickCount % getHeartBeatDelay()
+    /// == 0`) resets `heartAnimation` to `10`, then `heartAnimationO = heartAnimation;
+    /// if (heartAnimation > 0) heartAnimation--`. `age_ticks` is the post-increment
+    /// `tickCount` (the caller bumps it before the per-type tick) and `heartbeat_delay`
+    /// is [`warden_heartbeat_delay`] over the synced anger.
+    fn advance_client_tick(&mut self, age_ticks: u32, heartbeat_delay: u32) {
+        if heartbeat_delay > 0 && age_ticks % heartbeat_delay == 0 {
+            self.current = WARDEN_HEART_ANIMATION_TICKS;
+        }
+        self.previous = self.current;
+        if self.current > 0 {
+            self.current -= 1;
+        }
+    }
+
+    /// Vanilla `Warden.getHeartAnimation(partialTick)`:
+    /// `lerp(partialTick, heartAnimationO, heartAnimation) / 10`.
+    fn heart_animation(self, partial_tick: f32) -> f32 {
+        let lerped = self.previous as f32 + partial_tick * (self.current - self.previous) as f32;
+        lerped / WARDEN_HEART_ANIMATION_TICKS as f32
     }
 }
 
@@ -1550,6 +1603,14 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.tendril_animation(partial_tick))
     }
 
+    /// Vanilla `Warden.getHeartAnimation(partialTick)`, exposed for the renderer
+    /// warden heart emissive overlay's alpha. Returns `0.0` when the entity is not a
+    /// warden (or before its first client tick spins up the heartbeat).
+    pub fn warden_heart_animation(&self, partial_tick: f32) -> f32 {
+        self.warden_heart
+            .map_or(0.0, |state| state.heart_animation(partial_tick))
+    }
+
     /// The warden roar's elapsed seconds since `Pose.ROARING` started (vanilla
     /// `roarAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for the renderer
     /// `WardenModel.setupAnim` `roarAnimation.apply`. Returns `-1.0` (the stopped-animation
@@ -1850,6 +1911,10 @@ impl EntityClientAnimationState {
         // entity metadata in the tick loop. `false` for entities that do not
         // consume it.
         is_moving: bool,
+        // Vanilla `Warden.getHeartBeatDelay()` over the synced anger, read from the
+        // entity metadata in the tick loop ([`warden_heartbeat_delay`]). The calm
+        // `40` for entities that do not consume it.
+        warden_heartbeat_delay: u32,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -1910,6 +1975,12 @@ impl EntityClientAnimationState {
                         self.warden_tendril = None;
                     }
                 }
+                // The heart beats forever (vanilla resets it every `getHeartBeatDelay()`
+                // ticks), so unlike the event-driven tendril it is never dropped once a
+                // warden starts ticking.
+                self.warden_heart
+                    .get_or_insert_with(WardenHeartAnimationState::default)
+                    .advance_client_tick(self.age_ticks, warden_heartbeat_delay);
             }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => self
                 .ender_dragon
@@ -1993,6 +2064,17 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
 /// `false`). Read straight from the entity metadata in the tick loop.
 pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, GUARDIAN_MOVING_DATA_ID, false)
+}
+
+/// Vanilla `Warden.getHeartBeatDelay()` = `40 - floor(clamp(clientAngerLevel /
+/// AngerLevel.ANGRY.minimumAnger, 0, 1) · 30)`: the period (in client ticks)
+/// between heartbeats, shrinking from `40` (calm) to `10` (fully angry) as the
+/// synced anger rises. Read straight from the entity metadata in the tick loop;
+/// non-wardens (whose synced slot `16` is not an int) fall back to the calm `40`.
+pub(crate) fn warden_heartbeat_delay(data_values: &[EntityDataValue]) -> u32 {
+    let anger = entity_data_int(data_values, WARDEN_ANGER_LEVEL_DATA_ID, 0);
+    let ratio = (anger as f32 / WARDEN_ANGRY_MINIMUM_ANGER as f32).clamp(0.0, 1.0);
+    (40 - (ratio * 30.0).floor() as i32) as u32
 }
 
 impl WorldStore {

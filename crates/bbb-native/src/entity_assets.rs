@@ -285,6 +285,7 @@ mod tests {
                 "textures/entity/warden/warden_bioluminescent_layer.png",
                 "textures/entity/warden/warden_pulsating_spots_1.png",
                 "textures/entity/warden/warden_pulsating_spots_2.png",
+                "textures/entity/warden/warden_heart.png",
                 "textures/entity/frog/frog_temperate.png",
                 "textures/entity/frog/frog_warm.png",
                 "textures/entity/frog/frog_cold.png",

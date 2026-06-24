@@ -360,13 +360,14 @@ fn warden_combat_animations_re_pose_off_the_bind_pose() {
 
 #[test]
 fn warden_textured_render_matches_vanilla_renderer() {
-    // The warden binds its base body texture (warden.png, atlas 128×128, whole model), then the four
+    // The warden binds its base body texture (warden.png, atlas 128×128, whole model), then the five
     // `WardenEmissiveLayer`s as eyes-render-type passes (the eyes pipeline being emissive + alpha-
     // blended), each over its own `retainExactParts` subset: the always-on bioluminescent overlay
-    // (head/arms/legs), the two pulsating-spots overlays (body/legs), and the tendril overlay (the two
-    // tendrils, reusing the base texture at the lerped `tendrilAnimation` alpha). The heart stays deferred.
-    let passes = warden_textured_layer_passes(0.0, 1.0);
-    assert_eq!(passes.len(), 5);
+    // (head/arms/legs), the two pulsating-spots overlays (body/legs), the tendril overlay (the two
+    // tendrils, reusing the base texture at the lerped `tendrilAnimation` alpha), and the heart overlay
+    // (body only, warden_heart.png at the lerped `heartAnimation` alpha).
+    let passes = warden_textured_layer_passes(0.0, 1.0, 0.7);
+    assert_eq!(passes.len(), 6);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].texture, WARDEN_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
@@ -405,6 +406,14 @@ fn warden_textured_render_matches_vanilla_renderer() {
         passes[4].visibility,
         EntityModelLayerVisibility::RetainedParts(&["left_tendril", "right_tendril"])
     );
+    // The heart overlay binds warden_heart.png over the body only at `heartAnimation` (0.7 here).
+    assert_eq!(passes[5].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[5].texture, WARDEN_HEART_TEXTURE_REF);
+    assert_eq!(passes[5].tint[3], 0.7);
+    assert_eq!(
+        passes[5].visibility,
+        EntityModelLayerVisibility::RetainedParts(&["body"])
+    );
 
     // The pulsating alpha is `max(0, cos(ageInTicks · 0.045 + phase) · 0.25)`. At age 0 the first set
     // is at its peak 0.25 while the π-offset second set is clamped to 0; the two alternate over time.
@@ -427,6 +436,7 @@ fn warden_textured_render_matches_vanilla_renderer() {
         WARDEN_BIOLUMINESCENT_TEXTURE_REF,
         WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
         WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+        WARDEN_HEART_TEXTURE_REF,
     ] {
         assert!(entity_model_texture_refs().contains(&texture));
     }
@@ -436,7 +446,8 @@ fn warden_textured_render_matches_vanilla_renderer() {
             WARDEN_TEXTURE_REF,
             WARDEN_BIOLUMINESCENT_TEXTURE_REF,
             WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
-            WARDEN_PULSATING_SPOTS_2_TEXTURE_REF
+            WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+            WARDEN_HEART_TEXTURE_REF
         ]
     );
 
@@ -461,8 +472,8 @@ fn warden_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    // The four emissive overlays each emit only their `retainExactParts` subset (24 vertices / cube):
-    // bioluminescent head/arms/legs (5) + pulsating-spots body/legs (3) twice + tendrils (2) = 13 cubes,
-    // far fewer than the 40 a naive whole-model overlay (4 × 10 cubes) would emit.
-    assert_eq!(meshes.eyes.vertices.len(), 13 * 24);
+    // The five emissive overlays each emit only their `retainExactParts` subset (24 vertices / cube):
+    // bioluminescent head/arms/legs (5) + pulsating-spots body/legs (3) twice + tendrils (2) + heart
+    // body (1) = 14 cubes, far fewer than the 50 a naive whole-model overlay (5 × 10 cubes) would emit.
+    assert_eq!(meshes.eyes.vertices.len(), 14 * 24);
 }

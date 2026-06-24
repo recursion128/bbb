@@ -523,6 +523,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             &warden_textured_layer_passes(
                 instance.render_state.age_in_ticks,
                 instance.render_state.tendril_animation,
+                instance.render_state.heart_animation,
             ),
         ),
         EntityModelKind::Armadillo { baby, rolled_up } => sink.model(
