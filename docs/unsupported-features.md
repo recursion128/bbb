@@ -1797,8 +1797,8 @@ When an agent does any of the following, update this file in the same slice:
       slice; the colored debug path approximates the armored body/legs with one brown tint and the soft
       head/ears/tail with a tan tint)
     - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /
-      `BabyAxolotlModel.createBodyLayer()` geometry on the colored path: the native entity scene
-      (`entity_scene.rs`) projects vanilla type id `7` to the new `EntityModelKind::Axolotl { baby }`,
+      `BabyAxolotlModel.createBodyLayer()` geometry on the textured path: the native entity scene
+      (`entity_scene.rs`) projects vanilla type id `7` to `EntityModelKind::Axolotl { baby, variant }`,
       replacing the former placeholder bounds box. The synced `AgeableMob.DATA_BABY_ID` flag (entity-data
       index 16, defaulting to adult) selects the baby body layer, matching the vanilla
       `AgeableMobRenderer` two-model dispatch (the `0.5F` constructor argument is the shadow radius, not a
@@ -1816,9 +1816,9 @@ When an agent does any of the following, update this file in the same slice:
       procedural sways, the baby swim / walk / idle keyframe animations, the play-dead pose, and the
       mirror-leg copy.
       The five `Axolotl.Variant` color variants (lucy / wild / gold / cyan / blue, each with adult and baby
-      textures) live on the deferred texture-backed path, so the colored debug path renders the lucy (pink)
-      body with one body tint and one gill tint. The texture-backed path remains unsupported (this is a
-      colored-first slice)
+      textures) are now bound on the textured path: the native scene reads `DATA_VARIANT` (18, int) and
+      `Axolotl.Variant.byId` selects the colour, crossed with the age, matching
+      `AxolotlRenderer.TEXTURE_BY_TYPE` (`axolotl_<name>.png` / `axolotl_<name>_baby.png`) — ten textures
     - tadpole entities as renderer-owned vanilla 26.1 `TadpoleModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `130` to the new
       `EntityModelKind::Tadpole`, replacing the former placeholder bounds box. The static rest-pose
