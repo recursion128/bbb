@@ -23,8 +23,6 @@ use super::{
 use glam::Mat4;
 
 mod layers;
-#[cfg(test)]
-pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
@@ -48,12 +46,13 @@ pub(super) use layers::{
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    warden_textured_layer_passes, wind_charge_textured_layer_passes,
-    witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
-    wolf_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
-    EntityModelLayerRenderType,
+    warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
+    wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
+    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
+    EntityModelLayerPass, EntityModelLayerRenderType,
 };
+#[cfg(test)]
+pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
 
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
@@ -253,15 +252,32 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     for pass in passes {
-        render_textured_pass(
-            meshes,
-            model,
-            transform,
-            pass.render_type,
-            pass.texture,
-            pass.tint,
-            atlas,
-        );
+        match pass.visibility {
+            // A part-subset emissive overlay (vanilla `retainExactParts`): render only its named parts.
+            layers::EntityModelLayerVisibility::RetainedParts(parts) => {
+                if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+                    model.root().render_textured_retained(
+                        meshes.mesh_mut(pass.render_type),
+                        transform,
+                        pass.texture,
+                        entry.uv,
+                        pass.tint,
+                        "",
+                        parts,
+                    );
+                }
+            }
+            // `All` (and the player-parts case, whose subset is pre-applied to the tree) render whole.
+            _ => render_textured_pass(
+                meshes,
+                model,
+                transform,
+                pass.render_type,
+                pass.texture,
+                pass.tint,
+                atlas,
+            ),
+        }
     }
 }
 

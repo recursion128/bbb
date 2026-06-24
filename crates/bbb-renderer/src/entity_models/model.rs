@@ -223,6 +223,49 @@ impl ModelPart {
             child.render_textured(mesh, transform, texture, uv_rect, tint);
         }
     }
+
+    /// Walks the subtree like [`ModelPart::render_textured`], but emits only the cubes of the parts
+    /// named in `retained`, mirroring vanilla `PartDefinition.retainExactParts`: a retained part draws
+    /// its own cubes and its whole subtree is dropped (vanilla `clearRecursively` empties every
+    /// descendant), so a retained ancestor short-circuits any retained descendants; a non-retained
+    /// part draws nothing but is still traversed, keeping the pose chain to deeper retained parts. Used
+    /// by the per-layer emissive overlays that vanilla bakes as part subsets (e.g. the warden's
+    /// bioluminescent / pulsating-spots / heart / tendril layers). `name` is this part's name in its
+    /// parent's child list (`""` for the nameless root).
+    #[allow(clippy::too_many_arguments)]
+    pub(in crate::entity_models) fn render_textured_retained(
+        &self,
+        mesh: &mut EntityModelTexturedMesh,
+        parent_transform: Mat4,
+        texture: EntityModelTextureRef,
+        uv_rect: EntityModelUvRect,
+        tint: [f32; 4],
+        name: &str,
+        retained: &[&str],
+    ) {
+        if !self.visible {
+            return;
+        }
+        let transform = parent_transform * self.local_transform();
+        if retained.contains(&name) {
+            for cube in &self.cubes {
+                emit_textured_model_cube(
+                    mesh,
+                    transform,
+                    cube.textured_desc(),
+                    texture,
+                    uv_rect,
+                    tint,
+                );
+            }
+            return;
+        }
+        for (child_name, child) in &self.children {
+            child.render_textured_retained(
+                mesh, transform, texture, uv_rect, tint, child_name, retained,
+            );
+        }
+    }
 }
 
 /// A mutable entity model, mirroring vanilla `EntityModel`: own a [`ModelPart`] tree, reset it to

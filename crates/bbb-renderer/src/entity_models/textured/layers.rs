@@ -76,6 +76,10 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
 pub(in crate::entity_models) enum EntityModelLayerVisibility {
     All,
     PlayerParts(PlayerModelPartVisibility),
+    /// Render only the cubes of the named parts, mirroring vanilla `PartDefinition.retainExactParts`
+    /// (see [`super::super::model::ModelPart::render_textured_retained`]). Used by the per-layer
+    /// emissive overlays that vanilla bakes as part subsets of one body mesh (e.g. the warden).
+    RetainedParts(&'static [&'static str]),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -114,6 +118,21 @@ impl EntityModelLayerPass {
             tint,
             collector_order: 0,
             submit_sequence: 0,
+        }
+    }
+
+    /// Like [`EntityModelLayerPass::base`] but renders only the cubes of the named parts (vanilla
+    /// `retainExactParts`), for an emissive overlay baked as a part subset of one body mesh. The
+    /// routing-only fields keep their `base` placeholders; only `visibility` carries the subset.
+    pub(in crate::entity_models) fn retained(
+        render_type: EntityModelLayerRenderType,
+        texture: EntityModelTextureRef,
+        tint: [f32; 4],
+        parts: &'static [&'static str],
+    ) -> Self {
+        Self {
+            visibility: EntityModelLayerVisibility::RetainedParts(parts),
+            ..Self::base(render_type, texture, tint)
         }
     }
 }
@@ -970,26 +989,46 @@ pub(in crate::entity_models) fn warden_pulsating_spots_alpha(age_in_ticks: f32, 
     ((age_in_ticks * 0.045 + phase).cos() * 0.25).max(0.0)
 }
 
+// The warden emissive overlays are each baked by `retainExactParts` over `WardenModel.createBodyLayer`,
+// so each draws only its named parts (a retained ancestor short-circuits its descendants — vanilla
+// `clearRecursively`). `createBioluminescentLayer` keeps the head, arms, and legs; `createPulsatingSpotsLayer`
+// adds the body (whose retention drops its head/arm children, leaving body + legs); `createTendrilsLayer`
+// keeps only the two head tendrils; `createHeartLayer` keeps only the body.
+const WARDEN_BIOLUMINESCENT_PARTS: &[&str] =
+    &["head", "left_arm", "right_arm", "left_leg", "right_leg"];
+const WARDEN_PULSATING_SPOTS_PARTS: &[&str] = &[
+    "body",
+    "head",
+    "left_arm",
+    "right_arm",
+    "left_leg",
+    "right_leg",
+];
+const WARDEN_TENDRILS_PARTS: &[&str] = &["left_tendril", "right_tendril"];
+
 pub(in crate::entity_models) fn warden_textured_layer_passes(
     age_in_ticks: f32,
+    tendril_animation: f32,
 ) -> Vec<EntityModelLayerPass> {
-    // The warden's base body, the always-on bioluminescent emissive overlay (alpha 1.0), and the two
-    // pulsating-spots emissive overlays (each fading on its own `cos(ageInTicks · 0.045)` pulse, the
-    // eyes pipeline being emissive + alpha-blended, matching vanilla `entityTranslucentEmissive`). The
-    // heart (needs the lerped `heartAnimation`) and the tendril overlay (a per-part subset of the base
-    // texture) stay deferred.
+    // The warden's base body, then the four `WardenEmissiveLayer`s — each an eyes-render-type pass (the
+    // pipeline being emissive + alpha-blended, matching vanilla `entityTranslucentEmissive`) over its
+    // own part subset: the always-on bioluminescent overlay (alpha 1.0, head/arms/legs); the two
+    // pulsating-spots overlays (body/legs, each fading on its own `cos(ageInTicks · 0.045)` pulse); and
+    // the tendril overlay, which reuses the base `warden.png` over the two tendril planes at the lerped
+    // `tendrilAnimation` alpha. The heart overlay (needs the lerped `heartAnimation`) stays deferred.
     vec![
         EntityModelLayerPass::base(
             EntityModelLayerRenderType::Cutout,
             WARDEN_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
         ),
-        EntityModelLayerPass::base(
+        EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_BIOLUMINESCENT_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
+            WARDEN_BIOLUMINESCENT_PARTS,
         ),
-        EntityModelLayerPass::base(
+        EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
             [
@@ -998,8 +1037,9 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
                 1.0,
                 warden_pulsating_spots_alpha(age_in_ticks, 0.0),
             ],
+            WARDEN_PULSATING_SPOTS_PARTS,
         ),
-        EntityModelLayerPass::base(
+        EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
             [
@@ -1008,6 +1048,13 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
                 1.0,
                 warden_pulsating_spots_alpha(age_in_ticks, std::f32::consts::PI),
             ],
+            WARDEN_PULSATING_SPOTS_PARTS,
+        ),
+        EntityModelLayerPass::retained(
+            EntityModelLayerRenderType::Eyes,
+            WARDEN_TEXTURE_REF,
+            [1.0, 1.0, 1.0, tendril_animation],
+            WARDEN_TENDRILS_PARTS,
         ),
     ]
 }

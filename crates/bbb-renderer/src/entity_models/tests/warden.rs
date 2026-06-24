@@ -360,18 +360,51 @@ fn warden_combat_animations_re_pose_off_the_bind_pose() {
 
 #[test]
 fn warden_textured_render_matches_vanilla_renderer() {
-    // The warden binds its base body texture (warden.png, atlas 128×128), the always-on bioluminescent
-    // emissive overlay, and the two pulsating-spots emissive overlays (the eyes pipeline is emissive +
-    // alpha-blended); the heart and tendril layers stay deferred.
-    let passes = warden_textured_layer_passes(0.0);
-    assert_eq!(passes.len(), 4);
+    // The warden binds its base body texture (warden.png, atlas 128×128, whole model), then the four
+    // `WardenEmissiveLayer`s as eyes-render-type passes (the eyes pipeline being emissive + alpha-
+    // blended), each over its own `retainExactParts` subset: the always-on bioluminescent overlay
+    // (head/arms/legs), the two pulsating-spots overlays (body/legs), and the tendril overlay (the two
+    // tendrils, reusing the base texture at the lerped `tendrilAnimation` alpha). The heart stays deferred.
+    let passes = warden_textured_layer_passes(0.0, 1.0);
+    assert_eq!(passes.len(), 5);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].texture, WARDEN_TEXTURE_REF);
+    assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].texture, WARDEN_BIOLUMINESCENT_TEXTURE_REF);
+    assert_eq!(
+        passes[1].visibility,
+        EntityModelLayerVisibility::RetainedParts(&[
+            "head",
+            "left_arm",
+            "right_arm",
+            "left_leg",
+            "right_leg"
+        ])
+    );
     assert_eq!(passes[2].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[2].texture, WARDEN_PULSATING_SPOTS_1_TEXTURE_REF);
+    assert_eq!(
+        passes[2].visibility,
+        EntityModelLayerVisibility::RetainedParts(&[
+            "body",
+            "head",
+            "left_arm",
+            "right_arm",
+            "left_leg",
+            "right_leg"
+        ])
+    );
     assert_eq!(passes[3].texture, WARDEN_PULSATING_SPOTS_2_TEXTURE_REF);
+    assert_eq!(passes[3].visibility, passes[2].visibility);
+    // The tendril overlay reuses warden.png over the two tendril planes at `tendrilAnimation` (1.0 here).
+    assert_eq!(passes[4].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[4].texture, WARDEN_TEXTURE_REF);
+    assert_eq!(passes[4].tint[3], 1.0);
+    assert_eq!(
+        passes[4].visibility,
+        EntityModelLayerVisibility::RetainedParts(&["left_tendril", "right_tendril"])
+    );
 
     // The pulsating alpha is `max(0, cos(ageInTicks · 0.045 + phase) · 0.25)`. At age 0 the first set
     // is at its peak 0.25 while the π-offset second set is clamped to 0; the two alternate over time.
@@ -416,16 +449,20 @@ fn warden_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
+    let meshes = entity_model_textured_meshes(
         &[EntityModelInstance::warden(920, [0.0, 64.0, 0.0], 0.0)],
         &atlas,
     );
-    assert!(
-        !mesh.vertices.is_empty(),
-        "the warden emits textured geometry"
-    );
-    assert!(mesh
+    // The base cutout pass draws the whole body (10 cubes → 240 vertices), every cube at the neutral
+    // tint; the emissive overlays route to the eyes mesh, not here.
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    // The four emissive overlays each emit only their `retainExactParts` subset (24 vertices / cube):
+    // bioluminescent head/arms/legs (5) + pulsating-spots body/legs (3) twice + tendrils (2) = 13 cubes,
+    // far fewer than the 40 a naive whole-model overlay (4 × 10 cubes) would emit.
+    assert_eq!(meshes.eyes.vertices.len(), 13 * 24);
 }

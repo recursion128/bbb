@@ -520,7 +520,10 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             WardenModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &warden_textured_layer_passes(instance.render_state.age_in_ticks),
+            &warden_textured_layer_passes(
+                instance.render_state.age_in_ticks,
+                instance.render_state.tendril_animation,
+            ),
         ),
         EntityModelKind::Armadillo { baby, rolled_up } => sink.model(
             ArmadilloModel::new(baby, rolled_up),
