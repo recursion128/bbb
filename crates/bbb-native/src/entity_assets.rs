@@ -148,6 +148,7 @@ mod tests {
                 "textures/entity/skeleton/bogged.png",
                 "textures/entity/skeleton/bogged_overlay.png",
                 "textures/entity/creeper/creeper.png",
+                "textures/entity/creeper/creeper_armor.png",
                 "textures/entity/spider/spider.png",
                 "textures/entity/spider/cave_spider.png",
                 "textures/entity/spider/spider_eyes.png",

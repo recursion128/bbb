@@ -553,6 +553,7 @@ fn entity_model_instance(
             &source.data_values,
         ))
         .with_creeper_swelling(source.creeper_swelling)
+        .with_creeper_powered(creeper_powered(source.entity_type_id, &source.data_values))
         .with_shulker_peek(source.shulker_peek)
         .with_tendril_animation(source.tendril_animation)
         .with_heart_animation(source.heart_animation)
@@ -1954,6 +1955,15 @@ fn entity_data_bool(
             _ => None,
         })
         .unwrap_or(default)
+}
+
+/// Vanilla `Creeper.isPowered()` = the synced `DATA_IS_POWERED` boolean (entity-data index `17`:
+/// `Entity` `0..=7`, `LivingEntity` `8..=14`, `Mob` `15`, then `Creeper`'s `DATA_SWELL_DIR` `16` and
+/// `DATA_IS_POWERED` `17`). Read only for the creeper, gating the `CreeperPowerLayer` energy swirl.
+fn creeper_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    const CREEPER_IS_POWERED_DATA_ID: u8 = 17;
+    entity_type_id == VANILLA_ENTITY_TYPE_CREEPER_ID
+        && entity_data_bool(values, CREEPER_IS_POWERED_DATA_ID, false)
 }
 
 fn entity_data_int(
@@ -3582,6 +3592,37 @@ mod tests {
             instances[0].render_state.creeper_swelling,
             5.0 / 28.0,
             "the projected swell drives the renderer inflate-and-flicker scale"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_charged_creeper_from_world() {
+        const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
+        const CREEPER_IS_POWERED_DATA_ID: u8 = 17;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            97,
+            VANILLA_ENTITY_TYPE_CREEPER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // A plain creeper is not powered, so it wears no CreeperPowerLayer energy swirl.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(!resting[0].render_state.creeper_powered);
+
+        // Vanilla `Creeper.DATA_IS_POWERED` (index 17): set true for a lightning-charged creeper.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 97,
+            values: vec![EntityDataValue {
+                data_id: CREEPER_IS_POWERED_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(
+            instances[0].render_state.creeper_powered,
+            "the charged creeper projects isPowered, gating the energy-swirl overlay"
         );
     }
 

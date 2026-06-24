@@ -512,8 +512,15 @@ When an agent does any of the following, update this file in the same slice:
     `CreeperRenderer.scale` swell (the inflate-and-flicker before exploding —
     `wobble = 1 + sin(swelling·100)·swelling·0.01`, `g = clamp(swelling, 0, 1)⁴`,
     `x/z *= (1 + g·0.4)·wobble`, `y *= (1 + g·0.1)/wobble`, identity at `swelling = 0`)
-    is folded into `creeper_model_root_transform` at the per-renderer `this.scale()` hook;
-    only the powered charge layer is deferred. The
+    is folded into `creeper_model_root_transform` at the per-renderer `this.scale()` hook.
+    The `CreeperPowerLayer` energy swirl is now wired: a charged creeper (the synced
+    `Creeper.DATA_IS_POWERED`, entity-data index `17`, projected onto `creeper_powered`) draws the
+    inflated `CREEPER_ARMOR` model (`CubeDeformation(2.0)`, `CreeperModel::new_armor`, driven by the
+    same `setup_anim` so it tracks the body pose) through the new additive scrolling pipeline (vanilla
+    `RenderTypes.energySwirl`): `creeper_armor.png` (`CREEPER_ARMOR_TEXTURE_REF`) scrolling both axes by
+    `xOffset(ageInTicks) % 1 = (ageInTicks · 0.01) % 1`, tinted by the vanilla `0xFF808080` half-grey,
+    `BlendFunction.ADDITIVE`, emissive, `ALPHA_CUTOUT 0.1` — the same shader-side `fract` atlas-wrap as
+    the wind charge's `breezeWind`, just additively blended. The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
     consumed by the zombie family (`emit_zombie_model`/`emit_zombie_variant_model` —

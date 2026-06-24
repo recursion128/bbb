@@ -33,20 +33,47 @@ pub(in crate::entity_models) const CREEPER_LEG: [ModelCube; 1] = [ModelCube::new
     false,
 )];
 
+/// Vanilla `LayerDefinitions` bakes `ModelLayers.CREEPER_ARMOR` with `CreeperModel.createBodyLayer(new
+/// CubeDeformation(2.0F))`: the same tree one notch larger, so the `CreeperPowerLayer` energy swirl
+/// floats just outside the body. `CubeDeformation` grows each box (`min -= g`, `size += 2·g`) while
+/// keeping the base `texOffs`/`uv_size`.
+const CREEPER_ARMOR_DEFORMATION: f32 = 2.0;
+
+const fn inflate_creeper_cube(cube: ModelCube) -> ModelCube {
+    let g = CREEPER_ARMOR_DEFORMATION;
+    ModelCube::new(
+        [cube.min[0] - g, cube.min[1] - g, cube.min[2] - g],
+        [
+            cube.size[0] + 2.0 * g,
+            cube.size[1] + 2.0 * g,
+            cube.size[2] + 2.0 * g,
+        ],
+        cube.color,
+        cube.uv_size,
+        cube.tex,
+        cube.mirror,
+    )
+}
+
+const CREEPER_ARMOR_HEAD: [ModelCube; 1] = [inflate_creeper_cube(CREEPER_HEAD[0])];
+const CREEPER_ARMOR_BODY: [ModelCube; 1] = [inflate_creeper_cube(CREEPER_BODY[0])];
+const CREEPER_ARMOR_LEG: [ModelCube; 1] = [inflate_creeper_cube(CREEPER_LEG[0])];
+
 /// The head/body part pose (vanilla `PartPose.offset(0, 6, 0)`).
 pub(in crate::entity_models) const CREEPER_HEAD_POSE: PartPose = PartPose {
     offset: [0.0, 6.0, 0.0],
     rotation: [0.0, 0.0, 0.0],
 };
 
-/// Builds a creeper leg part at `offset` (vanilla `PartPose.offset`, no rotation).
-fn creeper_leg(offset: [f32; 3]) -> ModelPart {
+/// Builds a creeper leg part at `offset` (vanilla `PartPose.offset`, no rotation) carrying `leg_cubes`
+/// (the base body or the inflated armor cube).
+fn creeper_leg(offset: [f32; 3], leg_cubes: &[ModelCube]) -> ModelPart {
     ModelPart::leaf(
         PartPose {
             offset,
             rotation: [0.0, 0.0, 0.0],
         },
-        CREEPER_LEG.to_vec(),
+        leg_cubes.to_vec(),
     )
 }
 
@@ -62,19 +89,23 @@ pub(in crate::entity_models) struct CreeperModel {
 
 impl CreeperModel {
     pub(in crate::entity_models) fn new() -> Self {
+        Self::with_cubes(&CREEPER_HEAD, &CREEPER_BODY, &CREEPER_LEG)
+    }
+
+    /// The inflated `CREEPER_ARMOR` tree (vanilla `CubeDeformation(2.0)`), driven by the same
+    /// `setup_anim` so the `CreeperPowerLayer` energy swirl tracks the body pose.
+    pub(in crate::entity_models) fn new_armor() -> Self {
+        Self::with_cubes(&CREEPER_ARMOR_HEAD, &CREEPER_ARMOR_BODY, &CREEPER_ARMOR_LEG)
+    }
+
+    fn with_cubes(head: &[ModelCube], body: &[ModelCube], leg: &[ModelCube]) -> Self {
         let children: Vec<(&'static str, ModelPart)> = vec![
-            (
-                "head",
-                ModelPart::leaf(CREEPER_HEAD_POSE, CREEPER_HEAD.to_vec()),
-            ),
-            (
-                "body",
-                ModelPart::leaf(CREEPER_HEAD_POSE, CREEPER_BODY.to_vec()),
-            ),
-            ("right_hind_leg", creeper_leg([-2.0, 18.0, 4.0])),
-            ("left_hind_leg", creeper_leg([2.0, 18.0, 4.0])),
-            ("right_front_leg", creeper_leg([-2.0, 18.0, -4.0])),
-            ("left_front_leg", creeper_leg([2.0, 18.0, -4.0])),
+            ("head", ModelPart::leaf(CREEPER_HEAD_POSE, head.to_vec())),
+            ("body", ModelPart::leaf(CREEPER_HEAD_POSE, body.to_vec())),
+            ("right_hind_leg", creeper_leg([-2.0, 18.0, 4.0], leg)),
+            ("left_hind_leg", creeper_leg([2.0, 18.0, 4.0], leg)),
+            ("right_front_leg", creeper_leg([-2.0, 18.0, -4.0], leg)),
+            ("left_front_leg", creeper_leg([2.0, 18.0, -4.0], leg)),
         ];
         Self {
             root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),

@@ -1,4 +1,4 @@
-use super::colored::wind_charge_model_root_transform;
+use super::colored::{creeper_model_root_transform, wind_charge_model_root_transform};
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::model::EntityModel;
 use super::{
@@ -17,10 +17,10 @@ use super::{
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        CamelModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
-        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
+        CamelModel, CreeperModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, SheepFurModel,
+        SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
         TropicalFishModel, TropicalFishPatternModel, WindChargeModel, ZombieVariantModel,
-        WIND_CHARGE_TEXTURE_REF,
+        CREEPER_ARMOR_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -63,7 +63,10 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
+    /// Translucent scrolling overlay (vanilla `breezeWind` — the wind charge).
     pub(super) scroll: EntityModelScrollMesh,
+    /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
+    pub(super) scroll_additive: EntityModelScrollMesh,
 }
 
 impl EntityModelTexturedMeshes {
@@ -73,6 +76,7 @@ impl EntityModelTexturedMeshes {
             translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
+            scroll_additive: EntityModelScrollMesh::new(),
         }
     }
 
@@ -218,6 +222,9 @@ pub(super) fn entity_model_textured_meshes(
                 _ => {}
             }
         }
+        // The charged-creeper energy swirl is an additive scrolling overlay layered on top of the base
+        // creeper (already emitted by the shared dispatch), so it runs regardless of `handled`.
+        emit_charged_creeper_energy_swirl(&mut meshes, *instance, atlas);
         let light = instance.render_state.shader_light();
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
@@ -392,6 +399,47 @@ fn emit_wind_charge_scroll_model(
     // float modulo is `rem_euclid`. V does not scroll.
     let u_offset = (instance.render_state.age_in_ticks * 0.03).rem_euclid(1.0);
     append_scrolled_textured_mesh(&mut meshes.scroll, &scratch, entry.uv, [u_offset, 0.0]);
+}
+
+/// The charged creeper's `CreeperPowerLayer` energy swirl (vanilla `EnergySwirlLayer`): when the
+/// synced `isPowered` is set, the inflated `CREEPER_ARMOR` model (`CubeDeformation 2.0`, driven by the
+/// same `setup_anim` so it tracks the body pose) is drawn with the additive, emissive `energySwirl`
+/// render type — `creeper_armor.png` scrolling on both axes by `xOffset(ageInTicks) % 1 =
+/// (ageInTicks · 0.01) % 1`, tinted by the vanilla `0xFF808080` half-grey. Folded into the additive
+/// scroll mesh the same way the wind charge folds into the translucent one.
+fn emit_charged_creeper_energy_swirl(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !instance.render_state.creeper_powered || !matches!(instance.kind, EntityModelKind::Creeper)
+    {
+        return;
+    }
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, CREEPER_ARMOR_TEXTURE_REF) else {
+        return;
+    };
+    let transform = creeper_model_root_transform(instance);
+    let mut model = CreeperModel::new_armor();
+    model.prepare(&instance);
+    let mut scratch = EntityModelTexturedMesh::new();
+    // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
+    let grey = 128.0 / 255.0;
+    model.root().render_textured(
+        &mut scratch,
+        transform,
+        CREEPER_ARMOR_TEXTURE_REF,
+        entry.uv,
+        [grey, grey, grey, 1.0],
+    );
+    // Vanilla creeper `xOffset(t) = t · 0.01`, taken `% 1.0` on both U and V.
+    let offset = (instance.render_state.age_in_ticks * 0.01).rem_euclid(1.0);
+    append_scrolled_textured_mesh(
+        &mut meshes.scroll_additive,
+        &scratch,
+        entry.uv,
+        [offset, offset],
+    );
 }
 
 fn emit_squid_textured_model(

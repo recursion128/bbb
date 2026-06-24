@@ -358,26 +358,79 @@ pub(crate) fn create_entity_model_translucent_pipeline(
     )
 }
 
-/// The scrolling-overlay pipeline (vanilla `breezeWind`): translucent (`BlendFunction.TRANSLUCENT`),
-/// depth-writing (`DepthStencilState.DEFAULT`), cull off (`withCull(false)`). Uses its own vertex
-/// layout (the scroll vertex carries the atlas sub-rect) and the [`ENTITY_MODEL_SCROLL_SHADER`].
+/// Vanilla `BlendFunction.ADDITIVE`: `src·srcAlpha + dst·1` for colour, `src·1 + dst·1` for alpha.
+/// Used by the `energySwirl` render type (the charged-creeper / wither energy-swirl glow).
+const ENTITY_MODEL_ADDITIVE_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+
+/// The scrolling-overlay pipeline for vanilla `breezeWind` (the wind charge): translucent
+/// (`BlendFunction.TRANSLUCENT`), depth-writing, cull off.
 pub(crate) fn create_entity_model_scroll_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-scroll",
+        wgpu::BlendState::ALPHA_BLENDING,
+    )
+}
+
+/// The scrolling-overlay pipeline for vanilla `energySwirl` (the charged-creeper / wither glow):
+/// additive ([`ENTITY_MODEL_ADDITIVE_BLEND`]), depth-writing, cull off. Same shader / vertex layout as
+/// the translucent variant — only the blend differs.
+pub(crate) fn create_entity_model_scroll_additive_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-scroll-additive",
+        ENTITY_MODEL_ADDITIVE_BLEND,
+    )
+}
+
+/// Builds a scrolling-overlay pipeline (its own scroll vertex layout + [`ENTITY_MODEL_SCROLL_SHADER`],
+/// depth-writing, cull off) with the given blend. The translucent (`breezeWind`) and additive
+/// (`energySwirl`) variants differ only in `blend`.
+fn create_entity_model_scroll_pipeline_with_blend(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label_prefix: &str,
+    blend: wgpu::BlendState,
+) -> wgpu::RenderPipeline {
+    let shader_label = format!("{label_prefix}-shader");
+    let pipeline_layout_label = format!("{label_prefix}-pipeline-layout");
+    let pipeline_label = format!("{label_prefix}-pipeline");
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-entity-model-scroll-shader"),
+        label: Some(shader_label.as_str()),
         source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_SCROLL_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-entity-model-scroll-pipeline-layout"),
+        label: Some(pipeline_layout_label.as_str()),
         bind_group_layouts: &[bind_group_layout],
         push_constant_ranges: &[],
     });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-entity-model-scroll-pipeline"),
+        label: Some(pipeline_label.as_str()),
         layout: Some(&layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -406,7 +459,7 @@ pub(crate) fn create_entity_model_scroll_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(blend),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -525,11 +578,17 @@ impl Renderer {
                 meshes.scroll,
                 "bbb-entity-model-scroll",
             );
+            self.entity_model_scroll_additive_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.scroll_additive,
+                "bbb-entity-model-scroll-additive",
+            );
         } else {
             self.entity_model_textured_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
             self.entity_model_scroll_mesh = None;
+            self.entity_model_scroll_additive_mesh = None;
         }
         self.entity_model_bounds = merged_entity_model_bounds(&[
             self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
@@ -543,6 +602,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_scroll_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_scroll_additive_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
         ]);

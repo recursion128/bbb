@@ -114,18 +114,98 @@ fn creeper_textured_model_parts_match_vanilla_model_layer_uv_sources() {
 
 #[test]
 fn entity_texture_atlas_stitches_official_creeper_png_slot() {
-    let (layout, rgba) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
+    let (layout, _rgba) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
 
-    assert_eq!(layout.width, 64);
-    assert_eq!(layout.height, 32);
-    assert_eq!(layout.entries.len(), 1);
-    assert_eq!(
-        layout.entries[0].texture.path,
-        "textures/entity/creeper/creeper.png"
+    // The creeper now stitches two textures: the base creeper.png and the `CreeperPowerLayer`
+    // energy-swirl creeper_armor.png (the charged-creeper overlay).
+    assert_eq!(layout.entries.len(), 2);
+    let paths: Vec<&str> = layout
+        .entries
+        .iter()
+        .map(|entry| entry.texture.path)
+        .collect();
+    assert!(paths.contains(&"textures/entity/creeper/creeper.png"));
+    assert!(paths.contains(&"textures/entity/creeper/creeper_armor.png"));
+    // Each slot is the official 64×32 texture, so its uv sub-rect covers 64×32 texels of the atlas
+    // (regardless of how the two are packed).
+    for entry in &layout.entries {
+        let width = (entry.uv.max[0] - entry.uv.min[0]) * layout.width as f32;
+        let height = (entry.uv.max[1] - entry.uv.min[1]) * layout.height as f32;
+        assert!((width - 64.0).abs() < 0.5, "slot is 64 texels wide");
+        assert!((height - 32.0).abs() < 0.5, "slot is 32 texels tall");
+    }
+}
+
+#[test]
+fn charged_creeper_emits_scrolling_energy_swirl() {
+    let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
+
+    // An uncharged creeper has no `CreeperPowerLayer`, so it emits no additive swirl geometry.
+    let plain = entity_model_textured_meshes(
+        &[EntityModelInstance::new(
+            960,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0,
+        )],
+        &atlas,
     );
-    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
-    assert_close2(layout.entries[0].uv.max, [1.0, 1.0]);
-    assert_eq!(&rgba[0..4], &[0; 4]);
+    assert!(
+        plain.scroll_additive.vertices.is_empty(),
+        "no energy swirl when not powered"
+    );
+
+    // A charged creeper draws the inflated `CREEPER_ARMOR` model (6 cubes → 144 vertices) into the
+    // additive scroll mesh, every vertex tinted by the vanilla `0xFF808080` half-grey.
+    let grey = 128.0 / 255.0;
+    let rest = entity_model_textured_meshes(
+        &[
+            EntityModelInstance::new(961, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+                .with_creeper_powered(true),
+        ],
+        &atlas,
+    );
+    assert_eq!(rest.scroll_additive.vertices.len(), 144);
+    assert!(rest
+        .scroll_additive
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [grey, grey, grey, 1.0]));
+
+    // The inflated armor floats outside the body: its X half-extent (head 8→12 wide, so split ±6 →
+    // 0.375 block) exceeds the base creeper's 0.25, confirming the `CubeDeformation(2.0)` inflate.
+    assert!(rest
+        .scroll_additive
+        .vertices
+        .iter()
+        .any(|vertex| vertex.position[0].abs() > 0.3));
+
+    // Vanilla `EnergySwirlLayer` scrolls both axes by `(ageInTicks · 0.01) % 1`; the creeper has no
+    // age-driven body animation, so only the local UVs move.
+    let age = 20.0_f32;
+    let scrolled = entity_model_textured_meshes(
+        &[
+            EntityModelInstance::new(961, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+                .with_creeper_powered(true)
+                .with_age_in_ticks(age),
+        ],
+        &atlas,
+    );
+    let expected = (age * 0.01).rem_euclid(1.0);
+    assert!(expected > 0.0);
+    for (rest_vertex, scrolled_vertex) in rest
+        .scroll_additive
+        .vertices
+        .iter()
+        .zip(&scrolled.scroll_additive.vertices)
+    {
+        assert!(
+            (scrolled_vertex.local_uv[0] - (rest_vertex.local_uv[0] + expected)).abs() < 1.0e-6
+        );
+        assert!(
+            (scrolled_vertex.local_uv[1] - (rest_vertex.local_uv[1] + expected)).abs() < 1.0e-6
+        );
+    }
 }
 
 #[test]

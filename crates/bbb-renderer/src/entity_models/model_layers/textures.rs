@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 284] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 285] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -835,6 +835,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     BOGGED_TEXTURE_REF,
     BOGGED_OVERLAY_TEXTURE_REF,
     CREEPER_TEXTURE_REF,
+    CREEPER_ARMOR_TEXTURE_REF,
     SPIDER_TEXTURE_REF,
     CAVE_SPIDER_TEXTURE_REF,
     SPIDER_EYES_TEXTURE_REF,
@@ -1437,9 +1438,16 @@ pub(in crate::entity_models) const CREEPER_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/creeper/creeper.png",
         size: [64, 32],
     };
+// Vanilla `CreeperPowerLayer.POWER_LOCATION`: the charged-creeper energy-swirl overlay, scrolled and
+// additively blended over the inflated `CREEPER_ARMOR` model.
+pub(in crate::entity_models) const CREEPER_ARMOR_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/creeper/creeper_armor.png",
+        size: [64, 32],
+    };
 
-pub(in crate::entity_models) const CREEPER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [CREEPER_TEXTURE_REF];
+pub(in crate::entity_models) const CREEPER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [CREEPER_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF];
 
 pub fn creeper_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &CREEPER_ENTITY_TEXTURE_REFS
