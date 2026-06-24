@@ -5,16 +5,16 @@ use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
     EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
-    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
-    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    GuardianBeamRenderState, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily,
+    LlamaModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
+    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
+    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
-    RegistryContentState, WorldStore,
+    GuardianBeamSource as WorldGuardianBeamSource, RegistryContentState, WorldStore,
 };
 
 const VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID: i32 = 0;
@@ -544,6 +544,7 @@ fn entity_model_instance(
         .with_chest_armor_dye(armor_dye(source.chest_armor_dye))
         .with_legs_armor_dye(armor_dye(source.legs_armor_dye))
         .with_feet_armor_dye(armor_dye(source.feet_armor_dye))
+        .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
@@ -2004,6 +2005,17 @@ fn armor_material(material: Option<WorldArmorMaterialKind>) -> Option<EntityArmo
 /// `DyedItemColor.getOrDefault` → `EquipmentLayerRenderer.getColorForLayer`.
 fn armor_dye(dye: Option<i32>) -> Option<u32> {
     dye.map(|dye| dye as u32)
+}
+
+/// Maps a projected guardian attack beam onto the renderer's `GuardianBeamRenderState` (1:1; the two
+/// structs mirror vanilla `GuardianRenderState`'s beam fields).
+fn guardian_beam(beam: Option<WorldGuardianBeamSource>) -> Option<GuardianBeamRenderState> {
+    beam.map(|beam| GuardianBeamRenderState {
+        eye_to_target: beam.eye_to_target,
+        eye_height: beam.eye_height,
+        attack_time: beam.attack_time,
+        attack_scale: beam.attack_scale,
+    })
 }
 
 fn wither_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

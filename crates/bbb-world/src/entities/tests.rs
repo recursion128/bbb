@@ -2425,6 +2425,77 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
 }
 
 #[test]
+fn entity_model_sources_project_guardian_attack_beam() {
+    // Vanilla `GuardianRenderer.extractRenderState`: a guardian whose synced `DATA_ID_ATTACK_TARGET`
+    // (idx 17) names a live target projects the world eye→target vector and the ramping attack timing;
+    // with no target it projects no beam.
+    const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
+    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
+    const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
+
+    let add_at = |id: i32, type_id: i32, x: f64| ProtocolAddEntity {
+        id,
+        uuid: default_entity_uuid(),
+        entity_type_id: type_id,
+        position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    };
+
+    let mut store = WorldStore::new();
+    // Guardian at the origin; target zombie 10 blocks east (+X).
+    store.apply_add_entity(add_at(70, VANILLA_ENTITY_TYPE_GUARDIAN_ID, 0.0));
+    store.apply_add_entity(add_at(71, VANILLA_ENTITY_TYPE_ZOMBIE_ID, 10.0));
+
+    let beam = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 70)
+            .unwrap()
+            .guardian_beam
+    };
+
+    // No active attack target → no beam.
+    assert!(beam(&store).is_none());
+
+    // Lock onto the zombie (id 71) and ramp the client-side attack time over five ticks.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![protocol_int_data(GUARDIAN_ATTACK_TARGET_DATA_ID, 71)],
+    }));
+    store.advance_entity_client_animations(5);
+    let projected = beam(&store).expect("a guardian locked onto a live target beams");
+
+    // The beam points east (+X) toward the target and is level (no Z drift, small Y from eye/center).
+    assert!(
+        projected.eye_to_target[0] > 8.0,
+        "beam points +X toward target: {:?}",
+        projected.eye_to_target
+    );
+    assert!(projected.eye_to_target[2].abs() < 0.01);
+    assert!(projected.eye_height > 0.0);
+    // Five client ticks ramp `clientSideAttackTime` to 5; at partial 0, `attackTime = 5` and
+    // `attackScale = 5 / 80` (the guardian's `getAttackDuration`).
+    assert!((projected.attack_time - 5.0).abs() < 1.0e-4);
+    assert!((projected.attack_scale - 5.0 / 80.0).abs() < 1.0e-4);
+
+    // Clearing the target stops the beam (and resets the counter, vanilla `onSyncedDataUpdated`).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![protocol_int_data(GUARDIAN_ATTACK_TARGET_DATA_ID, 0)],
+    }));
+    assert!(beam(&store).is_none());
+}
+
+#[test]
 fn frog_swim_idle_activates_only_in_water_and_idle() {
     // Vanilla `Frog.tick` (client): `swimIdleAnimationState.animateWhen(isInWater() &&
     // !walkAnimation.isMoving(), tickCount)`. The projected `frog_swim_idle_seconds` is `>= 0` while

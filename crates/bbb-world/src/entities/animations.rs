@@ -21,6 +21,8 @@ const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
 /// synced accessor after `Entity` (`0..=7`), `LivingEntity` (`8..=14`) and `Mob`
 /// (`15`). A `Boolean`, default `false`.
 const GUARDIAN_MOVING_DATA_ID: u8 = 16;
+/// Vanilla `Guardian.DATA_ID_ATTACK_TARGET`, the int synced right after `DATA_ID_MOVING` (`17`).
+const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
@@ -224,6 +226,8 @@ pub struct EntityClientAnimationState {
     pub parrot_flap: Option<ParrotFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guardian_tail: Option<GuardianTailAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guardian_attack: Option<GuardianAttackAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
 }
@@ -755,6 +759,75 @@ impl GuardianTailAnimationState {
         self.previous_tail_animation
             + (self.tail_animation - self.previous_tail_animation) * partial_tick
     }
+}
+
+/// Canonical client-side guardian attack-beam counter, mirroring vanilla `Guardian.clientSideAttackTime`.
+/// Each client tick `Guardian.aiStep` increments it (capped at `getAttackDuration()`) while the synced
+/// `DATA_ID_ATTACK_TARGET` names a live target, and `onSyncedDataUpdated(DATA_ID_ATTACK_TARGET)` resets it
+/// to `0` when the target changes. `GuardianRenderer.extractRenderState` reads it for the beam's
+/// `attackTime` / `attackScale`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GuardianAttackAnimationState {
+    /// Vanilla `Guardian.clientSideAttackTime` (the ramp-up counter, `0..=attackDuration`).
+    #[serde(default)]
+    pub client_side_attack_time: i32,
+    /// The last-observed synced `DATA_ID_ATTACK_TARGET`, so a target change resets the counter exactly
+    /// as vanilla `onSyncedDataUpdated` does (`0` is "no target").
+    #[serde(default)]
+    pub previous_attack_target_id: i32,
+}
+
+impl GuardianAttackAnimationState {
+    /// Advances one client tick of `Guardian.aiStep`'s attack-time counter. `attack_target_id` is the
+    /// synced `DATA_ID_ATTACK_TARGET` (`0` = none) and `attack_duration` is `getAttackDuration()`
+    /// (`80` guardian / `60` elder).
+    fn advance_client_tick(&mut self, attack_target_id: i32, attack_duration: i32) {
+        // Vanilla `onSyncedDataUpdated(DATA_ID_ATTACK_TARGET)` resets the counter when the target
+        // changes (we reset on an observed value change, the client-visible signal).
+        if attack_target_id != self.previous_attack_target_id {
+            self.client_side_attack_time = 0;
+            self.previous_attack_target_id = attack_target_id;
+        }
+        // Vanilla `aiStep`: `if hasActiveAttackTarget() && clientSideAttackTime < getAttackDuration()`.
+        if attack_target_id != 0 && self.client_side_attack_time < attack_duration {
+            self.client_side_attack_time += 1;
+        }
+    }
+
+    /// Vanilla `Guardian.getAttackAnimationScale(pt) = (clientSideAttackTime + pt) / getAttackDuration()`.
+    pub(crate) fn attack_scale(&self, partial_tick: f32, attack_duration: i32) -> f32 {
+        (self.client_side_attack_time as f32 + partial_tick) / attack_duration as f32
+    }
+
+    /// Vanilla `GuardianRenderer.extractRenderState`: `attackTime = getClientSideAttackTime() + pt`.
+    pub(crate) fn attack_time(&self, partial_tick: f32) -> f32 {
+        self.client_side_attack_time as f32 + partial_tick
+    }
+}
+
+/// Whether the entity type is a guardian or elder guardian (the two `Guardian` subclasses carrying the
+/// attack beam + the `DATA_ID_ATTACK_TARGET` int at slot `17`).
+pub(crate) fn is_guardian_entity_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
+    )
+}
+
+/// Vanilla `Guardian.getAttackDuration()`: `80` for a guardian, `60` for an elder guardian.
+pub(crate) fn guardian_attack_duration(entity_type_id: i32) -> i32 {
+    if entity_type_id == VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID {
+        60
+    } else {
+        80
+    }
+}
+
+/// Vanilla `Guardian.DATA_ID_ATTACK_TARGET` (synced int at index `17`, the active target entity id, or
+/// `0` for none). Read straight from the entity metadata; non-guardians (whose slot `17` is not this
+/// field) are gated out by the caller.
+pub(crate) fn guardian_attack_target_id(data_values: &[EntityDataValue]) -> i32 {
+    entity_data_int(data_values, GUARDIAN_ATTACK_TARGET_DATA_ID, 0)
 }
 
 /// Canonical client-side limb-swing accumulator, mirroring vanilla
@@ -1915,6 +1988,10 @@ impl EntityClientAnimationState {
         // entity metadata in the tick loop ([`warden_heartbeat_delay`]). The calm
         // `40` for entities that do not consume it.
         warden_heartbeat_delay: u32,
+        // The synced `Guardian.DATA_ID_ATTACK_TARGET` (`isMoving`'s sibling), read from the entity
+        // metadata in the tick loop ([`guardian_attack_target_id`]). `0` (no target) for entities that
+        // do not consume it.
+        guardian_attack_target_id: i32,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -1990,12 +2067,20 @@ impl EntityClientAnimationState {
                 .squid
                 .get_or_insert_with(|| SquidAnimationState::new(entity_id))
                 .advance_client_tick(transform.delta_movement),
-            VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => self
-                .guardian_tail
-                .get_or_insert_with(GuardianTailAnimationState::default)
+            VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
-                .advance_client_tick(in_water, is_moving),
+                self.guardian_tail
+                    .get_or_insert_with(GuardianTailAnimationState::default)
+                    .advance_client_tick(in_water, is_moving);
+                // The same `aiStep` ramps `clientSideAttackTime` while a target is locked.
+                self.guardian_attack
+                    .get_or_insert_with(GuardianAttackAnimationState::default)
+                    .advance_client_tick(
+                        guardian_attack_target_id,
+                        guardian_attack_duration(entity_type_id),
+                    );
+            }
             VANILLA_ENTITY_TYPE_FROG_ID => {
                 // Vanilla `Frog.tick` (client side): `swimIdleAnimationState.animateWhen(isInWater()
                 // && !walkAnimation.isMoving(), tickCount)`. `isInWater()` is the per-tick world fact

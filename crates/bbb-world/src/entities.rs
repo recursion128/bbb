@@ -672,7 +672,25 @@ pub struct EntityModelSourceState {
     pub legs_armor_dye: Option<i32>,
     #[serde(default)]
     pub feet_armor_dye: Option<i32>,
+    /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
+    /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
+    /// other entity.
+    #[serde(default)]
+    pub guardian_beam: Option<GuardianBeamSource>,
     pub data_values: Vec<ProtocolEntityDataValue>,
+}
+
+/// Vanilla `GuardianRenderer` attack-beam projection (`GuardianRenderState.attackTargetPosition`
+/// present). `eye_to_target` is the world-space vector from the guardian's eye to the target center
+/// (`attackTargetPosition − eyePosition`); `eye_height` lifts the beam origin from the entity feet to
+/// the eye; `attack_time` is `clientSideAttackTime + partialTicks`; `attack_scale` is
+/// `getAttackAnimationScale`. The native layer maps this 1:1 onto the renderer's `GuardianBeamRenderState`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct GuardianBeamSource {
+    pub eye_to_target: [f32; 3],
+    pub eye_height: f32,
+    pub attack_time: f32,
+    pub attack_scale: f32,
 }
 
 /// A humanoid armor equipment-asset material (vanilla `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`),

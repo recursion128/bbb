@@ -1657,12 +1657,18 @@ When an agent does any of the following, update this file in the same slice:
       world-aligned frame (`translate(pos) · translate(0, eyeHeight, 0) · rotY(yRot) · rotX(xRot)`,
       orienting local +Y onto the world `eye_to_target` vector — no body yaw, matching vanilla where the
       beam draws after `super.submit` pops `setupRotations`), folded into the scroll (fract-wrap) pass so
-      `guardian_beam.png` tiles vertically over `length · 2.5`. DEFERRED (next slice): the WORLD
-      projection that fills `guardian_beam` — the synced `DATA_ID_ATTACK_TARGET` (idx 17), the
-      client-side `clientSideAttackTime` counter, and the cross-entity target-position +
-      `bbHeight · 0.5` lookup. The base texture is bound on the textured path (`GUARDIAN_TEXTURE_REF` /
-      `GUARDIAN_ELDER_TEXTURE_REF` / `GUARDIAN_BEAM_TEXTURE_REF`). The colored debug path stays as a
-      fallback (it approximates the body with a single teal tint and the eye with a pink tint)
+      `guardian_beam.png` tiles vertically over `length · 2.5`. The WORLD projection that fills
+      `guardian_beam` is now wired end-to-end: the synced `DATA_ID_ATTACK_TARGET` (idx 17, the int right
+      after `DATA_ID_MOVING`) drives a client-side `GuardianAttackAnimationState.clientSideAttackTime`
+      counter (`Guardian.aiStep` ramps it to `getAttackDuration()` = `80` guardian / `60` elder while a
+      target is locked, reset on target change), and `WorldStore::model_source` resolves the target
+      entity cross-entity (`self.transform` + `self.pick_bounds` for `bbHeight · 0.5`) to project
+      `eye_to_target = targetCenter − guardianEye`, `eye_height`, `attackTime = clientSideAttackTime +
+      partialTicks`, and `attackScale = getAttackAnimationScale`, which the native scene maps onto the
+      renderer's `GuardianBeamRenderState`. So a guardian locked onto a live target now fires its beam.
+      The base texture is bound on the textured path (`GUARDIAN_TEXTURE_REF` / `GUARDIAN_ELDER_TEXTURE_REF`
+      / `GUARDIAN_BEAM_TEXTURE_REF`). The colored debug path stays as a fallback (it approximates the body
+      with a single teal tint and the eye with a pink tint)
     - frog entities as renderer-owned vanilla 26.1 `FrogModel.createBodyLayer()` geometry on the
       textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `55` to
       `EntityModelKind::Frog { variant }`, replacing the former placeholder box. The static

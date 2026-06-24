@@ -4,6 +4,7 @@ pub use crate::entities::{
     ArmorMaterialKind, DragonFlightHistorySample, DragonFlightHistoryState,
     EnderDragonAnimationState, EntityCameraPoseState, EntityClientAnimationState,
     EntityModelSourceState, EntityPickTargetState, EntityState, EntityStatusProbeState,
-    EntityTransformState, EntityVec3, HurtingProjectileState, ItemEntityStackState,
-    PolarBearStandingAnimationState, ProjectilePowerUpdateState, VehicleMoveReport,
+    EntityTransformState, EntityVec3, GuardianBeamSource, HurtingProjectileState,
+    ItemEntityStackState, PolarBearStandingAnimationState, ProjectilePowerUpdateState,
+    VehicleMoveReport,
 };

@@ -21,7 +21,8 @@ use super::{
     VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
-    entity_animation_uses_in_water, guardian_is_moving, warden_heartbeat_delay,
+    entity_animation_uses_in_water, guardian_attack_duration, guardian_attack_target_id,
+    guardian_is_moving, is_guardian_entity_type, warden_heartbeat_delay,
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
@@ -817,7 +818,68 @@ impl EntityStore {
             chest_armor_dye: armor_dye(ProtocolEquipmentSlot::Chest),
             legs_armor_dye: armor_dye(ProtocolEquipmentSlot::Legs),
             feet_armor_dye: armor_dye(ProtocolEquipmentSlot::Feet),
+            guardian_beam: self.guardian_beam_source(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                client_animations.animations,
+                position,
+                partial_ticks,
+            ),
             data_values: metadata.data_values.clone(),
+        })
+    }
+
+    /// Vanilla `GuardianRenderer.extractRenderState` attack beam: when this entity is a guardian whose
+    /// synced `DATA_ID_ATTACK_TARGET` names a live target, project the world eye→target vector and the
+    /// attack timing. `position` is the guardian's interpolated feet position; the target is resolved
+    /// cross-entity by its protocol id. `None` for a guardian with no target (or a missing target) and
+    /// every non-guardian.
+    #[allow(clippy::too_many_arguments)]
+    fn guardian_beam_source(
+        &self,
+        entity_type_id: i32,
+        add_entity_data: i32,
+        data_values: &[bbb_protocol::packets::EntityDataValue],
+        attributes: &[ProtocolAttributeSnapshot],
+        client_animations: super::EntityClientAnimationState,
+        position: super::EntityVec3,
+        partial_ticks: f32,
+    ) -> Option<super::GuardianBeamSource> {
+        if !is_guardian_entity_type(entity_type_id) {
+            return None;
+        }
+        let attack_target_id = guardian_attack_target_id(data_values);
+        if attack_target_id == 0 {
+            return None;
+        }
+        // The target may not be tracked client-side (out of range / not yet spawned); then no beam.
+        let target_transform = self.transform(attack_target_id)?;
+        let target_bounds = self.pick_bounds(attack_target_id)?;
+        let eye_height = vanilla_eye_height_for_entity_data(
+            entity_type_id,
+            add_entity_data,
+            data_values,
+            attributes,
+            Some(client_animations),
+        )?;
+        let attack = client_animations.guardian_attack.unwrap_or_default();
+        let attack_duration = guardian_attack_duration(entity_type_id);
+        // Vanilla `getPosition(target, getBbHeight() * 0.5)` is the target center; `getEyePosition()`
+        // is the guardian eye. bbb uses the latest (un-interpolated) positions, so the lerp collapses.
+        let target_half_height = f64::from((target_bounds.max[1] - target_bounds.min[1]) * 0.5);
+        let eye_to_target = [
+            (target_transform.position.x - position.x) as f32,
+            (target_transform.position.y + target_half_height
+                - (position.y + f64::from(eye_height))) as f32,
+            (target_transform.position.z - position.z) as f32,
+        ];
+        Some(super::GuardianBeamSource {
+            eye_to_target,
+            eye_height,
+            attack_time: attack.attack_time(partial_ticks),
+            attack_scale: attack.attack_scale(partial_ticks, attack_duration),
         })
     }
 
@@ -1201,6 +1263,7 @@ impl EntityStore {
                 let in_water = in_water_by_id.get(&identity.id).copied().unwrap_or(false);
                 let is_moving = guardian_is_moving(&metadata.data_values);
                 let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
+                let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1210,6 +1273,7 @@ impl EntityStore {
                     in_water,
                     is_moving,
                     warden_heartbeat_delay,
+                    guardian_attack_target_id,
                 );
             }
         }
