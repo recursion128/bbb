@@ -965,13 +965,20 @@ pub(in crate::entity_models) fn frog_textured_layer_passes(
 }
 
 pub(in crate::entity_models) fn warden_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    // The warden's base body texture; the four emissive overlay layers (tendrils, heart,
-    // bioluminescent, pulsating spots) stay deferred, so this binds warden.png on the cutout pass.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
-        WARDEN_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+    // The warden's base body plus the always-on bioluminescent emissive overlay (alpha 1.0). The
+    // pulsating-spots ×2 / heart / tendril emissive layers pulse on a per-tick alpha and stay deferred.
+    vec![
+        EntityModelLayerPass::base(
+            EntityModelLayerRenderType::Cutout,
+            WARDEN_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+        ),
+        EntityModelLayerPass::base(
+            EntityModelLayerRenderType::Eyes,
+            WARDEN_BIOLUMINESCENT_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+        ),
+    ]
 }
 
 pub(in crate::entity_models) fn wind_charge_textured_layer_passes() -> Vec<EntityModelLayerPass> {

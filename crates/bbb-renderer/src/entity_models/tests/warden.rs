@@ -360,18 +360,24 @@ fn warden_combat_animations_re_pose_off_the_bind_pose() {
 
 #[test]
 fn warden_textured_render_matches_vanilla_renderer() {
-    // The warden binds its single base body texture (warden.png, atlas 128×128); the four emissive
-    // overlay layers stay deferred.
-    assert_eq!(
-        warden_textured_layer_passes()[0].texture,
-        WARDEN_TEXTURE_REF
-    );
+    // The warden binds its base body texture (warden.png, atlas 128×128) plus the always-on
+    // bioluminescent emissive overlay; the pulsating-spots / heart / tendril layers stay deferred.
+    let passes = warden_textured_layer_passes();
+    assert_eq!(passes.len(), 2);
+    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(passes[0].texture, WARDEN_TEXTURE_REF);
+    assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[1].texture, WARDEN_BIOLUMINESCENT_TEXTURE_REF);
     assert_eq!(
         EntityModelKind::Warden.vanilla_texture_ref(),
         Some(WARDEN_TEXTURE_REF)
     );
     assert!(entity_model_texture_refs().contains(&WARDEN_TEXTURE_REF));
-    assert_eq!(warden_entity_texture_refs(), &[WARDEN_TEXTURE_REF]);
+    assert!(entity_model_texture_refs().contains(&WARDEN_BIOLUMINESCENT_TEXTURE_REF));
+    assert_eq!(
+        warden_entity_texture_refs(),
+        &[WARDEN_TEXTURE_REF, WARDEN_BIOLUMINESCENT_TEXTURE_REF]
+    );
 
     let images: Vec<EntityModelTextureImage> = warden_entity_texture_refs()
         .iter()

@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 280] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 281] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -969,6 +969,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     GUARDIAN_TEXTURE_REF,
     GUARDIAN_ELDER_TEXTURE_REF,
     WARDEN_TEXTURE_REF,
+    WARDEN_BIOLUMINESCENT_TEXTURE_REF,
     FROG_TEMPERATE_TEXTURE_REF,
     FROG_WARM_TEXTURE_REF,
     FROG_COLD_TEXTURE_REF,
@@ -2752,8 +2753,16 @@ pub(in crate::entity_models) const WARDEN_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/warden/warden.png",
         size: [128, 128],
     };
-pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [WARDEN_TEXTURE_REF];
+// Vanilla `WardenRenderer`'s always-on bioluminescent emissive layer (alpha 1.0): the warden's
+// glowing body markings. The pulsating-spots / heart / tendril emissive layers pulse on per-tick
+// alpha and stay deferred.
+pub(in crate::entity_models) const WARDEN_BIOLUMINESCENT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/warden/warden_bioluminescent_layer.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [WARDEN_TEXTURE_REF, WARDEN_BIOLUMINESCENT_TEXTURE_REF];
 pub fn warden_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WARDEN_ENTITY_TEXTURE_REFS
 }
