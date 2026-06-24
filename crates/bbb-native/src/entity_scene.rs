@@ -273,6 +273,17 @@ const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 /// defined right after `Bee.DATA_FLAGS_ID` (17). `Bee.isAngry()` is `endTime > 0 &&
 /// endTime - gameTime > 0`.
 const BEE_ANGER_END_TIME_DATA_ID: u8 = 18;
+/// `Camel.LAST_POSE_CHANGE_TICK` data id (20): the synced Long that drives the camel's
+/// sit/sit-pose/stand-up timing. Its magnitude is the game tick of the last pose change and
+/// its SIGN encodes whether the camel is sitting (`< 0` → sitting). Defined right after
+/// `Camel.DASH` (19), themselves following `AbstractHorse.DATA_ID_FLAGS` (18).
+const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
+/// Vanilla `Camel.SITDOWN_DURATION_TICKS` (40 ticks = 2.0 s `CAMEL_SIT`): the sit-down
+/// window, after which `CAMEL_SIT_POSE` takes over.
+const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;
+/// Vanilla `Camel.STANDUP_DURATION_TICKS` (52 ticks = 2.6 s `CAMEL_STANDUP`): the stand-up
+/// transition window.
+const CAMEL_STANDUP_DURATION_TICKS: i64 = 52;
 /// `LivingEntity.DATA_HEALTH_ID` — the synced current-health float.
 const LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
 
@@ -368,6 +379,9 @@ fn entity_model_instance(
         entity_partial_tick,
     );
     let light_coords = entity_light_coords(&source.data_values, source.light);
+    // Vanilla `Camel.setupAnimationStates()`: the sit/sit-pose/stand-up timing projected purely
+    // from the synced `LAST_POSE_CHANGE_TICK` (id 20) and the world game time.
+    let camel_sit = camel_sit_state(source.entity_type_id, &source.data_values, game_time);
     // Vanilla LivingEntityRenderer.extractRenderState:
     //   state.yRot = Mth.wrapDegrees(headRot - bodyRot)  (net head-look yaw)
     //   state.xRot = entity.getXRot(partialTicks)         (head-look pitch)
@@ -451,6 +465,9 @@ fn entity_model_instance(
             &source.data_values,
             game_time,
         ))
+        .with_camel_sit_seconds(camel_sit.sit_seconds)
+        .with_camel_sit_pose_seconds(camel_sit.sit_pose_seconds)
+        .with_camel_standup_seconds(camel_sit.standup_seconds)
         .with_vex_charging(source.vex_charging)
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -1093,6 +1110,94 @@ fn bee_is_angry(
     }
     let end_time = entity_data_long(values, BEE_ANGER_END_TIME_DATA_ID, -1);
     end_time > 0 && end_time - game_time > 0
+}
+
+/// The three projected camel sit/stand elapsed-seconds values, each `-1.0` when its
+/// `AnimationState` is stopped (so the renderer applies no keyframe).
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct CamelSitState {
+    /// Vanilla `Camel.sitAnimationState` elapsed seconds (`CAMEL_SIT`, 2.0 s).
+    sit_seconds: f32,
+    /// Vanilla `Camel.sitPoseAnimationState` elapsed seconds (`CAMEL_SIT_POSE`, 1.0 s).
+    sit_pose_seconds: f32,
+    /// Vanilla `Camel.sitUpAnimationState` elapsed seconds (`CAMEL_STANDUP`, 2.6 s).
+    standup_seconds: f32,
+}
+
+impl CamelSitState {
+    const STOPPED: Self = Self {
+        sit_seconds: -1.0,
+        sit_pose_seconds: -1.0,
+        standup_seconds: -1.0,
+    };
+}
+
+/// Vanilla `Camel.setupAnimationStates()` (client tick) projected purely from the synced
+/// `LAST_POSE_CHANGE_TICK` (id 20, a `Long`) and the world game time — no client-side
+/// accumulator is needed because the camel's sit/stand timing is a deterministic function of
+/// those two values. Mirrors `Camel.getPoseTime()` (`gameTime - |lastPoseChangeTick|`) and the
+/// `isCamelSitting`/`isCamelVisuallySitting`/`isVisuallySittingDown`/`isInPoseTransition`
+/// predicates, returning each active animation's `(ageInTicks - startTick)` elapsed as raw
+/// seconds (the renderer clamps the non-looping tables to their final frame):
+///   - `sit` and `standup` start at the pose-change tick, so their elapsed is `getPoseTime`;
+///   - `sitPose` starts when the 40-tick sit-down window ends, so its elapsed is
+///     `getPoseTime - 40`.
+/// The `dash` (rising-edge driven) and `idle` (client random-timer driven) animations are not
+/// projection-derivable and stay deferred. Non-camel entities return [`CamelSitState::STOPPED`].
+fn camel_sit_state(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    game_time: i64,
+) -> CamelSitState {
+    if entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_ID
+        && entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
+    {
+        return CamelSitState::STOPPED;
+    }
+    let last_pose_change_tick = entity_data_long(values, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 0);
+    // Vanilla `Camel.getPoseTime()` and `isCamelSitting()`.
+    let pose_time = game_time - last_pose_change_tick.abs();
+    let is_sitting = last_pose_change_tick < 0;
+    // Vanilla `Camel.isCamelVisuallySitting()`.
+    let is_visually_sitting = (pose_time < 0) != is_sitting;
+    // Vanilla `Camel.isVisuallySittingDown()`.
+    let is_visually_sitting_down =
+        is_sitting && pose_time >= 0 && pose_time < CAMEL_SITDOWN_DURATION_TICKS;
+    // Vanilla `Camel.isInPoseTransition()`.
+    let transition_length = if is_sitting {
+        CAMEL_SITDOWN_DURATION_TICKS
+    } else {
+        CAMEL_STANDUP_DURATION_TICKS
+    };
+    let is_in_pose_transition = pose_time < transition_length;
+
+    let ticks_to_seconds = |ticks: i64| ticks as f32 / 20.0;
+    if is_visually_sitting {
+        // `sitUp`/`dash` are stopped; `sit` plays during the sit-down window, then `sitPose`.
+        if is_visually_sitting_down {
+            CamelSitState {
+                sit_seconds: ticks_to_seconds(pose_time),
+                sit_pose_seconds: -1.0,
+                standup_seconds: -1.0,
+            }
+        } else {
+            CamelSitState {
+                sit_seconds: -1.0,
+                // `sitPose` starts when the 40-tick sit-down window ends.
+                sit_pose_seconds: ticks_to_seconds(pose_time - CAMEL_SITDOWN_DURATION_TICKS),
+                standup_seconds: -1.0,
+            }
+        }
+    } else if is_in_pose_transition && pose_time >= 0 {
+        // Not visually sitting: `standup` plays during the stand-up transition.
+        CamelSitState {
+            sit_seconds: -1.0,
+            sit_pose_seconds: -1.0,
+            standup_seconds: ticks_to_seconds(pose_time),
+        }
+    } else {
+        CamelSitState::STOPPED
+    }
 }
 
 /// Vanilla `WolfRenderState.tailAngle = Wolf.getTailAngle()`: the wolf tail `xRot`. An angry
@@ -2704,6 +2809,81 @@ mod tests {
             values: vec![protocol_long_data(VANILLA_BEE_ANGER_END_TIME_DATA_ID, 0)],
         }));
         assert!(!angry(&world, 97));
+    }
+
+    #[test]
+    fn entity_model_instances_project_camel_sit_then_sit_pose_from_pose_change_tick() {
+        // Vanilla Camel.LAST_POSE_CHANGE_TICK (20, LONG): the SIGN encodes sitting (< 0) and the
+        // magnitude is the change tick. getPoseTime = gameTime - |LAST_POSE_CHANGE_TICK|. A camel that
+        // sat at game tick 100 (so LAST_POSE_CHANGE_TICK = -100) plays CAMEL_SIT for getPoseTime < 40,
+        // then CAMEL_SIT_POSE (which starts when the 40-tick sit-down window ends).
+        const VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            150,
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // Sat down at game tick 100 (negative magnitude → sitting).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 150,
+            values: vec![protocol_long_data(
+                VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+                -100,
+            )],
+        }));
+
+        let sit_seconds = |world: &WorldStore, id: i32| {
+            let state = entity_model_instances_from_world_at_partial_tick(world, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state;
+            (
+                state.camel_sit_seconds,
+                state.camel_sit_pose_seconds,
+                state.camel_standup_seconds,
+            )
+        };
+
+        // getPoseTime = 120 - 100 = 20 (< 40): inside the sit-down window, so CAMEL_SIT is active at
+        // 20/20 = 1.0 s, and sit-pose / standup are the stopped sentinel.
+        world.apply_world_time(PlayTime {
+            game_time: 120,
+            clock_updates: Vec::new(),
+        });
+        assert_eq!(sit_seconds(&world, 150), (1.0, -1.0, -1.0));
+
+        // getPoseTime = 160 - 100 = 60 (>= 40): past the sit-down window, so CAMEL_SIT_POSE takes over
+        // at (60 - 40)/20 = 1.0 s, and sit / standup are stopped.
+        world.apply_world_time(PlayTime {
+            game_time: 160,
+            clock_updates: Vec::new(),
+        });
+        assert_eq!(sit_seconds(&world, 150), (-1.0, 1.0, -1.0));
+
+        // Standing back up at game tick 200 (positive magnitude → not sitting): getPoseTime = 210 -
+        // 200 = 10 (< 52 STANDUP window, >= 0), so CAMEL_STANDUP is active at 10/20 = 0.5 s.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 150,
+            values: vec![protocol_long_data(
+                VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+                200,
+            )],
+        }));
+        world.apply_world_time(PlayTime {
+            game_time: 210,
+            clock_updates: Vec::new(),
+        });
+        assert_eq!(sit_seconds(&world, 150), (-1.0, -1.0, 0.5));
+
+        // Long after standing up (getPoseTime = 300 - 200 = 100 >= 52): no transition, all stopped.
+        world.apply_world_time(PlayTime {
+            game_time: 300,
+            clock_updates: Vec::new(),
+        });
+        assert_eq!(sit_seconds(&world, 150), (-1.0, -1.0, -1.0));
     }
 
     #[test]

@@ -249,6 +249,28 @@ entity_render_state! {
     /// rotLerpRad(rollAmount, bone.xRot, 3.0915928)`. `0.0` (upright) for every other entity and
     /// for an upright bee.
     (with_bee_roll_amount) bee_roll_amount: f32 = 0.0;
+    /// Vanilla `Camel.sitAnimationState` elapsed seconds (the 2.0 s `CAMEL_SIT`, non-looping),
+    /// driven by `Camel.setupAnimationStates()` while the camel is visually sitting AND inside the
+    /// 40-tick sit-down window (`isVisuallySittingDown()`). `CamelModel.setupAnim` applies
+    /// `sitAnimation.apply(...)` ADDITIVELY onto the walk pose; the renderer samples `CAMEL_SIT` at
+    /// these seconds when `>= 0` (clamping past 2.0 s to the seated final frame). `-1.0` (the
+    /// stopped-animation sentinel) for every other entity and for a standing camel, so no keyframe
+    /// is applied. Projected purely from the synced `LAST_POSE_CHANGE_TICK` + game time.
+    (with_camel_sit_seconds) camel_sit_seconds: f32 = -1.0;
+    /// Vanilla `Camel.sitPoseAnimationState` elapsed seconds (the 1.0 s `CAMEL_SIT_POSE`,
+    /// non-looping), driven by `Camel.setupAnimationStates()` while the camel is visually sitting but
+    /// past the sit-down window (the steady seated hold). Its `AnimationState` starts when the
+    /// 40-tick sit-down window ends, so the projected elapsed is `getPoseTime - 40`.
+    /// `CamelModel.setupAnim` applies it ADDITIVELY; `-1.0` for every other entity and a camel that
+    /// is not holding the seated pose.
+    (with_camel_sit_pose_seconds) camel_sit_pose_seconds: f32 = -1.0;
+    /// Vanilla `Camel.sitUpAnimationState` elapsed seconds (the 2.6 s `CAMEL_STANDUP`, non-looping),
+    /// driven by `Camel.setupAnimationStates()` while the camel is NOT visually sitting but still in
+    /// the stand-up pose transition (`isInPoseTransition() && getPoseTime() >= 0`). Its elapsed is
+    /// `getPoseTime`. `CamelModel.setupAnim` applies `standupAnimation.apply(...)` ADDITIVELY;
+    /// `-1.0` for every other entity and a camel that is not standing up. (`dash` and `idle` stay
+    /// deferred; see `docs/unsupported-features.md`.)
+    (with_camel_standup_seconds) camel_standup_seconds: f32 = -1.0;
     /// Vanilla frog croak timing (`FrogRenderState.croakAnimationState` driven by the synced
     /// `Pose.CROAKING`): the elapsed seconds since the croak started, projected for
     /// `FrogModel.setupAnim`, which shows the `croaking_body` pouch (`croakAnimationState.isStarted`)
@@ -1394,6 +1416,9 @@ mod tests {
                 bee_has_stinger: true,
                 bee_angry: false,
                 bee_roll_amount: 0.0,
+                camel_sit_seconds: -1.0,
+                camel_sit_pose_seconds: -1.0,
+                camel_standup_seconds: -1.0,
                 frog_croak_seconds: -1.0,
                 sniffer_animation_id: -1,
                 sniffer_animation_seconds: -1.0,

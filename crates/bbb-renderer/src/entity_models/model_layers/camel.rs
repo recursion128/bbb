@@ -1,7 +1,7 @@
 use super::super::keyframe::{
-    degree_vec, keyframe, keyframe_animated_pose, keyframe_walk_sample, pos_vec,
-    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
-    Keyframe, KeyframeInterpolation,
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_elapsed_seconds, keyframe_walk_sample,
+    pos_vec, sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget,
+    BoneAnimation, Keyframe, KeyframeInterpolation,
 };
 use super::{PartPose, CAMEL_TAN, PART_POSE_ZERO};
 use crate::entity_models::catalog::CamelModelFamily;
@@ -506,6 +506,456 @@ pub(in crate::entity_models) const CAMEL_BABY_WALK: AnimationDefinition = Animat
     bones: &CAMEL_BABY_WALK_BONES,
 };
 
+// ----- `CamelAnimation.CAMEL_SIT` (the sit-down transition; length 2.0s, NOT looping) -----
+//
+// Folds the camel down: the `body` pitches and drops `y -19.9`, the four legs tuck under
+// (rotation + position), the `head` dips and returns, and the `tail` flicks up. `CamelModel.setupAnim`
+// applies it ADDITIVELY (`sitAnimation.apply(sitAnimationState, ageInTicks)`) onto the walk pose; the
+// renderer samples it while `camel_sit_seconds >= 0` (clamping past 2.0 s to the seated final frame).
+
+const CAMEL_SIT_BODY_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.3, degree_vec(30.0, 0.0, 0.0), LINEAR),
+    keyframe(1.8, degree_vec(24.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_BODY_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.3, pos_vec(0.0, 0.0, 1.0), LINEAR),
+    keyframe(1.8, pos_vec(0.0, -6.0, 1.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, -19.9, 0.0), LINEAR),
+];
+const CAMEL_SIT_RIGHT_FRONT_LEG_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(-30.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(-30.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(-90.0, 10.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_RIGHT_FRONT_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, -2.0, 11.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, -2.0, 11.0), LINEAR),
+    keyframe(1.7, pos_vec(0.0, -8.4, 11.4), LINEAR),
+    keyframe(2.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+];
+const CAMEL_SIT_LEFT_FRONT_LEG_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(-30.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(-30.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(-90.0, -10.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_LEFT_FRONT_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, -2.0, 11.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, -2.0, 11.0), LINEAR),
+    keyframe(1.7, pos_vec(0.0, -8.4, 11.4), LINEAR),
+    keyframe(2.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+];
+const CAMEL_SIT_LEFT_HIND_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(1.7, degree_vec(-15.0, -3.0, 0.0), LINEAR),
+    keyframe(1.9, degree_vec(-65.0, -9.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(-90.0, -15.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_LEFT_HIND_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, 0.0, 1.0), LINEAR),
+    keyframe(1.7, pos_vec(1.0, -0.62, 0.25), LINEAR),
+    keyframe(1.9, pos_vec(0.5, -11.25, 2.5), LINEAR),
+    keyframe(2.0, pos_vec(1.0, -20.5, 5.0), LINEAR),
+];
+const CAMEL_SIT_RIGHT_HIND_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(1.7, degree_vec(-15.0, 3.0, 0.0), LINEAR),
+    keyframe(1.9, degree_vec(-65.0, 9.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(-90.0, 15.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_RIGHT_HIND_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, 0.0, 1.0), LINEAR),
+    keyframe(1.7, pos_vec(-1.0, -0.62, 0.25), LINEAR),
+    keyframe(1.9, pos_vec(-0.5, -11.25, 2.5), LINEAR),
+    keyframe(2.0, pos_vec(-1.0, -20.5, 5.0), LINEAR),
+];
+const CAMEL_SIT_HEAD_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7, degree_vec(-27.5, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(-21.25, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_TAIL_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(5.0, 0.0, 0.0), LINEAR),
+    keyframe(1.7, degree_vec(5.0, 0.0, 0.0), LINEAR),
+    keyframe(1.9, degree_vec(80.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+];
+
+const CAMEL_SIT_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&CAMEL_SIT_BODY_ROT), pos(&CAMEL_SIT_BODY_POS)];
+const CAMEL_SIT_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_RIGHT_FRONT_LEG_ROT),
+    pos(&CAMEL_SIT_RIGHT_FRONT_LEG_POS),
+];
+const CAMEL_SIT_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_LEFT_FRONT_LEG_ROT),
+    pos(&CAMEL_SIT_LEFT_FRONT_LEG_POS),
+];
+const CAMEL_SIT_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_LEFT_HIND_LEG_ROT),
+    pos(&CAMEL_SIT_LEFT_HIND_LEG_POS),
+];
+const CAMEL_SIT_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_RIGHT_HIND_LEG_ROT),
+    pos(&CAMEL_SIT_RIGHT_HIND_LEG_POS),
+];
+const CAMEL_SIT_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_SIT_HEAD_ROT)];
+const CAMEL_SIT_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_SIT_TAIL_ROT)];
+
+const CAMEL_SIT_BONES: [BoneAnimation; 7] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &CAMEL_SIT_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &CAMEL_SIT_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &CAMEL_SIT_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &CAMEL_SIT_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &CAMEL_SIT_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &CAMEL_SIT_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &CAMEL_SIT_TAIL_CHANNELS,
+    },
+];
+
+/// Vanilla `CamelAnimation.CAMEL_SIT`: the 2.0 s sit-down transition (NOT looping), sampled by
+/// `CamelModel.setupAnim` via `sitAnimation.apply(sitAnimationState, ageInTicks)` while the camel is
+/// visually sitting down. All keyframes are Linear. The renderer applies it ADDITIVELY when
+/// `camel_sit_seconds >= 0`, clamping past 2.0 s to the seated final frame.
+pub(in crate::entity_models) const CAMEL_SIT: AnimationDefinition = AnimationDefinition {
+    length_seconds: 2.0,
+    looping: false,
+    bones: &CAMEL_SIT_BONES,
+};
+
+// ----- `CamelAnimation.CAMEL_SIT_POSE` (the steady seated hold; length 1.0s, NOT looping) -----
+//
+// Holds the camel in the seated pose: every channel is a constant pair of identical keyframes (the
+// final frame of `CAMEL_SIT`). `CamelModel.setupAnim` applies it ADDITIVELY while the camel holds the
+// seated pose (past the sit-down window). All keyframes are Linear.
+
+const CAMEL_SIT_POSE_BODY_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_POSE_BODY_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, -19.9, 0.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, -19.9, 0.0), LINEAR),
+];
+const CAMEL_SIT_POSE_RIGHT_FRONT_LEG_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(-90.0, 10.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(-90.0, 10.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_POSE_RIGHT_FRONT_LEG_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+];
+const CAMEL_SIT_POSE_LEFT_FRONT_LEG_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(-90.0, -10.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(-90.0, -10.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_POSE_LEFT_FRONT_LEG_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+];
+const CAMEL_SIT_POSE_LEFT_HIND_LEG_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(-90.0, -15.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(-90.0, -15.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_POSE_LEFT_HIND_LEG_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(1.0, -20.5, 5.0), LINEAR),
+    keyframe(1.0, pos_vec(1.0, -20.5, 5.0), LINEAR),
+];
+const CAMEL_SIT_POSE_RIGHT_HIND_LEG_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(-90.0, 15.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(-90.0, 15.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_POSE_RIGHT_HIND_LEG_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(-1.0, -20.5, 5.0), LINEAR),
+    keyframe(1.0, pos_vec(-1.0, -20.5, 5.0), LINEAR),
+];
+const CAMEL_SIT_POSE_HEAD_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_SIT_POSE_TAIL_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+];
+
+const CAMEL_SIT_POSE_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&CAMEL_SIT_POSE_BODY_ROT), pos(&CAMEL_SIT_POSE_BODY_POS)];
+const CAMEL_SIT_POSE_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_POSE_RIGHT_FRONT_LEG_ROT),
+    pos(&CAMEL_SIT_POSE_RIGHT_FRONT_LEG_POS),
+];
+const CAMEL_SIT_POSE_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_POSE_LEFT_FRONT_LEG_ROT),
+    pos(&CAMEL_SIT_POSE_LEFT_FRONT_LEG_POS),
+];
+const CAMEL_SIT_POSE_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_POSE_LEFT_HIND_LEG_ROT),
+    pos(&CAMEL_SIT_POSE_LEFT_HIND_LEG_POS),
+];
+const CAMEL_SIT_POSE_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_SIT_POSE_RIGHT_HIND_LEG_ROT),
+    pos(&CAMEL_SIT_POSE_RIGHT_HIND_LEG_POS),
+];
+const CAMEL_SIT_POSE_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_SIT_POSE_HEAD_ROT)];
+const CAMEL_SIT_POSE_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_SIT_POSE_TAIL_ROT)];
+
+const CAMEL_SIT_POSE_BONES: [BoneAnimation; 7] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &CAMEL_SIT_POSE_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &CAMEL_SIT_POSE_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &CAMEL_SIT_POSE_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &CAMEL_SIT_POSE_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &CAMEL_SIT_POSE_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &CAMEL_SIT_POSE_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &CAMEL_SIT_POSE_TAIL_CHANNELS,
+    },
+];
+
+/// Vanilla `CamelAnimation.CAMEL_SIT_POSE`: the 1.0 s steady seated hold (NOT looping), sampled by
+/// `CamelModel.setupAnim` via `sitPoseAnimation.apply(sitPoseAnimationState, ageInTicks)` while the
+/// camel holds the seated pose past the sit-down window. Every channel is a constant pair (the seated
+/// final frame of `CAMEL_SIT`). The renderer applies it ADDITIVELY when `camel_sit_pose_seconds >= 0`.
+pub(in crate::entity_models) const CAMEL_SIT_POSE: AnimationDefinition = AnimationDefinition {
+    length_seconds: 1.0,
+    looping: false,
+    bones: &CAMEL_SIT_POSE_BONES,
+};
+
+// ----- `CamelAnimation.CAMEL_STANDUP` (the stand-up transition; length 2.6s, NOT looping) -----
+//
+// Unfolds the camel back to standing: the `body` rises and rolls forward, the four legs extend, the
+// `head` swings up and down, and the `tail` settles. `CamelModel.setupAnim` applies it ADDITIVELY
+// while the camel is in the stand-up transition. The `body` keyframes mix CatmullRom and Linear; the
+// rest are Linear.
+
+const CAMEL_STANDUP_BODY_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7, degree_vec(-17.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.8, degree_vec(-17.83, 0.0, 0.0), CATMULLROM),
+    keyframe(2.3, degree_vec(-5.83, 0.0, 0.0), LINEAR),
+    keyframe(2.6, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_BODY_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, -19.9, 0.0), LINEAR),
+    keyframe(0.7, pos_vec(0.0, -19.9, -3.0), LINEAR),
+    keyframe(1.4, pos_vec(0.0, -12.76, -4.0), CATMULLROM),
+    keyframe(1.8, pos_vec(0.0, -10.1, -4.0), CATMULLROM),
+    keyframe(2.3, pos_vec(0.0, -2.9, -2.0), LINEAR),
+    keyframe(2.6, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_RIGHT_FRONT_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(-90.0, 10.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-90.0, 10.0, 0.0), LINEAR),
+    keyframe(1.1, degree_vec(-49.06, 10.0, 0.0), LINEAR),
+    keyframe(1.8, degree_vec(-22.5, 10.0, 0.0), LINEAR),
+    keyframe(2.3, degree_vec(-25.0, 10.0, 0.0), LINEAR),
+    keyframe(2.6, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_RIGHT_FRONT_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, -20.6, 8.0), LINEAR),
+    keyframe(1.1, pos_vec(0.0, -7.14, 4.42), LINEAR),
+    keyframe(1.8, pos_vec(0.0, -1.27, -1.33), LINEAR),
+    keyframe(2.3, pos_vec(0.0, -1.27, -0.33), LINEAR),
+    keyframe(2.6, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_LEFT_FRONT_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(-90.0, -10.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-90.0, -10.0, 0.0), LINEAR),
+    keyframe(1.1, degree_vec(-49.06, -10.0, 0.0), LINEAR),
+    keyframe(1.8, degree_vec(-22.5, -10.0, 0.0), LINEAR),
+    keyframe(2.3, degree_vec(-25.0, -10.0, 0.0), LINEAR),
+    keyframe(2.6, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_LEFT_FRONT_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, -20.6, 12.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, -20.6, 8.0), LINEAR),
+    keyframe(1.1, pos_vec(0.0, -7.14, 4.42), LINEAR),
+    keyframe(1.8, pos_vec(0.0, -1.27, -1.33), LINEAR),
+    keyframe(2.3, pos_vec(0.0, -1.27, -0.33), LINEAR),
+    keyframe(2.6, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_LEFT_HIND_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(-90.0, -15.0, 0.0), LINEAR),
+    keyframe(0.3, degree_vec(-90.0, 0.0, 0.0), LINEAR),
+    keyframe(0.6, degree_vec(-90.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1, degree_vec(-60.0, 0.0, 0.0), LINEAR),
+    keyframe(1.9, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(2.2, degree_vec(30.0, 0.0, 0.0), LINEAR),
+    keyframe(2.6, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_LEFT_HIND_LEG_POS: [Keyframe; 8] = [
+    keyframe(0.0, pos_vec(1.0, -20.5, 5.0), LINEAR),
+    keyframe(0.3, pos_vec(-2.0, -20.5, 3.0), LINEAR),
+    keyframe(0.6, pos_vec(-2.0, -20.5, 3.0), LINEAR),
+    keyframe(1.1, pos_vec(-2.0, -10.5, 2.0), LINEAR),
+    keyframe(1.5, pos_vec(-2.0, -0.4, -3.9), LINEAR),
+    keyframe(1.9, pos_vec(-2.0, -4.3, -9.8), LINEAR),
+    keyframe(2.2, pos_vec(-1.0, -2.5, -5.0), LINEAR),
+    keyframe(2.6, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_RIGHT_HIND_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(-90.0, 15.0, 0.0), LINEAR),
+    keyframe(0.3, degree_vec(-90.0, 0.0, 0.0), LINEAR),
+    keyframe(0.6, degree_vec(-90.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1, degree_vec(-60.0, 0.0, 0.0), LINEAR),
+    keyframe(1.9, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(2.2, degree_vec(30.0, 0.0, 0.0), LINEAR),
+    keyframe(2.6, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_RIGHT_HIND_LEG_POS: [Keyframe; 8] = [
+    keyframe(0.0, pos_vec(-1.0, -20.5, 5.0), LINEAR),
+    keyframe(0.3, pos_vec(2.0, -20.5, 3.0), LINEAR),
+    keyframe(0.6, pos_vec(2.0, -20.5, 3.0), LINEAR),
+    keyframe(1.1, pos_vec(2.0, -10.5, 2.0), LINEAR),
+    keyframe(1.5, pos_vec(2.0, -0.4, -3.9), LINEAR),
+    keyframe(1.9, pos_vec(2.0, -4.3, -9.8), LINEAR),
+    keyframe(2.2, pos_vec(1.0, -2.5, -5.0), LINEAR),
+    keyframe(2.6, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_HEAD_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.3, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.8, degree_vec(55.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(65.0, 0.0, 0.0), LINEAR),
+    keyframe(2.4, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_STANDUP_TAIL_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4, degree_vec(55.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9, degree_vec(55.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(17.5, 0.0, 0.0), LINEAR),
+    keyframe(2.6, degree_vec(5.0, 0.0, 0.0), LINEAR),
+];
+
+const CAMEL_STANDUP_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&CAMEL_STANDUP_BODY_ROT), pos(&CAMEL_STANDUP_BODY_POS)];
+const CAMEL_STANDUP_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_STANDUP_RIGHT_FRONT_LEG_ROT),
+    pos(&CAMEL_STANDUP_RIGHT_FRONT_LEG_POS),
+];
+const CAMEL_STANDUP_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_STANDUP_LEFT_FRONT_LEG_ROT),
+    pos(&CAMEL_STANDUP_LEFT_FRONT_LEG_POS),
+];
+const CAMEL_STANDUP_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_STANDUP_LEFT_HIND_LEG_ROT),
+    pos(&CAMEL_STANDUP_LEFT_HIND_LEG_POS),
+];
+const CAMEL_STANDUP_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&CAMEL_STANDUP_RIGHT_HIND_LEG_ROT),
+    pos(&CAMEL_STANDUP_RIGHT_HIND_LEG_POS),
+];
+const CAMEL_STANDUP_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_STANDUP_HEAD_ROT)];
+const CAMEL_STANDUP_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_STANDUP_TAIL_ROT)];
+
+const CAMEL_STANDUP_BONES: [BoneAnimation; 7] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &CAMEL_STANDUP_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &CAMEL_STANDUP_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &CAMEL_STANDUP_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &CAMEL_STANDUP_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &CAMEL_STANDUP_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &CAMEL_STANDUP_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &CAMEL_STANDUP_TAIL_CHANNELS,
+    },
+];
+
+/// Vanilla `CamelAnimation.CAMEL_STANDUP`: the 2.6 s stand-up transition (NOT looping), sampled by
+/// `CamelModel.setupAnim` via `standupAnimation.apply(sitUpAnimationState, ageInTicks)` while the
+/// camel is in the stand-up pose transition. The `body` keyframes mix CatmullRom and Linear; the rest
+/// are Linear. The renderer applies it ADDITIVELY when `camel_standup_seconds >= 0`, clamping past
+/// 2.6 s to the standing final frame.
+pub(in crate::entity_models) const CAMEL_STANDUP: AnimationDefinition = AnimationDefinition {
+    length_seconds: 2.6,
+    looping: false,
+    bones: &CAMEL_STANDUP_BONES,
+};
+
+/// The camel sit/stand bones positioned by the body/leg/head/tail keyframes (the `body` and `head`
+/// are handled specially in `setup_anim`; these are the remaining swing bones). The two ears are not
+/// animated by the sit/stand transitions, only by the walk.
+const CAMEL_SIT_SWING_BONES: [&str; 5] = [
+    "left_hind_leg",
+    "right_hind_leg",
+    "left_front_leg",
+    "right_front_leg",
+    "tail",
+];
+
 /// The camel walk bones that are positioned by leg/ear/tail keyframes (every animated bone except the
 /// `root` whole-model roll, the `body`, and the `head` — which are handled specially in `setup_anim`).
 const CAMEL_WALK_SWING_BONES: [&str; 7] = [
@@ -704,46 +1154,103 @@ impl EntityModel for CamelModel {
         );
         let sample = |bone: &str| sample_bone_offsets(walk, bone, seconds, scale);
 
+        // Vanilla `CamelModel.setupAnim` then applies the sit/sit-pose/stand-up one-shots ADDITIVELY
+        // (`sitAnimation.apply(...)`, `sitPoseAnimation.apply(...)`, `standupAnimation.apply(...)`),
+        // each only while its projected elapsed seconds are `>= 0`; a non-looping def clamps past its
+        // length to the resting final frame. The active definitions, paired with their sample seconds.
+        // (`dash` and `idle` stay deferred — see `docs/unsupported-features.md`.)
+        let sit_stand: [(&AnimationDefinition, f32); 3] = [
+            (&CAMEL_SIT, instance.render_state.camel_sit_seconds),
+            (
+                &CAMEL_SIT_POSE,
+                instance.render_state.camel_sit_pose_seconds,
+            ),
+            (&CAMEL_STANDUP, instance.render_state.camel_standup_seconds),
+        ];
+        // Sums every active sit/stand one-shot's position/rotation offsets for one bone, so they can
+        // be ADDED onto a bone already posed by the walk (and, for the head, the clamped look).
+        let sit_stand_offsets = |bone: &str| {
+            let mut position = [0.0_f32; 3];
+            let mut rotation = [0.0_f32; 3];
+            for (definition, elapsed) in sit_stand {
+                if elapsed < 0.0 {
+                    continue;
+                }
+                let sample_seconds = keyframe_elapsed_seconds(definition, elapsed);
+                let (pos, rot) = sample_bone_offsets(definition, bone, sample_seconds, 1.0);
+                for axis in 0..3 {
+                    position[axis] += pos[axis];
+                    rotation[axis] += rot[axis];
+                }
+            }
+            (position, rotation)
+        };
+
         // `root` rolls the whole model: no bind offset/rotation, so the z-sway applies at the entity
-        // root. The synthetic root part carries it.
+        // root. The synthetic root part carries it. (The sit/stand animations do not touch `root`.)
         let (root_pos, root_rot) = sample("root");
         self.root.pose = keyframe_animated_pose(PART_POSE_ZERO, root_pos, root_rot);
 
-        // `body` (root child 0): not animated on the adult; the baby walk dips it via a `body` channel.
-        let (body_pos, body_rot) = sample("body");
+        // `body` (root child 0): the adult walk leaves it at bind, the baby walk dips it; the sit/stand
+        // transitions pitch and drop it (the marquee fold-down). Walk then sit/stand, both ADDED.
+        let (body_walk_pos, body_walk_rot) = sample("body");
+        let (body_sit_pos, body_sit_rot) = sit_stand_offsets("body");
         let (head_walk_pos, head_walk_rot) = sample("head");
+        let (head_sit_pos, head_sit_rot) = sit_stand_offsets("head");
         let body = self.root.child_mut("body");
         let body_bind = body.pose;
-        body.pose = keyframe_animated_pose(body_bind, body_pos, body_rot);
+        body.pose = keyframe_animated_pose(
+            body_bind,
+            [
+                body_walk_pos[0] + body_sit_pos[0],
+                body_walk_pos[1] + body_sit_pos[1],
+                body_walk_pos[2] + body_sit_pos[2],
+            ],
+            [
+                body_walk_rot[0] + body_sit_rot[0],
+                body_walk_rot[1] + body_sit_rot[1],
+                body_walk_rot[2] + body_sit_rot[2],
+            ],
+        );
 
-        // The head (clamped look + walk) carrying the two ears (walk swing handled below), and the tail
-        // (walk swish). The adult hump is static, so it stays at its bind pose.
+        // The head (clamped look + walk + sit/stand) carrying the two ears (walk swing handled below),
+        // and the tail (walk + sit/stand). The adult hump is static, so it stays at its bind pose.
         let head = body.child_mut("head");
         let head_bind = head.pose;
         head.pose = PartPose {
             offset: [
-                head_bind.offset[0] + head_walk_pos[0],
-                head_bind.offset[1] + head_walk_pos[1],
-                head_bind.offset[2] + head_walk_pos[2],
+                head_bind.offset[0] + head_walk_pos[0] + head_sit_pos[0],
+                head_bind.offset[1] + head_walk_pos[1] + head_sit_pos[1],
+                head_bind.offset[2] + head_walk_pos[2] + head_sit_pos[2],
             ],
             rotation: [
-                head_pitch.to_radians() + head_walk_rot[0],
-                head_yaw.to_radians() + head_walk_rot[1],
-                head_bind.rotation[2] + head_walk_rot[2],
+                head_pitch.to_radians() + head_walk_rot[0] + head_sit_rot[0],
+                head_yaw.to_radians() + head_walk_rot[1] + head_sit_rot[1],
+                head_bind.rotation[2] + head_walk_rot[2] + head_sit_rot[2],
             ],
         };
 
-        // The two ears (head children), then the tail (body child) and the four legs (root children),
-        // all addressed by their vanilla bone name regardless of the per-variant declaration order.
+        // The two ears (head children, walk only), then the tail (body child) and the four legs (root
+        // children), all addressed by their vanilla bone name regardless of the per-variant declaration
+        // order. Walk first, then the sit/stand offsets ADDED onto the four legs and the tail.
         for bone in CAMEL_WALK_SWING_BONES {
-            let (bone_pos, bone_rot) = sample(bone);
+            let (walk_pos, walk_rot) = sample(bone);
             let part = match bone {
                 "left_ear" | "right_ear" => self.root.child_mut("body").child_mut("head"),
                 "tail" => self.root.child_mut("body"),
                 _ => &mut self.root,
             }
             .child_mut(bone);
-            part.pose = keyframe_animated_pose(part.pose, bone_pos, bone_rot);
+            part.pose = keyframe_animated_pose(part.pose, walk_pos, walk_rot);
+        }
+        for bone in CAMEL_SIT_SWING_BONES {
+            let (sit_pos, sit_rot) = sit_stand_offsets(bone);
+            let part = match bone {
+                "tail" => self.root.child_mut("body"),
+                _ => &mut self.root,
+            }
+            .child_mut(bone);
+            part.pose = keyframe_animated_pose(part.pose, sit_pos, sit_rot);
         }
     }
 }

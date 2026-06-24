@@ -329,8 +329,9 @@ When an agent does any of the following, update this file in the same slice:
       `z += speed * 2 * ageScale` shift (body tail child, body subtree hand-emitted; the
       baby horse `getTailXRotOffset = −π/2` also overrides the layer rest angle and
       `ageScale = 0.5`), colored path; the baby donkey/mule nested legs and forced
-      head pitch, the camel's sit/dash-entangled gait (the colored and textured
-      `CAMEL_WALK` / `CAMEL_BABY_WALK` are now reproduced), and the tail's `ageInTicks` yRot
+      head pitch, the camel's dash-entangled gait (the colored and textured
+      `CAMEL_WALK` / `CAMEL_BABY_WALK` and the sit-down / seated / stand-up transitions are now
+      reproduced; only `CAMEL_DASH`/`CAMEL_IDLE` stay deferred), and the tail's `ageInTicks` yRot
       wag stay deferred). The remaining
       slices consume them
       in the other model families' `setupAnim` (fish; other birds; etc., plus
@@ -987,10 +988,20 @@ When an agent does any of the following, update this file in the same slice:
       camel samples amplitude 0, collapsing to the bind pose plus the head look); the baby
       camel walk (`CamelBabyAnimation.CAMEL_BABY_WALK`, which adds a `body` y-dip and a
       `head` position nudge and reorders the legs/ears) is reproduced too on both paths via
-      a shared per-variant `CamelWalkLayout`. Saddle equipment layers, the `CamelModel.setupAnim`
-      sit/standup/idle/dash keyframe animations and the `jumpCooldown` extra-pitch head
-      boost (the dash/idle/sit animations need their un-projected `AnimationState`s and
-      the jump-cooldown state), and lighting remain unsupported
+      a shared per-variant `CamelWalkLayout`. The `CamelModel.setupAnim` sit-down / seated-hold /
+      stand-up keyframe animations (`CamelAnimation.CAMEL_SIT` 2.0 s, `CAMEL_SIT_POSE` 1.0 s,
+      `CAMEL_STANDUP` 2.6 s — all non-looping) are now reproduced on BOTH the colored and textured
+      paths, ADDED onto the walk pose; their timing is a PURELY projection-time computation from the
+      synced `Camel.LAST_POSE_CHANGE_TICK` (data id 20, a `Long` whose sign encodes sitting) and the
+      world game time (`getPoseTime = gameTime - |lastPoseChangeTick|`), mirroring
+      `Camel.setupAnimationStates()` / `isCamelVisuallySitting` / `isVisuallySittingDown` /
+      `isInPoseTransition` (the 40-tick sit-down and 52-tick stand-up windows) — no client-side
+      accumulator is needed. Saddle equipment layers, the camel `CAMEL_DASH` and `CAMEL_IDLE`
+      keyframe animations (dash needs the rising-edge tick of the synced `DASH` flag, not cleanly
+      projection-derivable; idle is driven by a client-side `random.nextInt(40) + 80` timer, not
+      derivable from synced state), the body-anchor sit/stand y-offset
+      (`Camel.getBodyAnchorAnimationYOffset`), the `jumpCooldown` extra-pitch head boost (needs the
+      un-projected jump-cooldown state), and lighting remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader

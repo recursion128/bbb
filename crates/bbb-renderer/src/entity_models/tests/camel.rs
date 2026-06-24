@@ -604,6 +604,94 @@ fn camel_head_look_clamps_to_vanilla_range() {
     assert_eq!(camel_clamped_head_look(-50.0, -60.0), (-30.0, -25.0));
 }
 
+#[test]
+fn camel_sit_and_standup_animations_match_vanilla_definitions() {
+    // Vanilla `CamelAnimation`: CAMEL_SIT (2.0 s), CAMEL_SIT_POSE (1.0 s), CAMEL_STANDUP (2.6 s), all
+    // NOT looping, each animating seven bones (body, four legs, head, tail — the ears stay still).
+    for definition in [&CAMEL_SIT, &CAMEL_SIT_POSE, &CAMEL_STANDUP] {
+        assert!(!definition.looping);
+        assert_eq!(definition.bones.len(), 7);
+    }
+    assert_eq!(CAMEL_SIT.length_seconds, 2.0);
+    assert_eq!(CAMEL_SIT_POSE.length_seconds, 1.0);
+    assert_eq!(CAMEL_STANDUP.length_seconds, 2.6);
+
+    // CAMEL_SIT body pitch rolls back to 0° at the t=2.0 final frame and drops the body to the seated
+    // y. Vanilla `posVec` negates y, so the sampled offset for `posVec(0, -19.9, 0)` is +19.9.
+    let (body_pos, body_rot) = sample_bone_offsets(&CAMEL_SIT, "body", 2.0, 1.0);
+    assert!(
+        (body_rot[0] - 0.0_f32).abs() < 1.0e-4,
+        "body rolls back to 0 at t=2.0"
+    );
+    assert!(
+        (body_pos[1] - 19.9).abs() < 1.0e-3,
+        "body drops to the seated y"
+    );
+
+    // CAMEL_SIT_POSE is a constant hold at the seated pose: the body stays at the seated y throughout.
+    let (pose_pos, _) = sample_bone_offsets(&CAMEL_SIT_POSE, "body", 0.0, 1.0);
+    assert!((pose_pos[1] - 19.9).abs() < 1.0e-3);
+    let (pose_pos_end, _) = sample_bone_offsets(&CAMEL_SIT_POSE, "body", 1.0, 1.0);
+    assert!((pose_pos_end[1] - 19.9).abs() < 1.0e-3);
+
+    // CAMEL_STANDUP starts at the seated y and returns the body to bind (y 0) by t=2.6.
+    let (standup_start, _) = sample_bone_offsets(&CAMEL_STANDUP, "body", 0.0, 1.0);
+    assert!((standup_start[1] - 19.9).abs() < 1.0e-3);
+    let (standup_end, _) = sample_bone_offsets(&CAMEL_STANDUP, "body", 2.6, 1.0);
+    assert!((standup_end[1] - 0.0).abs() < 1.0e-3);
+}
+
+#[test]
+fn camel_sitting_and_standing_re_pose_the_body_and_legs_vs_the_bind_pose() {
+    // Vanilla `CamelModel.setupAnim` applies the sit/sit-pose/stand-up keyframes ADDITIVELY onto the
+    // walk pose. A standing camel (all three sentinels -1) sits at the bind pose; a sitting-down camel,
+    // a seated camel, and a standing-up camel each re-pose the body and legs differently. This must
+    // hold on both the colored and textured paths.
+    let bind =
+        EntityModelInstance::camel(750, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+    let sitting_down = bind.with_camel_sit_seconds(1.0);
+    let seated = bind.with_camel_sit_pose_seconds(0.5);
+    let standing_up = bind.with_camel_standup_seconds(0.5);
+
+    let bind_mesh = entity_model_mesh(&[bind]);
+    let sitting_down_mesh = entity_model_mesh(&[sitting_down]);
+    let seated_mesh = entity_model_mesh(&[seated]);
+    let standing_up_mesh = entity_model_mesh(&[standing_up]);
+
+    // Every pose preserves the vertex count.
+    assert_eq!(bind_mesh.vertices.len(), sitting_down_mesh.vertices.len());
+    assert_eq!(bind_mesh.vertices.len(), seated_mesh.vertices.len());
+    assert_eq!(bind_mesh.vertices.len(), standing_up_mesh.vertices.len());
+
+    // Each sit/stand pose differs from the bind pose, and the three differ from each other.
+    assert_ne!(
+        bind_mesh.vertices, sitting_down_mesh.vertices,
+        "the sitting-down camel folds down off the bind pose"
+    );
+    assert_ne!(
+        bind_mesh.vertices, seated_mesh.vertices,
+        "the seated camel holds a folded pose off the bind pose"
+    );
+    assert_ne!(
+        bind_mesh.vertices, standing_up_mesh.vertices,
+        "the standing-up camel unfolds off the bind pose"
+    );
+    assert_ne!(
+        sitting_down_mesh.vertices, standing_up_mesh.vertices,
+        "sitting down and standing up pose the camel differently"
+    );
+
+    // The textured path reproduces the same sit/stand re-pose.
+    let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
+    let bind_textured = entity_model_textured_mesh(&[bind], &atlas);
+    let seated_textured = entity_model_textured_mesh(&[seated], &atlas);
+    assert_eq!(bind_textured.vertices.len(), seated_textured.vertices.len());
+    assert_ne!(
+        bind_textured.vertices, seated_textured.vertices,
+        "the seated camel re-poses on the textured path too"
+    );
+}
+
 fn camel_texture_images() -> Vec<EntityModelTextureImage> {
     camel_entity_texture_refs()
         .iter()
