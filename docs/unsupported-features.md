@@ -1520,8 +1520,12 @@ When an agent does any of the following, update this file in the same slice:
       colored path (which approximates the striped texture with a single representative yellow). The
       stinger-loss visibility is implemented on both paths: the stinger cube is drawn only while the
       projected `bee_has_stinger` (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`) is set,
-      dropping to eight cubes once the bee stings. The rolled-up fall pose (`rollAmount`,
-      `Mth.rotLerpRad` toward `3.0915928`) and the nectar/angry texture swaps remain unsupported
+      dropping to eight cubes once the bee stings. The barrel-roll somersault is implemented on both
+      paths: the projected `bee_roll_amount` (`Bee.getRollAmount(partialTick)`, the client
+      `updateRollAmount` accumulator easing toward the synced `DATA_FLAGS_ID & 2` roll flag — `+0.2`
+      while rolling, `-0.24` otherwise) tips the `bone` pivot onto its back via `BeeModel.setupAnim`'s
+      final `bone.xRot = rotLerpRad(rollAmount, bone.xRot, 3.0915928)`. The nectar/angry texture swaps
+      remain unsupported
     - breeze entities are wired end to end on both render paths off the real vanilla 26.1
       `BreezeModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `17` to the
       new `EntityModelKind::Breeze`, replacing the former placeholder box. Renderer-owned vanilla

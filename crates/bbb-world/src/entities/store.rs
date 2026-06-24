@@ -572,6 +572,7 @@ impl EntityStore {
             enderman_creepy,
             bat_resting,
             bee_has_stinger,
+            bee_roll_amount: client_animations.animations.bee_roll_amount(partial_ticks),
             vex_charging,
             is_crouching,
             is_auto_spin_attack,

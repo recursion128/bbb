@@ -226,6 +226,11 @@ entity_render_state! {
     /// `BeeModel.bobUpAndDown`, so its body, front/back legs and antennae hold still (the wing
     /// flap continues). `false` for every other entity and for a calm bee.
     (with_bee_angry) bee_angry: bool = false;
+    /// Vanilla `BeeRenderState.rollAmount` (`Bee.getRollAmount(partialTick)`): a rolling bee tips
+    /// onto its back, which `BeeModel.setupAnim` applies last as `bone.xRot =
+    /// rotLerpRad(rollAmount, bone.xRot, 3.0915928)`. `0.0` (upright) for every other entity and
+    /// for an upright bee.
+    (with_bee_roll_amount) bee_roll_amount: f32 = 0.0;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
     /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
@@ -1291,6 +1296,7 @@ mod tests {
                 bat_resting: false,
                 bee_has_stinger: true,
                 bee_angry: false,
+                bee_roll_amount: 0.0,
                 vex_charging: false,
                 illager_spellcasting: false,
                 is_crouching: false,

@@ -424,6 +424,7 @@ fn entity_model_instance(
         .with_enderman_creepy(source.enderman_creepy)
         .with_bat_resting(source.bat_resting)
         .with_bee_has_stinger(source.bee_has_stinger)
+        .with_bee_roll_amount(source.bee_roll_amount)
         .with_bee_angry(bee_is_angry(
             source.entity_type_id,
             &source.data_values,

@@ -2237,6 +2237,66 @@ fn entity_model_sources_project_chicken_wing_flap() {
 }
 
 #[test]
+fn entity_model_sources_project_bee_roll_amount() {
+    const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
+    // Vanilla `Bee.DATA_FLAGS_ID` is synced data id 18; `FLAG_ROLL` is mask 2 within that byte.
+    let bee_flags = |raw: i8| ProtocolEntityDataValue {
+        data_id: 18,
+        serializer_id: 0,
+        value: EntityDataValueKind::Byte(raw),
+    };
+    let roll = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 81)
+            .unwrap()
+            .bee_roll_amount
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_BEE_ID,
+    ));
+
+    // An upright (un-rolling) bee projects `0.0`.
+    assert_eq!(roll(&store, 1.0), 0.0);
+
+    // Setting `FLAG_ROLL` makes vanilla `Bee.updateRollAmount` climb `rollAmount` by `0.2`/tick.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 81,
+        values: vec![bee_flags(2)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!((roll(&store, 1.0) - 0.2).abs() < 1.0e-6);
+    store.advance_entity_client_animations(1);
+    assert!((roll(&store, 1.0) - 0.4).abs() < 1.0e-6);
+
+    // It saturates at `1.0` (vanilla `Math.min(1.0, …)`): three more ticks reach 1.0 and hold.
+    store.advance_entity_client_animations(5);
+    assert!((roll(&store, 1.0) - 1.0).abs() < 1.0e-6);
+
+    // Clearing the flag decays it by `0.24`/tick (vanilla `Math.max(0.0, …)`).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 81,
+        values: vec![bee_flags(0)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!((roll(&store, 1.0) - 0.76).abs() < 1.0e-6);
+
+    // The projected getter lerps across the partial tick (vanilla `Bee.getRollAmount`).
+    let at_zero = roll(&store, 0.0);
+    let at_half = roll(&store, 0.5);
+    let at_one = roll(&store, 1.0);
+    assert!(
+        at_one < at_zero,
+        "the decaying roll falls from previous to current"
+    );
+    assert!((at_half - (at_zero + (at_one - at_zero) * 0.5)).abs() < 1.0e-6);
+}
+
+#[test]
 fn chicken_flap_state_initializes_flapping_to_one() {
     // Vanilla `Chicken` field initializer `public float flapping = 1.0F;`; every
     // other flap field defaults to 0.

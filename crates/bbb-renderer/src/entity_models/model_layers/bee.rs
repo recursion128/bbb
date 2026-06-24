@@ -452,6 +452,26 @@ fn apply_bee_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstan
     bone.child_mut("front_legs").pose.rotation = [front_x, 0.0, 0.0];
     bone.child_mut("middle_legs").pose.rotation = [mid_x, 0.0, 0.0];
     bone.child_mut("back_legs").pose.rotation = [back_x, 0.0, 0.0];
+
+    // Vanilla `BeeModel.setupAnim` applies the barrel roll last: a rolling bee tips its `bone` pivot
+    // onto its back by interpolating the (already bob-posed) pitch toward `3.0915928` (≈ π − 0.05).
+    let roll = instance.render_state.bee_roll_amount;
+    if roll > 0.0 {
+        bone.pose.rotation[0] = rot_lerp_rad(roll, bone.pose.rotation[0], 3.0915928);
+    }
+}
+
+/// Vanilla `Mth.rotLerpRad(a, from, to)`: lerps `from` toward `to` along the shortest signed angular
+/// path (the `to - from` delta is wrapped into `[-π, π)` before scaling by `a`).
+fn rot_lerp_rad(a: f32, from: f32, to: f32) -> f32 {
+    let mut diff = to - from;
+    while diff < -PI {
+        diff += 2.0 * PI;
+    }
+    while diff >= PI {
+        diff -= 2.0 * PI;
+    }
+    from + a * diff
 }
 
 /// Mutable bee model, mirroring vanilla `AdultBeeModel` / `BabyBeeModel`. The unified tree is built

@@ -295,6 +295,35 @@ fn bee_stops_bobbing_when_angry() {
 }
 
 #[test]
+fn bee_rolls_onto_its_back_with_roll_amount() {
+    // Vanilla `BeeModel.setupAnim` applies the barrel roll last: `if rollAmount > 0` it flips the
+    // `bone` pivot pitch toward `3.0915928` via `rotLerpRad`. Use a grounded bee so the roll is the
+    // only animation (the flap/bob never run on the ground), isolating the flip.
+    let grounded = EntityModelInstance::bee(970, [0.0, 64.0, 0.0], 0.0, false).with_on_ground(true);
+    let upright = entity_model_mesh(&[grounded]);
+
+    // A partial roll re-poses the whole bee, and a fuller roll re-poses it further.
+    let half = entity_model_mesh(&[grounded.with_bee_roll_amount(0.5)]);
+    let full = entity_model_mesh(&[grounded.with_bee_roll_amount(1.0)]);
+    assert_eq!(upright.vertices.len(), half.vertices.len());
+    assert_ne!(
+        upright.vertices, half.vertices,
+        "a rolling bee tips off its upright bind pose"
+    );
+    assert_ne!(
+        half.vertices, full.vertices,
+        "a fuller roll tips the bee further onto its back"
+    );
+
+    // `rollAmount = 0` is the upright bind pose (the `if rollAmount > 0` guard skips the flip).
+    let zero = entity_model_mesh(&[grounded.with_bee_roll_amount(0.0)]);
+    assert_eq!(
+        upright.vertices, zero.vertices,
+        "a zero roll leaves the bee upright"
+    );
+}
+
+#[test]
 fn bee_textured_mesh_stops_bobbing_when_angry() {
     let (atlas, _) = build_entity_model_texture_atlas(&bee_texture_images()).unwrap();
     let calm = EntityModelInstance::bee(961, [0.0, 64.0, 0.0], 0.0, false);

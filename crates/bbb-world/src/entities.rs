@@ -353,6 +353,12 @@ pub struct EntityModelSourceState {
     /// not stung still has its stinger; every other entity is unaffected).
     #[serde(default = "entity_model_source_default_true")]
     pub bee_has_stinger: bool,
+    /// Vanilla `BeeRenderState.rollAmount` (`Bee.getRollAmount(partialTick)`, the lerped client
+    /// accumulator driven by the synced `DATA_FLAGS_ID & 2` roll flag): a rolling bee tips onto its
+    /// back, which `BeeModel.setupAnim` applies as a near-π `bone.xRot` flip. Projected only for the
+    /// bee and `0.0` (upright) for every other entity.
+    #[serde(default)]
+    pub bee_roll_amount: f32,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
     /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex

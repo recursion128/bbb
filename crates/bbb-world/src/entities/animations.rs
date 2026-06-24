@@ -44,6 +44,12 @@ const CREEPER_MAX_SWELL: i32 = 30;
 const SHULKER_PEEK_DATA_ID: u8 = 17;
 const SHULKER_PEEK_PER_TICK: f32 = 0.05;
 const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
+/// Vanilla `Bee.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
+/// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
+/// the bee's own flags byte at `18` (the same slot `PolarBear` uses for its
+/// standing flag). `FLAG_ROLL` is mask `2` within that byte.
+const BEE_FLAGS_DATA_ID: u8 = 18;
+const BEE_FLAG_ROLL: i8 = 2;
 /// Vanilla `LivingEntity.hurtDuration`: the hurt animation (and red damage
 /// overlay) runs for 10 client ticks after a hurt animation or damage event.
 const HURT_ANIMATION_DURATION: i32 = 10;
@@ -81,6 +87,8 @@ pub struct EntityClientAnimationState {
     pub polar_bear_standing: Option<PolarBearStandingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shulker_peek: Option<ShulkerPeekAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bee_roll: Option<BeeRollAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ender_dragon: Option<EnderDragonAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -149,6 +157,19 @@ pub struct ShulkerPeekAnimationState {
     pub target_peek_amount: f32,
     pub previous_peek_amount: f32,
     pub current_peek_amount: f32,
+}
+
+/// Canonical client-side bee barrel-roll animation, mirroring vanilla
+/// `Bee.updateRollAmount`. While the synced `FLAG_ROLL` (mask `2` of the bee
+/// flags byte, data id [`BEE_FLAGS_DATA_ID`]) is set, `rollAmount` climbs toward
+/// `1` by `0.2`/tick; otherwise it falls toward `0` by `0.24`/tick.
+/// `getRollAmount(partialTick)` lerps the pair, driving `BeeModel.setupAnim`'s
+/// near-π `bone.xRot` flip that tips a rolling bee onto its back.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BeeRollAnimationState {
+    pub rolling: bool,
+    pub previous_roll_amount: f32,
+    pub current_roll_amount: f32,
 }
 
 /// Canonical client-side sheep eat-grass animation countdown, mirroring vanilla
@@ -385,6 +406,16 @@ impl Default for ShulkerPeekAnimationState {
             target_peek_amount: 0.0,
             previous_peek_amount: 0.0,
             current_peek_amount: 0.0,
+        }
+    }
+}
+
+impl Default for BeeRollAnimationState {
+    fn default() -> Self {
+        Self {
+            rolling: false,
+            previous_roll_amount: 0.0,
+            current_roll_amount: 0.0,
         }
     }
 }
@@ -661,6 +692,31 @@ impl ShulkerPeekAnimationState {
     }
 }
 
+impl BeeRollAnimationState {
+    fn set_rolling(&mut self, rolling: bool) {
+        self.rolling = rolling;
+    }
+
+    /// Vanilla `Bee.updateRollAmount`: `rollAmountO = rollAmount`, then a rolling
+    /// bee climbs `min(1, rollAmount + 0.2)` while a non-rolling one decays
+    /// `max(0, rollAmount - 0.24)`.
+    fn advance_client_tick(&mut self) {
+        self.previous_roll_amount = self.current_roll_amount;
+        self.current_roll_amount = if self.rolling {
+            (self.current_roll_amount + 0.2).min(1.0)
+        } else {
+            (self.current_roll_amount - 0.24).max(0.0)
+        };
+    }
+
+    /// Vanilla `Bee.getRollAmount(partialTick)` =
+    /// `Mth.lerp(partialTick, rollAmountO, rollAmount)`.
+    fn roll_amount(self, partial_tick: f32) -> f32 {
+        self.previous_roll_amount
+            + partial_tick * (self.current_roll_amount - self.previous_roll_amount)
+    }
+}
+
 impl EntityClientAnimationState {
     pub(crate) fn sync_targets_from_metadata(
         &mut self,
@@ -714,6 +770,17 @@ impl EntityClientAnimationState {
                     self.shulker_peek = Some(ShulkerPeekAnimationState {
                         target_peek_amount,
                         ..ShulkerPeekAnimationState::default()
+                    });
+                }
+            }
+            VANILLA_ENTITY_TYPE_BEE_ID => {
+                let rolling = bee_is_rolling(data_values);
+                if let Some(roll) = self.bee_roll.as_mut() {
+                    roll.set_rolling(rolling);
+                } else if rolling {
+                    self.bee_roll = Some(BeeRollAnimationState {
+                        rolling,
+                        ..BeeRollAnimationState::default()
                     });
                 }
             }
@@ -796,6 +863,14 @@ impl EntityClientAnimationState {
     pub fn shulker_peek_amount(&self, partial_tick: f32) -> f32 {
         self.shulker_peek
             .map_or(0.0, |state| state.peek_amount(partial_tick))
+    }
+
+    /// Vanilla `Bee.getRollAmount(partialTick)` projected for the renderer
+    /// `BeeModel.setupAnim` barrel-roll flip. Returns `0.0` when the entity is
+    /// not a rolling bee.
+    pub fn bee_roll_amount(&self, partial_tick: f32) -> f32 {
+        self.bee_roll
+            .map_or(0.0, |state| state.roll_amount(partial_tick))
     }
 
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
@@ -943,6 +1018,11 @@ impl EntityClientAnimationState {
                     peek.advance_client_tick();
                 }
             }
+            VANILLA_ENTITY_TYPE_BEE_ID => {
+                if let Some(roll) = self.bee_roll.as_mut() {
+                    roll.advance_client_tick();
+                }
+            }
             VANILLA_ENTITY_TYPE_WARDEN_ID => {
                 if let Some(tendril) = self.warden_tendril.as_mut() {
                     tendril.advance_client_tick();
@@ -1005,6 +1085,11 @@ fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool)
 
 fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
     f32::from(entity_data_byte(data_values, SHULKER_PEEK_DATA_ID, 0).clamp(0, 100)) * 0.01
+}
+
+/// Vanilla `Bee.isRolling()` = `getFlag(FLAG_ROLL)` = `(flags & 2) != 0`.
+fn bee_is_rolling(data_values: &[EntityDataValue]) -> bool {
+    entity_data_byte(data_values, BEE_FLAGS_DATA_ID, 0) & BEE_FLAG_ROLL != 0
 }
 
 /// Vanilla `Creeper.tick`: the fuse advances by `getSwellDir()`, but an ignited
