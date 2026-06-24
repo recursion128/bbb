@@ -2335,10 +2335,10 @@ When an agent does any of the following, update this file in the same slice:
       ears / legs), so the colored debug path renders those two tints. The texture-backed path remains
       unsupported (this is a colored-first slice)
     - rabbit entities (adult and baby) as renderer-owned vanilla 26.1 `AdultRabbitModel.createBodyLayer()`
-      / `BabyRabbitModel.createBodyLayer()` geometry on the colored path: the native entity scene
+      / `BabyRabbitModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `108` out of the cat/ocelot/fox wolf-shaped quadruped
-      proxy — both map to the new `EntityModelKind::Rabbit` (`baby` selecting the body layout), replacing
-      the wolf-shaped stand-in with the real rabbit mesh. The adult static rest-pose hierarchy is emitted
+      proxy — both map to `EntityModelKind::Rabbit { baby, variant, toast }` (`baby` selecting the body layout),
+      replacing the wolf-shaped stand-in with the real rabbit mesh. The adult static rest-pose hierarchy is emitted
       directly (atlas 64×64): two root parts — the `body` (an 8×6×10 torso pitched `-0.3927` at
       `offset(0, 23, 4)`) parenting the 4×4×4 `tail`, the 5×5×5 `head` (pitched `0.3927`, parenting the two
       2×5×1 ears) and the cubeless `frontlegs` pivot (parenting the two 2×4×2 front legs, both pitched
@@ -2351,9 +2351,11 @@ When an agent does any of the following, update this file in the same slice:
       starts, so the look applies every frame), turning only the head and its two ears. The looping
       `RabbitAnimation.HOP` / `BabyRabbitAnimation` and `IDLE_HEAD_TILT` keyframe animations need
       un-projected `AnimationState`s and stay deferred, so a resting rabbit renders at this bind pose plus
-      the head look. The `Rabbit.Variant` color/texture variants live on the deferred texture-backed path,
-      so the colored debug path renders one brown tint. The texture-backed path remains unsupported (this
-      is a colored-first slice)
+      the head look. The seven `Rabbit.Variant` color/texture variants are now bound on the textured path:
+      the native scene reads `DATA_TYPE_ID` (18, int) and `Rabbit.Variant.byId` (sparse; EVIL = 99 → the
+      `caerbannog` texture) selects the colour, crossed with the age and the `Toast` custom-name override
+      (`checkMagicName(entity, "Toast")` → `rabbit_toast`/`_baby`), matching
+      `RabbitRenderer.getTextureLocation` — sixteen textures
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a
