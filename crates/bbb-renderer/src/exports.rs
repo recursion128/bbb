@@ -26,7 +26,7 @@ pub use crate::entity_models::{
     villager_entity_texture_refs, warden_entity_texture_refs, wind_charge_entity_texture_refs,
     witch_entity_texture_refs, wither_entity_texture_refs, wither_skull_entity_texture_refs,
     wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
-    ArmorStandModelPose, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
+    ArmorStandModelPose, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
     ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelBounds,
     EntityModelInstance, EntityModelKind, EntityModelTextureImage, EntityModelTextureRef,
     EntityRenderState, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HumanoidModelFamily,

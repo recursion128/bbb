@@ -310,11 +310,14 @@ pub enum EntityModelKind {
     /// reproduced, plus the adult's standing `tail2` droop (`xRot = 1.7278761` — the baby's `tail2` is
     /// cubeless, so vanilla's identical assignment is invisible). The bespoke walk leg swing / tail
     /// wobble and every feline pose (`isCrouching`, `isSprinting`, `isSitting`, `lieDownAmount`,
-    /// `relaxStateOneAmount`) read un-projected `FelineRenderState` state and stay deferred, as do the
-    /// cat-breed / ocelot textures and the cat collar layer.
+    /// `relaxStateOneAmount`) read un-projected `FelineRenderState` state and stay deferred, as does the
+    /// cat collar layer. The textured path binds the cat-breed texture (`cat_variant`, the eleven
+    /// `CatVariant`s) for cats and the `ocelot` texture for ocelots (`cat_variant` is ignored when
+    /// `!cat`).
     Feline {
         cat: bool,
         baby: bool,
+        cat_variant: CatModelVariant,
     },
     /// `AdultFoxModel` / `BabyFoxModel` (custom `EntityModel`s) at their `createBodyLayer` rest pose
     /// (`baby` selects the baby body layout). The `setupAnim` head look and the curled sleeping pose
@@ -947,6 +950,24 @@ impl RabbitModelVariant {
             _ => Self::Brown,
         }
     }
+}
+
+/// Vanilla `CatVariant` (the synced `DATA_VARIANT_ID` `Holder<CatVariant>`): the eleven cat breeds,
+/// sharing one `CatModel` and differing by texture × age (`CatRenderer.getTextureLocation` reads
+/// `state.texture` from the variant's `assetInfo(isBaby)`). `BLACK` is the vanilla default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatModelVariant {
+    Tabby,
+    Black,
+    Red,
+    Siamese,
+    BritishShorthair,
+    Calico,
+    Persian,
+    Ragdoll,
+    White,
+    Jellie,
+    AllBlack,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

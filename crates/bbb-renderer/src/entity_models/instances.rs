@@ -1271,10 +1271,21 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Panda { baby }, position, y_rot)
     }
 
-    pub fn feline(entity_id: i32, position: [f32; 3], y_rot: f32, cat: bool, baby: bool) -> Self {
+    pub fn feline(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        cat: bool,
+        baby: bool,
+        cat_variant: CatModelVariant,
+    ) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Feline { cat, baby },
+            EntityModelKind::Feline {
+                cat,
+                baby,
+                cat_variant,
+            },
             position,
             y_rot,
         )

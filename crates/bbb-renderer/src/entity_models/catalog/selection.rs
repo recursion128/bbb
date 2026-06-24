@@ -264,18 +264,22 @@ impl EntityModelKind {
             Self::Feline {
                 cat: true,
                 baby: false,
+                ..
             } => "feline_cat",
             Self::Feline {
                 cat: false,
                 baby: false,
+                ..
             } => "feline_ocelot",
             Self::Feline {
                 cat: true,
                 baby: true,
+                ..
             } => "feline_cat_baby",
             Self::Feline {
                 cat: false,
                 baby: true,
+                ..
             } => "feline_ocelot_baby",
             Self::Fox { baby: false, .. } => "fox",
             Self::Fox { baby: true, .. } => "fox_baby",
@@ -413,21 +417,10 @@ impl EntityModelKind {
                 toast,
             } => Some(rabbit_texture_ref(variant, baby, toast)),
             Self::Feline {
-                cat: true,
-                baby: false,
-            } => Some(FELINE_CAT_TEXTURE_REF),
-            Self::Feline {
-                cat: true,
-                baby: true,
-            } => Some(FELINE_CAT_BABY_TEXTURE_REF),
-            Self::Feline {
-                cat: false,
-                baby: false,
-            } => Some(FELINE_OCELOT_TEXTURE_REF),
-            Self::Feline {
-                cat: false,
-                baby: true,
-            } => Some(FELINE_OCELOT_BABY_TEXTURE_REF),
+                cat,
+                baby,
+                cat_variant,
+            } => Some(feline_texture_ref(cat, baby, cat_variant)),
             Self::Mooshroom { baby: false } => Some(MOOSHROOM_TEXTURE_REF),
             Self::Mooshroom { baby: true } => Some(MOOSHROOM_BABY_TEXTURE_REF),
             Self::Vex => Some(VEX_TEXTURE_REF),

@@ -1,7 +1,7 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
-    AxolotlModelVariant, EntityDyeColor, FoxModelVariant, FrogModelVariant, ParrotModelVariant,
-    RabbitModelVariant,
+    AxolotlModelVariant, CatModelVariant, EntityDyeColor, FoxModelVariant, FrogModelVariant,
+    ParrotModelVariant, RabbitModelVariant,
 };
 
 mod equine;
@@ -758,7 +758,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 240] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 260] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -893,8 +893,28 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     RABBIT_CAERBANNOG_BABY_TEXTURE_REF,
     RABBIT_TOAST_TEXTURE_REF,
     RABBIT_TOAST_BABY_TEXTURE_REF,
-    FELINE_CAT_TEXTURE_REF,
-    FELINE_CAT_BABY_TEXTURE_REF,
+    FELINE_CAT_TABBY_TEXTURE_REF,
+    FELINE_CAT_TABBY_BABY_TEXTURE_REF,
+    FELINE_CAT_BLACK_TEXTURE_REF,
+    FELINE_CAT_BLACK_BABY_TEXTURE_REF,
+    FELINE_CAT_RED_TEXTURE_REF,
+    FELINE_CAT_RED_BABY_TEXTURE_REF,
+    FELINE_CAT_SIAMESE_TEXTURE_REF,
+    FELINE_CAT_SIAMESE_BABY_TEXTURE_REF,
+    FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF,
+    FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF,
+    FELINE_CAT_CALICO_TEXTURE_REF,
+    FELINE_CAT_CALICO_BABY_TEXTURE_REF,
+    FELINE_CAT_PERSIAN_TEXTURE_REF,
+    FELINE_CAT_PERSIAN_BABY_TEXTURE_REF,
+    FELINE_CAT_RAGDOLL_TEXTURE_REF,
+    FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF,
+    FELINE_CAT_WHITE_TEXTURE_REF,
+    FELINE_CAT_WHITE_BABY_TEXTURE_REF,
+    FELINE_CAT_JELLIE_TEXTURE_REF,
+    FELINE_CAT_JELLIE_BABY_TEXTURE_REF,
+    FELINE_CAT_ALL_BLACK_TEXTURE_REF,
+    FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
     FELINE_OCELOT_TEXTURE_REF,
     FELINE_OCELOT_BABY_TEXTURE_REF,
     MOOSHROOM_TEXTURE_REF,
@@ -2221,14 +2241,117 @@ pub fn rabbit_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 // in the image: the cat's default `cat_tabby` variant (`CatRenderState.DEFAULT_TEXTURE`) and the
 // ocelot, each with a 32×32 baby. The cat colour/breed variants need a further enum extension; only the
 // default `cat_tabby` is wired here.
-pub(in crate::entity_models) const FELINE_CAT_TEXTURE_REF: EntityModelTextureRef =
+// The feline texture set: the eleven `CatVariant` breeds × {adult 64×32, baby 32×32}
+// (`cat_<breed>.png` / `cat_<breed>_baby.png`, the variant's `assetInfo(isBaby)`), plus the two
+// `ocelot` textures used by `OcelotRenderer`.
+pub(in crate::entity_models) const FELINE_CAT_TABBY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/cat/cat_tabby.png",
         size: [64, 32],
     };
-pub(in crate::entity_models) const FELINE_CAT_BABY_TEXTURE_REF: EntityModelTextureRef =
+pub(in crate::entity_models) const FELINE_CAT_TABBY_BABY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/cat/cat_tabby_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_BLACK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_black.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_BLACK_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_black_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_RED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_red.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_RED_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_red_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_SIAMESE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_siamese.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_SIAMESE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_siamese_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_british_shorthair.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/cat/cat_british_shorthair_baby.png",
+    size: [32, 32],
+};
+pub(in crate::entity_models) const FELINE_CAT_CALICO_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_calico.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_CALICO_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_calico_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_PERSIAN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_persian.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_PERSIAN_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_persian_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_RAGDOLL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_ragdoll.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_ragdoll_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_WHITE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_white.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_WHITE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_white_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_JELLIE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_jellie.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_JELLIE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_jellie_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_ALL_BLACK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_all_black.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_all_black_baby.png",
         size: [32, 32],
     };
 pub(in crate::entity_models) const FELINE_OCELOT_TEXTURE_REF: EntityModelTextureRef =
@@ -2241,9 +2364,66 @@ pub(in crate::entity_models) const FELINE_OCELOT_BABY_TEXTURE_REF: EntityModelTe
         path: "textures/entity/cat/ocelot_baby.png",
         size: [32, 32],
     };
-pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
-    FELINE_CAT_TEXTURE_REF,
-    FELINE_CAT_BABY_TEXTURE_REF,
+fn feline_cat_texture_ref(variant: CatModelVariant, baby: bool) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (CatModelVariant::Tabby, false) => FELINE_CAT_TABBY_TEXTURE_REF,
+        (CatModelVariant::Tabby, true) => FELINE_CAT_TABBY_BABY_TEXTURE_REF,
+        (CatModelVariant::Black, false) => FELINE_CAT_BLACK_TEXTURE_REF,
+        (CatModelVariant::Black, true) => FELINE_CAT_BLACK_BABY_TEXTURE_REF,
+        (CatModelVariant::Red, false) => FELINE_CAT_RED_TEXTURE_REF,
+        (CatModelVariant::Red, true) => FELINE_CAT_RED_BABY_TEXTURE_REF,
+        (CatModelVariant::Siamese, false) => FELINE_CAT_SIAMESE_TEXTURE_REF,
+        (CatModelVariant::Siamese, true) => FELINE_CAT_SIAMESE_BABY_TEXTURE_REF,
+        (CatModelVariant::BritishShorthair, false) => FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF,
+        (CatModelVariant::BritishShorthair, true) => FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF,
+        (CatModelVariant::Calico, false) => FELINE_CAT_CALICO_TEXTURE_REF,
+        (CatModelVariant::Calico, true) => FELINE_CAT_CALICO_BABY_TEXTURE_REF,
+        (CatModelVariant::Persian, false) => FELINE_CAT_PERSIAN_TEXTURE_REF,
+        (CatModelVariant::Persian, true) => FELINE_CAT_PERSIAN_BABY_TEXTURE_REF,
+        (CatModelVariant::Ragdoll, false) => FELINE_CAT_RAGDOLL_TEXTURE_REF,
+        (CatModelVariant::Ragdoll, true) => FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF,
+        (CatModelVariant::White, false) => FELINE_CAT_WHITE_TEXTURE_REF,
+        (CatModelVariant::White, true) => FELINE_CAT_WHITE_BABY_TEXTURE_REF,
+        (CatModelVariant::Jellie, false) => FELINE_CAT_JELLIE_TEXTURE_REF,
+        (CatModelVariant::Jellie, true) => FELINE_CAT_JELLIE_BABY_TEXTURE_REF,
+        (CatModelVariant::AllBlack, false) => FELINE_CAT_ALL_BLACK_TEXTURE_REF,
+        (CatModelVariant::AllBlack, true) => FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) fn feline_texture_ref(
+    cat: bool,
+    baby: bool,
+    cat_variant: CatModelVariant,
+) -> EntityModelTextureRef {
+    match (cat, baby) {
+        (true, _) => feline_cat_texture_ref(cat_variant, baby),
+        (false, false) => FELINE_OCELOT_TEXTURE_REF,
+        (false, true) => FELINE_OCELOT_BABY_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 24] = [
+    FELINE_CAT_TABBY_TEXTURE_REF,
+    FELINE_CAT_TABBY_BABY_TEXTURE_REF,
+    FELINE_CAT_BLACK_TEXTURE_REF,
+    FELINE_CAT_BLACK_BABY_TEXTURE_REF,
+    FELINE_CAT_RED_TEXTURE_REF,
+    FELINE_CAT_RED_BABY_TEXTURE_REF,
+    FELINE_CAT_SIAMESE_TEXTURE_REF,
+    FELINE_CAT_SIAMESE_BABY_TEXTURE_REF,
+    FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF,
+    FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF,
+    FELINE_CAT_CALICO_TEXTURE_REF,
+    FELINE_CAT_CALICO_BABY_TEXTURE_REF,
+    FELINE_CAT_PERSIAN_TEXTURE_REF,
+    FELINE_CAT_PERSIAN_BABY_TEXTURE_REF,
+    FELINE_CAT_RAGDOLL_TEXTURE_REF,
+    FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF,
+    FELINE_CAT_WHITE_TEXTURE_REF,
+    FELINE_CAT_WHITE_BABY_TEXTURE_REF,
+    FELINE_CAT_JELLIE_TEXTURE_REF,
+    FELINE_CAT_JELLIE_BABY_TEXTURE_REF,
+    FELINE_CAT_ALL_BLACK_TEXTURE_REF,
+    FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
     FELINE_OCELOT_TEXTURE_REF,
     FELINE_OCELOT_BABY_TEXTURE_REF,
 ];

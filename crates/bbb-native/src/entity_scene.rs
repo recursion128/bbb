@@ -2,7 +2,7 @@ use bbb_protocol::packets::{
     EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind,
 };
 use bbb_renderer::{
-    ArmorStandModelPose, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
+    ArmorStandModelPose, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
     ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelInstance,
     EntityModelKind, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HumanoidModelFamily,
     IllagerModelFamily, LlamaModelFamily, LlamaVariant, ParrotModelVariant, PigModelVariant,
@@ -276,6 +276,10 @@ const SHULKER_COLOR_DATA_ID: u8 = 18;
 // accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
 // (18) / DATA_OWNERUUID_ID (19).
 const PARROT_VARIANT_DATA_ID: u8 = 20;
+// Vanilla Cat.DATA_VARIANT_ID (20, Holder<CatVariant>): after Mob.DATA_MOB_FLAGS_ID (15), the two
+// AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors
+// DATA_FLAGS_ID (18) / DATA_OWNERUUID_ID (19). `Cat extends TamableAnimal`; the ocelot has no breed.
+const CAT_VARIANT_DATA_ID: u8 = 20;
 // Vanilla Sheep.DATA_WOOL_ID (18, BYTE): `Sheep extends Animal`, so its first own accessor follows
 // Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17).
 const SHEEP_WOOL_DATA_ID: u8 = 18;
@@ -342,6 +346,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let cow_variants = world.registry_content("minecraft:cow_variant");
     let pig_variants = world.registry_content("minecraft:pig_variant");
     let frog_variants = world.registry_content("minecraft:frog_variant");
+    let cat_variants = world.registry_content("minecraft:cat_variant");
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick)
@@ -358,6 +363,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
                 cow_variants,
                 pig_variants,
                 frog_variants,
+                cat_variants,
             )
         })
         .collect()
@@ -386,6 +392,7 @@ fn entity_model_instance(
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
     frog_variants: Option<&RegistryContentState>,
+    cat_variants: Option<&RegistryContentState>,
 ) -> Option<EntityModelInstance> {
     let mut kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
@@ -396,6 +403,7 @@ fn entity_model_instance(
         cow_variants,
         pig_variants,
         frog_variants,
+        cat_variants,
     );
     // Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`: the
     // shell-ball swap is gated on the client `inStateTicks`, which `entity_model_kind` (data-only)
@@ -646,7 +654,7 @@ fn entity_model_kind(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    entity_model_kind_with_registries(entity_type_id, data_values, None, None, None, None)
+    entity_model_kind_with_registries(entity_type_id, data_values, None, None, None, None, None)
 }
 
 fn entity_model_kind_with_registries(
@@ -656,6 +664,7 @@ fn entity_model_kind_with_registries(
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
     frog_variants: Option<&RegistryContentState>,
+    cat_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     entity_model_kind_with_time_and_registries(
         entity_type_id,
@@ -666,6 +675,7 @@ fn entity_model_kind_with_registries(
         cow_variants,
         pig_variants,
         frog_variants,
+        cat_variants,
     )
 }
 
@@ -678,6 +688,7 @@ fn entity_model_kind_with_time_and_registries(
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
     frog_variants: Option<&RegistryContentState>,
+    cat_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, chicken_variants),
@@ -791,8 +802,8 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => zombie_nautilus_model_kind(),
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
         VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true),
-        VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false),
+        VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true, cat_variants),
+        VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false, cat_variants),
         VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(data_values),
         VANILLA_ENTITY_TYPE_MINECART_ID
         | VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
@@ -1022,14 +1033,96 @@ fn panda_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entity
 /// Vanilla `CatRenderer` / `OcelotRenderer` (both `AgeableMobRenderer`s) pick `AdultCatModel` /
 /// `AdultOcelotModel` (the shared `AdultFelineModel` mesh, the cat scaled 0.8) for an adult and the
 /// flatter `BabyFelineModel` mesh (unscaled for both breeds) for a baby. Both render through the
-/// dedicated [`EntityModelKind::Feline`] (`cat` selecting the breed/scale, `baby` selecting the layout).
+/// dedicated [`EntityModelKind::Feline`] (`cat` selecting the breed/scale, `baby` selecting the
+/// layout). For cats the `cat_variant` is decoded from `DATA_VARIANT_ID` (20, `Holder<CatVariant>`);
+/// the ocelot has no breed, so it carries the default (ignored when `!cat`).
 fn feline_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     cat: bool,
+    cat_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     EntityModelKind::Feline {
         cat,
         baby: ageable_baby(values),
+        cat_variant: if cat {
+            cat_model_variant(values, cat_variants)
+        } else {
+            CatModelVariant::Black
+        },
+    }
+}
+
+fn cat_model_variant(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> CatModelVariant {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == CAT_VARIANT_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::CatVariant,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .map(|id| {
+            if let Some(registry) = variants {
+                cat_variant_from_registry_id(registry, id).unwrap_or(CatModelVariant::Black)
+            } else {
+                cat_variant_from_vanilla_registry_id(id)
+            }
+        })
+        .unwrap_or(CatModelVariant::Black)
+}
+
+fn cat_variant_from_registry_id(
+    registry: &RegistryContentState,
+    registry_id: i32,
+) -> Option<CatModelVariant> {
+    if registry_id < 0 {
+        return None;
+    }
+    registry
+        .entries
+        .get(registry_id as usize)
+        .and_then(|entry| cat_variant_from_entry_id(entry.id.as_str()))
+}
+
+fn cat_variant_from_entry_id(id: &str) -> Option<CatModelVariant> {
+    match id {
+        "minecraft:tabby" => Some(CatModelVariant::Tabby),
+        "minecraft:black" => Some(CatModelVariant::Black),
+        "minecraft:red" => Some(CatModelVariant::Red),
+        "minecraft:siamese" => Some(CatModelVariant::Siamese),
+        "minecraft:british_shorthair" => Some(CatModelVariant::BritishShorthair),
+        "minecraft:calico" => Some(CatModelVariant::Calico),
+        "minecraft:persian" => Some(CatModelVariant::Persian),
+        "minecraft:ragdoll" => Some(CatModelVariant::Ragdoll),
+        "minecraft:white" => Some(CatModelVariant::White),
+        "minecraft:jellie" => Some(CatModelVariant::Jellie),
+        "minecraft:all_black" => Some(CatModelVariant::AllBlack),
+        _ => None,
+    }
+}
+
+// Vanilla `CatVariants.bootstrap` registers tabby/black/red/siamese/british_shorthair/calico/persian/
+// ragdoll/white/jellie/all_black in that order, so the static fallback ids (used before the dynamic
+// `cat_variant` registry arrives) are 0..=10. The vanilla default is BLACK.
+fn cat_variant_from_vanilla_registry_id(registry_id: i32) -> CatModelVariant {
+    match registry_id {
+        0 => CatModelVariant::Tabby,
+        2 => CatModelVariant::Red,
+        3 => CatModelVariant::Siamese,
+        4 => CatModelVariant::BritishShorthair,
+        5 => CatModelVariant::Calico,
+        6 => CatModelVariant::Persian,
+        7 => CatModelVariant::Ragdoll,
+        8 => CatModelVariant::White,
+        9 => CatModelVariant::Jellie,
+        10 => CatModelVariant::AllBlack,
+        _ => CatModelVariant::Black,
     }
 }
 
@@ -3473,6 +3566,7 @@ mod tests {
                 Some(chicken_registry),
                 None,
                 None,
+                None,
                 None
             ),
             EntityModelKind::Chicken {
@@ -3578,6 +3672,7 @@ mod tests {
                 &[protocol_cow_variant_data(99)],
                 None,
                 Some(cow_registry),
+                None,
                 None,
                 None
             ),
@@ -3685,6 +3780,7 @@ mod tests {
                 None,
                 None,
                 Some(pig_registry),
+                None,
                 None
             ),
             EntityModelKind::Pig {
@@ -4819,6 +4915,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Sheep {
                 baby: false,
@@ -4841,6 +4938,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Sheep {
                 baby: false,
@@ -4859,6 +4957,7 @@ mod tests {
                 )],
                 25.0,
                 0,
+                None,
                 None,
                 None,
                 None,
@@ -5608,14 +5707,16 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[]),
             EntityModelKind::Feline {
                 cat: true,
-                baby: false
+                baby: false,
+                cat_variant: CatModelVariant::Black
             }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_OCELOT_ID, &[]),
             EntityModelKind::Feline {
                 cat: false,
-                baby: false
+                baby: false,
+                cat_variant: CatModelVariant::Black
             }
         );
         assert_eq!(
@@ -5634,7 +5735,8 @@ mod tests {
             ),
             EntityModelKind::Feline {
                 cat: true,
-                baby: true
+                baby: true,
+                cat_variant: CatModelVariant::Black
             }
         );
         assert_eq!(
@@ -5644,7 +5746,8 @@ mod tests {
             ),
             EntityModelKind::Feline {
                 cat: false,
-                baby: true
+                baby: true,
+                cat_variant: CatModelVariant::Black
             }
         );
         assert_eq!(
@@ -5750,6 +5853,125 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_kind_uses_vanilla_cat_variant_metadata() {
+        // Without the dynamic `cat_variant` registry the bootstrap order (tabby=0..all_black=10) is
+        // the static fallback; the vanilla default is BLACK. The ocelot has no breed.
+        for (id, variant) in [
+            (0, CatModelVariant::Tabby),
+            (1, CatModelVariant::Black),
+            (2, CatModelVariant::Red),
+            (3, CatModelVariant::Siamese),
+            (4, CatModelVariant::BritishShorthair),
+            (5, CatModelVariant::Calico),
+            (6, CatModelVariant::Persian),
+            (7, CatModelVariant::Ragdoll),
+            (8, CatModelVariant::White),
+            (9, CatModelVariant::Jellie),
+            (10, CatModelVariant::AllBlack),
+            (99, CatModelVariant::Black),
+        ] {
+            assert_eq!(
+                entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[protocol_cat_variant_data(id)]),
+                EntityModelKind::Feline {
+                    cat: true,
+                    baby: false,
+                    cat_variant: variant
+                }
+            );
+        }
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_OCELOT_ID,
+                &[protocol_cat_variant_data(0)]
+            ),
+            EntityModelKind::Feline {
+                cat: false,
+                baby: false,
+                cat_variant: CatModelVariant::Black
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_cat_variants_from_world_registry_order() {
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            "minecraft:cat_variant",
+            0,
+            vec![
+                RegistryPacketEntry::stub("minecraft:jellie"),
+                RegistryPacketEntry::stub("minecraft:calico"),
+                RegistryPacketEntry::stub("minecraft:white"),
+            ],
+        );
+        let cat_registry = world.registry_content("minecraft:cat_variant").unwrap();
+        assert_eq!(
+            entity_model_kind_with_registries(
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                &[protocol_cat_variant_data(99)],
+                None,
+                None,
+                None,
+                None,
+                Some(cat_registry)
+            ),
+            EntityModelKind::Feline {
+                cat: true,
+                baby: false,
+                cat_variant: CatModelVariant::Black
+            }
+        );
+        world.apply_add_entity(protocol_add_entity(
+            41,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            42,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 41,
+            values: vec![protocol_cat_variant_data(0)],
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 42,
+            values: vec![
+                protocol_cat_variant_data(2),
+                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            ],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            aged(
+                vec![
+                    EntityModelInstance::feline(
+                        41,
+                        [1.0, 64.0, -2.0],
+                        0.0,
+                        true,
+                        false,
+                        CatModelVariant::Jellie
+                    ),
+                    EntityModelInstance::feline(
+                        42,
+                        [3.0, 64.0, -2.0],
+                        0.0,
+                        true,
+                        true,
+                        CatModelVariant::White
+                    ),
+                ],
+                1.0,
+            )
+        );
+    }
+
+    #[test]
     fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
         assert_eq!(
             entity_model_kind_with_time_and_registries(
@@ -5757,6 +5979,7 @@ mod tests {
                 &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
                 0.0,
                 199,
+                None,
                 None,
                 None,
                 None,
@@ -5779,6 +6002,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Wolf {
                 baby: false,
@@ -5796,6 +6020,7 @@ mod tests {
                 ],
                 0.0,
                 199,
+                None,
                 None,
                 None,
                 None,
@@ -6679,6 +6904,18 @@ mod tests {
             serializer_id: 27,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::FrogVariant,
+                id,
+            },
+        }
+    }
+
+    fn protocol_cat_variant_data(id: i32) -> EntityDataValue {
+        // Vanilla `EntityDataSerializers.CAT_VARIANT` is serializer id 21.
+        EntityDataValue {
+            data_id: CAT_VARIANT_DATA_ID,
+            serializer_id: 21,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::CatVariant,
                 id,
             },
         }

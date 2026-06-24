@@ -664,7 +664,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &fox_textured_layer_passes(variant, baby, instance.render_state.fox_is_sleeping),
         ),
-        EntityModelKind::Feline { cat, baby } => {
+        EntityModelKind::Feline {
+            cat,
+            baby,
+            cat_variant,
+        } => {
             let transform = if cat && !baby {
                 mesh_transformer_scaled_model_root_transform(*instance, FELINE_CAT_SCALE)
             } else {
@@ -674,7 +678,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 FelineModel::new(baby),
                 transform,
                 instance,
-                &feline_textured_layer_passes(cat, baby),
+                &feline_textured_layer_passes(cat, baby, cat_variant),
             )
         }
 
