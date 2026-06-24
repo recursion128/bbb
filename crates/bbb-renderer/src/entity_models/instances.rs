@@ -284,6 +284,14 @@ entity_render_state! {
     /// pose onto the body, arms, and legs. `-1.0` (the sentinel for a stopped `jumpAnimationState`)
     /// for every other entity and for a non-jumping frog, so no keyframe is applied.
     (with_frog_jump_seconds) frog_jump_seconds: f32 = -1.0;
+    /// Vanilla frog swim-idle timing (`FrogRenderState.swimIdleAnimationState`, driven each client
+    /// tick by `Frog.tick`'s `animateWhen(isInWater() && !walkAnimation.isMoving(), tickCount)`): the
+    /// elapsed seconds since the in-water idle started, projected for `FrogModel.setupAnim`, which
+    /// applies the looping `FrogAnimation.FROG_IDLE_WATER` ROTATION/POSITION pose onto the body, arms,
+    /// and legs (last, after the walk/swim). `-1.0` (the sentinel for a stopped
+    /// `swimIdleAnimationState`) for every other entity and for a frog that is dry or moving, so no
+    /// keyframe is applied.
+    (with_frog_swim_idle_seconds) frog_swim_idle_seconds: f32 = -1.0;
     /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
     /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered keyframe
     /// is playing (`FEELING_HAPPY=1`/`SCENTING=2`/`SNIFFING=3`/`DIGGING=5`/`RISING=6`), which
@@ -1433,6 +1441,7 @@ mod tests {
                 camel_standup_seconds: -1.0,
                 frog_croak_seconds: -1.0,
                 frog_jump_seconds: -1.0,
+                frog_swim_idle_seconds: -1.0,
                 sniffer_animation_id: -1,
                 sniffer_animation_seconds: -1.0,
                 armadillo_is_hiding_in_shell: false,

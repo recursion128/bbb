@@ -512,12 +512,118 @@ pub(in crate::entity_models) const FROG_JUMP: AnimationDefinition = AnimationDef
     bones: &FROG_JUMP_BONES,
 };
 
+// ----- `FrogAnimation.FROG_IDLE_WATER` (length 3.0s, LOOPING). A slow hover wave for a frog idling
+// underwater: the `body` dips `-10°`, the two arms splay `±22.5°→±45°` and sink `-0.5` y, and the
+// two legs swing out (`22.5°` x, `±22.5°` y, with a `±45°` z mid-cycle) and sink `-1` y. Every
+// keyframe is CATMULLROM (the cubic spline). `degreeVec` converts to radians and `posVec` negates
+// the y axis. -----
+
+const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
+
+const FROG_IDLE_WATER_BODY_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.625, degree_vec(-10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const FROG_IDLE_WATER_LEFT_ARM_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+    keyframe(2.2083, degree_vec(0.0, 0.0, -45.0), CATMULLROM),
+    keyframe(3.0, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+];
+const FROG_IDLE_WATER_LEFT_ARM_POS: [Keyframe; 3] = [
+    keyframe(0.0, pos_vec(-1.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.2083, pos_vec(-1.0, -0.5, 0.0), CATMULLROM),
+    keyframe(3.0, pos_vec(-1.0, 0.0, 0.0), CATMULLROM),
+];
+const FROG_IDLE_WATER_RIGHT_ARM_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+    keyframe(2.2083, degree_vec(0.0, 0.0, 45.0), CATMULLROM),
+    keyframe(3.0, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+];
+const FROG_IDLE_WATER_RIGHT_ARM_POS: [Keyframe; 3] = [
+    keyframe(0.0, pos_vec(1.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.2083, pos_vec(1.0, -0.5, 0.0), CATMULLROM),
+    keyframe(3.0, pos_vec(1.0, 0.0, 0.0), CATMULLROM),
+];
+const FROG_IDLE_WATER_LEFT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(22.5, -22.5, 0.0), CATMULLROM),
+    keyframe(1.0, degree_vec(22.5, -22.5, -45.0), CATMULLROM),
+    keyframe(3.0, degree_vec(22.5, -22.5, 0.0), CATMULLROM),
+];
+const FROG_IDLE_WATER_LEFT_LEG_POS: [Keyframe; 3] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 1.0), CATMULLROM),
+    keyframe(1.0, pos_vec(0.0, -1.0, 1.0), CATMULLROM),
+    keyframe(3.0, pos_vec(0.0, 0.0, 1.0), CATMULLROM),
+];
+const FROG_IDLE_WATER_RIGHT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(22.5, 22.5, 0.0), CATMULLROM),
+    keyframe(1.0, degree_vec(22.5, 22.5, 45.0), CATMULLROM),
+    keyframe(3.0, degree_vec(22.5, 22.5, 0.0), CATMULLROM),
+];
+const FROG_IDLE_WATER_RIGHT_LEG_POS: [Keyframe; 3] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 1.0), CATMULLROM),
+    keyframe(1.0, pos_vec(0.0, -1.0, 1.0), CATMULLROM),
+    keyframe(3.0, pos_vec(0.0, 0.0, 1.0), CATMULLROM),
+];
+
+const FROG_IDLE_WATER_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&FROG_IDLE_WATER_BODY_ROT)];
+const FROG_IDLE_WATER_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&FROG_IDLE_WATER_LEFT_ARM_ROT),
+    pos(&FROG_IDLE_WATER_LEFT_ARM_POS),
+];
+const FROG_IDLE_WATER_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&FROG_IDLE_WATER_RIGHT_ARM_ROT),
+    pos(&FROG_IDLE_WATER_RIGHT_ARM_POS),
+];
+const FROG_IDLE_WATER_LEFT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&FROG_IDLE_WATER_LEFT_LEG_ROT),
+    pos(&FROG_IDLE_WATER_LEFT_LEG_POS),
+];
+const FROG_IDLE_WATER_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&FROG_IDLE_WATER_RIGHT_LEG_ROT),
+    pos(&FROG_IDLE_WATER_RIGHT_LEG_POS),
+];
+
+const FROG_IDLE_WATER_BONES: [BoneAnimation; 5] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &FROG_IDLE_WATER_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &FROG_IDLE_WATER_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &FROG_IDLE_WATER_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &FROG_IDLE_WATER_LEFT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &FROG_IDLE_WATER_RIGHT_LEG_CHANNELS,
+    },
+];
+
+/// Vanilla `FrogAnimation.FROG_IDLE_WATER`: the looping 3.0s in-water idle hover, sampled by
+/// `FrogModel.setupAnim` via `idleWaterAnimation.apply(swimIdleAnimationState, ageInTicks)` LAST
+/// (after the walk/swim, croak, and jump) while the frog idles underwater. The renderer applies it
+/// only when the projected `frog_swim_idle_seconds >= 0`.
+pub(in crate::entity_models) const FROG_IDLE_WATER: AnimationDefinition = AnimationDefinition {
+    length_seconds: 3.0,
+    looping: true,
+    bones: &FROG_IDLE_WATER_BONES,
+};
+
 /// Mutable frog model, mirroring vanilla `FrogModel`. The cubeless `root` part (parenting `body`
 /// and the two legs; `body` parents the head, croaking_body pouch, tongue, and two arms) hangs off
 /// a synthetic root, built from the baked colored geometry as a named-children tree. Colored-only:
 /// `setup_anim` applies the looping `FROG_WALK` keyframe cycle to the body, arms, and legs, the
-/// triggered `FROG_JUMP` long-jump hold pose while long-jumping, and the triggered `FROG_CROAK`
-/// pouch animation while croaking (the tongue / swim animations stay deferred).
+/// triggered `FROG_JUMP` long-jump hold pose while long-jumping, the triggered `FROG_CROAK` pouch
+/// animation while croaking, and the looping `FROG_IDLE_WATER` hover while idling underwater (the
+/// tongue and the moving swim/walk cycles stay deferred).
 pub(in crate::entity_models) struct FrogModel {
     root: ModelPart,
 }
@@ -569,6 +675,23 @@ impl EntityModel for FrogModel {
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 
+        // Vanilla `FrogModel.setupAnim` applies `idleWaterAnimation.apply(swimIdleAnimationState,
+        // ageInTicks)` LAST (after the walk/swim, jump, and croak). The projected
+        // `frog_swim_idle_seconds` carries the elapsed seconds since the in-water idle started
+        // (`Frog.tick` drives it off the per-tick `isInWater() && !walkAnimation.isMoving()`), or
+        // `-1` when the frog is dry or moving (the `swimIdleAnimationState` is stopped). While idling
+        // underwater, the looping `FROG_IDLE_WATER` ROTATION/POSITION hover is added onto the
+        // body, arms, and legs; otherwise it is skipped.
+        let swim_idle_seconds = instance.render_state.frog_swim_idle_seconds;
+        let swim_idle = |part: &mut ModelPart, bone: &str| {
+            if swim_idle_seconds < 0.0 {
+                return;
+            }
+            let elapsed = keyframe_elapsed_seconds(&FROG_IDLE_WATER, swim_idle_seconds);
+            let (position, rotation) = sample_bone_offsets(&FROG_IDLE_WATER, bone, elapsed, 1.0);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+        };
+
         // Vanilla `FrogModel.setupAnim` then runs `croakAnimation.apply(croakAnimationState,
         // ageInTicks)` and `croakingBody.visible = croakAnimationState.isStarted()`. The projected
         // `frog_croak_seconds` carries the elapsed seconds since the croak started, or `-1` when the
@@ -582,15 +705,18 @@ impl EntityModel for FrogModel {
             let body = frog_root.child_mut("body");
             animate(body, "body");
             jump(body, "body");
+            swim_idle(body, "body");
             {
                 let left_arm = body.child_mut("left_arm");
                 animate(left_arm, "left_arm");
                 jump(left_arm, "left_arm");
+                swim_idle(left_arm, "left_arm");
             }
             {
                 let right_arm = body.child_mut("right_arm");
                 animate(right_arm, "right_arm");
                 jump(right_arm, "right_arm");
+                swim_idle(right_arm, "right_arm");
             }
 
             let croaking_body = body.child_mut("croaking_body");
@@ -609,11 +735,13 @@ impl EntityModel for FrogModel {
             let left_leg = frog_root.child_mut("left_leg");
             animate(left_leg, "left_leg");
             jump(left_leg, "left_leg");
+            swim_idle(left_leg, "left_leg");
         }
         {
             let right_leg = frog_root.child_mut("right_leg");
             animate(right_leg, "right_leg");
             jump(right_leg, "right_leg");
+            swim_idle(right_leg, "right_leg");
         }
     }
 }

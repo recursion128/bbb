@@ -374,6 +374,14 @@ pub struct EntityModelSourceState {
     /// applied) for a non-jumping frog and every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub frog_jump_seconds: f32,
+    /// Vanilla frog swim-idle timing (`FrogRenderState.swimIdleAnimationState`, the triggered
+    /// `AnimationState` `Frog.tick` drives each client tick via `animateWhen(isInWater() &&
+    /// !walkAnimation.isMoving(), tickCount)`): the elapsed seconds since the in-water idle started,
+    /// which `FrogModel.setupAnim` uses to sample the looping `FrogAnimation.FROG_IDLE_WATER`
+    /// animation. Projected only for the frog and `-1.0` (the stopped-animation sentinel, so no
+    /// keyframe is applied) for a frog that is dry or moving and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub frog_swim_idle_seconds: f32,
     /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
     /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered
     /// keyframe is playing (`FEELING_HAPPY`/`SCENTING`/`SNIFFING`/`DIGGING`/`RISING`), which

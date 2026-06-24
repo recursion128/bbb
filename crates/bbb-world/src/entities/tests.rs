@@ -2229,6 +2229,104 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
 }
 
 #[test]
+fn frog_swim_idle_activates_only_in_water_and_idle() {
+    // Vanilla `Frog.tick` (client): `swimIdleAnimationState.animateWhen(isInWater() &&
+    // !walkAnimation.isMoving(), tickCount)`. The projected `frog_swim_idle_seconds` is `>= 0` while
+    // the timer runs (in water, not moving) and the `-1.0` stopped sentinel otherwise. The frog's
+    // `updateWalkAnimation` override is deferred (no `walk_animation` state), so `isMoving()` is
+    // always false; the gate reduces to `isInWater()`.
+    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+
+    let swim_idle = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 81)
+            .unwrap()
+            .frog_swim_idle_seconds
+    };
+
+    // A frog standing in a tall water column (submerged) or out of water.
+    let make_store = |in_water: bool| {
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        store.insert_decoded_chunk(empty_test_chunk());
+        store.apply_add_entity(ProtocolAddEntity {
+            id: 81,
+            uuid: default_entity_uuid(),
+            entity_type_id: VANILLA_ENTITY_TYPE_FROG_ID,
+            position: ProtocolVec3d {
+                x: 8.5,
+                y: 2.0,
+                z: 8.5,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 99,
+        });
+        if in_water {
+            // Fill the column the frog's AABB occupies so `world_aabb_in_water` sees a submerged box.
+            for y in 1..=4 {
+                assert!(store.apply_block_update(ProtocolBlockUpdate {
+                    pos: ProtocolBlockPos { x: 8, y, z: 8 },
+                    block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+                }));
+            }
+        }
+        store
+    };
+
+    // In water and idle: the swim-idle timer starts on the first tick (`start_age == age_ticks`),
+    // so at partial `1.0` the elapsed seconds are `(0 + 1.0)/20 = 0.05` and climb `1/20 = 0.05` per
+    // tick thereafter — non-negative, the active branch.
+    let mut wet = make_store(true);
+    wet.advance_entity_client_animations(1);
+    assert!(
+        (swim_idle(&wet) - 0.05).abs() < 1.0e-6,
+        "an in-water idle frog activates its swim-idle: {}",
+        swim_idle(&wet)
+    );
+    wet.advance_entity_client_animations(2);
+    assert!(
+        (swim_idle(&wet) - 0.15).abs() < 1.0e-6,
+        "the swim-idle elapsed seconds climb 1/20 per tick: {}",
+        swim_idle(&wet)
+    );
+
+    // Out of water: the gate is false, the timer never starts, so the `-1.0` sentinel holds.
+    let mut dry = make_store(false);
+    dry.advance_entity_client_animations(3);
+    assert_eq!(
+        swim_idle(&dry),
+        -1.0,
+        "an out-of-water frog never activates its swim-idle"
+    );
+
+    // Leaving the water stops the animation: drain the column the wet frog idles in, then tick.
+    for y in 1..=4 {
+        assert!(wet.apply_block_update(ProtocolBlockUpdate {
+            pos: ProtocolBlockPos { x: 8, y, z: 8 },
+            block_state_id: 0,
+        }));
+    }
+    wet.advance_entity_client_animations(1);
+    assert_eq!(
+        swim_idle(&wet),
+        -1.0,
+        "a frog that leaves the water stops its swim-idle (back to the sentinel)"
+    );
+}
+
+#[test]
 fn squid_tentacle_speed_matches_java_random_for_known_id() {
     // Vanilla `Squid` constructor: `random.setSeed(getId()); tentacleSpeed = 1 /
     // (random.nextFloat() + 1) * 0.2`. Pinned against the Java LCG: for id 0 the

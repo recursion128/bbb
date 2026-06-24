@@ -448,6 +448,7 @@ fn entity_model_instance(
         .with_bee_roll_amount(source.bee_roll_amount)
         .with_frog_croak_seconds(source.frog_croak_seconds)
         .with_frog_jump_seconds(source.frog_jump_seconds)
+        .with_frog_swim_idle_seconds(source.frog_swim_idle_seconds)
         .with_sniffer_animation_id(source.sniffer_animation_id)
         .with_sniffer_animation_seconds(source.sniffer_animation_seconds)
         .with_armadillo_is_hiding_in_shell(source.armadillo_is_hiding_in_shell)

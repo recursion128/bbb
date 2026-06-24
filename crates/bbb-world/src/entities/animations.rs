@@ -184,6 +184,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_jump: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frog_swim_idle: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armadillo: Option<ArmadilloAnimationState>,
@@ -829,6 +831,12 @@ impl WalkAnimationState {
     /// speedOld, speed), 1)`.
     fn speed(&self, partial_ticks: f32) -> f32 {
         (self.speed_old + (self.speed - self.speed_old) * partial_ticks).min(1.0)
+    }
+
+    /// Vanilla `WalkAnimationState.isMoving()`: `speed > 1.0E-5`. Read by
+    /// `Frog.tick` to gate the swim-idle animation off the limb-swing speed.
+    fn is_moving(&self) -> bool {
+        self.speed > 1.0e-5
     }
 }
 
@@ -1634,6 +1642,20 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// The frog swim-idle's elapsed seconds since it started (vanilla
+    /// `swimIdleAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected
+    /// for `FrogModel.setupAnim`. Unlike the pose-driven croak/jump, the swim-idle is
+    /// driven each client tick from `isInWater() && !walkAnimation.isMoving()`.
+    /// Returns `-1.0` (the stopped-animation sentinel) for a frog that is out of water
+    /// or moving and for every other entity, so the renderer applies no
+    /// `FROG_IDLE_WATER` keyframe; a non-negative value is sampled (looping) against
+    /// the 3.0s definition.
+    pub fn frog_swim_idle_seconds(&self, partial_tick: f32) -> f32 {
+        self.frog_swim_idle
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
     /// The sniffer's active `Sniffer.State` animation (vanilla `Sniffer.onSyncedDataUpdated`'s
     /// one-shot `AnimationState`s) projected for `SnifferModel.setupAnim`: the `(state ordinal,
     /// elapsed seconds)` of the running triggered keyframe, or `(-1, -1.0)` when the sniffer is
@@ -1903,6 +1925,22 @@ impl EntityClientAnimationState {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
                 .advance_client_tick(in_water, is_moving),
+            VANILLA_ENTITY_TYPE_FROG_ID => {
+                // Vanilla `Frog.tick` (client side): `swimIdleAnimationState.animateWhen(isInWater()
+                // && !walkAnimation.isMoving(), tickCount)`. `isInWater()` is the per-tick world fact
+                // threaded in; `walkAnimation.isMoving()` reads the limb-swing speed from the PREVIOUS
+                // tick's `WalkAnimationState` — the walk accumulator below this match advances after,
+                // so reading it here matches vanilla `tick` running before the limb-swing update. The
+                // frog's `updateWalkAnimation` override is deferred (no `walk_animation` state), so a
+                // missing state is treated as not moving (idle), which is the common in-water case.
+                let walk_is_moving = self
+                    .walk_animation
+                    .as_ref()
+                    .is_some_and(WalkAnimationState::is_moving);
+                self.frog_swim_idle
+                    .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
+                    .animate_when(in_water && !walk_is_moving, self.age_ticks);
+            }
             VANILLA_ENTITY_TYPE_CHICKEN_ID => self
                 .chicken_flap
                 .get_or_insert_with(ChickenFlapAnimationState::default)
@@ -1945,7 +1983,9 @@ impl EntityClientAnimationState {
 pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID
+            | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
+            | VANILLA_ENTITY_TYPE_FROG_ID
     )
 }
 

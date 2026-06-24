@@ -625,6 +625,12 @@ impl EntityStore {
             frog_jump_seconds: client_animations
                 .animations
                 .frog_jump_seconds(partial_ticks),
+            // Vanilla `Frog.swimIdleAnimationState`: the elapsed seconds since the in-water idle
+            // started (`Frog.tick` drives it off the per-tick `isInWater()` + `!isMoving()`), or
+            // `-1.0` for a dry/moving frog (only the frog is given a swim-idle animation state).
+            frog_swim_idle_seconds: client_animations
+                .animations
+                .frog_swim_idle_seconds(partial_ticks),
             sniffer_animation_id,
             sniffer_animation_seconds,
             // Vanilla `Armadillo.shouldHideInShell` + the rollUp/rollOut transition timers: the

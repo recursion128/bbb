@@ -1636,10 +1636,21 @@ When an agent does any of the following, update this file in the same slice:
       While long-jumping, `FrogModel.setupAnim` applies `FROG_JUMP` (0.5 s, not looping) before the
       croak — a static hold pose that tips the `body` back `-22.5°`, tucks the two arms back `-56.14°`
       and lifts them `+1` y, and cocks the two legs `45°`, folded additively onto the walk pose. The
-      tongue (needs `DATA_TONGUE_TARGET_ID` prey targeting) and the in-water swim/idle keyframe
-      animations (swimIdle needs `isInWater`, not projected into the tick) need their own un-projected
-      `AnimationState`s and stay deferred, as does the swim-walk variant
-      (`applyWalk(..., 1.0, 2.5)` while `isSwimming`). The
+      looping `FrogAnimation.FROG_IDLE_WATER` in-water idle is reproduced too: unlike the pose-driven
+      croak/jump, the client `frog_swim_idle` `KeyframeAnimationState` is driven each client tick by
+      `Frog.tick`'s `animateWhen(isInWater() && !walkAnimation.isMoving(), tickCount)` — `isInWater()`
+      is the per-tick world fact resolved from the chunk fluid state (the frog joins the guardian as a
+      consumer of `entity_animation_uses_in_water`), and `walkAnimation.isMoving()` (`speed > 1e-5`)
+      reads the prior tick's limb-swing speed (the walk accumulator advances after the per-type match);
+      the frog's `updateWalkAnimation` override is deferred, so the frog has no walk state and is
+      treated as not moving (idle), reducing the gate to `isInWater()`. It projects the elapsed seconds
+      since the idle started (or the `-1.0` dry/moving sentinel). While idling underwater,
+      `FrogModel.setupAnim` applies `FROG_IDLE_WATER` (3.0 s, looping, all-CATMULLROM) LAST (after the
+      walk/swim, jump, and croak) — the `body` dips `-10°`, the two arms splay `±22.5°→±45°` z and sink
+      `-0.5` y, and the two legs swing out and sink `-1` y, folded additively onto the walk pose. The
+      tongue (needs `DATA_TONGUE_TARGET_ID` prey targeting) stays deferred, as do the moving in-water
+      swim cycle (`FROG_SWIM` via `applyWalk(..., 1.0, 2.5)` while `isSwimming`) and the ground walk
+      cycle's own un-projected limb-swing (`Frog.updateWalkAnimation`). The
       texture-backed path and the three frog texture variants
       (temperate/warm/cold, `FrogVariant`) also remain unsupported (this is a colored-first slice;
       the colored debug path approximates the body with one orange-tan tint and the eyes with a

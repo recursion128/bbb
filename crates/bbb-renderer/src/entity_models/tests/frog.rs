@@ -249,3 +249,76 @@ fn frog_jump_reposes_the_limbs_off_the_bind_pose() {
     ]);
     assert_eq!(cleared.vertices, resting.vertices);
 }
+
+#[test]
+fn frog_idle_water_animation_matches_vanilla_definition() {
+    // Vanilla `FrogAnimation.FROG_IDLE_WATER`: 3.0s, LOOPING, five bones (body, the two arms, the
+    // two legs). `body` has only a ROTATION channel; the four limbs each have a ROTATION and a
+    // POSITION channel — nine channels, each with three CATMULLROM keyframes (27 keyframes total).
+    assert_eq!(FROG_IDLE_WATER.length_seconds, 3.0);
+    assert!(FROG_IDLE_WATER.looping);
+    assert_eq!(FROG_IDLE_WATER.bones.len(), 5);
+    let bones: Vec<&str> = FROG_IDLE_WATER.bones.iter().map(|bone| bone.bone).collect();
+    assert_eq!(
+        bones,
+        ["body", "left_arm", "right_arm", "left_leg", "right_leg"]
+    );
+    let keyframes: usize = FROG_IDLE_WATER
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 27);
+
+    // Spot-check the start frame (`t = 0`): the body holds at zero, the left arm splays `-22.5°` z
+    // and offsets `-1` x, and the right leg swings out `22.5°` x / `22.5°` y and sits `+1` z.
+    const RAD: f32 = std::f32::consts::PI / 180.0;
+    let (body_pos, body_rot) = sample_bone_offsets(&FROG_IDLE_WATER, "body", 0.0, 1.0);
+    assert_eq!(body_pos, [0.0, 0.0, 0.0]);
+    assert_eq!(body_rot, [0.0, 0.0, 0.0]);
+    let (arm_pos, arm_rot) = sample_bone_offsets(&FROG_IDLE_WATER, "left_arm", 0.0, 1.0);
+    assert!((arm_pos[0] - -1.0).abs() < 1.0e-6);
+    assert!((arm_rot[2] - -22.5 * RAD).abs() < 1.0e-6);
+    let (leg_pos, leg_rot) = sample_bone_offsets(&FROG_IDLE_WATER, "right_leg", 0.0, 1.0);
+    assert!((leg_pos[2] - 1.0).abs() < 1.0e-6);
+    assert!((leg_rot[0] - 22.5 * RAD).abs() < 1.0e-6);
+    assert!((leg_rot[1] - 22.5 * RAD).abs() < 1.0e-6);
+}
+
+#[test]
+fn frog_idle_water_reposes_the_limbs_off_the_bind_pose() {
+    // A dry/moving frog (`-1.0` sentinel) renders the plain bind/walk-rest pose (no swim-idle).
+    let resting = entity_model_mesh(&[EntityModelInstance::frog(970, [0.0, 64.0, 0.0], 0.0)]);
+
+    // An in-water idling frog hovers its limbs into the looping idle pose: the same 15 cubes (no
+    // pouch), but re-posed off the bind pose. Even at `t = 0` the arms/legs carry a nonzero offset.
+    let idling = entity_model_mesh(&[
+        EntityModelInstance::frog(971, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(0.0)
+    ]);
+    assert_eq!(idling.opaque_faces, resting.opaque_faces);
+    assert_eq!(idling.vertices.len(), resting.vertices.len());
+    assert_ne!(
+        idling.vertices, resting.vertices,
+        "the in-water idling frog hovers its body, arms, and legs"
+    );
+
+    // A different phase mid-cycle re-poses the hover again (the sway tracks the elapsed seconds).
+    let idling_mid = entity_model_mesh(&[
+        EntityModelInstance::frog(972, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(1.5)
+    ]);
+    assert_ne!(idling.vertices, idling_mid.vertices);
+
+    // The animation loops at 3.0s, so sampling one full period later returns the start pose.
+    let idling_wrapped =
+        entity_model_mesh(&[
+            EntityModelInstance::frog(973, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(3.0)
+        ]);
+    assert_eq!(idling_wrapped.vertices, idling.vertices);
+
+    // An explicit `-1.0` (the dry/moving sentinel) leaves the frog at the bind pose.
+    let cleared = entity_model_mesh(&[
+        EntityModelInstance::frog(974, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(-1.0)
+    ]);
+    assert_eq!(cleared.vertices, resting.vertices);
+}
