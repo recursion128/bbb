@@ -1222,8 +1222,9 @@ mod tests {
         ));
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 12,
+            // Vanilla `ArmorStand.DATA_CLIENT_FLAGS` data id (15) carrying the MARKER bit (0x10).
             values: vec![EntityDataValue {
-                data_id: 16,
+                data_id: 15,
                 serializer_id: 0,
                 value: EntityDataValueKind::Byte(16),
             }],

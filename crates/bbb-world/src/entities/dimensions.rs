@@ -83,7 +83,9 @@ const INTERACTION_DEFAULT_HEIGHT: f32 = 1.0;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_BASE_SIZE: f32 = 0.52;
 const SLIME_DEFAULT_SIZE: i32 = 1;
-const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
+// `ArmorStand extends LivingEntity` (not a `Mob`): `DATA_CLIENT_FLAGS` is the first accessor after
+// `LivingEntity` (0-14) with no `Mob.DATA_MOB_FLAGS_ID` (15) in between, so it lands at 15.
+const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
 const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 const ARMOR_STAND_WIDTH: f32 = 0.5;

@@ -1494,8 +1494,8 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
 fn entity_model_sources_project_bee_stinger_from_flags() {
     const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    // Vanilla Bee.DATA_FLAGS_ID (17, BYTE); FLAG_HAS_STUNG (4).
-    const VANILLA_BEE_FLAGS_DATA_ID: u8 = 17;
+    // Vanilla Bee.DATA_FLAGS_ID (18, BYTE); FLAG_HAS_STUNG (4).
+    const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
     const BEE_FLAG_HAS_STUNG: i8 = 4;
 
     let has_stinger = |store: &WorldStore, id: i32| {
@@ -5586,8 +5586,9 @@ fn armor_stand_pick_bounds_follow_client_flags() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 27,
+        // `ArmorStand.DATA_CLIENT_FLAGS` data id (15): the SMALL bit (1) halves the pick bounds.
         values: vec![ProtocolEntityDataValue {
-            data_id: 16,
+            data_id: 15,
             serializer_id: 0,
             value: EntityDataValueKind::Byte(1),
         }],
@@ -5603,8 +5604,9 @@ fn armor_stand_pick_bounds_follow_client_flags() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 28,
+        // `ArmorStand.DATA_CLIENT_FLAGS` data id (15): the MARKER bit (0x10) zeroes the pick bounds.
         values: vec![ProtocolEntityDataValue {
-            data_id: 16,
+            data_id: 15,
             serializer_id: 0,
             value: EntityDataValueKind::Byte(16),
         }],

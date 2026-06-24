@@ -69,9 +69,9 @@ const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
 /// (`Bat.isResting`).
 const BAT_FLAG_RESTING: i8 = 1;
 
-/// Vanilla `Bee.DATA_FLAGS_ID` data id (17): the byte holding the bee flags, defined right
-/// after the `AgeableMob.DATA_BABY_ID` (16).
-const VANILLA_BEE_FLAGS_DATA_ID: u8 = 17;
+/// Vanilla `Bee.DATA_FLAGS_ID` data id (18): the byte holding the bee flags, the first `Bee`
+/// accessor after the two `AgeableMob` accessors `DATA_BABY_ID` (16) / `AGE_LOCKED` (17).
+const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
 
 /// Vanilla `Bee.FLAG_HAS_STUNG` (4): the `DATA_FLAGS_ID` bit set once the bee has stung and
 /// lost its stinger (`Bee.hasStung`).

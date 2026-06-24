@@ -216,13 +216,16 @@ const ARMADILLO_STATE_SCARED_ID: i32 = 2;
 /// id, the first `SpellcasterIllager` accessor after `Raider.IS_CELEBRATING` (16). The byte is
 /// `> 0` while `isCastingSpell()`.
 const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
-const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
-const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 17;
-const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 18;
-const ARMOR_STAND_LEFT_ARM_POSE_DATA_ID: u8 = 19;
-const ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID: u8 = 20;
-const ARMOR_STAND_LEFT_LEG_POSE_DATA_ID: u8 = 21;
-const ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 22;
+// `ArmorStand extends LivingEntity` directly — it is NOT a `Mob`, so there is no
+// `Mob.DATA_MOB_FLAGS_ID` (15); `ArmorStand.DATA_CLIENT_FLAGS` is the first accessor after
+// `LivingEntity` (0-14) and lands at 15, with the six pose rotations following at 16-21.
+const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
+const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
+const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
+const ARMOR_STAND_LEFT_ARM_POSE_DATA_ID: u8 = 18;
+const ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID: u8 = 19;
+const ARMOR_STAND_LEFT_LEG_POSE_DATA_ID: u8 = 20;
+const ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 21;
 const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
 const ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 4;
 const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
@@ -251,10 +254,13 @@ const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 const COW_VARIANT_DATA_ID: u8 = 18;
 const PIG_VARIANT_DATA_ID: u8 = 19;
-// Vanilla Parrot.DATA_VARIANT_ID (19, INT): after Mob.DATA_MOB_FLAGS_ID (15), AgeableMob.DATA_BABY_ID
-// (16), and the two TamableAnimal accessors DATA_FLAGS_ID (17) / DATA_OWNERUUID_ID (18).
-const PARROT_VARIANT_DATA_ID: u8 = 19;
-const SHEEP_WOOL_DATA_ID: u8 = 17;
+// Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
+// accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
+// (18) / DATA_OWNERUUID_ID (19).
+const PARROT_VARIANT_DATA_ID: u8 = 20;
+// Vanilla Sheep.DATA_WOOL_ID (18, BYTE): `Sheep extends Animal`, so its first own accessor follows
+// Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17).
+const SHEEP_WOOL_DATA_ID: u8 = 18;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
@@ -272,10 +278,10 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
-/// `Bee.DATA_ANGER_END_TIME` data id (18): the synced `NeutralMob` anger-end game time,
-/// defined right after `Bee.DATA_FLAGS_ID` (17). `Bee.isAngry()` is `endTime > 0 &&
+/// `Bee.DATA_ANGER_END_TIME` data id (19): the synced `NeutralMob` anger-end game time,
+/// defined right after `Bee.DATA_FLAGS_ID` (18). `Bee.isAngry()` is `endTime > 0 &&
 /// endTime - gameTime > 0`.
-const BEE_ANGER_END_TIME_DATA_ID: u8 = 18;
+const BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
 /// `Camel.LAST_POSE_CHANGE_TICK` data id (20): the synced Long that drives the camel's
 /// sit/sit-pose/stand-up timing. Its magnitude is the game tick of the last pose change and
 /// its SIGN encodes whether the camel is sitting (`< 0` → sitting). Defined right after
@@ -2753,8 +2759,8 @@ mod tests {
 
     #[test]
     fn entity_model_instances_project_bee_stinger() {
-        // Vanilla Bee.DATA_FLAGS_ID (17, BYTE) and the has-stung bit (4).
-        const VANILLA_BEE_FLAGS_DATA_ID: u8 = 17;
+        // Vanilla Bee.DATA_FLAGS_ID (18, BYTE) and the has-stung bit (4).
+        const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
         const BEE_FLAG_HAS_STUNG: i8 = 4;
 
         let mut world = WorldStore::new();
@@ -2789,9 +2795,9 @@ mod tests {
 
     #[test]
     fn entity_model_instances_project_bee_angry_from_anger_end_time() {
-        // Vanilla Bee.DATA_ANGER_END_TIME (18, LONG): isAngry = endTime > 0 && endTime - gameTime
+        // Vanilla Bee.DATA_ANGER_END_TIME (19, LONG): isAngry = endTime > 0 && endTime - gameTime
         // > 0. The world has no time set here, so the game time defaults to 0.
-        const VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = 18;
+        const VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
 
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
