@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 281] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 283] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -970,6 +970,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     GUARDIAN_ELDER_TEXTURE_REF,
     WARDEN_TEXTURE_REF,
     WARDEN_BIOLUMINESCENT_TEXTURE_REF,
+    WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
+    WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
     FROG_TEMPERATE_TEXTURE_REF,
     FROG_WARM_TEXTURE_REF,
     FROG_COLD_TEXTURE_REF,
@@ -2761,8 +2763,24 @@ pub(in crate::entity_models) const WARDEN_BIOLUMINESCENT_TEXTURE_REF: EntityMode
         path: "textures/entity/warden/warden_bioluminescent_layer.png",
         size: [128, 128],
     };
-pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [WARDEN_TEXTURE_REF, WARDEN_BIOLUMINESCENT_TEXTURE_REF];
+// Vanilla `WardenRenderer`'s two pulsating-spots emissive layers: the body spots that fade in/out on
+// the `cos(ageInTicks · 0.045)` pulse (the second offset by π so the two sets alternate).
+pub(in crate::entity_models) const WARDEN_PULSATING_SPOTS_1_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/warden/warden_pulsating_spots_1.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const WARDEN_PULSATING_SPOTS_2_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/warden/warden_pulsating_spots_2.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
+    WARDEN_TEXTURE_REF,
+    WARDEN_BIOLUMINESCENT_TEXTURE_REF,
+    WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
+    WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+];
 pub fn warden_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WARDEN_ENTITY_TEXTURE_REFS
 }

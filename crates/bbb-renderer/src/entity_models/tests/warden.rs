@@ -360,23 +360,51 @@ fn warden_combat_animations_re_pose_off_the_bind_pose() {
 
 #[test]
 fn warden_textured_render_matches_vanilla_renderer() {
-    // The warden binds its base body texture (warden.png, atlas 128×128) plus the always-on
-    // bioluminescent emissive overlay; the pulsating-spots / heart / tendril layers stay deferred.
-    let passes = warden_textured_layer_passes();
-    assert_eq!(passes.len(), 2);
+    // The warden binds its base body texture (warden.png, atlas 128×128), the always-on bioluminescent
+    // emissive overlay, and the two pulsating-spots emissive overlays (the eyes pipeline is emissive +
+    // alpha-blended); the heart and tendril layers stay deferred.
+    let passes = warden_textured_layer_passes(0.0);
+    assert_eq!(passes.len(), 4);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].texture, WARDEN_TEXTURE_REF);
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].texture, WARDEN_BIOLUMINESCENT_TEXTURE_REF);
+    assert_eq!(passes[2].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[2].texture, WARDEN_PULSATING_SPOTS_1_TEXTURE_REF);
+    assert_eq!(passes[3].texture, WARDEN_PULSATING_SPOTS_2_TEXTURE_REF);
+
+    // The pulsating alpha is `max(0, cos(ageInTicks · 0.045 + phase) · 0.25)`. At age 0 the first set
+    // is at its peak 0.25 while the π-offset second set is clamped to 0; the two alternate over time.
+    assert!((passes[2].tint[3] - 0.25).abs() < 1.0e-6);
+    assert_eq!(passes[3].tint[3], 0.0);
+    assert!((warden_pulsating_spots_alpha(0.0, 0.0) - 0.25).abs() < 1.0e-6);
+    assert_eq!(warden_pulsating_spots_alpha(0.0, std::f32::consts::PI), 0.0);
+    let half_period = std::f32::consts::PI / 0.045;
+    assert_eq!(warden_pulsating_spots_alpha(half_period, 0.0), 0.0);
+    assert!(
+        (warden_pulsating_spots_alpha(half_period, std::f32::consts::PI) - 0.25).abs() < 1.0e-6
+    );
+
     assert_eq!(
         EntityModelKind::Warden.vanilla_texture_ref(),
         Some(WARDEN_TEXTURE_REF)
     );
-    assert!(entity_model_texture_refs().contains(&WARDEN_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&WARDEN_BIOLUMINESCENT_TEXTURE_REF));
+    for texture in [
+        WARDEN_TEXTURE_REF,
+        WARDEN_BIOLUMINESCENT_TEXTURE_REF,
+        WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
+        WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+    ] {
+        assert!(entity_model_texture_refs().contains(&texture));
+    }
     assert_eq!(
         warden_entity_texture_refs(),
-        &[WARDEN_TEXTURE_REF, WARDEN_BIOLUMINESCENT_TEXTURE_REF]
+        &[
+            WARDEN_TEXTURE_REF,
+            WARDEN_BIOLUMINESCENT_TEXTURE_REF,
+            WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
+            WARDEN_PULSATING_SPOTS_2_TEXTURE_REF
+        ]
     );
 
     let images: Vec<EntityModelTextureImage> = warden_entity_texture_refs()

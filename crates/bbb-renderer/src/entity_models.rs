@@ -96,10 +96,11 @@ use textured::{
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
-    wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
-    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
-    EntityModelLayerRenderType, EntityModelLayerVisibility,
+    warden_pulsating_spots_alpha, warden_textured_layer_passes, wind_charge_textured_layer_passes,
+    witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
+    wolf_textured_layer_passes, zombie_textured_layer_passes,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
+    EntityModelLayerVisibility,
 };
 
 #[cfg(test)]

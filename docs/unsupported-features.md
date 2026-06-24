@@ -1754,11 +1754,15 @@ When an agent does any of the following, update this file in the same slice:
       and rarely seen — a clean follow-up; their pose ordinals are tracked but only update `prev_pose`. The
       base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), together with the always-on
       bioluminescent emissive overlay (`WARDEN_BIOLUMINESCENT_TEXTURE_REF`, an eyes-render-type pass at the
-      constant vanilla alpha 1.0). The remaining four `WardenEmissiveLayer`s — the two pulsating-spots
-      layers (`cos(ageInTicks·0.045)·0.25`), the heart, and the tendrils — pulse on a per-tick / animation
-      alpha and stay deferred (they need per-instance overlay-alpha plumbing). The colored debug path stays
-      as a fallback (it approximates the body with one dark-teal tint and the tendrils with a brighter cyan
-      tint)
+      constant vanilla alpha 1.0) and the two pulsating-spots emissive overlays
+      (`WARDEN_PULSATING_SPOTS_1/2_TEXTURE_REF`, eyes-render-type passes whose per-instance alpha follows the
+      vanilla `WardenEmissiveLayer.getAlpha = max(0, cos(ageInTicks·0.045 + phase)·0.25)` with phase `0` and
+      `π`, threaded from the projected `age_in_ticks` — the eyes pipeline is already emissive + alpha-blended,
+      so the pass `tint[3]` scales output alpha directly, no new pipeline needed). The remaining two
+      `WardenEmissiveLayer`s — the heart (needs `heartAnimation` projected, parallel to `tendril_animation`)
+      and the tendrils (a per-part subset of the base `warden.png`, so it needs a partial-mesh emissive pass) —
+      stay deferred. The colored debug path stays as a fallback (it approximates the body with one dark-teal
+      tint and the tendrils with a brighter cyan tint)
     - armadillo entities as renderer-owned vanilla 26.1 `AdultArmadilloModel` /
       `BabyArmadilloModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `4` to the new `EntityModelKind::Armadillo { baby }`,

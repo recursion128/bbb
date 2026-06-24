@@ -964,9 +964,20 @@ pub(in crate::entity_models) fn frog_textured_layer_passes(
     )]
 }
 
-pub(in crate::entity_models) fn warden_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    // The warden's base body plus the always-on bioluminescent emissive overlay (alpha 1.0). The
-    // pulsating-spots ×2 / heart / tendril emissive layers pulse on a per-tick alpha and stay deferred.
+/// Vanilla `WardenRenderer`'s pulsating-spots `alphaFunction`: `max(0, cos(ageInTicks · 0.045 +
+/// phase) · 0.25)`. The two layers use phase `0` and `π` so they fade in and out in opposition.
+pub(in crate::entity_models) fn warden_pulsating_spots_alpha(age_in_ticks: f32, phase: f32) -> f32 {
+    ((age_in_ticks * 0.045 + phase).cos() * 0.25).max(0.0)
+}
+
+pub(in crate::entity_models) fn warden_textured_layer_passes(
+    age_in_ticks: f32,
+) -> Vec<EntityModelLayerPass> {
+    // The warden's base body, the always-on bioluminescent emissive overlay (alpha 1.0), and the two
+    // pulsating-spots emissive overlays (each fading on its own `cos(ageInTicks · 0.045)` pulse, the
+    // eyes pipeline being emissive + alpha-blended, matching vanilla `entityTranslucentEmissive`). The
+    // heart (needs the lerped `heartAnimation`) and the tendril overlay (a per-part subset of the base
+    // texture) stay deferred.
     vec![
         EntityModelLayerPass::base(
             EntityModelLayerRenderType::Cutout,
@@ -977,6 +988,26 @@ pub(in crate::entity_models) fn warden_textured_layer_passes() -> Vec<EntityMode
             EntityModelLayerRenderType::Eyes,
             WARDEN_BIOLUMINESCENT_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
+        ),
+        EntityModelLayerPass::base(
+            EntityModelLayerRenderType::Eyes,
+            WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
+            [
+                1.0,
+                1.0,
+                1.0,
+                warden_pulsating_spots_alpha(age_in_ticks, 0.0),
+            ],
+        ),
+        EntityModelLayerPass::base(
+            EntityModelLayerRenderType::Eyes,
+            WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+            [
+                1.0,
+                1.0,
+                1.0,
+                warden_pulsating_spots_alpha(age_in_ticks, std::f32::consts::PI),
+            ],
         ),
     ]
 }

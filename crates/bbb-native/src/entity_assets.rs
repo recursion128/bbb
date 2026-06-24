@@ -283,6 +283,8 @@ mod tests {
                 "textures/entity/guardian/guardian_elder.png",
                 "textures/entity/warden/warden.png",
                 "textures/entity/warden/warden_bioluminescent_layer.png",
+                "textures/entity/warden/warden_pulsating_spots_1.png",
+                "textures/entity/warden/warden_pulsating_spots_2.png",
                 "textures/entity/frog/frog_temperate.png",
                 "textures/entity/frog/frog_warm.png",
                 "textures/entity/frog/frog_cold.png",

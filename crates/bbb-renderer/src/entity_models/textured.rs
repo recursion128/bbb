@@ -24,7 +24,7 @@ use glam::Mat4;
 
 mod layers;
 #[cfg(test)]
-pub(super) use layers::EntityModelLayerVisibility;
+pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
@@ -48,10 +48,11 @@ pub(super) use layers::{
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
-    wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
-    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
-    EntityModelLayerPass, EntityModelLayerRenderType,
+    warden_textured_layer_passes, wind_charge_textured_layer_passes,
+    witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
+    wolf_textured_layer_passes, zombie_textured_layer_passes,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderType,
 };
 
 pub(super) struct EntityModelTexturedMeshes {
