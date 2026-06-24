@@ -104,6 +104,9 @@ pub(super) fn entity_model_textured_meshes(
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new();
     for instance in instances {
+        if instance.render_state.invisible {
+            continue;
+        }
         let cutout_start = meshes.cutout.vertices.len();
         let translucent_start = meshes.translucent.vertices.len();
         let eyes_start = meshes.eyes.vertices.len();
@@ -293,7 +296,6 @@ pub(super) fn entity_model_textured_meshes(
                 baby,
                 sheared,
                 wool_color,
-                invisible,
                 jeb,
                 age_ticks,
             } => {
@@ -303,7 +305,6 @@ pub(super) fn entity_model_textured_meshes(
                     baby,
                     sheared,
                     wool_color,
-                    invisible,
                     jeb,
                     age_ticks,
                     atlas,
@@ -313,7 +314,6 @@ pub(super) fn entity_model_textured_meshes(
                 baby,
                 tame,
                 angry,
-                invisible,
                 collar_color,
             } => {
                 emit_wolf_textured_model(
@@ -322,7 +322,6 @@ pub(super) fn entity_model_textured_meshes(
                     baby,
                     tame,
                     angry,
-                    invisible,
                     collar_color,
                     atlas,
                 );
@@ -1528,7 +1527,6 @@ fn emit_sheep_textured_model(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
-    invisible: bool,
     jeb: bool,
     age_ticks: f32,
     atlas: &EntityModelTextureAtlasLayout,
@@ -1542,7 +1540,7 @@ fn emit_sheep_textured_model(
     body.prepare(&instance);
     let mut fur = SheepFurModel::new(baby);
     fur.prepare(&instance);
-    for pass in sheep_textured_layer_passes(baby, sheared, wool_color, invisible, jeb, age_ticks) {
+    for pass in sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks) {
         let root = if pass.kind == layers::EntityModelLayerKind::SheepWool {
             fur.root()
         } else {
@@ -1566,7 +1564,6 @@ fn emit_wolf_textured_model(
     baby: bool,
     tame: bool,
     angry: bool,
-    invisible: bool,
     collar_color: Option<EntityDyeColor>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
@@ -1581,7 +1578,7 @@ fn emit_wolf_textured_model(
         meshes,
         &model,
         transform,
-        wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color),
+        wolf_textured_layer_passes(baby, tame, angry, collar_color),
         atlas,
     );
 }

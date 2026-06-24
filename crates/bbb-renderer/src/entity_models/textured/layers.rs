@@ -766,7 +766,6 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
-    invisible: bool,
     jeb: bool,
     age_ticks: f32,
 ) -> Vec<EntityModelLayerPass> {
@@ -790,7 +789,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
         collector_order: 0,
         submit_sequence: 0,
     });
-    if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
+    if !baby && (jeb || wool_color != SheepWoolColor::White) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SheepWoolUndercoat,
             render_type: EntityModelLayerRenderType::Cutout,
@@ -802,7 +801,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
             submit_sequence: 1,
         });
     }
-    if !invisible && !sheared {
+    if !sheared {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SheepWool,
             render_type: EntityModelLayerRenderType::Cutout,
@@ -830,7 +829,6 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
     baby: bool,
     tame: bool,
     angry: bool,
-    invisible: bool,
     collar_color: Option<EntityDyeColor>,
 ) -> Vec<EntityModelLayerPass> {
     let model_layer = if baby {
@@ -849,23 +847,21 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
         collector_order: 0,
         submit_sequence: 0,
     });
-    if !invisible {
-        if let Some(collar_color) = tame.then_some(collar_color).flatten() {
-            passes.push(EntityModelLayerPass {
-                kind: EntityModelLayerKind::WolfCollar,
-                render_type: EntityModelLayerRenderType::Cutout,
-                model_layer,
-                texture: if baby {
-                    WOLF_BABY_COLLAR_TEXTURE_REF
-                } else {
-                    WOLF_COLLAR_TEXTURE_REF
-                },
-                visibility: EntityModelLayerVisibility::All,
-                tint: collar_color.texture_diffuse_color(),
-                collector_order: 1,
-                submit_sequence: 1,
-            });
-        }
+    if let Some(collar_color) = tame.then_some(collar_color).flatten() {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::WolfCollar,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer,
+            texture: if baby {
+                WOLF_BABY_COLLAR_TEXTURE_REF
+            } else {
+                WOLF_COLLAR_TEXTURE_REF
+            },
+            visibility: EntityModelLayerVisibility::All,
+            tint: collar_color.texture_diffuse_color(),
+            collector_order: 1,
+            submit_sequence: 1,
+        });
     }
     passes
 }

@@ -241,6 +241,11 @@ entity_render_state! {
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
     (with_is_crouching) is_crouching: bool = false;
+    /// Vanilla `LivingEntityRenderer.isBodyVisible`: a normally-invisible entity
+    /// (Invisibility effect / `setInvisible`) draws no body and no layers for a
+    /// non-spectator, non-glowing client. Both render paths skip the whole model
+    /// when set. (The spectator-translucent and glowing-outline cases stay deferred.)
+    (with_invisible) invisible: bool = false;
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -883,13 +888,13 @@ impl EntityModelInstance {
                 baby,
                 sheared,
                 wool_color,
-                invisible,
                 jeb,
                 age_ticks,
             },
             position,
             y_rot,
         )
+        .with_invisible(invisible)
     }
 
     #[cfg(test)]
@@ -941,12 +946,12 @@ impl EntityModelInstance {
                 baby,
                 tame,
                 angry,
-                invisible,
                 collar_color: tame.then_some(collar_color).flatten(),
             },
             position,
             y_rot,
         )
+        .with_invisible(invisible)
     }
 
     pub fn horse(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
@@ -1208,7 +1213,6 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
-                invisible: false,
                 collar_color: None,
             }
         );
@@ -1280,6 +1284,7 @@ mod tests {
                 vex_charging: false,
                 illager_spellcasting: false,
                 is_crouching: false,
+                invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 parrot_sitting: false,

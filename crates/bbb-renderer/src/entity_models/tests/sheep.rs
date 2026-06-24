@@ -239,7 +239,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -251,7 +250,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::Red,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -263,7 +261,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: true,
             wool_color: SheepWoolColor::Red,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -275,7 +272,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: true,
             sheared: true,
             wool_color: SheepWoolColor::Red,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -287,7 +283,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -302,7 +297,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: true,
             sheared: false,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -338,7 +332,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -350,7 +343,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::Red,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -362,7 +354,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: true,
             wool_color: SheepWoolColor::Red,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -374,7 +365,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: true,
             sheared: false,
             wool_color: SheepWoolColor::Black,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }
@@ -385,7 +375,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
         baby: true,
         sheared: true,
         wool_color: SheepWoolColor::Black,
-        invisible: false,
         jeb: false,
         age_ticks: 0.0,
     }
@@ -396,7 +385,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: true,
             age_ticks: 12.5,
         }
@@ -408,7 +396,6 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: false,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: true,
             age_ticks: 12.5,
         }
@@ -420,39 +407,17 @@ fn sheep_texture_refs_match_vanilla_renderers() {
             baby: false,
             sheared: true,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: true,
             age_ticks: 25.0,
         }
         .vanilla_layer_texture_refs(),
         &[SHEEP_WOOL_UNDERCOAT_TEXTURE_REF]
     );
-    assert!(EntityModelKind::Sheep {
-        baby: false,
-        sheared: false,
-        wool_color: SheepWoolColor::Red,
-        invisible: true,
-        jeb: false,
-        age_ticks: 0.0,
-    }
-    .vanilla_layer_texture_refs()
-    .is_empty());
-    assert!(EntityModelKind::Sheep {
-        baby: true,
-        sheared: false,
-        wool_color: SheepWoolColor::Black,
-        invisible: true,
-        jeb: true,
-        age_ticks: 25.0,
-    }
-    .vanilla_layer_texture_refs()
-    .is_empty());
 }
 
 #[test]
 fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
-    let adult_red =
-        sheep_textured_layer_passes(false, false, SheepWoolColor::Red, false, false, 0.0);
+    let adult_red = sheep_textured_layer_passes(false, false, SheepWoolColor::Red, false, 0.0);
     assert_eq!(
         adult_red.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
         vec![
@@ -489,8 +454,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
         (1, 1)
     );
 
-    let sheared_red =
-        sheep_textured_layer_passes(false, true, SheepWoolColor::Red, false, false, 0.0);
+    let sheared_red = sheep_textured_layer_passes(false, true, SheepWoolColor::Red, false, 0.0);
     assert_eq!(
         sheared_red.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
         vec![
@@ -498,13 +462,12 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
             EntityModelLayerKind::SheepWoolUndercoat,
         ]
     );
-    let sheared_white =
-        sheep_textured_layer_passes(false, true, SheepWoolColor::White, false, false, 0.0);
+    let sheared_white = sheep_textured_layer_passes(false, true, SheepWoolColor::White, false, 0.0);
     assert_eq!(sheared_white.len(), 1);
     assert_eq!(sheared_white[0].kind, EntityModelLayerKind::SheepBase);
 
     let adult_jeb_white =
-        sheep_textured_layer_passes(false, false, SheepWoolColor::White, false, true, 12.5);
+        sheep_textured_layer_passes(false, false, SheepWoolColor::White, true, 12.5);
     assert_eq!(
         adult_jeb_white
             .iter()
@@ -519,19 +482,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     assert_eq!(adult_jeb_white[1].tint, sheep_jeb_wool_layer_color(12.5));
     assert_eq!(adult_jeb_white[2].tint, sheep_jeb_wool_layer_color(12.5));
 
-    let invisible_adult_red =
-        sheep_textured_layer_passes(false, false, SheepWoolColor::Red, true, false, 0.0);
-    assert_eq!(
-        invisible_adult_red
-            .iter()
-            .map(|pass| pass.kind)
-            .collect::<Vec<_>>(),
-        vec![EntityModelLayerKind::SheepBase]
-    );
-    assert_eq!(invisible_adult_red[0].texture, SHEEP_TEXTURE_REF);
-
-    let baby_black =
-        sheep_textured_layer_passes(true, false, SheepWoolColor::Black, false, false, 0.0);
+    let baby_black = sheep_textured_layer_passes(true, false, SheepWoolColor::Black, false, 0.0);
     assert_eq!(
         baby_black
             .iter()
@@ -558,10 +509,10 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
         ]
     );
     let sheared_baby_black =
-        sheep_textured_layer_passes(true, true, SheepWoolColor::Black, false, false, 0.0);
+        sheep_textured_layer_passes(true, true, SheepWoolColor::Black, false, 0.0);
     assert_eq!(sheared_baby_black.len(), 1);
     let jeb_baby_white =
-        sheep_textured_layer_passes(true, false, SheepWoolColor::White, false, true, 25.0);
+        sheep_textured_layer_passes(true, false, SheepWoolColor::White, true, 25.0);
     assert_eq!(
         jeb_baby_white
             .iter()
@@ -573,17 +524,6 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
         ]
     );
     assert_eq!(jeb_baby_white[1].tint, sheep_jeb_wool_layer_color(25.0));
-
-    let invisible_baby_black =
-        sheep_textured_layer_passes(true, false, SheepWoolColor::Black, true, true, 25.0);
-    assert_eq!(
-        invisible_baby_black
-            .iter()
-            .map(|pass| pass.kind)
-            .collect::<Vec<_>>(),
-        vec![EntityModelLayerKind::SheepBase]
-    );
-    assert_eq!(invisible_baby_black[0].texture, SHEEP_BABY_TEXTURE_REF);
 }
 
 #[test]
@@ -740,6 +680,8 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         sheep_jeb_wool_layer_color(12.5)
     );
 
+    // An invisible sheep renders nothing: the unified `render_state.invisible` skips the whole
+    // model in both paths, so no body and no wool/undercoat layer is emitted.
     let invisible_red = entity_model_textured_mesh(
         &[EntityModelInstance::sheep_render_state(
             305,
@@ -754,12 +696,8 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         )],
         &atlas,
     );
-    assert_eq!(invisible_red.cutout_faces, 36);
-    assert_eq!(invisible_red.vertices.len(), 144);
-    assert!(invisible_red
-        .vertices
-        .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert_eq!(invisible_red.cutout_faces, 0);
+    assert!(invisible_red.vertices.is_empty());
 }
 
 #[test]

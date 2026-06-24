@@ -336,10 +336,17 @@ When an agent does any of the following, update this file in the same slice:
       in the other model families' `setupAnim` (fish; other birds; etc., plus
       the `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
       walk-driven swing (its `setupAnim` is the head-yaw twist/orbit, now implemented).
+    - `isInvisible` is now projected uniformly into `EntityRenderState.invisible`
+      for every entity (vanilla `LivingEntityRenderer.isBodyVisible`): a
+      normally-invisible entity (Invisibility effect / `setInvisible`) skips the
+      whole model — no body and no layers — in both the colored and textured
+      render paths, matching vanilla's null body `getRenderType` plus the
+      `isInvisible` self-check in the overlay layers. The spectator-translucent and
+      glowing-outline cases remain deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
-      `SCALE`-attribute `scale`), unified `isInvisible`, and `outlineColor` glow
+      `SCALE`-attribute `scale`), and `outlineColor` glow
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla

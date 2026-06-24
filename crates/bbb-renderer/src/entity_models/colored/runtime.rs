@@ -51,6 +51,9 @@ fn entity_model_mesh_with_options(
 ) -> EntityModelMesh {
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
+        if instance.render_state.invisible {
+            continue;
+        }
         let light_start = mesh.vertices.len();
         match instance.kind {
             EntityModelKind::Chicken { variant, baby } => {
@@ -465,13 +468,12 @@ fn entity_model_mesh_with_options(
                 baby,
                 sheared,
                 wool_color,
-                invisible,
                 jeb,
                 age_ticks,
             } => {
                 if !skip_texture_backed_entities {
                     emit_sheep_model(
-                        &mut mesh, *instance, baby, sheared, wool_color, invisible, jeb, age_ticks,
+                        &mut mesh, *instance, baby, sheared, wool_color, jeb, age_ticks,
                     );
                 }
             }
@@ -1165,24 +1167,23 @@ fn emit_sheep_model(
     baby: bool,
     sheared: bool,
     wool_color: SheepWoolColor,
-    invisible: bool,
     jeb: bool,
     age_ticks: f32,
 ) {
     // The unified `SheepModel` (body) and `SheepFurModel` (wool) trees drive both render paths; both
     // run the shared `SheepModel.setupAnim` (leg swing + eat-grass head pose). The colored fallback
     // renders the body with baked colors, optionally recolors the body undercoat (non-white adult),
-    // then renders the wool tinted (unless sheared). Invisible sheep render the body only.
+    // then renders the wool tinted (unless sheared).
     let transform = entity_model_root_transform(instance);
     let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
     let mut body = SheepModel::new(baby);
     body.prepare(&instance);
     body.root().render_colored(mesh, transform);
-    if !invisible && !baby && (jeb || wool_color != SheepWoolColor::White) {
+    if !baby && (jeb || wool_color != SheepWoolColor::White) {
         body.root()
             .render_colored_with_color(mesh, transform, wool_layer_color);
     }
-    if !invisible && !sheared {
+    if !sheared {
         let mut fur = SheepFurModel::new(baby);
         fur.prepare(&instance);
         fur.root()

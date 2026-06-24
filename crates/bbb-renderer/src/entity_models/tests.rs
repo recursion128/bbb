@@ -542,7 +542,6 @@ fn entity_model_kind_exposes_stable_model_keys() {
             baby: true,
             sheared: false,
             wool_color: SheepWoolColor::White,
-            invisible: false,
             jeb: false,
             age_ticks: 0.0,
         }

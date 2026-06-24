@@ -405,6 +405,7 @@ fn entity_model_instance(
         )
         .with_head_eat(head_eat)
         .with_head_look(net_head_yaw, head_pitch)
+        .with_invisible(entity_invisible(&source.data_values))
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
         .with_has_red_overlay(source.has_red_overlay)
@@ -997,7 +998,6 @@ fn sheep_model_kind(
         baby: ageable_baby(values),
         sheared: wool & SHEEP_WOOL_SHEARED_FLAG != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
-        invisible: entity_invisible(values),
         jeb: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
             .is_some_and(|name| name == "jeb_"),
         age_ticks,
@@ -1030,7 +1030,6 @@ fn wolf_model_kind(
         baby: ageable_baby(values),
         tame,
         angry: wolf_is_angry(values, game_time),
-        invisible: entity_invisible(values),
         collar_color: tame.then(|| {
             EntityDyeColor::from_vanilla_id(entity_data_int(
                 values,
@@ -4218,7 +4217,6 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
-                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -4232,7 +4230,6 @@ mod tests {
                 baby: true,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
-                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -4266,7 +4263,6 @@ mod tests {
                 baby: false,
                 sheared: true,
                 wool_color: SheepWoolColor::Red,
-                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -4283,7 +4279,6 @@ mod tests {
                 baby: true,
                 sheared: false,
                 wool_color: SheepWoolColor::Black,
-                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -4300,7 +4295,6 @@ mod tests {
                 baby: false,
                 sheared: true,
                 wool_color: SheepWoolColor::Lime,
-                invisible: false,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -4317,7 +4311,6 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::Red,
-                invisible: true,
                 jeb: false,
                 age_ticks: 0.0,
             }
@@ -4343,7 +4336,6 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
-                invisible: false,
                 jeb: true,
                 age_ticks: 12.5,
             }
@@ -4365,7 +4357,6 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
-                invisible: false,
                 jeb: false,
                 age_ticks: 25.0,
             }
@@ -4387,7 +4378,6 @@ mod tests {
                 baby: false,
                 sheared: false,
                 wool_color: SheepWoolColor::White,
-                invisible: false,
                 jeb: false,
                 age_ticks: 25.0,
             }
@@ -4429,6 +4419,8 @@ mod tests {
                 1.0,
             )
         );
+        // A visible entity (no invisible shared flag) projects `invisible == false`.
+        assert!(!instances[0].render_state.invisible);
     }
 
     #[test]
@@ -4504,6 +4496,8 @@ mod tests {
                 0.25,
             )
         );
+        // The shared invisible flag is now projected uniformly into the render state.
+        assert!(instances[0].render_state.invisible);
     }
 
     #[test]
@@ -4972,7 +4966,6 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
-                invisible: false,
                 collar_color: None,
             }
         );
@@ -4985,7 +4978,6 @@ mod tests {
                 baby: true,
                 tame: false,
                 angry: false,
-                invisible: false,
                 collar_color: None,
             }
         );
@@ -5001,7 +4993,6 @@ mod tests {
                 baby: false,
                 tame: true,
                 angry: false,
-                invisible: false,
                 collar_color: Some(EntityDyeColor::Red),
             }
         );
@@ -5017,7 +5008,6 @@ mod tests {
                 baby: false,
                 tame: true,
                 angry: false,
-                invisible: false,
                 collar_color: Some(EntityDyeColor::Blue),
             }
         );
@@ -5034,7 +5024,6 @@ mod tests {
                 baby: false,
                 tame: true,
                 angry: false,
-                invisible: true,
                 collar_color: Some(EntityDyeColor::Blue),
             }
         );
@@ -5047,7 +5036,6 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
-                invisible: false,
                 collar_color: None,
             }
         );
@@ -5131,7 +5119,6 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: true,
-                invisible: false,
                 collar_color: None,
             }
         );
@@ -5149,7 +5136,6 @@ mod tests {
                 baby: false,
                 tame: false,
                 angry: false,
-                invisible: false,
                 collar_color: None,
             }
         );
@@ -5170,7 +5156,6 @@ mod tests {
                 baby: false,
                 tame: true,
                 angry: true,
-                invisible: false,
                 collar_color: Some(EntityDyeColor::Red),
             }
         );
@@ -5277,6 +5262,8 @@ mod tests {
                 1.0,
             )
         );
+        // The shared invisible flag is now projected uniformly into the render state.
+        assert!(instances[0].render_state.invisible);
     }
 
     #[test]

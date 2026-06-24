@@ -240,7 +240,6 @@ pub enum EntityModelKind {
         baby: bool,
         sheared: bool,
         wool_color: SheepWoolColor,
-        invisible: bool,
         jeb: bool,
         age_ticks: f32,
     },
@@ -252,7 +251,6 @@ pub enum EntityModelKind {
         baby: bool,
         tame: bool,
         angry: bool,
-        invisible: bool,
         collar_color: Option<EntityDyeColor>,
     },
     Horse {

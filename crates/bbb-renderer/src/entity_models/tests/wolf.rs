@@ -70,11 +70,10 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
         )],
         &atlas,
     );
-    assert_eq!(invisible_tame.cutout_faces, 66);
-    assert!(invisible_tame
-        .vertices
-        .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    // An invisible wolf renders nothing: the unified `render_state.invisible` skips the whole
+    // model in both paths, so no body and no collar layer is emitted.
+    assert_eq!(invisible_tame.cutout_faces, 0);
+    assert!(invisible_tame.vertices.is_empty());
 }
 
 #[test]
@@ -227,7 +226,6 @@ fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
             baby,
             tame,
             angry,
-            invisible: false,
             collar_color: None,
         };
         assert_eq!(kind.model_key(), model_key);
@@ -239,7 +237,6 @@ fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
             baby: false,
             tame: true,
             angry: false,
-            invisible: false,
             collar_color: Some(EntityDyeColor::Red),
         }
         .vanilla_layer_texture_refs(),
@@ -250,7 +247,6 @@ fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
             baby: true,
             tame: true,
             angry: false,
-            invisible: false,
             collar_color: Some(EntityDyeColor::Red),
         }
         .vanilla_layer_texture_refs(),
@@ -260,7 +256,6 @@ fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
         baby: false,
         tame: false,
         angry: false,
-        invisible: false,
         collar_color: None,
     }
     .vanilla_layer_texture_refs()
@@ -269,16 +264,6 @@ fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
         baby: false,
         tame: false,
         angry: false,
-        invisible: false,
-        collar_color: Some(EntityDyeColor::Red),
-    }
-    .vanilla_layer_texture_refs()
-    .is_empty());
-    assert!(EntityModelKind::Wolf {
-        baby: false,
-        tame: true,
-        angry: false,
-        invisible: true,
         collar_color: Some(EntityDyeColor::Red),
     }
     .vanilla_layer_texture_refs()
@@ -288,7 +273,7 @@ fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
 #[test]
 fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     // The vestigial `parts` slices are nulled; every pass reads the unified `WolfModel` tree.
-    let wild = wolf_textured_layer_passes(false, false, false, false, None);
+    let wild = wolf_textured_layer_passes(false, false, false, None);
     assert_eq!(
         wild.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
         vec![EntityModelLayerKind::WolfBase]
@@ -298,8 +283,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     assert_eq!(wild[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((wild[0].collector_order, wild[0].submit_sequence), (0, 0));
 
-    let tame_blue =
-        wolf_textured_layer_passes(false, true, false, false, Some(EntityDyeColor::Blue));
+    let tame_blue = wolf_textured_layer_passes(false, true, false, Some(EntityDyeColor::Blue));
     assert_eq!(
         tame_blue.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
         vec![
@@ -319,27 +303,28 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
         (1, 1)
     );
 
-    let invisible_tame =
-        wolf_textured_layer_passes(false, true, false, true, Some(EntityDyeColor::Blue));
+    // An untamed wolf carrying collar metadata still emits only the base layer: the collar pass
+    // is gated on `tame`, so a wild wolf renders no collar.
+    let untamed_with_collar =
+        wolf_textured_layer_passes(false, false, false, Some(EntityDyeColor::Blue));
     assert_eq!(
-        invisible_tame
+        untamed_with_collar
             .iter()
             .map(|pass| pass.kind)
             .collect::<Vec<_>>(),
         vec![EntityModelLayerKind::WolfBase]
     );
-    assert_eq!(invisible_tame[0].texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(untamed_with_collar[0].texture, WOLF_TEXTURE_REF);
 
-    let angry = wolf_textured_layer_passes(false, false, true, false, None);
+    let angry = wolf_textured_layer_passes(false, false, true, None);
     assert_eq!(angry[0].texture, WOLF_ANGRY_TEXTURE_REF);
     assert_eq!(angry.len(), 1);
 
-    let tame_angry =
-        wolf_textured_layer_passes(false, true, true, false, Some(EntityDyeColor::Red));
+    let tame_angry = wolf_textured_layer_passes(false, true, true, Some(EntityDyeColor::Red));
     assert_eq!(tame_angry[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(tame_angry.len(), 2);
 
-    let baby_tame = wolf_textured_layer_passes(true, true, false, false, Some(EntityDyeColor::Red));
+    let baby_tame = wolf_textured_layer_passes(true, true, false, Some(EntityDyeColor::Red));
     assert_eq!(baby_tame[0].model_layer, MODEL_LAYER_WOLF_BABY);
     assert_eq!(baby_tame[0].texture, WOLF_TAME_BABY_TEXTURE_REF);
     assert_eq!(baby_tame[1].texture, WOLF_BABY_COLLAR_TEXTURE_REF);
