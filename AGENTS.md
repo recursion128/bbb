@@ -16,7 +16,7 @@ configuration UI.
 ## Authoritative References
 
 - Use local vanilla 26.1 sources first:
-  `/Users/zhangguyu/Work/mc-code/sources/26.1/`
+  `~/Work/mc-code/sources/26.1/`
 - Follow the repo code organization and style rules in:
   `docs/code-organization-style.md`
 - For packet ids and wire formats, prefer vanilla `GameProtocols.java` and the

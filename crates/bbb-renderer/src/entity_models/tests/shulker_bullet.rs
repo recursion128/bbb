@@ -65,3 +65,23 @@ fn shulker_bullet_orients_by_facing() {
         "the pitch orients the bullet"
     );
 }
+
+#[test]
+fn shulker_bullet_tumbles_with_age() {
+    // Vanilla `ShulkerBulletRenderer.submit` spins the bullet by an `ageInTicks`-driven tumble
+    // (`Ry(sin(t·0.1)·180°) · Rx(cos(t·0.1)·180°) · Rz(sin(t·0.15)·360°)`), so the whole model
+    // re-poses as it flies, and the tumble advances with the (partial-tick-lerped) age.
+    let base = EntityModelInstance::shulker_bullet(1132, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_mesh(&[base]); // age 0
+    let aged = entity_model_mesh(&[base.with_age_in_ticks(10.0)]);
+    let aged_later = entity_model_mesh(&[base.with_age_in_ticks(13.0)]);
+    assert_eq!(rest.vertices.len(), aged.vertices.len());
+    assert_ne!(
+        rest.vertices, aged.vertices,
+        "the bullet tumbles as it ages"
+    );
+    assert_ne!(
+        aged.vertices, aged_later.vertices,
+        "the tumble advances with the age"
+    );
+}

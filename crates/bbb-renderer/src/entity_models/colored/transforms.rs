@@ -279,8 +279,17 @@ pub(in crate::entity_models) fn wither_skull_model_root_transform(
 pub(in crate::entity_models) fn shulker_bullet_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
+    // Vanilla `ShulkerBulletRenderer.submit`: after translating up 0.15, the bullet tumbles by an
+    // `ageInTicks`-driven product `Ry(sin(t·0.1)·180°) · Rx(cos(t·0.1)·180°) · Rz(sin(t·0.15)·360°)`
+    // (degrees → radians: `·π`, `·π`, `·2π`), then `scale(-0.5, -0.5, 0.5)`. `ShulkerBulletModel`
+    // `setupAnim` then orients `main` by the bullet's yaw/pitch (innermost), reproduced through
+    // `body_rot` / `head_pitch`.
+    let t = instance.render_state.age_in_ticks;
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.15, 0.0))
+        * Mat4::from_rotation_y((t * 0.1).sin() * std::f32::consts::PI)
+        * Mat4::from_rotation_x((t * 0.1).cos() * std::f32::consts::PI)
+        * Mat4::from_rotation_z((t * 0.15).sin() * std::f32::consts::TAU)
         * Mat4::from_scale(Vec3::new(-0.5, -0.5, 0.5))
         * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
         * Mat4::from_rotation_x(instance.render_state.head_pitch.to_radians())
