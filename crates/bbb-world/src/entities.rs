@@ -544,6 +544,13 @@ pub struct EntityModelSourceState {
     /// `0.0` (wings held) at rest and for every non-chicken entity.
     #[serde(default)]
     pub chicken_flap_speed: f32,
+    /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
+    /// `(sin(lerp(flap)) + 1) * lerp(flapSpeed)`): the combined wing-flap angle
+    /// `ParrotModel.setupAnim` feeds to the wing `zRot` (`±(0.0873 + flapAngle)`) and
+    /// the body/head/tail bob (`flapAngle * 0.3`). `0.0` (wings held) for a
+    /// grounded/still parrot and every non-parrot entity.
+    #[serde(default)]
+    pub parrot_flap_angle: f32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 

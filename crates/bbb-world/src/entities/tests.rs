@@ -2237,6 +2237,130 @@ fn entity_model_sources_project_chicken_wing_flap() {
 }
 
 #[test]
+fn entity_model_sources_project_parrot_wing_flap() {
+    const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
+
+    let flap_angle = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 90)
+            .unwrap()
+            .parrot_flap_angle
+    };
+    // Drives the parrot's synced ground flag (vanilla `Parrot.calculateFlapping` reads
+    // `onGround()`); the position stays put so only the flap state evolves.
+    let set_on_ground = |store: &mut WorldStore, on_ground: bool| {
+        assert!(store.apply_entity_move(ProtocolEntityMove {
+            id: 90,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground,
+        }));
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        90,
+        VANILLA_ENTITY_TYPE_PARROT_ID,
+    ));
+
+    // An unticked parrot is frozen at the bind pose (wings held): `flapAngle == 0`.
+    assert_eq!(flap_angle(&store, 1.0), 0.0);
+
+    // Airborne: vanilla `flapSpeed += 4.0 * 0.3 = 1.2` (clamped to 1) saturates in one tick, and
+    // `flap += flapping * 2` advances the phase, so `flapAngle = (sin(flap) + 1) * flapSpeed > 0`.
+    set_on_ground(&mut store, false);
+    store.advance_entity_client_animations(1);
+    let air_one = flap_angle(&store, 1.0);
+    assert!(
+        air_one > 0.0,
+        "an airborne parrot develops a non-zero flap angle: {air_one}"
+    );
+
+    store.advance_entity_client_animations(1);
+    let air_two = flap_angle(&store, 1.0);
+    assert!(
+        air_two > 0.0,
+        "the flap angle stays live across airborne ticks: {air_two}"
+    );
+
+    // Land: vanilla `flapSpeed += -1.0 * 0.3` pulls the speed back toward 0 on the ground, and after
+    // it bleeds to 0 the flap angle collapses to 0 (wings settle).
+    set_on_ground(&mut store, true);
+    store.advance_entity_client_animations(20);
+    assert_eq!(
+        flap_angle(&store, 1.0),
+        0.0,
+        "a grounded parrot settles its wings (flapSpeed -> 0)"
+    );
+
+    // The lerped getter tracks the partial tick between the previous and current flap angle
+    // endpoints (vanilla `ParrotRenderer.extractRenderState` lerps flap+flapSpeed, then combines).
+    set_on_ground(&mut store, false);
+    store.advance_entity_client_animations(3);
+    let at_zero = flap_angle(&store, 0.0);
+    let at_one = flap_angle(&store, 1.0);
+    assert_ne!(
+        at_zero, at_one,
+        "the projected flap angle changes across the partial tick: {at_zero} vs {at_one}"
+    );
+}
+
+#[test]
+fn parrot_passenger_holds_its_wings() {
+    const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
+    // Vanilla `Parrot.calculateFlapping` gates the airborne flap build-up on `!onGround() &&
+    // !isPassenger()`. A parrot riding a vehicle (its `vehicle_id` set) is a passenger, so even
+    // airborne its `flapSpeed` decays toward 0 and `flapAngle` stays at 0 (wings settled).
+    const VANILLA_ENTITY_TYPE_BOAT_ID: i32 = 9;
+
+    let flap_angle = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 91)
+            .unwrap()
+            .parrot_flap_angle
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        91,
+        VANILLA_ENTITY_TYPE_PARROT_ID,
+    ));
+    // Mark the parrot airborne — without the passenger gate this would flap.
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 91,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground: false,
+    }));
+    // Seat the parrot on the boat so it becomes a passenger.
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 92,
+        passenger_ids: vec![91],
+    }));
+
+    store.advance_entity_client_animations(5);
+    assert_eq!(
+        flap_angle(&store),
+        0.0,
+        "an airborne passenger parrot keeps its wings settled"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_bee_roll_amount() {
     const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
     // Vanilla `Bee.DATA_FLAGS_ID` is synced data id 18; `FLAG_ROLL` is mask 2 within that byte.

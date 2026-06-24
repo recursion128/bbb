@@ -1762,11 +1762,23 @@ When an agent does any of the following, update this file in the same slice:
       reproduced too: the legs add `xRot += cos(walkAnimationPos·0.6662 [+π])·1.4·walkAnimationSpeed` (left in
       phase, right out) and the tail adds `xRot += cos(walkAnimationPos·0.6662)·0.3·walkAnimationSpeed` onto
       their baked pitch, gated off the projected `walk_animation_pos/speed` and skipped while sitting (the
-      vanilla SITTING branch breaks before it). The remaining `ParrotModel.setupAnim` motion stays deferred:
-      the FLYING leg pitch, the wing flap (`zRot = ±(0.0873 + flapAngle)`), the body/tail/head flap bob (needs
-      the un-projected `flapAngle`), and the PARTY dance. The five
-      `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) live on the deferred
-      texture-backed path, so the colored debug path renders one body tint plus a beak tint. The
+      vanilla SITTING branch breaks before it). The wing flap and FLYING pose are now projected too:
+      `ParrotModel.getPose` is derived in the renderer from `parrot_sitting` + the synced `on_ground` flag
+      (SITTING when sitting, else FLYING when airborne since `isFlying() = !onGround()`, else STANDING). A
+      `ParrotFlapAnimationState` client accumulator mirrors `Parrot.calculateFlapping` — per tick
+      `flapSpeed += (!onGround() && !isPassenger() ? 4 : -1)·0.3` clamped `[0,1]`, `flapping` re-seeds to `1`
+      whenever airborne then decays `·0.9`, and `flap += flapping·2` (`flapping` initializes to `1.0`); it is
+      the chicken flap plus the `!isPassenger()` term, so a parrot riding a shoulder/mount settles its wings.
+      `ParrotRenderer.extractRenderState` lerps `flap`/`flapSpeed` separately then combines them into the
+      single projected `parrot_flap_angle = (sin(flap) + 1)·flapSpeed`, which `setupAnim` feeds (in the
+      STANDING/FLYING fall-through) to the wings (`leftWing.zRot = -0.0873 - flapAngle`,
+      `rightWing.zRot = 0.0873 + flapAngle`) and the body/head/tail/wing/leg bob (`y += flapAngle·0.3`); a
+      grounded parrot has `flapSpeed → 0`, so the wings settle to `zRot = ±0.0873` and the bob vanishes.
+      `prepare(FLYING)` additionally pitches both legs `xRot += 2π/9`, and FLYING skips the STANDING leg walk
+      swing. Still deferred: the PARTY pose (needs the un-projected `isPartyParrot()` jukebox-proximity state)
+      and the ON_SHOULDER pose (needs the shoulder-riding render path) — a party/shoulder parrot falls back to
+      STANDING/FLYING. The five `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) live on
+      the deferred texture-backed path, so the colored debug path renders one body tint plus a beak tint. The
       texture-backed path remains unsupported (this is a colored-first slice)
     - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to the new

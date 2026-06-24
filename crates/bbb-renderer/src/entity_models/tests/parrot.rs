@@ -55,16 +55,27 @@ fn parrot_sitting_pose_matches_vanilla_prepare() {
         ("right_leg", PARROT_RIGHT_LEG_POSE),
     ];
 
-    // Standing with a neutral gaze keeps every part at its bind pose: `setup_anim` applies only the
-    // head look (identity at rest) and the walk swing (identity at rest).
+    // Standing with a neutral gaze and no flap (`flapAngle == 0`): the head look is identity, the walk
+    // swing is identity, and the bob vanishes, so every part holds its bind offset. The one rotation
+    // change is the wings — vanilla's STANDING fall-through sets `zRot = ±(0.0873 + flapAngle)`, so a
+    // grounded parrot's wings settle to `zRot = ±0.0873` rather than the bind `zRot = 0`.
     let mut standing = ParrotModel::new();
-    standing.prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0));
+    standing.prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0).with_on_ground(true));
     let standing_root = standing.root_mut();
     for (name, pose) in parts {
         let part = standing_root.child_mut(name);
         assert_eq!(part.pose.offset, pose.offset, "part {name} offset");
-        assert_eq!(part.pose.rotation, pose.rotation, "part {name} rotation");
     }
+    // Non-wing parts hold their bind rotation; the wings tuck to ±0.0873.
+    for (name, pose) in parts.iter().filter(|(name, _)| !name.ends_with("wing")) {
+        assert_eq!(
+            standing_root.child_mut(name).pose.rotation,
+            pose.rotation,
+            "part {name} rotation"
+        );
+    }
+    assert!((standing_root.child_mut("left_wing").pose.rotation[2] - (-0.0873)).abs() < 1.0e-6);
+    assert!((standing_root.child_mut("right_wing").pose.rotation[2] - 0.0873).abs() < 1.0e-6);
 
     // SITTING = `ParrotModel.prepare(SITTING)`: every part raises `y += 1.9`, the tail pitches
     // `xRot += π/6`, the wings tuck to `zRot = ±0.0873`, and the legs fold `xRot += π/2`.
@@ -134,7 +145,9 @@ fn parrot_head_look_turns_only_the_head_subtree() {
 fn parrot_sitting_mesh_differs_from_standing() {
     // The perched parrot re-poses every part (raise + fold), so its mesh differs from standing
     // while keeping the same 11-cube vertex count.
-    let standing = entity_model_mesh(&[EntityModelInstance::parrot(981, [0.0, 64.0, 0.0], 0.0)]);
+    let standing = entity_model_mesh(&[
+        EntityModelInstance::parrot(981, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
+    ]);
     let sitting = entity_model_mesh(&[
         EntityModelInstance::parrot(982, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true)
     ]);
@@ -182,12 +195,15 @@ fn parrot_walk_swing_matches_vanilla_setup_anim() {
 #[test]
 fn parrot_walk_swing_moves_only_the_legs_and_tail() {
     // A walking standing parrot swings its tail [24, 48) and both legs [216, 264) while the body
-    // [0, 24), wings [48, 96), and head subtree [96, 216) hold. The wing flap / body bob need the
-    // un-projected `flapAngle`, so the wings stay put.
-    let rest = entity_model_mesh(&[EntityModelInstance::parrot(992, [0.0, 64.0, 0.0], 0.0)]);
-    let walking = entity_model_mesh(&[
-        EntityModelInstance::parrot(993, [0.0, 64.0, 0.0], 0.0).with_walk_animation(2.0, 1.0)
+    // [0, 24), wings [48, 96), and head subtree [96, 216) hold. The walk swing does not touch the
+    // wings, and with no flap (`flapAngle == 0`) the wing zRot settles to ±0.0873 for both meshes
+    // (the bob also vanishes), so the wing slice matches between rest and walking.
+    let rest = entity_model_mesh(&[
+        EntityModelInstance::parrot(992, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
     ]);
+    let walking = entity_model_mesh(&[EntityModelInstance::parrot(993, [0.0, 64.0, 0.0], 0.0)
+        .with_on_ground(true)
+        .with_walk_animation(2.0, 1.0)]);
     assert_eq!(rest.vertices.len(), walking.vertices.len());
     assert_eq!(
         rest.vertices[0..24],
@@ -202,7 +218,7 @@ fn parrot_walk_swing_moves_only_the_legs_and_tail() {
     assert_eq!(
         rest.vertices[48..96],
         walking.vertices[48..96],
-        "the wings hold (flap is deferred)"
+        "the wings hold under the walk swing (no flap, so both settle to ±0.0873)"
     );
     assert_eq!(
         rest.vertices[96..216],
@@ -225,6 +241,96 @@ fn parrot_walk_swing_moves_only_the_legs_and_tail() {
     assert_eq!(
         sit_rest.vertices, sit_walk.vertices,
         "a perched parrot is inert under walk animation"
+    );
+}
+
+#[test]
+fn parrot_flaps_its_wings_when_airborne() {
+    // Vanilla `ParrotModel.setupAnim` STANDING/FLYING fall-through: `leftWing.zRot = -0.0873 -
+    // flapAngle`, `rightWing.zRot = 0.0873 + flapAngle`, plus the `flapAngle * 0.3` body/wing/leg bob.
+    // With `flapAngle == 0` the wings settle to ±0.0873 (the rest splay); a live flap re-poses them
+    // and lifts the bobbing parts. Tested airborne (FLYING) and grounded (STANDING) — both carry the
+    // flap.
+    for on_ground in [false, true] {
+        let rest = entity_model_mesh(&[EntityModelInstance::parrot(70, [0.0, 64.0, 0.0], 0.0)
+            .with_on_ground(on_ground)
+            .with_parrot_flap_angle(0.0)]);
+        let flapping = entity_model_mesh(&[EntityModelInstance::parrot(71, [0.0, 64.0, 0.0], 0.0)
+            .with_on_ground(on_ground)
+            .with_parrot_flap_angle(0.8)]);
+        assert_eq!(
+            rest.vertices.len(),
+            flapping.vertices.len(),
+            "the wing flap keeps the vertex count (on_ground={on_ground})"
+        );
+        assert_ne!(
+            rest.vertices, flapping.vertices,
+            "a non-zero flapAngle re-poses the wings and lifts the bob (on_ground={on_ground})"
+        );
+        // The flap moves the wings [48, 96): both wings carry `zRot = ±(0.0873 + flapAngle)`.
+        assert_ne!(
+            rest.vertices[48..96],
+            flapping.vertices[48..96],
+            "the wings flap (on_ground={on_ground})"
+        );
+    }
+}
+
+#[test]
+fn parrot_flying_pitches_legs_back_versus_standing() {
+    // Vanilla `ParrotModel.prepare(FLYING)` pitches both legs `xRot += 2π/9`, and FLYING skips the
+    // STANDING leg walk swing. With no flap the body/tail/wings/head match between a grounded and an
+    // airborne parrot (both settle the wings to ±0.0873, bob is 0), so the only difference is the legs.
+    let standing = entity_model_mesh(&[
+        EntityModelInstance::parrot(72, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
+    ]);
+    let flying = entity_model_mesh(&[
+        EntityModelInstance::parrot(73, [0.0, 64.0, 0.0], 0.0).with_on_ground(false)
+    ]);
+    assert_eq!(standing.vertices.len(), flying.vertices.len());
+    // body/tail/wings/head [0, 216) hold; only the legs [216, 264) differ.
+    assert_eq!(
+        standing.vertices[0..216],
+        flying.vertices[0..216],
+        "the body, tail, wings, and head match between standing and flying"
+    );
+    assert_ne!(
+        standing.vertices[216..264],
+        flying.vertices[216..264],
+        "the flying parrot pitches its legs back (prepare(FLYING))"
+    );
+}
+
+#[test]
+fn parrot_sitting_mesh_differs_from_standing_and_flying() {
+    // A perched parrot re-poses every part (raise + fold), so its mesh differs from both the standing
+    // and the flying parrot while keeping the same vertex count. SITTING ignores the flap.
+    let standing = entity_model_mesh(&[
+        EntityModelInstance::parrot(74, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
+    ]);
+    let flying = entity_model_mesh(&[
+        EntityModelInstance::parrot(75, [0.0, 64.0, 0.0], 0.0).with_on_ground(false)
+    ]);
+    let sitting = entity_model_mesh(&[EntityModelInstance::parrot(76, [0.0, 64.0, 0.0], 0.0)
+        .with_parrot_sitting(true)
+        .with_parrot_flap_angle(0.8)]);
+    assert_eq!(standing.vertices.len(), sitting.vertices.len());
+    assert_ne!(
+        standing.vertices, sitting.vertices,
+        "the sitting parrot perches lower with folded legs"
+    );
+    assert_ne!(
+        flying.vertices, sitting.vertices,
+        "the sitting parrot differs from the flying parrot"
+    );
+    // A sitting parrot ignores the flap entirely (its pose lives wholly in prepare(SITTING)).
+    let sitting_no_flap =
+        entity_model_mesh(&[
+            EntityModelInstance::parrot(77, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true)
+        ]);
+    assert_eq!(
+        sitting.vertices, sitting_no_flap.vertices,
+        "a sitting parrot does not flap"
     );
 }
 

@@ -8,14 +8,25 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // Vanilla 26.1 `ParrotModel.createBodyLayer` (atlas 32×32). The mesh root holds seven sibling parts
 // (body, tail, the two wings, head, and the two legs); the head parents the upper-head block, the
 // two beak halves, and the crest feather. Most parts carry a baked rest rotation (the wings are
-// additionally flipped `yRot = -π`). The SITTING perch pose is now projected (see
-// [`parrot_pose_parts`](crate::entity_models::colored::runtime)): `prepare(SITTING)` raises every
-// part `y += 1.9`, folds the legs `xRot += π/2`, pitches the tail `xRot += π/6`, and tucks the wings
-// to `zRot = ±0.0873`. The remaining `ParrotModel.setupAnim` motion is deferred — the head look, the
-// FLYING leg pitch, the leg walk swing, the wing flap (`zRot = ±(0.0873 + flapAngle)`), the
-// body/tail/head flap bob, and the PARTY dance — so a non-sitting parrot renders at this STANDING rest
-// pose. The five `Parrot.Variant` colors live on the deferred texture-backed path, so the colored
-// debug path renders one body tint plus a beak tint. Parrot uses a plain `MobRenderer` with no
+// additionally flipped `yRot = -π`). `ParrotModel.getPose` is derived in `setup_anim` from the
+// projected `parrot_sitting` + `on_ground` render-state fields: SITTING when sitting, else FLYING
+// when airborne, else STANDING. Each pose mirrors `ParrotModel.prepare(pose)` + the per-`Pose`
+// `setupAnim` switch:
+//   - SITTING: `prepare` raises every part `y += 1.9`, folds the legs `xRot += π/2`, pitches the tail
+//     `xRot += π/6`, and tucks the wings to `zRot = ±0.0873`; `setupAnim` adds nothing (only the head
+//     look, which precedes the switch).
+//   - STANDING: the leg walk swing, then the shared bob/wing-flap block (vanilla's STANDING case falls
+//     through to FLYING/default).
+//   - FLYING: `prepare` pitches both legs `xRot += 2π/9`, then the shared bob/wing-flap block (no leg
+//     walk swing — FLYING does not fall through STANDING).
+// The shared bob/wing-flap block: `bob = flapAngle * 0.3` raises head/tail/body/wings/legs `y += bob`,
+// the tail adds its walk swing, and the wings set `zRot = ±(0.0873 + flapAngle)`. `flapAngle` is the
+// projected `parrot_flap_angle` (vanilla `(sin(flap) + 1) * flapSpeed`); a grounded parrot has
+// `flapSpeed == 0 → flapAngle == 0`, so the wings settle to `zRot = ±0.0873` and the bob vanishes.
+// DEFERRED: the PARTY pose (needs the un-projected `isPartyParrot()` jukebox-proximity state) and the
+// ON_SHOULDER pose (needs the shoulder-riding render path) — a party/shoulder parrot falls back to
+// STANDING/FLYING. The five `Parrot.Variant` colors live on the deferred texture-backed path, so the
+// colored debug path renders one body tint plus a beak tint. Parrot uses a plain `MobRenderer` with no
 // transform overrides.
 
 // `body`: the 3×6×3 torso.
@@ -124,6 +135,14 @@ const PARROT_PART_NAMES: [&str; 7] = [
 /// pitch.
 const PARROT_LEG_NAMES: [&str; 2] = ["left_leg", "right_leg"];
 
+/// Vanilla `ParrotModel`'s wing rest splay literal `0.0873F`. SITTING tucks the wings to `zRot =
+/// ±0.0873` (set); STANDING/FLYING set `zRot = ±(0.0873 + flapAngle)` so a grounded parrot
+/// (`flapAngle == 0`) holds this same splay.
+const PARROT_WING_REST_Z_ROT: f32 = 0.0873;
+
+/// Vanilla `ParrotModel.prepare(FLYING)` leg pitch: both legs tuck back `xRot += 2π/9`.
+const PARROT_FLYING_LEG_X_ROT: f32 = std::f32::consts::PI * 2.0 / 9.0;
+
 /// Builds the parrot's seven named sibling root parts under a synthetic root, in the vanilla
 /// `addOrReplaceChild` order. The cube-bearing `head` parents `head2`, the two beak halves, and the
 /// crest feather (index-named, never addressed by name in `setup_anim`).
@@ -177,16 +196,44 @@ fn parrot_root() -> ModelPart {
 /// `xRot += π/2`. The `setupAnim` `SITTING` branch adds nothing more.
 fn apply_parrot_sitting_pose(root: &mut ModelPart) {
     const SIT_Y: f32 = 1.9;
-    const WING_TUCK_Z_ROT: f32 = 0.0873;
     for name in PARROT_PART_NAMES {
         root.child_mut(name).pose.offset[1] += SIT_Y;
     }
     root.child_mut("tail").pose.rotation[0] += std::f32::consts::FRAC_PI_6;
-    root.child_mut("left_wing").pose.rotation[2] = -WING_TUCK_Z_ROT; // left wing tuck
-    root.child_mut("right_wing").pose.rotation[2] = WING_TUCK_Z_ROT; // right wing tuck
+    root.child_mut("left_wing").pose.rotation[2] = -PARROT_WING_REST_Z_ROT; // left wing tuck
+    root.child_mut("right_wing").pose.rotation[2] = PARROT_WING_REST_Z_ROT; // right wing tuck
     for name in PARROT_LEG_NAMES {
         root.child_mut(name).pose.rotation[0] += std::f32::consts::FRAC_PI_2;
     }
+}
+
+/// Vanilla `ParrotModel.setupAnim`'s shared STANDING/FLYING/ON_SHOULDER bob + wing-flap block. After
+/// the (optional) STANDING leg walk swing, vanilla falls through to the default case:
+///   `bob = flapAngle * 0.3`
+///   `head.y += bob; tail.xRot += cos(walkPos·0.6662)·0.3·walkSpeed; tail.y += bob; body.y += bob`
+///   `leftWing.zRot = -0.0873 - flapAngle; leftWing.y += bob`
+///   `rightWing.zRot = 0.0873 + flapAngle; rightWing.y += bob`
+///   `leftLeg.y += bob; rightLeg.y += bob`
+/// The head look (head rotation) is set before the switch; this only adds the `y` bob and the tail
+/// swing/wing `zRot`, so it composes with the look. With `flapAngle == 0` (a grounded parrot) the bob
+/// vanishes and the wings settle to `zRot = ±0.0873`.
+fn apply_parrot_flap_bob(root: &mut ModelPart, flap_angle: f32, walk_pos: f32, walk_speed: f32) {
+    let bob = flap_angle * 0.3;
+    // body, head, both wings, both legs raise by the bob; the tail raises by the bob *and* adds its
+    // walk swing (the body/head only carry the bob — the head look already set their rotation).
+    for name in ["body", "head", "left_leg", "right_leg"] {
+        root.child_mut(name).pose.offset[1] += bob;
+    }
+    let tail = root.child_mut("tail");
+    tail.pose = parrot_tail_swing_pose(tail.pose, walk_pos, walk_speed);
+    tail.pose.offset[1] += bob;
+    // Wings: set the absolute flap angle off the rest splay, then raise by the bob.
+    let left_wing = root.child_mut("left_wing");
+    left_wing.pose.rotation[2] = -PARROT_WING_REST_Z_ROT - flap_angle;
+    left_wing.pose.offset[1] += bob;
+    let right_wing = root.child_mut("right_wing");
+    right_wing.pose.rotation[2] = PARROT_WING_REST_Z_ROT + flap_angle;
+    right_wing.pose.offset[1] += bob;
 }
 
 /// Vanilla `ParrotModel.setupAnim` STANDING leg walk swing for one leg:
@@ -237,8 +284,9 @@ pub(in crate::entity_models) fn parrot_tail_swing_pose(
 
 /// Mutable parrot model, mirroring vanilla `ParrotModel`. Its seven named sibling parts hang off a
 /// synthetic root, each built from the baked colored geometry. Colored-only (no textured path yet):
-/// `setup_anim` applies the head look at every projected pose via `child_mut`, then either the
-/// `prepare(SITTING)` perch re-pose or the STANDING tail/leg walk swing.
+/// `setup_anim` derives the pose from `parrot_sitting`/`on_ground`, sets the head look, then runs the
+/// per-pose `prepare` + `setupAnim` math — the SITTING perch, the STANDING leg walk swing plus
+/// bob/wing-flap, or the FLYING leg pitch plus bob/wing-flap.
 pub(in crate::entity_models) struct ParrotModel {
     root: ModelPart,
 }
@@ -261,30 +309,52 @@ impl EntityModel for ParrotModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        // Vanilla `ParrotModel.setupAnim` sets the head look first (applied at every projected pose),
-        // then runs the per-pose switch: SITTING re-poses the whole tree via `prepare(SITTING)` and
-        // stops, while STANDING adds the tail/leg walk swing onto the baked pitch. The wing flap and
-        // body/head bob (the un-projected `flapAngle`), the FLYING leg pitch, and the PARTY dance
-        // stay deferred. Both the head look (identity at a neutral gaze) and the swing (identity at
-        // rest) collapse to the bind pose, so they apply unconditionally.
-        let sitting = instance.render_state.parrot_sitting;
+        // Vanilla `ParrotModel.getPose(entity)`, derived from the projected render state: PARTY and
+        // ON_SHOULDER are not projected (deferred), so SITTING when sitting, else FLYING when airborne
+        // (`isFlying() = !onGround()`), else STANDING.
+        let render_state = &instance.render_state;
+        let sitting = render_state.parrot_sitting;
+        let flying = !sitting && !render_state.on_ground;
+
+        // Vanilla `prepare(pose)` runs before the head look in `setupAnim`'s body, but it only
+        // translates parts (and tucks the wings/legs); the head look sets head rotation, so the two
+        // compose regardless of order. SITTING re-poses the whole tree; FLYING pitches both legs back.
         if sitting {
             apply_parrot_sitting_pose(&mut self.root);
+        } else if flying {
+            for name in PARROT_LEG_NAMES {
+                self.root.child_mut(name).pose.rotation[0] += PARROT_FLYING_LEG_X_ROT;
+            }
         }
+
+        // Vanilla `ParrotModel.setupAnim`: `head.xRot/yRot` set from the look angles before the
+        // per-pose switch. Identity at a neutral gaze, so it applies at every pose.
         apply_head_look(
             self.root.child_mut("head"),
-            instance.render_state.head_yaw,
-            instance.render_state.head_pitch,
+            render_state.head_yaw,
+            render_state.head_pitch,
         );
-        if !sitting {
-            let walk_pos = instance.render_state.walk_animation_pos;
-            let walk_speed = instance.render_state.walk_animation_speed;
-            let tail = self.root.child_mut("tail");
-            tail.pose = parrot_tail_swing_pose(tail.pose, walk_pos, walk_speed);
+
+        // The per-pose switch. SITTING breaks immediately (its pose is entirely in `prepare`). STANDING
+        // adds the leg walk swing, then falls through to the shared bob/wing-flap block; FLYING runs
+        // only that block (no leg walk swing).
+        if sitting {
+            return;
+        }
+        let walk_pos = render_state.walk_animation_pos;
+        let walk_speed = render_state.walk_animation_speed;
+        if !flying {
+            // STANDING leg walk swing, added onto the baked leg pitch.
             for name in PARROT_LEG_NAMES {
                 let leg = self.root.child_mut(name);
                 leg.pose = parrot_leg_swing_pose(leg.pose, walk_pos, walk_speed);
             }
         }
+        apply_parrot_flap_bob(
+            &mut self.root,
+            render_state.parrot_flap_angle,
+            walk_pos,
+            walk_speed,
+        );
     }
 }

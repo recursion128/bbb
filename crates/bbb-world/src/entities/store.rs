@@ -679,6 +679,12 @@ impl EntityStore {
             chicken_flap_speed: client_animations
                 .animations
                 .chicken_flap_speed(partial_ticks),
+            // Vanilla `ParrotRenderer.extractRenderState`: the lerped, combined
+            // wing-flap angle. `0.0` for every non-parrot entity (only the parrot is
+            // given a flap animation state).
+            parrot_flap_angle: client_animations
+                .animations
+                .parrot_flap_angle(partial_ticks),
             data_values: metadata.data_values.clone(),
         })
     }

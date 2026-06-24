@@ -133,6 +133,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chicken_flap: Option<ChickenFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parrot_flap: Option<ParrotFlapAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
 }
 
@@ -305,6 +307,35 @@ pub struct ChickenFlapAnimationState {
     #[serde(default)]
     pub o_flap_speed: f32,
     /// Vanilla `Chicken.flapping` (field initializer `1.0`).
+    #[serde(default)]
+    pub flapping: f32,
+}
+
+/// Canonical client-side parrot wing-flap animation, mirroring vanilla `Parrot`
+/// (`flap`/`oFlap`/`flapSpeed`/`oFlapSpeed`/`flapping`). `Parrot.aiStep` runs the
+/// same flap accumulator as the chicken, except the airborne build-up is gated on
+/// `!onGround() && !isPassenger()` (a parrot riding a shoulder/mount holds its
+/// wings), drives `flapSpeed` toward `1` while airborne (toward `0` otherwise),
+/// keeps `flapping` decaying at `0.9` per tick (re-seeded to `1` whenever the
+/// parrot is off the ground), and integrates `flap += flapping * 2`.
+/// `ParrotRenderer.extractRenderState` lerps `flap` and `flapSpeed` separately and
+/// combines them into `flapAngle = (sin(flap) + 1) * flapSpeed`, which
+/// `ParrotModel.setupAnim` feeds to the wing `zRot` and the body/head/tail bob.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ParrotFlapAnimationState {
+    /// Vanilla `Parrot.flap`.
+    #[serde(default)]
+    pub flap: f32,
+    /// Vanilla `Parrot.oFlap`.
+    #[serde(default)]
+    pub o_flap: f32,
+    /// Vanilla `Parrot.flapSpeed`.
+    #[serde(default)]
+    pub flap_speed: f32,
+    /// Vanilla `Parrot.oFlapSpeed`.
+    #[serde(default)]
+    pub o_flap_speed: f32,
+    /// Vanilla `Parrot.flapping` (field initializer `1.0`).
     #[serde(default)]
     pub flapping: f32,
 }
@@ -695,6 +726,59 @@ impl ChickenFlapAnimationState {
     /// flapSpeed)`.
     fn flap_speed(&self, partial_tick: f32) -> f32 {
         self.o_flap_speed + (self.flap_speed - self.o_flap_speed) * partial_tick
+    }
+}
+
+impl Default for ParrotFlapAnimationState {
+    fn default() -> Self {
+        // Vanilla `Parrot` field initializers: `flapping = 1.0F` (and `nextFlap =
+        // 1.0F`, which is server-only re-seeding noise); every other flap field
+        // defaults to `0`.
+        Self {
+            flap: 0.0,
+            o_flap: 0.0,
+            flap_speed: 0.0,
+            o_flap_speed: 0.0,
+            flapping: 1.0,
+        }
+    }
+}
+
+impl ParrotFlapAnimationState {
+    /// Advances one client tick of `Parrot.calculateFlapping`'s wing-flap
+    /// accumulator.
+    ///
+    /// Vanilla saves the lerp endpoints (`oFlap`/`oFlapSpeed`), drives `flapSpeed`
+    /// toward `1` while `!onGround() && !isPassenger()` (toward `0` otherwise)
+    /// clamped to `0..=1`, re-seeds `flapping` to `1` whenever the parrot is
+    /// airborne, decays it by `0.9`, then integrates `flap += flapping * 2`. This is
+    /// identical to the chicken flap except for the added `!isPassenger()` term: a
+    /// parrot riding a shoulder or mount lets its wings settle. Note the airborne
+    /// re-seed of `flapping` uses only `!onGround()` (not the passenger test), the
+    /// same as vanilla.
+    fn advance_client_tick(&mut self, on_ground: bool, is_passenger: bool) {
+        self.o_flap = self.flap;
+        self.o_flap_speed = self.flap_speed;
+        self.flap_speed += if !on_ground && !is_passenger {
+            4.0
+        } else {
+            -1.0
+        } * 0.3;
+        self.flap_speed = self.flap_speed.clamp(0.0, 1.0);
+        if !on_ground && self.flapping < 1.0 {
+            self.flapping = 1.0;
+        }
+        self.flapping *= 0.9;
+        self.flap += self.flapping * 2.0;
+    }
+
+    /// Vanilla `ParrotRenderer.extractRenderState`: lerps `flap` and `flapSpeed`
+    /// separately by the partial tick, then `flapAngle = (sin(flap) + 1) *
+    /// flapSpeed`.
+    fn flap_angle(&self, partial_tick: f32) -> f32 {
+        let flap = self.o_flap + (self.flap - self.o_flap) * partial_tick;
+        let flap_speed = self.o_flap_speed + (self.flap_speed - self.o_flap_speed) * partial_tick;
+        (flap.sin() + 1.0) * flap_speed
     }
 }
 
@@ -1098,6 +1182,17 @@ impl EntityClientAnimationState {
             .map_or(0.0, |flap| flap.flap_speed(partial_tick))
     }
 
+    /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`):
+    /// the lerped flap phase and speed combined into `(sin(flap) + 1) * flapSpeed`,
+    /// which `ParrotModel.setupAnim` feeds to the wing `zRot` (`±(0.0873 +
+    /// flapAngle)`) and the body/head/tail bob (`flapAngle * 0.3`). Returns `0.0` for
+    /// every non-parrot entity (and an unticked parrot), so the wings hold the bind
+    /// pose.
+    pub fn parrot_flap_angle(&self, partial_tick: f32) -> f32 {
+        self.parrot_flap
+            .map_or(0.0, |flap| flap.flap_angle(partial_tick))
+    }
+
     pub(crate) fn advance_client_tick(
         &mut self,
         entity_type_id: i32,
@@ -1181,6 +1276,13 @@ impl EntityClientAnimationState {
                 // synced ground flag defaults to on-ground (wings still), the safe
                 // common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true)),
+            VANILLA_ENTITY_TYPE_PARROT_ID => self
+                .parrot_flap
+                .get_or_insert_with(ParrotFlapAnimationState::default)
+                // Vanilla `Parrot.calculateFlapping` reads `!onGround() &&
+                // !isPassenger()`. A parrot with no synced ground flag defaults to
+                // on-ground (wings still), the safe common case.
+                .advance_client_tick(transform.on_ground.unwrap_or(true), is_passenger),
             _ => {}
         }
         // Vanilla `LivingEntity.calculateEntityAnimation` runs every client tick

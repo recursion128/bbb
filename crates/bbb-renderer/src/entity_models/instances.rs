@@ -342,6 +342,14 @@ entity_render_state! {
     /// flap phase by. `0.0` (wings held) for a grounded/still chicken and every
     /// non-chicken entity.
     (with_chicken_flap_speed) chicken_flap_speed: f32 = 0.0;
+    /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
+    /// `(Mth.sin(lerp(oFlap, flap)) + 1) * lerp(oFlapSpeed, flapSpeed)`): the combined
+    /// wing-flap angle `ParrotModel.setupAnim` writes to the wings (`leftWing.zRot =
+    /// -0.0873 - flapAngle`, `rightWing.zRot = 0.0873 + flapAngle`) and the
+    /// body/head/tail/wing/leg bob (`y += flapAngle * 0.3`) in the STANDING/FLYING
+    /// branches. `0.0` (wings held) for a grounded/still parrot and every non-parrot
+    /// entity.
+    (with_parrot_flap_angle) parrot_flap_angle: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.isInWater` (`entity.isInWaterOrBubble()`): a fish
     /// out of water thrashes harder and flops onto its side. `CodModel.setupAnim` scales
     /// its tail sway by `1.0` in water / `1.5` out, and `CodRenderer.setupRotations` adds
@@ -1350,6 +1358,7 @@ mod tests {
                 squid_z_body_rot: 0.0,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
+                parrot_flap_angle: 0.0,
                 in_water: false,
                 on_ground: false,
                 is_moving: false,
