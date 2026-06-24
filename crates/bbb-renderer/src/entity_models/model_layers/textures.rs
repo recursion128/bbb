@@ -1,5 +1,5 @@
 use super::super::EntityModelTextureRef;
-use crate::entity_models::catalog::{FrogModelVariant, ParrotModelVariant};
+use crate::entity_models::catalog::{FoxModelVariant, FrogModelVariant, ParrotModelVariant};
 
 mod equine;
 
@@ -755,7 +755,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 196] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 202] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -842,8 +842,14 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PANDA_BABY_TEXTURE_REF,
     AXOLOTL_TEXTURE_REF,
     AXOLOTL_BABY_TEXTURE_REF,
-    FOX_TEXTURE_REF,
-    FOX_BABY_TEXTURE_REF,
+    FOX_RED_TEXTURE_REF,
+    FOX_RED_BABY_TEXTURE_REF,
+    FOX_RED_SLEEP_TEXTURE_REF,
+    FOX_RED_SLEEP_BABY_TEXTURE_REF,
+    FOX_SNOW_TEXTURE_REF,
+    FOX_SNOW_BABY_TEXTURE_REF,
+    FOX_SNOW_SLEEP_TEXTURE_REF,
+    FOX_SNOW_SLEEP_BABY_TEXTURE_REF,
     RABBIT_TEXTURE_REF,
     RABBIT_BABY_TEXTURE_REF,
     FELINE_CAT_TEXTURE_REF,
@@ -1770,17 +1776,75 @@ pub fn axolotl_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &AXOLOTL_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const FOX_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
-    path: "textures/entity/fox/fox.png",
-    size: [48, 32],
-};
-pub(in crate::entity_models) const FOX_BABY_TEXTURE_REF: EntityModelTextureRef =
+// The fox texture matrix (`FoxRenderer.TEXTURES_BY_VARIANT`): {red, snow} × {adult 48×32, baby
+// 32×32} × {idle, sleeping}. `getTextureLocation` picks the cell from the variant, `isBaby`, and
+// `isSleeping`. All eight share the `AdultFoxModel` / `BabyFoxModel` UV layout.
+pub(in crate::entity_models) const FOX_RED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox.png",
+        size: [48, 32],
+    };
+pub(in crate::entity_models) const FOX_RED_BABY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/fox/fox_baby.png",
         size: [32, 32],
     };
-pub(in crate::entity_models) const FOX_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [FOX_TEXTURE_REF, FOX_BABY_TEXTURE_REF];
+pub(in crate::entity_models) const FOX_RED_SLEEP_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox_sleep.png",
+        size: [48, 32],
+    };
+pub(in crate::entity_models) const FOX_RED_SLEEP_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox_sleep_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FOX_SNOW_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox_snow.png",
+        size: [48, 32],
+    };
+pub(in crate::entity_models) const FOX_SNOW_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox_snow_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FOX_SNOW_SLEEP_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox_snow_sleep.png",
+        size: [48, 32],
+    };
+pub(in crate::entity_models) const FOX_SNOW_SLEEP_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox_snow_sleep_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) fn fox_texture_ref(
+    variant: FoxModelVariant,
+    baby: bool,
+    sleeping: bool,
+) -> EntityModelTextureRef {
+    match (variant, baby, sleeping) {
+        (FoxModelVariant::Red, false, false) => FOX_RED_TEXTURE_REF,
+        (FoxModelVariant::Red, true, false) => FOX_RED_BABY_TEXTURE_REF,
+        (FoxModelVariant::Red, false, true) => FOX_RED_SLEEP_TEXTURE_REF,
+        (FoxModelVariant::Red, true, true) => FOX_RED_SLEEP_BABY_TEXTURE_REF,
+        (FoxModelVariant::Snow, false, false) => FOX_SNOW_TEXTURE_REF,
+        (FoxModelVariant::Snow, true, false) => FOX_SNOW_BABY_TEXTURE_REF,
+        (FoxModelVariant::Snow, false, true) => FOX_SNOW_SLEEP_TEXTURE_REF,
+        (FoxModelVariant::Snow, true, true) => FOX_SNOW_SLEEP_BABY_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) const FOX_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 8] = [
+    FOX_RED_TEXTURE_REF,
+    FOX_RED_BABY_TEXTURE_REF,
+    FOX_RED_SLEEP_TEXTURE_REF,
+    FOX_RED_SLEEP_BABY_TEXTURE_REF,
+    FOX_SNOW_TEXTURE_REF,
+    FOX_SNOW_BABY_TEXTURE_REF,
+    FOX_SNOW_SLEEP_TEXTURE_REF,
+    FOX_SNOW_SLEEP_BABY_TEXTURE_REF,
+];
 pub fn fox_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &FOX_ENTITY_TEXTURE_REFS
 }

@@ -312,12 +312,13 @@ pub enum EntityModelKind {
         baby: bool,
     },
     /// `AdultFoxModel` / `BabyFoxModel` (custom `EntityModel`s) at their `createBodyLayer` rest pose
-    /// (`baby` selects the baby body layout). The `setupAnim` head look is reproduced; the walk leg
-    /// swing, the `headRollAngle` tilt, and every fox pose (`isCrouching`, `isSleeping`, `isSitting`,
-    /// `isPouncing`, `isFaceplanted`) read un-projected `FoxRenderState` state and stay deferred, as do
-    /// the red/snow variant textures.
+    /// (`baby` selects the baby body layout). The `setupAnim` head look and the curled sleeping pose
+    /// are reproduced, and the texture switches on the `variant` (red/snow) × age × sleeping matrix
+    /// (`FoxRenderer.getTextureLocation`). The walk leg swing, the `headRollAngle` tilt, and the
+    /// remaining poses (`isCrouching`, `isSitting`, `isPouncing`, `isFaceplanted`) stay deferred.
     Fox {
         baby: bool,
+        variant: FoxModelVariant,
     },
     /// `NautilusModel` (a custom `EntityModel`, the new rideable nautilus) at its `createBodyMesh` /
     /// `createBabyBodyLayer` rest pose (`baby` selects the smaller hatchling geometry, the same
@@ -862,6 +863,26 @@ pub enum FrogModelVariant {
     Temperate,
     Warm,
     Cold,
+}
+
+/// Vanilla `Fox.Variant` (the synced `DATA_TYPE_ID` int): the two fox colours, sharing one
+/// `FoxModel` and differing only by texture (`FoxRenderer.TEXTURES_BY_VARIANT`). `RED` is the
+/// vanilla `DEFAULT`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FoxModelVariant {
+    Red,
+    Snow,
+}
+
+impl FoxModelVariant {
+    /// Vanilla `Fox.Variant.byId` (`ByIdMap.continuous` with `OutOfBoundsStrategy.ZERO`): maps the
+    /// synced `DATA_TYPE_ID` int to a colour, folding out-of-range ids back to `RED`.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Snow,
+            _ => Self::Red,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

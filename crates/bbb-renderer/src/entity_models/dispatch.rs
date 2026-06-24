@@ -654,11 +654,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &rabbit_textured_layer_passes(baby),
         ),
-        EntityModelKind::Fox { baby } => sink.model(
+        EntityModelKind::Fox { baby, variant } => sink.model(
             FoxModel::new(baby),
             entity_model_root_transform(*instance),
             instance,
-            &fox_textured_layer_passes(baby),
+            &fox_textured_layer_passes(variant, baby, instance.render_state.fox_is_sleeping),
         ),
         EntityModelKind::Feline { cat, baby } => {
             let transform = if cat && !baby {

@@ -3,10 +3,10 @@ use super::super::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         llama_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
         wolf_texture_ref, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-        EntityDyeColor, EntityModelTextureRef, FrogModelVariant, HoglinModelFamily,
-        IllagerModelFamily, LlamaVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern,
+        EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
+        HoglinModelFamily, IllagerModelFamily, LlamaVariant, ParrotModelVariant, PigModelVariant,
+        PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
     },
     model_layers::*,
 };
@@ -769,14 +769,15 @@ pub(in crate::entity_models) fn axolotl_textured_layer_passes(
     )]
 }
 
-pub(in crate::entity_models) fn fox_textured_layer_passes(baby: bool) -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn fox_textured_layer_passes(
+    variant: FoxModelVariant,
+    baby: bool,
+    sleeping: bool,
+) -> Vec<EntityModelLayerPass> {
+    // `FoxRenderer.getTextureLocation` picks the {red, snow} × {adult, baby} × {idle, sleeping} cell.
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        if baby {
-            FOX_BABY_TEXTURE_REF
-        } else {
-            FOX_TEXTURE_REF
-        },
+        fox_texture_ref(variant, baby, sleeping),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

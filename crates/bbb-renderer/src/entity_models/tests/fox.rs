@@ -43,7 +43,13 @@ fn fox_geometry_matches_vanilla_26_1_body_layer() {
 #[test]
 fn fox_mesh_uses_vanilla_body_layer_geometry() {
     // 10 cubes → 60 faces / 240 vertices / 360 indices, one orange tint.
-    let fox = entity_model_mesh(&[EntityModelInstance::fox(400, [0.0, 64.0, 0.0], 0.0, false)]);
+    let fox = entity_model_mesh(&[EntityModelInstance::fox(
+        400,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        FoxModelVariant::Red,
+    )]);
     assert_eq!(fox.opaque_faces, 60);
     assert_eq!(fox.vertices.len(), 240);
     assert_eq!(fox.indices.len(), 360);
@@ -58,7 +64,13 @@ fn fox_colored_runtime_skips_the_texture_backed_fox() {
     // The fox now carries vanilla texture UVs, so it renders through the textured path. The
     // texture-skipping colored runtime path emits nothing for it, while the full path still emits the
     // colored fallback geometry.
-    let instances = [EntityModelInstance::fox(401, [0.0, 64.0, 0.0], 0.0, false)];
+    let instances = [EntityModelInstance::fox(
+        401,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        FoxModelVariant::Red,
+    )];
     assert!(!entity_model_mesh(&instances).vertices.is_empty());
     assert!(entity_model_colored_runtime_mesh(&instances)
         .vertices
@@ -70,7 +82,7 @@ fn fox_head_look_turns_only_the_head() {
     // Vanilla `FoxModel.setupAnim` sets `head.xRot/yRot` from the look while standing. The head is the
     // first root part (skull + ears + snout, four cubes → vertices `[0, 96)`); the body, tail, and legs
     // `[96, 240)` hold.
-    let rest = EntityModelInstance::fox(402, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = EntityModelInstance::fox(402, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
     let looked = rest.with_head_look(35.0, -25.0);
     let rest_mesh = entity_model_mesh(&[rest]);
     let looked_mesh = entity_model_mesh(&[looked]);
@@ -98,7 +110,7 @@ fn fox_legs_swing_with_the_gait() {
     // Vanilla `AdultFoxModel.setWalkingPose` sweeps the four legs by `cos(pos·0.6662 [+π])·1.4·speed`
     // (the back-right/front-left diagonal in phase, the other half a cycle out). The head (vertices
     // `[0, 96)`) is untouched by the swing; the legs (in `[96, 240)`) move.
-    let rest = EntityModelInstance::fox(420, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = EntityModelInstance::fox(420, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
     let walking = rest.with_walk_animation(3.0, 0.8);
     let rest_mesh = entity_model_mesh(&[rest]);
     let walk_mesh = entity_model_mesh(&[walking]);
@@ -155,8 +167,20 @@ fn baby_fox_geometry_matches_vanilla_26_1_body_layer() {
 fn baby_fox_mesh_is_more_compact_than_the_adult() {
     // The baby uses a smaller body layer, so its mesh is geometrically more compact than the adult's
     // (both 10 cubes → 240 vertices). Head is part 0 in both layouts, so the head look isolates it.
-    let adult = entity_model_mesh(&[EntityModelInstance::fox(410, [0.0, 64.0, 0.0], 0.0, false)]);
-    let baby = entity_model_mesh(&[EntityModelInstance::fox(411, [0.0, 64.0, 0.0], 0.0, true)]);
+    let adult = entity_model_mesh(&[EntityModelInstance::fox(
+        410,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        FoxModelVariant::Red,
+    )]);
+    let baby = entity_model_mesh(&[EntityModelInstance::fox(
+        411,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        FoxModelVariant::Red,
+    )]);
     assert_eq!(baby.vertices.len(), 240);
     assert!(baby
         .vertices
@@ -173,7 +197,8 @@ fn baby_fox_mesh_is_more_compact_than_the_adult() {
     );
 
     // The baby head (part 0, vertices [0, 96)) turns with the look; the rest holds.
-    let baby_rest = EntityModelInstance::fox(412, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_rest =
+        EntityModelInstance::fox(412, [0.0, 64.0, 0.0], 0.0, true, FoxModelVariant::Red);
     let baby_rest_mesh = entity_model_mesh(&[baby_rest]);
     let baby_looked_mesh = entity_model_mesh(&[baby_rest.with_head_look(35.0, -25.0)]);
     assert_ne!(
@@ -191,14 +216,24 @@ fn sleeping_fox_hides_its_four_legs() {
     // Vanilla `FoxModel.setSleepingPose` hides all four legs (`rightHindLeg.visible = false`, …),
     // mirroring how the bee hides its stinger. The adult is 10 cubes → 240 vertices; the four legs are
     // four cubes (96 vertices), so a sleeping fox drops to six cubes → 144 vertices.
-    let awake = entity_model_mesh(&[EntityModelInstance::fox(430, [0.0, 64.0, 0.0], 0.0, false)]);
+    let awake = entity_model_mesh(&[EntityModelInstance::fox(
+        430,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        FoxModelVariant::Red,
+    )]);
     assert_eq!(awake.opaque_faces, 60);
     assert_eq!(awake.vertices.len(), 240);
 
-    let sleeping =
-        entity_model_mesh(&[
-            EntityModelInstance::fox(431, [0.0, 64.0, 0.0], 0.0, false).with_fox_is_sleeping(true)
-        ]);
+    let sleeping = entity_model_mesh(&[EntityModelInstance::fox(
+        431,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        FoxModelVariant::Red,
+    )
+    .with_fox_is_sleeping(true)]);
     assert_eq!(
         sleeping.opaque_faces, 36,
         "the four legs are hidden (6 cubes)"
@@ -206,10 +241,14 @@ fn sleeping_fox_hides_its_four_legs() {
     assert_eq!(sleeping.vertices.len(), 144);
 
     // The baby (also 10 cubes) hides its four legs too.
-    let baby_sleeping =
-        entity_model_mesh(&[
-            EntityModelInstance::fox(432, [0.0, 64.0, 0.0], 0.0, true).with_fox_is_sleeping(true)
-        ]);
+    let baby_sleeping = entity_model_mesh(&[EntityModelInstance::fox(
+        432,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        FoxModelVariant::Red,
+    )
+    .with_fox_is_sleeping(true)]);
     assert_eq!(baby_sleeping.vertices.len(), 144);
 }
 
@@ -217,7 +256,7 @@ fn sleeping_fox_hides_its_four_legs() {
 fn interested_fox_tilts_its_head() {
     // Vanilla `FoxModel.setWalkingPose` sets `head.zRot = headRollAngle`, the eased interest tilt. The
     // head is the first root part (vertices `[0, 96)`); the body, tail, and legs `[96, 240)` hold.
-    let rest = EntityModelInstance::fox(440, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = EntityModelInstance::fox(440, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
     let rest_mesh = entity_model_mesh(&[rest]);
     let tilted = entity_model_mesh(&[rest.with_fox_head_roll_angle(0.3)]);
     assert_eq!(rest_mesh.vertices.len(), tilted.vertices.len());
@@ -242,7 +281,7 @@ fn crouching_fox_lowers_its_body_off_the_bind_pose() {
     // Vanilla `FoxModel.setCrouchingPose` pitches the body, lifts the head by `crouchAmount · ageScale`,
     // and wiggles the body/legs by `cos(ageInTicks) · 0.05`, plus the adult `body.y += crouchAmount`.
     // The whole model re-poses off the bind pose.
-    let rest = EntityModelInstance::fox(450, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = EntityModelInstance::fox(450, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
     let rest_mesh = entity_model_mesh(&[rest]);
     let crouching = rest.with_fox_is_crouching(true).with_fox_crouch_amount(5.0);
     let crouch_mesh = entity_model_mesh(&[crouching]);
@@ -267,8 +306,8 @@ fn sleeping_fox_overrides_the_head_pose() {
     // Vanilla `FoxModel.setupAnim` gives a sleeping fox a fixed head yaw with a slow `ageInTicks` roll
     // wobble, and suppresses the resting head look. The head re-poses even with no look applied, and the
     // wobble tracks `ageInTicks`.
-    let base =
-        EntityModelInstance::fox(460, [0.0, 64.0, 0.0], 0.0, false).with_fox_is_sleeping(true);
+    let base = EntityModelInstance::fox(460, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red)
+        .with_fox_is_sleeping(true);
     let at_zero = entity_model_mesh(&[base.with_age_in_ticks(0.0)]);
     let later = entity_model_mesh(&[base.with_age_in_ticks(40.0)]);
     assert_eq!(at_zero.vertices.len(), later.vertices.len());
@@ -280,34 +319,63 @@ fn sleeping_fox_overrides_the_head_pose() {
 
 #[test]
 fn fox_exposes_stable_model_keys() {
-    assert_eq!(EntityModelKind::Fox { baby: false }.model_key(), "fox");
-    assert_eq!(EntityModelKind::Fox { baby: true }.model_key(), "fox_baby");
+    // The model key tracks only the body layout (adult/baby); the colour variant shares geometry.
+    for variant in [FoxModelVariant::Red, FoxModelVariant::Snow] {
+        assert_eq!(
+            EntityModelKind::Fox {
+                baby: false,
+                variant
+            }
+            .model_key(),
+            "fox"
+        );
+        assert_eq!(
+            EntityModelKind::Fox {
+                baby: true,
+                variant
+            }
+            .model_key(),
+            "fox_baby"
+        );
+    }
 }
 
 #[test]
 fn fox_textured_render_matches_vanilla_renderer() {
-    assert_eq!(fox_textured_layer_passes(false)[0].texture, FOX_TEXTURE_REF);
-    assert_eq!(
-        fox_textured_layer_passes(true)[0].texture,
-        FOX_BABY_TEXTURE_REF
-    );
-    assert_eq!(
-        fox_textured_layer_passes(false)[0].render_type,
-        EntityModelLayerRenderType::Cutout
-    );
-    assert_eq!(
-        EntityModelKind::Fox { baby: false }.vanilla_texture_ref(),
-        Some(FOX_TEXTURE_REF)
-    );
-    assert_eq!(
-        EntityModelKind::Fox { baby: true }.vanilla_texture_ref(),
-        Some(FOX_BABY_TEXTURE_REF)
-    );
-    assert!(entity_model_texture_refs().contains(&FOX_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&FOX_BABY_TEXTURE_REF));
+    // `FoxRenderer.getTextureLocation`: the {red, snow} × {adult, baby} × {idle, sleeping} matrix.
+    for variant in [FoxModelVariant::Red, FoxModelVariant::Snow] {
+        for baby in [false, true] {
+            for sleeping in [false, true] {
+                let texture = fox_texture_ref(variant, baby, sleeping);
+                assert_eq!(
+                    fox_textured_layer_passes(variant, baby, sleeping)[0].texture,
+                    texture
+                );
+                assert_eq!(
+                    fox_textured_layer_passes(variant, baby, sleeping)[0].render_type,
+                    EntityModelLayerRenderType::Cutout
+                );
+                assert!(entity_model_texture_refs().contains(&texture));
+            }
+            // The kind-only `vanilla_texture_ref` returns the idle cell (sleeping is render state).
+            assert_eq!(
+                EntityModelKind::Fox { baby, variant }.vanilla_texture_ref(),
+                Some(fox_texture_ref(variant, baby, false))
+            );
+        }
+    }
     assert_eq!(
         fox_entity_texture_refs(),
-        &[FOX_TEXTURE_REF, FOX_BABY_TEXTURE_REF]
+        &[
+            FOX_RED_TEXTURE_REF,
+            FOX_RED_BABY_TEXTURE_REF,
+            FOX_RED_SLEEP_TEXTURE_REF,
+            FOX_RED_SLEEP_BABY_TEXTURE_REF,
+            FOX_SNOW_TEXTURE_REF,
+            FOX_SNOW_BABY_TEXTURE_REF,
+            FOX_SNOW_SLEEP_TEXTURE_REF,
+            FOX_SNOW_SLEEP_BABY_TEXTURE_REF,
+        ]
     );
 
     let images: Vec<EntityModelTextureImage> = fox_entity_texture_refs()
@@ -321,7 +389,13 @@ fn fox_textured_render_matches_vanilla_renderer() {
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for baby in [false, true] {
         let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::fox(900, [0.0, 64.0, 0.0], 0.0, baby)],
+            &[EntityModelInstance::fox(
+                900,
+                [0.0, 64.0, 0.0],
+                0.0,
+                baby,
+                FoxModelVariant::Snow,
+            )],
             &atlas,
         );
         assert!(

@@ -3,11 +3,11 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-    DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, FrogModelVariant,
-    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
-    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
-    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant,
+    FrogModelVariant, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily,
+    LlamaVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose,
+    SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
     UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
@@ -258,6 +258,9 @@ const PIG_VARIANT_DATA_ID: u8 = 19;
 // accessor follows Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) /
 // AGE_LOCKED (17).
 const FROG_VARIANT_DATA_ID: u8 = 18;
+// Vanilla Fox.DATA_TYPE_ID (18, INT): the first `Fox` accessor (`Fox extends Animal`), holding the
+// `Fox.Variant` id; `Fox.DATA_FLAGS_ID` follows at 19.
+const FOX_TYPE_DATA_ID: u8 = 18;
 // Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
 // accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
 // (18) / DATA_OWNERUUID_ID (19).
@@ -1003,6 +1006,7 @@ fn feline_model_kind(
 fn fox_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
     EntityModelKind::Fox {
         baby: ageable_baby(values),
+        variant: FoxModelVariant::from_id(entity_data_int(values, FOX_TYPE_DATA_ID, 0)),
     }
 }
 
@@ -5535,7 +5539,10 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_FOX_ID, &[]),
-            EntityModelKind::Fox { baby: false }
+            EntityModelKind::Fox {
+                baby: false,
+                variant: FoxModelVariant::Red
+            }
         );
         // The cat/ocelot babies now render through the dedicated `BabyFelineModel` layout, as does the
         // fox baby through its own `BabyFoxModel`.
@@ -5564,8 +5571,28 @@ mod tests {
                 VANILLA_ENTITY_TYPE_FOX_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Fox { baby: true }
+            EntityModelKind::Fox {
+                baby: true,
+                variant: FoxModelVariant::Red
+            }
         );
+        // The fox `DATA_TYPE_ID` (18, int) selects the RED/SNOW variant via `Fox.Variant.byId`.
+        for (id, variant) in [
+            (0, FoxModelVariant::Red),
+            (1, FoxModelVariant::Snow),
+            (2, FoxModelVariant::Red),
+        ] {
+            assert_eq!(
+                entity_model_kind(
+                    VANILLA_ENTITY_TYPE_FOX_ID,
+                    &[protocol_int_data(FOX_TYPE_DATA_ID, id)]
+                ),
+                EntityModelKind::Fox {
+                    baby: false,
+                    variant
+                }
+            );
+        }
         // The rabbit (adult and baby) renders through its dedicated `AdultRabbitModel` / `BabyRabbitModel`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_RABBIT_ID, &[]),
