@@ -649,7 +649,51 @@ pub struct EntityModelSourceState {
     /// grounded/still parrot and every non-parrot entity.
     #[serde(default)]
     pub parrot_flap_angle: f32,
+    /// Vanilla `HumanoidArmorLayer` worn armor, the equipment-asset material per armor slot, resolved
+    /// from the entity's `SetEquipment` items against the item registry. `None` leaves the slot bare.
+    /// Only humanoid armor-wearers carry these; the renderer drapes the matching inflated armor piece.
+    #[serde(default)]
+    pub head_armor: Option<ArmorMaterialKind>,
+    #[serde(default)]
+    pub chest_armor: Option<ArmorMaterialKind>,
+    #[serde(default)]
+    pub legs_armor: Option<ArmorMaterialKind>,
+    #[serde(default)]
+    pub feet_armor: Option<ArmorMaterialKind>,
     pub data_values: Vec<ProtocolEntityDataValue>,
+}
+
+/// A humanoid armor equipment-asset material (vanilla `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`),
+/// resolved from a worn armor item's registry id. Mirrors the renderer's `EntityArmorMaterial`; the
+/// native projection maps between the two.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ArmorMaterialKind {
+    Leather,
+    Copper,
+    Chainmail,
+    Iron,
+    Gold,
+    Diamond,
+    TurtleScute,
+    Netherite,
+}
+
+impl ArmorMaterialKind {
+    /// Parses the vanilla equipment-asset name (`bbb_pack` `ItemRegistryCatalog::humanoid_armor_asset`,
+    /// the lowercased `ArmorMaterials.<MAT>` name) into a material kind.
+    pub fn from_equipment_asset(asset: &str) -> Option<Self> {
+        Some(match asset {
+            "leather" => Self::Leather,
+            "copper" => Self::Copper,
+            "chainmail" => Self::Chainmail,
+            "iron" => Self::Iron,
+            "gold" => Self::Gold,
+            "diamond" => Self::Diamond,
+            "turtle_scute" => Self::TurtleScute,
+            "netherite" => Self::Netherite,
+            _ => return None,
+        })
+    }
 }
 
 /// Vanilla `EntityRenderer` light-probe full-bright fallback
@@ -893,9 +937,12 @@ impl WorldStore {
         self.entity_pick_targets_at_partial_tick(partial_ticks)
             .into_iter()
             .filter_map(|target| {
-                let mut source =
-                    self.entities
-                        .model_source(target.entity_id, target.position, partial_ticks)?;
+                let mut source = self.entities.model_source(
+                    target.entity_id,
+                    target.position,
+                    partial_ticks,
+                    &self.default_item_armor_materials,
+                )?;
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))
                     .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);

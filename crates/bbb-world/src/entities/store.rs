@@ -9,13 +9,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use bbb_protocol::packets::EntityDataValueKind;
+use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
 use super::{
-    EntityAttributes, EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityState, EntityTransform,
-    EntityTransformState, EntityTransientEvents, ItemEntityStackState,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    ArmorMaterialKind, EntityAttributes, EntityCameraPoseState, EntityClientAnimations,
+    EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash,
+    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
+    EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
+    ItemEntityStackState, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
@@ -478,6 +479,7 @@ impl EntityStore {
         id: i32,
         position: super::EntityVec3,
         partial_ticks: f32,
+        armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -485,6 +487,20 @@ impl EntityStore {
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        // Vanilla `HumanoidArmorLayer` worn armor: resolve the item worn in each armor slot to its
+        // equipment-asset material. The `EntityEquipment` component holds the synced `SetEquipment`
+        // items; a bare entity (no equipment component / empty slot / non-armor item) resolves to None.
+        let equipment = self.ecs.get::<&EntityEquipment>(entity).ok();
+        let armor_material = |slot: ProtocolEquipmentSlot| -> Option<ArmorMaterialKind> {
+            let equipment = equipment.as_ref()?;
+            let item_id = equipment
+                .equipment
+                .iter()
+                .find(|update| update.slot == slot)?
+                .item
+                .item_id?;
+            armor_materials.get(&item_id).copied()
+        };
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -778,6 +794,12 @@ impl EntityStore {
             parrot_flap_angle: client_animations
                 .animations
                 .parrot_flap_angle(partial_ticks),
+            // Vanilla `HumanoidArmorLayer`: the worn armor item in each armor slot resolved to its
+            // equipment-asset material against the item registry map (threaded from the WorldStore).
+            head_armor: armor_material(ProtocolEquipmentSlot::Head),
+            chest_armor: armor_material(ProtocolEquipmentSlot::Chest),
+            legs_armor: armor_material(ProtocolEquipmentSlot::Legs),
+            feet_armor: armor_material(ProtocolEquipmentSlot::Feet),
             data_values: metadata.data_values.clone(),
         })
     }

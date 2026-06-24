@@ -910,6 +910,89 @@ fn entity_model_sources_project_narrow_render_state_from_pick_targets() {
 }
 
 #[test]
+fn entity_model_sources_project_worn_armor_materials() {
+    use std::collections::BTreeMap;
+    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
+    // The registry-derived item id → armor material table (installed by the native layer).
+    let iron_helmet = 800;
+    let iron_chestplate = 801;
+    let diamond_leggings = 802;
+    let gold_boots = 803;
+    let stone_sword = 900;
+
+    let mut store = WorldStore::new();
+    store.set_item_armor_materials(BTreeMap::from([
+        (iron_helmet, ArmorMaterialKind::Iron),
+        (iron_chestplate, ArmorMaterialKind::Iron),
+        (diamond_leggings, ArmorMaterialKind::Diamond),
+        (gold_boots, ArmorMaterialKind::Gold),
+    ]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        50,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+
+    // A bare zombie projects no worn armor.
+    let bare = store.entity_model_sources_at_partial_tick(1.0);
+    assert_eq!(bare[0].head_armor, None);
+    assert_eq!(bare[0].chest_armor, None);
+
+    fn armor_item(item_id: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: Default::default(),
+        }
+    }
+
+    // Equip all four armor slots; a held sword fills MainHand but is not armor.
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 50,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: armor_item(iron_helmet),
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Chest,
+                item: armor_item(iron_chestplate),
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Legs,
+                item: armor_item(diamond_leggings),
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Feet,
+                item: armor_item(gold_boots),
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: armor_item(stone_sword),
+            },
+        ],
+    }));
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    assert_eq!(sources[0].head_armor, Some(ArmorMaterialKind::Iron));
+    assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Iron));
+    assert_eq!(sources[0].legs_armor, Some(ArmorMaterialKind::Diamond));
+    assert_eq!(sources[0].feet_armor, Some(ArmorMaterialKind::Gold));
+
+    // A non-armor item (the held sword, absent from the armor map) leaves its slot bare; clearing the
+    // helmet (empty stack) drops the head armor.
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 50,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item: ItemStackSummary::empty(),
+        }],
+    }));
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    assert_eq!(sources[0].head_armor, None);
+    assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Iron));
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid

@@ -53,6 +53,11 @@ pub struct ItemRegistryCatalog {
     max_stack_size: BTreeMap<String, i32>,
     #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
+    /// Resource id → humanoid armor equipment-asset name (`ArmorMaterials.<MAT>` →
+    /// `EquipmentAssets.<MAT>`, the lowercased material, e.g. `iron` / `chainmail` / `turtle_scute`),
+    /// for the `HumanoidArmorLayer` texture path. Only `.humanoidArmor(...)` items appear here.
+    #[serde(default)]
+    humanoid_armor_assets: BTreeMap<String, String>,
     #[serde(default)]
     default_mount_body_armor_kinds: BTreeMap<String, ItemMountBodyArmorKind>,
     #[serde(default)]
@@ -172,6 +177,7 @@ impl ItemRegistryCatalog {
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
+        let mut humanoid_armor_assets = BTreeMap::new();
         let mut default_mount_body_armor_kinds = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
@@ -185,6 +191,7 @@ impl ItemRegistryCatalog {
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
+            let humanoid_armor_asset = humanoid_armor_asset_for_declaration(expression)?;
             let mount_body_armor_kind = mount_body_armor_kind_for_declaration(expression);
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range = default_attack_range_for_declaration(expression)?;
@@ -201,6 +208,9 @@ impl ItemRegistryCatalog {
                 max_stack_size.insert(resource_id.clone(), stack_size);
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
+                }
+                if let Some(asset) = &humanoid_armor_asset {
+                    humanoid_armor_assets.insert(resource_id.clone(), asset.clone());
                 }
                 if let Some(kind) = mount_body_armor_kind {
                     default_mount_body_armor_kinds.insert(resource_id.clone(), kind);
@@ -244,6 +254,7 @@ impl ItemRegistryCatalog {
             max_damage,
             max_stack_size,
             default_equipment_slots,
+            humanoid_armor_assets,
             default_mount_body_armor_kinds,
             default_piercing_weapon_ids,
             default_attack_ranges,
@@ -289,6 +300,15 @@ impl ItemRegistryCatalog {
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_equipment_slots.get(&resource_id).copied()
+    }
+
+    /// The humanoid armor equipment-asset name for an armor item (e.g. `iron`, `chainmail`,
+    /// `turtle_scute`), or `None` for a non-humanoid-armor item.
+    pub fn humanoid_armor_asset(&self, resource_id: &str) -> Option<&str> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.humanoid_armor_assets
+            .get(&resource_id)
+            .map(String::as_str)
     }
 
     pub fn mount_body_armor_kind(&self, resource_id: &str) -> Option<ItemMountBodyArmorKind> {
@@ -507,6 +527,15 @@ fn tool_material_durability(material: &str) -> Result<i32> {
         "NETHERITE" => Ok(2031),
         _ => bail!("unsupported tool material ToolMaterial.{material}"),
     }
+}
+
+/// The humanoid armor equipment-asset name for a `.humanoidArmor(ArmorMaterials.<MAT>, ...)`
+/// declaration. Vanilla `ArmorMaterials.<MAT>` carries `EquipmentAssets.<MAT>`, whose id is the
+/// lowercased material name (`CHAINMAIL` → `chainmail`, `TURTLE_SCUTE` → `turtle_scute`), so the asset
+/// is the material captured by [`humanoid_armor_material_and_type`] lowercased.
+fn humanoid_armor_asset_for_declaration(expression: &str) -> Result<Option<String>> {
+    Ok(humanoid_armor_material_and_type(expression)?
+        .map(|(material, _armor_type)| material.to_lowercase()))
 }
 
 fn humanoid_armor_material_and_type(expression: &str) -> Result<Option<(String, String)>> {
@@ -1261,6 +1290,24 @@ mod tests {
         );
         assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
         assert_eq!(catalog.equipment_slot("minecraft:missing_item"), None);
+
+        // `humanoidArmor(ArmorMaterials.<MAT>, ...)` items resolve to the lowercased material asset; the
+        // non-humanoid armors (horse/wolf/nautilus body armor) and plain items have no humanoid asset.
+        assert_eq!(
+            catalog.humanoid_armor_asset("minecraft:diamond_helmet"),
+            Some("diamond")
+        );
+        assert_eq!(
+            catalog.humanoid_armor_asset("minecraft:diamond_leggings"),
+            Some("diamond")
+        );
+        assert_eq!(
+            catalog.humanoid_armor_asset("minecraft:body_armor"),
+            Some("leather")
+        );
+        assert_eq!(catalog.humanoid_armor_asset("minecraft:horse_armor"), None);
+        assert_eq!(catalog.humanoid_armor_asset("minecraft:wolf_armor"), None);
+        assert_eq!(catalog.humanoid_armor_asset("minecraft:stone"), None);
         assert_eq!(
             catalog.mount_body_armor_kind("minecraft:horse_armor"),
             Some(ItemMountBodyArmorKind::Horse)

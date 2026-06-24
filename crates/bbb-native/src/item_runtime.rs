@@ -15,9 +15,9 @@ use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
 };
 use bbb_world::{
-    ItemAttackRange as WorldItemAttackRange, ItemEquipmentSlot as WorldItemEquipmentSlot,
-    ItemUseEffects as WorldItemUseEffects, MountArmorSlotKind as WorldMountArmorSlotKind,
-    WorldItemMiningProfile, WorldItemMiningRule,
+    ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
+    ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
+    MountArmorSlotKind as WorldMountArmorSlotKind, WorldItemMiningProfile, WorldItemMiningRule,
 };
 
 mod icon_model;
@@ -341,6 +341,27 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_equipment_slot_count(&self) -> usize {
         self.item_equipment_slots_by_protocol_id().len()
+    }
+
+    /// Item protocol id → humanoid armor material, for the `HumanoidArmorLayer` overlay: each armor
+    /// item's `bbb_pack` equipment-asset name (`humanoid_armor_asset`) parsed into a world material.
+    pub(crate) fn item_armor_materials_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldArmorMaterialKind> {
+        let mut materials = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return materials;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(asset) = registry.humanoid_armor_asset(resource_id) else {
+                continue;
+            };
+            let Some(material) = WorldArmorMaterialKind::from_equipment_asset(asset) else {
+                continue;
+            };
+            materials.insert(protocol_id as i32, material);
+        }
+        materials
     }
 
     pub(crate) fn mount_body_armor_kinds_by_protocol_id(

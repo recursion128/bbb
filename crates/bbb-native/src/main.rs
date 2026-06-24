@@ -134,6 +134,7 @@ fn main() -> Result<()> {
             items.recipe_specific_crafting_remainder_item_ids_by_protocol_id(),
         );
         world.set_default_item_equipment_slots(items.item_equipment_slots_by_protocol_id());
+        world.set_item_armor_materials(items.item_armor_materials_by_protocol_id());
         world.set_default_mount_body_armor_kinds(items.mount_body_armor_kinds_by_protocol_id());
         world.set_default_item_attack_ranges(items.item_attack_ranges_by_protocol_id());
         world.set_default_piercing_weapon_item_ids(

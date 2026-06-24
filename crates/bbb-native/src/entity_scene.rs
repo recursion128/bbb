@@ -3,15 +3,19 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
-    CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor,
-    EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant, HoglinModelFamily,
-    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PandaModelVariant,
-    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-    RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose,
-    SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
-    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
+    EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
+    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
+    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
-use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
+use bbb_world::{
+    ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
+    RegistryContentState, WorldStore,
+};
 
 const VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID: i32 = 0;
 const VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID: i32 = 1;
@@ -532,6 +536,10 @@ fn entity_model_instance(
         .with_vex_charging(source.vex_charging)
         .with_wither_invulnerable_ticks(source.wither_invulnerable_ticks)
         .with_wither_powered(wither_powered(source.entity_type_id, &source.data_values))
+        .with_head_armor(armor_material(source.head_armor))
+        .with_chest_armor(armor_material(source.chest_armor))
+        .with_legs_armor(armor_material(source.legs_armor))
+        .with_feet_armor(armor_material(source.feet_armor))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
@@ -1972,6 +1980,21 @@ fn creeper_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityD
 /// float (index `9`); the wither's `Attributes.MAX_HEALTH` base is `300` (mirroring the wolf tail's
 /// hardcoded `TAME_MAX_HEALTH` precedent — bbb does not yet track per-entity max-health attribute
 /// overrides). A wither with no synced health defaults to full, so it reads un-powered.
+/// Maps a projected world armor material onto the renderer's `EntityArmorMaterial` for the
+/// `HumanoidArmorLayer` overlay (1:1; the two enums mirror the vanilla `ArmorMaterials` set).
+fn armor_material(material: Option<WorldArmorMaterialKind>) -> Option<EntityArmorMaterial> {
+    material.map(|material| match material {
+        WorldArmorMaterialKind::Leather => EntityArmorMaterial::Leather,
+        WorldArmorMaterialKind::Copper => EntityArmorMaterial::Copper,
+        WorldArmorMaterialKind::Chainmail => EntityArmorMaterial::Chainmail,
+        WorldArmorMaterialKind::Iron => EntityArmorMaterial::Iron,
+        WorldArmorMaterialKind::Gold => EntityArmorMaterial::Gold,
+        WorldArmorMaterialKind::Diamond => EntityArmorMaterial::Diamond,
+        WorldArmorMaterialKind::TurtleScute => EntityArmorMaterial::TurtleScute,
+        WorldArmorMaterialKind::Netherite => EntityArmorMaterial::Netherite,
+    })
+}
+
 fn wither_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     const WITHER_MAX_HEALTH: f32 = 300.0;
     entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID

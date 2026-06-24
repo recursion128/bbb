@@ -1219,6 +1219,18 @@ impl WorldStore {
             .collect();
     }
 
+    /// Installs the item id → humanoid armor material table (from the item registry), used to project
+    /// worn armor onto entity render sources for the `HumanoidArmorLayer` overlay.
+    pub fn set_item_armor_materials(
+        &mut self,
+        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+    ) {
+        self.default_item_armor_materials = armor_materials
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
     pub fn set_default_mount_body_armor_kinds(
         &mut self,
         armor_kinds: BTreeMap<i32, MountArmorSlotKind>,

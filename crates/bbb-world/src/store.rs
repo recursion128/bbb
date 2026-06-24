@@ -111,6 +111,10 @@ pub struct WorldStore {
     pub(crate) recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
     #[serde(default)]
     pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
+    /// Item protocol id → humanoid armor material (`HumanoidArmorLayer` equipment asset), for
+    /// projecting worn armor onto the entity render source.
+    #[serde(default)]
+    pub(crate) default_item_armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     #[serde(default)]
     pub(crate) default_mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     #[serde(default)]
