@@ -1605,9 +1605,11 @@ When an agent does any of the following, update this file in the same slice:
       (`(1 - spikesAnimation) · 0.55`, which needs a per-tick `random.nextFloat()` out of water), the
       eye target tracking (`lookAtPosition`/`lookDirection`/`eyePosition`), and the `GuardianRenderer`
       attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
-      which read entity-side state not yet projected. The texture-backed path
-      (`textures/entity/guardian/guardian.png`) and its lighting/overlay also remain unsupported
-      (this is a colored-first slice; the colored debug path approximates the body with a single
+      which read entity-side state not yet projected. The base texture is now bound on the textured
+      path (`GUARDIAN_TEXTURE_REF` / `GUARDIAN_ELDER_TEXTURE_REF`,
+      `textures/entity/guardian/guardian.png`), the primary now-wired path; only those listed motions
+      (the attack beam, the `spikesAnimation` withdrawal, and the eye target tracking) remain
+      deferred. The colored debug path stays as a fallback (it approximates the body with a single
       teal tint and the eye with a pink tint)
     - frog entities as renderer-owned vanilla 26.1 `FrogModel.createBodyLayer()` geometry on the
       textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `55` to
@@ -1673,9 +1675,10 @@ When an agent does any of the following, update this file in the same slice:
       look composing onto the walking head). The un-projected `canMove` freeze gate is deferred, but a
       frozen creaking has walk speed ≈ 0 so the amplitude already collapses to rest (fittingly, the
       creaking turns to a statue while observed); the attack / invulnerable / death keyframe
-      animations stay deferred. The emissive eyes layer (`createEyesLayer`, the `head` part only) and
-      the texture-backed path also remain unsupported (this is a colored-first slice; the colored
-      debug path approximates the whole model with one dark-bark tint)
+      animations stay deferred. The base texture is now bound on the textured path
+      (`CREAKING_TEXTURE_REF`), the primary now-wired path; only the emissive eyes layer
+      (`createEyesLayer`, the `head` part only) remains deferred. The colored debug path stays as a
+      fallback (it approximates the whole model with one dark-bark tint)
     - sniffer entities as renderer-owned vanilla 26.1 `SnifferModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `119`
       to the new `EntityModelKind::Sniffer`, replacing the former cow-quadruped approximation (the
@@ -1703,9 +1706,10 @@ When an agent does any of the following, update this file in the same slice:
       SCENTING(2)→`SNIFFER_SNIFFSNIFF` (8 s looping); a state change restarts the timer from 0. The
       remaining `SnifferModel.setupAnim` is deferred: the search-walk variant (`SNIFFER_SNIFF_SEARCH`,
       gated on the un-synced `isSearching`/`walkAnimationPos`) and the baby-transform
-      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`). The texture-backed path remains unsupported (this is a
-      colored-first slice; the colored debug path approximates the body with one brown tint and the nose
-      pad with a pink tint)
+      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`). The base texture is now bound on the textured path
+      (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture
+      side. The colored debug path stays as a fallback (it approximates the body with one brown tint
+      and the nose pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `142` to the
       new `EntityModelKind::Warden`, replacing the former placeholder bounds box. The static rest-pose
@@ -1742,11 +1746,12 @@ When an agent does any of the following, update this file in the same slice:
       booming re-pose vs bind and differently from each other. DEFERRED: the `EMERGING` (13) / `DIGGING` (14)
       spawn/despawn one-shots (`WARDEN_EMERGE`, 6.68s, ~270 lines; `WARDEN_DIG`, 5.0s, ~180 lines) are large
       and rarely seen — a clean follow-up; their pose ordinals are tracked but only update `prev_pose`. The
-      four emissive overlay layers
+      base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), the primary now-wired path;
+      only the four emissive overlay layers
       (`WardenEmissiveLayer` for the tendrils, heart, bioluminescent spots, and pulsating spots, each
-      keyed off the danger/heartbeat/anger animation state) are deferred. The texture-backed path
-      remains unsupported (this is a colored-first slice; the colored debug path approximates the body
-      with one dark-teal tint and the tendrils with a brighter cyan tint)
+      keyed off the danger/heartbeat/anger animation state) remain deferred. The colored debug path
+      stays as a fallback (it approximates the body with one dark-teal tint and the tendrils with a
+      brighter cyan tint)
     - armadillo entities as renderer-owned vanilla 26.1 `AdultArmadilloModel` /
       `BabyArmadilloModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `4` to the new `EntityModelKind::Armadillo { baby }`,
@@ -1793,9 +1798,10 @@ When an agent does any of the following, update this file in the same slice:
       samples amplitude 0, collapsing to the bind pose plus the head look). Both the adult
       (`ArmadilloAnimation.ARMADILLO_WALK`) and the baby (`BabyArmadilloAnimation.ARMADILLO_BABY_WALK`, the
       same seven bones at slightly different timestamps) walks are reproduced, sharing one hand-walked
-      `body → tail/head` + four-leg pass. The texture-backed path remains unsupported (this is a colored-first
-      slice; the colored debug path approximates the armored body/legs with one brown tint and the soft
-      head/ears/tail with a tan tint)
+      `body → tail/head` + four-leg pass. The base texture is now bound on the textured path
+      (`ARMADILLO_TEXTURE_REF` / `ARMADILLO_BABY_TEXTURE_REF`), the primary now-wired path, with nothing
+      left deferred on the texture side. The colored debug path stays as a fallback (it approximates the
+      armored body/legs with one brown tint and the soft head/ears/tail with a tan tint)
     - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /
       `BabyAxolotlModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `7` to `EntityModelKind::Axolotl { baby, variant }`,
@@ -1827,9 +1833,10 @@ When an agent does any of the following, update this file in the same slice:
       `TadpoleModel.setupAnim` motion, the tail yaw sway (`tail.yRot = -amplitude * 0.25 *
       sin(0.3 * ageInTicks)`, amplitude `1.0` in water / `1.5` on land), IS reproduced from the projected
       `age_in_ticks` + `in_water` (mirroring the cod/salmon tail-fin sway), with a test pinning the exact
-      curve and that only the tail moves. The texture-backed path remains unsupported (this is a
-      colored-first slice; the colored debug path approximates the body with one dark tint and the tail fin
-      with a lighter tint)
+      curve and that only the tail moves. The base texture is now bound on the textured path
+      (`TADPOLE_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture side.
+      The colored debug path stays as a fallback (it approximates the body with one dark tint and the
+      tail fin with a lighter tint)
     - parrot entities as renderer-owned vanilla 26.1 `ParrotModel.createBodyLayer()` geometry on the
       textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `98` to
       `EntityModelKind::Parrot { variant }`, replacing the former placeholder bounds box. The static STANDING rest-pose
@@ -1893,7 +1900,8 @@ When an agent does any of the following, update this file in the same slice:
       `ShulkerRenderer.getTextureLocation` (the uncolored `shulker.png` plus the sixteen `shulker_<color>.png`)
       — seventeen textures
     - wither entities as renderer-owned vanilla 26.1
-      `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` geometry on the colored path: the native
+      `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` geometry on both the colored and textured
+      paths: the native
       entity scene (`entity_scene.rs`) projects vanilla type id `145` to the new `EntityModelKind::Wither`,
       replacing the former placeholder bounds box. The static bind rest-pose hierarchy is emitted directly
       (atlas 64×64): six sibling root parts — the 20×3×3 shoulders bar, the ribcage (a 3×10×3 spine plus
@@ -1916,7 +1924,7 @@ When an agent does any of the following, update this file in the same slice:
       side heads' target tracking (the `DATA_TARGET_*` head targets are client-tick lerped). The `WITHER_ARMOR`
       powered energy-swirl overlay layer (`wither_armor.png`, the same `EnergySwirlLayer` UV-scroll as the
       charged creeper) stays deferred
-    - giant entities as renderer-owned vanilla 26.1 `GiantZombieModel` geometry on the colored path: the
+    - giant entities as renderer-owned vanilla 26.1 `GiantZombieModel` geometry on the textured path: the
       native entity scene (`entity_scene.rs`) projects vanilla type id `59` to the new
       `EntityModelKind::Giant`, replacing the former placeholder bounds box. `GiantZombieModel` is the
       standard humanoid (zombie) body layer baked through `humanoidBodyLayer.apply(MeshTransformer.scaling(
@@ -1925,9 +1933,11 @@ When an agent does any of the following, update this file in the same slice:
       the shared `mesh_transformer_scaled_model_root_transform` at the 6.0 factor — exactly the husk's
       `MeshTransformer` pattern but with the giant's larger factor and no baby variant. The head look, the
       limb swing, and the held-out `animateZombieArms` resting arm pose match the zombie (`GiantZombieModel
-      extends ZombieModel`, the giant extracts the same `ZombieRenderState`). The
-      `HumanoidArmorLayer`, the `ItemInHandLayer`, the zombie-arm attack swing, and the
-      zombie texture-backed path are deferred (this is a colored-first slice; the giant reuses the zombie body
+      extends ZombieModel`, the giant extracts the same `ZombieRenderState`). The base texture is now bound
+      on the textured path (the giant binds the zombie texture via the shared `zombie_textured_layer_passes`),
+      the primary now-wired path; the
+      `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie-arm attack swing remain deferred. The
+      colored debug path stays as a fallback (the giant reuses the zombie body
       tints; the `Mob.isAggressive` arm-raise is implemented)
     - end crystal entities as renderer-owned vanilla 26.1 `EndCrystalModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `45` to the new
@@ -1964,16 +1974,18 @@ When an agent does any of the following, update this file in the same slice:
       `EvokerFangsModel.setupAnim` motion is deferred — the jaw bite open/close, the `base.y` drop, and the
       root emerge scale / `root.y = 24 - 20·preScale`. `EvokerFangsRenderer` is a plain `EntityRenderer` that
       applies the standard flip and `-1.501` y-offset but a distinct `Ry(90 - yRot)` yaw (captured by
-      `evoker_fangs_model_root_transform`). The texture-backed path is deferred, so the colored debug path
-      renders a grey base and lighter-bone jaws
+      `evoker_fangs_model_root_transform`). The base texture is now bound on the textured path
+      (`EVOKER_FANGS_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture
+      side. The colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
     - leash knot entities as renderer-owned vanilla 26.1 `LeashKnotModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `76` to the new
       `EntityModelKind::LeashKnot`, replacing the former placeholder bounds box. The mesh root holds a single
       `knot` part at ZERO with one 6×8×6 box — one cube. `LeashKnotModel` has no `setupAnim`, so the geometry
       is complete (nothing deferred on the geometry side). `LeashKnotRenderer` is a plain `EntityRenderer`
       that applies only the model flip (`scale(-1, -1, 1)`, no yaw / y-offset / scale), captured by
-      `leash_knot_model_root_transform`. Only the texture-backed path is deferred, so the colored debug path
-      renders the knot with one brown tint
+      `leash_knot_model_root_transform`. The base texture is now bound on the textured path
+      (`LEASH_KNOT_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture
+      side. The colored debug path stays as a fallback (it renders the knot with one brown tint)
     - arrow and spectral arrow entities as renderer-owned vanilla 26.1 `ArrowModel.createBodyLayer()`
       geometry on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type ids `6`
       (arrow) and `123` (spectral arrow) to the new `EntityModelKind::Arrow` (they share one model, differing
@@ -1985,8 +1997,10 @@ When an agent does any of the following, update this file in the same slice:
       0.9 lives in `arrow_model_root_transform`. `ArrowModel.setupAnim` only adds the impact-shake `root.zRot`
       wobble (`-sin(shake·3)·shake`), which is deferred. `ArrowRenderer` is a plain `EntityRenderer` that
       orients the arrow along its flight with `Ry(yRot - 90)` then `Rz(xRot)` (no flip), projected through the
-      instance's `body_rot` / `head_pitch`. The tipped/spectral texture-backed path is deferred, so the
-      colored debug path renders the shaft cross and the head with two tints
+      instance's `body_rot` / `head_pitch`. The plain arrow base texture is now bound on the textured path
+      (`ARROW_TEXTURE_REF`), the primary now-wired path; the tipped-arrow color tint and the spectral-arrow
+      overlay texture stay deferred. The colored debug path stays as a fallback (it renders the shaft cross
+      and the head with two tints)
     - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `135` to the new
       `EntityModelKind::Trident`, replacing the former placeholder bounds box. The static hierarchy is
@@ -1995,9 +2009,10 @@ When an agent does any of the following, update this file in the same slice:
       `Model<Unit>` with no animation, so the geometry is complete. `ThrownTridentRenderer` is a plain
       `EntityRenderer` that orients the trident along its flight with `Ry(yRot - 90)` then `Rz(xRot + 90)`
       (the `+90` points the upright pole along the flight axis), projected through the instance's `body_rot`
-      / `head_pitch` and captured by `trident_model_root_transform`. The enchant-foil overlay pass and the
-      texture-backed path are deferred, so the colored debug path renders the pole/base in teal and the
-      spikes lighter
+      / `head_pitch` and captured by `trident_model_root_transform`. The base texture is now bound on the
+      textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path; the enchant-foil overlay pass
+      stays deferred. The colored debug path stays as a fallback (it renders the pole/base in teal and the
+      spikes lighter)
     - wither skull entities as renderer-owned vanilla 26.1 `WitherSkullRenderer.createSkullLayer()`
       (`SkullModel`) geometry on the colored path: the native entity scene (`entity_scene.rs`) projects
       vanilla type id `147` to the new `EntityModelKind::WitherSkull`, replacing the former placeholder
@@ -2007,8 +2022,10 @@ When an agent does any of the following, update this file in the same slice:
       transform, together with the `WitherSkullRenderer` `scale(-1, -1, 1)` flip — `scale(-1, -1, 1) ·
       Ry(yRot) · Rx(xRot)`, projected through the instance's `body_rot` / `head_pitch` and captured by
       `wither_skull_model_root_transform` (a plain `EntityRenderer`, so no `-1.501` y-offset or render
-      scale). The `wither.png` / `wither_invulnerable.png` textures and the `isDangerous` swap between
-      them are deferred, so the colored debug path renders the skull as one dark tint
+      scale). The base skull texture is now bound on the textured path (`WITHER_TEXTURE_REF`, `wither.png`),
+      the primary now-wired path; the `wither_invulnerable.png` charged-skull texture and the `isDangerous`
+      swap between them stay deferred. The colored debug path stays as a fallback (it renders the skull as
+      one dark tint)
     - llama spit entities as renderer-owned vanilla 26.1 `LlamaSpitModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `79` to the new
       `EntityModelKind::LlamaSpit`, replacing the former placeholder bounds box. The static `main` part is
@@ -2016,8 +2033,10 @@ When an agent does any of the following, update this file in the same slice:
       and one neighbour stepping out along each of ±X / ±Y / ±Z. `LlamaSpitModel` has no `setupAnim`, so the
       geometry is complete. `LlamaSpitRenderer` is a plain `EntityRenderer` that lifts the spit and orients it
       along its flight with `translate(0, 0.15, 0)` then `Ry(yRot - 90)` then `Rz(xRot)`, projected through
-      the instance's `body_rot` / `head_pitch` and captured by `llama_spit_model_root_transform`. Only the
-      texture-backed path is deferred, so the colored debug path renders the cross with one tint
+      the instance's `body_rot` / `head_pitch` and captured by `llama_spit_model_root_transform`. The base
+      texture is now bound on the textured path (`LLAMA_SPIT_TEXTURE_REF`), the primary now-wired path, with
+      nothing left deferred on the texture side. The colored debug path stays as a fallback (it renders the
+      cross with one tint)
     - shulker bullet entities as renderer-owned vanilla 26.1 `ShulkerBulletModel.createBodyLayer()` geometry
       on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `113` to the
       new `EntityModelKind::ShulkerBullet`, replacing the former placeholder bounds box. The static `main`
@@ -2026,8 +2045,10 @@ When an agent does any of the following, update this file in the same slice:
       bullet's yaw/pitch — reproduced through the instance's `body_rot` / `head_pitch` — and the
       `ShulkerBulletRenderer.submit` `translate(0, 0.15, 0)` + the `ageInTicks`-driven tumble
       (`Ry(sin(t·0.1)·180°) · Rx(cos(t·0.1)·180°) · Rz(sin(t·0.15)·360°)`) + `scale(-0.5, -0.5, 0.5)` are
-      captured by `shulker_bullet_model_root_transform`. The second translucent 1.5× outer-shell pass and the
-      texture-backed path are deferred, so the colored debug path renders the three slabs with one tint
+      captured by `shulker_bullet_model_root_transform`. The base texture is now bound on the textured path
+      (`SHULKER_BULLET_TEXTURE_REF`), the primary now-wired path; the second translucent 1.5× outer-shell
+      pass stays deferred. The colored debug path stays as a fallback (it renders the three slabs with one
+      tint)
     - wind charge and breeze wind charge entities as renderer-owned vanilla 26.1
       `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `143` (wind charge) and `18` (breeze wind charge) — both
@@ -2038,9 +2059,10 @@ When an agent does any of the following, update this file in the same slice:
       a plain `EntityRenderer` that applies no extra transform, captured by the position-only
       `wind_charge_model_root_transform`. The `WindChargeModel.setupAnim` counter-spin is reproduced off the
       projected `age_in_ticks`: `wind.yRot = age·16°` (a *set* that overwrites the -π/4 bind) and
-      `windCharge.yRot = -age·16°`, so the two halves continuously counter-rotate. The translucent scrolling
-      `breezeWind` texture and the texture-backed path stay deferred, so the colored debug path renders the
-      spinning wind shell and core as opaque tinted geometry
+      `windCharge.yRot = -age·16°`, so the two halves continuously counter-rotate. The static base texture is
+      now bound on the textured path (`WIND_CHARGE_TEXTURE_REF`), the primary now-wired path; the translucent
+      scrolling `breezeWind` animation stays deferred. The colored debug path stays as a fallback (it renders
+      the spinning wind shell and core as opaque tinted geometry)
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new
       `EntityModelKind::EnderDragon`, replacing the former placeholder bounds box. The straight bind layout
@@ -2057,9 +2079,10 @@ When an agent does any of the following, update this file in the same slice:
       bind layout. `EnderDragonRenderer` is a plain `EntityRenderer` that applies the flight-history yaw
       (`Ry(-yr)`), a flight-history pitch, a fixed `translate(0, 0, 1)`, and the standard flip / `-1.501`
       y-offset (captured by `ender_dragon_model_root_transform`, with the pitch and bounce deferred to
-      identity at rest and the yaw projected through `body_rot`). The dying-dissolve render type, the
-      emissive `dragon_eyes` layer, the crystal-healing beam, and the texture-backed path are deferred, so
-      the colored debug path renders the body dark and the wing membranes a lighter tint
+      identity at rest and the yaw projected through `body_rot`). The base texture is now bound on the
+      textured path (`ENDER_DRAGON_TEXTURE_REF`), the primary now-wired path; the dying-dissolve render type,
+      the emissive `dragon_eyes` layer, and the crystal-healing beam stay deferred. The colored debug path
+      stays as a fallback (it renders the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which emits no geometry — exact parity with vanilla, whose `EntityRenderers` registers all three to
       `NoopRenderer` (the area effect cloud is drawn as particles, not a model; the marker is a pure
@@ -2222,9 +2245,9 @@ When an agent does any of the following, update this file in the same slice:
       holds). The looping `NautilusAnimation.SWIMMING` keyframe undulation (always on, applied via
       `applyWalk` with the idle baseline `walkAnimationSpeed + 0.2`) needs the keyframe machinery plus an
       `AnimationState`, so it stays deferred, as does the `AgeableMobRenderer` baby render scale (`0.7`).
-      The variant textures and the saddle / armor / coral layers live on the deferred texture-backed path,
-      so the colored debug path renders a tan shell over a pale body. The texture-backed path remains
-      unsupported (this is a colored-first slice)
+      The base texture is now bound on the textured path (`NAUTILUS_TEXTURE_REF` /
+      `NAUTILUS_BABY_TEXTURE_REF`), the primary now-wired path; the saddle / armor / coral overlay layers
+      stay deferred. The colored debug path stays as a fallback (it renders a tan shell over a pale body)
     - fox entities (adult and baby) as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` /
       `BabyFoxModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `54` out of the cat/ocelot/fox wolf-shaped quadruped
@@ -2310,12 +2333,11 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.COW`, `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so the mooshroom reuses
       the dedicated temperate-cow geometry directly — ten cubes (the head with horns / muzzle, the pitched
       body, four legs) for the adult, the smaller `BabyCowModel` layout for the baby, with the shared
-      `QuadrupedModel` head look and leg swing already reproduced by the cow path. Because the mushroom
-      block-model layer (`MushroomCowMushroomLayer`, drawn through the block renderer) and the red/brown
-      mooshroom body textures are deferred, the mooshroom is rendered as a colored-only slice (so, unlike
-      the graduated cow, it renders on both the full and colored runtime paths) — the colored debug path
-      shows the cow-brown body tint. The mushroom layer and texture-backed path remain unsupported (this
-      is a colored-first slice)
+      `QuadrupedModel` head look and leg swing already reproduced by the cow path. The base texture is now
+      bound on the textured path (`MOOSHROOM_TEXTURE_REF` / `MOOSHROOM_BABY_TEXTURE_REF`, the red/brown
+      mooshroom body textures), the primary now-wired path; the mushroom block-model layer
+      (`MushroomCowMushroomLayer`, drawn through the block renderer) stays deferred. The colored debug path
+      stays as a fallback (it shows the cow-brown body tint)
     - panda entities (adult and baby) as renderer-owned vanilla 26.1 `PandaModel.createBodyLayer()` /
       `BabyPandaModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `96` out of the mooshroom/panda cow-shaped quadruped
