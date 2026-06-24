@@ -626,6 +626,13 @@ impl EntityStore {
                 .squid_tentacle_angle(partial_ticks),
             squid_x_body_rot: client_animations.animations.squid_x_body_rot(partial_ticks),
             squid_z_body_rot: client_animations.animations.squid_z_body_rot(partial_ticks),
+            // Vanilla `ChickenRenderer.extractRenderState`: the lerped wing-flap
+            // phase and amplitude. `0.0` for every non-chicken entity (only the
+            // chicken is given a flap animation state).
+            chicken_flap: client_animations.animations.chicken_flap(partial_ticks),
+            chicken_flap_speed: client_animations
+                .animations
+                .chicken_flap_speed(partial_ticks),
             data_values: metadata.data_values.clone(),
         })
     }

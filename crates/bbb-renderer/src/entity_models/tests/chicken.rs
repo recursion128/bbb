@@ -471,6 +471,84 @@ fn chicken_leg_swing_matches_vanilla_humanoid_phase() {
     }
 }
 
+#[test]
+fn chicken_flaps_its_wings_when_airborne() {
+    // Vanilla `ChickenModel.setupAnim`: `flapAngle = (sin(flap) + 1) * flapSpeed`,
+    // applied as `rightWing.zRot = flapAngle` / `leftWing.zRot = -flapAngle`. With
+    // `flapSpeed == 0` (a grounded/still chicken) the wings hold the bind pose; a
+    // non-zero flap re-poses them. The adult, cold, and headless-baby layers all carry
+    // the named wings. Colored path.
+    for base in [
+        EntityModelInstance::chicken(26, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::chicken_variant(
+            28,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ChickenModelVariant::Cold,
+            false,
+        ),
+        EntityModelInstance::chicken(27, [0.0, 64.0, 0.0], 0.0, true),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+
+        // flapSpeed == 0 holds the wings however far the flap phase has advanced.
+        let held = entity_model_mesh(&[base.with_chicken_flap(2.5).with_chicken_flap_speed(0.0)]);
+        assert_eq!(
+            rest.vertices, held.vertices,
+            "{:?} wings hold the bind pose at flapSpeed 0",
+            base.kind
+        );
+
+        // A live flap (non-zero speed + a phase off the sin zero) re-poses the wings.
+        let flapping =
+            entity_model_mesh(&[base.with_chicken_flap(1.0).with_chicken_flap_speed(1.0)]);
+        assert_ne!(
+            rest.vertices, flapping.vertices,
+            "{:?} a flapping wing differs from the bind pose",
+            base.kind
+        );
+        assert_eq!(
+            rest.vertices.len(),
+            flapping.vertices.len(),
+            "{:?} the wing flap keeps the vertex count",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn chicken_wing_flap_and_leg_swing_are_independent() {
+    // The wing flap (`flap`/`flapSpeed`) and the leg swing (`walkAnimationPos`/`Speed`)
+    // come from separate render-state channels and pose disjoint parts, so each drives
+    // a distinct mesh change.
+    let base = EntityModelInstance::chicken(26, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = entity_model_mesh(&[base]);
+
+    let only_walk = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
+    let only_flap = entity_model_mesh(&[base.with_chicken_flap(1.0).with_chicken_flap_speed(1.0)]);
+    let both = entity_model_mesh(&[base
+        .with_walk_animation(0.0, 1.0)
+        .with_chicken_flap(1.0)
+        .with_chicken_flap_speed(1.0)]);
+
+    assert_ne!(
+        rest.vertices, only_walk.vertices,
+        "the leg swing moves legs"
+    );
+    assert_ne!(
+        rest.vertices, only_flap.vertices,
+        "the wing flap moves wings"
+    );
+    assert_ne!(
+        only_walk.vertices, both.vertices,
+        "adding the wing flap changes the walking mesh too"
+    );
+    assert_ne!(
+        only_flap.vertices, both.vertices,
+        "adding the leg swing changes the flapping mesh too"
+    );
+}
+
 fn chicken_texture_images() -> Vec<EntityModelTextureImage> {
     chicken_entity_texture_refs()
         .iter()

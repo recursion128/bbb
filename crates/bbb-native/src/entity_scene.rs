@@ -456,6 +456,8 @@ fn entity_model_instance(
         .with_tendril_animation(source.tendril_animation)
         .with_squid_tentacle_angle(source.squid_tentacle_angle)
         .with_squid_body_tilt(source.squid_x_body_rot, source.squid_z_body_rot)
+        .with_chicken_flap(source.chicken_flap)
+        .with_chicken_flap_speed(source.chicken_flap_speed)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1900,6 +1902,64 @@ mod tests {
             squid.render_state.squid_z_body_rot > 0.0,
             "the projected body roll drives SquidRenderer.setupRotations: {}",
             squid.render_state.squid_z_body_rot
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_chicken_wing_flap_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            96,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // Mark the chicken airborne so `Chicken.aiStep` builds flap speed and advances
+        // the flap phase (vanilla `onGround()` false branch).
+        assert!(world.apply_entity_position_sync(EntityPositionSync {
+            id: 96,
+            position: Vec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: Vec3d {
+                x: 0.0,
+                y: -0.1,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: false,
+        }));
+
+        // An unticked chicken projects the bind pose (wings held) into the render state.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = resting
+            .iter()
+            .find(|instance| instance.entity_id == 96)
+            .unwrap();
+        assert_eq!(resting.render_state.chicken_flap, 0.0);
+        assert_eq!(resting.render_state.chicken_flap_speed, 0.0);
+
+        // After ticking airborne, the world-side flap accumulator develops a non-zero
+        // flap phase and a saturated flap speed, both of which flow through
+        // EntityModelSourceState into the renderer EntityRenderState (`ChickenModel.setupAnim`
+        // wing zRot).
+        world.advance_entity_client_animations(3);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let chicken = instances
+            .iter()
+            .find(|instance| instance.entity_id == 96)
+            .unwrap();
+        assert!(
+            chicken.render_state.chicken_flap > 0.0,
+            "the projected flap phase drives ChickenModel.setupAnim: {}",
+            chicken.render_state.chicken_flap
+        );
+        assert!(
+            chicken.render_state.chicken_flap_speed > 0.0,
+            "an airborne chicken projects a non-zero flap speed: {}",
+            chicken.render_state.chicken_flap_speed
         );
     }
 

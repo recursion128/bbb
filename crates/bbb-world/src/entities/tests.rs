@@ -2143,6 +2143,112 @@ fn squid_tentacle_speed_matches_java_random_for_known_id() {
 }
 
 #[test]
+fn entity_model_sources_project_chicken_wing_flap() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 80)
+            .unwrap()
+    };
+    // Drives the chicken's synced ground flag (vanilla `Chicken.aiStep` reads
+    // `onGround()`); the position stays put so only the flap state evolves.
+    let set_on_ground = |store: &mut WorldStore, on_ground: bool| {
+        assert!(store.apply_entity_move(ProtocolEntityMove {
+            id: 80,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground,
+        }));
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    // An unticked chicken is frozen at the bind pose (wings held).
+    let resting = source(&store, 1.0);
+    assert_eq!(resting.chicken_flap, 0.0);
+    assert_eq!(resting.chicken_flap_speed, 0.0);
+
+    // Airborne: vanilla `flapSpeed += 4.0 * 0.3 = 1.2` (clamped to 1) jumps straight
+    // to the clamp in a single tick, and `flap += flapping * 2` advances each tick.
+    set_on_ground(&mut store, false);
+    store.advance_entity_client_animations(1);
+    let air_one = source(&store, 1.0);
+    assert!(
+        (air_one.chicken_flap_speed - 1.0).abs() < 1.0e-6,
+        "an airborne chicken saturates flap speed at 1 in one tick: {}",
+        air_one.chicken_flap_speed
+    );
+    assert!(
+        air_one.chicken_flap > 0.0,
+        "an airborne chicken advances its flap phase: {}",
+        air_one.chicken_flap
+    );
+
+    store.advance_entity_client_animations(1);
+    let air_two = source(&store, 1.0);
+    assert!(
+        (air_two.chicken_flap_speed - 1.0).abs() < 1.0e-6,
+        "flap speed holds at the clamp while airborne: {}",
+        air_two.chicken_flap_speed
+    );
+    assert!(
+        air_two.chicken_flap > air_one.chicken_flap,
+        "the flap phase keeps advancing across ticks"
+    );
+
+    // The flap speed is sitting at 1; land and let vanilla `flapSpeed += -1.0 * 0.3`
+    // pull it back toward 0 on the ground.
+    let airborne_peak = air_two.chicken_flap_speed;
+    set_on_ground(&mut store, true);
+    store.advance_entity_client_animations(1);
+    let grounded = source(&store, 1.0);
+    assert!(
+        grounded.chicken_flap_speed < airborne_peak,
+        "landing drops the flap speed toward 0: {} -> {}",
+        airborne_peak,
+        grounded.chicken_flap_speed
+    );
+
+    // The lerped getters track the partial tick between the previous and current
+    // flap endpoints (vanilla `ChickenRenderer.extractRenderState`).
+    set_on_ground(&mut store, false);
+    store.advance_entity_client_animations(3);
+    let at_zero = source(&store, 0.0).chicken_flap;
+    let at_half = source(&store, 0.5).chicken_flap;
+    let at_one = source(&store, 1.0).chicken_flap;
+    assert!(
+        at_zero < at_half && at_half < at_one,
+        "partial tick lerps the flap phase: {at_zero} < {at_half} < {at_one}"
+    );
+    assert!(
+        (at_half - (at_zero + (at_one - at_zero) * 0.5)).abs() < 1.0e-4,
+        "the projection is a linear lerp between the endpoints"
+    );
+}
+
+#[test]
+fn chicken_flap_state_initializes_flapping_to_one() {
+    // Vanilla `Chicken` field initializer `public float flapping = 1.0F;`; every
+    // other flap field defaults to 0.
+    let state = super::animations::ChickenFlapAnimationState::default();
+    assert_eq!(state.flapping, 1.0);
+    assert_eq!(state.flap, 0.0);
+    assert_eq!(state.o_flap, 0.0);
+    assert_eq!(state.flap_speed, 0.0);
+    assert_eq!(state.o_flap_speed, 0.0);
+}
+
+#[test]
 fn entity_model_sources_project_walk_animation_limb_swing() {
     const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 

@@ -10,6 +10,7 @@ use super::dragon::{
 };
 use super::{EntityTransform, EntityVec3};
 
+const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
 const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
@@ -94,6 +95,8 @@ pub struct EntityClientAnimationState {
     pub warden_tendril: Option<WardenTendrilAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub squid: Option<SquidAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chicken_flap: Option<ChickenFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
 }
@@ -211,6 +214,32 @@ pub struct SquidAnimationState {
     /// Vanilla `Squid.rotateSpeed`.
     #[serde(default)]
     pub rotate_speed: f32,
+}
+
+/// Canonical client-side chicken wing-flap animation, mirroring vanilla
+/// `Chicken` (`flap`/`oFlap`/`flapSpeed`/`oFlapSpeed`/`flapping`). `Chicken.aiStep`
+/// drives `flapSpeed` toward `1` while airborne (toward `0` on the ground), keeps
+/// `flapping` decaying at `0.9` per tick (re-seeded to `1` whenever the chicken
+/// leaves the ground), and integrates `flap += flapping * 2`.
+/// `ChickenRenderer.extractRenderState` lerps `flap`/`flapSpeed` by the partial
+/// tick, and `ChickenModel.setupAnim` turns them into the wing `zRot`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ChickenFlapAnimationState {
+    /// Vanilla `Chicken.flap`.
+    #[serde(default)]
+    pub flap: f32,
+    /// Vanilla `Chicken.oFlap`.
+    #[serde(default)]
+    pub o_flap: f32,
+    /// Vanilla `Chicken.flapSpeed`.
+    #[serde(default)]
+    pub flap_speed: f32,
+    /// Vanilla `Chicken.oFlapSpeed`.
+    #[serde(default)]
+    pub o_flap_speed: f32,
+    /// Vanilla `Chicken.flapping` (field initializer `1.0`).
+    #[serde(default)]
+    pub flapping: f32,
 }
 
 /// Canonical client-side limb-swing accumulator, mirroring vanilla
@@ -532,6 +561,53 @@ impl SquidAnimationState {
     }
 }
 
+impl Default for ChickenFlapAnimationState {
+    fn default() -> Self {
+        // Vanilla `Chicken` field initializers: `flapping = 1.0F`; every other flap
+        // field defaults to `0`.
+        Self {
+            flap: 0.0,
+            o_flap: 0.0,
+            flap_speed: 0.0,
+            o_flap_speed: 0.0,
+            flapping: 1.0,
+        }
+    }
+}
+
+impl ChickenFlapAnimationState {
+    /// Advances one client tick of `Chicken.aiStep`'s wing-flap accumulator.
+    ///
+    /// Vanilla saves the lerp endpoints (`oFlap`/`oFlapSpeed`), drives `flapSpeed`
+    /// toward `1` while airborne (toward `0` on the ground) clamped to `0..=1`,
+    /// re-seeds `flapping` to `1` whenever the chicken is airborne and decays it by
+    /// `0.9`, then integrates `flap += flapping * 2`. The `deltaMovement` tweak in
+    /// the same method is server physics and is intentionally not modelled here.
+    fn advance_client_tick(&mut self, on_ground: bool) {
+        self.o_flap = self.flap;
+        self.o_flap_speed = self.flap_speed;
+        self.flap_speed += if on_ground { -1.0 } else { 4.0 } * 0.3;
+        self.flap_speed = self.flap_speed.clamp(0.0, 1.0);
+        if !on_ground && self.flapping < 1.0 {
+            self.flapping = 1.0;
+        }
+        self.flapping *= 0.9;
+        self.flap += self.flapping * 2.0;
+    }
+
+    /// Vanilla `ChickenRenderer.extractRenderState`: `lerp(partialTicks, oFlap,
+    /// flap)`.
+    fn flap(&self, partial_tick: f32) -> f32 {
+        self.o_flap + (self.flap - self.o_flap) * partial_tick
+    }
+
+    /// Vanilla `ChickenRenderer.extractRenderState`: `lerp(partialTicks, oFlapSpeed,
+    /// flapSpeed)`.
+    fn flap_speed(&self, partial_tick: f32) -> f32 {
+        self.o_flap_speed + (self.flap_speed - self.o_flap_speed) * partial_tick
+    }
+}
+
 impl CreeperSwellAnimationState {
     fn set_swell_dir(&mut self, swell_dir: i32) {
         self.swell_dir = swell_dir;
@@ -801,6 +877,22 @@ impl EntityClientAnimationState {
             .map_or(0.0, |squid| squid.z_body_rot(partial_tick))
     }
 
+    /// Vanilla `ChickenRenderState.flap` (`Chicken.flap` lerped): the wing-flap
+    /// phase `ChickenModel.setupAnim` feeds to `(sin(flap) + 1) * flapSpeed`.
+    /// Returns `0.0` for every non-chicken entity (and an unticked chicken).
+    pub fn chicken_flap(&self, partial_tick: f32) -> f32 {
+        self.chicken_flap
+            .map_or(0.0, |flap| flap.flap(partial_tick))
+    }
+
+    /// Vanilla `ChickenRenderState.flapSpeed` (`Chicken.flapSpeed` lerped): the
+    /// wing-flap amplitude `ChickenModel.setupAnim` multiplies the flap phase by.
+    /// Returns `0.0` for every non-chicken entity, so the wings hold the bind pose.
+    pub fn chicken_flap_speed(&self, partial_tick: f32) -> f32 {
+        self.chicken_flap
+            .map_or(0.0, |flap| flap.flap_speed(partial_tick))
+    }
+
     pub(crate) fn advance_client_tick(
         &mut self,
         entity_type_id: i32,
@@ -867,6 +959,13 @@ impl EntityClientAnimationState {
                 .squid
                 .get_or_insert_with(|| SquidAnimationState::new(entity_id))
                 .advance_client_tick(transform.delta_movement),
+            VANILLA_ENTITY_TYPE_CHICKEN_ID => self
+                .chicken_flap
+                .get_or_insert_with(ChickenFlapAnimationState::default)
+                // Vanilla `Chicken.aiStep` reads `onGround()`. A chicken with no
+                // synced ground flag defaults to on-ground (wings still), the safe
+                // common case.
+                .advance_client_tick(transform.on_ground.unwrap_or(true)),
             _ => {}
         }
         // Vanilla `LivingEntity.calculateEntityAnimation` runs every client tick

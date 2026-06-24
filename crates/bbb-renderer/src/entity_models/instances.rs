@@ -296,6 +296,16 @@ entity_render_state! {
     /// as `Axis.YP.rotationDegrees(zBodyRot)` after the pitch. Accumulates while
     /// swimming. `0.0` at rest and for every non-squid entity.
     () squid_z_body_rot: f32 = 0.0;
+    /// Vanilla `ChickenRenderState.flap` (`Mth.lerp(partialTick, oFlap, flap)`): the
+    /// wing-flap phase `ChickenModel.setupAnim` feeds to `flapAngle = (sin(flap) +
+    /// 1) * flapSpeed`, written to `rightWing.zRot` / `-leftWing.zRot`. `0.0` for a
+    /// still chicken and every non-chicken entity.
+    (with_chicken_flap) chicken_flap: f32 = 0.0;
+    /// Vanilla `ChickenRenderState.flapSpeed` (`Mth.lerp(partialTick, oFlapSpeed,
+    /// flapSpeed)`): the wing-flap amplitude `ChickenModel.setupAnim` multiplies the
+    /// flap phase by. `0.0` (wings held) for a grounded/still chicken and every
+    /// non-chicken entity.
+    (with_chicken_flap_speed) chicken_flap_speed: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.isInWater` (`entity.isInWaterOrBubble()`): a fish
     /// out of water thrashes harder and flops onto its side. `CodModel.setupAnim` scales
     /// its tail sway by `1.0` in water / `1.5` out, and `CodRenderer.setupRotations` adds
@@ -1294,6 +1304,8 @@ mod tests {
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
+                chicken_flap: 0.0,
+                chicken_flap_speed: 0.0,
                 in_water: false,
                 on_ground: false,
                 is_moving: false,

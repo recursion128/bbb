@@ -332,8 +332,9 @@ fn chicken_tree(variant: ChickenModelVariant, baby: bool) -> ModelPart {
 
 /// Mutable chicken model, mirroring vanilla `ChickenModel`. The unified tree is built once for the
 /// selected `variant`/`baby` layout ([`chicken_tree`]). `setup_anim` swings the `left_leg`/`right_leg`
-/// with the `HumanoidModel` phase ([`humanoid_leg_swing_pose`]). The chicken has no head look; the wing
-/// flap is driven by the untracked `flap`/`flapSpeed` state and stays deferred.
+/// with the `HumanoidModel` phase ([`humanoid_leg_swing_pose`]) and flaps the `right_wing`/`left_wing`
+/// with the `flap`/`flapSpeed` phase (vanilla `flapAngle = (sin(flap) + 1) * flapSpeed`). The chicken
+/// has no head look.
 pub(in crate::entity_models) struct ChickenModel {
     root: ModelPart,
 }
@@ -357,18 +358,26 @@ impl EntityModel for ChickenModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
-        if limb_swing_at_rest(render_state.walk_animation_speed) {
-            return;
-        }
+        // Vanilla `ChickenModel.setupAnim`: `flapAngle = (sin(flap) + 1) * flapSpeed`,
+        // applied as `rightWing.zRot = flapAngle` / `leftWing.zRot = -flapAngle`. The
+        // adult, cold, and headless-baby layers all carry the named wings. With
+        // `flapSpeed == 0` (a grounded/still chicken) the angle is `0`, so the wings
+        // hold the bind pose.
+        let flap_angle = (render_state.chicken_flap.sin() + 1.0) * render_state.chicken_flap_speed;
+        self.root.child_mut("right_wing").pose.rotation[2] = flap_angle;
+        self.root.child_mut("left_wing").pose.rotation[2] = -flap_angle;
         // `humanoid_leg_swing_pose` resolves each leg's phase from its `x` sign, so the named legs work
-        // for the adult, cold, and headless-baby layouts alike.
-        for name in ["right_leg", "left_leg"] {
-            let leg = self.root.child_mut(name);
-            leg.pose = humanoid_leg_swing_pose(
-                leg.pose,
-                render_state.walk_animation_pos,
-                render_state.walk_animation_speed,
-            );
+        // for the adult, cold, and headless-baby layouts alike. A standing chicken leaves the legs at
+        // their bind pose.
+        if !limb_swing_at_rest(render_state.walk_animation_speed) {
+            for name in ["right_leg", "left_leg"] {
+                let leg = self.root.child_mut(name);
+                leg.pose = humanoid_leg_swing_pose(
+                    leg.pose,
+                    render_state.walk_animation_pos,
+                    render_state.walk_animation_speed,
+                );
+            }
         }
     }
 }

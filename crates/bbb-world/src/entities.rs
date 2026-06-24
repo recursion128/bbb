@@ -489,6 +489,16 @@ pub struct EntityModelSourceState {
     /// rest and for every non-squid entity.
     #[serde(default)]
     pub squid_z_body_rot: f32,
+    /// Vanilla `ChickenRenderState.flap` (`Chicken.flap` lerped): the wing-flap
+    /// phase `ChickenModel.setupAnim` feeds to `(sin(flap) + 1) * flapSpeed`. `0.0`
+    /// for an unticked/still chicken and every non-chicken entity.
+    #[serde(default)]
+    pub chicken_flap: f32,
+    /// Vanilla `ChickenRenderState.flapSpeed` (`Chicken.flapSpeed` lerped): the
+    /// wing-flap amplitude `ChickenModel.setupAnim` multiplies the flap phase by.
+    /// `0.0` (wings held) at rest and for every non-chicken entity.
+    #[serde(default)]
+    pub chicken_flap_speed: f32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 
