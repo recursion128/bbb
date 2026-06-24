@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 153] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 154] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -822,6 +822,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     BLAZE_TEXTURE_REF,
     ENDERMITE_TEXTURE_REF,
     SILVERFISH_TEXTURE_REF,
+    LEASH_KNOT_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1513,6 +1514,19 @@ pub(in crate::entity_models) const SILVERFISH_ENTITY_TEXTURE_REFS: [EntityModelT
 
 pub fn silverfish_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SILVERFISH_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const LEASH_KNOT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/lead_knot/lead_knot.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const LEASH_KNOT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [LEASH_KNOT_TEXTURE_REF];
+
+pub fn leash_knot_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &LEASH_KNOT_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

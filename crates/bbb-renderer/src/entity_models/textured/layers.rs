@@ -650,6 +650,14 @@ pub(in crate::entity_models) fn silverfish_textured_layer_passes() -> Vec<Entity
     }]
 }
 
+pub(in crate::entity_models) fn leash_knot_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        LEASH_KNOT_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass {

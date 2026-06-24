@@ -377,6 +377,7 @@ impl EntityModelKind {
             Self::Blaze => Some(BLAZE_TEXTURE_REF),
             Self::Endermite => Some(ENDERMITE_TEXTURE_REF),
             Self::Silverfish => Some(SILVERFISH_TEXTURE_REF),
+            Self::LeashKnot => Some(LEASH_KNOT_TEXTURE_REF),
             Self::Vex => Some(VEX_TEXTURE_REF),
             Self::Allay => Some(ALLAY_TEXTURE_REF),
             Self::Strider { baby: false } => Some(STRIDER_TEXTURE_REF),
