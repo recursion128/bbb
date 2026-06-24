@@ -527,6 +527,26 @@ pub struct EntityModelSourceState {
     /// every non-warden entity and for a warden whose tendrils are at rest.
     #[serde(default)]
     pub tendril_animation: f32,
+    /// Vanilla `Warden.roarAnimationState` elapsed seconds (`Pose.ROARING`-driven, the 4.2s
+    /// `WARDEN_ROAR`), sampled by `WardenModel.setupAnim`'s `roarAnimation.apply`. `-1.0` (the
+    /// stopped-animation sentinel) for a non-roaring warden and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub warden_roar_seconds: f32,
+    /// Vanilla `Warden.sniffAnimationState` elapsed seconds (`Pose.SNIFFING`-driven, the 4.16s
+    /// `WARDEN_SNIFF`), sampled by `WardenModel.setupAnim`'s `sniffAnimation.apply`. `-1.0`
+    /// (stopped) for a non-sniffing warden and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub warden_sniff_seconds: f32,
+    /// Vanilla `Warden.attackAnimationState` elapsed seconds (entity event `4`, the 0.33333s
+    /// `WARDEN_ATTACK`), sampled by `WardenModel.setupAnim`'s `attackAnimation.apply`. `-1.0`
+    /// (stopped) for a non-attacking warden and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub warden_attack_seconds: f32,
+    /// Vanilla `Warden.sonicBoomAnimationState` elapsed seconds (entity event `62`, the 3.0s
+    /// `WARDEN_SONIC_BOOM`), sampled by `WardenModel.setupAnim`'s `sonicBoomAnimation.apply`.
+    /// `-1.0` (stopped) for a non-booming warden and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub warden_sonic_boom_seconds: f32,
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that sways the model's legs/arms. `0.0` for a standing entity, every

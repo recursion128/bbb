@@ -671,6 +671,21 @@ impl EntityStore {
             tendril_animation: client_animations
                 .animations
                 .warden_tendril_animation(partial_ticks),
+            // Vanilla `Warden`'s four triggered combat keyframe one-shots (roar/sniff pose-driven,
+            // attack/sonic-boom event-driven): the elapsed seconds since each started, or `-1.0`
+            // when stopped (only the warden is given a combat animation state).
+            warden_roar_seconds: client_animations
+                .animations
+                .warden_roar_seconds(partial_ticks),
+            warden_sniff_seconds: client_animations
+                .animations
+                .warden_sniff_seconds(partial_ticks),
+            warden_attack_seconds: client_animations
+                .animations
+                .warden_attack_seconds(partial_ticks),
+            warden_sonic_boom_seconds: client_animations
+                .animations
+                .warden_sonic_boom_seconds(partial_ticks),
             walk_animation_position: client_animations
                 .animations
                 .walk_animation_position(partial_ticks),

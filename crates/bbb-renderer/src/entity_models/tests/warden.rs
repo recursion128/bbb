@@ -252,3 +252,90 @@ fn warden_tendrils_sway_with_the_tendril_pulse() {
         "the arms and legs hold"
     );
 }
+
+#[test]
+fn warden_combat_animations_match_vanilla_definitions() {
+    // Vanilla `WardenAnimation` lengths / looping flags for the four triggered combat one-shots
+    // `WardenModel.setupAnim` applies (all NOT looping — they hold their final frame at the end).
+    assert_eq!(WARDEN_ATTACK.length_seconds, 0.33333);
+    assert!(!WARDEN_ATTACK.looping);
+    assert_eq!(WARDEN_ATTACK.bones.len(), 4);
+    assert_eq!(WARDEN_SONIC_BOOM.length_seconds, 3.0);
+    assert!(!WARDEN_SONIC_BOOM.looping);
+    assert_eq!(WARDEN_SONIC_BOOM.bones.len(), 6);
+    assert_eq!(WARDEN_ROAR.length_seconds, 4.2);
+    assert!(!WARDEN_ROAR.looping);
+    assert_eq!(WARDEN_ROAR.bones.len(), 4);
+    assert_eq!(WARDEN_SNIFF.length_seconds, 4.16);
+    assert!(!WARDEN_SNIFF.looping);
+    assert_eq!(WARDEN_SNIFF.bones.len(), 4);
+
+    // The roar rears the `body` to `degreeVec(47.5, 0, 0)` at its `3.0` keyframe.
+    let (_, roar_body) = sample_bone_offsets(&WARDEN_ROAR, "body", 3.0, 1.0);
+    assert!((roar_body[0] - 47.5_f32.to_radians()).abs() < 1.0e-4);
+
+    // The sonic boom fans the `right_ribcage` open to `degreeVec(0, 125, 0)` at its `2.5` keyframe
+    // (`posVec`/`degreeVec` axes mirror vanilla).
+    let (_, boom_ribcage) = sample_bone_offsets(&WARDEN_SONIC_BOOM, "right_ribcage", 2.5, 1.0);
+    assert!((boom_ribcage[1] - 125.0_f32.to_radians()).abs() < 1.0e-4);
+
+    // The attack dips the `body` `-1` y / `-2` z (`posVec` negates y, so the offset is `+1`/`-2`) at
+    // its `0.2083` keyframe.
+    let (attack_body_pos, _) = sample_bone_offsets(&WARDEN_ATTACK, "body", 0.2083, 1.0);
+    assert!((attack_body_pos[1] - 1.0).abs() < 1.0e-4);
+    assert!((attack_body_pos[2] - -2.0).abs() < 1.0e-4);
+}
+
+#[test]
+fn warden_combat_animations_re_pose_off_the_bind_pose() {
+    // A warden with no triggered combat animation (all `-1.0` sentinels) renders at the look/idle/
+    // walk (here resting) bind pose.
+    let resting = entity_model_mesh(&[EntityModelInstance::warden(960, [0.0, 64.0, 0.0], 0.0)]);
+
+    // A roaring warden re-poses off the bind pose (the body rears, head shakes, arms fling): the
+    // mesh re-poses parts, it does not add or hide cubes.
+    let roaring = entity_model_mesh(&[
+        EntityModelInstance::warden(961, [0.0, 64.0, 0.0], 0.0).with_warden_roar_seconds(2.0)
+    ]);
+    assert_eq!(resting.vertices.len(), roaring.vertices.len());
+    assert_ne!(
+        resting.vertices, roaring.vertices,
+        "the roaring warden leaves the bind pose"
+    );
+
+    // The attack and sonic boom at the same time pose differently from the roar and from each other.
+    let attacking = entity_model_mesh(&[
+        EntityModelInstance::warden(962, [0.0, 64.0, 0.0], 0.0).with_warden_attack_seconds(0.2)
+    ]);
+    let booming =
+        entity_model_mesh(&[EntityModelInstance::warden(963, [0.0, 64.0, 0.0], 0.0)
+            .with_warden_sonic_boom_seconds(2.0)]);
+    assert_ne!(
+        roaring.vertices, attacking.vertices,
+        "the attack poses differently from the roar"
+    );
+    assert_ne!(
+        attacking.vertices, booming.vertices,
+        "the sonic boom poses differently from the attack"
+    );
+    assert_ne!(
+        roaring.vertices, booming.vertices,
+        "the sonic boom poses differently from the roar (only the boom fans the ribcages)"
+    );
+
+    // Sampling the roar at a different time advances the pose.
+    let roaring_later =
+        entity_model_mesh(&[
+            EntityModelInstance::warden(964, [0.0, 64.0, 0.0], 0.0).with_warden_roar_seconds(3.0)
+        ]);
+    assert_ne!(
+        roaring.vertices, roaring_later.vertices,
+        "the roar advances as its elapsed seconds climb"
+    );
+
+    // The `-1.0` no-animation sentinel leaves the warden at the bind pose.
+    let cleared = entity_model_mesh(&[
+        EntityModelInstance::warden(965, [0.0, 64.0, 0.0], 0.0).with_warden_roar_seconds(-1.0)
+    ]);
+    assert_eq!(cleared.vertices, resting.vertices);
+}

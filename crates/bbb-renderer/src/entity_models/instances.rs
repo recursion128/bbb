@@ -160,6 +160,24 @@ entity_render_state! {
     /// `leftTendril.xRot = tendrilAnimation · cos(ageInTicks · 2.25) · π · 0.1`, the right negated.
     /// `0.0` (bind pose, antennae still) for every non-warden and a warden at rest.
     (with_tendril_animation) tendril_animation: f32 = 0.0;
+    /// Vanilla `Warden.roarAnimationState` elapsed seconds (`Pose.ROARING`-driven, the 4.2s
+    /// `WARDEN_ROAR`): `WardenModel.setupAnim` applies `roarAnimation.apply(roarAnimationState,
+    /// ageInTicks)`, which the renderer mirrors by sampling `WARDEN_ROAR` at these seconds when
+    /// `>= 0`. `-1.0` (the stopped-animation sentinel) for every other entity and a non-roaring
+    /// warden, so no roar keyframe is applied.
+    (with_warden_roar_seconds) warden_roar_seconds: f32 = -1.0;
+    /// Vanilla `Warden.sniffAnimationState` elapsed seconds (`Pose.SNIFFING`-driven, the 4.16s
+    /// `WARDEN_SNIFF`), sampled by `WardenModel.setupAnim`. `-1.0` (stopped) for every other
+    /// entity and a non-sniffing warden.
+    (with_warden_sniff_seconds) warden_sniff_seconds: f32 = -1.0;
+    /// Vanilla `Warden.attackAnimationState` elapsed seconds (entity event `4`, the 0.33333s
+    /// `WARDEN_ATTACK`), sampled by `WardenModel.setupAnim`. `-1.0` (stopped) for every other
+    /// entity and a non-attacking warden.
+    (with_warden_attack_seconds) warden_attack_seconds: f32 = -1.0;
+    /// Vanilla `Warden.sonicBoomAnimationState` elapsed seconds (entity event `62`, the 3.0s
+    /// `WARDEN_SONIC_BOOM`), sampled by `WardenModel.setupAnim`. `-1.0` (stopped) for every other
+    /// entity and a non-booming warden.
+    (with_warden_sonic_boom_seconds) warden_sonic_boom_seconds: f32 = -1.0;
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
@@ -1340,6 +1358,10 @@ mod tests {
                 creeper_swelling: 0.0,
                 shulker_peek: 0.0,
                 tendril_animation: 0.0,
+                warden_roar_seconds: -1.0,
+                warden_sniff_seconds: -1.0,
+                warden_attack_seconds: -1.0,
+                warden_sonic_boom_seconds: -1.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,

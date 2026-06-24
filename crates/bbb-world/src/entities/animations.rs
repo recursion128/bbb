@@ -117,6 +117,25 @@ const WARDEN_TENDRIL_ANIMATION_TICKS: i32 = 10;
 /// Vanilla `Warden.handleEntityEvent` resets `tendrilAnimation` to `10` on event
 /// id `61` (a received vibration signal).
 const WARDEN_TENDRIL_EVENT_ID: i8 = 61;
+/// Vanilla `Pose.ROARING` ordinal, the synced `DATA_POSE` int value that
+/// `Warden.onSyncedDataUpdated` reads to `.start()` the `roarAnimationState` when
+/// the pose CHANGES to it (the 4.2s `WARDEN_ROAR` keyframe animation).
+const VANILLA_POSE_ROARING_ID: i32 = 11;
+/// Vanilla `Pose.SNIFFING` ordinal, the synced `DATA_POSE` int value that
+/// `Warden.onSyncedDataUpdated` reads to `.start()` the `sniffAnimationState` when
+/// the pose CHANGES to it (the 4.16s `WARDEN_SNIFF` keyframe animation).
+const VANILLA_POSE_SNIFFING_ID: i32 = 12;
+/// Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
+/// `attackAnimationState.start(tickCount)` — the melee attack swing (the 0.33333s
+/// `WARDEN_ATTACK` keyframe animation), which also cancels any running roar.
+const WARDEN_ATTACK_EVENT_ID: i8 = 4;
+/// Vanilla `Warden.handleEntityEvent(62)`: `sonicBoomAnimationState.start(tickCount)`
+/// — the sonic-boom charge/blast (the 3.0s `WARDEN_SONIC_BOOM` keyframe animation).
+const WARDEN_SONIC_BOOM_EVENT_ID: i8 = 62;
+/// The "not in a triggered pose" sentinel for [`WardenCombatAnimationState::prev_pose`]:
+/// no synced `DATA_POSE` has been observed yet, so the first ROARING/SNIFFING pose is a
+/// fresh transition that starts the matching timer.
+const WARDEN_POSE_UNSET: i32 = -1;
 /// Vanilla `Squid.handleEntityEvent` resets `tentacleMovement` to `0` on event id
 /// `19` (`EntityEvent.SQUID_RESET_MOVEMENT`, broadcast each time the server-side
 /// `tentacleMovement` wraps past `2π`). Without it the client tentacles freeze at
@@ -151,6 +170,8 @@ pub struct EntityClientAnimationState {
     pub creeper_swell: Option<CreeperSwellAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warden_tendril: Option<WardenTendrilAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warden_combat: Option<WardenCombatAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub squid: Option<SquidAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -359,6 +380,83 @@ pub struct WardenTendrilAnimationState {
     pub previous: i32,
     /// Vanilla `Warden.tendrilAnimation`.
     pub current: i32,
+}
+
+/// Canonical client-side warden combat/threat keyframe animations, mirroring vanilla
+/// `Warden`'s `roarAnimationState`/`sniffAnimationState`/`attackAnimationState`/
+/// `sonicBoomAnimationState`. These are the four triggered one-shots the client drives:
+///
+/// - **roar** / **sniff** are pose-driven: `Warden.onSyncedDataUpdated(DATA_POSE)` `.start()`s
+///   the matching timer when the synced `DATA_POSE` CHANGES to `Pose.ROARING`/`Pose.SNIFFING`.
+///   We track [`Self::prev_pose`] and restart a timer only on the transition into its pose;
+///   vanilla never auto-stops these on a pose leave, so the non-looping keyframe just holds its
+///   final/neutral frame (the renderer clamp reproduces that).
+/// - **attack** / **sonic_boom** are event-driven: `Warden.handleEntityEvent(4)` stops the roar
+///   and starts the attack, and `handleEntityEvent(62)` starts the sonic boom.
+///
+/// Vanilla applies ALL FOUR additively in `WardenModel.setupAnim`, so each timer is projected
+/// independently; the renderer applies every active one in the vanilla order (attack, sonic_boom,
+/// [deferred dig/emerge], roar, sniff). The `EMERGING`/`DIGGING` poses are deferred (their large
+/// spawn/despawn tables are not transcribed yet — see `docs/unsupported-features.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WardenCombatAnimationState {
+    /// The last synced `DATA_POSE` ordinal observed, so a pose CHANGE into ROARING/SNIFFING is a
+    /// rising edge that restarts the matching timer (vanilla `.start(tickCount)` on the
+    /// transition). [`WARDEN_POSE_UNSET`] until the first pose arrives.
+    pub prev_pose: i32,
+    /// Vanilla `Warden.roarAnimationState` (the 4.2s `WARDEN_ROAR`), started when the pose changes
+    /// to `Pose.ROARING` and stopped by the attack event.
+    pub roar: KeyframeAnimationState,
+    /// Vanilla `Warden.sniffAnimationState` (the 4.16s `WARDEN_SNIFF`), started when the pose
+    /// changes to `Pose.SNIFFING`.
+    pub sniff: KeyframeAnimationState,
+    /// Vanilla `Warden.attackAnimationState` (the 0.33333s `WARDEN_ATTACK`), started by event `4`.
+    pub attack: KeyframeAnimationState,
+    /// Vanilla `Warden.sonicBoomAnimationState` (the 3.0s `WARDEN_SONIC_BOOM`), started by event `62`.
+    pub sonic_boom: KeyframeAnimationState,
+}
+
+impl Default for WardenCombatAnimationState {
+    fn default() -> Self {
+        Self {
+            prev_pose: WARDEN_POSE_UNSET,
+            roar: KeyframeAnimationState { start_age: None },
+            sniff: KeyframeAnimationState { start_age: None },
+            attack: KeyframeAnimationState { start_age: None },
+            sonic_boom: KeyframeAnimationState { start_age: None },
+        }
+    }
+}
+
+impl WardenCombatAnimationState {
+    /// Vanilla `Warden.onSyncedDataUpdated(DATA_POSE)`: the pose-change `switch` that `.start()`s the
+    /// roar/sniff timer when the pose CHANGES to `Pose.ROARING`/`Pose.SNIFFING`. A redundant re-set
+    /// to the same pose is not a transition, so it leaves a running timer alone (vanilla only fires
+    /// on a real `onSyncedDataUpdated` change). `EMERGING`/`DIGGING` are deferred, so they only
+    /// update the tracked pose.
+    fn set_pose(&mut self, pose_id: i32, age_ticks: u32) {
+        if pose_id == self.prev_pose {
+            return;
+        }
+        self.prev_pose = pose_id;
+        match pose_id {
+            VANILLA_POSE_ROARING_ID => self.roar.start_age = Some(age_ticks),
+            VANILLA_POSE_SNIFFING_ID => self.sniff.start_age = Some(age_ticks),
+            _ => {}
+        }
+    }
+
+    /// Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
+    /// `attackAnimationState.start(tickCount)`.
+    fn start_attack(&mut self, age_ticks: u32) {
+        self.roar.start_age = None;
+        self.attack.start_age = Some(age_ticks);
+    }
+
+    /// Vanilla `Warden.handleEntityEvent(62)`: `sonicBoomAnimationState.start(tickCount)`.
+    fn start_sonic_boom(&mut self, age_ticks: u32) {
+        self.sonic_boom.start_age = Some(age_ticks);
+    }
 }
 
 /// Canonical client-side squid tentacle/body animation, mirroring vanilla
@@ -1115,6 +1213,19 @@ impl EntityClientAnimationState {
                     });
                 }
             }
+            VANILLA_ENTITY_TYPE_WARDEN_ID => {
+                // Vanilla `Warden.onSyncedDataUpdated(DATA_POSE)`: the pose-change `switch` that
+                // `.start()`s the roar/sniff one-shot when the synced `DATA_POSE` CHANGES to
+                // `Pose.ROARING`/`Pose.SNIFFING`. We track the previous pose and restart the timer
+                // only on the transition; vanilla never auto-stops on a pose leave, so the
+                // non-looping keyframe holds its final frame. The warden's `aiStep` runs client-side
+                // for remote entities, so the synced pose drives the pose directly. (`EMERGING`/
+                // `DIGGING` are deferred; the attack/sonic-boom one-shots are event-driven.)
+                let pose_id = entity_data_pose(data_values);
+                self.warden_combat
+                    .get_or_insert_with(WardenCombatAnimationState::default)
+                    .set_pose(pose_id, self.age_ticks);
+            }
             VANILLA_ENTITY_TYPE_SNIFFER_ID => {
                 // Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: the synced state's ordinal
                 // VarInt (id 18) selects the one mutually-exclusive `AnimationState` to start, and a
@@ -1171,6 +1282,21 @@ impl EntityClientAnimationState {
                     current: 0,
                 })
                 .current = WARDEN_TENDRIL_ANIMATION_TICKS;
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
+            && event_id == WARDEN_ATTACK_EVENT_ID
+        {
+            // Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
+            // `attackAnimationState.start(tickCount)` — the melee swing also cancels any roar.
+            self.warden_combat
+                .get_or_insert_with(WardenCombatAnimationState::default)
+                .start_attack(self.age_ticks);
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
+            && event_id == WARDEN_SONIC_BOOM_EVENT_ID
+        {
+            // Vanilla `Warden.handleEntityEvent(62)`: `sonicBoomAnimationState.start(tickCount)`.
+            self.warden_combat
+                .get_or_insert_with(WardenCombatAnimationState::default)
+                .start_sonic_boom(self.age_ticks);
         } else if matches!(
             entity_type_id,
             VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
@@ -1197,6 +1323,52 @@ impl EntityClientAnimationState {
     pub fn warden_tendril_animation(&self, partial_tick: f32) -> f32 {
         self.warden_tendril
             .map_or(0.0, |state| state.tendril_animation(partial_tick))
+    }
+
+    /// The warden roar's elapsed seconds since `Pose.ROARING` started (vanilla
+    /// `roarAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for the renderer
+    /// `WardenModel.setupAnim` `roarAnimation.apply`. Returns `-1.0` (the stopped-animation
+    /// sentinel) for a non-roaring warden and every other entity, so the renderer applies no
+    /// `WARDEN_ROAR` keyframe; a non-negative value is clamped past the 4.2s length to its final
+    /// frame (vanilla's "hold the last frame").
+    pub fn warden_roar_seconds(&self, partial_tick: f32) -> f32 {
+        self.warden_combat
+            .and_then(|state| state.roar.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The warden sniff's elapsed seconds since `Pose.SNIFFING` started (vanilla
+    /// `sniffAnimationState`), projected for the renderer `WardenModel.setupAnim`
+    /// `sniffAnimation.apply`. Returns `-1.0` (stopped) for a non-sniffing warden and every other
+    /// entity; a non-negative value clamps past the 4.16s length to its final frame.
+    pub fn warden_sniff_seconds(&self, partial_tick: f32) -> f32 {
+        self.warden_combat
+            .and_then(|state| state.sniff.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The warden attack's elapsed seconds since entity event `4` started it (vanilla
+    /// `attackAnimationState`), projected for the renderer `WardenModel.setupAnim`
+    /// `attackAnimation.apply`. Returns `-1.0` (stopped) for a non-attacking warden and every other
+    /// entity; a non-negative value clamps past the 0.33333s length to its final frame.
+    pub fn warden_attack_seconds(&self, partial_tick: f32) -> f32 {
+        self.warden_combat
+            .and_then(|state| state.attack.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The warden sonic boom's elapsed seconds since entity event `62` started it (vanilla
+    /// `sonicBoomAnimationState`), projected for the renderer `WardenModel.setupAnim`
+    /// `sonicBoomAnimation.apply`. Returns `-1.0` (stopped) for a non-booming warden and every other
+    /// entity; a non-negative value clamps past the 3.0s length to its final frame.
+    pub fn warden_sonic_boom_seconds(&self, partial_tick: f32) -> f32 {
+        self.warden_combat
+            .and_then(|state| {
+                state
+                    .sonic_boom
+                    .elapsed_seconds(self.age_ticks, partial_tick)
+            })
+            .unwrap_or(-1.0)
     }
 
     /// Vanilla `Creeper.getSwelling(partialTick)`, exposed for the renderer white

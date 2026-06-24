@@ -2552,6 +2552,94 @@ fn entity_model_sources_project_sniffer_state_animation() {
 }
 
 #[test]
+fn entity_model_sources_project_warden_combat_animations() {
+    const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
+    // Vanilla `Pose.ROARING(11)` / `Pose.SNIFFING(12)` synced via `DATA_POSE` (id 6);
+    // `Warden.onSyncedDataUpdated` `.start()`s the matching one-shot when the pose CHANGES to it.
+    const VANILLA_POSE_STANDING_ID: i32 = 0;
+    const VANILLA_POSE_ROARING_ID: i32 = 11;
+    const VANILLA_POSE_SNIFFING_ID: i32 = 12;
+    // Vanilla `Warden.handleEntityEvent`: id 4 starts the attack (and stops the roar); id 62 starts
+    // the sonic boom.
+    const WARDEN_ATTACK_EVENT_ID: i8 = 4;
+    const WARDEN_SONIC_BOOM_EVENT_ID: i8 = 62;
+    let combat = |store: &WorldStore, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 142)
+            .unwrap();
+        (
+            source.warden_roar_seconds,
+            source.warden_sniff_seconds,
+            source.warden_attack_seconds,
+            source.warden_sonic_boom_seconds,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        142,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+
+    // A warden in no triggered pose with no event projects all `-1.0` stopped sentinels.
+    assert_eq!(combat(&store, 1.0), (-1.0, -1.0, -1.0, -1.0));
+
+    // Entering `Pose.ROARING` starts the roar timer at the current age: the elapsed seconds begin at
+    // `0` (plus the partial tick), advancing `1 / 20` per tick. Only the roar activates.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 142,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_ROARING_ID)],
+    }));
+    let (roar, sniff, attack, sonic) = combat(&store, 0.0);
+    assert!((roar - 0.0).abs() < 1.0e-6);
+    assert_eq!((sniff, attack, sonic), (-1.0, -1.0, -1.0));
+    // The partial tick folds into the live age (`(0 + 0.5) / 20`).
+    assert!((combat(&store, 0.5).0 - 0.025).abs() < 1.0e-6);
+    store.advance_entity_client_animations(4);
+    assert!((combat(&store, 0.0).0 - 0.2).abs() < 1.0e-6);
+
+    // Leaving `Pose.ROARING` does NOT stop the roar (vanilla never auto-stops on pose leave); the
+    // non-looping keyframe just holds its final frame, so the timer keeps advancing.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 142,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_STANDING_ID)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!((combat(&store, 0.0).0 - 0.25).abs() < 1.0e-6);
+
+    // Event 4 starts the attack AND stops the roar (vanilla `roarAnimationState.stop()` +
+    // `attackAnimationState.start()`).
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 142,
+        event_id: WARDEN_ATTACK_EVENT_ID,
+    }));
+    let (roar, _, attack, _) = combat(&store, 0.0);
+    assert_eq!(roar, -1.0, "the attack event stops the roar");
+    assert!((attack - 0.0).abs() < 1.0e-6, "the attack starts at 0");
+    store.advance_entity_client_animations(2);
+    assert!((combat(&store, 0.0).2 - 0.1).abs() < 1.0e-6);
+
+    // Event 62 starts the sonic boom independently (the attack keeps holding its final frame).
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 142,
+        event_id: WARDEN_SONIC_BOOM_EVENT_ID,
+    }));
+    let (_, _, attack, sonic) = combat(&store, 0.0);
+    assert!((sonic - 0.0).abs() < 1.0e-6, "the sonic boom starts at 0");
+    assert!((attack - 0.1).abs() < 1.0e-6, "the attack still holds");
+
+    // Entering `Pose.SNIFFING` starts the sniff timer; the other three keep their running timers.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 142,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_SNIFFING_ID)],
+    }));
+    let (_, sniff, _, _) = combat(&store, 0.0);
+    assert!((sniff - 0.0).abs() < 1.0e-6, "the sniff starts at 0");
+}
+
+#[test]
 fn entity_model_sources_project_fox_head_roll_and_crouch() {
     const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
     // Vanilla `Fox.DATA_FLAGS_ID` is synced data id 19; `FLAG_CROUCHING` is mask 4 and

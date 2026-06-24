@@ -1688,9 +1688,23 @@ When an agent does any of the following, update this file in the same slice:
       `tendrilAnimation·cos(age·2.25)·π·0.1` — the right negated — off a newly projected `tendril_animation`
       pulse: the canonical client-side `Warden.tendrilAnimation` countdown, reset to `10` by entity event
       `61` and decremented each client tick in `bbb-world`, exposed lerped `/10` like `Warden.getTendrilAnimation`,
-      with tests pinning the countdown, the sway formula, and the world→render projection). The remaining
-      `WardenModel.setupAnim` motion is deferred: the attack / sonic-boom / digging / emerging / roar /
-      sniff keyframe animations. The four emissive overlay layers
+      with tests pinning the countdown, the sway formula, and the world→render projection). Four of the
+      six triggered combat/threat keyframe animations are now reproduced and applied additively in the
+      vanilla `setupAnim` order (attack → sonic_boom → [deferred dig/emerge] → roar → sniff): the roar
+      (`WARDEN_ROAR`, 4.2s) and sniff (`WARDEN_SNIFF`, 4.16s) are pose-driven — `Warden.onSyncedDataUpdated`
+      `.start()`s the matching one-shot when the synced `DATA_POSE` (id 6) CHANGES to `Pose.ROARING` (11) /
+      `Pose.SNIFFING` (12), tracked via a `prev_pose` on the new `WardenCombatAnimationState`; the attack
+      (`WARDEN_ATTACK`, 0.33333s) and sonic boom (`WARDEN_SONIC_BOOM`, 3.0s) are event-driven —
+      `handleEntityEvent(4)` starts the attack and stops the roar, `handleEntityEvent(62)` starts the boom.
+      Each one-shot is a reusable `KeyframeAnimationState` projected as an independent elapsed-seconds value
+      (`warden_roar/sniff/attack/sonic_boom_seconds`, `-1.0` when stopped); all four are non-looping, so the
+      renderer clamps past the def length to the resting final frame — mirroring vanilla's "hold the last
+      frame" (no auto-stop on pose leave). World tests pin the pose/event transitions and the attack
+      stopping the roar; renderer tests pin the four def lengths/looping flags and that roaring/attacking/
+      booming re-pose vs bind and differently from each other. DEFERRED: the `EMERGING` (13) / `DIGGING` (14)
+      spawn/despawn one-shots (`WARDEN_EMERGE`, 6.68s, ~270 lines; `WARDEN_DIG`, 5.0s, ~180 lines) are large
+      and rarely seen — a clean follow-up; their pose ordinals are tracked but only update `prev_pose`. The
+      four emissive overlay layers
       (`WardenEmissiveLayer` for the tendrils, heart, bioluminescent spots, and pulsating spots, each
       keyed off the danger/heartbeat/anger animation state) are deferred. The texture-backed path
       remains unsupported (this is a colored-first slice; the colored debug path approximates the body

@@ -1,8 +1,29 @@
+use super::super::keyframe::{
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_elapsed_seconds, pos_vec,
+    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
+    Keyframe, KeyframeInterpolation,
+};
 use super::{
     model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, WARDEN_BODY, WARDEN_TENDRIL,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
+
+const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
+
+const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes,
+    }
+}
+
+const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Position,
+        keyframes,
+    }
+}
 
 // Vanilla 26.1 `WardenModel.createBodyLayer` (atlas 128×128). The mesh root holds one `bone` part
 // at `offset(0, 24, 0)` parenting the body and the two legs; `body` parents the two ribcage
@@ -12,9 +33,14 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // always-on idle wobble (`animateIdlePose`), the walk (`animateWalk`, which swings the head, body,
 // legs, and arms off `walkAnimationPos/Speed` and composes additively onto the look/idle pose via
 // [`warden_add_x_z_rot`]), and the tendril sway (`animateTendrils`, which swings the two head
-// tendrils off the projected `tendrilAnimation` pulse and `ageInTicks`). The attack / sonic-boom /
-// digging / emerge / roar / sniff keyframe animations stay deferred. The four emissive overlay
-// layers (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed path are deferred.
+// tendrils off the projected `tendrilAnimation` pulse and `ageInTicks`). The four triggered combat
+// keyframe animations are also reproduced and applied additively in the vanilla `setupAnim` order
+// (attack → sonic_boom → [deferred dig/emerge] → roar → sniff): [`WARDEN_ATTACK`] (event 4),
+// [`WARDEN_SONIC_BOOM`] (event 62), [`WARDEN_ROAR`] (`Pose.ROARING`), and [`WARDEN_SNIFF`]
+// (`Pose.SNIFFING`), each applied only when its projected elapsed-seconds value is `>= 0`. The
+// digging / emerge spawn/despawn keyframe animations stay deferred (large one-shot tables). The four
+// emissive overlay layers (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed
+// path are deferred.
 
 // `body`: one 18×21×11 box.
 pub(in crate::entity_models) const WARDEN_BODY_CUBES: [ModelCubeDesc; 1] =
@@ -281,12 +307,463 @@ pub(in crate::entity_models) fn warden_tendril_x_rot(
     tendril_animation * factor
 }
 
+// ----- `WardenAnimation.WARDEN_ATTACK` (length 0.33333s, NOT looping). The melee swing: the `body`
+// rocks and dips forward, the `head` whips down, and the two arms slam (each ROTATION + POSITION).
+// All keyframes are CATMULLROM; `posVec` negates the y axis and `degreeVec` converts to radians. -----
+
+const WARDEN_ATTACK_BODY_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.0417, degree_vec(-22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.2083, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.3333, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_BODY_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.0417, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.2083, pos_vec(0.0, -1.0, -2.0), CATMULLROM),
+    keyframe(0.3333, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_HEAD_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.0417, degree_vec(22.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(-30.17493, 0.0, 0.0), CATMULLROM),
+    keyframe(0.3333, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_HEAD_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.0417, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, pos_vec(0.0, -2.0, -2.0), CATMULLROM),
+    keyframe(0.3333, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_RIGHT_ARM_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(
+        0.0417,
+        degree_vec(-120.36119, 40.78947, -20.94102),
+        CATMULLROM,
+    ),
+    keyframe(0.1667, degree_vec(-90.0, -45.0, 0.0), CATMULLROM),
+    keyframe(0.3333, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_RIGHT_ARM_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.0417, pos_vec(4.0, 0.0, 5.0), CATMULLROM),
+    keyframe(0.1667, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.3333, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_LEFT_ARM_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(
+        0.0417,
+        degree_vec(-120.36119, -40.78947, 20.94102),
+        CATMULLROM,
+    ),
+    keyframe(0.1667, degree_vec(-61.1632, 42.85882, 11.52421), CATMULLROM),
+    keyframe(0.3333, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_LEFT_ARM_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.0417, pos_vec(-4.0, 0.0, 5.0), CATMULLROM),
+    keyframe(0.1667, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.3333, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ATTACK_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&WARDEN_ATTACK_BODY_ROT), pos(&WARDEN_ATTACK_BODY_POS)];
+const WARDEN_ATTACK_HEAD_CHANNELS: [AnimationChannel; 2] =
+    [rot(&WARDEN_ATTACK_HEAD_ROT), pos(&WARDEN_ATTACK_HEAD_POS)];
+const WARDEN_ATTACK_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_ATTACK_RIGHT_ARM_ROT),
+    pos(&WARDEN_ATTACK_RIGHT_ARM_POS),
+];
+const WARDEN_ATTACK_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_ATTACK_LEFT_ARM_ROT),
+    pos(&WARDEN_ATTACK_LEFT_ARM_POS),
+];
+const WARDEN_ATTACK_BONES: [BoneAnimation; 4] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &WARDEN_ATTACK_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &WARDEN_ATTACK_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &WARDEN_ATTACK_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &WARDEN_ATTACK_LEFT_ARM_CHANNELS,
+    },
+];
+/// Vanilla `WardenAnimation.WARDEN_ATTACK`: the 0.33333s melee swing (NOT looping),
+/// `attackAnimation.apply(attackAnimationState, ageInTicks)`. Started by entity event `4`, which
+/// also stops the roar. The renderer applies it only while the projected `warden_attack_seconds
+/// >= 0`, clamping past the length to the resting final frame.
+pub(in crate::entity_models) const WARDEN_ATTACK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 0.33333,
+    looping: false,
+    bones: &WARDEN_ATTACK_BONES,
+};
+
+// ----- `WardenAnimation.WARDEN_SONIC_BOOM` (length 3.0s, NOT looping). The charge/blast: the `body`
+// rears then rocks back, the two `ribcage` planes fan open (yaw ±125°), the `head` cranes up then
+// snaps down, and the two arms wind up and thrust (ROTATION + POSITION). All keyframes CATMULLROM. --
+
+const WARDEN_SONIC_BOOM_BODY_ROT: [Keyframe; 8] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0833, degree_vec(47.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.625, degree_vec(55.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.9167, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.0, degree_vec(-32.5, 0.0, 0.0), CATMULLROM),
+    keyframe(2.4583, degree_vec(-32.5, 0.0, 0.0), CATMULLROM),
+    keyframe(2.7083, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.875, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_BODY_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0833, pos_vec(0.0, -3.0, 0.0), CATMULLROM),
+    keyframe(1.625, pos_vec(0.0, -4.0, -1.0), CATMULLROM),
+    keyframe(1.9167, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.7083, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.875, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_RIGHT_RIBCAGE_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5417, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.7917, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.875, degree_vec(0.0, 125.0, 0.0), CATMULLROM),
+    keyframe(2.5, degree_vec(0.0, 125.0, 0.0), CATMULLROM),
+    keyframe(2.6667, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_LEFT_RIBCAGE_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.5417, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.7917, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.875, degree_vec(0.0, -125.0, 0.0), CATMULLROM),
+    keyframe(2.5, degree_vec(0.0, -125.0, 0.0), CATMULLROM),
+    keyframe(2.6667, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_HEAD_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0, degree_vec(67.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.75, degree_vec(80.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.9167, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.5, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.7083, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.875, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_HEAD_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.9167, pos_vec(0.0, 0.0, -3.0), CATMULLROM),
+    keyframe(2.5, pos_vec(0.0, 0.0, -3.0), CATMULLROM),
+    keyframe(2.7083, pos_vec(0.0, 0.0, -3.0), CATMULLROM),
+    keyframe(2.875, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_RIGHT_ARM_ROT: [Keyframe; 10] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(
+        0.875,
+        degree_vec(-42.28659, -32.69813, -5.00825),
+        CATMULLROM,
+    ),
+    keyframe(
+        1.1667,
+        degree_vec(-29.83757, -35.39626, -45.28089),
+        CATMULLROM,
+    ),
+    keyframe(
+        1.3333,
+        degree_vec(-29.83757, -35.39626, -45.28089),
+        CATMULLROM,
+    ),
+    keyframe(
+        1.6667,
+        degree_vec(-72.28659, -32.69813, -5.00825),
+        CATMULLROM,
+    ),
+    keyframe(1.8333, degree_vec(35.26439, -30.0, 35.26439), CATMULLROM),
+    keyframe(1.9167, degree_vec(73.75484, -13.0931, 19.20518), CATMULLROM),
+    keyframe(2.5, degree_vec(73.75484, -13.0931, 19.20518), CATMULLROM),
+    keyframe(2.75, degree_vec(58.20713, -21.1064, 28.7261), CATMULLROM),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_RIGHT_ARM_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.8333, pos_vec(3.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.75, pos_vec(3.0, 0.0, 0.0), CATMULLROM),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_LEFT_ARM_ROT: [Keyframe; 10] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.875, degree_vec(-33.80694, 32.31058, 6.87997), CATMULLROM),
+    keyframe(
+        1.1667,
+        degree_vec(-17.87827, 34.62115, 49.02433),
+        CATMULLROM,
+    ),
+    keyframe(
+        1.3333,
+        degree_vec(-17.87827, 34.62115, 49.02433),
+        CATMULLROM,
+    ),
+    keyframe(1.6667, degree_vec(-51.30694, 32.31058, 6.87997), CATMULLROM),
+    keyframe(1.8333, degree_vec(35.26439, 30.0, -35.26439), CATMULLROM),
+    keyframe(1.9167, degree_vec(73.75484, 13.0931, -19.20518), CATMULLROM),
+    keyframe(2.5, degree_vec(73.75484, 13.0931, -19.20518), CATMULLROM),
+    keyframe(2.75, degree_vec(58.20713, 21.1064, -28.7261), CATMULLROM),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_LEFT_ARM_POS: [Keyframe; 4] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.8333, pos_vec(-3.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.75, pos_vec(-3.0, 0.0, 0.0), CATMULLROM),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SONIC_BOOM_BODY_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_SONIC_BOOM_BODY_ROT),
+    pos(&WARDEN_SONIC_BOOM_BODY_POS),
+];
+const WARDEN_SONIC_BOOM_RIGHT_RIBCAGE_CHANNELS: [AnimationChannel; 1] =
+    [rot(&WARDEN_SONIC_BOOM_RIGHT_RIBCAGE_ROT)];
+const WARDEN_SONIC_BOOM_LEFT_RIBCAGE_CHANNELS: [AnimationChannel; 1] =
+    [rot(&WARDEN_SONIC_BOOM_LEFT_RIBCAGE_ROT)];
+const WARDEN_SONIC_BOOM_HEAD_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_SONIC_BOOM_HEAD_ROT),
+    pos(&WARDEN_SONIC_BOOM_HEAD_POS),
+];
+const WARDEN_SONIC_BOOM_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_SONIC_BOOM_RIGHT_ARM_ROT),
+    pos(&WARDEN_SONIC_BOOM_RIGHT_ARM_POS),
+];
+const WARDEN_SONIC_BOOM_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_SONIC_BOOM_LEFT_ARM_ROT),
+    pos(&WARDEN_SONIC_BOOM_LEFT_ARM_POS),
+];
+const WARDEN_SONIC_BOOM_BONES: [BoneAnimation; 6] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &WARDEN_SONIC_BOOM_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_ribcage",
+        channels: &WARDEN_SONIC_BOOM_RIGHT_RIBCAGE_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_ribcage",
+        channels: &WARDEN_SONIC_BOOM_LEFT_RIBCAGE_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &WARDEN_SONIC_BOOM_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &WARDEN_SONIC_BOOM_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &WARDEN_SONIC_BOOM_LEFT_ARM_CHANNELS,
+    },
+];
+/// Vanilla `WardenAnimation.WARDEN_SONIC_BOOM`: the 3.0s charge/blast (NOT looping),
+/// `sonicBoomAnimation.apply(sonicBoomAnimationState, ageInTicks)`. Started by entity event `62`.
+/// The two ribcage planes fan open at the blast. The renderer applies it only while the projected
+/// `warden_sonic_boom_seconds >= 0`, clamping past the length to the resting final frame.
+pub(in crate::entity_models) const WARDEN_SONIC_BOOM: AnimationDefinition = AnimationDefinition {
+    length_seconds: 3.0,
+    looping: false,
+    bones: &WARDEN_SONIC_BOOM_BONES,
+};
+
+// ----- `WardenAnimation.WARDEN_ROAR` (length 4.2s, NOT looping). The threat roar: the `body` rears
+// up, the `head` shakes side to side, and the two arms fling wide and shudder (ROTATION + POSITION).
+// All keyframes CATMULLROM. -----
+
+const WARDEN_ROAR_BODY_ROT: [Keyframe; 8] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.24, degree_vec(-25.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.6, degree_vec(32.5, 0.0, -7.5), CATMULLROM),
+    keyframe(1.84, degree_vec(38.33, 0.0, 2.99), CATMULLROM),
+    keyframe(2.08, degree_vec(40.97, 0.0, -4.3), CATMULLROM),
+    keyframe(2.36, degree_vec(44.41, 0.0, 6.29), CATMULLROM),
+    keyframe(3.0, degree_vec(47.5, 0.0, 0.0), CATMULLROM),
+    keyframe(4.2, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_BODY_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.24, pos_vec(0.0, -1.0, 3.0), CATMULLROM),
+    keyframe(1.6, pos_vec(0.0, -3.0, -6.0), CATMULLROM),
+    keyframe(3.0, pos_vec(0.0, -3.0, -6.0), CATMULLROM),
+    keyframe(4.2, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_HEAD_ROT: [Keyframe; 8] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.24, degree_vec(-32.5, 0.0, 0.0), CATMULLROM),
+    keyframe(1.6, degree_vec(-32.5, 0.0, -27.5), CATMULLROM),
+    keyframe(1.8, degree_vec(-32.5, 0.0, 26.0), CATMULLROM),
+    keyframe(2.04, degree_vec(-32.5, 0.0, -27.5), CATMULLROM),
+    keyframe(2.44, degree_vec(-32.5, 0.0, 26.0), CATMULLROM),
+    keyframe(2.84, degree_vec(-5.0, 0.0, -12.5), CATMULLROM),
+    keyframe(4.2, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_HEAD_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.24, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.6, pos_vec(0.0, -2.0, -6.0), CATMULLROM),
+    keyframe(2.2, pos_vec(0.0, -2.0, -6.0), CATMULLROM),
+    keyframe(2.48, pos_vec(0.0, -2.0, -6.0), CATMULLROM),
+    keyframe(4.2, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_RIGHT_ARM_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.72, degree_vec(-120.0, 0.0, -20.0), CATMULLROM),
+    keyframe(1.24, degree_vec(-77.5, 3.75, 15.0), CATMULLROM),
+    keyframe(1.48, degree_vec(67.5, -32.5, 20.0), CATMULLROM),
+    keyframe(2.48, degree_vec(37.5, -32.5, 25.0), CATMULLROM),
+    keyframe(2.88, degree_vec(27.6, -17.1, 32.5), CATMULLROM),
+    keyframe(4.2, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_RIGHT_ARM_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.72, pos_vec(3.0, -2.0, 0.0), CATMULLROM),
+    keyframe(1.48, pos_vec(4.0, -2.0, 0.0), CATMULLROM),
+    keyframe(2.48, pos_vec(4.0, -2.0, 0.0), CATMULLROM),
+    keyframe(4.2, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_LEFT_ARM_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.72, degree_vec(-125.0, 0.0, 20.0), CATMULLROM),
+    keyframe(1.24, degree_vec(-76.25, -17.5, -7.5), CATMULLROM),
+    keyframe(1.48, degree_vec(62.5, 42.5, -12.5), CATMULLROM),
+    keyframe(2.48, degree_vec(37.5, 27.5, -27.5), CATMULLROM),
+    keyframe(2.88, degree_vec(25.0, 18.4, -30.0), CATMULLROM),
+    keyframe(4.2, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_LEFT_ARM_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.72, pos_vec(-3.0, -2.0, 0.0), CATMULLROM),
+    keyframe(1.48, pos_vec(-4.0, -2.0, 0.0), CATMULLROM),
+    keyframe(2.48, pos_vec(-4.0, -2.0, 0.0), CATMULLROM),
+    keyframe(4.2, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_ROAR_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&WARDEN_ROAR_BODY_ROT), pos(&WARDEN_ROAR_BODY_POS)];
+const WARDEN_ROAR_HEAD_CHANNELS: [AnimationChannel; 2] =
+    [rot(&WARDEN_ROAR_HEAD_ROT), pos(&WARDEN_ROAR_HEAD_POS)];
+const WARDEN_ROAR_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_ROAR_RIGHT_ARM_ROT),
+    pos(&WARDEN_ROAR_RIGHT_ARM_POS),
+];
+const WARDEN_ROAR_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&WARDEN_ROAR_LEFT_ARM_ROT),
+    pos(&WARDEN_ROAR_LEFT_ARM_POS),
+];
+const WARDEN_ROAR_BONES: [BoneAnimation; 4] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &WARDEN_ROAR_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &WARDEN_ROAR_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &WARDEN_ROAR_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &WARDEN_ROAR_LEFT_ARM_CHANNELS,
+    },
+];
+/// Vanilla `WardenAnimation.WARDEN_ROAR`: the 4.2s threat roar (NOT looping),
+/// `roarAnimation.apply(roarAnimationState, ageInTicks)`. Started when the synced `DATA_POSE`
+/// changes to `Pose.ROARING`; cancelled by the attack event. The renderer applies it only while the
+/// projected `warden_roar_seconds >= 0`, clamping past the length to the resting final frame.
+pub(in crate::entity_models) const WARDEN_ROAR: AnimationDefinition = AnimationDefinition {
+    length_seconds: 4.2,
+    looping: false,
+    bones: &WARDEN_ROAR_BONES,
+};
+
+// ----- `WardenAnimation.WARDEN_SNIFF` (length 4.16s, NOT looping). The investigative sniff: the
+// `body` and `head` turn and dip to scent, and the two arms ease (ROTATION only). All keyframes
+// CATMULLROM. -----
+
+const WARDEN_SNIFF_BODY_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.56, degree_vec(17.5, 32.5, 0.0), CATMULLROM),
+    keyframe(0.96, degree_vec(0.0, 32.5, 0.0), CATMULLROM),
+    keyframe(2.2, degree_vec(10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.8, degree_vec(10.0, -30.0, 0.0), CATMULLROM),
+    keyframe(3.32, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SNIFF_HEAD_ROT: [Keyframe; 9] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.68, degree_vec(0.0, 40.0, 0.0), CATMULLROM),
+    keyframe(0.96, degree_vec(-22.5, 40.0, 0.0), CATMULLROM),
+    keyframe(1.24, degree_vec(0.0, 20.0, 0.0), CATMULLROM),
+    keyframe(1.52, degree_vec(-35.0, 20.0, 0.0), CATMULLROM),
+    keyframe(1.76, degree_vec(0.0, 20.0, 0.0), CATMULLROM),
+    keyframe(2.28, degree_vec(0.0, -20.0, 0.0), CATMULLROM),
+    keyframe(2.88, degree_vec(0.0, -20.0, 0.0), CATMULLROM),
+    keyframe(3.32, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SNIFF_RIGHT_ARM_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.96, degree_vec(17.5, 0.0, 0.0), CATMULLROM),
+    keyframe(2.2, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.76, degree_vec(-15.0, 0.0, 0.0), CATMULLROM),
+    keyframe(3.32, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SNIFF_LEFT_ARM_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.96, degree_vec(-15.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.2, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.76, degree_vec(17.5, 0.0, 0.0), CATMULLROM),
+    keyframe(3.32, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const WARDEN_SNIFF_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&WARDEN_SNIFF_BODY_ROT)];
+const WARDEN_SNIFF_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&WARDEN_SNIFF_HEAD_ROT)];
+const WARDEN_SNIFF_RIGHT_ARM_CHANNELS: [AnimationChannel; 1] = [rot(&WARDEN_SNIFF_RIGHT_ARM_ROT)];
+const WARDEN_SNIFF_LEFT_ARM_CHANNELS: [AnimationChannel; 1] = [rot(&WARDEN_SNIFF_LEFT_ARM_ROT)];
+const WARDEN_SNIFF_BONES: [BoneAnimation; 4] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &WARDEN_SNIFF_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &WARDEN_SNIFF_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &WARDEN_SNIFF_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &WARDEN_SNIFF_LEFT_ARM_CHANNELS,
+    },
+];
+/// Vanilla `WardenAnimation.WARDEN_SNIFF`: the 4.16s investigative sniff (NOT looping),
+/// `sniffAnimation.apply(sniffAnimationState, ageInTicks)`. Started when the synced `DATA_POSE`
+/// changes to `Pose.SNIFFING`. The renderer applies it only while the projected
+/// `warden_sniff_seconds >= 0`, clamping past the length to the resting final frame.
+pub(in crate::entity_models) const WARDEN_SNIFF: AnimationDefinition = AnimationDefinition {
+    length_seconds: 4.16,
+    looping: false,
+    bones: &WARDEN_SNIFF_BONES,
+};
+
 /// Mutable warden model, mirroring vanilla `WardenModel`. The cubeless `bone` root (parenting the
 /// body and two legs; `body` parents the ribcages, head, and two arms; `head` parents the two
 /// tendrils) hangs off a synthetic root, built from the baked colored geometry as a named-children
 /// tree. Colored-only: `setup_anim` reproduces the four non-keyframe motions — the head look, the
-/// idle wobble, the walk swing, and the tendril sway (the attack / sonic-boom / dig / emerge / roar
-/// keyframes stay deferred).
+/// idle wobble, the walk swing, and the tendril sway — then layers the four triggered combat
+/// keyframe one-shots additively in the vanilla order (attack, sonic_boom, roar, sniff; the dig and
+/// emerge spawn/despawn keyframes stay deferred).
 pub(in crate::entity_models) struct WardenModel {
     root: ModelPart,
 }
@@ -324,6 +801,34 @@ impl EntityModel for WardenModel {
         );
         let tendril_x = warden_tendril_x_rot(instance.render_state.tendril_animation, age);
 
+        // Vanilla `WardenModel.setupAnim` then applies the four triggered combat keyframe one-shots
+        // ADDITIVELY (`KeyframeAnimation.apply` folds `offsetPos`/`offsetRotation` onto the
+        // already-posed bones) in the order attack → sonic_boom → [deferred dig/emerge] → roar →
+        // sniff. Each is applied only while its projected elapsed-seconds value is `>= 0`; a
+        // non-looping def clamps past its length to the resting final frame (vanilla's "hold the
+        // last frame"). The active definitions, paired with their (clamped) sample seconds.
+        let combat: [(&AnimationDefinition, f32); 4] = [
+            (&WARDEN_ATTACK, instance.render_state.warden_attack_seconds),
+            (
+                &WARDEN_SONIC_BOOM,
+                instance.render_state.warden_sonic_boom_seconds,
+            ),
+            (&WARDEN_ROAR, instance.render_state.warden_roar_seconds),
+            (&WARDEN_SNIFF, instance.render_state.warden_sniff_seconds),
+        ];
+        // Adds every active combat one-shot's position/rotation offsets onto a part already posed by
+        // the look/idle/walk (and, for the head, the tendril pulse).
+        let apply_combat = |part: &mut ModelPart, bone: &str| {
+            for (definition, seconds) in combat {
+                if seconds < 0.0 {
+                    continue;
+                }
+                let sample = keyframe_elapsed_seconds(definition, seconds);
+                let (position, rotation) = sample_bone_offsets(definition, bone, sample, 1.0);
+                part.pose = keyframe_animated_pose(part.pose, position, rotation);
+            }
+        };
+
         let bone = self.root.child_mut("bone");
         {
             let body = bone.child_mut("body");
@@ -332,6 +837,7 @@ impl EntityModel for WardenModel {
                 walk.body_x_rot,
                 walk.body_z_rot,
             );
+            apply_combat(body, "body");
 
             {
                 let head = body.child_mut("head");
@@ -340,6 +846,7 @@ impl EntityModel for WardenModel {
                     walk.head_x_rot,
                     walk.head_z_rot,
                 );
+                apply_combat(head, "head");
 
                 // The two tendrils sway their `xRot` off the pulse (left `+`, right `-`).
                 let right = head.child_mut("right_tendril");
@@ -348,14 +855,20 @@ impl EntityModel for WardenModel {
                 left.pose = warden_add_x_z_rot(left.pose, tendril_x, 0.0);
             }
 
-            // The two arms swing their `xRot` with the walk; the ribcages hold.
+            // The two ribcages hold at bind for the walk/idle, but the sonic boom fans them open.
+            apply_combat(body.child_mut("right_ribcage"), "right_ribcage");
+            apply_combat(body.child_mut("left_ribcage"), "left_ribcage");
+
+            // The two arms swing their `xRot` with the walk, then the combat one-shots add on top.
             let right_arm = body.child_mut("right_arm");
             right_arm.pose = warden_add_x_z_rot(right_arm.pose, walk.right_arm_x_rot, 0.0);
+            apply_combat(right_arm, "right_arm");
             let left_arm = body.child_mut("left_arm");
             left_arm.pose = warden_add_x_z_rot(left_arm.pose, walk.left_arm_x_rot, 0.0);
+            apply_combat(left_arm, "left_arm");
         }
 
-        // The two legs swing their `xRot` with the walk.
+        // The two legs swing their `xRot` with the walk (no combat one-shot touches them).
         let right_leg = bone.child_mut("right_leg");
         right_leg.pose = warden_add_x_z_rot(right_leg.pose, walk.right_leg_x_rot, 0.0);
         let left_leg = bone.child_mut("left_leg");
