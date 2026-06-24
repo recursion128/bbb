@@ -2335,10 +2335,14 @@ When an agent does any of the following, update this file in the same slice:
       front-leg paddle, the `isSneezing` head dip, the `sitAmount` sitting fold with its eating / scared
       variants, the `lieOnBackAmount` belly roll, and the `rollAmount` somersault — reads un-projected
       `PandaRenderState` fields / `AnimationState`s and stays deferred, so a resting panda renders at this
-      bind pose plus the head look and leg swing. The seven `Panda.Gene` color/texture variants live on the
-      deferred texture-backed path; the geometry separates two tones (white skull / muzzle / body, black
-      ears / legs), so the colored debug path renders those two tints. The texture-backed path remains
-      unsupported (this is a colored-first slice)
+      bind pose plus the head look and leg swing. The textured path IS wired with the seven `Panda.Gene`
+      variants: the displayed gene is `Panda.Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two
+      synced gene bytes (`MAIN_GENE_ID` 21 / `HIDDEN_GENE_ID` 22) — a dominant main gene always shows, a
+      recessive main gene (`BROWN`/`WEAK`) shows only when both genes match, else `NORMAL` — and
+      `PandaRenderer.getTextureLocation` keys the 14-entry texture matrix (seven genes × adult/baby, with
+      the inconsistent vanilla baby filenames `panda_baby.png` / `lazy_panda_baby.png` / … preserved) off
+      it, bumping the master `ENTITY_MODEL_TEXTURE_REFS` array to 272. Nothing on the panda base path stays
+      deferred (only the per-gene pose animations above remain)
     - rabbit entities (adult and baby) as renderer-owned vanilla 26.1 `AdultRabbitModel.createBodyLayer()`
       / `BabyRabbitModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `108` out of the cat/ocelot/fox wolf-shaped quadruped
