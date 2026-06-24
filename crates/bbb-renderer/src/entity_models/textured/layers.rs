@@ -1067,16 +1067,6 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
     ]
 }
 
-pub(in crate::entity_models) fn wind_charge_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    // Vanilla draws the wind charge with `entityTranslucent` + the scrolling breeze-wind texture; the
-    // scroll/translucency are deferred, so this binds the static wind_charge.png on the cutout pass.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
-        WIND_CHARGE_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )]
-}
-
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass {

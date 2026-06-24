@@ -20,7 +20,8 @@ use super::transforms::{
     end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
     scaled_model_root_transform, slime_model_root_transform, squid_model_root_transform,
-    tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    tropical_fish_model_root_transform, wind_charge_model_root_transform,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -75,6 +76,17 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::Slime { size } => {
                     if !skip_texture_backed_entities {
                         emit_slime_model(&mut mesh, *instance, size);
+                    }
+                }
+                EntityModelKind::WindCharge => {
+                    // The wind charge's textured render is the scrolling `breezeWind` overlay; this
+                    // colored fallback renders the plain `WindChargeModel` tree when textures are absent.
+                    if !skip_texture_backed_entities {
+                        WindChargeModel::new().prepare_and_render(
+                            &mut mesh,
+                            instance,
+                            wind_charge_model_root_transform(*instance),
+                        );
                     }
                 }
                 EntityModelKind::EndCrystal => {

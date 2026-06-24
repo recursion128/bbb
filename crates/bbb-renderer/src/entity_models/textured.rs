@@ -1,3 +1,4 @@
+use super::colored::wind_charge_model_root_transform;
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::model::EntityModel;
 use super::{
@@ -9,13 +10,17 @@ use super::{
         TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
-    geometry::{fill_entity_textured_light, fill_entity_textured_overlay, EntityModelTexturedMesh},
+    geometry::{
+        append_scrolled_textured_mesh, fill_entity_textured_light, fill_entity_textured_overlay,
+        EntityModelScrollMesh, EntityModelTexturedMesh,
+    },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
         CamelModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
         SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
-        TropicalFishModel, TropicalFishPatternModel, ZombieVariantModel,
+        TropicalFishModel, TropicalFishPatternModel, WindChargeModel, ZombieVariantModel,
+        WIND_CHARGE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -46,10 +51,10 @@ pub(super) use layers::{
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
-    wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
-    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
-    EntityModelLayerPass, EntityModelLayerRenderType,
+    warden_textured_layer_passes, witch_textured_layer_passes, wither_skull_textured_layer_passes,
+    wither_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderType,
 };
 #[cfg(test)]
 pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
@@ -58,6 +63,7 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
+    pub(super) scroll: EntityModelScrollMesh,
 }
 
 impl EntityModelTexturedMeshes {
@@ -66,6 +72,7 @@ impl EntityModelTexturedMeshes {
             cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
+            scroll: EntityModelScrollMesh::new(),
         }
     }
 
@@ -114,6 +121,9 @@ pub(super) fn entity_model_textured_meshes(
             // textured geometry (their dispatch call walks an empty pass list, a no-op), so they must NOT
             // appear here; every kind without a textured arm falls into `_ => {}`.
             match instance.kind {
+                EntityModelKind::WindCharge => {
+                    emit_wind_charge_scroll_model(&mut meshes, *instance, atlas);
+                }
                 EntityModelKind::Llama {
                     variant,
                     baby,
@@ -354,6 +364,36 @@ fn emit_tropical_fish_textured_model(
 /// procedural eight-tentacle ring) runs the shared `SquidModel.setupAnim` and renders under
 /// [`squid_model_root_transform`]; the variant texture's atlas UV is resolved once. The glow squid
 /// differs only by texture (its emissive light boost is deferred lighting).
+/// The wind charge's scrolling `breezeWind` overlay (vanilla `WindChargeRenderer`): the whole
+/// `WindChargeModel` rendered with the `breezeWind` render type, whose texture matrix scrolls the U
+/// coordinate by `xOffset(ageInTicks) % 1 = (ageInTicks · 0.03) % 1` (V fixed at `0`). We render the
+/// model once with the normal atlas UVs into a scratch mesh, then fold it into the scrolling-overlay
+/// mesh, baking the per-instance U offset and carrying the atlas sub-rect for the shader's `fract` wrap.
+fn emit_wind_charge_scroll_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, WIND_CHARGE_TEXTURE_REF) else {
+        return;
+    };
+    let transform = wind_charge_model_root_transform(instance);
+    let mut model = WindChargeModel::new();
+    model.prepare(&instance);
+    let mut scratch = EntityModelTexturedMesh::new();
+    model.root().render_textured(
+        &mut scratch,
+        transform,
+        WIND_CHARGE_TEXTURE_REF,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+    );
+    // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
+    // float modulo is `rem_euclid`. V does not scroll.
+    let u_offset = (instance.render_state.age_in_ticks * 0.03).rem_euclid(1.0);
+    append_scrolled_textured_mesh(&mut meshes.scroll, &scratch, entry.uv, [u_offset, 0.0]);
+}
+
 fn emit_squid_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,

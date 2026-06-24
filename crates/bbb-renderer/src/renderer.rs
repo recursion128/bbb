@@ -11,8 +11,9 @@ use crate::{
     camera::{CameraPose, CameraUniform, ClearColor, TerrainBounds},
     entity_models::{
         create_entity_model_eyes_pipeline, create_entity_model_pipeline,
-        create_entity_model_textured_pipeline, create_entity_model_translucent_pipeline,
-        EntityModelMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
+        create_entity_model_scroll_pipeline, create_entity_model_textured_pipeline,
+        create_entity_model_translucent_pipeline, EntityModelMeshGpu, EntityModelScrollMeshGpu,
+        EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
     },
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
@@ -50,6 +51,7 @@ pub struct Renderer {
     pub(super) entity_model_textured_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_eyes_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_scroll_pipeline: wgpu::RenderPipeline,
     pub(super) particle_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
@@ -72,6 +74,7 @@ pub struct Renderer {
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_eyes_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_model_scroll_mesh: Option<EntityModelScrollMeshGpu>,
     pub(super) entity_model_texture_atlas: Option<EntityModelTextureAtlasGpu>,
     pub(super) entity_model_instances: Vec<crate::EntityModelInstance>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,
@@ -300,6 +303,8 @@ impl Renderer {
             create_entity_model_translucent_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_eyes_pipeline =
             create_entity_model_eyes_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_scroll_pipeline =
+            create_entity_model_scroll_pipeline(&device, format, &terrain_bind_group_layout);
         let particle_pipeline =
             create_particle_pipeline(&device, format, &terrain_bind_group_layout);
         let item_entity_pipeline =
@@ -336,6 +341,7 @@ impl Renderer {
             entity_model_textured_pipeline,
             entity_model_translucent_pipeline,
             entity_model_eyes_pipeline,
+            entity_model_scroll_pipeline,
             particle_pipeline,
             item_entity_pipeline,
             selection_pipeline,
@@ -358,6 +364,7 @@ impl Renderer {
             entity_model_textured_mesh: None,
             entity_model_translucent_mesh: None,
             entity_model_eyes_mesh: None,
+            entity_model_scroll_mesh: None,
             entity_model_texture_atlas: None,
             entity_model_instances: Vec::new(),
             particle_atlas: None,

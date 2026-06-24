@@ -2080,10 +2080,19 @@ When an agent does any of the following, update this file in the same slice:
       a plain `EntityRenderer` that applies no extra transform, captured by the position-only
       `wind_charge_model_root_transform`. The `WindChargeModel.setupAnim` counter-spin is reproduced off the
       projected `age_in_ticks`: `wind.yRot = age·16°` (a *set* that overwrites the -π/4 bind) and
-      `windCharge.yRot = -age·16°`, so the two halves continuously counter-rotate. The static base texture is
-      now bound on the textured path (`WIND_CHARGE_TEXTURE_REF`), the primary now-wired path; the translucent
-      scrolling `breezeWind` animation stays deferred. The colored debug path stays as a fallback (it renders
-      the spinning wind shell and core as opaque tinted geometry)
+      `windCharge.yRot = -age·16°`, so the two halves continuously counter-rotate. The whole model is now
+      rendered through the scrolling `breezeWind` overlay (`WIND_CHARGE_TEXTURE_REF`) — vanilla
+      `WindChargeRenderer` draws it with `RenderTypes.breezeWind(texture, xOffset(ageInTicks) % 1, 0)`, a
+      texture-matrix `OffsetTextureTransform` (`xOffset(t) = t·0.03`) over a `GL_REPEAT` texture, translucent
+      and `ALPHA_CUTOUT 0.1`. Because our textures share one atlas (no per-texture `REPEAT`), a new scrolling
+      pipeline reproduces the scroll in the shader: the model is rendered once with the normal atlas UVs, then
+      folded into a dedicated scroll mesh (`EntityModelScrollVertex`) whose per-vertex local UV carries the
+      baked per-instance U offset and the texture's atlas sub-rect, and `ENTITY_MODEL_SCROLL_SHADER` does
+      `atlas_uv = uv_rect_min + fract(local_uv)·uv_rect_size` (the per-fragment `fract` recreating the `REPEAT`
+      seam) with the `0.1` alpha cutout, translucent-blended and depth-writing. The one simplification is
+      lighting: vanilla `breezeWind` is lightmap-lit with `NO_CARDINAL_LIGHTING`, while the scroll shader is
+      full-bright (a glowing projectile reads the same in practice). The colored debug path stays as a fallback
+      (it renders the spinning wind shell and core as opaque tinted geometry)
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new
       `EntityModelKind::EnderDragon`, replacing the former placeholder bounds box. The straight bind layout

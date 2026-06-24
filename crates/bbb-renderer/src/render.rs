@@ -116,6 +116,20 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 entity_model_draw_calls += 1;
             }
+            // The scrolling `breezeWind` / `energySwirl` overlays draw last, translucent over the
+            // already-shaded entity bodies.
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_scroll_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_scroll_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
         }
 
         if !self.terrain_cutout.is_empty() {

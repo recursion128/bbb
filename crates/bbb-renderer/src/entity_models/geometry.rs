@@ -65,6 +65,76 @@ impl EntityModelTexturedMesh {
     }
 }
 
+/// A vertex of the scrolling-overlay mesh (vanilla `breezeWind` / `energySwirl` render types): a
+/// texture-matrix `OffsetTextureTransform` over a `GL_REPEAT` texture. Because our textures live in a
+/// shared atlas (no per-texture `REPEAT`), the scroll is reproduced in the shader: the atlas UV is
+/// inverted back to a local `0..1` UV, the per-instance offset is added, and the shader `fract`s it
+/// and maps it back into `[uv_rect_min, uv_rect_min + uv_rect_size]` — the per-fragment `fract`
+/// recreating the `REPEAT` seam.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(super) struct EntityModelScrollVertex {
+    pub(super) position: [f32; 3],
+    /// Local UV within the texture (`0..1`) with the per-instance scroll offset already added.
+    pub(super) local_uv: [f32; 2],
+    /// The texture's atlas sub-rect origin / size, so the shader can wrap the scrolled local UV back
+    /// into the atlas without bleeding into neighbouring textures.
+    pub(super) uv_rect_min: [f32; 2],
+    pub(super) uv_rect_size: [f32; 2],
+    pub(super) tint: [f32; 4],
+}
+
+pub(super) struct EntityModelScrollMesh {
+    pub(super) vertices: Vec<EntityModelScrollVertex>,
+    pub(super) indices: Vec<u32>,
+}
+
+impl EntityModelScrollMesh {
+    pub(super) fn new() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+        }
+    }
+}
+
+/// Appends a normal textured render (`textured`, carrying atlas-absolute UVs) to the scrolling-overlay
+/// mesh, converting each vertex: the atlas UV is inverted back to a local `0..1` UV within `rect`, the
+/// per-instance `offset` is added, and `rect` is carried so the shader `fract`-wraps the scrolled local
+/// UV back into the atlas sub-rect (reproducing the vanilla texture-matrix scroll over a `GL_REPEAT`
+/// texture). Indices are re-based onto `scroll`'s current vertex count.
+pub(super) fn append_scrolled_textured_mesh(
+    scroll: &mut EntityModelScrollMesh,
+    textured: &EntityModelTexturedMesh,
+    rect: EntityModelUvRect,
+    offset: [f32; 2],
+) {
+    let base = u32::try_from(scroll.vertices.len()).expect("scroll vertex count fits in u32");
+    let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
+    for vertex in &textured.vertices {
+        let local_u = if size[0] != 0.0 {
+            (vertex.uv[0] - rect.min[0]) / size[0]
+        } else {
+            0.0
+        };
+        let local_v = if size[1] != 0.0 {
+            (vertex.uv[1] - rect.min[1]) / size[1]
+        } else {
+            0.0
+        };
+        scroll.vertices.push(EntityModelScrollVertex {
+            position: vertex.position,
+            local_uv: [local_u + offset[0], local_v + offset[1]],
+            uv_rect_min: rect.min,
+            uv_rect_size: size,
+            tint: vertex.tint,
+        });
+    }
+    scroll
+        .indices
+        .extend(textured.indices.iter().map(|index| index + base));
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct ModelPartDesc {
     pub(super) pose: PartPose,

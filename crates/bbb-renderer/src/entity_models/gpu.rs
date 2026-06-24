@@ -12,7 +12,10 @@ use super::{
         EntityModelUvRect,
     },
     entity_model_colored_runtime_mesh, entity_model_textured_meshes,
-    geometry::{EntityModelTexturedMesh, EntityModelTexturedVertex, EntityModelVertex},
+    geometry::{
+        EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
+        EntityModelTexturedVertex, EntityModelVertex,
+    },
     instances::EntityModelInstance,
 };
 
@@ -30,6 +33,13 @@ pub(crate) struct EntityModelTexturedMeshGpu {
     pub(crate) bounds: Option<TerrainBounds>,
 }
 
+pub(crate) struct EntityModelScrollMeshGpu {
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) index_buffer: wgpu::Buffer,
+    pub(crate) index_count: u32,
+    pub(crate) bounds: Option<TerrainBounds>,
+}
+
 pub(crate) struct EntityModelTextureAtlasGpu {
     _texture: wgpu::Texture,
     _view: wgpu::TextureView,
@@ -41,6 +51,7 @@ pub(crate) struct EntityModelTextureAtlasGpu {
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2];
 pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2];
+pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4];
 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
 struct Camera {
@@ -190,6 +201,62 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+// The scrolling-overlay shader (vanilla `breezeWind` / `energySwirl`): an emissive, full-bright
+// texture-matrix scroll. Because the texture lives in the shared atlas, the per-fragment `fract` of the
+// (offset-baked) local UV reproduces the `GL_REPEAT` seam, then maps back into the atlas sub-rect. The
+// vanilla `ALPHA_CUTOUT 0.1` discard is applied; `NO_CARDINAL_LIGHTING` is modelled as full-bright.
+pub(super) const ENTITY_MODEL_SCROLL_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) local_uv: vec2<f32>,
+    @location(2) uv_rect_min: vec2<f32>,
+    @location(3) uv_rect_size: vec2<f32>,
+    @location(4) tint: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) local_uv: vec2<f32>,
+    @location(1) uv_rect_min: vec2<f32>,
+    @location(2) uv_rect_size: vec2<f32>,
+    @location(3) tint: vec4<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.local_uv = input.local_uv;
+    out.uv_rect_min = input.uv_rect_min;
+    out.uv_rect_size = input.uv_rect_size;
+    out.tint = input.tint;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
+    let texel = textureSample(entity_texture_atlas, entity_sampler, atlas_uv) * input.tint;
+    if texel.a <= 0.1 {
+        discard;
+    }
+    return texel;
+}
+"#;
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -289,6 +356,62 @@ pub(crate) fn create_entity_model_translucent_pipeline(
         Some(wgpu::BlendState::ALPHA_BLENDING),
         true,
     )
+}
+
+/// The scrolling-overlay pipeline (vanilla `breezeWind`): translucent (`BlendFunction.TRANSLUCENT`),
+/// depth-writing (`DepthStencilState.DEFAULT`), cull off (`withCull(false)`). Uses its own vertex
+/// layout (the scroll vertex carries the atlas sub-rect) and the [`ENTITY_MODEL_SCROLL_SHADER`].
+pub(crate) fn create_entity_model_scroll_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-entity-model-scroll-shader"),
+        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_SCROLL_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-entity-model-scroll-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-entity-model-scroll-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[entity_model_scroll_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
 }
 
 fn create_entity_model_textured_pipeline_with_depth(
@@ -397,10 +520,16 @@ impl Renderer {
                 meshes.translucent,
                 "bbb-entity-model-translucent",
             );
+            self.entity_model_scroll_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.scroll,
+                "bbb-entity-model-scroll",
+            );
         } else {
             self.entity_model_textured_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
+            self.entity_model_scroll_mesh = None;
         }
         self.entity_model_bounds = merged_entity_model_bounds(&[
             self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
@@ -411,6 +540,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_scroll_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
         ]);
@@ -711,4 +843,46 @@ fn entity_model_textured_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
     }
+}
+
+fn entity_model_scroll_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<EntityModelScrollVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES,
+    }
+}
+
+fn create_entity_model_scroll_mesh_gpu_from_mesh(
+    device: &wgpu::Device,
+    mesh: EntityModelScrollMesh,
+    label_prefix: &str,
+) -> Option<EntityModelScrollMeshGpu> {
+    if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+        return None;
+    }
+    let bounds = TerrainBounds::from_points(
+        mesh.vertices
+            .iter()
+            .map(|vertex| Vec3::from_array(vertex.position)),
+    );
+    let vertex_label = format!("{label_prefix}-vertices");
+    let index_label = format!("{label_prefix}-indices");
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(vertex_label.as_str()),
+        contents: bytemuck::cast_slice(&mesh.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(index_label.as_str()),
+        contents: bytemuck::cast_slice(&mesh.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+
+    Some(EntityModelScrollMeshGpu {
+        vertex_buffer,
+        index_buffer,
+        index_count: mesh.indices.len() as u32,
+        bounds,
+    })
 }

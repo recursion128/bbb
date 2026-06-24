@@ -80,10 +80,6 @@ fn wind_charge_counter_spins_shell_and_core_with_age() {
 #[test]
 fn wind_charge_textured_render_matches_vanilla_renderer() {
     assert_eq!(
-        wind_charge_textured_layer_passes()[0].texture,
-        WIND_CHARGE_TEXTURE_REF
-    );
-    assert_eq!(
         EntityModelKind::WindCharge.vanilla_texture_ref(),
         Some(WIND_CHARGE_TEXTURE_REF)
     );
@@ -101,13 +97,51 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
+
+    // Vanilla `WindChargeRenderer` draws the whole model with the scrolling `breezeWind` render type,
+    // so the wind charge emits no cutout/eyes geometry — only the scroll mesh (3 cubes → 72 vertices).
+    let rest = entity_model_textured_meshes(
         &[EntityModelInstance::wind_charge(180, [0.0, 64.0, 0.0], 0.0)],
         &atlas,
     );
-    assert!(!mesh.vertices.is_empty());
-    assert!(mesh
+    assert!(rest.cutout.vertices.is_empty(), "no cutout pass");
+    assert!(rest.eyes.vertices.is_empty(), "no eyes pass");
+    assert_eq!(rest.scroll.vertices.len(), 72);
+    assert!(rest
+        .scroll
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    // Every scroll vertex carries the wind charge texture's atlas sub-rect for the shader's wrap.
+    let rect_min = rest.scroll.vertices[0].uv_rect_min;
+    let rect_size = rest.scroll.vertices[0].uv_rect_size;
+    assert!(rect_size[0] > 0.0 && rect_size[1] > 0.0);
+    assert!(rest
+        .scroll
+        .vertices
+        .iter()
+        .all(|vertex| vertex.uv_rect_min == rect_min && vertex.uv_rect_size == rect_size));
+
+    // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`: advancing `ageInTicks` scrolls
+    // every vertex's local U by that amount (V fixed). The local UV derives from `texOffs`, so it is
+    // independent of the age-driven spin — vertex `i` keeps the same base UV at both ages.
+    let age = 10.0_f32;
+    let scrolled = entity_model_textured_meshes(
+        &[EntityModelInstance::wind_charge(180, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(age)],
+        &atlas,
+    );
+    let expected_offset = (age * 0.03).rem_euclid(1.0);
+    assert!(expected_offset > 0.0);
+    for (rest_vertex, scrolled_vertex) in rest.scroll.vertices.iter().zip(&scrolled.scroll.vertices)
+    {
+        assert!(
+            (scrolled_vertex.local_uv[0] - (rest_vertex.local_uv[0] + expected_offset)).abs()
+                < 1.0e-6,
+            "the U coordinate scrolls by (age · 0.03) % 1"
+        );
+        assert_eq!(
+            scrolled_vertex.local_uv[1], rest_vertex.local_uv[1],
+            "only U scrolls; V is fixed"
+        );
+    }
 }
