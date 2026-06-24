@@ -1676,9 +1676,12 @@ When an agent does any of the following, update this file in the same slice:
       frozen creaking has walk speed ≈ 0 so the amplitude already collapses to rest (fittingly, the
       creaking turns to a statue while observed); the attack / invulnerable / death keyframe
       animations stay deferred. The base texture is now bound on the textured path
-      (`CREAKING_TEXTURE_REF`), the primary now-wired path; only the emissive eyes layer
-      (`createEyesLayer`, the `head` part only) remains deferred. The colored debug path stays as a
-      fallback (it approximates the whole model with one dark-bark tint)
+      (`CREAKING_TEXTURE_REF`), together with the emissive eyes overlay
+      (`CREAKING_EYES_TEXTURE_REF`, vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`): an
+      eyes-render-type pass re-rendering the whole model, gated on `eyes_glowing` projected from the
+      synced `IS_ACTIVE` flag (17). Only the tearing-down death-flicker (`hasGlowingEyes`, a client-tick
+      toggle) stays deferred. The colored debug path stays as a fallback (it approximates the whole
+      model with one dark-bark tint)
     - sniffer entities as renderer-owned vanilla 26.1 `SnifferModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `119`
       to the new `EntityModelKind::Sniffer`, replacing the former cow-quadruped approximation (the
