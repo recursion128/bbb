@@ -13,6 +13,50 @@ fn tadpole_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(TADPOLE_TAIL_CUBES.len(), 1);
     assert_eq!(TADPOLE_TAIL_CUBES[0].min, [0.0, -1.0, 0.0]);
     assert_eq!(TADPOLE_TAIL_CUBES[0].size, [0.0, 2.0, 7.0]);
+
+    // Both parts sample texOffs(0, 0) (uv_size == size, not mirrored).
+    assert_eq!(TADPOLE_BODY_CUBES[0].tex, [0.0, 0.0]);
+    assert_eq!(TADPOLE_BODY_CUBES[0].uv_size, [3.0, 2.0, 3.0]);
+    assert_eq!(TADPOLE_TAIL_CUBES[0].tex, [0.0, 0.0]);
+    assert_eq!(TADPOLE_TAIL_CUBES[0].uv_size, [0.0, 2.0, 7.0]);
+}
+
+#[test]
+fn tadpole_layer_passes_and_texture_ref_match_vanilla_renderer() {
+    let passes = tadpole_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(passes[0].texture, TADPOLE_TEXTURE_REF);
+
+    assert_eq!(
+        EntityModelKind::Tadpole.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/tadpole/tadpole.png",
+            size: [16, 16],
+        })
+    );
+    assert!(entity_model_texture_refs().contains(&TADPOLE_TEXTURE_REF));
+    assert_eq!(tadpole_entity_texture_refs(), &[TADPOLE_TEXTURE_REF]);
+}
+
+#[test]
+fn tadpole_textured_mesh_uses_vanilla_uvs_and_geometry() {
+    let images: Vec<EntityModelTextureImage> = tadpole_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::tadpole(640, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    // body box = 6 faces; the textured path emits all 6 faces of the 0-width tail box (the 4
+    // degenerate side quads have zero area) → 12 cutout faces.
+    assert_eq!(mesh.cutout_faces, 12);
 }
 
 #[test]

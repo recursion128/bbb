@@ -1,8 +1,6 @@
-use super::{
-    model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, TADPOLE_BODY, TADPOLE_TAIL,
-};
+use super::{PartPose, PART_POSE_ZERO, TADPOLE_BODY, TADPOLE_TAIL};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `TadpoleModel.createBodyLayer` (atlas 16×16). The mesh root holds two named sibling
 // parts: a 3×2×3 `body` box at `offset(0, 22, -3)` and a 0×2×7 `tail` fin plane at `offset(0, 22, 0)`.
@@ -11,13 +9,26 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // stay [`ModelCubeDesc`] and the tree is assembled from `leaf_colored`. Tadpole uses a plain
 // `MobRenderer` with no transform overrides.
 
-// `body`: the 3×2×3 box.
-pub(in crate::entity_models) const TADPOLE_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.5, -1.0, 0.0], [3.0, 2.0, 3.0], TADPOLE_BODY)];
+// `body`: the 3×2×3 box at texOffs(0, 0). Each unified cube carries the colored tint and the textured
+// `uv_size` / `texOffs`.
+pub(in crate::entity_models) const TADPOLE_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, -1.0, 0.0],
+    [3.0, 2.0, 3.0],
+    TADPOLE_BODY,
+    [3.0, 2.0, 3.0],
+    [0.0, 0.0],
+    false,
+)];
 
-// `tail`: the 0×2×7 fin plane.
-pub(in crate::entity_models) const TADPOLE_TAIL_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, -1.0, 0.0], [0.0, 2.0, 7.0], TADPOLE_TAIL)];
+// `tail`: the 0×2×7 fin plane, also at texOffs(0, 0).
+pub(in crate::entity_models) const TADPOLE_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -1.0, 0.0],
+    [0.0, 2.0, 7.0],
+    TADPOLE_TAIL,
+    [0.0, 2.0, 7.0],
+    [0.0, 0.0],
+    false,
+)];
 
 /// `body` part pose: `PartPose.offset(0, 22, -3)`.
 pub(in crate::entity_models) const TADPOLE_BODY_POSE: PartPose = PartPose {
@@ -56,11 +67,11 @@ impl TadpoleModel {
                 vec![
                     (
                         "body",
-                        ModelPart::leaf_colored(TADPOLE_BODY_POSE, &TADPOLE_BODY_CUBES),
+                        ModelPart::leaf(TADPOLE_BODY_POSE, TADPOLE_BODY_CUBES.to_vec()),
                     ),
                     (
                         "tail",
-                        ModelPart::leaf_colored(TADPOLE_TAIL_POSE, &TADPOLE_TAIL_CUBES),
+                        ModelPart::leaf(TADPOLE_TAIL_POSE, TADPOLE_TAIL_CUBES.to_vec()),
                     ),
                 ],
             ),

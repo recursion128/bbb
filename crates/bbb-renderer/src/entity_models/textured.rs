@@ -38,7 +38,7 @@ pub(super) use layers::{
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
     salmon_textured_layer_passes, sheep_textured_layer_passes, silverfish_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
-    spider_textured_layer_passes, trident_textured_layer_passes,
+    spider_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
     wolf_textured_layer_passes, zombie_textured_layer_passes,

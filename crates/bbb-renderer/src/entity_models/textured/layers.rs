@@ -674,6 +674,14 @@ pub(in crate::entity_models) fn evoker_fangs_textured_layer_passes() -> Vec<Enti
     )]
 }
 
+pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        TADPOLE_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass {

@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 156] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 157] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -825,6 +825,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     LEASH_KNOT_TEXTURE_REF,
     TRIDENT_TEXTURE_REF,
     EVOKER_FANGS_TEXTURE_REF,
+    TADPOLE_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1555,6 +1556,19 @@ pub(in crate::entity_models) const EVOKER_FANGS_ENTITY_TEXTURE_REFS: [EntityMode
 
 pub fn evoker_fangs_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &EVOKER_FANGS_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const TADPOLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/tadpole/tadpole.png",
+        size: [16, 16],
+    };
+
+pub(in crate::entity_models) const TADPOLE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [TADPOLE_TEXTURE_REF];
+
+pub fn tadpole_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &TADPOLE_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

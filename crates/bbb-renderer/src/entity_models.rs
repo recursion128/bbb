@@ -56,10 +56,10 @@ pub use model_layers::{
     ravager_entity_texture_refs, salmon_entity_texture_refs, sheep_entity_texture_refs,
     silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
     spider_entity_texture_refs, squid_entity_texture_refs, strider_entity_texture_refs,
-    trident_entity_texture_refs, tropical_fish_entity_texture_refs, turtle_entity_texture_refs,
-    vex_entity_texture_refs, villager_entity_texture_refs, witch_entity_texture_refs,
-    wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
-    SheepHeadEatPose,
+    tadpole_entity_texture_refs, trident_entity_texture_refs, tropical_fish_entity_texture_refs,
+    turtle_entity_texture_refs, vex_entity_texture_refs, villager_entity_texture_refs,
+    witch_entity_texture_refs, wolf_entity_texture_refs, zombie_entity_texture_refs,
+    zombie_villager_entity_texture_refs, SheepHeadEatPose,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;
@@ -78,7 +78,7 @@ use textured::{
     player_textured_layer_passes, polar_bear_textured_layer_passes, ravager_textured_layer_passes,
     salmon_textured_layer_passes, sheep_textured_layer_passes, silverfish_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, snow_golem_textured_layer_passes,
-    spider_textured_layer_passes, trident_textured_layer_passes,
+    spider_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
     wolf_textured_layer_passes, zombie_textured_layer_passes,

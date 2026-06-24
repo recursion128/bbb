@@ -53,10 +53,11 @@ use super::textured::{
     minecart_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     polar_bear_textured_layer_passes, ravager_textured_layer_passes, render_textured_layers,
     salmon_textured_layer_passes, silverfish_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, trident_textured_layer_passes,
-    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
-    EntityModelLayerPass, EntityModelLayerRenderType, EntityModelTexturedMeshes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
+    trident_textured_layer_passes, villager_textured_layer_passes,
+    wandering_trader_textured_layer_passes, witch_textured_layer_passes,
+    wolf_textured_layer_passes, zombie_textured_layer_passes, EntityModelLayerPass,
+    EntityModelLayerRenderType, EntityModelTexturedMeshes,
 };
 
 /// A render-path-agnostic sink for a "uniform" entity (one model under one root transform, with its
@@ -536,7 +537,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             TadpoleModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &[],
+            &tadpole_textured_layer_passes(),
         ),
         EntityModelKind::Parrot => sink.model(
             ParrotModel::new(),
