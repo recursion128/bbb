@@ -5,6 +5,7 @@ mod exports;
 mod gpu;
 mod hud;
 mod item_entities;
+mod item_models;
 mod particles;
 mod render;
 mod renderer;
