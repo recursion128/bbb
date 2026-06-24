@@ -372,6 +372,11 @@ entity_render_state! {
     /// and `getTextureLocation` swaps to `wither_invulnerable.png` (flickering every 5 ticks once
     /// `<= 80`). `0.0` for every other entity and for a fully-spawned wither.
     (with_wither_invulnerable_ticks) wither_invulnerable_ticks: f32 = 0.0;
+    /// Vanilla `WitherRenderState.isPowered` (`WitherBoss.isPowered() = getHealth() <=
+    /// getMaxHealth() / 2`): the wither is at or below half health, so the `WitherArmorLayer` energy
+    /// swirl (the same `EnergySwirlLayer` as the charged creeper) glows over the inflated
+    /// `WITHER_ARMOR` body. `false` for every other entity and for a healthy wither.
+    (with_wither_powered) wither_powered: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -1571,6 +1576,7 @@ mod tests {
                 fox_is_faceplanted: false,
                 vex_charging: false,
                 wither_invulnerable_ticks: 0.0,
+                wither_powered: false,
                 illager_spellcasting: false,
                 is_crouching: false,
                 invisible: false,

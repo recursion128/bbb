@@ -1946,10 +1946,17 @@ When an agent does any of the following, update this file in the same slice:
       and swaps to `wither_invulnerable.png` via the vanilla `getTextureLocation` flicker (solid above 80
       ticks, then alternating every 5 ticks) off the projected `WitherRenderState.invulnerableTicks`
       (`DATA_ID_INV`, lerped `invulnerableTicks - partialTicks`), with both the colored and textured paths
-      wired. The remaining `WitherBossModel.setupAnim` motion is deferred: the two
-      side heads' target tracking (the `DATA_TARGET_*` head targets are client-tick lerped). The `WITHER_ARMOR`
-      powered energy-swirl overlay layer (`wither_armor.png`, the same `EnergySwirlLayer` UV-scroll as the
-      charged creeper) stays deferred
+      wired. The `WitherArmorLayer` powered energy-swirl overlay is now wired: when `isPowered`
+      (vanilla `WitherBoss.isPowered() = getHealth() <= getMaxHealth() / 2`, projected from the synced
+      `LivingEntity.DATA_HEALTH_ID` against the wither's `300` base max-health), the inflated `WITHER_ARMOR`
+      model (`WitherBossModel.createBodyLayer(INNER_ARMOR_DEFORMATION)` = `CubeDeformation(0.5)`, driven by
+      the same `setup_anim` so it breathes with the body) is drawn through the additive emissive
+      `RenderTypes.energySwirl`: `wither_armor.png` (`WITHER_ARMOR_TEXTURE_REF`) tinted by the vanilla
+      `0xFF808080` half-grey, its U scrolled by the oscillating `cos(ageInTicks · 0.02) · 3 % 1` (distinct
+      from the creeper's linear scroll) and V by `ageInTicks · 0.01 % 1`, sharing the same per-fragment
+      `fract` atlas-wrap scroll pipeline as the charged creeper. The remaining `WitherBossModel.setupAnim`
+      motion is deferred: the two side heads' target tracking (the `DATA_TARGET_*` head targets are
+      client-tick lerped)
     - giant entities as renderer-owned vanilla 26.1 `GiantZombieModel` geometry on the textured path: the
       native entity scene (`entity_scene.rs`) projects vanilla type id `59` to the new
       `EntityModelKind::Giant`, replacing the former placeholder bounds box. `GiantZombieModel` is the

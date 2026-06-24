@@ -188,9 +188,14 @@ fn wither_textured_render_matches_vanilla_renderer() {
     );
     assert!(entity_model_texture_refs().contains(&WITHER_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&WITHER_INVULNERABLE_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&WITHER_ARMOR_TEXTURE_REF));
     assert_eq!(
         wither_entity_texture_refs(),
-        &[WITHER_TEXTURE_REF, WITHER_INVULNERABLE_TEXTURE_REF]
+        &[
+            WITHER_TEXTURE_REF,
+            WITHER_INVULNERABLE_TEXTURE_REF,
+            WITHER_ARMOR_TEXTURE_REF
+        ]
     );
 
     let images: Vec<EntityModelTextureImage> = wither_entity_texture_refs()
@@ -240,4 +245,90 @@ fn wither_renders_at_vanilla_2x_scale_and_shrinks_during_spawn() {
         (charging_width / spawned_width - 0.75).abs() < 1.0e-3,
         "the charging wither is 1.5/2.0 of the spawned size ({charging_width} vs {spawned_width})"
     );
+}
+
+#[test]
+fn powered_wither_emits_scrolling_energy_swirl() {
+    // Build an atlas covering the wither's base, invulnerable, and armor textures.
+    let images: Vec<EntityModelTextureImage> = wither_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    // A healthy wither has no `WitherArmorLayer`, so it emits no additive swirl geometry.
+    let plain = entity_model_textured_meshes(
+        &[EntityModelInstance::wither(1470, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert!(
+        plain.scroll_additive.vertices.is_empty(),
+        "no energy swirl on a healthy wither"
+    );
+
+    // A powered wither (≤ half health) draws the inflated `WITHER_ARMOR` model (9 cubes → 216
+    // vertices) into the additive scroll mesh, every vertex tinted by the vanilla `0xFF808080`
+    // half-grey.
+    let grey = 128.0 / 255.0;
+    let rest = entity_model_textured_meshes(
+        &[EntityModelInstance::wither(1471, [0.0, 64.0, 0.0], 0.0).with_wither_powered(true)],
+        &atlas,
+    );
+    assert_eq!(rest.scroll_additive.vertices.len(), 216);
+    assert!(rest
+        .scroll_additive
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [grey, grey, grey, 1.0]));
+
+    // The inflated armor (`INNER_ARMOR_DEFORMATION` = CubeDeformation 0.5) floats just outside the
+    // body: under the same `2.0×` root transform, its X extent exceeds the base body's.
+    let base_x_max = rest
+        .cutout
+        .vertices
+        .iter()
+        .map(|vertex| vertex.position[0])
+        .fold(f32::MIN, f32::max);
+    let armor_x_max = rest
+        .scroll_additive
+        .vertices
+        .iter()
+        .map(|vertex| vertex.position[0])
+        .fold(f32::MIN, f32::max);
+    assert!(
+        armor_x_max > base_x_max,
+        "the inflated armor is wider than the body ({armor_x_max} vs {base_x_max})"
+    );
+
+    // Vanilla `WitherArmorLayer.xOffset(t) = cos(t·0.02)·3` on U (oscillating, not the creeper's
+    // linear scroll), `t·0.01` on V, each `% 1`. At `t = 0` the U offset is `3 % 1 = 0`, so `rest`
+    // carries the base local UVs; a later age shifts both axes. The body breathes with age, but the
+    // local UVs are pose-independent, so they track the offset exactly.
+    let age = 50.0_f32;
+    let scrolled = entity_model_textured_meshes(
+        &[EntityModelInstance::wither(1471, [0.0, 64.0, 0.0], 0.0)
+            .with_wither_powered(true)
+            .with_age_in_ticks(age)],
+        &atlas,
+    );
+    let u_expected = ((age * 0.02).cos() * 3.0) % 1.0;
+    let v_expected = (age * 0.01).rem_euclid(1.0);
+    assert!(u_expected != 0.0 && v_expected > 0.0);
+    for (rest_vertex, scrolled_vertex) in rest
+        .scroll_additive
+        .vertices
+        .iter()
+        .zip(&scrolled.scroll_additive.vertices)
+    {
+        assert!(
+            (scrolled_vertex.local_uv[0] - (rest_vertex.local_uv[0] + u_expected)).abs() < 1.0e-6
+        );
+        assert!(
+            (scrolled_vertex.local_uv[1] - (rest_vertex.local_uv[1] + v_expected)).abs() < 1.0e-6
+        );
+    }
 }

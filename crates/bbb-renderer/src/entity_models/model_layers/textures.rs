@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 285] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 286] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -966,6 +966,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SHULKER_BULLET_TEXTURE_REF,
     WITHER_TEXTURE_REF,
     WITHER_INVULNERABLE_TEXTURE_REF,
+    WITHER_ARMOR_TEXTURE_REF,
     WIND_CHARGE_TEXTURE_REF,
     GUARDIAN_TEXTURE_REF,
     GUARDIAN_ELDER_TEXTURE_REF,
@@ -2716,14 +2717,24 @@ pub(in crate::entity_models) const WITHER_INVULNERABLE_TEXTURE_REF: EntityModelT
         path: "textures/entity/wither/wither_invulnerable.png",
         size: [64, 64],
     };
+// The `WitherArmorLayer` energy swirl overlay (vanilla `EnergySwirlLayer`), shares the
+// `createBodyLayer` 64×64 UV layout of `wither.png`.
+pub(in crate::entity_models) const WITHER_ARMOR_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/wither/wither_armor.png",
+        size: [64, 64],
+    };
 pub(in crate::entity_models) const WITHER_SKULL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
     [WITHER_TEXTURE_REF];
 pub fn wither_skull_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WITHER_SKULL_ENTITY_TEXTURE_REFS
 }
-// The wither boss covers both its normal and spawn-charge textures.
-pub(in crate::entity_models) const WITHER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [WITHER_TEXTURE_REF, WITHER_INVULNERABLE_TEXTURE_REF];
+// The wither boss covers its normal, spawn-charge, and powered energy-swirl textures.
+pub(in crate::entity_models) const WITHER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    WITHER_TEXTURE_REF,
+    WITHER_INVULNERABLE_TEXTURE_REF,
+    WITHER_ARMOR_TEXTURE_REF,
+];
 pub fn wither_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WITHER_ENTITY_TEXTURE_REFS
 }

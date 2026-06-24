@@ -1,4 +1,6 @@
-use super::colored::{creeper_model_root_transform, wind_charge_model_root_transform};
+use super::colored::{
+    creeper_model_root_transform, wind_charge_model_root_transform, wither_model_root_transform,
+};
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::model::EntityModel;
 use super::{
@@ -19,8 +21,9 @@ use super::{
     model_layers::{
         CamelModel, CreeperModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, SheepFurModel,
         SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
-        TropicalFishModel, TropicalFishPatternModel, WindChargeModel, ZombieVariantModel,
-        CREEPER_ARMOR_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        TropicalFishModel, TropicalFishPatternModel, WindChargeModel, WitherModel,
+        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -222,9 +225,11 @@ pub(super) fn entity_model_textured_meshes(
                 _ => {}
             }
         }
-        // The charged-creeper energy swirl is an additive scrolling overlay layered on top of the base
-        // creeper (already emitted by the shared dispatch), so it runs regardless of `handled`.
+        // The charged-creeper and powered-wither energy swirls are additive scrolling overlays layered
+        // on top of the base model (already emitted by the shared dispatch), so they run regardless of
+        // `handled`.
         emit_charged_creeper_energy_swirl(&mut meshes, *instance, atlas);
+        emit_wither_energy_swirl(&mut meshes, *instance, atlas);
         let light = instance.render_state.shader_light();
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
@@ -439,6 +444,52 @@ fn emit_charged_creeper_energy_swirl(
         &scratch,
         entry.uv,
         [offset, offset],
+    );
+}
+
+/// The wither boss's `WitherArmorLayer` energy swirl (vanilla `EnergySwirlLayer`, the same family as
+/// the charged creeper): when `isPowered` (the wither sits at or below half health), the inflated
+/// `WITHER_ARMOR` model (`INNER_ARMOR_DEFORMATION` = `CubeDeformation 0.5`, driven by the same
+/// `setup_anim` so it breathes with the body) is drawn with the additive, emissive `energySwirl`
+/// render type — `wither_armor.png` tinted by the vanilla `0xFF808080` half-grey. Unlike the creeper's
+/// linear scroll, the wither's `xOffset(t) = cos(t · 0.02) · 3` oscillates the U coordinate while V
+/// scrolls linearly at `t · 0.01`; both are taken `% 1.0`. Folded into the same additive scroll mesh.
+fn emit_wither_energy_swirl(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !instance.render_state.wither_powered || !matches!(instance.kind, EntityModelKind::Wither) {
+        return;
+    }
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, WITHER_ARMOR_TEXTURE_REF) else {
+        return;
+    };
+    let transform = wither_model_root_transform(instance);
+    let mut model = WitherModel::new_armor();
+    model.prepare(&instance);
+    let mut scratch = EntityModelTexturedMesh::new();
+    // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
+    let grey = 128.0 / 255.0;
+    model.root().render_textured(
+        &mut scratch,
+        transform,
+        WITHER_ARMOR_TEXTURE_REF,
+        entry.uv,
+        [grey, grey, grey, 1.0],
+    );
+    // Vanilla `WitherArmorLayer.xOffset(t) = cos(t · 0.02) · 3` on U (oscillating, not linear like the
+    // creeper), `t · 0.01` on V, each taken `% 1.0`. Java float modulo of a possibly-negative U keeps
+    // the sign, then the shader's `fract` re-wraps it into `[0, 1)`, so plain `% 1.0` (`Rust` `rem`,
+    // not `rem_euclid`) reproduces the vanilla offset exactly.
+    let age = instance.render_state.age_in_ticks;
+    let u_offset = ((age * 0.02).cos() * 3.0) % 1.0;
+    let v_offset = (age * 0.01).rem_euclid(1.0);
+    append_scrolled_textured_mesh(
+        &mut meshes.scroll_additive,
+        &scratch,
+        entry.uv,
+        [u_offset, v_offset],
     );
 }
 

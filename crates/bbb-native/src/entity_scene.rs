@@ -531,6 +531,7 @@ fn entity_model_instance(
         .with_camel_standup_seconds(camel_sit.standup_seconds)
         .with_vex_charging(source.vex_charging)
         .with_wither_invulnerable_ticks(source.wither_invulnerable_ticks)
+        .with_wither_powered(wither_powered(source.entity_type_id, &source.data_values))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
@@ -1964,6 +1965,18 @@ fn creeper_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityD
     const CREEPER_IS_POWERED_DATA_ID: u8 = 17;
     entity_type_id == VANILLA_ENTITY_TYPE_CREEPER_ID
         && entity_data_bool(values, CREEPER_IS_POWERED_DATA_ID, false)
+}
+
+/// Vanilla `WitherBoss.isPowered()` = `getHealth() <= getMaxHealth() / 2.0`, gating the
+/// `WitherArmorLayer` energy swirl. The current health is the synced `LivingEntity.DATA_HEALTH_ID`
+/// float (index `9`); the wither's `Attributes.MAX_HEALTH` base is `300` (mirroring the wolf tail's
+/// hardcoded `TAME_MAX_HEALTH` precedent — bbb does not yet track per-entity max-health attribute
+/// overrides). A wither with no synced health defaults to full, so it reads un-powered.
+fn wither_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    const WITHER_MAX_HEALTH: f32 = 300.0;
+    entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID
+        && entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, WITHER_MAX_HEALTH)
+            <= WITHER_MAX_HEALTH / 2.0
 }
 
 fn entity_data_int(
@@ -3623,6 +3636,39 @@ mod tests {
         assert!(
             instances[0].render_state.creeper_powered,
             "the charged creeper projects isPowered, gating the energy-swirl overlay"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_powered_wither_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            145,
+            VANILLA_ENTITY_TYPE_WITHER_ID,
+            [3.0, 64.0, 1.0],
+        ));
+        // A wither with no synced health defaults to full (maxHealth 300), so it is not powered.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(!resting[0].render_state.wither_powered);
+
+        // A healthy wither (health 200/300 > 150) stays un-powered.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 145,
+            values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 200.0)],
+        }));
+        let healthy = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(!healthy[0].render_state.wither_powered);
+
+        // Vanilla `WitherBoss.isPowered() = getHealth() <= getMaxHealth() / 2`: at or below half
+        // health (120 ≤ 150) the `WitherArmorLayer` energy swirl ignites.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 145,
+            values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 120.0)],
+        }));
+        let powered = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        assert!(
+            powered[0].render_state.wither_powered,
+            "the half-health wither projects isPowered, gating the energy-swirl overlay"
         );
     }
 

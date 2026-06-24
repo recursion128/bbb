@@ -16,8 +16,9 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // texture is wired here, and the wither swaps to `wither_invulnerable.png` during its spawn charge
 // (`WitherBossRenderer.getTextureLocation`, see [`super::super::wither_model_root_transform`] and
 // `wither_textured_layer_passes`); the `WITHER_ARMOR` powered energy-swirl overlay (`wither_armor.png`,
-// the same `EnergySwirlLayer` as the charged creeper) stays deferred. Each cube carries the colored
-// debug tint and the textured `uv_size` / `texOffs`.
+// the same `EnergySwirlLayer` as the charged creeper) is the inflated [`WitherModel::new_armor`] tree,
+// emitted by `emit_wither_energy_swirl`. Each cube carries the colored debug tint and the textured
+// `uv_size` / `texOffs`.
 
 // `shoulders`: the 20×3×3 bar, texOffs(0,16).
 pub(in crate::entity_models) const WITHER_SHOULDERS_CUBES: [ModelCube; 1] = [ModelCube::new(
@@ -95,6 +96,42 @@ pub(in crate::entity_models) const WITHER_SIDE_HEAD_CUBES: [ModelCube; 1] = [Mod
     false,
 )];
 
+/// Vanilla `LayerDefinitions` bakes `ModelLayers.WITHER_ARMOR` with
+/// `WitherBossModel.createBodyLayer(INNER_ARMOR_DEFORMATION)` = `new CubeDeformation(0.5F)`: the same
+/// six-part tree one notch larger, so the `WitherArmorLayer` energy swirl floats just outside the body.
+/// `CubeDeformation` grows each box (`min -= g`, `size += 2·g`) while keeping the base `texOffs`/`uv_size`.
+const WITHER_INNER_ARMOR_DEFORMATION: f32 = 0.5;
+
+const fn inflate_wither_cube(cube: ModelCube) -> ModelCube {
+    let g = WITHER_INNER_ARMOR_DEFORMATION;
+    ModelCube::new(
+        [cube.min[0] - g, cube.min[1] - g, cube.min[2] - g],
+        [
+            cube.size[0] + 2.0 * g,
+            cube.size[1] + 2.0 * g,
+            cube.size[2] + 2.0 * g,
+        ],
+        cube.color,
+        cube.uv_size,
+        cube.tex,
+        cube.mirror,
+    )
+}
+
+const WITHER_ARMOR_SHOULDERS_CUBES: [ModelCube; 1] =
+    [inflate_wither_cube(WITHER_SHOULDERS_CUBES[0])];
+const WITHER_ARMOR_RIBCAGE_CUBES: [ModelCube; 4] = [
+    inflate_wither_cube(WITHER_RIBCAGE_CUBES[0]),
+    inflate_wither_cube(WITHER_RIBCAGE_CUBES[1]),
+    inflate_wither_cube(WITHER_RIBCAGE_CUBES[2]),
+    inflate_wither_cube(WITHER_RIBCAGE_CUBES[3]),
+];
+const WITHER_ARMOR_TAIL_CUBES: [ModelCube; 1] = [inflate_wither_cube(WITHER_TAIL_CUBES[0])];
+const WITHER_ARMOR_CENTER_HEAD_CUBES: [ModelCube; 1] =
+    [inflate_wither_cube(WITHER_CENTER_HEAD_CUBES[0])];
+const WITHER_ARMOR_SIDE_HEAD_CUBES: [ModelCube; 1] =
+    [inflate_wither_cube(WITHER_SIDE_HEAD_CUBES[0])];
+
 /// Vanilla `createBodyLayer` rest poses (`addOrReplaceChild` order: shoulders, ribcage, tail,
 /// center_head, right_head, left_head).
 pub(in crate::entity_models) const WITHER_SHOULDERS_POSE: PartPose = PART_POSE_ZERO;
@@ -161,33 +198,58 @@ pub(in crate::entity_models) struct WitherModel {
 
 impl WitherModel {
     pub(in crate::entity_models) fn new() -> Self {
+        Self::with_cubes(
+            &WITHER_SHOULDERS_CUBES,
+            &WITHER_RIBCAGE_CUBES,
+            &WITHER_TAIL_CUBES,
+            &WITHER_CENTER_HEAD_CUBES,
+            &WITHER_SIDE_HEAD_CUBES,
+        )
+    }
+
+    /// The inflated `WITHER_ARMOR` tree (vanilla `INNER_ARMOR_DEFORMATION` = `CubeDeformation(0.5)`),
+    /// driven by the same `setup_anim` so the `WitherArmorLayer` energy swirl tracks the body pose.
+    pub(in crate::entity_models) fn new_armor() -> Self {
+        Self::with_cubes(
+            &WITHER_ARMOR_SHOULDERS_CUBES,
+            &WITHER_ARMOR_RIBCAGE_CUBES,
+            &WITHER_ARMOR_TAIL_CUBES,
+            &WITHER_ARMOR_CENTER_HEAD_CUBES,
+            &WITHER_ARMOR_SIDE_HEAD_CUBES,
+        )
+    }
+
+    fn with_cubes(
+        shoulders: &[ModelCube],
+        ribcage: &[ModelCube],
+        tail: &[ModelCube],
+        center_head: &[ModelCube],
+        side_head: &[ModelCube],
+    ) -> Self {
         let root = ModelPart::new(
             PART_POSE_ZERO,
             Vec::new(),
             vec![
                 (
                     "shoulders",
-                    ModelPart::leaf(WITHER_SHOULDERS_POSE, WITHER_SHOULDERS_CUBES.to_vec()),
+                    ModelPart::leaf(WITHER_SHOULDERS_POSE, shoulders.to_vec()),
                 ),
                 (
                     "ribcage",
-                    ModelPart::leaf(WITHER_RIBCAGE_POSE, WITHER_RIBCAGE_CUBES.to_vec()),
+                    ModelPart::leaf(WITHER_RIBCAGE_POSE, ribcage.to_vec()),
                 ),
-                (
-                    "tail",
-                    ModelPart::leaf(WITHER_TAIL_POSE, WITHER_TAIL_CUBES.to_vec()),
-                ),
+                ("tail", ModelPart::leaf(WITHER_TAIL_POSE, tail.to_vec())),
                 (
                     "center_head",
-                    ModelPart::leaf(WITHER_CENTER_HEAD_POSE, WITHER_CENTER_HEAD_CUBES.to_vec()),
+                    ModelPart::leaf(WITHER_CENTER_HEAD_POSE, center_head.to_vec()),
                 ),
                 (
                     "right_head",
-                    ModelPart::leaf(WITHER_RIGHT_HEAD_POSE, WITHER_SIDE_HEAD_CUBES.to_vec()),
+                    ModelPart::leaf(WITHER_RIGHT_HEAD_POSE, side_head.to_vec()),
                 ),
                 (
                     "left_head",
-                    ModelPart::leaf(WITHER_LEFT_HEAD_POSE, WITHER_SIDE_HEAD_CUBES.to_vec()),
+                    ModelPart::leaf(WITHER_LEFT_HEAD_POSE, side_head.to_vec()),
                 ),
             ],
         );

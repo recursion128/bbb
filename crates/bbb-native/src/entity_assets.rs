@@ -279,6 +279,7 @@ mod tests {
                 "textures/entity/shulker/spark.png",
                 "textures/entity/wither/wither.png",
                 "textures/entity/wither/wither_invulnerable.png",
+                "textures/entity/wither/wither_armor.png",
                 "textures/entity/projectiles/wind_charge.png",
                 "textures/entity/guardian/guardian.png",
                 "textures/entity/guardian/guardian_elder.png",
