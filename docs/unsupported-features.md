@@ -1449,9 +1449,12 @@ When an agent does any of the following, update this file in the same slice:
       The textured base layer draws the `textures/entity/strider/strider.png` /
       `strider_baby.png` atlas references into the cutout mesh (default
       `RenderTypes::entityCutout`), hand-emitted through the same animated leg/body/bristle
-      hierarchy as the colored path. The ridden pose (`isRidden` zeroing the body look), the
-      saddle equipment layer, and the cold/suffocating texture swap (`strider_cold.png` /
-      `strider_cold_baby.png`) and shake remain unsupported
+      hierarchy as the colored path. The cold/suffocating texture swap IS wired:
+      `StriderRenderer.getTextureLocation` returns `strider_cold.png` / `strider_cold_baby.png` when
+      `isSuffocating()`, projected onto `cold` from the synced `DATA_SUFFOCATING` flag (19) and selected
+      via `strider_texture_ref(baby, cold)` (the strider texture set grows to four). The ridden pose
+      (`isRidden` zeroing the body look), the saddle equipment layer, and the suffocating shake remain
+      unsupported
     - turtle entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `137` to the real `AdultTurtleModel` /
       `BabyTurtleModel`, replacing the former placeholder box, keyed off the synced
