@@ -2225,9 +2225,9 @@ When an agent does any of the following, update this file in the same slice:
       so the colored debug path renders a tan shell over a pale body. The texture-backed path remains
       unsupported (this is a colored-first slice)
     - fox entities (adult and baby) as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` /
-      `BabyFoxModel.createBodyLayer()` geometry on the colored path: the native entity scene
+      `BabyFoxModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `54` out of the cat/ocelot/fox wolf-shaped quadruped
-      proxy — both map to the new `EntityModelKind::Fox` (`baby` selecting the layout), replacing the
+      proxy — both map to `EntityModelKind::Fox { baby, variant }` (`baby` selecting the layout), replacing the
       wolf-shaped stand-in with the real fox mesh. The adult static rest-pose hierarchy is emitted directly
       (atlas 48×32): six root parts — the `head` at `offset(-1, 16.5, -3)` (the 8×6×6 skull, the two 2×2×1
       ears, and the 4×2×3 snout, the ears/snout at the head origin), the `body` at `offset(0, 16, -6)`
@@ -2259,9 +2259,11 @@ When an agent does any of the following, update this file in the same slice:
       bounding box, not the model). Deferred: the baby `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait (so a
       moving baby holds its bind legs — its flag poses still apply); the `FoxRenderer.setupRotations`
       body-PITCH flip for `isPouncing || isFaceplanted` (a renderer root-transform concern, like the death
-      tip-over); and the red/snow `Fox.Variant` idle/sleeping textures and the held-item layer, which live
-      on the deferred texture-backed path, so the colored debug path renders one orange tint (this is a
-      colored-first slice)
+      tip-over). The textured path now binds the full `FoxRenderer.getTextureLocation` matrix: the
+      native scene reads `DATA_TYPE_ID` (18, int) and `Fox.Variant.byId` selects red/snow, crossed
+      with the age (`fox`/`fox_baby`) and the projected `fox_is_sleeping` flag (`fox_sleep`/
+      `fox_snow_sleep` and their `_baby` cells) — eight textures total. Only the held-item layer
+      remains deferred
     - cat and ocelot entities (adult and baby) as renderer-owned vanilla 26.1
       `AdultFelineModel.createBodyMesh()` / `BabyFelineModel.createBodyMesh()` geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now splits vanilla type ids `21` (cat) and `91`
