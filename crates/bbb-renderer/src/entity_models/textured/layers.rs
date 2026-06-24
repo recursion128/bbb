@@ -790,6 +790,24 @@ pub(in crate::entity_models) fn rabbit_textured_layer_passes(
     )]
 }
 
+pub(in crate::entity_models) fn feline_textured_layer_passes(
+    cat: bool,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    // The cat and ocelot share `AbstractFelineModel`, so the pass differs only in which image it binds.
+    let texture = match (cat, baby) {
+        (true, false) => FELINE_CAT_TEXTURE_REF,
+        (true, true) => FELINE_CAT_BABY_TEXTURE_REF,
+        (false, false) => FELINE_OCELOT_TEXTURE_REF,
+        (false, true) => FELINE_OCELOT_BABY_TEXTURE_REF,
+    };
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        texture,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass {

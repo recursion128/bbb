@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 172] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 176] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -841,6 +841,10 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     FOX_BABY_TEXTURE_REF,
     RABBIT_TEXTURE_REF,
     RABBIT_BABY_TEXTURE_REF,
+    FELINE_CAT_TEXTURE_REF,
+    FELINE_CAT_BABY_TEXTURE_REF,
+    FELINE_OCELOT_TEXTURE_REF,
+    FELINE_OCELOT_BABY_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1735,6 +1739,40 @@ pub(in crate::entity_models) const RABBIT_ENTITY_TEXTURE_REFS: [EntityModelTextu
     [RABBIT_TEXTURE_REF, RABBIT_BABY_TEXTURE_REF];
 pub fn rabbit_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &RABBIT_ENTITY_TEXTURE_REFS
+}
+
+// The cat and ocelot share `AbstractFelineModel` (one UV layout per age), so the four refs differ only
+// in the image: the cat's default `cat_tabby` variant (`CatRenderState.DEFAULT_TEXTURE`) and the
+// ocelot, each with a 32×32 baby. The cat colour/breed variants need a further enum extension; only the
+// default `cat_tabby` is wired here.
+pub(in crate::entity_models) const FELINE_CAT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_tabby.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_tabby_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_OCELOT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/ocelot.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_OCELOT_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/ocelot_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
+    FELINE_CAT_TEXTURE_REF,
+    FELINE_CAT_BABY_TEXTURE_REF,
+    FELINE_OCELOT_TEXTURE_REF,
+    FELINE_OCELOT_BABY_TEXTURE_REF,
+];
+pub fn feline_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &FELINE_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

@@ -396,6 +396,22 @@ impl EntityModelKind {
             Self::Fox { baby: true } => Some(FOX_BABY_TEXTURE_REF),
             Self::Rabbit { baby: false } => Some(RABBIT_TEXTURE_REF),
             Self::Rabbit { baby: true } => Some(RABBIT_BABY_TEXTURE_REF),
+            Self::Feline {
+                cat: true,
+                baby: false,
+            } => Some(FELINE_CAT_TEXTURE_REF),
+            Self::Feline {
+                cat: true,
+                baby: true,
+            } => Some(FELINE_CAT_BABY_TEXTURE_REF),
+            Self::Feline {
+                cat: false,
+                baby: false,
+            } => Some(FELINE_OCELOT_TEXTURE_REF),
+            Self::Feline {
+                cat: false,
+                baby: true,
+            } => Some(FELINE_OCELOT_BABY_TEXTURE_REF),
             Self::Vex => Some(VEX_TEXTURE_REF),
             Self::Allay => Some(ALLAY_TEXTURE_REF),
             Self::Strider { baby: false } => Some(STRIDER_TEXTURE_REF),

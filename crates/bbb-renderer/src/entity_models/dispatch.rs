@@ -48,16 +48,17 @@ use super::textured::{
     chicken_textured_layer_passes, cow_textured_layer_passes, creaking_textured_layer_passes,
     creeper_textured_layer_passes, ender_dragon_textured_layer_passes,
     enderman_textured_layer_passes, endermite_textured_layer_passes,
-    evoker_fangs_textured_layer_passes, fox_textured_layer_passes, ghast_textured_layer_passes,
-    goat_textured_layer_passes, happy_ghast_textured_layer_passes, illager_textured_layer_passes,
-    iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
-    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
-    nautilus_textured_layer_passes, panda_textured_layer_passes, parrot_textured_layer_passes,
-    phantom_textured_layer_passes, pig_textured_layer_passes, polar_bear_textured_layer_passes,
-    rabbit_textured_layer_passes, ravager_textured_layer_passes, render_textured_layers,
-    salmon_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes, villager_textured_layer_passes,
+    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
+    ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
+    illager_textured_layer_passes, iron_golem_textured_layer_passes,
+    leash_knot_textured_layer_passes, magma_cube_textured_layer_passes,
+    minecart_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
+    parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
+    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
+    render_textured_layers, salmon_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
+    trident_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
     wolf_textured_layer_passes, zombie_textured_layer_passes, EntityModelLayerPass,
     EntityModelLayerRenderType, EntityModelTexturedMeshes,
@@ -656,7 +657,12 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             } else {
                 entity_model_root_transform(*instance)
             };
-            sink.model(FelineModel::new(baby), transform, instance, &[])
+            sink.model(
+                FelineModel::new(baby),
+                transform,
+                instance,
+                &feline_textured_layer_passes(cat, baby),
+            )
         }
 
         // Everything else is bespoke: leave it for the caller's per-path residual arm.

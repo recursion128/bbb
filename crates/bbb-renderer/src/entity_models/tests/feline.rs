@@ -123,17 +123,18 @@ fn baby_feline_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
-fn feline_mesh_matches_on_both_render_paths() {
-    // The feline is a colored-only entity, so the texture-skipping colored runtime path emits the
-    // exact same mesh as the full path (unlike the wolf proxy it replaced).
+fn feline_colored_runtime_skips_the_texture_backed_feline() {
+    // The cat and ocelot now carry vanilla texture UVs, so they render through the textured path. The
+    // texture-skipping colored runtime path emits nothing for them (any cat/ocelot × age combo), while
+    // the full path still emits the colored fallback geometry.
     let instances = [
         EntityModelInstance::feline(501, [0.0, 64.0, 0.0], 0.0, false, false),
         EntityModelInstance::feline(507, [4.0, 64.0, 0.0], 0.0, true, true),
     ];
-    let full = entity_model_mesh(&instances);
-    let colored = entity_model_colored_runtime_mesh(&instances);
-    assert_eq!(full.vertices, colored.vertices);
-    assert_eq!(full.indices, colored.indices);
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
 }
 
 #[test]
@@ -380,4 +381,66 @@ fn feline_exposes_stable_model_keys() {
         .model_key(),
         "feline_ocelot_baby"
     );
+}
+
+#[test]
+fn feline_textured_render_matches_vanilla_renderer() {
+    // The cat and ocelot share one model but bind different images: the cat's default `cat_tabby`
+    // variant and the ocelot, each with a 32×32 baby.
+    for (cat, baby, expected) in [
+        (true, false, FELINE_CAT_TEXTURE_REF),
+        (true, true, FELINE_CAT_BABY_TEXTURE_REF),
+        (false, false, FELINE_OCELOT_TEXTURE_REF),
+        (false, true, FELINE_OCELOT_BABY_TEXTURE_REF),
+    ] {
+        assert_eq!(feline_textured_layer_passes(cat, baby)[0].texture, expected);
+        assert_eq!(
+            feline_textured_layer_passes(cat, baby)[0].render_type,
+            EntityModelLayerRenderType::Cutout
+        );
+        assert_eq!(
+            EntityModelKind::Feline { cat, baby }.vanilla_texture_ref(),
+            Some(expected)
+        );
+        assert!(entity_model_texture_refs().contains(&expected));
+    }
+    assert_eq!(
+        feline_entity_texture_refs(),
+        &[
+            FELINE_CAT_TEXTURE_REF,
+            FELINE_CAT_BABY_TEXTURE_REF,
+            FELINE_OCELOT_TEXTURE_REF,
+            FELINE_OCELOT_BABY_TEXTURE_REF,
+        ]
+    );
+
+    let images: Vec<EntityModelTextureImage> = feline_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    for (cat, baby) in [(true, false), (true, true), (false, false), (false, true)] {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::feline(
+                900,
+                [0.0, 64.0, 0.0],
+                0.0,
+                cat,
+                baby,
+            )],
+            &atlas,
+        );
+        assert!(
+            !mesh.vertices.is_empty(),
+            "cat={cat} baby={baby} emits textured geometry"
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
 }
