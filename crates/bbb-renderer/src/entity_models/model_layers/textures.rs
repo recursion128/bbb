@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 157] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 162] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -826,6 +826,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     TRIDENT_TEXTURE_REF,
     EVOKER_FANGS_TEXTURE_REF,
     TADPOLE_TEXTURE_REF,
+    CREAKING_TEXTURE_REF,
+    SNIFFER_TEXTURE_REF,
+    PARROT_TEXTURE_REF,
+    SHULKER_TEXTURE_REF,
+    ENDER_DRAGON_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1569,6 +1574,75 @@ pub(in crate::entity_models) const TADPOLE_ENTITY_TEXTURE_REFS: [EntityModelText
 
 pub fn tadpole_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &TADPOLE_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const CREAKING_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/creaking/creaking.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const CREAKING_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [CREAKING_TEXTURE_REF];
+
+pub fn creaking_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &CREAKING_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const SNIFFER_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/sniffer/sniffer.png",
+        size: [192, 192],
+    };
+
+pub(in crate::entity_models) const SNIFFER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [SNIFFER_TEXTURE_REF];
+
+pub fn sniffer_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &SNIFFER_ENTITY_TEXTURE_REFS
+}
+
+// bbb's `EntityModelKind::Parrot` is a unit variant (no color), so only the default red/blue parrot
+// texture is selectable; the other four `Parrot.Variant` colours need an enum extension to wire.
+pub(in crate::entity_models) const PARROT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/parrot/parrot_red_blue.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const PARROT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [PARROT_TEXTURE_REF];
+
+pub fn parrot_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &PARROT_ENTITY_TEXTURE_REFS
+}
+
+// bbb's `EntityModelKind::Shulker` is a unit variant (no dye colour), so only the default (uncoloured)
+// shulker texture is selectable; the 16 dyed shulker textures need an enum extension to wire.
+pub(in crate::entity_models) const SHULKER_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/shulker.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const SHULKER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [SHULKER_TEXTURE_REF];
+
+pub fn shulker_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &SHULKER_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const ENDER_DRAGON_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/enderdragon/dragon.png",
+        size: [256, 256],
+    };
+
+pub(in crate::entity_models) const ENDER_DRAGON_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [ENDER_DRAGON_TEXTURE_REF];
+
+pub fn ender_dragon_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ENDER_DRAGON_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

@@ -132,3 +132,39 @@ fn creaking_walk_moves_the_limbs_and_composes_with_the_look() {
         "the look composes onto the walking head"
     );
 }
+
+#[test]
+fn creaking_textured_render_matches_vanilla_renderer() {
+    let passes = creaking_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(passes[0].texture, CREAKING_TEXTURE_REF);
+    assert_eq!(
+        EntityModelKind::Creaking.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/creaking/creaking.png",
+            size: [64, 64],
+        })
+    );
+    assert!(entity_model_texture_refs().contains(&CREAKING_TEXTURE_REF));
+    assert_eq!(creaking_entity_texture_refs(), &[CREAKING_TEXTURE_REF]);
+
+    let images: Vec<EntityModelTextureImage> = creaking_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::creaking(900, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert!(!mesh.vertices.is_empty());
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}

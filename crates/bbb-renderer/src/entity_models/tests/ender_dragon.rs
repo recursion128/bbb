@@ -81,3 +81,46 @@ fn ender_dragon_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(DRAGON_MEMBRANE, 1.0)));
 }
+
+#[test]
+fn ender_dragon_textured_render_matches_vanilla_renderer() {
+    let passes = ender_dragon_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(passes[0].texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(
+        EntityModelKind::EnderDragon.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/enderdragon/dragon.png",
+            size: [256, 256],
+        })
+    );
+    assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_TEXTURE_REF));
+    assert_eq!(
+        ender_dragon_entity_texture_refs(),
+        &[ENDER_DRAGON_TEXTURE_REF]
+    );
+
+    let images: Vec<EntityModelTextureImage> = ender_dragon_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::ender_dragon(
+            900,
+            [0.0, 64.0, 0.0],
+            0.0,
+        )],
+        &atlas,
+    );
+    assert!(!mesh.vertices.is_empty());
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}

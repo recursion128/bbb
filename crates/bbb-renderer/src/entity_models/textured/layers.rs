@@ -682,6 +682,46 @@ pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityMod
     )]
 }
 
+pub(in crate::entity_models) fn creaking_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        CREAKING_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn sniffer_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        SNIFFER_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn parrot_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        PARROT_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn shulker_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        SHULKER_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        ENDER_DRAGON_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass {
