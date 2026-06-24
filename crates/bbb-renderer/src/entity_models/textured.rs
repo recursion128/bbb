@@ -39,6 +39,7 @@ use super::{
     squid_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
+use glam::Mat4;
 
 mod layers;
 #[cfg(test)]
@@ -58,7 +59,8 @@ pub(super) use layers::{
     spider_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
     witch_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderType,
 };
 
 pub(super) struct EntityModelTexturedMeshes {
@@ -374,16 +376,56 @@ fn emit_boat_textured_model(
     let transform = boat_model_root_transform(instance);
     let mut model = BoatModel::new(family, chest);
     model.prepare(&instance);
-    for pass in boat_textured_layer_passes(family, chest) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        boat_textured_layer_passes(family, chest),
+        atlas,
+    );
+}
+
+/// Render one textured pass of an already-prepared model: look up the texture's atlas entry and,
+/// if present, walk the posed tree into the pass's mesh. The shared terminal of every textured
+/// emit — the textured analogue of the colored path's `render_colored`.
+fn render_textured_pass<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) {
+        model.root().render_textured(
+            meshes.mesh_mut(render_type),
+            transform,
+            texture,
+            entry.uv,
+            tint,
+        );
+    }
+}
+
+/// Render a model's full textured layer-pass list (already prepared) into `meshes`.
+fn render_textured_layers<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    passes: impl IntoIterator<Item = EntityModelLayerPass>,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    for pass in passes {
+        render_textured_pass(
+            meshes,
+            model,
+            transform,
+            pass.render_type,
+            pass.texture,
+            pass.tint,
+            atlas,
+        );
     }
 }
 
@@ -399,17 +441,13 @@ fn emit_chicken_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = ChickenModel::new(variant, baby);
     model.prepare(&instance);
-    for pass in chicken_textured_layer_passes(variant, baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        chicken_textured_layer_passes(variant, baby),
+        atlas,
+    );
 }
 
 fn emit_pig_textured_model(
@@ -424,17 +462,13 @@ fn emit_pig_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = PigModel::new(variant, baby);
     model.prepare(&instance);
-    for pass in pig_textured_layer_passes(variant, baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        pig_textured_layer_passes(variant, baby),
+        atlas,
+    );
 }
 
 fn emit_cow_textured_model(
@@ -449,17 +483,13 @@ fn emit_cow_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = CowModel::new(variant, baby);
     model.prepare(&instance);
-    for pass in cow_textured_layer_passes(variant, baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        cow_textured_layer_passes(variant, baby),
+        atlas,
+    );
 }
 
 /// The textured camel base layer. Vanilla `CamelModel.setupAnim` drives every limb via
@@ -481,17 +511,13 @@ fn emit_camel_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = CamelModel::new(family, baby);
     model.prepare(&instance);
-    for pass in camel_textured_layer_passes(family, baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        camel_textured_layer_passes(family, baby),
+        atlas,
+    );
 }
 
 /// The textured cod base layer. The cod parts are static, so the body/head/nose/fins
@@ -509,15 +535,15 @@ fn emit_cod_textured_model(
     let transform = cod_model_root_transform(instance, in_water);
     let mut model = CodModel::new();
     model.prepare(&instance);
-    if let Some(entry) = entity_model_texture_atlas_entry(atlas, COD_TEXTURE_REF) {
-        model.root().render_textured(
-            meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
-            transform,
-            COD_TEXTURE_REF,
-            entry.uv,
-            [1.0, 1.0, 1.0, 1.0],
-        );
-    }
+    render_textured_pass(
+        meshes,
+        &model,
+        transform,
+        EntityModelLayerRenderType::Cutout,
+        COD_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        atlas,
+    );
 }
 
 /// The textured salmon base layer. The salmon parts are static apart from the back body
@@ -537,17 +563,13 @@ fn emit_salmon_textured_model(
     let transform = salmon_model_root_transform(instance, in_water, size);
     let mut model = SalmonModel::new();
     model.prepare(&instance);
-    for pass in salmon_textured_layer_passes(size) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        salmon_textured_layer_passes(size),
+        atlas,
+    );
 }
 
 /// The textured tropical fish base layer plus the `TropicalFishPatternLayer` overlay. The unified
@@ -603,18 +625,17 @@ fn emit_squid_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let texture = squid_texture_ref(glow, baby);
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
     let transform = squid_model_root_transform(instance, baby);
     let mut model = SquidModel::new();
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         texture,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -627,18 +648,17 @@ fn emit_vex_textured_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, VEX_TEXTURE_REF) else {
-        return;
-    };
     let transform = entity_model_root_transform(instance);
     let mut model = VexModel::new();
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Translucent),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Translucent,
         VEX_TEXTURE_REF,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -656,18 +676,17 @@ fn emit_allay_textured_model(
 ) {
     // The unified `AllayModel` tree drives both render paths; `setup_anim` runs the shared
     // `AllayModel.setupAnim` idle/flying pose. Allay draws into a single translucent layer.
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, ALLAY_TEXTURE_REF) else {
-        return;
-    };
     let transform = entity_model_root_transform(instance);
     let mut model = AllayModel::new();
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Translucent),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Translucent,
         ALLAY_TEXTURE_REF,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -686,18 +705,17 @@ fn emit_strider_textured_model(
     } else {
         STRIDER_TEXTURE_REF
     };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
     let transform = entity_model_root_transform(instance);
     let mut model = StriderModel::new(baby);
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         texture,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -722,9 +740,6 @@ fn emit_turtle_textured_model(
     } else {
         TURTLE_TEXTURE_REF
     };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
     let has_egg = !baby && instance.render_state.turtle_has_egg;
     let mut transform = entity_model_root_transform(instance);
     if has_egg {
@@ -732,12 +747,14 @@ fn emit_turtle_textured_model(
     }
     let mut model = TurtleModel::new(baby);
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         texture,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -750,18 +767,17 @@ fn emit_bat_textured_model(
     // `BatAnimation.BAT_FLYING` (or the `BAT_RESTING` hanging pose while `isResting`) and turns the
     // resting head by the look yaw. The base layer draws into the cutout mesh (vanilla
     // `RenderTypes::entityCutoutCull`).
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, BAT_TEXTURE_REF) else {
-        return;
-    };
     let transform = entity_model_root_transform(instance);
     let mut model = BatModel::new();
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         BAT_TEXTURE_REF,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -780,18 +796,17 @@ fn emit_bee_textured_model(
     } else {
         BEE_TEXTURE_REF
     };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
     let transform = entity_model_root_transform(instance);
     let mut model = BeeModel::new(baby);
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         texture,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -803,18 +818,17 @@ fn emit_breeze_textured_model(
     // The unified `BreezeModel` tree drives both render paths; `setup_anim` samples the looping
     // `BreezeAnimation.IDLE`. The base body draws into the translucent mesh (vanilla `BreezeModel`
     // uses `RenderTypes::entityTranslucent`).
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, BREEZE_TEXTURE_REF) else {
-        return;
-    };
     let transform = entity_model_root_transform(instance);
     let mut model = BreezeModel::new();
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Translucent),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Translucent,
         BREEZE_TEXTURE_REF,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -833,19 +847,18 @@ fn emit_dolphin_textured_model(
     } else {
         DOLPHIN_TEXTURE_REF
     };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
     let transform =
         mesh_transformer_scaled_model_root_transform(instance, if baby { 0.5 } else { 1.0 });
     let mut model = DolphinModel::new();
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         texture,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -865,17 +878,13 @@ fn emit_llama_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = LlamaModel::new(baby, has_chest);
     model.prepare(&instance);
-    for pass in llama_textured_layer_passes(variant, baby, has_chest) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        llama_textured_layer_passes(variant, baby, has_chest),
+        atlas,
+    );
 }
 
 fn emit_creeper_textured_model(
@@ -889,17 +898,13 @@ fn emit_creeper_textured_model(
     let transform = creeper_model_root_transform(instance);
     let mut model = CreeperModel::new();
     model.prepare(&instance);
-    for pass in creeper_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        creeper_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_spider_textured_model(
@@ -918,17 +923,13 @@ fn emit_spider_textured_model(
     };
     let mut model = SpiderModel::new();
     model.prepare(&instance);
-    for pass in spider_textured_layer_passes(cave) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        spider_textured_layer_passes(cave),
+        atlas,
+    );
 }
 
 fn emit_enderman_textured_model(
@@ -942,17 +943,13 @@ fn emit_enderman_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = EndermanModel::new();
     model.prepare(&instance);
-    for pass in enderman_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        enderman_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_iron_golem_textured_model(
@@ -965,17 +962,13 @@ fn emit_iron_golem_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = IronGolemModel::new();
     model.prepare(&instance);
-    for pass in iron_golem_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        iron_golem_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_snow_golem_textured_model(
@@ -988,17 +981,13 @@ fn emit_snow_golem_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = SnowGolemModel::new();
     model.prepare(&instance);
-    for pass in snow_golem_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        snow_golem_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_witch_textured_model(
@@ -1012,17 +1001,13 @@ fn emit_witch_textured_model(
     let transform = villager_adult_model_root_transform(instance);
     let mut model = WitchModel::new();
     model.prepare(&instance);
-    for pass in witch_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        witch_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_slime_textured_model(
@@ -1068,17 +1053,13 @@ fn emit_magma_cube_textured_model(
     let transform = magma_cube_model_root_transform(instance, size);
     let mut model = MagmaCubeModel::new();
     model.prepare(&instance);
-    for pass in magma_cube_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        magma_cube_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_ghast_textured_model(
@@ -1091,17 +1072,13 @@ fn emit_ghast_textured_model(
     let transform = ghast_model_root_transform(instance);
     let mut model = GhastModel::new();
     model.prepare(&instance);
-    for pass in ghast_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        ghast_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_happy_ghast_textured_model(
@@ -1114,17 +1091,13 @@ fn emit_happy_ghast_textured_model(
     let transform = happy_ghast_model_root_transform(instance);
     let mut model = HappyGhastModel::new();
     model.prepare(&instance);
-    for pass in happy_ghast_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        happy_ghast_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_minecart_textured_model(
@@ -1137,17 +1110,13 @@ fn emit_minecart_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = MinecartModel::new();
     model.prepare(&instance);
-    for pass in minecart_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        minecart_textured_layer_passes(),
+        atlas,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1163,18 +1132,17 @@ fn emit_armor_stand_textured_model(
     // The unified `ArmorStandModel` tree drives both render paths; `new` selects the small / full layer
     // and `setup_anim` poses each part from the synced pose (degrees), hides the arms / base plate by
     // visibility, and yaws the base plate by `-bodyRot`. Draws into the cutout mesh.
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, ARMOR_STAND_TEXTURE_REF) else {
-        return;
-    };
     let transform = entity_model_root_transform(instance);
     let mut model = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         ARMOR_STAND_TEXTURE_REF,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -1189,17 +1157,13 @@ fn emit_zombie_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = ZombieModel::new(baby);
     model.prepare(&instance);
-    for pass in zombie_textured_layer_passes(baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        zombie_textured_layer_passes(baby),
+        atlas,
+    );
 }
 
 fn emit_husk_textured_model(
@@ -1219,17 +1183,13 @@ fn emit_husk_textured_model(
     };
     let mut model = ZombieVariantModel::new(ZombieVariantModelFamily::Husk, baby);
     model.prepare(&instance);
-    for pass in husk_textured_layer_passes(baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        husk_textured_layer_passes(baby),
+        atlas,
+    );
 }
 
 fn emit_drowned_textured_model(
@@ -1245,17 +1205,13 @@ fn emit_drowned_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, baby);
     model.prepare(&instance);
-    for pass in drowned_textured_layer_passes(baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        drowned_textured_layer_passes(baby),
+        atlas,
+    );
 }
 
 fn emit_zombie_villager_textured_model(
@@ -1271,17 +1227,13 @@ fn emit_zombie_villager_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = ZombieVariantModel::new(ZombieVariantModelFamily::ZombieVillager, baby);
     model.prepare(&instance);
-    for pass in zombie_villager_textured_layer_passes(baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        zombie_villager_textured_layer_passes(baby),
+        atlas,
+    );
 }
 
 fn emit_piglin_textured_model(
@@ -1299,17 +1251,13 @@ fn emit_piglin_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = PiglinModel::new(family, baby);
     model.prepare(&instance);
-    for pass in piglin_textured_layer_passes(family, baby_layout) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        piglin_textured_layer_passes(family, baby_layout),
+        atlas,
+    );
 }
 
 fn emit_illager_textured_model(
@@ -1327,17 +1275,13 @@ fn emit_illager_textured_model(
     let transform = villager_adult_model_root_transform(instance);
     let mut model = IllagerModel::new(&instance, family);
     model.prepare(&instance);
-    for pass in illager_textured_layer_passes(family) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        illager_textured_layer_passes(family),
+        atlas,
+    );
 }
 
 fn emit_blaze_textured_model(
@@ -1351,17 +1295,13 @@ fn emit_blaze_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = BlazeModel::new();
     model.prepare(&instance);
-    for pass in blaze_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        blaze_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_endermite_textured_model(
@@ -1374,17 +1314,13 @@ fn emit_endermite_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = EndermiteModel::new();
     model.prepare(&instance);
-    for pass in endermite_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        endermite_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_silverfish_textured_model(
@@ -1398,17 +1334,13 @@ fn emit_silverfish_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = SilverfishModel::new();
     model.prepare(&instance);
-    for pass in silverfish_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        silverfish_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_phantom_textured_model(
@@ -1424,17 +1356,13 @@ fn emit_phantom_textured_model(
     let transform = phantom_model_root_transform(instance, size);
     let mut model = PhantomModel::new();
     model.prepare(&instance);
-    for pass in phantom_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        phantom_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_pufferfish_textured_model(
@@ -1446,18 +1374,17 @@ fn emit_pufferfish_textured_model(
     // The unified `PufferfishModel` tree drives both render paths; `new` picks the small/mid/big parts
     // by puff state and `setup_anim` wiggles its two fins on `ageInTicks`. A single cutout pass over
     // `pufferfish.png` (no eyes layer).
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, PUFFERFISH_TEXTURE_REF) else {
-        return;
-    };
     let transform = pufferfish_model_root_transform(instance);
     let mut model = PufferfishModel::new(puff_state);
     model.prepare(&instance);
-    model.root().render_textured(
-        meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+    render_textured_pass(
+        meshes,
+        &model,
         transform,
+        EntityModelLayerRenderType::Cutout,
         PUFFERFISH_TEXTURE_REF,
-        entry.uv,
         [1.0, 1.0, 1.0, 1.0],
+        atlas,
     );
 }
 
@@ -1476,17 +1403,13 @@ fn emit_polar_bear_textured_model(
     };
     let mut model = PolarBearModel::new(baby);
     model.prepare(&instance);
-    for pass in polar_bear_textured_layer_passes(baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        polar_bear_textured_layer_passes(baby),
+        atlas,
+    );
 }
 
 fn emit_hoglin_textured_model(
@@ -1502,17 +1425,13 @@ fn emit_hoglin_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = HoglinModel::new(baby);
     model.prepare(&instance);
-    for pass in hoglin_textured_layer_passes(family, baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        hoglin_textured_layer_passes(family, baby),
+        atlas,
+    );
 }
 
 fn emit_ravager_textured_model(
@@ -1526,17 +1445,13 @@ fn emit_ravager_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = RavagerModel::new();
     model.prepare(&instance);
-    for pass in ravager_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        ravager_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_villager_textured_model(
@@ -1554,17 +1469,13 @@ fn emit_villager_textured_model(
     };
     let mut model = VillagerModel::new(baby);
     model.prepare(&instance);
-    for pass in villager_textured_layer_passes(baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        villager_textured_layer_passes(baby),
+        atlas,
+    );
 }
 
 fn emit_wandering_trader_textured_model(
@@ -1577,17 +1488,13 @@ fn emit_wandering_trader_textured_model(
     let transform = villager_adult_model_root_transform(instance);
     let mut model = WanderingTraderModel::new();
     model.prepare(&instance);
-    for pass in wandering_trader_textured_layer_passes() {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        wandering_trader_textured_layer_passes(),
+        atlas,
+    );
 }
 
 fn emit_player_textured_model(
@@ -1606,17 +1513,13 @@ fn emit_player_textured_model(
     let mut model = PlayerModel::new(slim);
     model.prepare(&instance);
     model.apply_part_visibility(parts);
-    for pass in player_textured_layer_passes(slim, parts) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        player_textured_layer_passes(slim, parts),
+        atlas,
+    );
 }
 
 fn emit_sheep_textured_model(
@@ -1674,17 +1577,13 @@ fn emit_wolf_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = WolfModel::new(baby, angry);
     model.prepare(&instance);
-    for pass in wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        wolf_textured_layer_passes(baby, tame, angry, invisible, collar_color),
+        atlas,
+    );
 }
 
 fn emit_goat_textured_model(
@@ -1700,17 +1599,13 @@ fn emit_goat_textured_model(
     let transform = entity_model_root_transform(instance);
     let mut model = GoatModel::new(baby, left_horn, right_horn);
     model.prepare(&instance);
-    for pass in goat_textured_layer_passes(baby) {
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            model.root().render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
-    }
+    render_textured_layers(
+        meshes,
+        &model,
+        transform,
+        goat_textured_layer_passes(baby),
+        atlas,
+    );
 }
 
 fn emit_skeleton_textured_model(
