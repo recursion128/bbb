@@ -185,6 +185,8 @@ mod tests {
                 "textures/entity/cat/cat_tabby_baby.png",
                 "textures/entity/cat/ocelot.png",
                 "textures/entity/cat/ocelot_baby.png",
+                "textures/entity/cow/mooshroom_red.png",
+                "textures/entity/cow/mooshroom_red_baby.png",
                 "textures/entity/phantom/phantom.png",
                 "textures/entity/phantom/phantom_eyes.png",
                 "textures/entity/fish/pufferfish.png",

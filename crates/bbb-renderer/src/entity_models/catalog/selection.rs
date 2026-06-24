@@ -412,6 +412,8 @@ impl EntityModelKind {
                 cat: false,
                 baby: true,
             } => Some(FELINE_OCELOT_BABY_TEXTURE_REF),
+            Self::Mooshroom { baby: false } => Some(MOOSHROOM_TEXTURE_REF),
+            Self::Mooshroom { baby: true } => Some(MOOSHROOM_BABY_TEXTURE_REF),
             Self::Vex => Some(VEX_TEXTURE_REF),
             Self::Allay => Some(ALLAY_TEXTURE_REF),
             Self::Strider { baby: false } => Some(STRIDER_TEXTURE_REF),
@@ -428,6 +430,8 @@ impl EntityModelKind {
             Self::Pufferfish { .. } => Some(PUFFERFISH_TEXTURE_REF),
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
+            // Vanilla `GiantMobRenderer` reuses the plain zombie texture on a scaled humanoid.
+            Self::Giant => Some(ZOMBIE_TEXTURE_REF),
             Self::ZombieVariant {
                 family: ZombieVariantModelFamily::Husk,
                 baby: false,

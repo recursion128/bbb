@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 176] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 178] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -845,6 +845,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     FELINE_CAT_BABY_TEXTURE_REF,
     FELINE_OCELOT_TEXTURE_REF,
     FELINE_OCELOT_BABY_TEXTURE_REF,
+    MOOSHROOM_TEXTURE_REF,
+    MOOSHROOM_BABY_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1773,6 +1775,26 @@ pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextu
 ];
 pub fn feline_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &FELINE_ENTITY_TEXTURE_REFS
+}
+
+// The mooshroom shares the cow model (`ModelLayers.MOOSHROOM` is the cow mesh), so it reuses the cow
+// UV layout and only swaps in the mooshroom recolor. Vanilla `MushroomCowRenderer` keys the texture on
+// the red/brown variant; bbb's `Mooshroom { baby }` carries no colour yet, so only the default red is
+// wired (the brown variant and the `MushroomCowMushroomLayer` block-mushrooms stay deferred).
+pub(in crate::entity_models) const MOOSHROOM_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/mooshroom_red.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const MOOSHROOM_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/mooshroom_red_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const MOOSHROOM_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [MOOSHROOM_TEXTURE_REF, MOOSHROOM_BABY_TEXTURE_REF];
+pub fn mooshroom_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &MOOSHROOM_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

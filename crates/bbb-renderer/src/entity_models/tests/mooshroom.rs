@@ -55,24 +55,20 @@ fn baby_mooshroom_mesh_matches_the_baby_cow_body() {
 }
 
 #[test]
-fn mooshroom_renders_on_the_colored_path_unlike_the_graduated_cow() {
-    // The mooshroom is a colored-only slice (the mushroom block-model layer and red/brown textures are
-    // deferred), so it renders on both paths identically. The graduated cow, by contrast, is skipped on
-    // the colored runtime path.
+fn mooshroom_colored_runtime_skips_the_texture_backed_mooshroom() {
+    // The mooshroom now binds the mooshroom recolor over the shared cow geometry, so — like the cow it
+    // reuses — it renders on the textured path and the colored runtime path skips it (the full path
+    // still emits the colored fallback). The block-mushroom layer and red/brown variants stay deferred.
     let mooshroom_instances = [EntityModelInstance::mooshroom(
         703,
         [0.0, 64.0, 0.0],
         0.0,
         false,
     )];
-    let full = entity_model_mesh(&mooshroom_instances);
-    let colored = entity_model_colored_runtime_mesh(&mooshroom_instances);
-    assert!(
-        !colored.vertices.is_empty(),
-        "the mooshroom renders colored"
-    );
-    assert_eq!(full.vertices, colored.vertices);
-    assert_eq!(full.indices, colored.indices);
+    assert!(!entity_model_mesh(&mooshroom_instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&mooshroom_instances)
+        .vertices
+        .is_empty());
 
     let cow_colored = entity_model_colored_runtime_mesh(&[EntityModelInstance::cow(
         703,
@@ -82,7 +78,7 @@ fn mooshroom_renders_on_the_colored_path_unlike_the_graduated_cow() {
     )]);
     assert!(
         cow_colored.vertices.is_empty(),
-        "the graduated cow is skipped on the colored runtime path"
+        "the textured cow is likewise skipped on the colored runtime path"
     );
 }
 
@@ -96,4 +92,68 @@ fn mooshroom_exposes_stable_model_keys() {
         EntityModelKind::Mooshroom { baby: true }.model_key(),
         "mooshroom_baby"
     );
+}
+
+#[test]
+fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
+    assert_eq!(
+        mooshroom_textured_layer_passes(false)[0].texture,
+        MOOSHROOM_TEXTURE_REF
+    );
+    assert_eq!(
+        mooshroom_textured_layer_passes(true)[0].texture,
+        MOOSHROOM_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::Mooshroom { baby: false }.vanilla_texture_ref(),
+        Some(MOOSHROOM_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Mooshroom { baby: true }.vanilla_texture_ref(),
+        Some(MOOSHROOM_BABY_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&MOOSHROOM_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&MOOSHROOM_BABY_TEXTURE_REF));
+    assert_eq!(
+        mooshroom_entity_texture_refs(),
+        &[MOOSHROOM_TEXTURE_REF, MOOSHROOM_BABY_TEXTURE_REF]
+    );
+
+    // The atlas carries both the mooshroom recolor and the cow textures so the cow comparison emit
+    // below can resolve its own texture.
+    let images: Vec<EntityModelTextureImage> = mooshroom_entity_texture_refs()
+        .iter()
+        .chain(cow_entity_texture_refs())
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    for baby in [false, true] {
+        let mooshroom = entity_model_textured_mesh(
+            &[EntityModelInstance::mooshroom(
+                900,
+                [0.0, 64.0, 0.0],
+                0.0,
+                baby,
+            )],
+            &atlas,
+        );
+        // The mooshroom reuses the cow tree, so it emits the same textured geometry the cow does.
+        let cow = entity_model_textured_mesh(
+            &[EntityModelInstance::cow(901, [0.0, 64.0, 0.0], 0.0, baby)],
+            &atlas,
+        );
+        assert!(
+            !mooshroom.vertices.is_empty(),
+            "baby={baby} emits textured geometry"
+        );
+        assert_eq!(mooshroom.vertices.len(), cow.vertices.len());
+        assert!(mooshroom
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
 }

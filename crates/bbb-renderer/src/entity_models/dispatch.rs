@@ -52,13 +52,13 @@ use super::textured::{
     ghast_textured_layer_passes, goat_textured_layer_passes, happy_ghast_textured_layer_passes,
     illager_textured_layer_passes, iron_golem_textured_layer_passes,
     leash_knot_textured_layer_passes, magma_cube_textured_layer_passes,
-    minecart_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
-    parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
-    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
-    render_textured_layers, salmon_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
-    trident_textured_layer_passes, villager_textured_layer_passes,
+    minecart_textured_layer_passes, mooshroom_textured_layer_passes,
+    nautilus_textured_layer_passes, panda_textured_layer_passes, parrot_textured_layer_passes,
+    phantom_textured_layer_passes, pig_textured_layer_passes, polar_bear_textured_layer_passes,
+    rabbit_textured_layer_passes, ravager_textured_layer_passes, render_textured_layers,
+    salmon_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, witch_textured_layer_passes,
     wolf_textured_layer_passes, zombie_textured_layer_passes, EntityModelLayerPass,
     EntityModelLayerRenderType, EntityModelTexturedMeshes,
@@ -565,7 +565,9 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             ZombieModel::new(false),
             mesh_transformer_scaled_model_root_transform(*instance, GIANT_SCALE),
             instance,
-            &[],
+            // Vanilla `GiantMobRenderer` renders a `HumanoidModel` with the plain zombie texture, just
+            // scaled by `GIANT_SCALE`; reuse the zombie pass (geometry comes from `ZombieModel`).
+            &zombie_textured_layer_passes(false),
         ),
         EntityModelKind::EvokerFangs => sink.model(
             EvokerFangsModel::new(),
@@ -625,7 +627,9 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             CowModel::new(CowModelVariant::Temperate, baby),
             entity_model_root_transform(*instance),
             instance,
-            &[],
+            // Vanilla `MushroomCowRenderer` renders the cow mesh with the mooshroom recolor; reuse the
+            // cow geometry and bind the mooshroom texture (the block-mushroom layer stays deferred).
+            &mooshroom_textured_layer_passes(baby),
         ),
         EntityModelKind::Panda { baby } => sink.model(
             PandaModel::new(baby),
