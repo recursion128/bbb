@@ -463,6 +463,14 @@ pub struct EntityModelSourceState {
     /// ([`vanilla_is_vex`](crate::entities::dimensions)); `false` for every other entity.
     #[serde(default)]
     pub vex_charging: bool,
+    /// Vanilla `WitherRenderState.invulnerableTicks` (`WitherBoss.getInvulnerableTicks`, the synced
+    /// `DATA_ID_INV` spawn countdown, lerped `invulnerableTicks - partialTicks`): the wither's
+    /// spawn-charge progress. `WitherBossRenderer.scale` shrinks the model by
+    /// `invulnerableTicks / 220 * 0.5` off the base `2.0` scale, and `getTextureLocation` swaps in
+    /// `wither_invulnerable.png` (flickering every 5 ticks once `<= 80`). Projected only for the
+    /// wither ([`vanilla_is_wither`](crate::entities::dimensions)); `0.0` for every other entity.
+    #[serde(default)]
+    pub wither_invulnerable_ticks: f32,
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Entity.isCrouching`, the synced
     /// `Pose.CROUCHING`): a sneaking player, whose `HumanoidModel.setupAnim` leans the body,
     /// drops the head, tucks the legs and tilts the arms. Projected only for the player (the

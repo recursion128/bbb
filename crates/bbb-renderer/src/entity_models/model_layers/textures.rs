@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 189] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 190] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -851,6 +851,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     LLAMA_SPIT_TEXTURE_REF,
     SHULKER_BULLET_TEXTURE_REF,
     WITHER_TEXTURE_REF,
+    WITHER_INVULNERABLE_TEXTURE_REF,
     WIND_CHARGE_TEXTURE_REF,
     GUARDIAN_TEXTURE_REF,
     GUARDIAN_ELDER_TEXTURE_REF,
@@ -1809,7 +1810,8 @@ pub fn mooshroom_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 }
 
 // Projectiles: small single-texture models. `WITHER_TEXTURE_REF` (wither.png) is shared by the wither
-// skull and the wither boss; the wither_invulnerable / tipped-arrow / spectral variants stay deferred.
+// skull and the wither boss (which also swaps in `WITHER_INVULNERABLE_TEXTURE_REF` mid-spawn); the
+// tipped-arrow / spectral arrow variants stay deferred.
 pub(in crate::entity_models) const ARROW_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/projectiles/arrow.png",
@@ -1848,10 +1850,22 @@ pub(in crate::entity_models) const WITHER_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/wither/wither.png",
         size: [64, 64],
     };
+// The wither boss swaps to this during its spawn charge (`WitherBossRenderer.getTextureLocation`).
+pub(in crate::entity_models) const WITHER_INVULNERABLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/wither/wither_invulnerable.png",
+        size: [64, 64],
+    };
 pub(in crate::entity_models) const WITHER_SKULL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
     [WITHER_TEXTURE_REF];
 pub fn wither_skull_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WITHER_SKULL_ENTITY_TEXTURE_REFS
+}
+// The wither boss covers both its normal and spawn-charge textures.
+pub(in crate::entity_models) const WITHER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [WITHER_TEXTURE_REF, WITHER_INVULNERABLE_TEXTURE_REF];
+pub fn wither_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &WITHER_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const WIND_CHARGE_TEXTURE_REF: EntityModelTextureRef =

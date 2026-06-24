@@ -357,6 +357,13 @@ entity_render_state! {
     /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
     /// The held-item arm variant (`xRot = π·7/6`) stays deferred pending held-item projection.
     (with_vex_charging) vex_charging: bool = false;
+    /// Vanilla `WitherRenderState.invulnerableTicks` (`WitherBoss.getInvulnerableTicks`, the synced
+    /// `DATA_ID_INV` spawn countdown, lerped `invulnerableTicks - partialTicks`): the wither's
+    /// spawn-charge progress. `WitherBossRenderer.scale` shrinks the model by
+    /// `invulnerableTicks / 220 * 0.5` off its base `2.0` scale ([`wither_model_root_transform`]),
+    /// and `getTextureLocation` swaps to `wither_invulnerable.png` (flickering every 5 ticks once
+    /// `<= 80`). `0.0` for every other entity and for a fully-spawned wither.
+    (with_wither_invulnerable_ticks) wither_invulnerable_ticks: f32 = 0.0;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -1456,6 +1463,7 @@ mod tests {
                 fox_is_pouncing: false,
                 fox_is_faceplanted: false,
                 vex_charging: false,
+                wither_invulnerable_ticks: 0.0,
                 illager_spellcasting: false,
                 is_crouching: false,
                 invisible: false,

@@ -21,7 +21,7 @@ use super::colored::{
     polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, trident_model_root_transform,
     villager_adult_model_root_transform, wind_charge_model_root_transform,
-    wither_skull_model_root_transform, GIANT_SCALE,
+    wither_model_root_transform, wither_skull_model_root_transform, GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
@@ -562,9 +562,9 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         ),
         EntityModelKind::Wither => sink.model(
             WitherModel::new(),
-            entity_model_root_transform(*instance),
+            wither_model_root_transform(*instance),
             instance,
-            &wither_textured_layer_passes(),
+            &wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks),
         ),
         EntityModelKind::Giant => sink.model(
             ZombieModel::new(false),

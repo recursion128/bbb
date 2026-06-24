@@ -72,6 +72,23 @@ pub(in crate::entity_models) fn creeper_model_root_transform(
     )
 }
 
+/// Vanilla `WitherBossRenderer.scale` uniform model scale, applied at the per-renderer `this.scale()`
+/// hook (after the `(-1, -1, 1)` flip, before the `-1.501` y-offset): `scale = 2.0`, minus
+/// `invulnerableTicks / 220 * 0.5` while the wither is mid-spawn (`invulnerableTicks > 0`). So a
+/// fully-spawned wither is a flat `2.0×`, and a freshly-summoned one starts at `1.5×` and grows to
+/// full over its 220-tick spawn charge.
+pub(in crate::entity_models) fn wither_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    let invulnerable_ticks = instance.render_state.wither_invulnerable_ticks;
+    let mut scale = 2.0;
+    if invulnerable_ticks > 0.0 {
+        scale -= invulnerable_ticks / 220.0 * 0.5;
+    }
+    living_entity_model_root_transform_with_renderer_transform(
+        instance,
+        Mat4::from_scale(Vec3::splat(scale)),
+    )
+}
+
 /// Vanilla `LivingEntityRenderer.submit` bed head-offset translate, applied before
 /// the entity scale (so it is in world units): `translate(-stepX * headOffset, 0,
 /// -stepZ * headOffset)` while sleeping in a bed. Identity otherwise. Our post-`T(pos)`

@@ -471,6 +471,7 @@ fn entity_model_instance(
         .with_camel_sit_pose_seconds(camel_sit.sit_pose_seconds)
         .with_camel_standup_seconds(camel_sit.standup_seconds)
         .with_vex_charging(source.vex_charging)
+        .with_wither_invulnerable_ticks(source.wither_invulnerable_ticks)
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,

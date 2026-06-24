@@ -156,31 +156,88 @@ fn wither_ribcage_and_tail_breathe_with_age() {
 
 #[test]
 fn wither_textured_render_matches_vanilla_renderer() {
-    // The wither boss shares `wither.png` with the wither skull; the invulnerable-shimmer overlay is
-    // deferred.
+    // Vanilla `WitherBossRenderer.getTextureLocation`: `i = floor(invulnerableTicks)`; the
+    // `wither_invulnerable.png` armor shows while `i > 0 && (i > 80 || i / 5 % 2 != 1)`. A fully-spawned
+    // wither (`0`) and the flicker-off windows show `wither.png`.
     assert_eq!(
-        wither_textured_layer_passes()[0].texture,
-        WITHER_TEXTURE_REF
+        wither_textured_layer_passes(0.0)[0].texture,
+        WITHER_TEXTURE_REF,
+        "a fully-spawned wither shows wither.png"
     );
+    assert_eq!(
+        wither_textured_layer_passes(220.0)[0].texture,
+        WITHER_INVULNERABLE_TEXTURE_REF,
+        "a freshly-summoned wither (> 80 ticks) shows the invulnerable armor"
+    );
+    assert_eq!(
+        wither_textured_layer_passes(10.0)[0].texture,
+        WITHER_INVULNERABLE_TEXTURE_REF,
+        "i=10: 10/5%2=0 != 1, so the armor shows"
+    );
+    assert_eq!(
+        wither_textured_layer_passes(5.0)[0].texture,
+        WITHER_TEXTURE_REF,
+        "i=5: 5/5%2=1, so it flickers back to wither.png"
+    );
+
+    // The catalog's static mapping is the base texture (the invulnerable variant is render-state
+    // driven, picked per-instance in the dispatch).
     assert_eq!(
         EntityModelKind::Wither.vanilla_texture_ref(),
         Some(WITHER_TEXTURE_REF)
     );
     assert!(entity_model_texture_refs().contains(&WITHER_TEXTURE_REF));
-
-    let len = usize::try_from(WITHER_TEXTURE_REF.size[0] * WITHER_TEXTURE_REF.size[1] * 4).unwrap();
-    let images = vec![EntityModelTextureImage::new(
-        WITHER_TEXTURE_REF,
-        vec![0u8; len],
-    )];
-    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
+    assert!(entity_model_texture_refs().contains(&WITHER_INVULNERABLE_TEXTURE_REF));
+    assert_eq!(
+        wither_entity_texture_refs(),
+        &[WITHER_TEXTURE_REF, WITHER_INVULNERABLE_TEXTURE_REF]
     );
-    assert!(!mesh.vertices.is_empty());
-    assert!(mesh
-        .vertices
+
+    let images: Vec<EntityModelTextureImage> = wither_entity_texture_refs()
         .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    // A fully-spawned and a mid-spawn (invulnerable) wither both emit textured geometry tinted white.
+    for invulnerable_ticks in [0.0, 220.0] {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0)
+                .with_wither_invulnerable_ticks(invulnerable_ticks)],
+            &atlas,
+        );
+        assert!(!mesh.vertices.is_empty());
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
+}
+
+#[test]
+fn wither_renders_at_vanilla_2x_scale_and_shrinks_during_spawn() {
+    // Vanilla `WitherBossRenderer.scale`: a flat `2.0×`, minus `invulnerableTicks / 220 * 0.5` while
+    // spawning. So a fully-spawned wither is twice the bare model extent, and a freshly-summoned one
+    // (`220` ticks → `1.5×`) is smaller, growing to full over the spawn charge.
+    let spawned = entity_model_mesh(&[EntityModelInstance::wither(1451, [0.0, 64.0, 0.0], 0.0)]);
+    let charging = entity_model_mesh(&[EntityModelInstance::wither(1452, [0.0, 64.0, 0.0], 0.0)
+        .with_wither_invulnerable_ticks(220.0)]);
+    assert_eq!(spawned.vertices.len(), charging.vertices.len());
+    assert_ne!(
+        spawned.vertices, charging.vertices,
+        "the charging wither is scaled down"
+    );
+
+    let (s_min, s_max) = mesh_extents(&spawned);
+    let (c_min, c_max) = mesh_extents(&charging);
+    let spawned_width = s_max[0] - s_min[0];
+    let charging_width = c_max[0] - c_min[0];
+    // 1.5/2.0 = 0.75 of the spawned width.
+    assert!(
+        (charging_width / spawned_width - 0.75).abs() < 1.0e-3,
+        "the charging wither is 1.5/2.0 of the spawned size ({charging_width} vs {spawned_width})"
+    );
 }

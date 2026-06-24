@@ -65,6 +65,7 @@ const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
 const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
 const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
 const VANILLA_ENTITY_TYPE_WIND_CHARGE_ID: i32 = 143;
+const VANILLA_ENTITY_TYPE_WITHER_ID: i32 = 145;
 const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
 const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
 const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
@@ -756,6 +757,13 @@ pub(crate) fn vanilla_is_enderman(entity_type_id: i32) -> bool {
 /// this one type — only the vex defines that flags byte.
 pub(crate) fn vanilla_is_vex(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_VEX_ID
+}
+
+/// Whether the entity is the wither boss, rendered with the vanilla `WitherBossRenderer`. Only the
+/// wither carries the `DATA_ID_INV` invulnerable-ticks accessor (driving the spawn-charge shrink and
+/// the `wither_invulnerable.png` texture flicker), so that projection is gated to this one type.
+pub(crate) fn vanilla_is_wither(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID
 }
 
 fn scales_with_living_scale_attribute(

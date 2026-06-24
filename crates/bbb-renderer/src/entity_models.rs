@@ -65,8 +65,9 @@ pub use model_layers::{
     strider_entity_texture_refs, tadpole_entity_texture_refs, trident_entity_texture_refs,
     tropical_fish_entity_texture_refs, turtle_entity_texture_refs, vex_entity_texture_refs,
     villager_entity_texture_refs, warden_entity_texture_refs, wind_charge_entity_texture_refs,
-    witch_entity_texture_refs, wither_skull_entity_texture_refs, wolf_entity_texture_refs,
-    zombie_entity_texture_refs, zombie_villager_entity_texture_refs, SheepHeadEatPose,
+    witch_entity_texture_refs, wither_entity_texture_refs, wither_skull_entity_texture_refs,
+    wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
+    SheepHeadEatPose,
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;

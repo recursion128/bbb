@@ -1440,6 +1440,57 @@ fn entity_model_sources_project_bat_resting_from_flags() {
 }
 
 #[test]
+fn entity_model_sources_project_wither_invulnerable_ticks() {
+    const VANILLA_ENTITY_TYPE_WITHER_ID: i32 = 145;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    // Vanilla WitherBoss.DATA_ID_INV (19, INT): the spawn-invulnerability countdown.
+    const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
+
+    let ticks = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .wither_invulnerable_ticks
+    };
+    let set_inv = |store: &mut WorldStore, id: i32, value: i32| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_WITHER_INV_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Int(value),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_WITHER_ID,
+    ));
+    // A fully-spawned wither (DATA_ID_INV = 0) projects 0.0.
+    assert_eq!(ticks(&store, 80, 0.0), 0.0);
+    // A freshly-summoned wither (220) lerps `invulnerableTicks - partialTicks`.
+    assert!(set_inv(&mut store, 80, 220));
+    assert!((ticks(&store, 80, 0.0) - 220.0).abs() < 1.0e-6);
+    assert!((ticks(&store, 80, 0.5) - 219.5).abs() < 1.0e-6);
+    // Clearing it returns to 0.0 (a non-positive countdown is not lerped).
+    assert!(set_inv(&mut store, 80, 0));
+    assert_eq!(ticks(&store, 80, 0.5), 0.0);
+
+    // A chicken carries no DATA_ID_INV accessor; a stray int at the same data id never reaches its
+    // render state.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(set_inv(&mut store, 81, 220));
+    assert_eq!(ticks(&store, 81, 0.0), 0.0);
+}
+
+#[test]
 fn entity_model_sources_project_bee_stinger_from_flags() {
     const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

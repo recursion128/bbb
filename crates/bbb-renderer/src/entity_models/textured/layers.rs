@@ -857,12 +857,23 @@ pub(in crate::entity_models) fn wither_skull_textured_layer_passes() -> Vec<Enti
     )]
 }
 
-pub(in crate::entity_models) fn wither_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    // The wither boss and the wither skull share `wither.png`; the invulnerable-shimmer armor overlay
-    // (wither_invulnerable.png) stays deferred.
+pub(in crate::entity_models) fn wither_textured_layer_passes(
+    invulnerable_ticks: f32,
+) -> Vec<EntityModelLayerPass> {
+    // Vanilla `WitherBossRenderer.getTextureLocation`: `i = floor(invulnerableTicks)`; the
+    // `wither_invulnerable.png` armor texture shows while `i > 0 && (i > 80 || i / 5 % 2 != 1)` — so a
+    // freshly-summoned wither is solid invulnerable above 80 ticks, then flickers every 5 ticks back
+    // to `wither.png` as it nears spawn. The wither boss and the wither skull otherwise share
+    // `wither.png`.
+    let i = invulnerable_ticks.floor() as i32;
+    let texture = if i > 0 && (i > 80 || i / 5 % 2 != 1) {
+        WITHER_INVULNERABLE_TEXTURE_REF
+    } else {
+        WITHER_TEXTURE_REF
+    };
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        WITHER_TEXTURE_REF,
+        texture,
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

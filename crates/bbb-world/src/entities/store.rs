@@ -23,9 +23,9 @@ use crate::entities::animations::{entity_animation_uses_in_water, guardian_is_mo
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
     vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
-    vanilla_is_vex, vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
-    vanilla_render_scale, vanilla_zombie_model_family, ENTITY_DATA_POSE_ID,
-    VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_is_vex, vanilla_is_wither, vanilla_living_entity_type,
+    vanilla_pick_bounds_for_entity_data, vanilla_render_scale, vanilla_zombie_model_family,
+    ENTITY_DATA_POSE_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -98,6 +98,11 @@ const FOX_FLAG_FACEPLANTED: i8 = 64;
 /// Vanilla `Vex.FLAG_IS_CHARGING` (1): the `DATA_FLAGS_ID` bit set while the vex charges an
 /// attack (`Vex.isCharging`).
 const VEX_FLAG_IS_CHARGING: i8 = 1;
+
+/// Vanilla `WitherBoss.DATA_ID_INV` data id (19): the int spawn-invulnerability countdown
+/// (`getInvulnerableTicks`), the fourth `WitherBoss` accessor after `Mob.DATA_MOB_FLAGS_ID` (15) and
+/// the three `DATA_TARGET_A/B/C` ints (16..=18).
+const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
 
 /// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
 /// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
@@ -549,6 +554,23 @@ impl EntityStore {
                 .unwrap_or(0)
                 & VEX_FLAG_IS_CHARGING
                 != 0;
+        // Vanilla `WitherBossRenderer.extractRenderState`: `state.invulnerableTicks =
+        // invulnerableTicks > 0 ? invulnerableTicks - partialTicks : 0.0` (the synced `DATA_ID_INV`
+        // spawn countdown, lerped against the partial tick). It drives both the `scale()` spawn-charge
+        // shrink and the `getTextureLocation` `wither_invulnerable.png` flicker. Only the wither
+        // defines that accessor, so every other entity holds `0.0`.
+        let wither_invulnerable_ticks = if vanilla_is_wither(identity.entity_type_id) {
+            let ticks = self
+                .metadata_int(id, VANILLA_WITHER_INV_DATA_ID, 0)
+                .unwrap_or(0);
+            if ticks > 0 {
+                ticks as f32 - partial_ticks
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
         // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
@@ -663,6 +685,7 @@ impl EntityStore {
             fox_is_pouncing,
             fox_is_faceplanted,
             vex_charging,
+            wither_invulnerable_ticks,
             is_crouching,
             is_auto_spin_attack,
             is_upside_down,
