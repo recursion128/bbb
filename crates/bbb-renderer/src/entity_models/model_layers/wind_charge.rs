@@ -1,10 +1,8 @@
 use std::f32::consts::FRAC_PI_4;
 
-use super::{
-    model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, WIND_CHARGE_CORE, WIND_CHARGE_WIND,
-};
+use super::{PartPose, PART_POSE_ZERO, WIND_CHARGE_CORE, WIND_CHARGE_WIND};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `WindChargeModel.createBodyLayer` (atlas 64×32). The `bone` root (no cubes) parents
 // the `wind` shell and the `wind_charge` core. The `wind` part carries a fixed `yRot = -0.7854`
@@ -16,13 +14,33 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // flip/scale), both deferred, so the colored debug path renders the wind shell and core as opaque
 // tinted geometry with the counter-spin applied.
 
-pub(in crate::entity_models) const WIND_CHARGE_WIND_CUBES: [ModelCubeDesc; 2] = [
-    cube([-4.0, -1.0, -4.0], [8.0, 2.0, 8.0], WIND_CHARGE_WIND),
-    cube([-3.0, -2.0, -3.0], [6.0, 4.0, 6.0], WIND_CHARGE_WIND),
+pub(in crate::entity_models) const WIND_CHARGE_WIND_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-4.0, -1.0, -4.0],
+        [8.0, 2.0, 8.0],
+        WIND_CHARGE_WIND,
+        [8.0, 2.0, 8.0],
+        [15.0, 20.0],
+        false,
+    ),
+    ModelCube::new(
+        [-3.0, -2.0, -3.0],
+        [6.0, 4.0, 6.0],
+        WIND_CHARGE_WIND,
+        [6.0, 4.0, 6.0],
+        [0.0, 9.0],
+        false,
+    ),
 ];
 
-pub(in crate::entity_models) const WIND_CHARGE_CORE_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, -2.0, -2.0], [4.0, 4.0, 4.0], WIND_CHARGE_CORE)];
+pub(in crate::entity_models) const WIND_CHARGE_CORE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -2.0, -2.0],
+    [4.0, 4.0, 4.0],
+    WIND_CHARGE_CORE,
+    [4.0, 4.0, 4.0],
+    [0.0, 0.0],
+    false,
+)];
 
 /// The `wind` shell's fixed `PartPose.offsetAndRotation(0, 0, 0, 0, -π/4, 0)` bind rotation; the
 /// `bone` root and `wind_charge` core both sit at `PartPose.ZERO`.
@@ -54,11 +72,11 @@ impl WindChargeModel {
             vec![
                 (
                     "wind",
-                    ModelPart::leaf_colored(WIND_CHARGE_WIND_POSE, &WIND_CHARGE_WIND_CUBES),
+                    ModelPart::leaf(WIND_CHARGE_WIND_POSE, WIND_CHARGE_WIND_CUBES.to_vec()),
                 ),
                 (
                     "wind_charge",
-                    ModelPart::leaf_colored(PART_POSE_ZERO, &WIND_CHARGE_CORE_CUBES),
+                    ModelPart::leaf(PART_POSE_ZERO, WIND_CHARGE_CORE_CUBES.to_vec()),
                 ),
             ],
         );

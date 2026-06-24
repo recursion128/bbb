@@ -12,13 +12,16 @@ fn wind_charge_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(WIND_CHARGE_WIND_CUBES.len(), 2);
     assert_eq!(WIND_CHARGE_WIND_CUBES[0].min, [-4.0, -1.0, -4.0]);
     assert_eq!(WIND_CHARGE_WIND_CUBES[0].size, [8.0, 2.0, 8.0]);
+    assert_eq!(WIND_CHARGE_WIND_CUBES[0].tex, [15.0, 20.0]);
     assert_eq!(WIND_CHARGE_WIND_CUBES[1].min, [-3.0, -2.0, -3.0]);
     assert_eq!(WIND_CHARGE_WIND_CUBES[1].size, [6.0, 4.0, 6.0]);
+    assert_eq!(WIND_CHARGE_WIND_CUBES[1].tex, [0.0, 9.0]);
 
-    // `wind_charge`: the 4×4×4 core box at ZERO with no rotation.
+    // `wind_charge`: the 4×4×4 core box at ZERO with no rotation, `texOffs(0, 0)`.
     assert_eq!(WIND_CHARGE_CORE_CUBES.len(), 1);
     assert_eq!(WIND_CHARGE_CORE_CUBES[0].min, [-2.0, -2.0, -2.0]);
     assert_eq!(WIND_CHARGE_CORE_CUBES[0].size, [4.0, 4.0, 4.0]);
+    assert_eq!(WIND_CHARGE_CORE_CUBES[0].tex, [0.0, 0.0]);
 }
 
 #[test]
@@ -72,4 +75,39 @@ fn wind_charge_counter_spins_shell_and_core_with_age() {
         rest.vertices, spun.vertices,
         "both the shell and the counter-spun core turn with age"
     );
+}
+
+#[test]
+fn wind_charge_textured_render_matches_vanilla_renderer() {
+    assert_eq!(
+        wind_charge_textured_layer_passes()[0].texture,
+        WIND_CHARGE_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::WindCharge.vanilla_texture_ref(),
+        Some(WIND_CHARGE_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&WIND_CHARGE_TEXTURE_REF));
+    assert_eq!(
+        wind_charge_entity_texture_refs(),
+        &[WIND_CHARGE_TEXTURE_REF]
+    );
+
+    let len =
+        usize::try_from(WIND_CHARGE_TEXTURE_REF.size[0] * WIND_CHARGE_TEXTURE_REF.size[1] * 4)
+            .unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        WIND_CHARGE_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::wind_charge(180, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert!(!mesh.vertices.is_empty());
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }

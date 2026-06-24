@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 178] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 183] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -847,6 +847,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     FELINE_OCELOT_BABY_TEXTURE_REF,
     MOOSHROOM_TEXTURE_REF,
     MOOSHROOM_BABY_TEXTURE_REF,
+    ARROW_TEXTURE_REF,
+    LLAMA_SPIT_TEXTURE_REF,
+    SHULKER_BULLET_TEXTURE_REF,
+    WITHER_TEXTURE_REF,
+    WIND_CHARGE_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1795,6 +1800,63 @@ pub(in crate::entity_models) const MOOSHROOM_ENTITY_TEXTURE_REFS: [EntityModelTe
     [MOOSHROOM_TEXTURE_REF, MOOSHROOM_BABY_TEXTURE_REF];
 pub fn mooshroom_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &MOOSHROOM_ENTITY_TEXTURE_REFS
+}
+
+// Projectiles: small single-texture models. `WITHER_TEXTURE_REF` (wither.png) is shared by the wither
+// skull and the wither boss; the wither_invulnerable / tipped-arrow / spectral variants stay deferred.
+pub(in crate::entity_models) const ARROW_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/projectiles/arrow.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const ARROW_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [ARROW_TEXTURE_REF];
+pub fn arrow_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ARROW_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const LLAMA_SPIT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/llama/llama_spit.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const LLAMA_SPIT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [LLAMA_SPIT_TEXTURE_REF];
+pub fn llama_spit_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &LLAMA_SPIT_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const SHULKER_BULLET_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/shulker/spark.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const SHULKER_BULLET_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [SHULKER_BULLET_TEXTURE_REF];
+pub fn shulker_bullet_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &SHULKER_BULLET_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const WITHER_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/wither/wither.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const WITHER_SKULL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [WITHER_TEXTURE_REF];
+pub fn wither_skull_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &WITHER_SKULL_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const WIND_CHARGE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/projectiles/wind_charge.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const WIND_CHARGE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [WIND_CHARGE_TEXTURE_REF];
+pub fn wind_charge_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &WIND_CHARGE_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

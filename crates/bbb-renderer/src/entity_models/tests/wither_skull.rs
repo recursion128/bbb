@@ -1,24 +1,14 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn wither_skull_geometry_matches_vanilla_26_1_skull_layer() {
     // Vanilla `WitherSkullRenderer.createSkullLayer` (atlas 64×64): one `head` part at ZERO with a
-    // single 8×8×8 box (`addBox(-4, -8, -4, 8, 8, 8)`).
-    assert_eq!(WITHER_SKULL_PARTS.len(), 1);
-    let head = &WITHER_SKULL_PARTS[0];
-    assert_eq!(head.pose.offset, [0.0, 0.0, 0.0]);
-    assert!(head.children.is_empty());
-    assert_eq!(head.cubes.len(), 1);
-    assert_eq!(head.cubes[0].min, [-4.0, -8.0, -4.0]);
-    assert_eq!(head.cubes[0].size, [8.0, 8.0, 8.0]);
-    assert_eq!(count_cubes(&WITHER_SKULL_PARTS), 1);
+    // single 8×8×8 box (`addBox(-4, -8, -4, 8, 8, 8)` at `texOffs(0, 35)`).
+    assert_eq!(WITHER_SKULL_CUBE.min, [-4.0, -8.0, -4.0]);
+    assert_eq!(WITHER_SKULL_CUBE.size, [8.0, 8.0, 8.0]);
+    assert_eq!(WITHER_SKULL_CUBE.uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(WITHER_SKULL_CUBE.tex, [0.0, 35.0]);
+    assert!(!WITHER_SKULL_CUBE.mirror);
 }
 
 #[test]
@@ -39,18 +29,19 @@ fn wither_skull_mesh_uses_vanilla_skull_layer_geometry() {
 }
 
 #[test]
-fn wither_skull_mesh_matches_on_both_render_paths() {
-    // The wither skull is a colored-only entity (the wither textures are deferred), so the
-    // texture-skipping colored runtime path emits the exact same mesh as the full path.
+fn wither_skull_colored_runtime_skips_the_texture_backed_skull() {
+    // The wither skull now binds the wither texture, so it renders through the textured path. The
+    // texture-skipping colored runtime path emits nothing for it, while the full path still emits the
+    // colored fallback geometry. (The wither_invulnerable charged swap stays deferred.)
     let instances = [EntityModelInstance::wither_skull(
         821,
         [0.0, 64.0, 0.0],
         0.0,
     )];
-    let full = entity_model_mesh(&instances);
-    let colored = entity_model_colored_runtime_mesh(&instances);
-    assert_eq!(full.vertices, colored.vertices);
-    assert_eq!(full.indices, colored.indices);
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
 }
 
 #[test]
@@ -74,6 +65,40 @@ fn wither_skull_orients_along_flight() {
         base_mesh.vertices, pitched_mesh.vertices,
         "the pitch orients the skull"
     );
+}
+
+#[test]
+fn wither_skull_textured_render_matches_vanilla_renderer() {
+    assert_eq!(
+        wither_skull_textured_layer_passes()[0].texture,
+        WITHER_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::WitherSkull.vanilla_texture_ref(),
+        Some(WITHER_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&WITHER_TEXTURE_REF));
+    assert_eq!(wither_skull_entity_texture_refs(), &[WITHER_TEXTURE_REF]);
+
+    let len = usize::try_from(WITHER_TEXTURE_REF.size[0] * WITHER_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        WITHER_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::wither_skull(
+            820,
+            [0.0, 64.0, 0.0],
+            0.0,
+        )],
+        &atlas,
+    );
+    assert!(!mesh.vertices.is_empty());
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }
 
 #[test]

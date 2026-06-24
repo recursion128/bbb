@@ -2,7 +2,7 @@ use glam::Mat4;
 
 use super::geometry::{
     emit_model_cube, emit_textured_model_cube, part_pose_transform, EntityModelMesh,
-    EntityModelTexturedMesh, ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc,
+    EntityModelTexturedMesh, ModelCubeDesc, PartPose, TexturedModelCubeDesc,
 };
 use super::instances::EntityModelInstance;
 use super::{EntityModelTextureRef, EntityModelUvRect};
@@ -192,56 +192,6 @@ impl ModelPart {
         }
     }
 
-    /// Builds a colored-only [`ModelPart`] subtree from a [`ModelPartDesc`] tree, for an entity with
-    /// no textured path (the parrot, shulker, …). Each cube reuses its baked color; the textured UV is
-    /// an unused placeholder, since only [`ModelPart::render_colored`] is ever called. Children are
-    /// addressed positionally (named by index).
-    pub(in crate::entity_models) fn from_colored_desc(colored: &ModelPartDesc) -> Self {
-        let cubes = colored
-            .cubes
-            .iter()
-            .map(ModelCube::from_colored_desc)
-            .collect();
-        let children = colored
-            .children
-            .iter()
-            .enumerate()
-            .map(|(index, child)| {
-                (
-                    INDEX_CHILD_NAMES[index],
-                    ModelPart::from_colored_desc(child),
-                )
-            })
-            .collect();
-        Self {
-            pose: colored.pose,
-            default_pose: colored.pose,
-            cubes,
-            children,
-            visible: true,
-            scale: [1.0; 3],
-        }
-    }
-
-    /// Builds a colored-only root [`ModelPart`] over a flat list of sibling [`ModelPartDesc`] trees,
-    /// for an entity with no textured path. The siblings hang off a synthetic identity root, named by
-    /// index.
-    pub(in crate::entity_models) fn root_from_colored_descs(colored: &[ModelPartDesc]) -> Self {
-        let children = colored
-            .iter()
-            .enumerate()
-            .map(|(index, part)| (INDEX_CHILD_NAMES[index], ModelPart::from_colored_desc(part)))
-            .collect();
-        Self {
-            pose: super::geometry::PART_POSE_ZERO,
-            default_pose: super::geometry::PART_POSE_ZERO,
-            cubes: Vec::new(),
-            children,
-            visible: true,
-            scale: [1.0; 3],
-        }
-    }
-
     /// Vanilla `ModelPart.resetPose` over the whole subtree: restores the bind pose and visibility
     /// so each frame's `setup_anim` starts from a clean slate.
     pub(in crate::entity_models) fn reset_pose(&mut self) {
@@ -397,33 +347,4 @@ pub(in crate::entity_models) trait EntityModel {
         self.root()
             .render_colored_with_color(mesh, root_transform, color);
     }
-}
-
-/// A static [`EntityModel`] over a fixed colored part tree — an entity whose vanilla `setupAnim` is a
-/// no-op (the leash knot, the thrown trident, the llama spit, …) or whose animations are all
-/// deferred (the arrow wobble, the evoker-fangs bite), so it always renders at its bind pose. Built
-/// from the baked [`ModelPartDesc`] geometry; `setup_anim` does nothing. Each such entity passes its
-/// own `&'static X_PARTS` and its renderer's root transform at the colored call site.
-pub(in crate::entity_models) struct StaticModel {
-    root: ModelPart,
-}
-
-impl StaticModel {
-    pub(in crate::entity_models) fn new(parts: &[ModelPartDesc]) -> Self {
-        Self {
-            root: ModelPart::root_from_colored_descs(parts),
-        }
-    }
-}
-
-impl EntityModel for StaticModel {
-    fn root(&self) -> &ModelPart {
-        &self.root
-    }
-
-    fn root_mut(&mut self) -> &mut ModelPart {
-        &mut self.root
-    }
-
-    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
 }

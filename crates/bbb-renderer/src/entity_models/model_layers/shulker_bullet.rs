@@ -1,22 +1,72 @@
-use super::{
-    bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, SHULKER_BULLET_COLOR,
-};
+use super::{PART_POSE_ZERO, SHULKER_BULLET_COLOR};
+use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `ShulkerBulletModel.createBodyLayer` (atlas 64×32). The mesh root holds a single
 // `main` part at ZERO with three interlocking slabs (one flat in each of the XY / YZ / XZ planes):
 // `texOffs(0, 0)` 8×8×2, `texOffs(0, 10)` 2×8×8, and `texOffs(20, 0)` 8×2×8. `setupAnim` only sets
 // `main.yRot`/`main.xRot` from the bullet's facing (reproduced through `body_rot` / `head_pitch` in
 // `shulker_bullet_model_root_transform`), so the geometry is complete. `ShulkerBulletRenderer.submit`
-// is reproduced in that transform: `translate(0, 0.15, 0)`, the `ageInTicks`-driven tumble
-// (`Ry(sin(t·0.1)·180°) · Rx(cos(t·0.1)·180°) · Rz(sin(t·0.15)·360°)`), then `scale(-0.5, -0.5, 0.5)`.
-// The second translucent 1.5× outer-shell pass remains deferred (a texture-backed/translucent-layer
-// concern); the colored debug path renders the slabs with one tint.
+// is reproduced in that transform: `translate(0, 0.15, 0)`, the `ageInTicks`-driven tumble, then
+// `scale(-0.5, -0.5, 0.5)`. The `spark.png` texture is wired here; the second translucent 1.5×
+// outer-shell pass stays deferred. Each cube carries the colored tint and the textured UV.
 
-const SHULKER_BULLET_CUBES: [ModelCubeDesc; 3] = [
-    cube([-4.0, -4.0, -1.0], [8.0, 8.0, 2.0], SHULKER_BULLET_COLOR),
-    cube([-1.0, -4.0, -4.0], [2.0, 8.0, 8.0], SHULKER_BULLET_COLOR),
-    cube([-4.0, -1.0, -4.0], [8.0, 2.0, 8.0], SHULKER_BULLET_COLOR),
+pub(in crate::entity_models) const SHULKER_BULLET_CUBES: [ModelCube; 3] = [
+    ModelCube::new(
+        [-4.0, -4.0, -1.0],
+        [8.0, 8.0, 2.0],
+        SHULKER_BULLET_COLOR,
+        [8.0, 8.0, 2.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-1.0, -4.0, -4.0],
+        [2.0, 8.0, 8.0],
+        SHULKER_BULLET_COLOR,
+        [2.0, 8.0, 8.0],
+        [0.0, 10.0],
+        false,
+    ),
+    ModelCube::new(
+        [-4.0, -1.0, -4.0],
+        [8.0, 2.0, 8.0],
+        SHULKER_BULLET_COLOR,
+        [8.0, 2.0, 8.0],
+        [20.0, 0.0],
+        false,
+    ),
 ];
 
-pub(in crate::entity_models) const SHULKER_BULLET_PARTS: [ModelPartDesc; 1] =
-    [part([0.0, 0.0, 0.0], &SHULKER_BULLET_CUBES, &[])];
+/// Static shulker-bullet model mirroring vanilla `ShulkerBulletModel`: a single `main` part at ZERO
+/// holding the three interlocking slabs (the facing lives in the root transform), no `setup_anim`.
+pub(in crate::entity_models) struct ShulkerBulletModel {
+    root: ModelPart,
+}
+
+impl ShulkerBulletModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![(
+                    "main",
+                    ModelPart::leaf(PART_POSE_ZERO, SHULKER_BULLET_CUBES.to_vec()),
+                )],
+            ),
+        }
+    }
+}
+
+impl EntityModel for ShulkerBulletModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}

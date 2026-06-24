@@ -1,44 +1,38 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn arrow_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `ArrowModel.createBodyLayer` (atlas 32×32): the `back` arrowhead plane plus the two
-    // crossed fletching planes.
-    assert_eq!(ARROW_PARTS.len(), 3);
+    // crossed fletching planes, now carried as a unified `ArrowModel` tree with textured UVs.
 
     // `back`: the 0×5×5 plane at offset (-11, 0, 0), pitched π/4, with `withScale(0.8)` baked → 0×4×4.
-    let back = &ARROW_PARTS[0];
-    assert_eq!(back.pose.offset, [-11.0, 0.0, 0.0]);
-    assert_eq!(back.pose.rotation, [std::f32::consts::FRAC_PI_4, 0.0, 0.0]);
-    assert!((back.cubes[0].size[1] - 5.0 * 0.8).abs() < 1.0e-6);
-    assert_eq!(back.cubes[0].min, [0.0, -2.0, -2.0]);
-    assert_eq!(back.cubes[0].size, [0.0, 4.0, 4.0]);
-
-    // `cross_1` / `cross_2`: the shared 16×4×0 plane at pitches π/4 and 3π/4.
-    let cross_1 = &ARROW_PARTS[1];
-    let cross_2 = &ARROW_PARTS[2];
-    assert_eq!(cross_1.pose.offset, [0.0, 0.0, 0.0]);
+    assert_eq!(ARROW_BACK_POSE.offset, [-11.0, 0.0, 0.0]);
     assert_eq!(
-        cross_1.pose.rotation,
+        ARROW_BACK_POSE.rotation,
         [std::f32::consts::FRAC_PI_4, 0.0, 0.0]
     );
-    assert_eq!(cross_1.cubes[0].min, [-12.0, -2.0, 0.0]);
-    assert_eq!(cross_1.cubes[0].size, [16.0, 4.0, 0.0]);
+    assert!((ARROW_BACK_CUBE.size[1] - 5.0 * 0.8).abs() < 1.0e-6);
+    assert_eq!(ARROW_BACK_CUBE.min, [0.0, -2.0, -2.0]);
+    assert_eq!(ARROW_BACK_CUBE.size, [0.0, 4.0, 4.0]);
+    // UV: texOffs(0,0), the integer addBox dims [0,5,5].
+    assert_eq!(ARROW_BACK_CUBE.tex, [0.0, 0.0]);
+    assert_eq!(ARROW_BACK_CUBE.uv_size, [0.0, 5.0, 5.0]);
+
+    // `cross_1` / `cross_2`: the shared 16×4×0 plane at pitches π/4 and 3π/4.
+    assert_eq!(ARROW_CROSS_1_POSE.offset, [0.0, 0.0, 0.0]);
     assert_eq!(
-        cross_2.pose.rotation,
+        ARROW_CROSS_1_POSE.rotation,
+        [std::f32::consts::FRAC_PI_4, 0.0, 0.0]
+    );
+    assert_eq!(
+        ARROW_CROSS_2_POSE.rotation,
         [3.0 * std::f32::consts::FRAC_PI_4, 0.0, 0.0]
     );
-    assert_eq!(cross_2.cubes[0].size, [16.0, 4.0, 0.0]);
-
-    // Three planes total.
-    assert_eq!(count_cubes(&ARROW_PARTS), 3);
+    assert_eq!(ARROW_CROSS_CUBE.min, [-12.0, -2.0, 0.0]);
+    assert_eq!(ARROW_CROSS_CUBE.size, [16.0, 4.0, 0.0]);
+    // UV: texOffs(0,0); the vanilla `texScaleV = 0.8` is baked into the UV height (4 × 0.8 = 3.2).
+    assert_eq!(ARROW_CROSS_CUBE.tex, [0.0, 0.0]);
+    assert_eq!(ARROW_CROSS_CUBE.uv_size, [16.0, 3.2, 0.0]);
 }
 
 #[test]
@@ -56,4 +50,31 @@ fn arrow_mesh_uses_vanilla_body_layer_geometry() {
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(ARROW_HEAD, 1.0)));
+}
+
+#[test]
+fn arrow_textured_render_matches_vanilla_renderer() {
+    assert_eq!(arrow_textured_layer_passes()[0].texture, ARROW_TEXTURE_REF);
+    assert_eq!(
+        EntityModelKind::Arrow.vanilla_texture_ref(),
+        Some(ARROW_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&ARROW_TEXTURE_REF));
+    assert_eq!(arrow_entity_texture_refs(), &[ARROW_TEXTURE_REF]);
+
+    let len = usize::try_from(ARROW_TEXTURE_REF.size[0] * ARROW_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ARROW_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert!(!mesh.vertices.is_empty());
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }

@@ -824,6 +824,49 @@ pub(in crate::entity_models) fn mooshroom_textured_layer_passes(
     )]
 }
 
+pub(in crate::entity_models) fn arrow_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        ARROW_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        LLAMA_SPIT_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn shulker_bullet_textured_layer_passes() -> Vec<EntityModelLayerPass>
+{
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        SHULKER_BULLET_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn wither_skull_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        WITHER_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn wind_charge_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    // Vanilla draws the wind charge with `entityTranslucent` + the scrolling breeze-wind texture; the
+    // scroll/translucency are deferred, so this binds the static wind_charge.png on the cutout pass.
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        WIND_CHARGE_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass {
