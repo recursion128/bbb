@@ -1903,12 +1903,15 @@ When an agent does any of the following, update this file in the same slice:
       the sampled poses against the vanilla arithmetic and that two ages re-pose only the ribcage and tail. The
       center head (part 3) follows the plain head look (`centerHead.yRot/xRot = state.yRot/xRot`), reproduced
       through the instance's `head_yaw` / `head_pitch` and the shared `head_look_pose`, with a test pinning that
-      only the center-head vertices turn. The remaining `WitherBossModel.setupAnim` motion is deferred: the two
+      only the center-head vertices turn. The wither is rendered at the vanilla `WitherBossRenderer.scale`
+      flat `2.0×` minus `invulnerableTicks / 220 * 0.5` during the spawn charge (`wither_model_root_transform`),
+      and swaps to `wither_invulnerable.png` via the vanilla `getTextureLocation` flicker (solid above 80
+      ticks, then alternating every 5 ticks) off the projected `WitherRenderState.invulnerableTicks`
+      (`DATA_ID_INV`, lerped `invulnerableTicks - partialTicks`), with both the colored and textured paths
+      wired. The remaining `WitherBossModel.setupAnim` motion is deferred: the two
       side heads' target tracking (the `DATA_TARGET_*` head targets are client-tick lerped). The `WITHER_ARMOR`
-      invulnerable-shimmer overlay
-      layer (the same mesh re-rendered with `INNER_ARMOR_DEFORMATION`) and the texture-backed path are
-      deferred, so the colored debug path renders a dark body tint plus a lighter head tint (this is a
-      colored-first slice)
+      powered energy-swirl overlay layer (`wither_armor.png`, the same `EnergySwirlLayer` UV-scroll as the
+      charged creeper) stays deferred
     - giant entities as renderer-owned vanilla 26.1 `GiantZombieModel` geometry on the colored path: the
       native entity scene (`entity_scene.rs`) projects vanilla type id `59` to the new
       `EntityModelKind::Giant`, replacing the former placeholder bounds box. `GiantZombieModel` is the

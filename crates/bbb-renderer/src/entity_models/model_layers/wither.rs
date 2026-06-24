@@ -13,9 +13,11 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // (`centerHead.yRot/xRot = state.yRot/xRot`), reproduced via `head_look_pose`; the ribcage and tail
 // breathe with `cos(ageInTicks * 0.1)` via [`wither_breathing_poses`]. The two side heads' target
 // tracking is deferred (the `DATA_TARGET_*` head targets are client-tick lerped). The `wither.png`
-// texture is wired here; the `WITHER_ARMOR` invulnerable-shimmer overlay layer (the same mesh
-// re-rendered with `INNER_ARMOR_DEFORMATION`, `wither_invulnerable.png`) stays deferred. Each cube
-// carries the colored debug tint and the textured `uv_size` / `texOffs`.
+// texture is wired here, and the wither swaps to `wither_invulnerable.png` during its spawn charge
+// (`WitherBossRenderer.getTextureLocation`, see [`super::super::wither_model_root_transform`] and
+// `wither_textured_layer_passes`); the `WITHER_ARMOR` powered energy-swirl overlay (`wither_armor.png`,
+// the same `EnergySwirlLayer` as the charged creeper) stays deferred. Each cube carries the colored
+// debug tint and the textured `uv_size` / `texOffs`.
 
 // `shoulders`: the 20×3×3 bar, texOffs(0,16).
 pub(in crate::entity_models) const WITHER_SHOULDERS_CUBES: [ModelCube; 1] = [ModelCube::new(

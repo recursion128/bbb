@@ -142,9 +142,10 @@ pub enum EntityModelKind {
     /// the `ShulkerRenderer.setupRotations` attach-face rotation and body-yaw inversion, and the
     /// sixteen dye-color variants are deferred.
     Shulker,
-    /// `WitherBossModel` at its `createBodyLayer` bind rest pose. The procedural ribcage/tail
-    /// breathing sway, the center/side head look, and the `WITHER_ARMOR` invulnerable-shimmer
-    /// overlay layer are deferred.
+    /// `WitherBossModel` at its `createBodyLayer` bind rest pose, rendered at the vanilla 2.0× scale
+    /// with the spawn-charge shrink and `wither_invulnerable.png` texture flicker. The procedural
+    /// ribcage/tail breathing sway and the center/side head look are reproduced; the side heads' target
+    /// tracking and the `WITHER_ARMOR` powered energy-swirl overlay layer are deferred.
     Wither,
     /// `GiantZombieModel` — the standard humanoid (zombie) body layer `MeshTransformer`-scaled 6×.
     /// The head look and limb swing match the zombie; the armor / item-in-hand layers and the
