@@ -820,23 +820,27 @@ pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(&'static str, f32,
 }
 
 /// Vanilla `AbstractEquineModel.setupAnim` walking leg swing (the non-standing branch).
-/// With `legAnim = cos(walkAnimationPos * 0.6662 + π) * walkAnimationSpeed`, the front
-/// legs swing `±0.8 * legAnim` and the hind legs `±0.5 * legAnim` — a horse-specific
+/// With `legAnim = cos(waterMultiplier * walkAnimationPos * 0.6662 + π) * walkAnimationSpeed`,
+/// the front legs swing `±0.8 * legAnim` and the hind legs `±0.5 * legAnim` — a horse-specific
 /// gait (front amplitude `0.8`, hind `0.5`) rather than the uniform `1.4`
 /// `QuadrupedModel` swing. The signs are front-left `+0.8`, front-right `-0.8`,
 /// hind-left `-0.5`, hind-right `+0.5`: the front legs have `z < 0` and the left legs
 /// `x > 0`, so the sign is `+` when `(x > 0) == (z < 0)`. The base leg pose carries no
-/// `xRot`, so it is set (not accumulated). In water vanilla scales the frequency by
-/// `0.2`; that and the standing/eating/feeding poses are deferred (they depend on state
-/// the client does not yet track). The head look/bob is applied separately by
-/// [`equine_head_look_pose`] and the tail walk lift by [`equine_tail_swing_pose`].
+/// `xRot`, so it is set (not accumulated). Vanilla scales the swing frequency by
+/// `waterMultiplier = isInWater ? 0.2 : 1.0` (a slower paddle in water), which the renderer
+/// reproduces from the projected `in_water`. The standing/eating/feeding poses are still
+/// deferred (they depend on state the client does not yet track). The head look/bob is
+/// applied separately by [`equine_head_look_pose`] and the tail walk lift by
+/// [`equine_tail_swing_pose`].
 pub(in crate::entity_models) fn equine_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
+    in_water: bool,
 ) -> PartPose {
-    let leg_anim =
-        (walk_animation_pos * 0.6662 + std::f32::consts::PI).cos() * walk_animation_speed;
+    let water_multiplier = if in_water { 0.2 } else { 1.0 };
+    let leg_anim = (water_multiplier * walk_animation_pos * 0.6662 + std::f32::consts::PI).cos()
+        * walk_animation_speed;
     let [x, _, z] = base.offset;
     let front = z < 0.0;
     let amplitude = if front { 0.8 } else { 0.5 };
@@ -860,9 +864,10 @@ pub(in crate::entity_models) fn equine_leg_swing_pose(
 /// walkAnimationSpeed` folded in when `walkAnimationSpeed > 0.2`. The rest `head_parts`
 /// xRot is exactly that `π/6` tilt, so at a level head and no fast gait the pose equals
 /// the rest pose. `HorseModel`/`BabyHorseModel` and the adult `DonkeyModel`/mule take this
-/// unchanged; the baby donkey/mule (which forces `xRot = -30°`), the ridden/stand/eat/feed
-/// poses, and the in-water gait are deferred. The tail walk lift is applied by
-/// [`equine_tail_swing_pose`]; only its `ageInTicks`-driven `yRot` wag stays deferred.
+/// unchanged; the baby donkey/mule (which forces `xRot = -30°`) and the ridden/stand/eat/feed
+/// poses are deferred (the in-water gait frequency is applied by [`equine_leg_swing_pose`]).
+/// The tail walk lift is applied by [`equine_tail_swing_pose`]; only its `ageInTicks`-driven
+/// `yRot` wag stays deferred.
 pub(in crate::entity_models) fn equine_head_look_pose(
     base: PartPose,
     head_yaw_deg: f32,

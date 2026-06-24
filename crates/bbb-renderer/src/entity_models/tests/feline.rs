@@ -243,6 +243,56 @@ fn feline_standing_drops_the_lower_tail() {
 }
 
 #[test]
+fn feline_lower_tail_wobbles_with_the_gait() {
+    // Vanilla `AdultFelineModel.setupAnim` (not-sitting, not-sprinting, not-crouching) sets
+    // `tail2.xRot = 1.7278761 + (π/4)·cos(walkAnimationPos)·walkAnimationSpeed`. At rest the wobble
+    // term is zero, so `tail2.xRot` holds at the standing droop; walking shifts it off the droop.
+    let mut model = FelineModel::new(false);
+
+    // At rest (zero speed) the wobble collapses to the bare droop.
+    model.prepare(&EntityModelInstance::feline(
+        530,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    ));
+    let rest_tail2 = model.root_mut().child_mut("tail2").pose.rotation[0];
+    assert!((rest_tail2 - 1.7278761).abs() < 1.0e-6);
+
+    // Walking adds `(π/4)·cos(pos)·speed` onto the droop.
+    let pos = 3.0_f32;
+    let speed = 0.8_f32;
+    model.prepare(
+        &EntityModelInstance::feline(531, [0.0, 64.0, 0.0], 0.0, false, false)
+            .with_walk_animation(pos, speed),
+    );
+    let walk_tail2 = model.root_mut().child_mut("tail2").pose.rotation[0];
+    let expected = 1.7278761 + std::f32::consts::FRAC_PI_4 * pos.cos() * speed;
+    assert!((walk_tail2 - expected).abs() < 1.0e-6);
+    assert_ne!(
+        rest_tail2, walk_tail2,
+        "the lower tail wobbles while moving"
+    );
+
+    // The wobble advances with the walk position.
+    model.prepare(
+        &EntityModelInstance::feline(532, [0.0, 64.0, 0.0], 0.0, false, false)
+            .with_walk_animation(6.0, speed),
+    );
+    let walk_later_tail2 = model.root_mut().child_mut("tail2").pose.rotation[0];
+    assert_ne!(walk_tail2, walk_later_tail2);
+
+    // Zero speed at a nonzero position is still a no-op (back at the droop).
+    model.prepare(
+        &EntityModelInstance::feline(533, [0.0, 64.0, 0.0], 0.0, false, false)
+            .with_walk_animation(3.0, 0.0),
+    );
+    let still_tail2 = model.root_mut().child_mut("tail2").pose.rotation[0];
+    assert!((still_tail2 - 1.7278761).abs() < 1.0e-6);
+}
+
+#[test]
 fn cat_mesh_is_the_ocelot_mesh_scaled_down() {
     // Vanilla `AdultCatModel.CAT_TRANSFORMER = MeshTransformer.scaling(0.8)`: the cat is the same mesh
     // as the ocelot, scaled 0.8 (so the same vertex count but a more compact mesh).

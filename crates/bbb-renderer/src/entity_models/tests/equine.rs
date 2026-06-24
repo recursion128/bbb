@@ -1041,10 +1041,10 @@ fn equine_leg_swing_pose_matches_vanilla_gait() {
     let pos = 1.3_f32;
     let speed = 0.7_f32;
     let leg_anim = (pos * 0.6662 + std::f32::consts::PI).cos() * speed;
-    let left_hind = equine_leg_swing_pose(ADULT_HORSE_PARTS[2].pose, pos, speed);
-    let right_hind = equine_leg_swing_pose(ADULT_HORSE_PARTS[3].pose, pos, speed);
-    let left_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, speed);
-    let right_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[5].pose, pos, speed);
+    let left_hind = equine_leg_swing_pose(ADULT_HORSE_PARTS[2].pose, pos, speed, false);
+    let right_hind = equine_leg_swing_pose(ADULT_HORSE_PARTS[3].pose, pos, speed, false);
+    let left_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, speed, false);
+    let right_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[5].pose, pos, speed, false);
     assert!(
         (left_hind.rotation[0] - (-0.5 * leg_anim)).abs() < 1e-6,
         "left hind"
@@ -1072,7 +1072,34 @@ fn equine_leg_swing_pose_matches_vanilla_gait() {
 
     // At rest (speed 0) every leg holds its body-layer pose.
     assert_eq!(
-        equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, 0.0),
+        equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, 0.0, false),
+        ADULT_HORSE_PARTS[4].pose
+    );
+}
+
+#[test]
+fn equine_leg_swing_pose_slows_the_paddle_in_water() {
+    // Vanilla `AbstractEquineModel.setupAnim` scales the swing frequency by
+    // `waterMultiplier = isInWater ? 0.2 : 1.0`: `legAnim = cos(waterMultiplier·pos·0.6662 + π)·speed`.
+    // The same projected `walk_animation_pos`/`speed` therefore drive a slower in-water paddle.
+    let pos = 1.3_f32;
+    let speed = 0.7_f32;
+    let water_leg_anim = (0.2 * pos * 0.6662 + std::f32::consts::PI).cos() * speed;
+
+    let land_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, speed, false);
+    let water_front = equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, speed, true);
+    assert!(
+        (water_front.rotation[0] - (0.8 * water_leg_anim)).abs() < 1e-6,
+        "in-water front leg uses the 0.2 frequency multiplier"
+    );
+    assert_ne!(
+        land_front.rotation[0], water_front.rotation[0],
+        "the in-water paddle differs from the land gait"
+    );
+
+    // At rest the multiplier is irrelevant — both hold the body-layer pose.
+    assert_eq!(
+        equine_leg_swing_pose(ADULT_HORSE_PARTS[4].pose, pos, 0.0, true),
         ADULT_HORSE_PARTS[4].pose
     );
 }

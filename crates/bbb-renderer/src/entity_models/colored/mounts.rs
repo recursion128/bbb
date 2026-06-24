@@ -81,6 +81,7 @@ fn emit_equine_posed(
 ) {
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let in_water = instance.render_state.in_water;
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
@@ -105,7 +106,7 @@ fn emit_equine_posed(
     if !legs_resting {
         for index in leg_indices {
             posed[index].pose =
-                equine_leg_swing_pose(posed[index].pose, limb_swing, limb_swing_amount);
+                equine_leg_swing_pose(posed[index].pose, limb_swing, limb_swing_amount, in_water);
         }
     }
     posed[head_parts_index].pose = equine_head_look_pose(
