@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 286] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 301] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1068,6 +1068,21 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     TROPICAL_FISH_BLOCKFISH_PATTERN_TEXTURE_REF,
     TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
     TROPICAL_FISH_CLAYFISH_PATTERN_TEXTURE_REF,
+    ARMOR_LEATHER_HUMANOID_TEXTURE_REF,
+    ARMOR_COPPER_HUMANOID_TEXTURE_REF,
+    ARMOR_CHAINMAIL_HUMANOID_TEXTURE_REF,
+    ARMOR_IRON_HUMANOID_TEXTURE_REF,
+    ARMOR_GOLD_HUMANOID_TEXTURE_REF,
+    ARMOR_DIAMOND_HUMANOID_TEXTURE_REF,
+    ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF,
+    ARMOR_NETHERITE_HUMANOID_TEXTURE_REF,
+    ARMOR_LEATHER_LEGGINGS_TEXTURE_REF,
+    ARMOR_COPPER_LEGGINGS_TEXTURE_REF,
+    ARMOR_CHAINMAIL_LEGGINGS_TEXTURE_REF,
+    ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+    ARMOR_GOLD_LEGGINGS_TEXTURE_REF,
+    ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF,
+    ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -2749,6 +2764,49 @@ pub(in crate::entity_models) const WIND_CHARGE_ENTITY_TEXTURE_REFS: [EntityModel
 pub fn wind_charge_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WIND_CHARGE_ENTITY_TEXTURE_REFS
 }
+
+// Vanilla `HumanoidArmorLayer` equipment-asset textures (`EquipmentClientInfo.Layer.getTextureLocation`),
+// shared by every humanoid armor-wearer. The `HUMANOID` layer (head / chest / feet) reads
+// `textures/entity/equipment/humanoid/<asset>.png`; the `HUMANOID_LEGGINGS` layer (legs) reads
+// `textures/entity/equipment/humanoid_leggings/<asset>.png`. Both are the 64×32 humanoid UV layout. The
+// asset id is the `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>` name (`CHAINMAIL` → `chainmail`,
+// `TURTLE_SCUTE` → `turtle_scute`). Turtle scute is helmet-only, so it has no leggings texture.
+const fn armor_humanoid_ref(path: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path,
+        size: [64, 32],
+    }
+}
+pub(in crate::entity_models) const ARMOR_LEATHER_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/leather.png");
+pub(in crate::entity_models) const ARMOR_COPPER_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/copper.png");
+pub(in crate::entity_models) const ARMOR_CHAINMAIL_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/chainmail.png");
+pub(in crate::entity_models) const ARMOR_IRON_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/iron.png");
+pub(in crate::entity_models) const ARMOR_GOLD_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/gold.png");
+pub(in crate::entity_models) const ARMOR_DIAMOND_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/diamond.png");
+pub(in crate::entity_models) const ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/turtle_scute.png");
+pub(in crate::entity_models) const ARMOR_NETHERITE_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid/netherite.png");
+pub(in crate::entity_models) const ARMOR_LEATHER_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/leather.png");
+pub(in crate::entity_models) const ARMOR_COPPER_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/copper.png");
+pub(in crate::entity_models) const ARMOR_CHAINMAIL_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/chainmail.png");
+pub(in crate::entity_models) const ARMOR_IRON_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/iron.png");
+pub(in crate::entity_models) const ARMOR_GOLD_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/gold.png");
+pub(in crate::entity_models) const ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/diamond.png");
+pub(in crate::entity_models) const ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
+    armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/netherite.png");
 
 // The guardian and elder guardian share one mesh/UV layout, differing only by texture (and the elder's
 // 2.35 root scale). The guardian's attack beam (guardian_beam.png) stays deferred.

@@ -2,6 +2,7 @@ use super::*;
 
 mod allay;
 mod armadillo;
+mod armor;
 mod armor_stand;
 mod arrow;
 mod auto_spin;

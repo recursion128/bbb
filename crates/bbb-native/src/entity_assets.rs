@@ -381,6 +381,21 @@ mod tests {
                 "textures/entity/fish/tropical_b_pattern_4.png",
                 "textures/entity/fish/tropical_b_pattern_5.png",
                 "textures/entity/fish/tropical_b_pattern_6.png",
+                "textures/entity/equipment/humanoid/leather.png",
+                "textures/entity/equipment/humanoid/copper.png",
+                "textures/entity/equipment/humanoid/chainmail.png",
+                "textures/entity/equipment/humanoid/iron.png",
+                "textures/entity/equipment/humanoid/gold.png",
+                "textures/entity/equipment/humanoid/diamond.png",
+                "textures/entity/equipment/humanoid/turtle_scute.png",
+                "textures/entity/equipment/humanoid/netherite.png",
+                "textures/entity/equipment/humanoid_leggings/leather.png",
+                "textures/entity/equipment/humanoid_leggings/copper.png",
+                "textures/entity/equipment/humanoid_leggings/chainmail.png",
+                "textures/entity/equipment/humanoid_leggings/iron.png",
+                "textures/entity/equipment/humanoid_leggings/gold.png",
+                "textures/entity/equipment/humanoid_leggings/diamond.png",
+                "textures/entity/equipment/humanoid_leggings/netherite.png",
             ]
         );
         for image in images {

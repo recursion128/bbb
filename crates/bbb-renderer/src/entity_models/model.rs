@@ -151,6 +151,28 @@ impl ModelPart {
             .unwrap_or_else(|| panic!("model part has no child named `{name}`"))
     }
 
+    /// Copies the posed transform of each named direct child from `source` onto this part's same-named
+    /// direct child — vanilla `HumanoidModel.copyPropertiesTo`. Used to drape an armor-layer overlay
+    /// tree on the host humanoid model's already-posed limbs (head, body, arms, legs) so the armor
+    /// inherits the host's `setup_anim` without re-running it. Children of `source` that this part
+    /// lacks are skipped; the copied `pose` carries both the bind offset and the animated rotation, so
+    /// a part whose own subtree (e.g. the helmet's `hat`) keeps its bind pose still rides along.
+    pub(in crate::entity_models) fn copy_child_poses_from(
+        &mut self,
+        source: &ModelPart,
+        names: &[&str],
+    ) {
+        for name in names {
+            if let Some((_, src)) = source.children.iter().find(|(n, _)| n == name) {
+                let pose = src.pose;
+                let scale = src.scale;
+                let target = self.child_mut(name);
+                target.pose = pose;
+                target.scale = scale;
+            }
+        }
+    }
+
     /// Walks the subtree, emitting every visible cube into the colored `mesh` with the cube's baked
     /// color. Mirrors vanilla `ModelPart.render`: apply this part's pose, draw the cubes, recurse.
     pub(in crate::entity_models) fn render_colored(

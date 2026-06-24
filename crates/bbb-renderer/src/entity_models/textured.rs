@@ -2,7 +2,7 @@ use super::colored::{
     creeper_model_root_transform, wind_charge_model_root_transform, wither_model_root_transform,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
-use super::model::EntityModel;
+use super::model::{EntityModel, ModelPart};
 use super::{
     catalog::squid_texture_ref,
     catalog::{
@@ -19,11 +19,11 @@ use super::{
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        CamelModel, CreeperModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, SheepFurModel,
-        SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
-        TropicalFishModel, TropicalFishPatternModel, WindChargeModel, WitherModel,
-        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF,
+        armor_slot_texture, CamelModel, CreeperModel, HoglinModel, HumanoidArmorSlot, LlamaModel,
+        PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel,
+        SlimeModel, SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel,
+        WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF,
+        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -230,6 +230,9 @@ pub(super) fn entity_model_textured_meshes(
         // `handled`.
         emit_charged_creeper_energy_swirl(&mut meshes, *instance, atlas);
         emit_wither_energy_swirl(&mut meshes, *instance, atlas);
+        // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
+        // `handled` and folds into the cutout pass before the shared light/overlay fill below.
+        emit_zombie_armor(&mut meshes, *instance, atlas);
         let light = instance.render_state.shader_light();
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
@@ -491,6 +494,71 @@ fn emit_wither_energy_swirl(
         entry.uv,
         [u_offset, v_offset],
     );
+}
+
+/// The `HumanoidArmorLayer` worn-armor overlay (vanilla `HumanoidArmorLayer.submit`): for each filled
+/// equipment slot the inflated `HumanoidArmorModel` piece (helmet / chestplate / leggings / boots) is
+/// draped on the host humanoid's posed limbs ([`ModelPart::copy_child_poses_from`] = vanilla
+/// `copyPropertiesTo`) and drawn into the cutout pass with the material's equipment-asset texture. The
+/// pieces render in the vanilla order (chest, legs, feet, head). `transform` is the host entity's root
+/// transform so the armor sits exactly on the body. The enchant-glint, armor-trim, and leather-dye
+/// tint passes are deferred coverage.
+fn emit_humanoid_armor(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    host_root: &ModelPart,
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let render_state = &instance.render_state;
+    for (slot, material) in [
+        (HumanoidArmorSlot::Chest, render_state.chest_armor),
+        (HumanoidArmorSlot::Legs, render_state.legs_armor),
+        (HumanoidArmorSlot::Feet, render_state.feet_armor),
+        (HumanoidArmorSlot::Head, render_state.head_armor),
+    ] {
+        let Some(material) = material else {
+            continue;
+        };
+        let texture = armor_slot_texture(material, slot);
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+            continue;
+        };
+        let mut tree = slot.build_tree();
+        tree.copy_child_poses_from(host_root, slot.part_names());
+        tree.render_textured(
+            meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+            transform,
+            texture,
+            entry.uv,
+            [1.0, 1.0, 1.0, 1.0],
+        );
+    }
+}
+
+/// The adult zombie's worn armor. The base zombie is emitted by the shared dispatch; here we rebuild
+/// and pose an identical `ZombieModel` purely to read its limb poses, then drape the armor pieces on
+/// it. Baby zombies wear a distinct baby armor mesh (`createBabyArmorMesh`), deferred for now.
+fn emit_zombie_armor(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::Zombie { baby: false }) {
+        return;
+    }
+    let render_state = &instance.render_state;
+    if render_state.head_armor.is_none()
+        && render_state.chest_armor.is_none()
+        && render_state.legs_armor.is_none()
+        && render_state.feet_armor.is_none()
+    {
+        return;
+    }
+    let transform = entity_model_root_transform(instance);
+    let mut host = ZombieModel::new(false);
+    host.prepare(&instance);
+    emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
 }
 
 fn emit_squid_textured_model(

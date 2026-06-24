@@ -129,6 +129,7 @@ pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
 mod allay;
 mod armadillo;
+mod armor;
 mod armor_stand;
 mod arrow;
 mod axolotl;
@@ -205,6 +206,7 @@ mod zombie;
 
 pub(super) use allay::*;
 pub(super) use armadillo::*;
+pub(super) use armor::*;
 pub(super) use armor_stand::*;
 pub(super) use arrow::*;
 pub(super) use axolotl::*;

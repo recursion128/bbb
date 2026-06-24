@@ -1091,6 +1091,25 @@ When an agent does any of the following, update this file in the same slice:
       metadata/no-hat model selection, crossed-arms item layer, custom head
       layer, unhappy animation, leg walk animation, lighting, and wandering
       trader baby presentation remain unsupported
+    - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
+      slice 1, renderer-side): the inflated `HumanoidArmorModel`
+      (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
+      four-piece subset — helmet (head + hat, `OUTER_ARMOR_DEFORMATION 1.0`, hat `g.extend(0.5)`),
+      chestplate (body + arms, `1.0`), leggings (body + legs, `INNER_ARMOR_DEFORMATION 0.5`, legs
+      `g.extend(-0.1)`), boots (legs, `1.0`, legs `g.extend(-0.1)`) — exactly the vanilla
+      `retainExactParts` part sets and `CubeDeformation`s. Each piece is draped on the host humanoid's
+      already-posed limbs via `ModelPart::copy_child_poses_from` (vanilla `HumanoidModel.copyPropertiesTo`),
+      so the armor inherits the host `setup_anim` without re-running it, and is drawn into the cutout pass
+      in the vanilla submit order (chest, legs, feet, head). All eight equipment-asset materials
+      (`ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`: leather, copper, chainmail, iron, gold, diamond,
+      turtle_scute, netherite) resolve to their `textures/entity/equipment/humanoid/<asset>.png`
+      (head/chest/feet) and `humanoid_leggings/<asset>.png` (legs) textures, stitched into the entity
+      atlas. The adult zombie is the first wearer (`EntityModelKind::Zombie { baby: false }`); other
+      humanoids and the baby armor mesh (`createBabyArmorMesh`) are pending coverage. STILL DEFERRED in
+      this slice: the cross-crate equipment projection (the renderer reads `head/chest/legs/feet_armor`
+      render-state fields that the world→native layer does not yet populate from `SetEquipment`, so worn
+      armor is not yet visible in the live client), plus the enchant-glint, armor-trim, and leather-dye
+      tint passes
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla

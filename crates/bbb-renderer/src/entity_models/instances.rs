@@ -377,6 +377,14 @@ entity_render_state! {
     /// swirl (the same `EnergySwirlLayer` as the charged creeper) glows over the inflated
     /// `WITHER_ARMOR` body. `false` for every other entity and for a healthy wither.
     (with_wither_powered) wither_powered: bool = false;
+    /// Vanilla `HumanoidArmorLayer` worn armor, one material per equipment slot (head / chest / legs /
+    /// feet), projected from the entity's `SetEquipment` items. `Some(material)` drapes that slot's
+    /// inflated `HumanoidArmorModel` piece (helmet / chestplate / leggings / boots) over the host
+    /// humanoid pose, textured by the material's equipment-asset texture; `None` leaves the slot bare.
+    (with_head_armor) head_armor: Option<EntityArmorMaterial> = None;
+    (with_chest_armor) chest_armor: Option<EntityArmorMaterial> = None;
+    (with_legs_armor) legs_armor: Option<EntityArmorMaterial> = None;
+    (with_feet_armor) feet_armor: Option<EntityArmorMaterial> = None;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -1577,6 +1585,10 @@ mod tests {
                 vex_charging: false,
                 wither_invulnerable_ticks: 0.0,
                 wither_powered: false,
+                head_armor: None,
+                chest_armor: None,
+                legs_armor: None,
+                feet_armor: None,
                 illager_spellcasting: false,
                 is_crouching: false,
                 invisible: false,
