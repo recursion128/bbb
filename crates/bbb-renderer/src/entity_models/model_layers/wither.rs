@@ -1,83 +1,133 @@
 use super::{
-    bind_part as part, bind_part_rot as rpart, head_look_at_rest, head_look_pose,
-    model_cube as cube, ModelCubeDesc, ModelPartDesc, PartPose, PART_POSE_ZERO, WITHER_BODY,
-    WITHER_HEAD,
+    head_look_at_rest, head_look_pose, PartPose, PART_POSE_ZERO, WITHER_BODY, WITHER_HEAD,
 };
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` (atlas 64×64). The mesh root
 // holds six sibling parts: the shoulders bar, the ribcage (its spine plus three rib bars), the
 // hanging tail, the center head, and the two side heads. The ribcage and tail carry their baked
 // rest rotation; the tail's bind position is `(-2, 6.9 + cos(0.20420352) * 10, -0.5 +
 // sin(0.20420352) * 10)`, derived from the ribcage's bind pitch (the `anim = 0` rest of the
-// breathing sway below). The center head (part 3) follows the plain head look
+// breathing sway below). The center head follows the plain head look
 // (`centerHead.yRot/xRot = state.yRot/xRot`), reproduced via `head_look_pose`; the ribcage and tail
 // breathe with `cos(ageInTicks * 0.1)` via [`wither_breathing_poses`]. The two side heads' target
-// tracking is deferred (the `DATA_TARGET_*` head targets are client-tick lerped). The
-// `WITHER_ARMOR` invulnerable-shimmer overlay layer (the same mesh re-rendered with
-// `INNER_ARMOR_DEFORMATION`) and the texture-backed path are deferred, so the colored debug path
-// renders a dark body tint plus a lighter head tint.
+// tracking is deferred (the `DATA_TARGET_*` head targets are client-tick lerped). The `wither.png`
+// texture is wired here; the `WITHER_ARMOR` invulnerable-shimmer overlay layer (the same mesh
+// re-rendered with `INNER_ARMOR_DEFORMATION`, `wither_invulnerable.png`) stays deferred. Each cube
+// carries the colored debug tint and the textured `uv_size` / `texOffs`.
 
-// `shoulders`: the 20×3×3 bar.
-const WITHER_SHOULDERS_CUBES: [ModelCubeDesc; 1] =
-    [cube([-10.0, 3.9, -0.5], [20.0, 3.0, 3.0], WITHER_BODY)];
+// `shoulders`: the 20×3×3 bar, texOffs(0,16).
+pub(in crate::entity_models) const WITHER_SHOULDERS_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-10.0, 3.9, -0.5],
+    [20.0, 3.0, 3.0],
+    WITHER_BODY,
+    [20.0, 3.0, 3.0],
+    [0.0, 16.0],
+    false,
+)];
 
-// `ribcage`: the 3×10×3 spine plus three 11×2×2 rib bars (`texOffs(24,22)`, stacked along Y).
-const WITHER_RIBCAGE_CUBES: [ModelCubeDesc; 4] = [
-    cube([0.0, 0.0, 0.0], [3.0, 10.0, 3.0], WITHER_BODY),
-    cube([-4.0, 1.5, 0.5], [11.0, 2.0, 2.0], WITHER_BODY),
-    cube([-4.0, 4.0, 0.5], [11.0, 2.0, 2.0], WITHER_BODY),
-    cube([-4.0, 6.5, 0.5], [11.0, 2.0, 2.0], WITHER_BODY),
+// `ribcage`: the 3×10×3 spine (texOffs(0,22)) plus three 11×2×2 rib bars (`texOffs(24,22)`, stacked).
+pub(in crate::entity_models) const WITHER_RIBCAGE_CUBES: [ModelCube; 4] = [
+    ModelCube::new(
+        [0.0, 0.0, 0.0],
+        [3.0, 10.0, 3.0],
+        WITHER_BODY,
+        [3.0, 10.0, 3.0],
+        [0.0, 22.0],
+        false,
+    ),
+    ModelCube::new(
+        [-4.0, 1.5, 0.5],
+        [11.0, 2.0, 2.0],
+        WITHER_BODY,
+        [11.0, 2.0, 2.0],
+        [24.0, 22.0],
+        false,
+    ),
+    ModelCube::new(
+        [-4.0, 4.0, 0.5],
+        [11.0, 2.0, 2.0],
+        WITHER_BODY,
+        [11.0, 2.0, 2.0],
+        [24.0, 22.0],
+        false,
+    ),
+    ModelCube::new(
+        [-4.0, 6.5, 0.5],
+        [11.0, 2.0, 2.0],
+        WITHER_BODY,
+        [11.0, 2.0, 2.0],
+        [24.0, 22.0],
+        false,
+    ),
 ];
 
-// `tail`: the 3×6×3 hanging spine segment.
-const WITHER_TAIL_CUBES: [ModelCubeDesc; 1] = [cube([0.0, 0.0, 0.0], [3.0, 6.0, 3.0], WITHER_BODY)];
+// `tail`: the 3×6×3 hanging spine segment, texOffs(12,22).
+pub(in crate::entity_models) const WITHER_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, 0.0],
+    [3.0, 6.0, 3.0],
+    WITHER_BODY,
+    [3.0, 6.0, 3.0],
+    [12.0, 22.0],
+    false,
+)];
 
-// `center_head`: the 8×8×8 skull.
-const WITHER_CENTER_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-4.0, -4.0, -4.0], [8.0, 8.0, 8.0], WITHER_HEAD)];
+// `center_head`: the 8×8×8 skull, texOffs(0,0).
+pub(in crate::entity_models) const WITHER_CENTER_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -4.0, -4.0],
+    [8.0, 8.0, 8.0],
+    WITHER_HEAD,
+    [8.0, 8.0, 8.0],
+    [0.0, 0.0],
+    false,
+)];
 
-// The shared 6×6×6 side head (both side heads reuse it, differing only in pivot).
-const WITHER_SIDE_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-4.0, -4.0, -4.0], [6.0, 6.0, 6.0], WITHER_HEAD)];
+// The shared 6×6×6 side head (both side heads reuse it, differing only in pivot), texOffs(32,0).
+pub(in crate::entity_models) const WITHER_SIDE_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -4.0, -4.0],
+    [6.0, 6.0, 6.0],
+    WITHER_HEAD,
+    [6.0, 6.0, 6.0],
+    [32.0, 0.0],
+    false,
+)];
 
-pub(in crate::entity_models) const WITHER_PARTS: [ModelPartDesc; 6] = [
-    part([0.0, 0.0, 0.0], &WITHER_SHOULDERS_CUBES, &[]),
-    rpart(
-        [-2.0, 6.9, -0.5],
-        [0.20420352, 0.0, 0.0],
-        &WITHER_RIBCAGE_CUBES,
-        &[],
-    ),
-    rpart(
-        [-2.0, 16.692228, 1.5278729],
-        [0.83252203, 0.0, 0.0],
-        &WITHER_TAIL_CUBES,
-        &[],
-    ),
-    part([0.0, 0.0, 0.0], &WITHER_CENTER_HEAD_CUBES, &[]),
-    part([-8.0, 4.0, 0.0], &WITHER_SIDE_HEAD_CUBES, &[]),
-    part([10.0, 4.0, 0.0], &WITHER_SIDE_HEAD_CUBES, &[]),
-];
-
-/// Index of the `ribcage` part in [`WITHER_PARTS`]; it breathes via [`wither_breathing_poses`].
-pub(in crate::entity_models) const WITHER_RIBCAGE_PART_INDEX: usize = 1;
-
-/// Index of the `tail` part in [`WITHER_PARTS`]; its hang position and pitch breathe with the
-/// ribcage via [`wither_breathing_poses`].
-pub(in crate::entity_models) const WITHER_TAIL_PART_INDEX: usize = 2;
-
-/// Index of the `center_head` part in [`WITHER_PARTS`] (vanilla `createBodyLayer` order:
-/// shoulders, ribcage, tail, center_head, right_head, left_head). It tracks the plain head look.
-pub(in crate::entity_models) const WITHER_CENTER_HEAD_PART_INDEX: usize = 3;
+/// Vanilla `createBodyLayer` rest poses (`addOrReplaceChild` order: shoulders, ribcage, tail,
+/// center_head, right_head, left_head).
+pub(in crate::entity_models) const WITHER_SHOULDERS_POSE: PartPose = PART_POSE_ZERO;
+/// The `ribcage` bind pose (offset `(-2, 6.9, -0.5)`, pitched `0.20420352`); it breathes via
+/// [`wither_breathing_poses`].
+pub(in crate::entity_models) const WITHER_RIBCAGE_POSE: PartPose = PartPose {
+    offset: [-2.0, 6.9, -0.5],
+    rotation: [0.20420352, 0.0, 0.0],
+};
+/// The `tail` bind pose; its hang position and pitch breathe with the ribcage via
+/// [`wither_breathing_poses`].
+pub(in crate::entity_models) const WITHER_TAIL_POSE: PartPose = PartPose {
+    offset: [-2.0, 16.692228, 1.5278729],
+    rotation: [0.83252203, 0.0, 0.0],
+};
+/// The `center_head` bind pose; it tracks the plain head look.
+pub(in crate::entity_models) const WITHER_CENTER_HEAD_POSE: PartPose = PART_POSE_ZERO;
+/// The `right_head` bind pose (its `DATA_TARGET_*` tracking is deferred).
+pub(in crate::entity_models) const WITHER_RIGHT_HEAD_POSE: PartPose = PartPose {
+    offset: [-8.0, 4.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// The `left_head` bind pose (its `DATA_TARGET_*` tracking is deferred).
+pub(in crate::entity_models) const WITHER_LEFT_HEAD_POSE: PartPose = PartPose {
+    offset: [10.0, 4.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
 
 /// Vanilla `WitherBossModel.setupAnim` breathing sway, driven entirely by the projected
 /// `ageInTicks`: `anim = cos(ageInTicks * 0.1)` pitches the ribcage to
 /// `(0.065 + 0.05 * anim) * PI`, re-hangs the tail from that new pitch
 /// (`tail.setPos(-2, 6.9 + cos(ribcage.xRot) * 10, -0.5 + sin(ribcage.xRot) * 10)`), and pitches the
-/// tail to `(0.265 + 0.1 * anim) * PI`. At `anim = 0` it collapses to the baked [`WITHER_PARTS`]
-/// rest poses, so the sway oscillates symmetrically about the layer pose. Returns the
+/// tail to `(0.265 + 0.1 * anim) * PI`. At `anim = 0` it collapses to the baked
+/// [`WITHER_RIBCAGE_POSE`] / [`WITHER_TAIL_POSE`] rest poses, so the sway oscillates symmetrically
+/// about the layer pose. Returns the
 /// `(ribcage, tail)` poses; the ribcage keeps its bind offset `(-2, 6.9, -0.5)` and only its `xRot`
 /// moves. Because `ageInTicks` advances every frame, the wither never sits perfectly still.
 pub(in crate::entity_models) fn wither_breathing_poses(age_in_ticks: f32) -> (PartPose, PartPose) {
@@ -100,9 +150,8 @@ pub(in crate::entity_models) fn wither_breathing_poses(age_in_ticks: f32) -> (Pa
 }
 
 /// Mutable wither model, mirroring vanilla `WitherBossModel`. Its six sibling parts hang off a
-/// synthetic root (vanilla `WitherBossModel`'s `root`); each is built from the baked [`WITHER_PARTS`]
-/// geometry. This is the first entity migrated to the shared [`ModelPart`] tree, replacing the
-/// hand-walked `emit_wither_model`: `setup_anim` mutates the named parts exactly as
+/// synthetic root (vanilla `WitherBossModel`'s `root`); each is built from the baked per-part pose
+/// and `ModelCube` geometry. `setup_anim` mutates the named parts exactly as
 /// `WitherBossModel.setupAnim` does, and the trait renders the tree in one pass.
 pub(in crate::entity_models) struct WitherModel {
     root: ModelPart,
@@ -110,19 +159,34 @@ pub(in crate::entity_models) struct WitherModel {
 
 impl WitherModel {
     pub(in crate::entity_models) fn new() -> Self {
-        let leaf = |index: usize| {
-            ModelPart::leaf_colored(WITHER_PARTS[index].pose, WITHER_PARTS[index].cubes)
-        };
         let root = ModelPart::new(
             PART_POSE_ZERO,
             Vec::new(),
             vec![
-                ("shoulders", leaf(0)),
-                ("ribcage", leaf(WITHER_RIBCAGE_PART_INDEX)),
-                ("tail", leaf(WITHER_TAIL_PART_INDEX)),
-                ("center_head", leaf(WITHER_CENTER_HEAD_PART_INDEX)),
-                ("right_head", leaf(4)),
-                ("left_head", leaf(5)),
+                (
+                    "shoulders",
+                    ModelPart::leaf(WITHER_SHOULDERS_POSE, WITHER_SHOULDERS_CUBES.to_vec()),
+                ),
+                (
+                    "ribcage",
+                    ModelPart::leaf(WITHER_RIBCAGE_POSE, WITHER_RIBCAGE_CUBES.to_vec()),
+                ),
+                (
+                    "tail",
+                    ModelPart::leaf(WITHER_TAIL_POSE, WITHER_TAIL_CUBES.to_vec()),
+                ),
+                (
+                    "center_head",
+                    ModelPart::leaf(WITHER_CENTER_HEAD_POSE, WITHER_CENTER_HEAD_CUBES.to_vec()),
+                ),
+                (
+                    "right_head",
+                    ModelPart::leaf(WITHER_RIGHT_HEAD_POSE, WITHER_SIDE_HEAD_CUBES.to_vec()),
+                ),
+                (
+                    "left_head",
+                    ModelPart::leaf(WITHER_LEFT_HEAD_POSE, WITHER_SIDE_HEAD_CUBES.to_vec()),
+                ),
             ],
         );
         Self { root }

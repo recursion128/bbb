@@ -1,55 +1,48 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
-
 #[test]
 fn wither_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` (atlas 64×64): six sibling
     // root parts — shoulders, ribcage (spine + three ribs), tail, center head, two side heads.
-    assert_eq!(WITHER_PARTS.len(), 6);
 
-    // `shoulders` (20×3×3) at ZERO.
-    let shoulders = &WITHER_PARTS[0];
-    assert_eq!(shoulders.pose.offset, [0.0, 0.0, 0.0]);
-    assert_eq!(shoulders.cubes[0].min, [-10.0, 3.9, -0.5]);
-    assert_eq!(shoulders.cubes[0].size, [20.0, 3.0, 3.0]);
+    // `shoulders` (20×3×3) at ZERO, texOffs(0,16).
+    assert_eq!(WITHER_SHOULDERS_POSE.offset, [0.0, 0.0, 0.0]);
+    assert_eq!(WITHER_SHOULDERS_CUBES[0].min, [-10.0, 3.9, -0.5]);
+    assert_eq!(WITHER_SHOULDERS_CUBES[0].size, [20.0, 3.0, 3.0]);
+    assert_eq!(WITHER_SHOULDERS_CUBES[0].tex, [0.0, 16.0]);
 
     // `ribcage` (offset (-2, 6.9, -0.5), pitched 0.20420352 rad): the spine plus three rib bars.
-    let ribcage = &WITHER_PARTS[1];
-    assert_eq!(ribcage.pose.offset, [-2.0, 6.9, -0.5]);
-    assert_eq!(ribcage.pose.rotation, [0.204_203_52, 0.0, 0.0]);
-    assert_eq!(ribcage.cubes.len(), 4);
-    assert_eq!(ribcage.cubes[0].size, [3.0, 10.0, 3.0]);
-    assert_eq!(ribcage.cubes[1].min, [-4.0, 1.5, 0.5]);
-    assert_eq!(ribcage.cubes[2].min, [-4.0, 4.0, 0.5]);
-    assert_eq!(ribcage.cubes[3].min, [-4.0, 6.5, 0.5]);
-    assert_eq!(ribcage.cubes[1].size, [11.0, 2.0, 2.0]);
+    assert_eq!(WITHER_RIBCAGE_POSE.offset, [-2.0, 6.9, -0.5]);
+    assert_eq!(WITHER_RIBCAGE_POSE.rotation, [0.204_203_52, 0.0, 0.0]);
+    assert_eq!(WITHER_RIBCAGE_CUBES.len(), 4);
+    assert_eq!(WITHER_RIBCAGE_CUBES[0].size, [3.0, 10.0, 3.0]);
+    assert_eq!(WITHER_RIBCAGE_CUBES[0].tex, [0.0, 22.0]);
+    assert_eq!(WITHER_RIBCAGE_CUBES[1].min, [-4.0, 1.5, 0.5]);
+    assert_eq!(WITHER_RIBCAGE_CUBES[2].min, [-4.0, 4.0, 0.5]);
+    assert_eq!(WITHER_RIBCAGE_CUBES[3].min, [-4.0, 6.5, 0.5]);
+    assert_eq!(WITHER_RIBCAGE_CUBES[1].size, [11.0, 2.0, 2.0]);
+    assert!(WITHER_RIBCAGE_CUBES[1..]
+        .iter()
+        .all(|cube| cube.tex == [24.0, 22.0]));
 
-    // `tail` (3×6×3) at the bind position derived from the ribcage bind pitch.
-    let tail = &WITHER_PARTS[2];
+    // `tail` (3×6×3) at the bind position derived from the ribcage bind pitch, texOffs(12,22).
     let ribcage_bind_xrot = 0.20420352_f32;
     let expected_tail_y = 6.9 + ribcage_bind_xrot.cos() * 10.0;
     let expected_tail_z = -0.5 + ribcage_bind_xrot.sin() * 10.0;
-    assert!((tail.pose.offset[1] - expected_tail_y).abs() < 1.0e-4);
-    assert!((tail.pose.offset[2] - expected_tail_z).abs() < 1.0e-4);
-    assert_eq!(tail.pose.rotation, [0.832_522_03, 0.0, 0.0]);
-    assert_eq!(tail.cubes[0].size, [3.0, 6.0, 3.0]);
+    assert!((WITHER_TAIL_POSE.offset[1] - expected_tail_y).abs() < 1.0e-4);
+    assert!((WITHER_TAIL_POSE.offset[2] - expected_tail_z).abs() < 1.0e-4);
+    assert_eq!(WITHER_TAIL_POSE.rotation, [0.832_522_03, 0.0, 0.0]);
+    assert_eq!(WITHER_TAIL_CUBES[0].size, [3.0, 6.0, 3.0]);
+    assert_eq!(WITHER_TAIL_CUBES[0].tex, [12.0, 22.0]);
 
     // `center_head` (8×8×8) at ZERO; the two 6×6×6 side heads at their pivots.
-    let center_head = &WITHER_PARTS[3];
-    assert_eq!(center_head.pose.offset, [0.0, 0.0, 0.0]);
-    assert_eq!(center_head.cubes[0].size, [8.0, 8.0, 8.0]);
-    assert_eq!(WITHER_PARTS[4].pose.offset, [-8.0, 4.0, 0.0]);
-    assert_eq!(WITHER_PARTS[5].pose.offset, [10.0, 4.0, 0.0]);
-    assert_eq!(WITHER_PARTS[4].cubes[0].size, [6.0, 6.0, 6.0]);
-
-    // Nine cubes total.
-    assert_eq!(count_cubes(&WITHER_PARTS), 9);
+    assert_eq!(WITHER_CENTER_HEAD_POSE.offset, [0.0, 0.0, 0.0]);
+    assert_eq!(WITHER_CENTER_HEAD_CUBES[0].size, [8.0, 8.0, 8.0]);
+    assert_eq!(WITHER_CENTER_HEAD_CUBES[0].tex, [0.0, 0.0]);
+    assert_eq!(WITHER_RIGHT_HEAD_POSE.offset, [-8.0, 4.0, 0.0]);
+    assert_eq!(WITHER_LEFT_HEAD_POSE.offset, [10.0, 4.0, 0.0]);
+    assert_eq!(WITHER_SIDE_HEAD_CUBES[0].size, [6.0, 6.0, 6.0]);
+    assert_eq!(WITHER_SIDE_HEAD_CUBES[0].tex, [32.0, 0.0]);
 }
 
 #[test]
@@ -77,7 +70,6 @@ fn wither_center_head_follows_look_angles() {
     // (1) precede it (24·6 = 144). A non-zero look re-poses only those vertices; the shoulders /
     // ribcage / tail and the two side heads (which track the separate `DATA_TARGET_*` heads) stay at
     // bind.
-    assert_eq!(WITHER_CENTER_HEAD_PART_INDEX, 3);
     let base = EntityModelInstance::wither(1451, [0.0, 64.0, 0.0], 0.0);
     let looking = base.with_head_look(35.0, -20.0);
     let rest = entity_model_mesh(&[base]);
@@ -123,8 +115,8 @@ fn wither_breathing_poses_match_vanilla_setup_anim() {
     // `anim == 0` (when ageInTicks * 0.1 == PI/2) collapses the sway onto the baked rest poses, so
     // the breathing oscillates symmetrically about the layer pose.
     let (rib_rest, tail_rest) = wither_breathing_poses(5.0 * PI);
-    let rib_bind = WITHER_PARTS[WITHER_RIBCAGE_PART_INDEX].pose;
-    let tail_bind = WITHER_PARTS[WITHER_TAIL_PART_INDEX].pose;
+    let rib_bind = WITHER_RIBCAGE_POSE;
+    let tail_bind = WITHER_TAIL_POSE;
     assert!((rib_rest.rotation[0] - rib_bind.rotation[0]).abs() < 1.0e-5);
     assert!((tail_rest.offset[1] - tail_bind.offset[1]).abs() < 1.0e-4);
     assert!((tail_rest.offset[2] - tail_bind.offset[2]).abs() < 1.0e-4);
@@ -160,4 +152,35 @@ fn wither_ribcage_and_tail_breathe_with_age() {
         old_mesh.vertices[144..],
         "the three heads never breathe"
     );
+}
+
+#[test]
+fn wither_textured_render_matches_vanilla_renderer() {
+    // The wither boss shares `wither.png` with the wither skull; the invulnerable-shimmer overlay is
+    // deferred.
+    assert_eq!(
+        wither_textured_layer_passes()[0].texture,
+        WITHER_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::Wither.vanilla_texture_ref(),
+        Some(WITHER_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&WITHER_TEXTURE_REF));
+
+    let len = usize::try_from(WITHER_TEXTURE_REF.size[0] * WITHER_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        WITHER_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert!(!mesh.vertices.is_empty());
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }

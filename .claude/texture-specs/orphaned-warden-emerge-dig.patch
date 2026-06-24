@@ -1,0 +1,547 @@
+diff --git a/crates/bbb-renderer/src/entity_models/model_layers/warden.rs b/crates/bbb-renderer/src/entity_models/model_layers/warden.rs
+index 576b6de..95e6186 100644
+--- a/crates/bbb-renderer/src/entity_models/model_layers/warden.rs
++++ b/crates/bbb-renderer/src/entity_models/model_layers/warden.rs
+@@ -10,6 +10,7 @@ use crate::entity_models::instances::EntityModelInstance;
+ use crate::entity_models::model::{EntityModel, ModelPart};
+ 
+ const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
++const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
+ 
+ const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
+     AnimationChannel {
+@@ -757,13 +758,488 @@ pub(in crate::entity_models) const WARDEN_SNIFF: AnimationDefinition = Animation
+     bones: &WARDEN_SNIFF_BONES,
+ };
+ 
++// ----- `WardenAnimation.WARDEN_EMERGE` (length 6.68s, NOT looping). The spawn rise: the warden
++// hauls itself up out of the ground — the `body` (and the two legs, which share the body's deep
++// `posVec(0, -63, 0)` sink) heave upward, the `head` cranes and shakes, and the two arms claw out of
++// the dirt (each ROTATION + POSITION). All keyframes CATMULLROM. -----
++
++const WARDEN_EMERGE_BODY_ROT: [Keyframe; 16] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.52, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
++    keyframe(1.2, degree_vec(0.0, 0.0, -7.5), CATMULLROM),
++    keyframe(1.68, degree_vec(0.0, 0.0, 10.0), CATMULLROM),
++    keyframe(1.8, degree_vec(0.0, 0.0, 10.0), CATMULLROM),
++    keyframe(2.28, degree_vec(0.0, 0.0, 10.0), CATMULLROM),
++    keyframe(2.88, degree_vec(0.0, 0.0, 10.0), CATMULLROM),
++    keyframe(3.76, degree_vec(25.0, 0.0, -7.5), CATMULLROM),
++    keyframe(3.92, degree_vec(35.0, 0.0, -7.5), CATMULLROM),
++    keyframe(4.08, degree_vec(25.0, 0.0, -7.5), CATMULLROM),
++    keyframe(4.44, degree_vec(47.5, 0.0, 0.0), CATMULLROM),
++    keyframe(4.56, degree_vec(47.5, 0.0, 0.0), CATMULLROM),
++    keyframe(4.68, degree_vec(47.5, 0.0, 0.0), CATMULLROM),
++    keyframe(5.0, degree_vec(70.0, 0.0, 2.5), CATMULLROM),
++    keyframe(5.8, degree_vec(70.0, 0.0, 2.5), CATMULLROM),
++    keyframe(6.64, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_BODY_POS: [Keyframe; 17] = [
++    keyframe(0.0, pos_vec(0.0, -63.0, 0.0), CATMULLROM),
++    keyframe(0.52, pos_vec(0.0, -56.0, 0.0), CATMULLROM),
++    keyframe(1.2, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(1.68, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(1.8, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(2.28, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(2.88, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(3.16, pos_vec(0.0, -27.0, 0.0), CATMULLROM),
++    keyframe(3.76, pos_vec(0.0, -14.0, 0.0), CATMULLROM),
++    keyframe(3.92, pos_vec(0.0, -11.0, 0.0), CATMULLROM),
++    keyframe(4.08, pos_vec(0.0, -14.0, 0.0), CATMULLROM),
++    keyframe(4.44, pos_vec(0.0, -6.0, -3.0), CATMULLROM),
++    keyframe(4.56, pos_vec(0.0, -4.0, -3.0), CATMULLROM),
++    keyframe(4.68, pos_vec(0.0, -6.0, -3.0), CATMULLROM),
++    keyframe(5.0, pos_vec(0.0, -3.0, -4.0), CATMULLROM),
++    keyframe(5.8, pos_vec(0.0, -3.0, -4.0), CATMULLROM),
++    keyframe(6.64, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_HEAD_ROT: [Keyframe; 18] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.52, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.92, degree_vec(0.74, 0.0, -40.38), CATMULLROM),
++    keyframe(1.16, degree_vec(-67.5, 0.0, -2.5), CATMULLROM),
++    keyframe(1.24, degree_vec(-67.5, 0.0, -2.5), CATMULLROM),
++    keyframe(1.32, degree_vec(-47.5, 0.0, -2.5), CATMULLROM),
++    keyframe(1.4, degree_vec(-67.5, 0.0, -2.5), CATMULLROM),
++    keyframe(1.68, degree_vec(-67.5, 0.0, 15.0), CATMULLROM),
++    keyframe(1.76, degree_vec(-67.5, 0.0, -5.0), CATMULLROM),
++    keyframe(1.84, degree_vec(-52.5, 0.0, -5.0), CATMULLROM),
++    keyframe(1.92, degree_vec(-67.5, 0.0, -5.0), CATMULLROM),
++    keyframe(2.64, degree_vec(-17.5, 0.0, -10.0), CATMULLROM),
++    keyframe(3.76, degree_vec(70.0, 0.0, 12.5), CATMULLROM),
++    keyframe(4.04, degree_vec(70.0, 0.0, 12.5), CATMULLROM),
++    keyframe(4.12, degree_vec(80.0, 0.0, 12.5), CATMULLROM),
++    keyframe(4.24, degree_vec(70.0, 0.0, 12.5), CATMULLROM),
++    keyframe(5.0, degree_vec(77.5, 0.0, -2.5), CATMULLROM),
++    keyframe(6.64, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_HEAD_POS: [Keyframe; 17] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.52, pos_vec(-8.0, -11.0, 0.0), CATMULLROM),
++    keyframe(0.92, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(1.24, pos_vec(0.0, 0.47, -0.95), CATMULLROM),
++    keyframe(1.32, pos_vec(0.0, 0.47, -0.95), CATMULLROM),
++    keyframe(1.4, pos_vec(0.0, 0.47, -0.95), CATMULLROM),
++    keyframe(1.68, pos_vec(0.0, 1.0, -2.0), CATMULLROM),
++    keyframe(1.76, pos_vec(0.0, 1.0, -2.0), CATMULLROM),
++    keyframe(1.84, pos_vec(0.0, 1.0, -2.0), CATMULLROM),
++    keyframe(1.92, pos_vec(0.0, 1.0, -2.0), CATMULLROM),
++    keyframe(2.64, pos_vec(0.0, -2.0, -2.0), CATMULLROM),
++    keyframe(3.76, pos_vec(0.0, -4.0, 1.0), CATMULLROM),
++    keyframe(4.04, pos_vec(0.0, -1.0, 1.0), CATMULLROM),
++    keyframe(4.12, pos_vec(0.0, -1.0, 1.0), CATMULLROM),
++    keyframe(4.24, pos_vec(0.0, -1.0, 1.0), CATMULLROM),
++    keyframe(5.0, pos_vec(0.0, -1.0, 1.0), CATMULLROM),
++    keyframe(6.64, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_RIGHT_ARM_ROT: [Keyframe; 19] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.52, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(1.2, degree_vec(-152.5, 2.5, 7.5), CATMULLROM),
++    keyframe(1.68, degree_vec(-180.0, 12.5, -10.0), CATMULLROM),
++    keyframe(1.8, degree_vec(-90.0, 12.5, -10.0), CATMULLROM),
++    keyframe(2.28, degree_vec(-90.0, 12.5, -10.0), CATMULLROM),
++    keyframe(2.88, degree_vec(-90.0, 12.5, -10.0), CATMULLROM),
++    keyframe(3.08, degree_vec(-95.0, 12.5, -10.0), CATMULLROM),
++    keyframe(3.24, degree_vec(-83.93, 3.93, 5.71), CATMULLROM),
++    keyframe(3.36, degree_vec(-80.0, 7.5, 17.5), CATMULLROM),
++    keyframe(3.76, degree_vec(-67.5, 2.5, 0.0), CATMULLROM),
++    keyframe(4.08, degree_vec(-67.5, 2.5, 0.0), CATMULLROM),
++    keyframe(4.44, degree_vec(-55.0, 2.5, 0.0), CATMULLROM),
++    keyframe(4.56, degree_vec(-60.0, 2.5, 0.0), CATMULLROM),
++    keyframe(4.68, degree_vec(-55.0, 2.5, 0.0), CATMULLROM),
++    keyframe(5.0, degree_vec(-67.5, 0.0, 0.0), CATMULLROM),
++    keyframe(5.56, degree_vec(-50.45, 0.0, 2.69), CATMULLROM),
++    keyframe(6.08, degree_vec(-62.72, 0.0, 4.3), CATMULLROM),
++    keyframe(6.64, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_RIGHT_ARM_POS: [Keyframe; 17] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.52, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(1.2, pos_vec(0.0, -21.0, 9.0), CATMULLROM),
++    keyframe(1.68, pos_vec(2.0, -2.0, 0.0), CATMULLROM),
++    keyframe(1.8, pos_vec(2.0, 0.0, 0.0), CATMULLROM),
++    keyframe(2.28, pos_vec(2.0, 0.0, 0.0), CATMULLROM),
++    keyframe(2.88, pos_vec(2.0, 0.0, 0.0), CATMULLROM),
++    keyframe(3.08, pos_vec(2.0, -2.0, 0.0), CATMULLROM),
++    keyframe(3.24, pos_vec(2.0, 2.71, 3.86), CATMULLROM),
++    keyframe(3.36, pos_vec(2.0, 1.0, 5.0), CATMULLROM),
++    keyframe(3.76, pos_vec(2.0, 3.0, 3.0), CATMULLROM),
++    keyframe(4.08, pos_vec(2.0, 3.0, 3.0), CATMULLROM),
++    keyframe(4.44, pos_vec(2.67, 4.0, 0.0), CATMULLROM),
++    keyframe(4.56, pos_vec(2.67, 0.0, 0.0), CATMULLROM),
++    keyframe(4.68, pos_vec(2.67, 4.0, 0.0), CATMULLROM),
++    keyframe(5.0, pos_vec(0.67, 3.0, 4.0), CATMULLROM),
++    keyframe(6.64, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_LEFT_ARM_ROT: [Keyframe; 22] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.12, degree_vec(-167.5, -17.5, -7.5), CATMULLROM),
++    keyframe(0.6, degree_vec(-167.5, -17.5, -7.5), CATMULLROM),
++    keyframe(0.88, degree_vec(-175.0, -17.5, 15.0), CATMULLROM),
++    keyframe(1.16, degree_vec(-190.0, -17.5, 5.0), CATMULLROM),
++    keyframe(1.28, degree_vec(-90.0, -5.0, 5.0), CATMULLROM),
++    keyframe(1.68, degree_vec(-90.0, -17.5, -12.5), CATMULLROM),
++    keyframe(1.8, degree_vec(-90.0, -17.5, -12.5), CATMULLROM),
++    keyframe(2.28, degree_vec(-90.0, -17.5, -12.5), CATMULLROM),
++    keyframe(2.88, degree_vec(-90.0, -17.5, -12.5), CATMULLROM),
++    keyframe(3.04, degree_vec(-81.29, -10.64, -14.21), CATMULLROM),
++    keyframe(3.16, degree_vec(-83.5, -5.5, -15.5), CATMULLROM),
++    keyframe(3.76, degree_vec(-62.5, -7.5, 5.0), CATMULLROM),
++    keyframe(3.92, degree_vec(-58.75, -3.75, 5.0), CATMULLROM),
++    keyframe(4.08, degree_vec(-55.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.44, degree_vec(-52.5, 0.0, 5.0), CATMULLROM),
++    keyframe(4.56, degree_vec(-50.0, 0.0, 5.0), CATMULLROM),
++    keyframe(4.68, degree_vec(-52.5, 0.0, 5.0), CATMULLROM),
++    keyframe(5.0, degree_vec(-72.5, -2.5, 5.0), CATMULLROM),
++    keyframe(5.56, degree_vec(-57.5, -4.54, 2.99), CATMULLROM),
++    keyframe(6.08, degree_vec(-70.99, -5.77, 1.78), CATMULLROM),
++    keyframe(6.64, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_LEFT_ARM_POS: [Keyframe; 19] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.12, pos_vec(0.0, -8.0, 0.0), CATMULLROM),
++    keyframe(0.6, pos_vec(0.0, -8.0, 0.0), CATMULLROM),
++    keyframe(0.88, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(1.2, pos_vec(-2.0, 0.0, 0.0), CATMULLROM),
++    keyframe(1.68, pos_vec(-4.0, 3.0, 0.0), CATMULLROM),
++    keyframe(1.8, pos_vec(-4.0, 3.0, 0.0), CATMULLROM),
++    keyframe(2.28, pos_vec(-4.0, 3.0, 0.0), CATMULLROM),
++    keyframe(2.88, pos_vec(-4.0, 3.0, 0.0), CATMULLROM),
++    keyframe(3.04, pos_vec(-3.23, 5.7, 4.97), CATMULLROM),
++    keyframe(3.16, pos_vec(-1.49, 2.22, 5.25), CATMULLROM),
++    keyframe(3.76, pos_vec(-1.14, 1.71, 1.86), CATMULLROM),
++    keyframe(3.92, pos_vec(-1.14, 1.21, 3.86), CATMULLROM),
++    keyframe(4.08, pos_vec(-1.14, 2.71, 4.86), CATMULLROM),
++    keyframe(4.44, pos_vec(-1.0, 1.0, 3.0), CATMULLROM),
++    keyframe(4.56, pos_vec(0.0, 1.0, 1.0), CATMULLROM),
++    keyframe(4.68, pos_vec(0.0, 1.0, 3.0), CATMULLROM),
++    keyframe(5.0, pos_vec(-2.0, 0.0, 4.0), CATMULLROM),
++    keyframe(6.64, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_RIGHT_LEG_ROT: [Keyframe; 11] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.52, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(2.28, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(2.88, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(3.36, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.32, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.48, degree_vec(55.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.6, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(5.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(5.8, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(6.64, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_RIGHT_LEG_POS: [Keyframe; 17] = [
++    keyframe(0.0, pos_vec(0.0, -63.0, 0.0), CATMULLROM),
++    keyframe(0.52, pos_vec(0.0, -56.0, 0.0), CATMULLROM),
++    keyframe(1.2, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(1.68, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(1.8, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(2.28, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(2.88, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(3.36, pos_vec(0.0, -22.0, 0.0), CATMULLROM),
++    keyframe(3.76, pos_vec(0.0, -12.28, 2.48), CATMULLROM),
++    keyframe(3.92, pos_vec(0.0, -9.28, 2.48), CATMULLROM),
++    keyframe(4.08, pos_vec(0.0, -12.28, 2.48), CATMULLROM),
++    keyframe(4.32, pos_vec(0.0, -4.14, 4.14), CATMULLROM),
++    keyframe(4.48, pos_vec(0.0, -0.57, -8.43), CATMULLROM),
++    keyframe(4.6, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(5.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(5.8, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(6.64, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_LEFT_LEG_ROT: [Keyframe; 12] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.52, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(2.28, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(2.88, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(3.36, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(3.84, degree_vec(20.0, 0.0, -17.5), CATMULLROM),
++    keyframe(4.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.68, degree_vec(20.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.84, degree_vec(10.0, 0.0, 0.0), CATMULLROM),
++    keyframe(5.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(5.8, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(6.64, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_LEFT_LEG_POS: [Keyframe; 15] = [
++    keyframe(0.0, pos_vec(0.0, -63.0, 0.0), CATMULLROM),
++    keyframe(0.52, pos_vec(0.0, -56.0, 0.0), CATMULLROM),
++    keyframe(1.2, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(1.68, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(1.8, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(2.28, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(2.88, pos_vec(0.0, -32.0, 0.0), CATMULLROM),
++    keyframe(3.36, pos_vec(0.0, -22.0, 0.0), CATMULLROM),
++    keyframe(3.84, pos_vec(-4.0, 2.0, -7.0), CATMULLROM),
++    keyframe(4.0, pos_vec(-4.0, 0.0, -5.0), CATMULLROM),
++    keyframe(4.68, pos_vec(-4.0, 0.0, -9.0), CATMULLROM),
++    keyframe(4.84, pos_vec(-2.0, 2.0, -3.5), CATMULLROM),
++    keyframe(5.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(5.8, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(6.64, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_EMERGE_BODY_CHANNELS: [AnimationChannel; 2] =
++    [rot(&WARDEN_EMERGE_BODY_ROT), pos(&WARDEN_EMERGE_BODY_POS)];
++const WARDEN_EMERGE_HEAD_CHANNELS: [AnimationChannel; 2] =
++    [rot(&WARDEN_EMERGE_HEAD_ROT), pos(&WARDEN_EMERGE_HEAD_POS)];
++const WARDEN_EMERGE_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
++    rot(&WARDEN_EMERGE_RIGHT_ARM_ROT),
++    pos(&WARDEN_EMERGE_RIGHT_ARM_POS),
++];
++const WARDEN_EMERGE_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
++    rot(&WARDEN_EMERGE_LEFT_ARM_ROT),
++    pos(&WARDEN_EMERGE_LEFT_ARM_POS),
++];
++const WARDEN_EMERGE_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] = [
++    rot(&WARDEN_EMERGE_RIGHT_LEG_ROT),
++    pos(&WARDEN_EMERGE_RIGHT_LEG_POS),
++];
++const WARDEN_EMERGE_LEFT_LEG_CHANNELS: [AnimationChannel; 2] = [
++    rot(&WARDEN_EMERGE_LEFT_LEG_ROT),
++    pos(&WARDEN_EMERGE_LEFT_LEG_POS),
++];
++const WARDEN_EMERGE_BONES: [BoneAnimation; 6] = [
++    BoneAnimation {
++        bone: "body",
++        channels: &WARDEN_EMERGE_BODY_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "head",
++        channels: &WARDEN_EMERGE_HEAD_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "right_arm",
++        channels: &WARDEN_EMERGE_RIGHT_ARM_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "left_arm",
++        channels: &WARDEN_EMERGE_LEFT_ARM_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "right_leg",
++        channels: &WARDEN_EMERGE_RIGHT_LEG_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "left_leg",
++        channels: &WARDEN_EMERGE_LEFT_LEG_CHANNELS,
++    },
++];
++/// Vanilla `WardenAnimation.WARDEN_EMERGE`: the 6.68s spawn rise out of the ground (NOT looping),
++/// `emergeAnimation.apply(emergeAnimationState, ageInTicks)`. Started when the synced `DATA_POSE`
++/// changes to `Pose.EMERGING`. The deep `posVec(0, -63, 0)` opening keyframe on the body and legs
++/// sinks the warden underground, then hauls it up. The renderer applies it only while the projected
++/// `warden_emerge_seconds >= 0`, clamping past the length to the resting final frame.
++pub(in crate::entity_models) const WARDEN_EMERGE: AnimationDefinition = AnimationDefinition {
++    length_seconds: 6.68,
++    looping: false,
++    bones: &WARDEN_EMERGE_BONES,
++};
++
++// ----- `WardenAnimation.WARDEN_DIG` (length 5.0s, NOT looping). The despawn burrow: the warden
++// folds forward and sinks back into the ground — the `body` pitches down hard and dives, the `head`
++// drops, the two arms reach overhead, and the two legs tuck under (each ROTATION + POSITION). Most
++// keyframes CATMULLROM; the final tail frames are LINEAR (so the burrow snaps straight down). -----
++
++const WARDEN_DIG_BODY_ROT: [Keyframe; 19] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.25, degree_vec(4.13441, 0.94736, 1.2694), CATMULLROM),
++    keyframe(0.5, degree_vec(50.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.7083, degree_vec(54.45407, -13.53935, -18.14183), CATMULLROM),
++    keyframe(1.0417, degree_vec(59.46442, -10.8885, 35.7954), CATMULLROM),
++    keyframe(1.3333, degree_vec(82.28261, 0.0, 0.0), CATMULLROM),
++    keyframe(1.625, degree_vec(53.23606, 10.04715, -29.72932), CATMULLROM),
++    keyframe(2.2083, degree_vec(-17.71739, 0.0, 0.0), CATMULLROM),
++    keyframe(2.5417, degree_vec(112.28261, 0.0, 0.0), CATMULLROM),
++    keyframe(2.6667, degree_vec(116.06889, 5.11581, -24.50117), CATMULLROM),
++    keyframe(2.8333, degree_vec(121.56244, -4.17248, 19.57737), CATMULLROM),
++    keyframe(3.0417, degree_vec(138.5689, 5.11581, -24.50117), CATMULLROM),
++    keyframe(3.25, degree_vec(144.06244, -4.17248, 19.57737), CATMULLROM),
++    keyframe(3.375, degree_vec(147.28261, 0.0, 0.0), CATMULLROM),
++    keyframe(3.625, degree_vec(147.28261, 0.0, 0.0), CATMULLROM),
++    keyframe(3.875, degree_vec(134.36221, 8.81113, -8.90172), CATMULLROM),
++    keyframe(4.0417, degree_vec(132.05966, -8.35927, 9.70506), CATMULLROM),
++    keyframe(4.25, degree_vec(134.36221, 8.81113, -8.90172), CATMULLROM),
++    keyframe(4.5, degree_vec(147.5, 0.0, 0.0), LINEAR),
++];
++const WARDEN_DIG_BODY_POS: [Keyframe; 11] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.5, pos_vec(0.0, -16.48454, -6.5784), CATMULLROM),
++    keyframe(0.7083, pos_vec(0.0, -16.48454, -6.5784), CATMULLROM),
++    keyframe(1.0417, pos_vec(0.0, -16.97, -7.11), CATMULLROM),
++    keyframe(1.625, pos_vec(0.0, -13.97, -7.11), CATMULLROM),
++    keyframe(2.2083, pos_vec(0.0, -11.48454, -0.5784), CATMULLROM),
++    keyframe(2.5417, pos_vec(0.0, -16.48454, -6.5784), CATMULLROM),
++    keyframe(2.6667, pos_vec(0.0, -20.27, -5.42), CATMULLROM),
++    keyframe(3.375, pos_vec(0.0, -21.48454, -5.5784), CATMULLROM),
++    keyframe(4.0417, pos_vec(0.0, -22.48454, -5.5784), CATMULLROM),
++    keyframe(4.5, pos_vec(0.0, -40.0, -8.0), LINEAR),
++];
++const WARDEN_DIG_HEAD_ROT: [Keyframe; 7] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.6667, degree_vec(12.5, 0.0, 0.0), CATMULLROM),
++    keyframe(1.2083, degree_vec(12.5, 0.0, 0.0), CATMULLROM),
++    keyframe(1.75, degree_vec(45.0, 0.0, 0.0), CATMULLROM),
++    keyframe(2.375, degree_vec(-22.5, 0.0, 0.0), CATMULLROM),
++    keyframe(2.5417, degree_vec(67.5, 0.0, 0.0), CATMULLROM),
++    keyframe(4.375, degree_vec(67.5, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_DIG_HEAD_POS: [Keyframe; 2] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.375, pos_vec(0.0, 0.0, 0.0), LINEAR),
++];
++const WARDEN_DIG_RIGHT_ARM_ROT: [Keyframe; 10] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.5, degree_vec(-101.8036, -21.29587, 30.61478), CATMULLROM),
++    keyframe(0.7083, degree_vec(-101.8036, -21.29587, 30.61478), CATMULLROM),
++    keyframe(1.0, degree_vec(48.7585, -17.61941, 9.9865), CATMULLROM),
++    keyframe(1.1667, degree_vec(48.7585, -17.61941, 9.9865), CATMULLROM),
++    keyframe(1.4583, degree_vec(-101.8036, -21.29587, 30.61478), CATMULLROM),
++    keyframe(1.75, degree_vec(-89.04994, -4.19657, -1.47845), CATMULLROM),
++    keyframe(2.2083, degree_vec(-158.30728, 3.7152, -1.52352), CATMULLROM),
++    keyframe(2.5417, degree_vec(-89.04994, -4.19657, -1.47845), CATMULLROM),
++    keyframe(4.375, degree_vec(-120.0, 0.0, 0.0), CATMULLROM),
++];
++const WARDEN_DIG_RIGHT_ARM_POS: [Keyframe; 5] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.7083, pos_vec(2.22, 0.0, 0.86), CATMULLROM),
++    keyframe(1.0, pos_vec(3.12, 0.0, 4.29), CATMULLROM),
++    keyframe(2.2083, pos_vec(1.0, 0.0, 4.0), CATMULLROM),
++    keyframe(4.375, pos_vec(0.0, 0.0, 4.0), CATMULLROM),
++];
++const WARDEN_DIG_LEFT_ARM_ROT: [Keyframe; 12] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.2917, degree_vec(-63.89288, -0.52011, 2.09491), CATMULLROM),
++    keyframe(0.5, degree_vec(-63.89288, -0.52011, 2.09491), CATMULLROM),
++    keyframe(0.7083, degree_vec(-62.87857, 15.15061, 9.97445), CATMULLROM),
++    keyframe(0.9167, degree_vec(-86.93642, 17.45026, 4.05284), CATMULLROM),
++    keyframe(1.1667, degree_vec(-86.93642, 17.45026, 4.05284), CATMULLROM),
++    keyframe(1.4583, degree_vec(-86.93642, 17.45026, 4.05284), CATMULLROM),
++    keyframe(1.6667, degree_vec(63.0984, 8.83573, -8.71284), CATMULLROM),
++    keyframe(1.8333, degree_vec(35.5984, 8.83573, -8.71284), CATMULLROM),
++    keyframe(2.2083, degree_vec(-153.27473, -0.02953, 3.5235), CATMULLROM),
++    keyframe(2.5417, degree_vec(-87.07754, -0.02625, 3.132), CATMULLROM),
++    keyframe(4.375, degree_vec(-120.0, 0.0, 0.0), LINEAR),
++];
++const WARDEN_DIG_LEFT_ARM_POS: [Keyframe; 8] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.5, pos_vec(-0.28, 5.0, 10.0), CATMULLROM),
++    keyframe(0.7083, pos_vec(-1.51, 4.35, 4.33), CATMULLROM),
++    keyframe(0.9167, pos_vec(-0.6, 3.61, 4.63), CATMULLROM),
++    keyframe(1.1667, pos_vec(-0.6, 3.61, 0.63), CATMULLROM),
++    keyframe(1.6667, pos_vec(-2.85, -0.1, 3.33), CATMULLROM),
++    keyframe(2.2083, pos_vec(-1.0, 0.0, 4.0), CATMULLROM),
++    keyframe(4.375, pos_vec(0.0, 0.0, 4.0), LINEAR),
++];
++const WARDEN_DIG_RIGHT_LEG_ROT: [Keyframe; 9] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.5, degree_vec(113.27, 0.0, 0.0), CATMULLROM),
++    keyframe(0.7083, degree_vec(113.27, 0.0, 0.0), CATMULLROM),
++    keyframe(3.3333, degree_vec(113.27, 0.0, 0.0), CATMULLROM),
++    keyframe(3.5833, degree_vec(182.5, 0.0, 0.0), CATMULLROM),
++    keyframe(3.8333, degree_vec(120.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.0833, degree_vec(182.5, 0.0, 0.0), CATMULLROM),
++    keyframe(4.2917, degree_vec(120.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.5, degree_vec(90.0, 0.0, 0.0), LINEAR),
++];
++const WARDEN_DIG_RIGHT_LEG_POS: [Keyframe; 8] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.5, pos_vec(0.0, -13.98, -2.37), CATMULLROM),
++    keyframe(0.7083, pos_vec(0.0, -13.98, -2.37), CATMULLROM),
++    keyframe(3.3333, pos_vec(0.0, -13.98, -2.37), CATMULLROM),
++    keyframe(3.5833, pos_vec(0.0, -7.0, -3.0), CATMULLROM),
++    keyframe(3.8333, pos_vec(0.0, -9.0, -3.0), CATMULLROM),
++    keyframe(4.0833, pos_vec(0.0, -16.71, -3.69), CATMULLROM),
++    keyframe(4.2917, pos_vec(0.0, -28.0, -5.0), LINEAR),
++];
++const WARDEN_DIG_LEFT_LEG_ROT: [Keyframe; 9] = [
++    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.5, degree_vec(114.98, 0.0, 0.0), CATMULLROM),
++    keyframe(0.7083, degree_vec(114.98, 0.0, 0.0), CATMULLROM),
++    keyframe(3.3333, degree_vec(114.98, 0.0, 0.0), CATMULLROM),
++    keyframe(3.5833, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
++    keyframe(3.8333, degree_vec(172.5, 0.0, 0.0), CATMULLROM),
++    keyframe(4.0833, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
++    keyframe(4.2917, degree_vec(197.5, 0.0, 0.0), CATMULLROM),
++    keyframe(4.5, degree_vec(90.0, 0.0, 0.0), LINEAR),
++];
++const WARDEN_DIG_LEFT_LEG_POS: [Keyframe; 8] = [
++    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
++    keyframe(0.5, pos_vec(0.0, -14.01, -2.35), CATMULLROM),
++    keyframe(0.7083, pos_vec(0.0, -14.01, -2.35), CATMULLROM),
++    keyframe(3.3333, pos_vec(0.0, -14.01, -2.35), CATMULLROM),
++    keyframe(3.5833, pos_vec(0.0, -5.0, -4.0), CATMULLROM),
++    keyframe(3.8333, pos_vec(0.0, -7.0, -4.0), CATMULLROM),
++    keyframe(4.0833, pos_vec(0.0, -15.5, -3.76), CATMULLROM),
++    keyframe(4.2917, pos_vec(0.0, -28.0, -5.0), LINEAR),
++];
++const WARDEN_DIG_BODY_CHANNELS: [AnimationChannel; 2] =
++    [rot(&WARDEN_DIG_BODY_ROT), pos(&WARDEN_DIG_BODY_POS)];
++const WARDEN_DIG_HEAD_CHANNELS: [AnimationChannel; 2] =
++    [rot(&WARDEN_DIG_HEAD_ROT), pos(&WARDEN_DIG_HEAD_POS)];
++const WARDEN_DIG_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
++    rot(&WARDEN_DIG_RIGHT_ARM_ROT),
++    pos(&WARDEN_DIG_RIGHT_ARM_POS),
++];
++const WARDEN_DIG_LEFT_ARM_CHANNELS: [AnimationChannel; 2] =
++    [rot(&WARDEN_DIG_LEFT_ARM_ROT), pos(&WARDEN_DIG_LEFT_ARM_POS)];
++const WARDEN_DIG_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] = [
++    rot(&WARDEN_DIG_RIGHT_LEG_ROT),
++    pos(&WARDEN_DIG_RIGHT_LEG_POS),
++];
++const WARDEN_DIG_LEFT_LEG_CHANNELS: [AnimationChannel; 2] =
++    [rot(&WARDEN_DIG_LEFT_LEG_ROT), pos(&WARDEN_DIG_LEFT_LEG_POS)];
++const WARDEN_DIG_BONES: [BoneAnimation; 6] = [
++    BoneAnimation {
++        bone: "body",
++        channels: &WARDEN_DIG_BODY_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "head",
++        channels: &WARDEN_DIG_HEAD_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "right_arm",
++        channels: &WARDEN_DIG_RIGHT_ARM_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "left_arm",
++        channels: &WARDEN_DIG_LEFT_ARM_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "right_leg",
++        channels: &WARDEN_DIG_RIGHT_LEG_CHANNELS,
++    },
++    BoneAnimation {
++        bone: "left_leg",
++        channels: &WARDEN_DIG_LEFT_LEG_CHANNELS,
++    },
++];
++/// Vanilla `WardenAnimation.WARDEN_DIG`: the 5.0s despawn burrow back into the ground (NOT looping),
++/// `diggingAnimation.apply(diggingAnimationState, ageInTicks)`. Started when the synced `DATA_POSE`
++/// changes to `Pose.DIGGING`. The final LINEAR tail frames drop the body/legs straight down out of
++/// view. The renderer applies it only while the projected `warden_dig_seconds >= 0`, clamping past
++/// the length to the resting (fully-buried) final frame.
++pub(in crate::entity_models) const WARDEN_DIG: AnimationDefinition = AnimationDefinition {
++    length_seconds: 5.0,
++    looping: false,
++    bones: &WARDEN_DIG_BONES,
++};
++
+ /// Mutable warden model, mirroring vanilla `WardenModel`. The cubeless `bone` root (parenting the
+ /// body and two legs; `body` parents the ribcages, head, and two arms; `head` parents the two
+ /// tendrils) hangs off a synthetic root, built from the baked colored geometry as a named-children
+ /// tree. Colored-only: `setup_anim` reproduces the four non-keyframe motions — the head look, the
+-/// idle wobble, the walk swing, and the tendril sway — then layers the four triggered combat
+-/// keyframe one-shots additively in the vanilla order (attack, sonic_boom, roar, sniff; the dig and
+-/// emerge spawn/despawn keyframes stay deferred).
++/// idle wobble, the walk swing, and the tendril sway — then layers the six triggered keyframe
++/// one-shots additively in the vanilla order (attack, sonic_boom, dig, emerge, roar, sniff).
+ pub(in crate::entity_models) struct WardenModel {
+     root: ModelPart,
+ }
+@@ -801,18 +1277,21 @@ impl EntityModel for WardenModel {
+         );
+         let tendril_x = warden_tendril_x_rot(instance.render_state.tendril_animation, age);
+ 
+-        // Vanilla `WardenModel.setupAnim` then applies the four triggered combat keyframe one-shots
++        // Vanilla `WardenModel.setupAnim` then applies the six triggered keyframe one-shots
+         // ADDITIVELY (`KeyframeAnimation.apply` folds `offsetPos`/`offsetRotation` onto the
+-        // already-posed bones) in the order attack → sonic_boom → [deferred dig/emerge] → roar →
+-        // sniff. Each is applied only while its projected elapsed-seconds value is `>= 0`; a
+-        // non-looping def clamps past its length to the resting final frame (vanilla's "hold the
+-        // last frame"). The active definitions, paired with their (clamped) sample seconds.
+-        let combat: [(&AnimationDefinition, f32); 4] = [
++        // already-posed bones) in the order attack → sonic_boom → dig → emerge → roar → sniff. Each
++        // is applied only while its projected elapsed-seconds value is `>= 0`; a non-looping def
++        // clamps past its length to the resting final frame (vanilla's "hold the last frame"). The
++        // dig/emerge spawn/despawn one-shots also drive the two legs (the combat one-shots do not).
++        // The active definitions, paired with their (clamped) sample seconds.
++        let combat: [(&AnimationDefinition, f32); 6] = [
+             (&WARDEN_ATTACK, instance.render_state.warden_attack_seconds),
+             (
+                 &WARDEN_SONIC_BOOM,
+                 instance.render_state.warden_sonic_boom_seconds,
+             ),
++            (&WARDEN_DIG, instance.render_state.warden_dig_seconds),
++            (&WARDEN_EMERGE, instance.render_state.warden_emerge_seconds),
+             (&WARDEN_ROAR, instance.render_state.warden_roar_seconds),
+             (&WARDEN_SNIFF, instance.render_state.warden_sniff_seconds),
+         ];
+@@ -868,10 +1347,13 @@ impl EntityModel for WardenModel {
+             apply_combat(left_arm, "left_arm");
+         }
+ 
+-        // The two legs swing their `xRot` with the walk (no combat one-shot touches them).
++        // The two legs swing their `xRot` with the walk, then the dig/emerge one-shots add on top
++        // (the attack/sonic-boom/roar/sniff combat one-shots leave the legs at the walk pose).
+         let right_leg = bone.child_mut("right_leg");
+         right_leg.pose = warden_add_x_z_rot(right_leg.pose, walk.right_leg_x_rot, 0.0);
++        apply_combat(right_leg, "right_leg");
+         let left_leg = bone.child_mut("left_leg");
+         left_leg.pose = warden_add_x_z_rot(left_leg.pose, walk.left_leg_x_rot, 0.0);
++        apply_combat(left_leg, "left_leg");
+     }
+ }

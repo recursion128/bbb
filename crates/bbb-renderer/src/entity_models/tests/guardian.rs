@@ -9,32 +9,46 @@ fn guardian_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(GUARDIAN_HEAD.len(), 5);
     assert_eq!(GUARDIAN_HEAD[0].min, [-6.0, 10.0, -8.0]);
     assert_eq!(GUARDIAN_HEAD[0].size, [12.0, 12.0, 16.0]);
+    assert_eq!(GUARDIAN_HEAD[0].tex, [0.0, 0.0]);
     assert_eq!(GUARDIAN_HEAD[1].min, [-8.0, 10.0, -6.0]);
     assert_eq!(GUARDIAN_HEAD[1].size, [2.0, 12.0, 12.0]);
+    assert_eq!(GUARDIAN_HEAD[1].tex, [0.0, 28.0]);
+    assert!(!GUARDIAN_HEAD[1].mirror);
     assert_eq!(GUARDIAN_HEAD[2].min, [6.0, 10.0, -6.0]);
+    // The right side plate is the mirrored twin of the left (same `texOffs(0,28)`, `mirror()`).
+    assert_eq!(GUARDIAN_HEAD[2].tex, [0.0, 28.0]);
+    assert!(GUARDIAN_HEAD[2].mirror);
     assert_eq!(GUARDIAN_HEAD[3].min, [-6.0, 8.0, -6.0]);
     assert_eq!(GUARDIAN_HEAD[3].size, [12.0, 2.0, 12.0]);
+    assert_eq!(GUARDIAN_HEAD[3].tex, [16.0, 40.0]);
     assert_eq!(GUARDIAN_HEAD[4].min, [-6.0, 22.0, -6.0]);
+    assert_eq!(GUARDIAN_HEAD[4].tex, [16.0, 40.0]);
 
-    // The shared spike box `addBox(-1, -4.5, -1, 2, 9, 2)`.
+    // The shared spike box `addBox(-1, -4.5, -1, 2, 9, 2)`, texOffs(0,0).
     assert_eq!(GUARDIAN_SPIKE[0].min, [-1.0, -4.5, -1.0]);
     assert_eq!(GUARDIAN_SPIKE[0].size, [2.0, 9.0, 2.0]);
+    assert_eq!(GUARDIAN_SPIKE[0].tex, [0.0, 0.0]);
 
-    // The eye `addBox(-1, 15, 0, 2, 2, 1)` at `offset(0, 0, -8.25)`.
+    // The eye `addBox(-1, 15, 0, 2, 2, 1)` at `offset(0, 0, -8.25)`, texOffs(8,0).
     assert_eq!(GUARDIAN_EYE_CUBE[0].min, [-1.0, 15.0, 0.0]);
     assert_eq!(GUARDIAN_EYE_CUBE[0].size, [2.0, 2.0, 1.0]);
+    assert_eq!(GUARDIAN_EYE_CUBE[0].tex, [8.0, 0.0]);
     assert_eq!(GUARDIAN_EYE_POSE.offset, [0.0, 0.0, -8.25]);
 
-    // The three-segment tail: tail0 (ZERO), tail1 at (-1.5, 0.5, 14), tail2 (two cubes) at
-    // (0.5, 0.5, 6).
+    // The three-segment tail: tail0 (ZERO, texOffs(40,0)), tail1 at (-1.5, 0.5, 14) texOffs(0,54),
+    // tail2 (two cubes) at (0.5, 0.5, 6) texOffs(41,32)/(25,19).
     assert_eq!(GUARDIAN_TAIL0[0].min, [-2.0, 14.0, 7.0]);
     assert_eq!(GUARDIAN_TAIL0[0].size, [4.0, 4.0, 8.0]);
+    assert_eq!(GUARDIAN_TAIL0[0].tex, [40.0, 0.0]);
     assert_eq!(GUARDIAN_TAIL1[0].size, [3.0, 3.0, 7.0]);
+    assert_eq!(GUARDIAN_TAIL1[0].tex, [0.0, 54.0]);
     assert_eq!(GUARDIAN_TAIL1_POSE.offset, [-1.5, 0.5, 14.0]);
     assert_eq!(GUARDIAN_TAIL2.len(), 2);
     assert_eq!(GUARDIAN_TAIL2[0].size, [2.0, 2.0, 6.0]);
+    assert_eq!(GUARDIAN_TAIL2[0].tex, [41.0, 32.0]);
     assert_eq!(GUARDIAN_TAIL2[1].min, [1.0, 10.5, 3.0]);
     assert_eq!(GUARDIAN_TAIL2[1].size, [1.0, 9.0, 9.0]);
+    assert_eq!(GUARDIAN_TAIL2[1].tex, [25.0, 19.0]);
     assert_eq!(GUARDIAN_TAIL2_POSE.offset, [0.5, 0.5, 6.0]);
 
     // The `SPIKE_*` tables transcribed verbatim from `GuardianModel`.
@@ -236,4 +250,61 @@ fn guardian_tail_sway_is_independent_of_the_spike_pulse() {
     );
     assert_ne!(only_tail.vertices, both.vertices);
     assert_ne!(only_spikes.vertices, both.vertices);
+}
+
+#[test]
+fn guardian_textured_render_matches_vanilla_renderer() {
+    // The guardian and elder guardian share one mesh, differing only by texture (and the elder's 2.35
+    // root scale).
+    assert_eq!(
+        guardian_textured_layer_passes(false)[0].texture,
+        GUARDIAN_TEXTURE_REF
+    );
+    assert_eq!(
+        guardian_textured_layer_passes(true)[0].texture,
+        GUARDIAN_ELDER_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::Guardian { elder: false }.vanilla_texture_ref(),
+        Some(GUARDIAN_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Guardian { elder: true }.vanilla_texture_ref(),
+        Some(GUARDIAN_ELDER_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&GUARDIAN_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&GUARDIAN_ELDER_TEXTURE_REF));
+    assert_eq!(
+        guardian_entity_texture_refs(),
+        &[GUARDIAN_TEXTURE_REF, GUARDIAN_ELDER_TEXTURE_REF]
+    );
+
+    let images: Vec<EntityModelTextureImage> = guardian_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    for elder in [false, true] {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::guardian(
+                990,
+                [0.0, 64.0, 0.0],
+                0.0,
+                elder,
+            )],
+            &atlas,
+        );
+        assert!(
+            !mesh.vertices.is_empty(),
+            "elder={elder} emits textured geometry"
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
 }

@@ -192,6 +192,8 @@ mod tests {
                 "textures/entity/shulker/spark.png",
                 "textures/entity/wither/wither.png",
                 "textures/entity/projectiles/wind_charge.png",
+                "textures/entity/guardian/guardian.png",
+                "textures/entity/guardian/guardian_elder.png",
                 "textures/entity/phantom/phantom.png",
                 "textures/entity/phantom/phantom_eyes.png",
                 "textures/entity/fish/pufferfish.png",

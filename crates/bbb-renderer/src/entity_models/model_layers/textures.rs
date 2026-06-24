@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 183] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 185] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -852,6 +852,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SHULKER_BULLET_TEXTURE_REF,
     WITHER_TEXTURE_REF,
     WIND_CHARGE_TEXTURE_REF,
+    GUARDIAN_TEXTURE_REF,
+    GUARDIAN_ELDER_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1857,6 +1859,24 @@ pub(in crate::entity_models) const WIND_CHARGE_ENTITY_TEXTURE_REFS: [EntityModel
     [WIND_CHARGE_TEXTURE_REF];
 pub fn wind_charge_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WIND_CHARGE_ENTITY_TEXTURE_REFS
+}
+
+// The guardian and elder guardian share one mesh/UV layout, differing only by texture (and the elder's
+// 2.35 root scale). The guardian's attack beam (guardian_beam.png) stays deferred.
+pub(in crate::entity_models) const GUARDIAN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/guardian/guardian.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const GUARDIAN_ELDER_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/guardian/guardian_elder.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const GUARDIAN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [GUARDIAN_TEXTURE_REF, GUARDIAN_ELDER_TEXTURE_REF];
+pub fn guardian_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &GUARDIAN_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

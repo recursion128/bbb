@@ -857,6 +857,32 @@ pub(in crate::entity_models) fn wither_skull_textured_layer_passes() -> Vec<Enti
     )]
 }
 
+pub(in crate::entity_models) fn wither_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    // The wither boss and the wither skull share `wither.png`; the invulnerable-shimmer armor overlay
+    // (wither_invulnerable.png) stays deferred.
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        WITHER_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn guardian_textured_layer_passes(
+    elder: bool,
+) -> Vec<EntityModelLayerPass> {
+    // The guardian and elder guardian share one mesh, differing only by texture; the attack beam stays
+    // deferred.
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        if elder {
+            GUARDIAN_ELDER_TEXTURE_REF
+        } else {
+            GUARDIAN_TEXTURE_REF
+        },
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn wind_charge_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     // Vanilla draws the wind charge with `entityTranslucent` + the scrolling breeze-wind texture; the
     // scroll/translucency are deferred, so this binds the static wind_charge.png on the cutout pass.

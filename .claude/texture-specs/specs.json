@@ -1,0 +1,8198 @@
+{
+ "arrow": {
+  "entity": "arrow",
+  "vanilla_model_class": "net.minecraft.client.model.object.projectile.ArrowModel",
+  "atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/projectiles/arrow.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "tipped",
+    "path": "textures/entity/projectiles/arrow_tipped.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "spectral",
+    "path": "textures/entity/projectiles/arrow_spectral.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "back",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -2,
+       -2
+      ],
+      "bbb_size": [
+       0,
+       4,
+       4
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       0,
+       5,
+       5
+      ],
+      "mirror": false,
+      "note": "Vanilla: texOffs(0,0).addBox(0,-2.5,-2.5, 0,5,5) on the 'back' part with PartPose.offsetAndRotation(-11,0,0, PI/4,0,0).withScale(0.8). The 0.8 part-scale is BAKED into the bbb cube: 5x5 plane -> 4x4 and centre -2.5 -> -2.0. UV-unwrap dims passed to addBox are the un-scaled [0,5,5] (UV is computed from addBox dims, not the post-scale geometry). Zero-thickness YZ plane (dx=0) -> both faces are unwrapped. The whole mesh is additionally scaled 0.9 via mesh.transformed (lives in arrow_model_root_transform), which does not affect UVs."
+     }
+    ]
+   },
+   {
+    "part_name": "cross_1",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -12,
+       -2,
+       0
+      ],
+      "bbb_size": [
+       16,
+       4,
+       0
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       16,
+       4,
+       0
+      ],
+      "mirror": false,
+      "note": "Vanilla: shared 'cross' builder texOffs(0,0).addBox(-12,-2,0, 16,4,0, CubeDeformation.NONE, 1.0F, 0.8F). The trailing 1.0F,0.8F are the texture-scale-u / texture-scale-v args (CubeListBuilder.addBox overload), NOT geometry inflation (deformation is NONE). So bbb_size == uv_size == [16,4,0]; the v texture-scale of 0.8 is a UV-coordinate scale on the unwrap that the deferred texture path must honour. Zero-thickness XY plane (dz=0) -> both faces unwrapped. Part pose rotation PI/4."
+     }
+    ]
+   },
+   {
+    "part_name": "cross_2",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -12,
+       -2,
+       0
+      ],
+      "bbb_size": [
+       16,
+       4,
+       0
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       16,
+       4,
+       0
+      ],
+      "mirror": false,
+      "note": "Reuses the same vanilla 'cross' CubeListBuilder as cross_1 (texOffs(0,0).addBox(-12,-2,0,16,4,0, NONE, 1.0F, 0.8F)); only the part pose rotation differs (3*PI/4 vs PI/4). Identical tex_offs/uv_size to cross_1. bbb reuses ARROW_CROSS_CUBES for both crossed planes."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Single bbb variant `Arrow` (no baby/variant fields in catalog.rs or selection.rs key \"arrow\"), so no baby_atlas_size. Atlas 32x32 from LayerDefinition.create(mesh.transformed(...), 32, 32). All 3 bbb cubes match vanilla addBox 1:1 by offset+dims (after un-baking the 0.8 scale on 'back'); part cube counts match (1+1+1). TEXTURE-SCALE SUBTLETY: the cross planes use the addBox overload addBox(ox,oy,oz,dx,dy,dz,CubeDeformation.NONE,1.0F,0.8F) where 1.0F/0.8F are per-box texture-coordinate u/v scale factors (the unwrapped UV rect is scaled by 0.8 in v) \u2014 the application's UV unwrap must apply this 0.8 v-scale or the fletching UVs will be wrong; uv_size reports the un-scaled addBox dims [16,4,0]. SCALE-BAKING SUBTLETY: 'back' uses PartPose.withScale(0.8) which bbb baked into the cube geometry (0/5/5 -> 0/4/4, -2.5 -> -2.0); the UV must still be computed from the original addBox dims [0,5,5], hence uv_size=[0,5,5] though bbb_size=[0,4,4]. Whole-mesh 0.9 scale (mesh.transformed) is geometry-only, no UV effect, and is handled by arrow_model_root_transform in bbb. TEXTURE VARIANT SELECTION is runtime, not geometric: TippableArrowRenderer picks arrow.png (normal) vs arrow_tipped.png (entity.getColor()>0), SpectralArrowRenderer always uses arrow_spectral.png. bbb collapses these to one model variant; I listed all three texture paths with variant_key default/tipped/spectral so the textured path can wire whichever the entity selects. Two non-default colour tints exist on the colored debug path (ARROW_HEAD for 'back', ARROW_SHAFT for the crosses) \u2014 irrelevant to UV but noted because the same parts carry both tint and texture. All boxes are zero-thickness planes (dx=0 for back, dz=0 for crosses) so both faces share the same unwrap region."
+ },
+ "axolotl": {
+  "entity": "axolotl",
+  "vanilla_model_class": "AdultAxolotlModel / BabyAxolotlModel",
+  "atlas_size": [
+   64,
+   64
+  ],
+  "baby_atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/axolotl/axolotl_lucy.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "lucy",
+    "path": "textures/entity/axolotl/axolotl_lucy.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "wild",
+    "path": "textures/entity/axolotl/axolotl_wild.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "gold",
+    "path": "textures/entity/axolotl/axolotl_gold.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "cyan",
+    "path": "textures/entity/axolotl/axolotl_cyan.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "blue",
+    "path": "textures/entity/axolotl/axolotl_blue.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "lucy_baby",
+    "path": "textures/entity/axolotl/axolotl_lucy_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "wild_baby",
+    "path": "textures/entity/axolotl/axolotl_wild_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "gold_baby",
+    "path": "textures/entity/axolotl/axolotl_gold_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "cyan_baby",
+    "path": "textures/entity/axolotl/axolotl_cyan_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "blue_baby",
+    "path": "textures/entity/axolotl/axolotl_blue_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4,
+       -2,
+       -9
+      ],
+      "bbb_size": [
+       8,
+       4,
+       10
+      ],
+      "tex_offs": [
+       0,
+       11
+      ],
+      "uv_size": [
+       8,
+       4,
+       10
+      ],
+      "mirror": false,
+      "note": "trunk; no deformation"
+     },
+     {
+      "bbb_min": [
+       0,
+       -3,
+       -8
+      ],
+      "bbb_size": [
+       0,
+       5,
+       9
+      ],
+      "tex_offs": [
+       2,
+       17
+      ],
+      "uv_size": [
+       0,
+       5,
+       9
+      ],
+      "mirror": false,
+      "note": "dorsal fin plane; no deformation"
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4.001,
+       -3.001,
+       -5.001
+      ],
+      "bbb_size": [
+       8.002,
+       5.002,
+       5.002
+      ],
+      "tex_offs": [
+       0,
+       1
+      ],
+      "uv_size": [
+       8,
+       5,
+       5
+      ],
+      "mirror": false,
+      "note": "skull; CubeDeformation(0.001) fudge inflates rendered size by 0.001 each side (bbb baked it into min/size). uv_size stays un-inflated 8x5x5."
+     }
+    ]
+   },
+   {
+    "part_name": "top_gills",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4.001,
+       -3.001,
+       -0.001
+      ],
+      "bbb_size": [
+       8.002,
+       3.002,
+       0.002
+      ],
+      "tex_offs": [
+       3,
+       37
+      ],
+      "uv_size": [
+       8,
+       3,
+       0
+      ],
+      "mirror": false,
+      "note": "top gill plane; CubeDeformation(0.001) fudge. uv_size un-inflated 8x3x0."
+     }
+    ]
+   },
+   {
+    "part_name": "left_gills",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.001,
+       -5.001,
+       -0.001
+      ],
+      "bbb_size": [
+       3.002,
+       7.002,
+       0.002
+      ],
+      "tex_offs": [
+       0,
+       40
+      ],
+      "uv_size": [
+       3,
+       7,
+       0
+      ],
+      "mirror": false,
+      "note": "left gill frill; CubeDeformation(0.001) fudge. uv_size un-inflated 3x7x0."
+     }
+    ]
+   },
+   {
+    "part_name": "right_gills",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.001,
+       -5.001,
+       -0.001
+      ],
+      "bbb_size": [
+       3.002,
+       7.002,
+       0.002
+      ],
+      "tex_offs": [
+       11,
+       40
+      ],
+      "uv_size": [
+       3,
+       7,
+       0
+      ],
+      "mirror": false,
+      "note": "right gill frill; CubeDeformation(0.001) fudge. uv_size un-inflated 3x7x0."
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.001,
+       -0.001,
+       -0.001
+      ],
+      "bbb_size": [
+       3.002,
+       5.002,
+       0.002
+      ],
+      "tex_offs": [
+       2,
+       13
+      ],
+      "uv_size": [
+       3,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "right leg plane (rightLeg builder, origin -2); CubeDeformation(0.001) fudge. Vanilla reuses one rightLeg CubeListBuilder for both right_front_leg and right_hind_leg with the SAME texOffs(2,13)."
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.001,
+       -0.001,
+       -0.001
+      ],
+      "bbb_size": [
+       3.002,
+       5.002,
+       0.002
+      ],
+      "tex_offs": [
+       2,
+       13
+      ],
+      "uv_size": [
+       3,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "left leg plane (leftLeg builder, origin -1); CubeDeformation(0.001) fudge. Vanilla reuses one leftLeg CubeListBuilder for both left_front_leg and left_hind_leg with the SAME texOffs(2,13)."
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.001,
+       -0.001,
+       -0.001
+      ],
+      "bbb_size": [
+       3.002,
+       5.002,
+       0.002
+      ],
+      "tex_offs": [
+       2,
+       13
+      ],
+      "uv_size": [
+       3,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "right leg plane (rightLeg builder, origin -2); CubeDeformation(0.001) fudge. Same texOffs(2,13) as right_front_leg (shared builder)."
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.001,
+       -0.001,
+       -0.001
+      ],
+      "bbb_size": [
+       3.002,
+       5.002,
+       0.002
+      ],
+      "tex_offs": [
+       2,
+       13
+      ],
+      "uv_size": [
+       3,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "left leg plane (leftLeg builder, origin -1); CubeDeformation(0.001) fudge. Same texOffs(2,13) as left_front_leg (shared builder)."
+     }
+    ]
+   },
+   {
+    "part_name": "tail",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -3,
+       0
+      ],
+      "bbb_size": [
+       0,
+       5,
+       12
+      ],
+      "tex_offs": [
+       2,
+       19
+      ],
+      "uv_size": [
+       0,
+       5,
+       12
+      ],
+      "mirror": false,
+      "note": "tail fin plane; no deformation"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -0.75,
+       -2.75
+      ],
+      "bbb_size": [
+       4,
+       2,
+       6
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       4,
+       2,
+       6
+      ],
+      "mirror": false,
+      "note": "trunk; CubeDeformation(0.0) = no inflate"
+     },
+     {
+      "bbb_min": [
+       0,
+       -1.75,
+       -2.75
+      ],
+      "bbb_size": [
+       0,
+       3,
+       5
+      ],
+      "tex_offs": [
+       0,
+       12
+      ],
+      "uv_size": [
+       0,
+       3,
+       5
+      ],
+      "mirror": false,
+      "note": "dorsal fin plane; CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       3,
+       0,
+       1
+      ],
+      "tex_offs": [
+       20,
+       16
+      ],
+      "uv_size": [
+       3,
+       0,
+       1
+      ],
+      "mirror": false,
+      "note": "horizontal leg plane; CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       3,
+       0,
+       1
+      ],
+      "tex_offs": [
+       20,
+       14
+      ],
+      "uv_size": [
+       3,
+       0,
+       1
+      ],
+      "mirror": false,
+      "note": "cube lives on nested child right_leg_r1 (right_hind_leg pivot is bare); texOffs(20,14). CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       3,
+       0,
+       1
+      ],
+      "tex_offs": [
+       20,
+       13
+      ],
+      "uv_size": [
+       3,
+       0,
+       1
+      ],
+      "mirror": false,
+      "note": "horizontal leg plane; CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       3,
+       0,
+       1
+      ],
+      "tex_offs": [
+       20,
+       14
+      ],
+      "uv_size": [
+       3,
+       0,
+       1
+      ],
+      "mirror": false,
+      "note": "horizontal leg plane; CubeDeformation(0.0). Same texOffs(20,14) as right_hind_leg's right_leg_r1."
+     }
+    ]
+   },
+   {
+    "part_name": "tail",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -1.5,
+       -1
+      ],
+      "bbb_size": [
+       0,
+       3,
+       8
+      ],
+      "tex_offs": [
+       10,
+       9
+      ],
+      "uv_size": [
+       0,
+       3,
+       8
+      ],
+      "mirror": false,
+      "note": "tail fin plane; CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -2,
+       -4
+      ],
+      "bbb_size": [
+       6,
+       3,
+       4
+      ],
+      "tex_offs": [
+       0,
+       8
+      ],
+      "uv_size": [
+       6,
+       3,
+       4
+      ],
+      "mirror": false,
+      "note": "skull; CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_gills",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -3.5,
+       0
+      ],
+      "bbb_size": [
+       3,
+       5,
+       0
+      ],
+      "tex_offs": [
+       20,
+       8
+      ],
+      "uv_size": [
+       3,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "left gill frill; CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_gills",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -3.5,
+       0
+      ],
+      "bbb_size": [
+       3,
+       5,
+       0
+      ],
+      "tex_offs": [
+       20,
+       3
+      ],
+      "uv_size": [
+       3,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "right gill frill; CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "top_gills",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -3,
+       0
+      ],
+      "bbb_size": [
+       6,
+       3,
+       0
+      ],
+      "tex_offs": [
+       20,
+       0
+      ],
+      "uv_size": [
+       6,
+       3,
+       0
+      ],
+      "mirror": false,
+      "note": "top gill plane; CubeDeformation(0.0)"
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube maps 1:1 to a vanilla addBox by exact offset+dims; no mirror() is active anywhere in either model. ATLAS: adult 64x64 (LayerDefinition.create(mesh,64,64)), baby 32x32 (LayerDefinition.create(mesh,32,32)) \u2014 separate texture sets/sizes. TEXTURE/VARIANTS: AxolotlRenderer maps each of 5 Axolotl.Variant (lucy/wild/gold/cyan/blue) to an adult path textures/entity/axolotl/axolotl_<name>.png and a baby path textures/entity/axolotl/axolotl_<name>_baby.png; getTextureLocation picks baby vs adult by isBaby. DEFAULT/colored-debug renders lucy (Variant.DEFAULT=LUCY). bbb's EntityModelKind::Axolotl{baby} only distinguishes adult/baby, NOT color \u2014 variant_key 'default' is the lucy adult; I also listed all 5 colors x (adult/baby) so the textured path can wire variant->path. DEFORMATION: adult head + all gill planes + all leg planes carry CubeDeformation(0.001) ('fudge'), which bbb baked into bbb_min/bbb_size (the -0.001 origins, +0.002 sizes); uv_size reported is the UN-inflated dx,dy,dz (8x5x5 head, 8x3x0 / 3x7x0 gills, 3x5x0 legs). Adult body cube1/cube2 and adult tail have NO deformation. All baby boxes use CubeDeformation(0.0) (no inflate). SHARED BUILDERS (adult): vanilla builds one 'rightLeg' CubeListBuilder (origin -2, texOffs(2,13)) reused for BOTH right_front_leg and right_hind_leg, and one 'leftLeg' (origin -1, texOffs(2,13)) reused for BOTH left_front_leg and left_hind_leg \u2014 so all four adult legs share texOffs(2,13); bbb mirrors this via two shared cube consts (ADULT_AXOLOTL_RIGHT_LEG_CUBES / LEFT_LEG_CUBES). BABY right_hind_leg: the cube is NOT on the right_hind_leg part itself (a bare doubly-rotated pivot) but on its nested child 'right_leg_r1'; I report it under part_name 'right_hind_leg' to match bbb's part enumeration \u2014 its cube const is BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES at texOffs(20,14), same offset as left_hind_leg. BABY leg texOffs differ per leg: right_front=(20,16), right_hind/left_hind=(20,14), left_front=(20,13). PART ORDER: adult emitted in bbb file/hierarchy order (body, head, top/left/right gills, right_front/left_front/right_hind/left_hind legs, tail); baby in bbb order (body, right_front/right_hind/left_front/left_hind legs, tail, head, left/right/top gills). No discrepancies \u2014 part cube counts equal the bbb file counts (adult body=2, all others=1; baby body=2, all others=1)."
+ },
+ "creaking": {
+  "entity": "creaking",
+  "vanilla_model_class": "net.minecraft.client.model.monster.creaking.CreakingModel",
+  "atlas_size": [
+   64,
+   64
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/creaking/creaking.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -10,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       10,
+       6
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       6,
+       10,
+       6
+      ],
+      "mirror": false,
+      "note": "skull"
+     },
+     {
+      "bbb_min": [
+       -3,
+       -13,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       3,
+       6
+      ],
+      "tex_offs": [
+       28,
+       31
+      ],
+      "uv_size": [
+       6,
+       3,
+       6
+      ],
+      "mirror": false,
+      "note": "brow"
+     },
+     {
+      "bbb_min": [
+       3,
+       -13,
+       0
+      ],
+      "bbb_size": [
+       9,
+       14,
+       0
+      ],
+      "tex_offs": [
+       12,
+       40
+      ],
+      "uv_size": [
+       9,
+       14,
+       0
+      ],
+      "mirror": false,
+      "note": "right antler/branch plane (flat, dz=0)"
+     },
+     {
+      "bbb_min": [
+       -12,
+       -14,
+       0
+      ],
+      "bbb_size": [
+       9,
+       14,
+       0
+      ],
+      "tex_offs": [
+       34,
+       12
+      ],
+      "uv_size": [
+       9,
+       14,
+       0
+      ],
+      "mirror": false,
+      "note": "left antler/branch plane (flat, dz=0)"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -3,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       13,
+       5
+      ],
+      "tex_offs": [
+       0,
+       16
+      ],
+      "uv_size": [
+       6,
+       13,
+       5
+      ],
+      "mirror": false,
+      "note": "trunk"
+     },
+     {
+      "bbb_min": [
+       -6,
+       -4,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       7,
+       5
+      ],
+      "tex_offs": [
+       24,
+       0
+      ],
+      "uv_size": [
+       6,
+       7,
+       5
+      ],
+      "mirror": false,
+      "note": "upper block"
+     }
+    ]
+   },
+   {
+    "part_name": "right_arm",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -1.5,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       21,
+       3
+      ],
+      "tex_offs": [
+       22,
+       13
+      ],
+      "uv_size": [
+       3,
+       21,
+       3
+      ],
+      "mirror": false,
+      "note": "limb"
+     },
+     {
+      "bbb_min": [
+       -2,
+       19.5,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       4,
+       3
+      ],
+      "tex_offs": [
+       46,
+       0
+      ],
+      "uv_size": [
+       3,
+       4,
+       3
+      ],
+      "mirror": false,
+      "note": "hand"
+     }
+    ]
+   },
+   {
+    "part_name": "left_arm",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -1,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       16,
+       3
+      ],
+      "tex_offs": [
+       30,
+       40
+      ],
+      "uv_size": [
+       3,
+       16,
+       3
+      ],
+      "mirror": false,
+      "note": "limb"
+     },
+     {
+      "bbb_min": [
+       0,
+       -5,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       4,
+       3
+      ],
+      "tex_offs": [
+       52,
+       12
+      ],
+      "uv_size": [
+       3,
+       4,
+       3
+      ],
+      "mirror": false,
+      "note": "shoulder block"
+     },
+     {
+      "bbb_min": [
+       0,
+       15,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       4,
+       3
+      ],
+      "tex_offs": [
+       52,
+       19
+      ],
+      "uv_size": [
+       3,
+       4,
+       3
+      ],
+      "mirror": false,
+      "note": "hand"
+     }
+    ]
+   },
+   {
+    "part_name": "left_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       16,
+       3
+      ],
+      "tex_offs": [
+       42,
+       40
+      ],
+      "uv_size": [
+       3,
+       16,
+       3
+      ],
+      "mirror": false,
+      "note": "limb"
+     },
+     {
+      "bbb_min": [
+       -1.5,
+       15.7,
+       -4.5
+      ],
+      "bbb_size": [
+       5,
+       0,
+       9
+      ],
+      "tex_offs": [
+       45,
+       55
+      ],
+      "uv_size": [
+       5,
+       0,
+       9
+      ],
+      "mirror": false,
+      "note": "foot plane (flat, dy=0)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -1.5,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       19,
+       3
+      ],
+      "tex_offs": [
+       0,
+       34
+      ],
+      "uv_size": [
+       3,
+       19,
+       3
+      ],
+      "mirror": false,
+      "note": "limb"
+     },
+     {
+      "bbb_min": [
+       -5,
+       17.2,
+       -4.5
+      ],
+      "bbb_size": [
+       5,
+       0,
+       9
+      ],
+      "tex_offs": [
+       45,
+       46
+      ],
+      "uv_size": [
+       5,
+       0,
+       9
+      ],
+      "mirror": false,
+      "note": "foot plane (flat, dy=0)"
+     },
+     {
+      "bbb_min": [
+       -3,
+       -4.5,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       3,
+       3
+      ],
+      "tex_offs": [
+       12,
+       34
+      ],
+      "uv_size": [
+       3,
+       3,
+       3
+      ],
+      "mirror": false,
+      "note": "hip block"
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "All 16 bbb cubes match the vanilla CreakingModel.createMesh() addBox calls exactly by offset==[min] AND dims==[size], in file order, part-by-part. No discrepancies. NO mirror() is ever called in CreakingModel, so every cube has mirror=false. NO CubeDeformation/inflate is applied to any box, so uv_size == bbb_size for all cubes. Single texture variant only (the bbb variant Self::Creaking carries no fields; selection.rs maps it to the bare key \"creaking\"); variant_key reported as \"default\" per instructions. There is NO separate baby layer (no createBabyLayer/createBabyBodyLayer exists), so baby_atlas_size is left empty. COMPOSITE/EMISSIVE OVERLAY: the renderer (CreakingRenderer) adds a second emissive layer via LivingEntityEmissiveLayer using a SEPARATE texture textures/entity/creaking/creaking_eyes.png, built from createEyesLayer() which retains ONLY the 'head' part (mesh.getRoot().retainExactParts(Set.of(\\\"head\\\"))) at the SAME 64x64 atlas with the SAME head texOffs. It renders only when state.eyesGlowing (entity active / glowing eyes), with RenderTypes::eyes (additive glow). This eyes overlay is deferred in the bbb colored-only port and is NOT included in the textures list above; if/when added it would be a head-only emissive pass reusing the identical head UVs. Flat planes (head antlers dz=0, both feet dy=0) are zero-thickness quads \u2014 their UV unwrap uses the given dx/dy/dz with one dimension 0."
+ },
+ "ender_dragon": {
+  "entity": "ender_dragon",
+  "vanilla_model_class": "net.minecraft.client.model.monster.dragon.EnderDragonModel",
+  "atlas_size": [
+   256,
+   256
+  ],
+  "baby_atlas_size": [
+   0,
+   0
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/enderdragon/dragon.png",
+    "atlas_size": [
+     256,
+     256
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6,
+       -1,
+       -24
+      ],
+      "bbb_size": [
+       12,
+       5,
+       16
+      ],
+      "tex_offs": [
+       176,
+       44
+      ],
+      "uv_size": [
+       12,
+       5,
+       16
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(\"upperlip\")"
+     },
+     {
+      "bbb_min": [
+       -8,
+       -8,
+       -10
+      ],
+      "bbb_size": [
+       16,
+       16,
+       16
+      ],
+      "tex_offs": [
+       112,
+       30
+      ],
+      "uv_size": [
+       16,
+       16,
+       16
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(\"upperhead\"); the .mirror() call follows this box so it does NOT affect upperhead"
+     },
+     {
+      "bbb_min": [
+       -5,
+       -12,
+       -4
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": true,
+      "note": "vanilla addBox(\"scale\"); mirror() active (toggled on after upperhead)"
+     },
+     {
+      "bbb_min": [
+       -5,
+       -3,
+       -22
+      ],
+      "bbb_size": [
+       2,
+       2,
+       4
+      ],
+      "tex_offs": [
+       112,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       4
+      ],
+      "mirror": true,
+      "note": "vanilla addBox(\"nostril\"); mirror() still active"
+     },
+     {
+      "bbb_min": [
+       3,
+       -12,
+       -4
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(\"scale\"); second .mirror() toggled state back OFF before this box"
+     },
+     {
+      "bbb_min": [
+       3,
+       -3,
+       -22
+      ],
+      "bbb_size": [
+       2,
+       2,
+       4
+      ],
+      "tex_offs": [
+       112,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       4
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(\"nostril\"); mirror OFF"
+     }
+    ]
+   },
+   {
+    "part_name": "jaw",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6,
+       0,
+       -16
+      ],
+      "bbb_size": [
+       12,
+       4,
+       16
+      ],
+      "tex_offs": [
+       176,
+       65
+      ],
+      "uv_size": [
+       12,
+       4,
+       16
+      ],
+      "mirror": false,
+      "note": "vanilla head.jaw addBox(\"jaw\"); child of head"
+     }
+    ]
+   },
+   {
+    "part_name": "neck_0",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "neck_1",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "neck_2",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "neck_3",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "neck_4",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_0",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_1",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_2",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_3",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_4",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_5",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_6",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_7",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_8",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_9",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_10",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "tail_11",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -5,
+       -5
+      ],
+      "bbb_size": [
+       10,
+       10,
+       10
+      ],
+      "tex_offs": [
+       192,
+       104
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"box\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -9,
+       -3
+      ],
+      "bbb_size": [
+       2,
+       4,
+       6
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "shared spineCubes addBox(\"scale\")"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -12,
+       1,
+       -16
+      ],
+      "bbb_size": [
+       24,
+       24,
+       64
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       24,
+       24,
+       64
+      ],
+      "mirror": false,
+      "note": "vanilla body addBox(\"body\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -5,
+       -10
+      ],
+      "bbb_size": [
+       2,
+       6,
+       12
+      ],
+      "tex_offs": [
+       220,
+       53
+      ],
+      "uv_size": [
+       2,
+       6,
+       12
+      ],
+      "mirror": false,
+      "note": "vanilla body addBox(\"scale\")"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -5,
+       10
+      ],
+      "bbb_size": [
+       2,
+       6,
+       12
+      ],
+      "tex_offs": [
+       220,
+       53
+      ],
+      "uv_size": [
+       2,
+       6,
+       12
+      ],
+      "mirror": false,
+      "note": "vanilla body addBox(\"scale\"); shares texOffs (220,53) with the other two body scales"
+     },
+     {
+      "bbb_min": [
+       -1,
+       -5,
+       30
+      ],
+      "bbb_size": [
+       2,
+       6,
+       12
+      ],
+      "tex_offs": [
+       220,
+       53
+      ],
+      "uv_size": [
+       2,
+       6,
+       12
+      ],
+      "mirror": false,
+      "note": "vanilla body addBox(\"scale\"); shares texOffs (220,53)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_wing",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -4,
+       -4
+      ],
+      "bbb_size": [
+       56,
+       8,
+       8
+      ],
+      "tex_offs": [
+       112,
+       88
+      ],
+      "uv_size": [
+       56,
+       8,
+       8
+      ],
+      "mirror": true,
+      "note": "vanilla left_wing addBox(\"bone\"); left_wing CubeListBuilder calls .mirror() before both boxes, so both are mirrored"
+     },
+     {
+      "bbb_min": [
+       0,
+       0,
+       2
+      ],
+      "bbb_size": [
+       56,
+       0,
+       56
+      ],
+      "tex_offs": [
+       -56,
+       88
+      ],
+      "uv_size": [
+       56,
+       0,
+       56
+      ],
+      "mirror": true,
+      "note": "vanilla left_wing addBox(\"skin\") - the 56x0x56 membrane plane; NEGATIVE u texOffs -56 (wraps the flat plane); mirror true"
+     }
+    ]
+   },
+   {
+    "part_name": "left_wing_tip",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -2,
+       -2
+      ],
+      "bbb_size": [
+       56,
+       4,
+       4
+      ],
+      "tex_offs": [
+       112,
+       136
+      ],
+      "uv_size": [
+       56,
+       4,
+       4
+      ],
+      "mirror": true,
+      "note": "vanilla left_wing_tip addBox(\"bone\"); left_wing_tip CubeListBuilder calls .mirror() before both boxes"
+     },
+     {
+      "bbb_min": [
+       0,
+       0,
+       2
+      ],
+      "bbb_size": [
+       56,
+       0,
+       56
+      ],
+      "tex_offs": [
+       -56,
+       144
+      ],
+      "uv_size": [
+       56,
+       0,
+       56
+      ],
+      "mirror": true,
+      "note": "vanilla left_wing_tip addBox(\"skin\") - membrane plane; NEGATIVE u texOffs -56; mirror true"
+     }
+    ]
+   },
+   {
+    "part_name": "right_wing",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -56,
+       -4,
+       -4
+      ],
+      "bbb_size": [
+       56,
+       8,
+       8
+      ],
+      "tex_offs": [
+       112,
+       88
+      ],
+      "uv_size": [
+       56,
+       8,
+       8
+      ],
+      "mirror": false,
+      "note": "vanilla right_wing addBox(\"bone\"); right_wing CubeListBuilder does NOT call .mirror(); shares texOffs (112,88) with left_wing bone"
+     },
+     {
+      "bbb_min": [
+       -56,
+       0,
+       2
+      ],
+      "bbb_size": [
+       56,
+       0,
+       56
+      ],
+      "tex_offs": [
+       -56,
+       88
+      ],
+      "uv_size": [
+       56,
+       0,
+       56
+      ],
+      "mirror": false,
+      "note": "vanilla right_wing addBox(\"skin\") - membrane plane; NEGATIVE u texOffs -56; mirror false"
+     }
+    ]
+   },
+   {
+    "part_name": "right_wing_tip",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -56,
+       -2,
+       -2
+      ],
+      "bbb_size": [
+       56,
+       4,
+       4
+      ],
+      "tex_offs": [
+       112,
+       136
+      ],
+      "uv_size": [
+       56,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "vanilla right_wing_tip addBox(\"bone\"); no .mirror(); shares texOffs (112,136) with left_wing_tip bone"
+     },
+     {
+      "bbb_min": [
+       -56,
+       0,
+       2
+      ],
+      "bbb_size": [
+       56,
+       0,
+       56
+      ],
+      "tex_offs": [
+       -56,
+       144
+      ],
+      "uv_size": [
+       56,
+       0,
+       56
+      ],
+      "mirror": false,
+      "note": "vanilla right_wing_tip addBox(\"skin\") - membrane plane; NEGATIVE u texOffs -56; mirror false"
+     }
+    ]
+   },
+   {
+    "part_name": "front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4,
+       -4,
+       -4
+      ],
+      "bbb_size": [
+       8,
+       24,
+       8
+      ],
+      "tex_offs": [
+       112,
+       104
+      ],
+      "uv_size": [
+       8,
+       24,
+       8
+      ],
+      "mirror": false,
+      "note": "vanilla left_front_leg/right_front_leg addBox(\"main\"); both share geometry & texOffs (112,104). bbb shares one DRAGON_FRONT_LEG_CUBES for both left (+12 X) and right (-12 X) body pivots - one cube def listed once"
+     }
+    ]
+   },
+   {
+    "part_name": "front_leg_tip",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -1,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       24,
+       6
+      ],
+      "tex_offs": [
+       226,
+       138
+      ],
+      "uv_size": [
+       6,
+       24,
+       6
+      ],
+      "mirror": false,
+      "note": "vanilla left_front_leg_tip/right_front_leg_tip addBox(\"main\"); shared geometry & texOffs (226,138)"
+     }
+    ]
+   },
+   {
+    "part_name": "front_foot",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4,
+       0,
+       -12
+      ],
+      "bbb_size": [
+       8,
+       4,
+       16
+      ],
+      "tex_offs": [
+       144,
+       104
+      ],
+      "uv_size": [
+       8,
+       4,
+       16
+      ],
+      "mirror": false,
+      "note": "vanilla left_front_foot/right_front_foot addBox(\"main\"); shared geometry & texOffs (144,104)"
+     }
+    ]
+   },
+   {
+    "part_name": "hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -8,
+       -4,
+       -8
+      ],
+      "bbb_size": [
+       16,
+       32,
+       16
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       16,
+       32,
+       16
+      ],
+      "mirror": false,
+      "note": "vanilla left_hind_leg/right_hind_leg addBox(\"main\"); shared geometry & texOffs (0,0)"
+     }
+    ]
+   },
+   {
+    "part_name": "hind_leg_tip",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6,
+       -2,
+       0
+      ],
+      "bbb_size": [
+       12,
+       32,
+       12
+      ],
+      "tex_offs": [
+       196,
+       0
+      ],
+      "uv_size": [
+       12,
+       32,
+       12
+      ],
+      "mirror": false,
+      "note": "vanilla left_hind_leg_tip/right_hind_leg_tip addBox(\"main\"); shared geometry & texOffs (196,0)"
+     }
+    ]
+   },
+   {
+    "part_name": "hind_foot",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -9,
+       0,
+       -20
+      ],
+      "bbb_size": [
+       18,
+       6,
+       24
+      ],
+      "tex_offs": [
+       112,
+       0
+      ],
+      "uv_size": [
+       18,
+       6,
+       24
+      ],
+      "mirror": false,
+      "note": "vanilla left_hind_foot/right_hind_foot addBox(\"main\"); shared geometry & texOffs (112,0). NOTE: shares same texOffs (112,0) as the head nostrils, which are tiny 2x2x4 boxes elsewhere on the atlas - vanilla packs them densely"
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube matched a vanilla addBox exactly by offset AND dims; no mismatches, no extra/missing cubes. Single texture, no baby layer, no variants: variant_key \"default\" -> textures/entity/enderdragon/dragon.png; atlas 256x256 from LayerDefinition.create(mesh, 256, 256). MIRROR DETAIL (verify in application): vanilla uses CubeListBuilder.mirror() which TOGGLES a sticky flag, applied to all subsequently-added boxes. (a) head: upperlip & upperhead mirror=false, then .mirror() -> scale(-5) & nostril(-5) mirror=true, then a 2nd .mirror() -> scale(3) & nostril(3) back to mirror=false. (b) left_wing & left_wing_tip CubeListBuilders both call .mirror() first, so BOTH boxes (bone + skin membrane) are mirror=true. (c) right_wing & right_wing_tip call NO .mirror(), so both boxes mirror=false. The left/right wings are genuine mirrored geometry (left extends +X from min 0, right extends -X from min -56), so left mirror=true / right mirror=false is correct, NOT a redundant flag. MEMBRANE PLANES: the four \"skin\" boxes are 56x0x56 zero-thickness planes with NEGATIVE u texOffs (left/right wing skin = [-56,88], wing-tip skin = [-56,144]). The negative u is intentional vanilla UV (the flat plane wraps off the left atlas edge); the application must preserve the negative value, not clamp to 0. In bbb these membrane cubes use DRAGON_MEMBRANE color (lighter tint) vs DRAGON_BODY (dark) for the rest. SHARED LEG GEOMETRY: bbb defines each leg/tip/foot cube ONCE (DRAGON_FRONT_LEG_CUBES, etc.) and reuses it for both the left (+X body pivot) and right (-X body pivot) instances via the body children list; vanilla emits 6 boxes each (3 front-pair + 3 hind-pair x2) but all left/right pairs share identical texOffs and geometry (centered boxes), so a single tex_offs per bbb cube is exact. The bbb cube count per part therefore equals the bbb file (1 cube each for the 6 leg parts). SHARED SPINE: all 5 neck + 12 tail segments reuse DRAGON_SPINE_CUBES (box texOffs [192,104], scale texOffs [48,0]) - identical for every segment in vanilla too. DEFERRED (not texture-relevant): the fully procedural setupAnim (flight-history neck/tail placement, wing flap, jaw open, root bounce/z=-48/xRot), the dying dissolve overlay (dragon_exploding.png), the emissive eyes overlay layer (dragon_eyes.png, RenderTypes.eyes), and the crystal-healing beam (end_crystal_beam.png) are separate render passes/textures not part of the base body UV mapping - only dragon.png maps to the geometry above."
+ },
+ "equine": {
+  "entity": "equine",
+  "vanilla_model_class": "AbstractEquineModel (HorseModel / BabyHorseModel / DonkeyModel / BabyDonkeyModel) \u2014 AbstractEquineModel.createBodyMesh; BabyHorseModel.createBabyMesh; DonkeyModel.modifyMesh; BabyDonkeyModel.createBabyLayer",
+  "atlas_size": [
+   64,
+   64
+  ],
+  "baby_atlas_size": [
+   64,
+   64
+  ],
+  "textures": [
+   {
+    "variant_key": "horse (adult, default white)",
+    "path": "textures/entity/horse/horse_white.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "horse_baby",
+    "path": "textures/entity/horse/horse_white_baby.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "donkey (adult)",
+    "path": "textures/entity/horse/donkey.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "donkey_baby",
+    "path": "textures/entity/horse/donkey_baby.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "mule (adult)",
+    "path": "textures/entity/horse/mule.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "mule_baby",
+    "path": "textures/entity/horse/mule_baby.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "skeleton_horse (adult)",
+    "path": "textures/entity/horse/horse_skeleton.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "skeleton_horse_baby",
+    "path": "textures/entity/horse/horse_skeleton_baby.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "zombie_horse (adult)",
+    "path": "textures/entity/horse/horse_zombie.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "zombie_horse_baby",
+    "path": "textures/entity/horse/horse_zombie_baby.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "ADULT_HORSE_BODY",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5.05,
+       -8.05,
+       -17.05
+      ],
+      "bbb_size": [
+       10.1,
+       10.1,
+       22.1
+      ],
+      "tex_offs": [
+       0,
+       32
+      ],
+      "uv_size": [
+       10,
+       10,
+       22
+      ],
+      "mirror": false,
+      "note": "body addBox(-5,-8,-17, 10,10,22) with CubeDeformation(0.05); bbb bakes the +0.05 inflate into min/size, uv_size stays un-inflated 10x10x22"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_TAIL",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       0
+      ],
+      "bbb_size": [
+       3,
+       14,
+       4
+      ],
+      "tex_offs": [
+       42,
+       36
+      ],
+      "uv_size": [
+       3,
+       14,
+       4
+      ],
+      "mirror": false,
+      "note": "body>tail addBox, deform g=NONE for adult horse"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_NECK",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.05,
+       -6,
+       -2
+      ],
+      "bbb_size": [
+       4,
+       12,
+       7
+      ],
+      "tex_offs": [
+       0,
+       35
+      ],
+      "uv_size": [
+       4,
+       12,
+       7
+      ],
+      "mirror": false,
+      "note": "head_parts neck box addBox(-2.05,-6,-2, 4,12,7) no deformation; the -2.05 x-min is literal in vanilla addBox, not an inflate"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_HEAD",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -11,
+       -2
+      ],
+      "bbb_size": [
+       6,
+       5,
+       7
+      ],
+      "tex_offs": [
+       0,
+       13
+      ],
+      "uv_size": [
+       6,
+       5,
+       7
+      ],
+      "mirror": false,
+      "note": "head addBox with deform g=CubeDeformation.NONE for horse"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_EAR (left_ear)",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0.551,
+       -12.999,
+       4.001
+      ],
+      "bbb_size": [
+       1.998,
+       2.998,
+       0.998
+      ],
+      "tex_offs": [
+       19,
+       16
+      ],
+      "uv_size": [
+       2,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "head>left_ear addBox(0.55,-13,4, 2,3,1) with CubeDeformation(-0.001); bbb bakes the -0.001 shrink into min/size, uv_size stays un-inflated 2x3x1"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_RIGHT_EAR (right_ear)",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.549,
+       -12.999,
+       4.001
+      ],
+      "bbb_size": [
+       1.998,
+       2.998,
+       0.998
+      ],
+      "tex_offs": [
+       19,
+       16
+      ],
+      "uv_size": [
+       2,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "head>right_ear addBox(-2.55,-13,4, 2,3,1) with CubeDeformation(-0.001); same texOffs(19,16) as left_ear (no mirror flag) so both ears sample the identical UV region"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_MANE",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -11,
+       5.01
+      ],
+      "bbb_size": [
+       2,
+       16,
+       2
+      ],
+      "tex_offs": [
+       56,
+       36
+      ],
+      "uv_size": [
+       2,
+       16,
+       2
+      ],
+      "mirror": false,
+      "note": "head_parts>mane addBox, deform g=NONE"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_UPPER_MOUTH",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -11,
+       -7
+      ],
+      "bbb_size": [
+       4,
+       5,
+       5
+      ],
+      "tex_offs": [
+       0,
+       25
+      ],
+      "uv_size": [
+       4,
+       5,
+       5
+      ],
+      "mirror": false,
+      "note": "head_parts>upper_mouth addBox, deform g=NONE"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_LEFT_HIND_LEG",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -1.01,
+       -1
+      ],
+      "bbb_size": [
+       4,
+       11,
+       4
+      ],
+      "tex_offs": [
+       48,
+       21
+      ],
+      "uv_size": [
+       4,
+       11,
+       4
+      ],
+      "mirror": true,
+      "note": "left_hind_leg CubeListBuilder.mirror() active; addBox(-3,-1.01,-1, 4,11,4), deform g=NONE"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_RIGHT_HIND_LEG",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -1.01,
+       -1
+      ],
+      "bbb_size": [
+       4,
+       11,
+       4
+      ],
+      "tex_offs": [
+       48,
+       21
+      ],
+      "uv_size": [
+       4,
+       11,
+       4
+      ],
+      "mirror": false,
+      "note": "right_hind_leg no mirror; addBox(-1,-1.01,-1, 4,11,4), shares texOffs(48,21) with the mirrored left leg"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_LEFT_FRONT_LEG",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -1.01,
+       -1.9
+      ],
+      "bbb_size": [
+       4,
+       11,
+       4
+      ],
+      "tex_offs": [
+       48,
+       21
+      ],
+      "uv_size": [
+       4,
+       11,
+       4
+      ],
+      "mirror": true,
+      "note": "left_front_leg CubeListBuilder.mirror() active; addBox(-3,-1.01,-1.9, 4,11,4), deform g=NONE"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_HORSE_RIGHT_FRONT_LEG",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -1.01,
+       -1.9
+      ],
+      "bbb_size": [
+       4,
+       11,
+       4
+      ],
+      "tex_offs": [
+       48,
+       21
+      ],
+      "uv_size": [
+       4,
+       11,
+       4
+      ],
+      "mirror": false,
+      "note": "right_front_leg no mirror; addBox(-1,-1.01,-1.9, 4,11,4)"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_DONKEY_CHEST",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4,
+       0,
+       -2
+      ],
+      "bbb_size": [
+       8,
+       8,
+       3
+      ],
+      "tex_offs": [
+       26,
+       21
+      ],
+      "uv_size": [
+       8,
+       8,
+       3
+      ],
+      "mirror": false,
+      "note": "DonkeyModel.modifyMesh chest box addBox(-4,0,-2, 8,8,3), no deformation; bbb reuses this single cube for both left_chest and right_chest part instances (same texOffs, no mirror)"
+     }
+    ]
+   },
+   {
+    "part_name": "ADULT_DONKEY_EAR",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -7,
+       0
+      ],
+      "bbb_size": [
+       2,
+       7,
+       1
+      ],
+      "tex_offs": [
+       0,
+       12
+      ],
+      "uv_size": [
+       2,
+       7,
+       1
+      ],
+      "mirror": false,
+      "note": "DonkeyModel.modifyMesh ear box addBox(-1,-7,0, 2,7,1), no deformation, no mirror; bbb reuses this single cube for both donkey left_ear and right_ear (vanilla uses identical CubeListBuilder for both, neither mirrored)"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_BODY",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4,
+       -3.5,
+       -7
+      ],
+      "bbb_size": [
+       8,
+       7,
+       14
+      ],
+      "tex_offs": [
+       0,
+       13
+      ],
+      "uv_size": [
+       8,
+       7,
+       14
+      ],
+      "mirror": false,
+      "note": "BabyHorseModel body addBox, deform g=NONE"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_TAIL",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1.5,
+       -1
+      ],
+      "bbb_size": [
+       3,
+       3,
+       8
+      ],
+      "tex_offs": [
+       24,
+       34
+      ],
+      "uv_size": [
+       3,
+       3,
+       8
+      ],
+      "mirror": false,
+      "note": "body>tail addBox"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_LEFT_HIND_LEG",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       9,
+       3
+      ],
+      "tex_offs": [
+       12,
+       46
+      ],
+      "uv_size": [
+       3,
+       9,
+       3
+      ],
+      "mirror": false,
+      "note": "left_hind_leg addBox, no mirror; distinct texOffs(12,46)"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_RIGHT_HIND_LEG",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       9,
+       3
+      ],
+      "tex_offs": [
+       0,
+       46
+      ],
+      "uv_size": [
+       3,
+       9,
+       3
+      ],
+      "mirror": false,
+      "note": "right_hind_leg addBox, no mirror; distinct texOffs(0,46) \u2014 identical geometry to left leg but different UV"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_LEFT_FRONT_LEG",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       9,
+       3
+      ],
+      "tex_offs": [
+       12,
+       34
+      ],
+      "uv_size": [
+       3,
+       9,
+       3
+      ],
+      "mirror": false,
+      "note": "left_front_leg addBox, no mirror; distinct texOffs(12,34)"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_RIGHT_FRONT_LEG",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       9,
+       3
+      ],
+      "tex_offs": [
+       0,
+       34
+      ],
+      "uv_size": [
+       3,
+       9,
+       3
+      ],
+      "mirror": false,
+      "note": "right_front_leg addBox, no mirror; distinct texOffs(0,34)"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_NECK",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -6,
+       -2
+      ],
+      "bbb_size": [
+       4,
+       8,
+       4
+      ],
+      "tex_offs": [
+       30,
+       0
+      ],
+      "uv_size": [
+       4,
+       8,
+       4
+      ],
+      "mirror": false,
+      "note": "head_parts (neck) addBox, no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_HEAD",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -3.9484,
+       -6.705
+      ],
+      "bbb_size": [
+       6,
+       4,
+       9
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       6,
+       4,
+       9
+      ],
+      "mirror": false,
+      "note": "head addBox(-3,-3.9484,-6.705, 6,4,9), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_LEFT_EAR",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -2.5,
+       -0.8
+      ],
+      "bbb_size": [
+       2,
+       3,
+       1
+      ],
+      "tex_offs": [
+       0,
+       4
+      ],
+      "uv_size": [
+       2,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "head>left_ear addBox(-1,-2.5,-0.8, 2,3,1) texOffs(0,4), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_HORSE_RIGHT_EAR",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -2.5,
+       -0.5
+      ],
+      "bbb_size": [
+       2,
+       3,
+       1
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "head>right_ear addBox(-1,-2.5,-0.5, 2,3,1) texOffs(0,0), no mirror \u2014 different texOffs and z-min from left ear"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_DONKEY_BODY",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -3,
+       -7
+      ],
+      "bbb_size": [
+       8,
+       6,
+       14
+      ],
+      "tex_offs": [
+       0,
+       13
+      ],
+      "uv_size": [
+       8,
+       6,
+       14
+      ],
+      "mirror": false,
+      "note": "BabyDonkeyModel.createBabyLayer body addBox(-5,-3,-7, 8,6,14) CubeDeformation(0.0), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_DONKEY_TAIL_R1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -1,
+       -0.5
+      ],
+      "bbb_size": [
+       3,
+       3,
+       8
+      ],
+      "tex_offs": [
+       24,
+       33
+      ],
+      "uv_size": [
+       3,
+       3,
+       8
+      ],
+      "mirror": false,
+      "note": "tail>tail_r1 addBox(-2.5,-1,-0.5, 3,3,8), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_DONKEY_LEG",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -1.5,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       8,
+       3
+      ],
+      "tex_offs": [
+       12,
+       44
+      ],
+      "uv_size": [
+       3,
+       8,
+       3
+      ],
+      "mirror": false,
+      "note": "SHARED cube reused for all four baby-donkey legs but vanilla gives each a DISTINCT texOffs: left_hind=(12,44), right_hind=(0,44), left_front=(12,33), right_front=(0,33). bbb has ONE BABY_DONKEY_LEG const referenced 4\u00d7 in BABY_DONKEY_BODY_CHILDREN order [left_hind, right_hind, left_front, right_front]. tex_offs recorded here is (12,44) for the first (left_hind) instance \u2014 see issues for the per-instance UV list the application must apply by part-instance, not by cube const"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_DONKEY_NECK_R1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -6,
+       -3
+      ],
+      "bbb_size": [
+       4,
+       8,
+       4
+      ],
+      "tex_offs": [
+       30,
+       9
+      ],
+      "uv_size": [
+       4,
+       8,
+       4
+      ],
+      "mirror": false,
+      "note": "head_parts>neck_r1 addBox(-3,-6,-3, 4,8,4), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_DONKEY_HEAD_R1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4,
+       -3.6,
+       -8.4
+      ],
+      "bbb_size": [
+       6,
+       4,
+       9
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       6,
+       4,
+       9
+      ],
+      "mirror": false,
+      "note": "head>head_r1 addBox(-4,-3.6,-8.4, 6,4,9) texOffs(0,0), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "BABY_DONKEY_EAR",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -6.5,
+       -0.3
+      ],
+      "bbb_size": [
+       2,
+       7,
+       1
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       7,
+       1
+      ],
+      "mirror": false,
+      "note": "SHARED cube reused for both baby-donkey ears with DIFFERENT vanilla UV/mirror: left_ear texOffs(0,0) NO mirror; right_ear texOffs(22,0) WITH mirror() (then mirror(false)). bbb has ONE BABY_DONKEY_EAR const referenced 2\u00d7 in BABY_DONKEY_HEAD_CHILDREN order [left_ear, right_ear]. tex_offs here is left_ear (0,0); the right_ear instance needs tex_offs(22,0) + mirror=true \u2014 see issues"
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "See above \u2014 comprehensive. Confidence high: all 30 bbb cubes matched a unique vanilla addBox by exact offset+dims with verified texOffs from AbstractEquineModel/BabyHorseModel/DonkeyModel/BabyDonkeyModel; atlas 64x64 confirmed in every LayerDefinition.create. Only nuance is shared-cube per-instance UV for the 4 baby-donkey legs and 2 baby-donkey ears (detailed in the per-cube notes and issues)."
+ },
+ "evoker_fangs": {
+  "entity": "evoker_fangs",
+  "vanilla_model_class": "net.minecraft.client.model.effects.EvokerFangsModel",
+  "atlas_size": [
+   64,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/illager/evoker_fangs.png",
+    "atlas_size": [
+     64,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "base",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       0,
+       0
+      ],
+      "bbb_size": [
+       10,
+       12,
+       10
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       10,
+       12,
+       10
+      ],
+      "mirror": false,
+      "note": "Vanilla base.texOffs(0,0).addBox(0,0,0, 10,12,10). Part pivot offset(-5,24,-5). No CubeDeformation."
+     }
+    ]
+   },
+   {
+    "part_name": "upper_jaw",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       0,
+       0
+      ],
+      "bbb_size": [
+       4,
+       14,
+       8
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       4,
+       14,
+       8
+      ],
+      "mirror": false,
+      "note": "Shared jaw CubeListBuilder texOffs(40,0).addBox(0,0,0, 4,14,8). upper_jaw child pivot offsetAndRotation(6.5,0,1, 0,0,2.042035). No mirror, no deformation."
+     }
+    ]
+   },
+   {
+    "part_name": "lower_jaw",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       0,
+       0
+      ],
+      "bbb_size": [
+       4,
+       14,
+       8
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       4,
+       14,
+       8
+      ],
+      "mirror": false,
+      "note": "Same shared jaw box texOffs(40,0).addBox(0,0,0, 4,14,8). lower_jaw child pivot offsetAndRotation(3.5,0,9, 0,PI,4.2411504). Same UV as upper_jaw (vanilla reuses one CubeListBuilder for both jaws); no mirror, no deformation."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Single texture, no baby layer (no createBabyLayer; baby_atlas_size omitted). The bbb EntityModelKind::EvokerFangs is a unit variant with no parameters, so variant_key is \"default\". Both jaws share ONE vanilla CubeListBuilder (texOffs(40,0), box 0,0,0,4,14,8) \u2014 they are the same UV-unwrapped geometry, distinguished only by part pivot/rotation, so upper_jaw and lower_jaw cubes map to identical tex_offs [40,0]. The bbb file structures this as a single top-level `base` part with two rotated children; I emitted 3 parts (base, upper_jaw, lower_jaw) to keep one cube per part in file order with distinct pivots. No mirror() is active in createBodyLayer for any box. No CubeDeformation/inflate. EvokerFangsRenderer applies a distinct yaw Ry(90 - yRot), standard scale(-1,-1,1) flip, and translate(0,-1.501,0); setupAnim's bite/scale/drop are deferred and irrelevant to UV. Texture path uses default namespace 'minecraft'.\""
+ },
+ "feline": {
+  "entity": "feline",
+  "vanilla_model_class": "net.minecraft.client.model.animal.feline.AdultFelineModel (createBodyMesh) / BabyFelineModel (createBabyLayer); shared by AdultCatModel/AdultOcelotModel and BabyCatModel/BabyOcelotModel",
+  "atlas_size": [
+   64,
+   32
+  ],
+  "baby_atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "feline_cat",
+    "path": "textures/entity/cat/cat_tabby.png"
+   },
+   {
+    "variant_key": "feline_ocelot",
+    "path": "textures/entity/cat/ocelot.png"
+   },
+   {
+    "variant_key": "feline_cat_baby",
+    "path": "textures/entity/cat/cat_tabby_baby.png"
+   },
+   {
+    "variant_key": "feline_ocelot_baby",
+    "path": "textures/entity/cat/ocelot_baby.png"
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -2,
+       -3
+      ],
+      "bbb_size": [
+       5,
+       4,
+       5
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       5,
+       4,
+       5
+      ],
+      "mirror": false,
+      "note": "skull 'main' box; addBox(\"main\",...,g) with no explicit texOffs -> running texOffs (0,0)"
+     },
+     {
+      "bbb_min": [
+       -1.5,
+       -0.001,
+       -4
+      ],
+      "bbb_size": [
+       3,
+       2,
+       2
+      ],
+      "tex_offs": [
+       0,
+       24
+      ],
+      "uv_size": [
+       3,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "nose box; addBox(\"nose\",-1.5,-0.001,-4,3,2,2,g,0,24). uv_size is integer dx,dy,dz = 3,2,2; the -0.001 y-min is a tiny offset, not a deformation"
+     },
+     {
+      "bbb_min": [
+       -2,
+       -3,
+       0
+      ],
+      "bbb_size": [
+       1,
+       1,
+       2
+      ],
+      "tex_offs": [
+       0,
+       10
+      ],
+      "uv_size": [
+       1,
+       1,
+       2
+      ],
+      "mirror": false,
+      "note": "ear1; addBox(\"ear1\",...,g,0,10)"
+     },
+     {
+      "bbb_min": [
+       1,
+       -3,
+       0
+      ],
+      "bbb_size": [
+       1,
+       1,
+       2
+      ],
+      "tex_offs": [
+       6,
+       10
+      ],
+      "uv_size": [
+       1,
+       1,
+       2
+      ],
+      "mirror": false,
+      "note": "ear2; addBox(\"ear2\",...,g,6,10) -- distinct texOffs, NOT a mirror of ear1"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       3,
+       -8
+      ],
+      "bbb_size": [
+       4,
+       16,
+       6
+      ],
+      "tex_offs": [
+       20,
+       0
+      ],
+      "uv_size": [
+       4,
+       16,
+       6
+      ],
+      "mirror": false,
+      "note": "trunk; texOffs(20,0).addBox(-2,3,-8,4,16,6,g)"
+     }
+    ]
+   },
+   {
+    "part_name": "tail1",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       0
+      ],
+      "bbb_size": [
+       1,
+       8,
+       1
+      ],
+      "tex_offs": [
+       0,
+       15
+      ],
+      "uv_size": [
+       1,
+       8,
+       1
+      ],
+      "mirror": false,
+      "note": "upper tail; texOffs(0,15).addBox(-0.5,0,0,1,8,1,g)"
+     }
+    ]
+   },
+   {
+    "part_name": "tail2",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.48,
+       0.02,
+       0.02
+      ],
+      "bbb_size": [
+       0.96,
+       7.96,
+       0.96
+      ],
+      "tex_offs": [
+       4,
+       15
+      ],
+      "uv_size": [
+       1,
+       8,
+       1
+      ],
+      "mirror": false,
+      "note": "lower tail; texOffs(4,15).addBox(-0.5,0,0,1,8,1,tail_g) with tail_g=CubeDeformation(-0.02). uv_size is the UN-inflated dx,dy,dz = 1,8,1; bbb pre-baked the deflation into min/size (min+=0.02, size-=0.04)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       1
+      ],
+      "bbb_size": [
+       2,
+       6,
+       2
+      ],
+      "tex_offs": [
+       8,
+       13
+      ],
+      "uv_size": [
+       2,
+       6,
+       2
+      ],
+      "mirror": false,
+      "note": "shared hindLeg builder; texOffs(8,13).addBox(-1,0,1,2,6,2,g). left & right share the SAME box/texOffs (no mirror)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       1
+      ],
+      "bbb_size": [
+       2,
+       6,
+       2
+      ],
+      "tex_offs": [
+       8,
+       13
+      ],
+      "uv_size": [
+       2,
+       6,
+       2
+      ],
+      "mirror": false,
+      "note": "same shared hindLeg builder as left_hind_leg; texOffs(8,13), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       0
+      ],
+      "bbb_size": [
+       2,
+       10,
+       2
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       2,
+       10,
+       2
+      ],
+      "mirror": false,
+      "note": "shared frontLeg builder; texOffs(40,0).addBox(-1,0,0,2,10,2,g). left & right share the SAME box/texOffs (no mirror)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       0
+      ],
+      "bbb_size": [
+       2,
+       10,
+       2
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       2,
+       10,
+       2
+      ],
+      "mirror": false,
+      "note": "same shared frontLeg builder as left_front_leg; texOffs(40,0), no mirror"
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -3,
+       -2.875
+      ],
+      "bbb_size": [
+       5,
+       4,
+       4
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       5,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "baby skull; texOffs(0,0).addBox(-2.5,-3,-2.875,5,4,4). Atlas 32x32"
+     },
+     {
+      "bbb_min": [
+       -2,
+       -4,
+       -0.875
+      ],
+      "bbb_size": [
+       1,
+       1,
+       2
+      ],
+      "tex_offs": [
+       18,
+       0
+      ],
+      "uv_size": [
+       1,
+       1,
+       2
+      ],
+      "mirror": false,
+      "note": "baby ear1; texOffs(18,0).addBox(-2,-4,-0.875,1,1,2). bbb file order: ear1 before ear2 before nose"
+     },
+     {
+      "bbb_min": [
+       1,
+       -4,
+       -0.875
+      ],
+      "bbb_size": [
+       1,
+       1,
+       2
+      ],
+      "tex_offs": [
+       24,
+       0
+      ],
+      "uv_size": [
+       1,
+       1,
+       2
+      ],
+      "mirror": false,
+      "note": "baby ear2; texOffs(24,0).addBox(1,-4,-0.875,1,1,2) -- distinct texOffs, not a mirror"
+     },
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       -3.875
+      ],
+      "bbb_size": [
+       3,
+       2,
+       1
+      ],
+      "tex_offs": [
+       18,
+       3
+      ],
+      "uv_size": [
+       3,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "baby nose; texOffs(18,3).addBox(-1.5,-1,-3.875,3,2,1)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       1,
+       2,
+       2
+      ],
+      "tex_offs": [
+       18,
+       18
+      ],
+      "uv_size": [
+       1,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "baby legs do NOT share a builder; each has its own texOffs. left_front: texOffs(18,18).addBox(-0.5,0,-1,1,2,2)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       1,
+       2,
+       2
+      ],
+      "tex_offs": [
+       12,
+       18
+      ],
+      "uv_size": [
+       1,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "right_front: texOffs(12,18).addBox(-0.5,0,-1,1,2,2). Same box dims as other legs but unique texOffs"
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       1,
+       2,
+       2
+      ],
+      "tex_offs": [
+       18,
+       22
+      ],
+      "uv_size": [
+       1,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "left_hind: texOffs(18,22).addBox(-0.5,0,-1,1,2,2)"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -1.5,
+       -3.5
+      ],
+      "bbb_size": [
+       4,
+       3,
+       7
+      ],
+      "tex_offs": [
+       0,
+       8
+      ],
+      "uv_size": [
+       4,
+       3,
+       7
+      ],
+      "mirror": false,
+      "note": "baby trunk (upright, not pitched); texOffs(0,8).addBox(-2,-1.5,-3.5,4,3,7)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       1,
+       2,
+       2
+      ],
+      "tex_offs": [
+       12,
+       22
+      ],
+      "uv_size": [
+       1,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "right_hind: texOffs(12,22).addBox(-0.5,0,-1,1,2,2)"
+     }
+    ]
+   },
+   {
+    "part_name": "tail1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       -0.107,
+       0.0849
+      ],
+      "bbb_size": [
+       1,
+       1,
+       5
+      ],
+      "tex_offs": [
+       0,
+       18
+      ],
+      "uv_size": [
+       1,
+       1,
+       5
+      ],
+      "mirror": false,
+      "note": "baby tail (single segment); texOffs(0,18).addBox(-0.5,-0.107,0.0849,1,1,5). No deformation -- the fractional min is a literal pivot offset in the vanilla addBox args"
+     }
+    ]
+   },
+   {
+    "part_name": "tail2",
+    "layer": "baby",
+    "cubes": []
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube matched a vanilla addBox 1:1 by offset AND box dims; no unmatched cubes. Cube counts match the bbb file exactly: adult head=4, body=1, tail1=1, tail2=1, each of 4 legs=1 (total 11); baby head=4, body=1, tail1=1, four legs=1 each, tail2=0 cubeless (total 10). NO box anywhere in the feline meshes calls .mirror(), so every mirror flag is false; bbb's left/right legs literally re-use the same shared CubeListBuilder (adult) or use distinct per-leg texOffs (baby), never a mirror. DEFORMATION: adult tail2 uses CubeDeformation(-0.02) (tail_g) -> bbb pre-baked it into bbb_min/bbb_size (min +0.02, size -0.04); uv_size MUST stay the un-inflated [1,8,1] (the integer dx,dy,dz passed to addBox), as reported. The adult collar layer (felineCollarLayer = same mesh with COLLAR_DEFORMATION 0.01, atlas 64x32) and BabyCatModel COLLAR_TRANSFORMER scaling(1.01) are a SEPARATE overlay layer (CatCollarLayer), not part of the base body texture -- ignore for base UV but note it exists. SCALE: the adult cat applies AdultCatModel.CAT_TRANSFORMER = scaling(0.8) in the root transform; ocelot and both babies are unscaled. This scale does NOT change UV. TEXTURE multiplicity: the ocelot has fixed textures (adult textures/entity/cat/ocelot.png, baby ocelot_baby.png from OcelotRenderer). The CAT is a multi-breed entity: CatRenderState.texture comes from entity.getVariant().value().assetInfo(isBaby).texturePath(), resolving to textures/entity/cat/cat_<breed>.png (11 breeds: tabby, black, red, siamese, british_shorthair, calico, persian, ragdoll, white, jellie, all_black) and cat_<breed>_baby.png for babies. I listed cat_tabby/cat_tabby_baby as the representative for variant_keys feline_cat/feline_cat_baby since bbb's variant_key only encodes cat-vs-ocelot and adult-vs-baby (not the breed); the application must pick the actual breed texture at runtime from the cat variant. The adult head 'main'/skull box and the body box are the only adult boxes whose texOffs comes from the running builder state (skull=(0,0) default, body=(20,0) via explicit texOffs() call); all others pass explicit u,v in addBox."
+ },
+ "fox": {
+  "entity": "fox",
+  "vanilla_model_class": "net.minecraft.client.model.animal.fox.AdultFoxModel / BabyFoxModel (both extend FoxModel)",
+  "atlas_size": [
+   48,
+   32
+  ],
+  "baby_atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "red_adult_idle",
+    "path": "textures/entity/fox/fox.png",
+    "atlas_size": [
+     48,
+     32
+    ]
+   },
+   {
+    "variant_key": "red_adult_sleep",
+    "path": "textures/entity/fox/fox_sleep.png",
+    "atlas_size": [
+     48,
+     32
+    ]
+   },
+   {
+    "variant_key": "snow_adult_idle",
+    "path": "textures/entity/fox/fox_snow.png",
+    "atlas_size": [
+     48,
+     32
+    ]
+   },
+   {
+    "variant_key": "snow_adult_sleep",
+    "path": "textures/entity/fox/fox_snow_sleep.png",
+    "atlas_size": [
+     48,
+     32
+    ]
+   },
+   {
+    "variant_key": "red_baby_idle",
+    "path": "textures/entity/fox/fox_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "red_baby_sleep",
+    "path": "textures/entity/fox/fox_sleep_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "snow_baby_idle",
+    "path": "textures/entity/fox/fox_snow_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "snow_baby_sleep",
+    "path": "textures/entity/fox/fox_snow_sleep_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -2,
+       -5
+      ],
+      "bbb_size": [
+       8,
+       6,
+       6
+      ],
+      "tex_offs": [
+       1,
+       5
+      ],
+      "uv_size": [
+       8,
+       6,
+       6
+      ],
+      "mirror": false,
+      "note": "skull; texOffs(1,5) addBox(-3,-2,-5,8,6,6)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_ear",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -4,
+       -4
+      ],
+      "bbb_size": [
+       2,
+       2,
+       1
+      ],
+      "tex_offs": [
+       8,
+       1
+      ],
+      "uv_size": [
+       2,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "texOffs(8,1) addBox(-3,-4,-4,2,2,1); bbb FOX_RIGHT_EAR_CUBES, child of head"
+     }
+    ]
+   },
+   {
+    "part_name": "left_ear",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       3,
+       -4,
+       -4
+      ],
+      "bbb_size": [
+       2,
+       2,
+       1
+      ],
+      "tex_offs": [
+       15,
+       1
+      ],
+      "uv_size": [
+       2,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "texOffs(15,1) addBox(3,-4,-4,2,2,1); separate texOffs (not mirror) for the L ear; child of head"
+     }
+    ]
+   },
+   {
+    "part_name": "nose",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       2.01,
+       -8
+      ],
+      "bbb_size": [
+       4,
+       2,
+       3
+      ],
+      "tex_offs": [
+       6,
+       18
+      ],
+      "uv_size": [
+       4,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "snout; texOffs(6,18) addBox(-1,2.01,-8,4,2,3); child of head"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       3.999,
+       -3.5
+      ],
+      "bbb_size": [
+       6,
+       11,
+       6
+      ],
+      "tex_offs": [
+       24,
+       15
+      ],
+      "uv_size": [
+       6,
+       11,
+       6
+      ],
+      "mirror": false,
+      "note": "trunk; texOffs(24,15) addBox(-3,3.999,-3.5,6,11,6)"
+     }
+    ]
+   },
+   {
+    "part_name": "tail",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       2,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       4,
+       9,
+       5
+      ],
+      "tex_offs": [
+       30,
+       0
+      ],
+      "uv_size": [
+       4,
+       9,
+       5
+      ],
+      "mirror": false,
+      "note": "brush; texOffs(30,0) addBox(2,0,-1,4,9,5); child of body"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       1.999,
+       0.499,
+       -1.001
+      ],
+      "bbb_size": [
+       2.002,
+       6.002,
+       2.002
+      ],
+      "tex_offs": [
+       13,
+       24
+      ],
+      "uv_size": [
+       2,
+       6,
+       2
+      ],
+      "mirror": false,
+      "note": "rightLeg builder texOffs(13,24) addBox(2,0.5,-1,2,6,2,CubeDeformation(0.001)). bbb shares one inflated FOX_LEG_CUBES const for all four legs; uv_size is the UN-inflated [2,6,2]; bbb_min/bbb_size carry the +/-0.001 deformation (min-=0.001, size+=0.002)."
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       1.999,
+       0.499,
+       -1.001
+      ],
+      "bbb_size": [
+       2.002,
+       6.002,
+       2.002
+      ],
+      "tex_offs": [
+       4,
+       24
+      ],
+      "uv_size": [
+       2,
+       6,
+       2
+      ],
+      "mirror": false,
+      "note": "leftLeg builder texOffs(4,24) addBox(2,0.5,-1,2,6,2,CubeDeformation(0.001)). Left legs use a DIFFERENT texOffs (4,24) instead of mirror(); same shared inflated box."
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       1.999,
+       0.499,
+       -1.001
+      ],
+      "bbb_size": [
+       2.002,
+       6.002,
+       2.002
+      ],
+      "tex_offs": [
+       13,
+       24
+      ],
+      "uv_size": [
+       2,
+       6,
+       2
+      ],
+      "mirror": false,
+      "note": "rightLeg builder texOffs(13,24); same inflated box as the other legs."
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       1.999,
+       0.499,
+       -1.001
+      ],
+      "bbb_size": [
+       2.002,
+       6.002,
+       2.002
+      ],
+      "tex_offs": [
+       4,
+       24
+      ],
+      "uv_size": [
+       2,
+       6,
+       2
+      ],
+      "mirror": false,
+      "note": "leftLeg builder texOffs(4,24); same inflated box as the other legs."
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -2.125,
+       -5.125
+      ],
+      "bbb_size": [
+       6,
+       5,
+       5
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       6,
+       5,
+       5
+      ],
+      "mirror": false,
+      "note": "skull; texOffs(0,0) addBox(-3,-2.125,-5.125,6,5,5,CubeDeformation(0.0)); ears+snout baked into head part (no child parts)"
+     },
+     {
+      "bbb_min": [
+       -1,
+       0.875,
+       -7.125
+      ],
+      "bbb_size": [
+       2,
+       2,
+       2
+      ],
+      "tex_offs": [
+       18,
+       20
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "snout; texOffs(18,20) addBox(-1,0.875,-7.125,2,2,2,CubeDeformation(0.0))"
+     },
+     {
+      "bbb_min": [
+       -3,
+       -4.125,
+       -4.125
+      ],
+      "bbb_size": [
+       2,
+       2,
+       1
+      ],
+      "tex_offs": [
+       22,
+       8
+      ],
+      "uv_size": [
+       2,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "right ear; texOffs(22,8) addBox(-3,-4.125,-4.125,2,2,1,CubeDeformation(0.0))"
+     },
+     {
+      "bbb_min": [
+       1,
+       -4.125,
+       -4.125
+      ],
+      "bbb_size": [
+       2,
+       2,
+       1
+      ],
+      "tex_offs": [
+       22,
+       11
+      ],
+      "uv_size": [
+       2,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "left ear; texOffs(22,11) addBox(1,-4.125,-4.125,2,2,1,CubeDeformation(0.0)); separate texOffs (not mirror)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       2,
+       2,
+       2
+      ],
+      "tex_offs": [
+       22,
+       4
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "texOffs(22,4) addBox(-1,0,-1,2,2,2,CubeDeformation(0.0)). bbb shares one BABY_FOX_LEG_CUBES const for all four legs."
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       2,
+       2,
+       2
+      ],
+      "tex_offs": [
+       22,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "texOffs(22,0); left legs use a DIFFERENT texOffs (22,0) instead of mirror()."
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       2,
+       2,
+       2
+      ],
+      "tex_offs": [
+       22,
+       4
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "texOffs(22,4); same shared box."
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       2,
+       2,
+       2
+      ],
+      "tex_offs": [
+       22,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "texOffs(22,0); same shared box."
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -2,
+       -3
+      ],
+      "bbb_size": [
+       5,
+       4,
+       6
+      ],
+      "tex_offs": [
+       0,
+       10
+      ],
+      "uv_size": [
+       5,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "trunk; texOffs(0,10) addBox(-2.5,-2,-3,5,4,6,CubeDeformation(0.0))"
+     }
+    ]
+   },
+   {
+    "part_name": "tail",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1.48,
+       -1
+      ],
+      "bbb_size": [
+       3,
+       3,
+       6
+      ],
+      "tex_offs": [
+       0,
+       20
+      ],
+      "uv_size": [
+       3,
+       3,
+       6
+      ],
+      "mirror": false,
+      "note": "brush; texOffs(0,20) addBox(-1.5,-1.48,-1,3,3,6,CubeDeformation(0.0)); child of body"
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube has a clean 1:1 vanilla match by offset==bbb_min and dims==bbb_size; no extra/missing cubes. Cube counts match the bbb file exactly: adult head 1, right_ear 1, left_ear 1, nose 1, body 1, tail 1, four legs 1 each (= 10 cubes across the adult hierarchy as the file's doc comment states); baby head 4, four legs 1 each, body 1, tail 1 (= 10 cubes). KEY SUBTLETIES the application needs: (1) LEG TEXTURES ARE NOT MIRRORED. bbb stores a SINGLE shared leg cube const (adult FOX_LEG_CUBES, baby BABY_FOX_LEG_CUBES) referenced by all four leg parts, but vanilla builds left vs right legs from TWO DIFFERENT CubeListBuilders with DIFFERENT texOffs and mirror=false: adult right legs (right_hind/right_front) = texOffs(13,24), left legs (left_hind/left_front) = texOffs(4,24); baby right legs = texOffs(22,4), left legs = texOffs(22,0). So when migrating you must give the right-side and left-side leg parts different tex_offs even though they share the same geometry const. (2) ADULT LEG DEFORMATION: vanilla adult legs apply CubeDeformation(0.001) (the 'fudge'); uv_size is the un-inflated [2,6,2] while bbb_min/bbb_size already bake the inflation (min -=0.001 -> 1.999/0.499/-1.001, size +=0.002 -> 2.002/6.002/2.002). Baby legs and all other boxes use CubeDeformation(0.0) (no inflation) \u2014 uv_size == bbb_size there. (3) TEXTURE SELECTION is multi-axis and NOT encoded in the bbb EntityModelKind::Fox{baby}. The renderer (FoxRenderer.getTextureLocation) picks the png from variant (Fox.Variant RED/SNOW) x age (adult/baby, =the bbb baby flag) x state (idle vs isSleeping). 8 textures total, listed in `textures`. bbb only encodes adult vs baby (variant_key 'fox'/'fox_baby'); red/snow and idle/sleep variant textures are deferred per the catalog comment, so a textured migration must add variant+sleep plumbing or default to red-idle (textures/entity/fox/fox.png for adult, fox_baby.png for baby). (4) ADULT uses atlas 48x32, BABY uses atlas 32x32 \u2014 different UV atlas dimensions per layer; the baby head/legs share the 32x32 atlas. (5) The held-item layer (FoxHeldItemLayer) and the renderer setupRotations pounce/faceplant body-PITCH flip are separate render concerns, not part of this UV mapping."
+ },
+ "leash_knot": {
+  "entity": "leash_knot",
+  "vanilla_model_class": "net.minecraft.client.model.object.leash.LeashKnotModel",
+  "atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/lead_knot/lead_knot.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "knot",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -8,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       8,
+       6
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       6,
+       8,
+       6
+      ],
+      "mirror": false,
+      "note": "Exact match: vanilla createBodyLayer() -> root child \"knot\" CubeListBuilder.create().texOffs(0,0).addBox(-3.0,-8.0,-3.0, 6.0,8.0,6.0) at PartPose.ZERO. No CubeDeformation/inflate, mirror not set."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Single static part with one cube; clean 1:1 match between bbb and vanilla (offset [-3,-8,-3] and dims [6,8,6] identical). No baby layer exists (only createBodyLayer); baby_atlas_size left empty. Only one texture variant -> variant_key \"default\" -> textures/entity/lead_knot/lead_knot.png (note the vanilla path uses folder/name \"lead_knot\", not \"leash_knot\"). LeashKnotRenderer applies poseStack.scale(-1,-1,1) before submitting the model (the model flip already captured by bbb's leash_knot_model_root_transform per the file header); this is a root transform, not a per-cube concern. The bbb catalog encodes this as EntityModelKind::LeashKnot => \"leash_knot\" in selection.rs (no separate catalog.rs file; no per-variant texture map). No CubeDeformation, no overlay/composite texture, no mirror."
+ },
+ "nautilus": {
+  "entity": "nautilus",
+  "vanilla_model_class": "net.minecraft.client.model.animal.nautilus.NautilusModel (createBodyMesh / createBabyBodyLayer)",
+  "atlas_size": [
+   128,
+   128
+  ],
+  "baby_atlas_size": [
+   64,
+   64
+  ],
+  "textures": [
+   {
+    "variant_key": "nautilus",
+    "path": "textures/entity/nautilus/nautilus.png",
+    "atlas_size": [
+     128,
+     128
+    ]
+   },
+   {
+    "variant_key": "nautilus_baby",
+    "path": "textures/entity/nautilus/nautilus_baby.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "shell",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -7,
+       -10,
+       -7
+      ],
+      "bbb_size": [
+       14,
+       10,
+       16
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       14,
+       10,
+       16
+      ],
+      "mirror": false,
+      "note": "addBox(-7,-10,-7, 14,10,16), CubeDeformation(0.0)"
+     },
+     {
+      "bbb_min": [
+       -7,
+       0,
+       -7
+      ],
+      "bbb_size": [
+       14,
+       8,
+       20
+      ],
+      "tex_offs": [
+       0,
+       26
+      ],
+      "uv_size": [
+       14,
+       8,
+       20
+      ],
+      "mirror": false,
+      "note": "addBox(-7,0,-7, 14,8,20), CubeDeformation(0.0)"
+     },
+     {
+      "bbb_min": [
+       -7,
+       0,
+       6
+      ],
+      "bbb_size": [
+       14,
+       8,
+       0
+      ],
+      "tex_offs": [
+       48,
+       26
+      ],
+      "uv_size": [
+       14,
+       8,
+       0
+      ],
+      "mirror": false,
+      "note": "addBox(-7,0,6, 14,8,0) zero-thickness rear fin plane, CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -5,
+       -4.51,
+       -3
+      ],
+      "bbb_size": [
+       10,
+       8,
+       14
+      ],
+      "tex_offs": [
+       0,
+       54
+      ],
+      "uv_size": [
+       10,
+       8,
+       14
+      ],
+      "mirror": false,
+      "note": "addBox(-5,-4.51,-3, 10,8,14), CubeDeformation(0.0)"
+     },
+     {
+      "bbb_min": [
+       -5,
+       -4.51,
+       7
+      ],
+      "bbb_size": [
+       10,
+       8,
+       0
+      ],
+      "tex_offs": [
+       0,
+       76
+      ],
+      "uv_size": [
+       10,
+       8,
+       0
+      ],
+      "mirror": false,
+      "note": "addBox(-5,-4.51,7, 10,8,0) zero-thickness rear fin plane, CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "upper_mouth",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4.999,
+       -1.999,
+       0.001
+      ],
+      "bbb_size": [
+       9.998,
+       3.998,
+       3.998
+      ],
+      "tex_offs": [
+       54,
+       54
+      ],
+      "uv_size": [
+       10,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(-5,-2,0, 10,4,4, CubeDeformation(-0.001)); bbb pre-bakes the -0.001 inflate into min(+0.001)/size(-0.002). uv_size is the UN-inflated addBox dims 10x4x4."
+     }
+    ]
+   },
+   {
+    "part_name": "inner_mouth",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       -2,
+       -0.5
+      ],
+      "bbb_size": [
+       6,
+       4,
+       4
+      ],
+      "tex_offs": [
+       54,
+       70
+      ],
+      "uv_size": [
+       6,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "addBox(-3,-2,-0.5, 6,4,4), CubeDeformation(0.0) (undeformed)"
+     }
+    ]
+   },
+   {
+    "part_name": "lower_mouth",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4.999,
+       -1.979,
+       0.001
+      ],
+      "bbb_size": [
+       9.998,
+       3.998,
+       3.998
+      ],
+      "tex_offs": [
+       54,
+       62
+      ],
+      "uv_size": [
+       10,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(-5,-1.98,0, 10,4,4, CubeDeformation(-0.001)); note vanilla oy=-1.98 (not -2.0), so bbb min y = -1.979 = -1.98+0.001. uv_size is the UN-inflated dims 10x4x4."
+     }
+    ]
+   },
+   {
+    "part_name": "shell",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6,
+       -4,
+       -1
+      ],
+      "bbb_size": [
+       7,
+       4,
+       7
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       7,
+       4,
+       7
+      ],
+      "mirror": false,
+      "note": "addBox(-6,-4,-1, 7,4,7), CubeDeformation(0.0)"
+     },
+     {
+      "bbb_min": [
+       -6,
+       0,
+       -1
+      ],
+      "bbb_size": [
+       7,
+       4,
+       9
+      ],
+      "tex_offs": [
+       0,
+       11
+      ],
+      "uv_size": [
+       7,
+       4,
+       9
+      ],
+      "mirror": false,
+      "note": "addBox(-6,0,-1, 7,4,9), CubeDeformation(0.0)"
+     },
+     {
+      "bbb_min": [
+       -6,
+       0,
+       5
+      ],
+      "bbb_size": [
+       7,
+       4,
+       0
+      ],
+      "tex_offs": [
+       23,
+       11
+      ],
+      "uv_size": [
+       7,
+       4,
+       0
+      ],
+      "mirror": false,
+      "note": "addBox(-6,0,5, 7,4,0) zero-thickness rear fin plane, CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -3.01,
+       -1
+      ],
+      "bbb_size": [
+       5,
+       4,
+       7
+      ],
+      "tex_offs": [
+       0,
+       24
+      ],
+      "uv_size": [
+       5,
+       4,
+       7
+      ],
+      "mirror": false,
+      "note": "addBox(-2.5,-3.01,-1, 5,4,7), CubeDeformation(0.0)"
+     },
+     {
+      "bbb_min": [
+       -2.5,
+       -3.01,
+       4.1
+      ],
+      "bbb_size": [
+       5,
+       4,
+       0
+      ],
+      "tex_offs": [
+       0,
+       35
+      ],
+      "uv_size": [
+       5,
+       4,
+       0
+      ],
+      "mirror": false,
+      "note": "addBox(-2.5,-3.01,4.1, 5,4,0) zero-thickness rear fin plane, CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "part_name": "upper_mouth",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.499,
+       -0.999,
+       0.001
+      ],
+      "bbb_size": [
+       4.998,
+       1.998,
+       1.998
+      ],
+      "tex_offs": [
+       24,
+       24
+      ],
+      "uv_size": [
+       5,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(-2.5,-1,0, 5,2,2, CubeDeformation(-0.001)); bbb pre-bakes inflate into min/size. uv_size is UN-inflated dims 5x2x2."
+     }
+    ]
+   },
+   {
+    "part_name": "inner_mouth",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       -1
+      ],
+      "bbb_size": [
+       3,
+       2,
+       2
+      ],
+      "tex_offs": [
+       24,
+       32
+      ],
+      "uv_size": [
+       3,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "addBox(-1.5,-1,-1, 3,2,2), CubeDeformation(0.0) (undeformed)"
+     }
+    ]
+   },
+   {
+    "part_name": "lower_mouth",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.499,
+       -0.999,
+       0.001
+      ],
+      "bbb_size": [
+       4.998,
+       1.998,
+       1.998
+      ],
+      "tex_offs": [
+       24,
+       28
+      ],
+      "uv_size": [
+       5,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "vanilla addBox(-2.5,-1,0, 5,2,2, CubeDeformation(-0.001)); bbb pre-bakes inflate into min/size. uv_size is UN-inflated dims 5x2x2. NOTE baby lower_mouth oy=-1.0 (unlike adult which uses -1.98)."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube matched a unique vanilla addBox cleanly (offset + un-inflated dims), in file order; cube counts match per part (shell 3, body 2, each mouth 1, for both layers).\n\nCubeDeformation handling: the four mouth boxes that bbb stores with fractional min/size (adult upper [-4.999,-1.999,0.001]/[9.998,3.998,3.998], adult lower [-4.999,-1.979,0.001]/[9.998,...], baby upper/lower [-2.499,-0.999,0.001]/[4.998,1.998,1.998]) are vanilla CubeDeformation(-0.001) boxes. bbb pre-bakes the inflate into min(+0.001 per axis)/size(-0.002 per axis). The UV-unwrap dimensions stay the UN-inflated addBox dims, so uv_size is 10x4x4 (adult mouths) / 5x2x2 (baby upper/lower mouths). inner_mouth (both layers) is undeformed (CubeDeformation(0.0)), uv_size == size.\n\nAdult vs baby lower_mouth y-offset asymmetry: adult lower_mouth uses vanilla addBox oy=-1.98 (bbb min y -1.979 = -1.98+0.001), while adult upper_mouth uses oy=-2.0 (bbb min y -1.999). Baby upper AND lower both use oy=-1.0 (bbb min y -0.999). This is faithfully reflected in bbb_min and is just a vanilla geometry quirk, not a UV concern.\n\nTexture selection is by isBaby only (NautilusRenderer.getTextureLocation): adult -> textures/entity/nautilus/nautilus.png, baby -> textures/entity/nautilus/nautilus_baby.png. The bbb EntityModelKind::Nautilus { baby } encodes these as variant keys \"nautilus\" (baby:false) and \"nautilus_baby\" (baby:true) per selection.rs:282-283. No per-variant texture map (no ZombieNautilus / coral variants involved here \u2014 those are a separate model/renderer).\n\nOverlay/equipment layers NOT covered by the base nautilus.png atlas (and not part of this model's mesh): the saddle (NautilusSaddleModel, textures/entity/equipment/nautilus_saddle) and body armor (NautilusArmorModel, textures/entity/equipment/nautilus_body) are rendered as SimpleEquipmentLayer overlays with their own models/atlases. Not needed for the base textured migration.\n\nNo mirror() calls appear anywhere in createBodyMesh or createBabyBodyLayer \u2014 all cubes mirror=false.\n\nZero-thickness rear-fin plane cubes (shell box 3 and body box 2, both layers, dz=0) are valid single-quad planes in vanilla; tex_offs recorded as-is."
+ },
+ "panda": {
+  "entity": "panda",
+  "vanilla_model_class": "PandaModel (adult) / BabyPandaModel (baby), net.minecraft.client.model.animal.panda; both extend QuadrupedModel&lt;PandaRenderState&gt;",
+  "atlas_size": [
+   64,
+   64
+  ],
+  "baby_atlas_size": [
+   64,
+   64
+  ],
+  "textures": [
+   {
+    "variant_key": "adult",
+    "path": "textures/entity/panda/panda.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "baby",
+    "path": "textures/entity/panda/panda_baby.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6.5,
+       -5,
+       -4
+      ],
+      "bbb_size": [
+       13,
+       10,
+       9
+      ],
+      "tex_offs": [
+       0,
+       6
+      ],
+      "uv_size": [
+       13,
+       10,
+       9
+      ],
+      "mirror": false,
+      "note": "skull, texOffs(0,6)"
+     },
+     {
+      "bbb_min": [
+       -3.5,
+       0,
+       -6
+      ],
+      "bbb_size": [
+       7,
+       5,
+       2
+      ],
+      "tex_offs": [
+       45,
+       16
+      ],
+      "uv_size": [
+       7,
+       5,
+       2
+      ],
+      "mirror": false,
+      "note": "nose/muzzle, texOffs(45,16)"
+     },
+     {
+      "bbb_min": [
+       3.5,
+       -8,
+       -1
+      ],
+      "bbb_size": [
+       5,
+       4,
+       1
+      ],
+      "tex_offs": [
+       52,
+       25
+      ],
+      "uv_size": [
+       5,
+       4,
+       1
+      ],
+      "mirror": false,
+      "note": "left_ear, texOffs(52,25); same tex_offs as right_ear, no mirror"
+     },
+     {
+      "bbb_min": [
+       -8.5,
+       -8,
+       -1
+      ],
+      "bbb_size": [
+       5,
+       4,
+       1
+      ],
+      "tex_offs": [
+       52,
+       25
+      ],
+      "uv_size": [
+       5,
+       4,
+       1
+      ],
+      "mirror": false,
+      "note": "right_ear, texOffs(52,25); shares the same UV region as left_ear (vanilla does NOT mirror, both ears sample identical pixels)"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -9.5,
+       -13,
+       -6.5
+      ],
+      "bbb_size": [
+       19,
+       26,
+       13
+      ],
+      "tex_offs": [
+       0,
+       25
+      ],
+      "uv_size": [
+       19,
+       26,
+       13
+      ],
+      "mirror": false,
+      "note": "trunk, texOffs(0,25); part is pitched +pi/2 by pose, geometry/UV unchanged"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       0,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       9,
+       6
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       6,
+       9,
+       6
+      ],
+      "mirror": false,
+      "note": "shared leg box texOffs(40,0)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       0,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       9,
+       6
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       6,
+       9,
+       6
+      ],
+      "mirror": false,
+      "note": "shared leg box texOffs(40,0); all 4 adult legs reuse one CubeListBuilder -> identical tex_offs"
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       0,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       9,
+       6
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       6,
+       9,
+       6
+      ],
+      "mirror": false,
+      "note": "shared leg box texOffs(40,0)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       0,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       9,
+       6
+      ],
+      "tex_offs": [
+       40,
+       0
+      ],
+      "uv_size": [
+       6,
+       9,
+       6
+      ],
+      "mirror": false,
+      "note": "shared leg box texOffs(40,0)"
+     }
+    ]
+   },
+   {
+    "part_name": "body",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4.5,
+       -3.5,
+       -5.5
+      ],
+      "bbb_size": [
+       9,
+       7,
+       11
+      ],
+      "tex_offs": [
+       0,
+       11
+      ],
+      "uv_size": [
+       9,
+       7,
+       11
+      ],
+      "mirror": false,
+      "note": "baby trunk, texOffs(0,11); baby body declared FIRST and carries no pitch"
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.5,
+       -3,
+       -5
+      ],
+      "bbb_size": [
+       7,
+       6,
+       5
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       7,
+       6,
+       5
+      ],
+      "mirror": false,
+      "note": "baby skull, texOffs(0,0)"
+     },
+     {
+      "bbb_min": [
+       -2,
+       1,
+       -6
+      ],
+      "bbb_size": [
+       4,
+       2,
+       1
+      ],
+      "tex_offs": [
+       24,
+       6
+      ],
+      "uv_size": [
+       4,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "baby nose, texOffs(24,6)"
+     },
+     {
+      "bbb_min": [
+       -4.5,
+       -4,
+       -3.5
+      ],
+      "bbb_size": [
+       3,
+       3,
+       1
+      ],
+      "tex_offs": [
+       24,
+       0
+      ],
+      "uv_size": [
+       3,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "baby ear (vanilla 3rd box, the -4.5 left side), texOffs(24,0)"
+     },
+     {
+      "bbb_min": [
+       1.5,
+       -4,
+       -3.5
+      ],
+      "bbb_size": [
+       3,
+       3,
+       1
+      ],
+      "tex_offs": [
+       33,
+       0
+      ],
+      "uv_size": [
+       3,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "baby ear (vanilla 4th box, the +1.5 right side), texOffs(33,0); baby ears have DISTINCT tex_offs (24,0 vs 33,0), unlike adult ears"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       2,
+       3
+      ],
+      "tex_offs": [
+       0,
+       34
+      ],
+      "uv_size": [
+       3,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "baby right_hind_leg, texOffs(0,34) -- baby legs have PER-LEG tex_offs (bbb shares one cube const across all 4 baby legs, see issues)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       2,
+       3
+      ],
+      "tex_offs": [
+       12,
+       34
+      ],
+      "uv_size": [
+       3,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "baby left_hind_leg, texOffs(12,34)"
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       2,
+       3
+      ],
+      "tex_offs": [
+       0,
+       29
+      ],
+      "uv_size": [
+       3,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "baby right_front_leg, texOffs(0,29)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       2,
+       3
+      ],
+      "tex_offs": [
+       12,
+       29
+      ],
+      "uv_size": [
+       3,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "baby left_front_leg, texOffs(12,29)"
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube matched a vanilla addBox exactly by offset AND dims; no offset/size mismatches; no CubeDeformation/inflate anywhere (all uv_size == bbb_size). No mirror() is active on any box in either layer.\n\nCRITICAL leg sharing discrepancy (affects how the application must wire texOffs): bbb stores legs as a SINGLE shared cube const reused by 4 separate ModelPart leg parts (panda_legs builds right_hind/left_hind/right_front/left_front from one `cubes` slice). Vanilla differs by layer:\n- ADULT: all 4 legs share ONE CubeListBuilder with texOffs(40,0) -> correct to give every adult leg part the same tex_offs (40,0). The single bbb PANDA_LEG_CUBES const is faithful.\n- BABY: vanilla gives each leg its OWN texOffs: right_hind(0,34), left_hind(12,34), right_front(0,29), left_front(12,29). bbb shares ONE BABY_PANDA_LEG_CUBES const, so the per-leg tex_offs CANNOT come from a single shared cube descriptor. The application MUST override tex_offs per baby-leg part (values listed above) rather than reuse one cube's tex_offs for all four. I emitted each baby leg part with its distinct vanilla tex_offs.\n\nEar UV note: ADULT ears share one UV region texOffs(52,25) for BOTH ears with NO mirror (both sample identical pixels). BABY ears use two distinct regions (24,0) and (33,0), also no mirror.\n\nVariant/texture mapping: bbb EntityModelKind::Panda only carries `baby: bool` (selection.rs keys \"panda\"/\"panda_baby\") and does NOT encode the color Gene. Vanilla PandaRenderer keys textures by Panda.Gene (NORMAL/LAZY/WORRIED/PLAYFUL/BROWN/WEAK/AGGRESSIVE) x baby, 14 textures total. Since bbb has no gene field, only the NORMAL gene textures apply: adult -> textures/entity/panda/panda.png, baby -> textures/entity/panda/panda_baby.png. The other 12 gene textures (panda_lazy.png, panda_worried.png, panda_playful.png, panda_brown.png, panda_weak.png, panda_aggressive.png and their lazy_panda_baby.png/worried_panda_baby.png/playful_panda_baby.png/brown_panda_baby.png/weak_panda_baby.png/aggressive_panda_baby.png baby counterparts) are unreachable until bbb adds a gene variant field.\n\nDeclaration-order note (already honored by bbb): adult lists head FIRST then body; baby lists body FIRST then head. Cube counts match the bbb file exactly per part (head=4, body=1, each leg=1)."
+ },
+ "parrot": {
+  "entity": "parrot",
+  "vanilla_model_class": "net.minecraft.client.model.animal.parrot.ParrotModel",
+  "atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "red_blue",
+    "path": "textures/entity/parrot/parrot_red_blue.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "blue",
+    "path": "textures/entity/parrot/parrot_blue.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "green",
+    "path": "textures/entity/parrot/parrot_green.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "yellow_blue",
+    "path": "textures/entity/parrot/parrot_yellow_blue.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "gray",
+    "path": "textures/entity/parrot/parrot_grey.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       3,
+       6,
+       3
+      ],
+      "tex_offs": [
+       2,
+       8
+      ],
+      "uv_size": [
+       3,
+       6,
+       3
+      ],
+      "mirror": false,
+      "note": "ParrotModel.createBodyLayer body: texOffs(2,8).addBox(-1.5,0,-1.5,3,6,3)"
+     }
+    ]
+   },
+   {
+    "part_name": "tail",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       -1
+      ],
+      "bbb_size": [
+       3,
+       4,
+       1
+      ],
+      "tex_offs": [
+       22,
+       1
+      ],
+      "uv_size": [
+       3,
+       4,
+       1
+      ],
+      "mirror": false,
+      "note": "tail: texOffs(22,1).addBox(-1.5,-1,-1,3,4,1)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_wing",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       1,
+       5,
+       3
+      ],
+      "tex_offs": [
+       19,
+       8
+      ],
+      "uv_size": [
+       1,
+       5,
+       3
+      ],
+      "mirror": false,
+      "note": "left_wing: texOffs(19,8).addBox(-0.5,0,-1.5,1,5,3). Shares the same CubeListBuilder/texOffs as right_wing; differs only by pivot X sign + yRot=-PI flip."
+     }
+    ]
+   },
+   {
+    "part_name": "right_wing",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -1.5
+      ],
+      "bbb_size": [
+       1,
+       5,
+       3
+      ],
+      "tex_offs": [
+       19,
+       8
+      ],
+      "uv_size": [
+       1,
+       5,
+       3
+      ],
+      "mirror": false,
+      "note": "right_wing: texOffs(19,8).addBox(-0.5,0,-1.5,1,5,3). Identical texOffs(19,8) to left_wing; vanilla does NOT mirror() either wing."
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -1.5,
+       -1
+      ],
+      "bbb_size": [
+       2,
+       3,
+       2
+      ],
+      "tex_offs": [
+       2,
+       2
+      ],
+      "uv_size": [
+       2,
+       3,
+       2
+      ],
+      "mirror": false,
+      "note": "head: texOffs(2,2).addBox(-1,-1.5,-1,2,3,2)"
+     }
+    ]
+   },
+   {
+    "part_name": "head2",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -0.5,
+       -2
+      ],
+      "bbb_size": [
+       2,
+       1,
+       4
+      ],
+      "tex_offs": [
+       10,
+       0
+      ],
+      "uv_size": [
+       2,
+       1,
+       4
+      ],
+      "mirror": false,
+      "note": "head2 (child of head): texOffs(10,0).addBox(-1,-0.5,-2,2,1,4)"
+     }
+    ]
+   },
+   {
+    "part_name": "beak1",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       -1,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       2,
+       1
+      ],
+      "tex_offs": [
+       11,
+       7
+      ],
+      "uv_size": [
+       1,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "beak1 (child of head): texOffs(11,7).addBox(-0.5,-1,-0.5,1,2,1)"
+     }
+    ]
+   },
+   {
+    "part_name": "beak2",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       2,
+       1
+      ],
+      "tex_offs": [
+       16,
+       7
+      ],
+      "uv_size": [
+       1,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "beak2 (child of head): texOffs(16,7).addBox(-0.5,0,-0.5,1,2,1)"
+     }
+    ]
+   },
+   {
+    "part_name": "feather",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -4,
+       -2
+      ],
+      "bbb_size": [
+       0,
+       5,
+       4
+      ],
+      "tex_offs": [
+       2,
+       18
+      ],
+      "uv_size": [
+       0,
+       5,
+       4
+      ],
+      "mirror": false,
+      "note": "feather (child of head): texOffs(2,18).addBox(0,-4,-2,0,5,4) \u2014 flat (dx=0) crest plane"
+     }
+    ]
+   },
+   {
+    "part_name": "left_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       2,
+       1
+      ],
+      "tex_offs": [
+       14,
+       18
+      ],
+      "uv_size": [
+       1,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "left_leg: texOffs(14,18).addBox(-0.5,0,-0.5,1,2,1). The SAME CubeListBuilder instance `leg` is reused for both legs; differs only by pivot X sign."
+     }
+    ]
+   },
+   {
+    "part_name": "right_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       2,
+       1
+      ],
+      "tex_offs": [
+       14,
+       18
+      ],
+      "uv_size": [
+       1,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "right_leg: reuses the same `leg` CubeListBuilder, texOffs(14,18). No mirror()."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube maps 1:1 to a vanilla addBox by exact offset+dims match; no CubeDeformation/inflate, no mirror() anywhere, atlas 32x32 from LayerDefinition.create(mesh, 32, 32). No baby layer exists (only createBodyLayer; baby_atlas_size left at [0,0]). COMPOSITE/VARIANT NOTE: parrot has 5 color variants (Parrot.Variant RED_BLUE/BLUE/GREEN/YELLOW_BLUE/GRAY) \u2014 each is a SEPARATE full texture (not an overlay), selected in ParrotRenderer.getVariantTexture by state.variant; same UV layout for all five. NOTE the GRAY variant maps to file parrot_grey.png (British spelling), and the bbb enum elsewhere spells it 'gray' \u2014 variant_key 'gray' points to parrot_grey.png. SHARED-BUILDER NOTE: both wings share texOffs(19,8) and both legs share texOffs(14,18) (vanilla reuses one CubeListBuilder per pair without mirror()), so left/right of each pair sample identical UVs \u2014 the visual left/right difference comes only from the part pivot X sign (and the wings' yRot=-PI flip), not from UV mirroring. BBB ENCODING NOTE: bbb's EntityModelKind::Parrot is a single unit variant with no baby/color field, so there is no per-variant key in bbb's selection \u2014 strictly the colored debug path renders one body tint + beak tint. The variant_key strings above ('red_blue'/'blue'/'green'/'yellow_blue'/'gray') describe the vanilla texture set the textured path must wire up; if bbb cannot yet distinguish variants, use variant_key 'default' -> the conventional default texture parrot_red_blue.png (vanilla Parrot.Variant default is RED_BLUE)."
+ },
+ "rabbit": {
+  "entity": "rabbit",
+  "vanilla_model_class": "AdultRabbitModel / BabyRabbitModel (net.minecraft.client.model.animal.rabbit; abstract base RabbitModel)",
+  "atlas_size": [
+   64,
+   64
+  ],
+  "baby_atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "adult_brown",
+    "path": "textures/entity/rabbit/rabbit_brown.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "adult_white_splotched",
+    "path": "textures/entity/rabbit/rabbit_white_splotched.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "adult_evil",
+    "path": "textures/entity/rabbit/rabbit_caerbannog.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "adult_white",
+    "path": "textures/entity/rabbit/rabbit_white.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "adult_gold",
+    "path": "textures/entity/rabbit/rabbit_gold.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "adult_black",
+    "path": "textures/entity/rabbit/rabbit_black.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "adult_salt",
+    "path": "textures/entity/rabbit/rabbit_salt.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "adult_toast",
+    "path": "textures/entity/rabbit/rabbit_toast.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "baby_brown",
+    "path": "textures/entity/rabbit/rabbit_brown_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "baby_white_splotched",
+    "path": "textures/entity/rabbit/rabbit_white_splotched_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "baby_evil",
+    "path": "textures/entity/rabbit/rabbit_caerbannog_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "baby_white",
+    "path": "textures/entity/rabbit/rabbit_white_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "baby_gold",
+    "path": "textures/entity/rabbit/rabbit_gold_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "baby_black",
+    "path": "textures/entity/rabbit/rabbit_black_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "baby_salt",
+    "path": "textures/entity/rabbit/rabbit_salt_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   },
+   {
+    "variant_key": "baby_toast",
+    "path": "textures/entity/rabbit/rabbit_toast_baby.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -4,
+       -6,
+       -9
+      ],
+      "bbb_size": [
+       8,
+       6,
+       10
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       8,
+       6,
+       10
+      ],
+      "mirror": false,
+      "note": "Vanilla body texOffs(0,0).addBox(-4,-6,-9, 8,6,10), no deformation."
+     }
+    ]
+   },
+   {
+    "part_name": "tail",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -3.0084,
+       -1.0125
+      ],
+      "bbb_size": [
+       4,
+       4,
+       4
+      ],
+      "tex_offs": [
+       20,
+       16
+      ],
+      "uv_size": [
+       4,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "Vanilla tail texOffs(20,16)."
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -3,
+       -4
+      ],
+      "bbb_size": [
+       5,
+       5,
+       5
+      ],
+      "tex_offs": [
+       0,
+       16
+      ],
+      "uv_size": [
+       5,
+       5,
+       5
+      ],
+      "mirror": false,
+      "note": "Vanilla head texOffs(0,16)."
+     }
+    ]
+   },
+   {
+    "part_name": "right_ear",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -4.2929,
+       -0.1213
+      ],
+      "bbb_size": [
+       2,
+       5,
+       1
+      ],
+      "tex_offs": [
+       32,
+       0
+      ],
+      "uv_size": [
+       2,
+       5,
+       1
+      ],
+      "mirror": false,
+      "note": "bbb's RIGHT_EAR child uses RABBIT_RIGHT_EAR_POSE pivot offset [1.5,...], which equals vanilla's LEFT_EAR pivot offset(1.5,...) -> texOffs(32,0). Shared RABBIT_EAR_CUBES box; aligned by pivot. Naming differs from vanilla (bbb 'right' = vanilla 'left')."
+     }
+    ]
+   },
+   {
+    "part_name": "left_ear",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -4.2929,
+       -0.1213
+      ],
+      "bbb_size": [
+       2,
+       5,
+       1
+      ],
+      "tex_offs": [
+       26,
+       0
+      ],
+      "uv_size": [
+       2,
+       5,
+       1
+      ],
+      "mirror": false,
+      "note": "bbb's LEFT_EAR child uses RABBIT_LEFT_EAR_POSE pivot offset [-1.5,...], which equals vanilla's RIGHT_EAR pivot offset(-1.5,...) -> texOffs(26,0). Shared RABBIT_EAR_CUBES box; aligned by pivot. Naming differs from vanilla."
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.9,
+       -1,
+       -0.9
+      ],
+      "bbb_size": [
+       2,
+       4,
+       2
+      ],
+      "tex_offs": [
+       36,
+       18
+      ],
+      "uv_size": [
+       2,
+       4,
+       2
+      ],
+      "mirror": false,
+      "note": "Vanilla right_front_leg texOffs(36,18).addBox(-0.9,-1,-0.9, 2,4,2). Distinct box from left (offset nudged on X)."
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -1,
+       -1
+      ],
+      "bbb_size": [
+       2,
+       4,
+       2
+      ],
+      "tex_offs": [
+       44,
+       18
+      ],
+      "uv_size": [
+       2,
+       4,
+       2
+      ],
+      "mirror": false,
+      "note": "Vanilla left_front_leg texOffs(44,18).addBox(-1,-1,-1, 2,4,2)."
+     }
+    ]
+   },
+   {
+    "part_name": "right_haunch",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       -5
+      ],
+      "bbb_size": [
+       2,
+       1,
+       6
+      ],
+      "tex_offs": [
+       20,
+       24
+      ],
+      "uv_size": [
+       2,
+       1,
+       6
+      ],
+      "mirror": false,
+      "note": "bbb RIGHT_HAUNCH child (RABBIT_RIGHT_HAUNCH_POSE yRot +0.3927) matches vanilla right_haunch texOffs(20,24) (yRot +0.3927). Shared RABBIT_HAUNCH_CUBES box; aligned by haunch yaw sign / pivot."
+     }
+    ]
+   },
+   {
+    "part_name": "left_haunch",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       -5
+      ],
+      "bbb_size": [
+       2,
+       1,
+       6
+      ],
+      "tex_offs": [
+       36,
+       24
+      ],
+      "uv_size": [
+       2,
+       1,
+       6
+      ],
+      "mirror": false,
+      "note": "bbb LEFT_HAUNCH child (RABBIT_LEFT_HAUNCH_POSE yRot -0.3927) matches vanilla left_haunch texOffs(36,24) (yRot -0.3927). Shared RABBIT_HAUNCH_CUBES box."
+     }
+    ]
+   },
+   {
+    "part_name": "body_r1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -2,
+       -3
+      ],
+      "bbb_size": [
+       4,
+       3,
+       6
+      ],
+      "tex_offs": [
+       0,
+       8
+      ],
+      "uv_size": [
+       4,
+       3,
+       6
+      ],
+      "mirror": false,
+      "note": "Baby body_r1 texOffs(0,8).addBox(-2,-2,-3, 4,3,6) on 32x32 atlas."
+     }
+    ]
+   },
+   {
+    "part_name": "tail_r1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.4,
+       -2.0268,
+       -1.0177
+      ],
+      "bbb_size": [
+       3,
+       3,
+       3
+      ],
+      "tex_offs": [
+       0,
+       21
+      ],
+      "uv_size": [
+       3,
+       3,
+       3
+      ],
+      "mirror": false,
+      "note": "Baby tail_r1 texOffs(0,21)."
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -3,
+       -3
+      ],
+      "bbb_size": [
+       5,
+       4,
+       4
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       5,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "Baby head texOffs(0,0).addBox(-2.5,-3,-3, 5,4,4)."
+     }
+    ]
+   },
+   {
+    "part_name": "right_ear",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -3.5,
+       -0.5
+      ],
+      "bbb_size": [
+       2,
+       4,
+       1
+      ],
+      "tex_offs": [
+       18,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       1
+      ],
+      "mirror": false,
+      "note": "bbb baby right_ear (BABY_RABBIT_RIGHT_EAR_POSE offset [-1.5,...]) matches vanilla right_ear texOffs(18,0) offset(-1.5,...). Shared BABY_RABBIT_EAR_CUBES box; aligned by pivot."
+     }
+    ]
+   },
+   {
+    "part_name": "left_ear",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       -3.5,
+       -0.5
+      ],
+      "bbb_size": [
+       2,
+       4,
+       1
+      ],
+      "tex_offs": [
+       24,
+       0
+      ],
+      "uv_size": [
+       2,
+       4,
+       1
+      ],
+      "mirror": false,
+      "note": "bbb baby left_ear (BABY_RABBIT_LEFT_EAR_POSE offset [1.5,...]) matches vanilla left_ear texOffs(24,0) offset(1.5,...). Shared BABY_RABBIT_EAR_CUBES box."
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg_r1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       -1.5,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       3,
+       1
+      ],
+      "tex_offs": [
+       18,
+       8
+      ],
+      "uv_size": [
+       1,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "bbb baby left_front_leg (built first; left_front_leg_r1) matches vanilla left_front_leg_r1 texOffs(18,8).addBox(-0.5,-1.5,-0.5, 1,3,1). Shared BABY_RABBIT_FRONT_LEG_CUBES box; aligned by build order/parent pivot [1,1,-0.5]."
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg_r1",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       -1.5,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       3,
+       1
+      ],
+      "tex_offs": [
+       14,
+       8
+      ],
+      "uv_size": [
+       1,
+       3,
+       1
+      ],
+      "mirror": false,
+      "note": "bbb baby right_front_leg (built second; right_front_leg_r1) matches vanilla right_front_leg_r1 texOffs(14,8). Shared BABY_RABBIT_FRONT_LEG_CUBES box; parent pivot [-1,1,-0.5]."
+     }
+    ]
+   },
+   {
+    "part_name": "left_haunch",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -0.5,
+       0
+      ],
+      "bbb_size": [
+       2,
+       1,
+       3
+      ],
+      "tex_offs": [
+       10,
+       17
+      ],
+      "uv_size": [
+       2,
+       1,
+       3
+      ],
+      "mirror": false,
+      "note": "bbb baby left_hind_leg's haunch (BABY_RABBIT_LEFT_HAUNCH_POSE offset [1,0,0.5] yRot -0.7854) matches vanilla left_haunch texOffs(10,17). Shared BABY_RABBIT_HAUNCH_CUBES box; aligned by pivot/yaw."
+     }
+    ]
+   },
+   {
+    "part_name": "right_haunch",
+    "layer": "baby",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2,
+       -0.5,
+       0
+      ],
+      "bbb_size": [
+       2,
+       1,
+       3
+      ],
+      "tex_offs": [
+       0,
+       17
+      ],
+      "uv_size": [
+       2,
+       1,
+       3
+      ],
+      "mirror": false,
+      "note": "bbb baby right_hind_leg's haunch (BABY_RABBIT_RIGHT_HAUNCH_POSE offset [0.5,0,-0.9] yRot +0.7854) matches vanilla right_haunch texOffs(0,17). Shared BABY_RABBIT_HAUNCH_CUBES box."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube maps 1:1 to a vanilla addBox by offset+dims; no CubeDeformation/inflate anywhere, so uv_size == bbb_size for all cubes. No mirror() is active on any box (adult or baby).\n\nSHARED-CUBE / NAMING CAVEAT (load-bearing for the app): bbb stores ONE ModelCubeDesc const for the ear, and (in baby) one for the front-leg and one for the haunch, reused by both sides \u2014 but vanilla gives left vs right DIFFERENT texOffs. The two sides therefore need DIFFERENT tex_offs even though their bbb_min/bbb_size are identical. I disambiguated each side by its pivot pose (PartPose offset / yaw sign), since the bbb cube geometry is symmetric. Also note bbb's adult ear naming is INVERTED vs vanilla: bbb's 'right_ear' child carries pivot offset +1.5 (vanilla's 'left_ear', texOffs 32,0) and bbb's 'left_ear' child carries pivot -1.5 (vanilla's 'right_ear', texOffs 26,0). Adult front legs are distinct boxes (right addBox -0.9,-1,-0.9 texOffs 36,18; left addBox -1,-1,-1 texOffs 44,18) so they self-disambiguate. Adult haunches: bbb right (yRot +0.3927)->texOffs(20,24), bbb left (yRot -0.3927)->texOffs(36,24). Baby legs: bbb builds left_front_leg before right_front_leg; vanilla left_front_leg_r1=texOffs(18,8), right=texOffs(14,8). Baby haunches: bbb left (offset [1,0,0.5])->texOffs(10,17), bbb right (offset [0.5,0,-0.9])->texOffs(0,17).\n\nTEXTURE SELECTION: bbb's EntityModelKind::Rabbit only encodes { baby: bool } (variant_key 'rabbit' / 'rabbit_baby' in catalog) \u2014 it does NOT carry the Rabbit.Variant color or the 'Toast' easter-egg flag. Vanilla RabbitRenderer.getTextureLocation picks from a 7-entry Rabbit.Variant enum map (BROWN/WHITE_SPLOTCHED/EVIL(rabbit_caerbannog)/WHITE/GOLD/BLACK/SALT), plus a Toast override (rabbit_toast / rabbit_toast_baby) when the entity's custom name is 'Toast'. All 7 color variants + toast are listed in `textures` for both adult and baby. The bbb colored debug path renders one brown tint (RABBIT_BROWN); when wiring the textured path, the default/representative texture is the BROWN variant (textures/entity/rabbit/rabbit_brown.png adult, rabbit_brown_baby.png baby) unless bbb is extended to carry the variant. The original entity Rabbit.getVariant() determines which at runtime; bbb currently has no field for it.\n\nAdult atlas 64x64; baby atlas 32x32 (separate baby layer with its own deeper _r1-nested hierarchy). Part/cube counts match the bbb file exactly: 9 adult cubes across 9 leaf parts, 9 baby cubes across 9 leaf parts."
+ },
+ "shulker": {
+  "entity": "shulker",
+  "vanilla_model_class": "net.minecraft.client.model.monster.shulker.ShulkerModel",
+  "atlas_size": [
+   64,
+   64
+  ],
+  "baby_atlas_size": [
+   64,
+   64
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/shulker/shulker.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "white",
+    "path": "textures/entity/shulker/shulker_white.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "orange",
+    "path": "textures/entity/shulker/shulker_orange.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "magenta",
+    "path": "textures/entity/shulker/shulker_magenta.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "light_blue",
+    "path": "textures/entity/shulker/shulker_light_blue.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "yellow",
+    "path": "textures/entity/shulker/shulker_yellow.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "lime",
+    "path": "textures/entity/shulker/shulker_lime.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "pink",
+    "path": "textures/entity/shulker/shulker_pink.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "gray",
+    "path": "textures/entity/shulker/shulker_gray.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "light_gray",
+    "path": "textures/entity/shulker/shulker_light_gray.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "cyan",
+    "path": "textures/entity/shulker/shulker_cyan.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "purple",
+    "path": "textures/entity/shulker/shulker_purple.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "blue",
+    "path": "textures/entity/shulker/shulker_blue.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "brown",
+    "path": "textures/entity/shulker/shulker_brown.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "green",
+    "path": "textures/entity/shulker/shulker_green.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "red",
+    "path": "textures/entity/shulker/shulker_red.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   },
+   {
+    "variant_key": "black",
+    "path": "textures/entity/shulker/shulker_black.png",
+    "atlas_size": [
+     64,
+     64
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "lid",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -8,
+       -16,
+       -8
+      ],
+      "bbb_size": [
+       16,
+       12,
+       16
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       16,
+       12,
+       16
+      ],
+      "mirror": false,
+      "note": "ShulkerModel.createShellMesh: texOffs(0,0).addBox(-8,-16,-8, 16,12,16). No CubeDeformation, no mirror. Exact match to bbb SHULKER_LID_CUBES."
+     }
+    ]
+   },
+   {
+    "part_name": "base",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -8,
+       -8,
+       -8
+      ],
+      "bbb_size": [
+       16,
+       8,
+       16
+      ],
+      "tex_offs": [
+       0,
+       28
+      ],
+      "uv_size": [
+       16,
+       8,
+       16
+      ],
+      "mirror": false,
+      "note": "ShulkerModel.createShellMesh: texOffs(0,28).addBox(-8,-8,-8, 16,8,16). No CubeDeformation, no mirror. Exact match to bbb SHULKER_BASE_CUBES."
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3,
+       0,
+       -3
+      ],
+      "bbb_size": [
+       6,
+       6,
+       6
+      ],
+      "tex_offs": [
+       0,
+       52
+      ],
+      "uv_size": [
+       6,
+       6,
+       6
+      ],
+      "mirror": false,
+      "note": "ShulkerModel.createBodyLayer: texOffs(0,52).addBox(-3,0,-3, 6,6,6). No CubeDeformation, no mirror. Exact match to bbb SHULKER_HEAD_CUBES."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "All 3 bbb cubes match vanilla addBox 1:1 by offset AND dims; tex_offs read directly from ShulkerModel (lid 0,0; base 0,28; head 0,52). Atlas is 64x64 (LayerDefinition.create(mesh, 64, 64)). NO BABY LAYER: ShulkerModel exposes only createBodyLayer() (entity: lid+base+head) and createBoxLayer() (block-entity shell-only, lid+base, no head) \u2014 both 64x64. There is no createBabyLayer/createBabyBodyLayer and the shulker is not age-scalable, so baby_atlas_size is reported as [64,64] purely as a duplicate of adult (no separate baby geometry/atlas exists); migration should treat shulker as adult-only. TEXTURE VARIANT MODEL: bbb's EntityModelKind::Shulker is a UNIT variant (selection.rs line 92: `Self::Shulker => \\\"shulker\\\"`) \u2014 it does NOT encode color in the model kind. Color is a per-entity render-state field (ShulkerRenderState.color, a nullable DyeColor) resolved at draw time via ShulkerRenderer.getTextureLocation(color): null -> DEFAULT (textures/entity/shulker/shulker.png), else TEXTURE_LOCATION[color.getId()] -> textures/entity/shulker/shulker_<color.getName()>.png. The 16 color keys above are listed in DyeColor.getId() order (white=0 ... black=15), the order vanilla uses to index SHULKER_TEXTURE_LOCATION. The colored debug path currently tints the shell purple (SHULKER_SHELL) and the head yellow (SHULKER_HEAD); the textured path should drop these tints and sample the per-color texture instead. NOTE on rest pose / animation (not UV-affecting but relevant): vanilla setupAnim sets lid.y = 16 + sin((0.5+peek)*pi)*8 (==24 at peek=0, the bind offset) and head.yRot = (yHeadRot-180-yBodyRot)*pi/180; bbb already mirrors this. The textures are sprites on the shulker_boxes atlas (Sheets.SHULKER_MAPPER, entity/shulker); for the standalone textured render path use the resolved standalone PNG paths above."
+ },
+ "sniffer": {
+  "entity": "sniffer",
+  "vanilla_model_class": "net.minecraft.client.model.animal.sniffer.SnifferModel (createBodyLayer; shared by SNIFFER adult and SNIFFER_BABY/snifflet)",
+  "atlas_size": [
+   192,
+   192
+  ],
+  "baby_atlas_size": [
+   192,
+   192
+  ],
+  "textures": [
+   {
+    "variant_key": "adult",
+    "path": "textures/entity/sniffer/sniffer.png",
+    "atlas_size": [
+     192,
+     192
+    ]
+   },
+   {
+    "variant_key": "baby",
+    "path": "textures/entity/sniffer/snifflet.png",
+    "atlas_size": [
+     192,
+     192
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -12.5,
+       -14,
+       -20
+      ],
+      "bbb_size": [
+       25,
+       29,
+       40
+      ],
+      "tex_offs": [
+       62,
+       68
+      ],
+      "uv_size": [
+       25,
+       29,
+       40
+      ],
+      "mirror": false,
+      "note": "texOffs(62,68) addBox(-12.5,-14,-20, 25,29,40, CubeDeformation(0.0)); clean match"
+     },
+     {
+      "bbb_min": [
+       -13,
+       -14.5,
+       -20.5
+      ],
+      "bbb_size": [
+       26,
+       25,
+       41
+      ],
+      "tex_offs": [
+       62,
+       0
+      ],
+      "uv_size": [
+       25,
+       24,
+       40
+      ],
+      "mirror": false,
+      "note": "INFLATED inner block: vanilla texOffs(62,0) addBox(-12.5,-14,-20, 25,24,40, CubeDeformation(0.5)). The 0.5 inflate makes bbb geometry min -= 0.5 and size += 1 -> bbb [-13,-14.5,-20.5]/[26,25,41]. uv_size stays un-inflated [25,24,40]."
+     },
+     {
+      "bbb_min": [
+       -12.5,
+       12,
+       -20
+      ],
+      "bbb_size": [
+       25,
+       0,
+       40
+      ],
+      "tex_offs": [
+       87,
+       68
+      ],
+      "uv_size": [
+       25,
+       0,
+       40
+      ],
+      "mirror": false,
+      "note": "texOffs(87,68) addBox(-12.5,12,-20, 25,0,40, CubeDeformation(0.0)); flat belly plane (dy=0)"
+     }
+    ]
+   },
+   {
+    "part_name": "head",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6.5,
+       -7.5,
+       -11.5
+      ],
+      "bbb_size": [
+       13,
+       18,
+       11
+      ],
+      "tex_offs": [
+       8,
+       15
+      ],
+      "uv_size": [
+       13,
+       18,
+       11
+      ],
+      "mirror": false,
+      "note": "texOffs(8,15) addBox(-6.5,-7.5,-11.5, 13,18,11, CubeDeformation(0.0)); clean match"
+     },
+     {
+      "bbb_min": [
+       -6.5,
+       7.5,
+       -11.5
+      ],
+      "bbb_size": [
+       13,
+       0,
+       11
+      ],
+      "tex_offs": [
+       8,
+       4
+      ],
+      "uv_size": [
+       13,
+       0,
+       11
+      ],
+      "mirror": false,
+      "note": "texOffs(8,4) addBox(-6.5,7.5,-11.5, 13,0,11, CubeDeformation(0.0)); flat top plane (dy=0)"
+     }
+    ]
+   },
+   {
+    "part_name": "left_ear",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       0,
+       -3
+      ],
+      "bbb_size": [
+       1,
+       19,
+       7
+      ],
+      "tex_offs": [
+       2,
+       0
+      ],
+      "uv_size": [
+       1,
+       19,
+       7
+      ],
+      "mirror": false,
+      "note": "texOffs(2,0) addBox(0,0,-3, 1,19,7, CubeDeformation(0.0)); clean match"
+     }
+    ]
+   },
+   {
+    "part_name": "right_ear",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1,
+       0,
+       -3
+      ],
+      "bbb_size": [
+       1,
+       19,
+       7
+      ],
+      "tex_offs": [
+       48,
+       0
+      ],
+      "uv_size": [
+       1,
+       19,
+       7
+      ],
+      "mirror": false,
+      "note": "texOffs(48,0) addBox(-1,0,-3, 1,19,7, CubeDeformation(0.0)); clean match (separate texOffs, no mirror() used)"
+     }
+    ]
+   },
+   {
+    "part_name": "nose",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6.5,
+       -2,
+       -9
+      ],
+      "bbb_size": [
+       13,
+       2,
+       9
+      ],
+      "tex_offs": [
+       10,
+       45
+      ],
+      "uv_size": [
+       13,
+       2,
+       9
+      ],
+      "mirror": false,
+      "note": "texOffs(10,45) addBox(-6.5,-2,-9, 13,2,9, CubeDeformation(0.0)); SNIFFER_NOSE-colored snout pad; clean match"
+     }
+    ]
+   },
+   {
+    "part_name": "lower_beak",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -6.5,
+       -7,
+       -8
+      ],
+      "bbb_size": [
+       13,
+       12,
+       9
+      ],
+      "tex_offs": [
+       10,
+       57
+      ],
+      "uv_size": [
+       13,
+       12,
+       9
+      ],
+      "mirror": false,
+      "note": "texOffs(10,57) addBox(-6.5,-7,-8, 13,12,9, CubeDeformation(0.0)); clean match"
+     }
+    ]
+   },
+   {
+    "part_name": "right_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.5,
+       -1,
+       -4
+      ],
+      "bbb_size": [
+       7,
+       10,
+       8
+      ],
+      "tex_offs": [
+       32,
+       87
+      ],
+      "uv_size": [
+       7,
+       10,
+       8
+      ],
+      "mirror": false,
+      "note": "texOffs(32,87) addBox(-3.5,-1,-4, 7,10,8, CubeDeformation(0.0)); shared SNIFFER_LEG_CUBES box, leg-specific texOffs"
+     }
+    ]
+   },
+   {
+    "part_name": "right_mid_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.5,
+       -1,
+       -4
+      ],
+      "bbb_size": [
+       7,
+       10,
+       8
+      ],
+      "tex_offs": [
+       32,
+       105
+      ],
+      "uv_size": [
+       7,
+       10,
+       8
+      ],
+      "mirror": false,
+      "note": "texOffs(32,105) addBox(-3.5,-1,-4, 7,10,8, CubeDeformation(0.0)); shared leg box"
+     }
+    ]
+   },
+   {
+    "part_name": "right_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.5,
+       -1,
+       -4
+      ],
+      "bbb_size": [
+       7,
+       10,
+       8
+      ],
+      "tex_offs": [
+       32,
+       123
+      ],
+      "uv_size": [
+       7,
+       10,
+       8
+      ],
+      "mirror": false,
+      "note": "texOffs(32,123) addBox(-3.5,-1,-4, 7,10,8, CubeDeformation(0.0)); shared leg box"
+     }
+    ]
+   },
+   {
+    "part_name": "left_front_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.5,
+       -1,
+       -4
+      ],
+      "bbb_size": [
+       7,
+       10,
+       8
+      ],
+      "tex_offs": [
+       0,
+       87
+      ],
+      "uv_size": [
+       7,
+       10,
+       8
+      ],
+      "mirror": false,
+      "note": "texOffs(0,87) addBox(-3.5,-1,-4, 7,10,8, CubeDeformation(0.0)); shared leg box"
+     }
+    ]
+   },
+   {
+    "part_name": "left_mid_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.5,
+       -1,
+       -4
+      ],
+      "bbb_size": [
+       7,
+       10,
+       8
+      ],
+      "tex_offs": [
+       0,
+       105
+      ],
+      "uv_size": [
+       7,
+       10,
+       8
+      ],
+      "mirror": false,
+      "note": "texOffs(0,105) addBox(-3.5,-1,-4, 7,10,8, CubeDeformation(0.0)); shared leg box"
+     }
+    ]
+   },
+   {
+    "part_name": "left_hind_leg",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -3.5,
+       -1,
+       -4
+      ],
+      "bbb_size": [
+       7,
+       10,
+       8
+      ],
+      "tex_offs": [
+       0,
+       123
+      ],
+      "uv_size": [
+       7,
+       10,
+       8
+      ],
+      "mirror": false,
+      "note": "texOffs(0,123) addBox(-3.5,-1,-4, 7,10,8, CubeDeformation(0.0)); shared leg box"
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Every bbb cube matches a vanilla addBox cleanly by offset+dims. Part cube counts equal the bbb file exactly: body=3, head=2, left_ear=1, right_ear=1, nose=1, lower_beak=1, and 6 legs x1 = 15 cubes total. NO mirror() is ever called in createBodyLayer, so all mirror=false (left/right ears and the 3 left legs get their own distinct texOffs rather than a mirrored share). DEFORMATION: body cube #2 is the only inflated box -- vanilla addBox(...,25,24,40, CubeDeformation(0.5)); the bbb file pre-baked the 0.5 inflate into geometry (min -= 0.5, size += 1 -> [-13,-14.5,-20.5]/[26,25,41]), but the UV unwrap uses the un-inflated [25,24,40] at texOffs(62,0) -- pass uv_size=[25,24,40], not bbb_size. Two flat planes (body belly dy=0 at texOffs(87,68); head top dy=0 at texOffs(8,4)) -- these are single-quad UVs. BABY: the vanilla SnifferRenderer uses the SAME SnifferModel/createBodyLayer mesh (192x192) for both the adult (ModelLayers.SNIFFER -> sniffer.png) and the baby/snifflet (ModelLayers.SNIFFER_BABY -> snifflet.png); there is no createBabyLayer, the baby is just scaled by AgeableMobRenderer (constructor scale 1.1F passed to super) and re-textured -- so adult and baby share identical UVs/cube layout, only the texture path differs. NOTE: bbb's EntityModelKind::Sniffer is a single unit variant (no {baby} flag, unlike Bee/Dolphin), so bbb currently models adult only; the 'baby' texture variant is included for completeness since the mesh is identical and a future baby split would reuse all the same cubes/UVs."
+ },
+ "tadpole": {
+  "entity": "tadpole",
+  "vanilla_model_class": "net.minecraft.client.model.animal.frog.TadpoleModel",
+  "atlas_size": [
+   16,
+   16
+  ],
+  "baby_atlas_size": [
+   16,
+   16
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/tadpole/tadpole.png",
+    "atlas_size": [
+     16,
+     16
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "body",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       -1,
+       0
+      ],
+      "bbb_size": [
+       3,
+       2,
+       3
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       3,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "Vanilla createBodyLayer body: texOffs(0,0).addBox(-1.5,-1.0,0.0, 3.0,2.0,3.0). No CubeDeformation, no mirror. Exact offset+size match."
+     }
+    ]
+   },
+   {
+    "part_name": "tail",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       0,
+       -1,
+       0
+      ],
+      "bbb_size": [
+       0,
+       2,
+       7
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       0,
+       2,
+       7
+      ],
+      "mirror": false,
+      "note": "Vanilla createBodyLayer tail: texOffs(0,0).addBox(0.0,-1.0,0.0, 0.0,2.0,7.0) \u2014 a flat 0-thickness fin plane (dx=0). No CubeDeformation, no mirror. Exact offset+size match."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "Single texture path only (textures/entity/tadpole/tadpole.png); no variants and no separate baby layer (TadpoleModel defines only createBodyLayer, never a createBabyLayer/createBabyBodyLayer), so baby_atlas_size is reported identical to adult [16,16] and variant_key is \"default\" \u2014 matching bbb selection.rs which returns the single key \"tadpole\". Both boxes share texOffs(0,0) in vanilla; the two cubes occupy different UV regions because they have different dimensions (3x2x3 body vs 0x2x7 tail fin plane), but the unwrap origin is the same (0,0). The tail cube has dx=0 (a single flat quad plane, double-sided cutout via RenderTypes::entityCutout), which is expected \u2014 uv_size x = 0.0. Renderer is a plain MobRenderer with shadowRadius 0.14F and no transform/scale overrides. No CubeDeformation/inflate on either box, so uv_size equals bbb_size for both. Both cubes matched cleanly; part cube counts equal the bbb file (body=1, tail=1)."
+ },
+ "trident": {
+  "entity": "trident",
+  "vanilla_model_class": "net.minecraft.client.model.object.projectile.TridentModel",
+  "atlas_size": [
+   32,
+   32
+  ],
+  "textures": [
+   {
+    "variant_key": "default",
+    "path": "textures/entity/trident/trident.png",
+    "atlas_size": [
+     32,
+     32
+    ]
+   }
+  ],
+  "parts": [
+   {
+    "part_name": "pole",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       2,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       25,
+       1
+      ],
+      "tex_offs": [
+       0,
+       6
+      ],
+      "uv_size": [
+       1,
+       25,
+       1
+      ],
+      "mirror": false,
+      "note": "Vanilla pole.addBox(-0.5,2.0,-0.5, 1,25,1) texOffs(0,6). Exact match. Root part of the mesh; no deformation."
+     }
+    ]
+   },
+   {
+    "part_name": "base",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -1.5,
+       0,
+       -0.5
+      ],
+      "bbb_size": [
+       3,
+       2,
+       1
+      ],
+      "tex_offs": [
+       4,
+       0
+      ],
+      "uv_size": [
+       3,
+       2,
+       1
+      ],
+      "mirror": false,
+      "note": "Vanilla base.addBox(-1.5,0.0,-0.5, 3,2,1) texOffs(4,0). Child of pole at ZERO. Exact match."
+     }
+    ]
+   },
+   {
+    "part_name": "left_spike",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -2.5,
+       -3,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       4,
+       1
+      ],
+      "tex_offs": [
+       4,
+       3
+      ],
+      "uv_size": [
+       1,
+       4,
+       1
+      ],
+      "mirror": false,
+      "note": "Vanilla left_spike.addBox(-2.5,-3.0,-0.5, 1,4,1) texOffs(4,3). Child of pole at ZERO. Exact match."
+     }
+    ]
+   },
+   {
+    "part_name": "middle_spike",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       -0.5,
+       -4,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       4,
+       1
+      ],
+      "tex_offs": [
+       0,
+       0
+      ],
+      "uv_size": [
+       1,
+       4,
+       1
+      ],
+      "mirror": false,
+      "note": "Vanilla middle_spike.addBox(-0.5,-4.0,-0.5, 1,4,1) texOffs(0,0). Child of pole at ZERO. Exact match."
+     }
+    ]
+   },
+   {
+    "part_name": "right_spike",
+    "layer": "adult",
+    "cubes": [
+     {
+      "bbb_min": [
+       1.5,
+       -3,
+       -0.5
+      ],
+      "bbb_size": [
+       1,
+       4,
+       1
+      ],
+      "tex_offs": [
+       4,
+       3
+      ],
+      "uv_size": [
+       1,
+       4,
+       1
+      ],
+      "mirror": true,
+      "note": "Vanilla right_spike.texOffs(4,3).mirror().addBox(1.5,-3.0,-0.5, 1,4,1). Shares the same texOffs(4,3) as left_spike but with mirror() ACTIVE, so the UV is sampled left-right flipped. Exact geometry match; the bbb file comment already notes the right spike is mirrored on the atlas only."
+     }
+    ]
+   }
+  ],
+  "confidence": "high",
+  "issues": "All 5 bbb cubes match vanilla TridentModel.createLayer() addBox calls exactly by offset and size, in file order (pole / base / left_spike / middle_spike / right_spike). No baby layer (Model<Unit>, projectile thrown trident only), so baby_atlas_size is omitted. Single texture, single variant -> variant_key \"default\" = textures/entity/trident/trident.png (TridentModel.TEXTURE == ThrownTridentRenderer.TRIDENT_LOCATION). No CubeDeformation/inflate on any box, so uv_size == bbb_size for every cube. Mirror subtlety: left_spike and right_spike both use texOffs(4,3); they share the same 4-wide-by-... atlas region but right_spike has mirror() active, so its UV is horizontally flipped relative to left_spike \u2014 the application must pass mirror=true ONLY for right_spike. Overlay note: ThrownTridentRenderer adds a second enchant-foil pass (order 1) when state.isFoil, using getFoilRenderType over the same TRIDENT_LOCATION model \u2014 this is an additive glint overlay (no separate texture path) and is deferred per the bbb header comment; it does not affect base UV mapping. Renderer orientation Ry(yRot-90) then Rz(xRot+90) is a model-root transform, not a UV concern. bbb EntityModelKind variant: Self::Trident -> key string \\\"trident\\\" in selection.rs (single variant, no baby/color split)."
+ }
+}

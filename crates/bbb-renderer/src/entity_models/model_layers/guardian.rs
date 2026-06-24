@@ -1,10 +1,12 @@
-use super::{head_look_pose, ModelCubeDesc, PartPose, GUARDIAN_BODY, GUARDIAN_EYE, PART_POSE_ZERO};
+use super::{head_look_pose, PartPose, GUARDIAN_BODY, GUARDIAN_EYE, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `GuardianModel.createBodyLayer` (atlas 64×64). The whole model hangs off a
 // single `head` part (`PartPose.ZERO`) carrying the body shell, twelve spikes, the eye, and the
-// three-segment tail. The elder guardian is the same mesh scaled by 2.35 via a `MeshTransformer`.
+// three-segment tail. The `guardian.png` texture is wired here; the elder guardian (the same mesh
+// scaled 2.35 via a `MeshTransformer`, `guardian_elder.png`) and the attack beam stay deferred. Each
+// cube carries the colored debug tint and the textured `uv_size` / `texOffs`.
 
 /// Vanilla `GuardianModel.ELDER_GUARDIAN_SCALE = MeshTransformer.scaling(2.35F)`.
 pub(in crate::entity_models) const GUARDIAN_ELDER_SCALE: f32 = 2.35;
@@ -29,81 +31,114 @@ pub(in crate::entity_models) const GUARDIAN_SPIKE_Z: [f32; 12] = [
     8.0, -8.0, 0.0, 0.0, -8.0, -8.0, 8.0, 8.0, 8.0, -8.0, 0.0, 0.0,
 ];
 
-// `head`: the main body box plus two mirrored side plates and the bottom/top plates
-// (`texOffs(0,0)/(0,28)/(16,40)`).
-pub(in crate::entity_models) const GUARDIAN_HEAD: [ModelCubeDesc; 5] = [
-    ModelCubeDesc {
-        min: [-6.0, 10.0, -8.0],
-        size: [12.0, 12.0, 16.0],
-        color: GUARDIAN_BODY,
-    },
-    ModelCubeDesc {
-        min: [-8.0, 10.0, -6.0],
-        size: [2.0, 12.0, 12.0],
-        color: GUARDIAN_BODY,
-    },
-    ModelCubeDesc {
-        min: [6.0, 10.0, -6.0],
-        size: [2.0, 12.0, 12.0],
-        color: GUARDIAN_BODY,
-    },
-    ModelCubeDesc {
-        min: [-6.0, 8.0, -6.0],
-        size: [12.0, 2.0, 12.0],
-        color: GUARDIAN_BODY,
-    },
-    ModelCubeDesc {
-        min: [-6.0, 22.0, -6.0],
-        size: [12.0, 2.0, 12.0],
-        color: GUARDIAN_BODY,
-    },
+// `head`: the main body box (`texOffs(0,0)`), the left side plate (`texOffs(0,28)`) and its mirrored
+// right plate (same texOffs, `mirror()`), and the bottom/top plates (both `texOffs(16,40)`).
+pub(in crate::entity_models) const GUARDIAN_HEAD: [ModelCube; 5] = [
+    ModelCube::new(
+        [-6.0, 10.0, -8.0],
+        [12.0, 12.0, 16.0],
+        GUARDIAN_BODY,
+        [12.0, 12.0, 16.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-8.0, 10.0, -6.0],
+        [2.0, 12.0, 12.0],
+        GUARDIAN_BODY,
+        [2.0, 12.0, 12.0],
+        [0.0, 28.0],
+        false,
+    ),
+    ModelCube::new(
+        [6.0, 10.0, -6.0],
+        [2.0, 12.0, 12.0],
+        GUARDIAN_BODY,
+        [2.0, 12.0, 12.0],
+        [0.0, 28.0],
+        true,
+    ),
+    ModelCube::new(
+        [-6.0, 8.0, -6.0],
+        [12.0, 2.0, 12.0],
+        GUARDIAN_BODY,
+        [12.0, 2.0, 12.0],
+        [16.0, 40.0],
+        false,
+    ),
+    ModelCube::new(
+        [-6.0, 22.0, -6.0],
+        [12.0, 2.0, 12.0],
+        GUARDIAN_BODY,
+        [12.0, 2.0, 12.0],
+        [16.0, 40.0],
+        false,
+    ),
 ];
 
 // `spike`: a shared 2×9×2 box (`texOffs(0,0) addBox(-1, -4.5, -1, 2, 9, 2)`), instanced twelve
 // times with [`guardian_spike_bind_pose`].
-pub(in crate::entity_models) const GUARDIAN_SPIKE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -4.5, -1.0],
-    size: [2.0, 9.0, 2.0],
-    color: GUARDIAN_BODY,
-}];
+pub(in crate::entity_models) const GUARDIAN_SPIKE: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -4.5, -1.0],
+    [2.0, 9.0, 2.0],
+    GUARDIAN_BODY,
+    [2.0, 9.0, 2.0],
+    [0.0, 0.0],
+    false,
+)];
 
 // `eye`: `texOffs(8,0) addBox(-1, 15, 0, 2, 2, 1)` at `PartPose.offset(0, 0, -8.25)`.
-pub(in crate::entity_models) const GUARDIAN_EYE_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, 15.0, 0.0],
-    size: [2.0, 2.0, 1.0],
-    color: GUARDIAN_EYE,
-}];
+pub(in crate::entity_models) const GUARDIAN_EYE_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 15.0, 0.0],
+    [2.0, 2.0, 1.0],
+    GUARDIAN_EYE,
+    [2.0, 2.0, 1.0],
+    [8.0, 0.0],
+    false,
+)];
 pub(in crate::entity_models) const GUARDIAN_EYE_POSE: PartPose = PartPose {
     offset: [0.0, 0.0, -8.25],
     rotation: [0.0, 0.0, 0.0],
 };
 
 // The three-segment tail (`tail0` at `PartPose.ZERO`, `tail1`/`tail2` nested).
-pub(in crate::entity_models) const GUARDIAN_TAIL0: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 14.0, 7.0],
-    size: [4.0, 4.0, 8.0],
-    color: GUARDIAN_BODY,
-}];
-pub(in crate::entity_models) const GUARDIAN_TAIL1: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, 14.0, 0.0],
-    size: [3.0, 3.0, 7.0],
-    color: GUARDIAN_BODY,
-}];
+pub(in crate::entity_models) const GUARDIAN_TAIL0: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 14.0, 7.0],
+    [4.0, 4.0, 8.0],
+    GUARDIAN_BODY,
+    [4.0, 4.0, 8.0],
+    [40.0, 0.0],
+    false,
+)];
+pub(in crate::entity_models) const GUARDIAN_TAIL1: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 14.0, 0.0],
+    [3.0, 3.0, 7.0],
+    GUARDIAN_BODY,
+    [3.0, 3.0, 7.0],
+    [0.0, 54.0],
+    false,
+)];
 pub(in crate::entity_models) const GUARDIAN_TAIL1_POSE: PartPose = PartPose {
     offset: [-1.5, 0.5, 14.0],
     rotation: [0.0, 0.0, 0.0],
 };
-pub(in crate::entity_models) const GUARDIAN_TAIL2: [ModelCubeDesc; 2] = [
-    ModelCubeDesc {
-        min: [0.0, 14.0, 0.0],
-        size: [2.0, 2.0, 6.0],
-        color: GUARDIAN_BODY,
-    },
-    ModelCubeDesc {
-        min: [1.0, 10.5, 3.0],
-        size: [1.0, 9.0, 9.0],
-        color: GUARDIAN_BODY,
-    },
+pub(in crate::entity_models) const GUARDIAN_TAIL2: [ModelCube; 2] = [
+    ModelCube::new(
+        [0.0, 14.0, 0.0],
+        [2.0, 2.0, 6.0],
+        GUARDIAN_BODY,
+        [2.0, 2.0, 6.0],
+        [41.0, 32.0],
+        false,
+    ),
+    ModelCube::new(
+        [1.0, 10.5, 3.0],
+        [1.0, 9.0, 9.0],
+        GUARDIAN_BODY,
+        [1.0, 9.0, 9.0],
+        [25.0, 19.0],
+        false,
+    ),
 ];
 pub(in crate::entity_models) const GUARDIAN_TAIL2_POSE: PartPose = PartPose {
     offset: [0.5, 0.5, 6.0],
@@ -143,6 +178,9 @@ pub(in crate::entity_models) fn guardian_spike_bind_pose(i: usize) -> PartPose {
 const GUARDIAN_SPIKE_CHILD_NAMES: [&str; 12] =
     ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
 
+/// The eye is the head's thirteenth child (after the twelve spikes `"0"`..=`"11"`), index `"12"`.
+const GUARDIAN_EYE_CHILD_NAME: &str = "12";
+
 /// `tail0` is the head's fourteenth child (twelve spikes `"0"`..=`"11"`, then the eye `"12"`, then
 /// `tail0` `"13"`), and `tail1`/`tail2` are each the single (index-`"0"`) child of the segment above.
 const GUARDIAN_TAIL0_CHILD_NAME: &str = "13";
@@ -155,20 +193,33 @@ const GUARDIAN_TAIL_YROT_SCALE: [f32; 3] = [0.05, 0.1, 0.15];
 /// Builds the guardian's `head` part tree: the body shell carries the twelve spikes, the eye, and
 /// the three-segment tail chain (`tail0` → `tail1` → `tail2`) as children, in vanilla emit order.
 fn guardian_head_part() -> ModelPart {
-    let mut children: Vec<ModelPart> = (0..GUARDIAN_SPIKE_X.len())
-        .map(|i| ModelPart::leaf_colored(guardian_spike_bind_pose(i), &GUARDIAN_SPIKE))
+    let mut children: Vec<(&'static str, ModelPart)> = (0..GUARDIAN_SPIKE_X.len())
+        .map(|i| {
+            (
+                GUARDIAN_SPIKE_CHILD_NAMES[i],
+                ModelPart::leaf(guardian_spike_bind_pose(i), GUARDIAN_SPIKE.to_vec()),
+            )
+        })
         .collect();
-    children.push(ModelPart::leaf_colored(
-        GUARDIAN_EYE_POSE,
-        &GUARDIAN_EYE_CUBE,
+    children.push((
+        GUARDIAN_EYE_CHILD_NAME,
+        ModelPart::leaf(GUARDIAN_EYE_POSE, GUARDIAN_EYE_CUBE.to_vec()),
     ));
 
-    let tail2 = ModelPart::leaf_colored(GUARDIAN_TAIL2_POSE, &GUARDIAN_TAIL2);
-    let tail1 = ModelPart::colored(GUARDIAN_TAIL1_POSE, &GUARDIAN_TAIL1, vec![tail2]);
-    let tail0 = ModelPart::colored(PART_POSE_ZERO, &GUARDIAN_TAIL0, vec![tail1]);
-    children.push(tail0);
+    let tail2 = ModelPart::leaf(GUARDIAN_TAIL2_POSE, GUARDIAN_TAIL2.to_vec());
+    let tail1 = ModelPart::new(
+        GUARDIAN_TAIL1_POSE,
+        GUARDIAN_TAIL1.to_vec(),
+        vec![(GUARDIAN_TAIL_NESTED_CHILD_NAME, tail2)],
+    );
+    let tail0 = ModelPart::new(
+        PART_POSE_ZERO,
+        GUARDIAN_TAIL0.to_vec(),
+        vec![(GUARDIAN_TAIL_NESTED_CHILD_NAME, tail1)],
+    );
+    children.push((GUARDIAN_TAIL0_CHILD_NAME, tail0));
 
-    ModelPart::colored(PART_POSE_ZERO, &GUARDIAN_HEAD, children)
+    ModelPart::new(PART_POSE_ZERO, GUARDIAN_HEAD.to_vec(), children)
 }
 
 /// Mutable guardian model, mirroring vanilla `GuardianModel`. The whole guardian hangs off the

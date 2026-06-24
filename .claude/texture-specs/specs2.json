@@ -1,0 +1,1338 @@
+{
+ "guardian": {
+  "entity": "guardian",
+  "texture_path": "textures/entity/guardian/guardian.png",
+  "tex_width": 64,
+  "tex_height": 64,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "GUARDIAN_HEAD",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       12,
+       12,
+       16
+      ],
+      "mirror": false
+     },
+     {
+      "tex": [
+       0,
+       28
+      ],
+      "uv_size": [
+       2,
+       12,
+       12
+      ],
+      "mirror": false
+     },
+     {
+      "tex": [
+       0,
+       28
+      ],
+      "uv_size": [
+       2,
+       12,
+       12
+      ],
+      "mirror": true,
+      "note": "mirrored side plate (addBox ... true); same texOffs(0,28) as the left plate"
+     },
+     {
+      "tex": [
+       16,
+       40
+      ],
+      "uv_size": [
+       12,
+       2,
+       12
+      ],
+      "mirror": false
+     },
+     {
+      "tex": [
+       16,
+       40
+      ],
+      "uv_size": [
+       12,
+       2,
+       12
+      ],
+      "mirror": false,
+      "note": "top plate; same texOffs(16,40) as bottom plate (not a mirror, distinct y)"
+     }
+    ]
+   },
+   {
+    "const_name": "GUARDIAN_SPIKE",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       9,
+       2
+      ],
+      "mirror": false,
+      "note": "single shared spike box instanced 12x via leaf_colored; all 12 use the same texOffs(0,0) and the same box, no mirror"
+     }
+    ]
+   },
+   {
+    "const_name": "GUARDIAN_EYE_CUBE",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       8,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       1
+      ],
+      "mirror": false
+     }
+    ]
+   },
+   {
+    "const_name": "GUARDIAN_TAIL0",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       40,
+       0
+      ],
+      "uv_size": [
+       4,
+       4,
+       8
+      ],
+      "mirror": false
+     }
+    ]
+   },
+   {
+    "const_name": "GUARDIAN_TAIL1",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       54
+      ],
+      "uv_size": [
+       3,
+       3,
+       7
+      ],
+      "mirror": false
+     }
+    ]
+   },
+   {
+    "const_name": "GUARDIAN_TAIL2",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       41,
+       32
+      ],
+      "uv_size": [
+       2,
+       2,
+       6
+      ],
+      "mirror": false
+     },
+     {
+      "tex": [
+       25,
+       19
+      ],
+      "uv_size": [
+       1,
+       9,
+       9
+      ],
+      "mirror": false
+     }
+    ]
+   }
+  ],
+  "notes": "All texOffs transcribed verbatim from GuardianModel.createBodyLayer(); LayerDefinition.create(mesh, 64, 64) so tex_width=tex_height=64. No CubeDeformation is applied anywhere in createBodyLayer (no shrink() call), so every bbb min/size equals the raw addBox origin/dims exactly \u2014 confirms all matches.\n\nGUARDIAN_HEAD: the single body box texOffs(0,0); two side plates BOTH at texOffs(0,28) where the right plate (min x=6) is the mirror() variant (addBox(...,true)) of the left (min x=-8) \u2014 this is a genuine mirror sharing one texOffs, so shared_across_parts=false. Bottom plate (y=8) and top plate (y=22) BOTH at texOffs(16,40); they are distinct cubes (different y), not mirrors, but they legitimately share the same texOffs within the same const, so no split needed.\n\nGUARDIAN_SPIKE is a 1-cube const reused 12 times (one ModelPart::leaf_colored per spike), but vanilla builds all 12 spikes from one shared CubeListBuilder `spike` with texOffs(0,0) and no mirror \u2014 every instance has identical UV, so shared_across_parts=false (correct shared single texOffs, not the distinct-texOffs split problem). The 12 instances differ only by PartPose offset/rotation.\n\nGUARDIAN_EYE_CUBE: the single moving eye, texOffs(8,0), at PartPose.offset(0,0,-8.25).\n\nTail chain tail0/tail1/tail2 each have their own const and distinct texOffs (40,0)/(0,54)/(41,32 & 25,19). tail2 has two cubes: the segment box texOffs(41,32) then the fan/fin box texOffs(25,19).\n\nElder variant (guardian_elder.png, ELDER_GUARDIAN_SCALE = MeshTransformer.scaling(2.35F) via createElderGuardianLayer) is the SAME mesh, only root-scaled \u2014 deferred per instructions, base extracted only. No animated/strip textures; PNG is a static 64x64 atlas, png_differs_from_tex=false."
+ },
+ "frog": {
+  "entity": "frog",
+  "texture_path": "textures/entity/frog/frog_temperate.png",
+  "tex_width": 48,
+  "tex_height": 48,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "FROG_BODY_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       3,
+       1
+      ],
+      "uv_size": [
+       7,
+       3,
+       9
+      ],
+      "mirror": false,
+      "note": "body box texOffs(3,1)"
+     },
+     {
+      "tex": [
+       23,
+       22
+      ],
+      "uv_size": [
+       7,
+       0,
+       9
+      ],
+      "mirror": false,
+      "note": "body underside plane texOffs(23,22)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_HEAD_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       23,
+       13
+      ],
+      "uv_size": [
+       7,
+       0,
+       9
+      ],
+      "mirror": false,
+      "note": "head top plane texOffs(23,13)"
+     },
+     {
+      "tex": [
+       0,
+       13
+      ],
+      "uv_size": [
+       7,
+       3,
+       9
+      ],
+      "mirror": false,
+      "note": "head box texOffs(0,13)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_EYE_CUBES",
+    "shared_across_parts": true,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       3,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "right_eye texOffs(0,0); SEE NOTES \u2014 left_eye uses texOffs(0,5)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_TONGUE_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       17,
+       13
+      ],
+      "uv_size": [
+       4,
+       0,
+       7
+      ],
+      "mirror": false,
+      "note": "tongue plane texOffs(17,13); pose-gated visibility (deferred)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_CROAKING_BODY_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       26,
+       5
+      ],
+      "uv_size": [
+       7,
+       2,
+       3
+      ],
+      "mirror": false,
+      "note": "croaking_body pouch texOffs(26,5) addBox dims 7x2x3 with CubeDeformation(-0.1); uv_size is the integer pre-deformation dims"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_ARM_CUBES",
+    "shared_across_parts": true,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       32
+      ],
+      "uv_size": [
+       2,
+       3,
+       3
+      ],
+      "mirror": false,
+      "note": "left_arm texOffs(0,32); SEE NOTES \u2014 right_arm uses texOffs(0,38)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_LEFT_HAND_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       18,
+       40
+      ],
+      "uv_size": [
+       8,
+       0,
+       8
+      ],
+      "mirror": false,
+      "note": "left_hand plane texOffs(18,40)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_RIGHT_HAND_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       2,
+       40
+      ],
+      "uv_size": [
+       8,
+       0,
+       8
+      ],
+      "mirror": false,
+      "note": "right_hand plane texOffs(2,40)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_LEFT_LEG_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       14,
+       25
+      ],
+      "uv_size": [
+       3,
+       3,
+       4
+      ],
+      "mirror": false,
+      "note": "left_leg box texOffs(14,25)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_RIGHT_LEG_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       0,
+       25
+      ],
+      "uv_size": [
+       3,
+       3,
+       4
+      ],
+      "mirror": false,
+      "note": "right_leg box texOffs(0,25)"
+     }
+    ]
+   },
+   {
+    "const_name": "FROG_FOOT_CUBES",
+    "shared_across_parts": true,
+    "cubes": [
+     {
+      "tex": [
+       2,
+       32
+      ],
+      "uv_size": [
+       8,
+       0,
+       8
+      ],
+      "mirror": false,
+      "note": "left_foot texOffs(2,32); SEE NOTES \u2014 right_foot uses texOffs(18,32)"
+     }
+    ]
+   }
+  ],
+  "notes": "Atlas is 48x48 (LayerDefinition.create(mesh, 48, 48)); PNG frog_temperate.png is also 48x48, so png_differs_from_tex=false (no animated strip). bbb file has no FROG texture PNG of its own; the vanilla asset at assets/minecraft/textures/entity/frog/frog_temperate.png confirms dims. The warm/cold variants (frog_warm.png, frog_cold.png) are deferred and share this same geometry/UV.\n\nTHREE shared-cube splits (each a single bbb const reused via &CONST in two leaf_colored calls for parts that vanilla gives DIFFERENT texOffs \u2014 these are NOT mirrors, just distinct UV regions):\n  1. FROG_EYE_CUBES (shared_across_parts=true): used for both left_eye and right_eye (frog_root lines 162-168). Vanilla: right_eye = texOffs(0,0), left_eye = texOffs(0,5). Same 3x2x3 box, no mirror. The struct entry above reports right_eye's texOffs(0,0) as the first occurrence in vanilla addOrReplaceChild order; the left_eye copy must be split out to texOffs(0,5).\n  2. FROG_ARM_CUBES (shared_across_parts=true): used for both left_arm and right_arm (lines 172-187). Vanilla: left_arm = texOffs(0,32), right_arm = texOffs(0,38). Same 2x3x3 box, no mirror. Reported above as left_arm's texOffs(0,32); the right_arm copy must be split out to texOffs(0,38).\n  3. FROG_FOOT_CUBES (shared_across_parts=true): used for both left_foot and right_foot (lines 205-220). Vanilla: left_foot = texOffs(2,32), right_foot = texOffs(18,32). Same 8x0x8 plane, no mirror. Reported above as left_foot's texOffs(2,32); the right_foot copy must be split out to texOffs(18,32).\n\nNote left/right LEGS and HANDS are NOT shared consts \u2014 FROG_LEFT_LEG_CUBES/FROG_RIGHT_LEG_CUBES and FROG_LEFT_HAND_CUBES/FROG_RIGHT_HAND_CUBES are distinct consts already, each carrying its own texOffs, so no split needed there.\n\nCubeDeformation: only croaking_body uses CubeDeformation(-0.1). The bbb cube min/size (-3.4,0.0,-2.8)/(6.8,1.8,2.8) already encode the -0.1 deflation; uv_size stays the integer addBox dims [7,2,3] as required.\n\nNo cube uses mirror() in vanilla FrogModel.createBodyLayer \u2014 all mirror=false.\n\ncroaking_body and tongue are pose-gated/deferred at render time (visibility) but their geometry+UV are fully specified here."
+ },
+ "warden": {
+  "entity": "warden",
+  "texture_path": "textures/entity/warden/warden.png",
+  "tex_width": 128,
+  "tex_height": 128,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "WARDEN_BODY_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       18,
+       21,
+       11
+      ],
+      "mirror": false,
+      "note": "body: texOffs(0,0).addBox(-9,-13,-4,18,21,11)"
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_RIGHT_RIBCAGE_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       90,
+       11
+      ],
+      "uv_size": [
+       9,
+       21,
+       0
+      ],
+      "mirror": false,
+      "note": "right_ribcage: texOffs(90,11).addBox(-2,-11,-0.1,9,21,0)"
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_LEFT_RIBCAGE_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       90,
+       11
+      ],
+      "uv_size": [
+       9,
+       21,
+       0
+      ],
+      "mirror": true,
+      "note": "left_ribcage: texOffs(90,11).mirror().addBox(-7,-11,-0.1,9,21,0).mirror(false) \u2014 same texOffs as right, mirrored"
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_HEAD_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       32
+      ],
+      "uv_size": [
+       16,
+       16,
+       10
+      ],
+      "mirror": false,
+      "note": "head: texOffs(0,32).addBox(-8,-16,-5,16,16,10)"
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_RIGHT_TENDRIL_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       52,
+       32
+      ],
+      "uv_size": [
+       16,
+       16,
+       0
+      ],
+      "mirror": false,
+      "note": "right_tendril: texOffs(52,32).addBox(-16,-13,0,16,16,0)"
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_LEFT_TENDRIL_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       58,
+       0
+      ],
+      "uv_size": [
+       16,
+       16,
+       0
+      ],
+      "mirror": false,
+      "note": "left_tendril: texOffs(58,0).addBox(0,-13,0,16,16,0)"
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_ARM_CUBES",
+    "shared_across_parts": true,
+    "cubes": [
+     {
+      "tex": [
+       44,
+       50
+      ],
+      "uv_size": [
+       8,
+       28,
+       8
+      ],
+      "mirror": false,
+      "note": "SHARED const reused by right_arm AND left_arm with DISTINCT texOffs. right_arm: texOffs(44,50).addBox(-4,0,-4,8,28,8). left_arm: texOffs(0,58).addBox(-4,0,-4,8,28,8). Tex shown here is right_arm; must split \u2014 see notes."
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_RIGHT_LEG_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       76,
+       48
+      ],
+      "uv_size": [
+       6,
+       13,
+       6
+      ],
+      "mirror": false,
+      "note": "right_leg: texOffs(76,48).addBox(-3.1,0,-3,6,13,6)"
+     }
+    ]
+   },
+   {
+    "const_name": "WARDEN_LEFT_LEG_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       76,
+       76
+      ],
+      "uv_size": [
+       6,
+       13,
+       6
+      ],
+      "mirror": false,
+      "note": "left_leg: texOffs(76,76).addBox(-2.9,0,-3,6,13,6) \u2014 distinct texOffs from right_leg, NOT a mirror; already separate consts so no split needed"
+     }
+    ]
+   }
+  ],
+  "notes": "tex_width/tex_height = 128x128 from LayerDefinition.create(mesh, 128, 128) in WardenModel.createBodyLayer(). Actual PNG (assets/.../warden/warden.png) is 128x128, no animation strip; png_differs_from_tex=false.\n\nSHARED-CUBE-SPLIT PROBLEM (shared_across_parts=true): WARDEN_ARM_CUBES is reused by BOTH right_arm and left_arm via &WARDEN_ARM_CUBES in two leaf_colored calls (warden.rs lines 171 and 175), but vanilla gives them DIFFERENT texOffs (these are NOT mirrors \u2014 both add the identical box -4,0,-4,8,28,8 with mirror=false):\n  - right_arm: texOffs(44,50) -> tex [44,50]\n  - left_arm:  texOffs(0,58)  -> tex [0,58]\nTo convert to UV cubes this const must be split into two: a right-arm cube with tex [44,50] and a left-arm cube with tex [0,58]. uv_size [8,28,8], mirror=false for both. I emitted the right_arm texOffs [44,50] in the WARDEN_ARM_CUBES entry above; the left_arm needs the separate [0,58].\n\nLegs: right_leg/left_leg already have separate consts (WARDEN_RIGHT_LEG_CUBES, WARDEN_LEFT_LEG_CUBES) and distinct texOffs (76,48 vs 76,76); both mirror=false, differ only in X origin (-3.1 vs -2.9). No split needed.\n\nRibcage: WARDEN_LEFT_RIBCAGE_CUBES shares texOffs(90,11) with the right ribcage via vanilla mirror() \u2014 left is the genuine mirror (mirror=true), so shared_across_parts=false; they are already separate consts anyway.\n\nCubeDeformation: WardenModel uses no CubeDeformation; all bbb min/size equal vanilla origin/dims verbatim (the .1 fractional offsets on ribcage z=-0.1 and leg x=-3.1/-2.9 are vanilla box origins, not deformation). uv_size = integer addBox dims throughout.\n\nDEFERRED (per instructions): emissive overlay layers (createTendrilsLayer, createHeartLayer, createBioluminescentLayer, createPulsatingSpotsLayer) \u2014 these reuse the SAME base part texOffs but draw against separate textures (warden_bioluminescent_layer.png, warden_pulsating_spots_1/2.png, warden_heart.png) and are not extracted here. Only base body texOffs reported."
+ },
+ "armadillo": {
+  "entity": "armadillo",
+  "texture_path": "textures/entity/armadillo/armadillo.png",
+  "tex_width": 64,
+  "tex_height": 64,
+  "baby_texture_path": "textures/entity/armadillo/armadillo_baby.png",
+  "baby_tex_width": 64,
+  "baby_tex_height": 64,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "ADULT_ARMADILLO_BODY_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       0,
+       20
+      ],
+      "uv_size": [
+       8,
+       8,
+       12
+      ],
+      "mirror": false,
+      "note": "body, CubeDeformation(0.3) armor shell box"
+     },
+     {
+      "tex": [
+       0,
+       40
+      ],
+      "uv_size": [
+       8,
+       8,
+       12
+      ],
+      "mirror": false,
+      "note": "body, CubeDeformation(0.0) bare box"
+     }
+    ]
+   },
+   {
+    "const_name": "ADULT_ARMADILLO_TAIL_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       44,
+       53
+      ],
+      "uv_size": [
+       1,
+       6,
+       1
+      ],
+      "mirror": false,
+      "note": "tail plume"
+     }
+    ]
+   },
+   {
+    "const_name": "ADULT_ARMADILLO_HEAD_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       43,
+       15
+      ],
+      "uv_size": [
+       3,
+       5,
+       2
+      ],
+      "mirror": false,
+      "note": "head_cube snout"
+     }
+    ]
+   },
+   {
+    "const_name": "ADULT_ARMADILLO_RIGHT_EAR_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       43,
+       10
+      ],
+      "uv_size": [
+       2,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "right_ear_cube plane"
+     }
+    ]
+   },
+   {
+    "const_name": "ADULT_ARMADILLO_LEFT_EAR_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       47,
+       10
+      ],
+      "uv_size": [
+       2,
+       5,
+       0
+      ],
+      "mirror": false,
+      "note": "left_ear_cube plane"
+     }
+    ]
+   },
+   {
+    "const_name": "ADULT_ARMADILLO_LEG_CUBES",
+    "shared_across_parts": true,
+    "cubes": [
+     {
+      "tex": [
+       51,
+       31
+      ],
+      "uv_size": [
+       2,
+       3,
+       2
+      ],
+      "mirror": false,
+      "note": "SHARED across 4 legs with distinct texOffs; this entry = right_hind_leg (51,31). See notes."
+     }
+    ]
+   },
+   {
+    "const_name": "ADULT_ARMADILLO_BALL_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       10,
+       10,
+       10
+      ],
+      "mirror": false,
+      "note": "shell-ball cube"
+     }
+    ]
+   },
+   {
+    "const_name": "BABY_ARMADILLO_BODY_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       5,
+       4,
+       7
+      ],
+      "mirror": false,
+      "note": "baby body, CubeDeformation(0.3) shell box"
+     },
+     {
+      "tex": [
+       0,
+       11
+      ],
+      "uv_size": [
+       5,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "baby body, bare box"
+     }
+    ]
+   },
+   {
+    "const_name": "BABY_ARMADILLO_TAIL_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       22,
+       11
+      ],
+      "uv_size": [
+       1,
+       1,
+       4
+      ],
+      "mirror": false,
+      "note": "vanilla names it right_ear_cube under tail; 1x1x4 stub"
+     }
+    ]
+   },
+   {
+    "const_name": "BABY_ARMADILLO_HEAD_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       20,
+       17
+      ],
+      "uv_size": [
+       2,
+       2,
+       4
+      ],
+      "mirror": false,
+      "note": "head_cube snout"
+     }
+    ]
+   },
+   {
+    "const_name": "BABY_ARMADILLO_RIGHT_EAR_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       28,
+       8
+      ],
+      "uv_size": [
+       2,
+       3,
+       0
+      ],
+      "mirror": true,
+      "note": "right_ear plane, added with .mirror()"
+     }
+    ]
+   },
+   {
+    "const_name": "BABY_ARMADILLO_LEFT_EAR_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       28,
+       8
+      ],
+      "uv_size": [
+       2,
+       3,
+       0
+      ],
+      "mirror": false,
+      "note": "left_ear plane, same texOffs as right (right is the mirror)"
+     }
+    ]
+   },
+   {
+    "const_name": "BABY_ARMADILLO_LEG_CUBES",
+    "shared_across_parts": true,
+    "cubes": [
+     {
+      "tex": [
+       20,
+       27
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": true,
+      "note": "SHARED across 4 legs with distinct texOffs/mirror; this entry = right_hind_leg (20,27 mirror). See notes."
+     }
+    ]
+   },
+   {
+    "const_name": "BABY_ARMADILLO_BALL_CUBES",
+    "cubes": [
+     {
+      "tex": [
+       0,
+       25
+      ],
+      "uv_size": [
+       6,
+       6,
+       6
+      ],
+      "mirror": false,
+      "note": "baby shell-ball cube, CubeDeformation(0.3)"
+     }
+    ]
+   }
+  ],
+  "notes": "Two-model entity (adult/baby). Both meshes use LayerDefinition.create(mesh, 64, 64) -> tex_width=tex_height=64 for adult and baby. The actual PNG files (textures/entity/armadillo/armadillo.png and armadillo_baby.png) are NOT present in the bbb repo (loaded from the vanilla asset jar at runtime), so PNG dims could not be measured directly; both are standard 64x64 in vanilla, so png_differs_from_tex=false.\n\nSHARED-CUBE SPLITS (both LEG consts need splitting by part):\n\n1) ADULT_ARMADILLO_LEG_CUBES (shared_across_parts=true): one 2x3x2 box reused by all 4 legs via ModelPart::leaf_colored, but vanilla gives each a DISTINCT texOffs (none are mirrors):\n   - right_hind_leg: texOffs(51,31), no mirror\n   - left_hind_leg:  texOffs(42,31), no mirror\n   - right_front_leg: texOffs(51,43), no mirror\n   - left_front_leg:  texOffs(42,43), no mirror\n   All four use addBox(-1,0,-1, 2,3,2). Used in BOTH adult_armadillo_root (all 4) and adult_armadillo_rolled_root (only right_front + left_front). The reported cube entry shows right_hind (51,31) as a placeholder; the converter must emit 4 distinct texOffs per call site.\n\n2) BABY_ARMADILLO_LEG_CUBES (shared_across_parts=true): one 2x2x2 box reused by all 4 legs, distinct texOffs AND distinct mirror flags:\n   - right_hind_leg:  texOffs(20,27), mirror=true  (.mirror()...addBox...mirror(false))\n   - left_hind_leg:   texOffs(20,27), mirror=false\n   - right_front_leg: texOffs(20,23), mirror=false\n   - left_front_leg:  texOffs(24,0),  mirror=true\n   All four use addBox(-1,0,-1, 2,2,2). Used in BOTH baby_armadillo_root (all 4) and baby_armadillo_rolled_root (only right_front + left_front). The reported cube entry shows right_hind (20,27 mirror) as placeholder; converter must emit per-leg texOffs+mirror.\n\nEAR MIRROR NOTE (baby): RIGHT_EAR is added with .mirror() in vanilla (mirror=true), LEFT_EAR shares the same texOffs(28,8) without mirror. These are separate consts (not a shared split), so each carries its own mirror flag correctly. Adult ears have distinct texOffs (43,10 vs 47,10), no mirror, separate consts \u2014 fine.\n\nCubeDeformation note: bbb min/size already encode the deformation (e.g. adult body shell -4.3..size 8.6 from CubeDeformation(0.3); baby body 0.3; baby ball -3.3 size 6.6 from CubeDeformation(0.3)). The reported uv_size stays the integer addBox dims (8,8,12 / 5,4,7 / 6,6,6) per instructions.\n\nRolled-up trees (adult_armadillo_rolled_root / baby_armadillo_rolled_root) reuse the SAME cube consts (BODY pivot keeps only head, front legs + shell ball) \u2014 no new texOffs; visibility-only swap, already covered above."
+ },
+ "wither": {
+  "entity": "wither",
+  "texture_path": "textures/entity/wither/wither.png",
+  "tex_width": 64,
+  "tex_height": 64,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "WITHER_SHOULDERS_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       16
+      ],
+      "uv_size": [
+       20,
+       3,
+       3
+      ],
+      "mirror": false,
+      "note": "shoulders bar -10,3.9,-0.5"
+     }
+    ]
+   },
+   {
+    "const_name": "WITHER_RIBCAGE_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       22
+      ],
+      "uv_size": [
+       3,
+       10,
+       3
+      ],
+      "mirror": false,
+      "note": "spine 0,0,0"
+     },
+     {
+      "tex": [
+       24,
+       22
+      ],
+      "uv_size": [
+       11,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "rib bar -4,1.5,0.5"
+     },
+     {
+      "tex": [
+       24,
+       22
+      ],
+      "uv_size": [
+       11,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "rib bar -4,4.0,0.5 (same texOffs 24,22)"
+     },
+     {
+      "tex": [
+       24,
+       22
+      ],
+      "uv_size": [
+       11,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "rib bar -4,6.5,0.5 (same texOffs 24,22)"
+     }
+    ]
+   },
+   {
+    "const_name": "WITHER_TAIL_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       12,
+       22
+      ],
+      "uv_size": [
+       3,
+       6,
+       3
+      ],
+      "mirror": false,
+      "note": "hanging tail segment"
+     }
+    ]
+   },
+   {
+    "const_name": "WITHER_CENTER_HEAD_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       8,
+       8,
+       8
+      ],
+      "mirror": false,
+      "note": "center skull"
+     }
+    ]
+   },
+   {
+    "const_name": "WITHER_SIDE_HEAD_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       32,
+       0
+      ],
+      "uv_size": [
+       6,
+       6,
+       6
+      ],
+      "mirror": false,
+      "note": "side skull, shared by right_head and left_head via the same sideHead CubeListBuilder"
+     }
+    ]
+   }
+  ],
+  "notes": "All texOffs transcribed verbatim from WitherBossModel.createBodyLayer(). LayerDefinition.create(mesh, 64, 64) -> tex_width/tex_height = 64x64; PNG textures/entity/wither/wither.png is a static 64x64 base texture so png_differs_from_tex=false.\n\nNo cube uses mirror() anywhere in this model.\n\nCubeDeformation g: createBodyLayer takes a CubeDeformation parameter applied to every addBox. For the deferred base/colored path bbb passes CubeDeformation.NONE (the comment at top of wither.rs documents the WITHER_ARMOR INNER_ARMOR_DEFORMATION overlay is the deferred variant). uv_size values reported are the integer pre-deformation addBox dims (dx,dy,dz), unaffected by any deformation.\n\nRibcage: the three 11x2x2 rib bars all share texOffs(24,22) in vanilla (they are stacked along Y and reuse the same UV island). This is within a single part/const, so not a problematic split \u2014 shared_across_parts=false. The spine uses texOffs(0,22).\n\nSide heads (WITHER_SIDE_HEAD_CUBES): vanilla builds ONE `sideHead = CubeListBuilder.create().texOffs(32,0).addBox(...)` and registers it for BOTH right_head and left_head with identical texOffs(32,0) and no mirror \u2014 they differ only by PartPose offset (-8,4,0 vs 10,4,0). Because both parts genuinely share the same texOffs with no mirror, the bbb single-const reuse (leaf(4) and leaf(5) both pointing at WITHER_SIDE_HEAD_CUBES) is correct and shared_across_parts=false. No split needed.\n\nDeferred (not extracted, per task scope): the wither_invulnerable.png variant and the dither/armor overlay layer (mesh re-rendered with INNER_ARMOR_DEFORMATION). Base only extracted here.\n\nWITHER_PARTS array order matches vanilla createBodyLayer order: shoulders, ribcage, tail, center_head, right_head, left_head."
+ },
+ "arrow": {
+  "entity": "arrow",
+  "texture_path": "textures/entity/projectiles/arrow.png",
+  "tex_width": 32,
+  "tex_height": 32,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "ARROW_BACK_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       0,
+       5,
+       5
+      ],
+      "mirror": false,
+      "note": "back arrowhead: texOffs(0,0).addBox(0.0,-2.5,-2.5, 0.0,5.0,5.0). 0-width YZ plane. PartPose offset(-11,0,0) pitch PI/4 withScale(0.8); the 0.8 is baked into the bbb cube min/size (0x5x5 -> 0x4x4) but uv_size stays the integer addBox dims [0,5,5]. No CubeDeformation, no texScale."
+     }
+    ]
+   },
+   {
+    "const_name": "ARROW_CROSS_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       16,
+       4,
+       0
+      ],
+      "mirror": false,
+      "note": "shared cross/fletching plane: texOffs(0,0).addBox(-12.0,-2.0,0.0, 16.0,4.0,0.0, CubeDeformation.NONE, 1.0F, 0.8F). 0-depth XY plane. The trailing 1.0F,0.8F are texScale (texScaleU=1.0, texScaleV=0.8): the V extent of the UV box is multiplied by 0.8 in the atlas. uv_size is the integer addBox dims [16,4,0]. Reused by parts cross_1 (pitch PI/4) and cross_2 (pitch 3*PI/4); BOTH use the identical texOffs(0,0) and identical CubeListBuilder, differing only by pitch rotation -> shared_across_parts=false (no split needed)."
+     }
+    ]
+   }
+  ],
+  "notes": "tex_width/tex_height = 32x32 from LayerDefinition.create(mesh.transformed(pose -> pose.scaled(0.9F)), 32, 32); PNG textures/entity/projectiles/arrow.png is 32x32, so png_differs_from_tex=false (not animated).\n\nCRITICAL v-scale: the cross plane's addBox carries a texScale argument (1.0F, 0.8F) -> texScaleV=0.8. This scales only the V coverage of the UV box in the atlas; it does NOT change the integer addBox dims, so uv_size stays [16,4,0]. The back cube has NO texScale (plain addBox, no CubeDeformation), uv_size [0,5,5].\n\nBoth 0-dimension planes (back: 0-width YZ plane dx=0; cross: 0-depth XY plane dz=0) \u2014 vanilla cross-of-0-width-planes pattern. The vanilla pose scales: mesh-level scaled(0.9) lives in arrow_model_root_transform (not in any cube); the back part's withScale(0.8) is baked into the bbb cube min/size (5x5 -> 4x4) per the bbb comment, but uv_size MUST stay the integer addBox dims [0,5,5].\n\nThe bbb ARROW_CROSS_CUBES const is reused by 2 ModelPartDesc entries (cross_1, cross_2) via &ARROW_CROSS_CUBES, but vanilla gives both the SAME texOffs(0,0), so no shared-cube split is required.\n\nAll three parts use the same texOffs(0,0); the texture is read by rotation differences only. No mirror() anywhere. No deferred layers in the colored path (tipped/spectral textures are on the deferred texture-backed path, out of scope here)."
+ },
+ "llama_spit": {
+  "entity": "llama_spit",
+  "texture_path": "textures/entity/llama/llama_spit.png",
+  "tex_width": 64,
+  "tex_height": 32,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "LLAMA_SPIT_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "min [-4,0,0]"
+     },
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "min [0,-4,0]"
+     },
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "min [0,0,-4]"
+     },
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "min [0,0,0] centre"
+     },
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "min [2,0,0]"
+     },
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "min [0,2,0]"
+     },
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       2,
+       2,
+       2
+      ],
+      "mirror": false,
+      "note": "min [0,0,2]"
+     }
+    ]
+   }
+  ],
+  "notes": "Single `main` part (PartPose.ZERO) with 7 boxes. All seven addBox calls share one texOffs(0,0) on the same CubeListBuilder; the UVs auto-advance per box internally but every box is specified with the same texOffs(0,0). All boxes are 2x2x2 with no CubeDeformation, so uv_size == addBox dims == bbb size exactly, and min == origin exactly. No mirror() on any box. tex_width/tex_height come from LayerDefinition.create(mesh, 64, 32). Note: the unused `int edge = 2;` local in createBodyLayer is dead code and does not affect any cube. No setupAnim, fully static. No shared-cube-split issue (single part, single const). PNG dimensions assumed to match 64x32 (not verified on disk, but no animation/strip indicated)."
+ },
+ "wither_skull": {
+  "entity": "wither_skull",
+  "texture_path": "textures/entity/wither/wither.png",
+  "tex_width": 64,
+  "tex_height": 64,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "WITHER_SKULL_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       35
+      ],
+      "uv_size": [
+       8,
+       8,
+       8
+      ],
+      "mirror": false,
+      "note": "head part box: addBox(-4,-8,-4, 8,8,8) at texOffs(0,35), no CubeDeformation, no mirror. Matches bbb cube min [-4,-8,-4] size [8,8,8]."
+     }
+    ]
+   }
+  ],
+  "notes": "Single-cube model. Vanilla source is WitherSkullRenderer.createSkullLayer (NOT SkullModel.createHeadModel, which uses texOffs(0,0)). The wither skull registers ModelLayers.WITHER_SKULL = WitherSkullRenderer.createSkullLayer() in LayerDefinitions.java:500. That layer builds one \"head\" part: CubeListBuilder.create().texOffs(0, 35).addBox(-4,-8,-4, 8,8,8) at PartPose.ZERO, then LayerDefinition.create(mesh, 64, 64). The bbb file's own comment already states texOffs(0,35) and atlas 64x64 correctly. The one bbb cube in WITHER_SKULL_CUBES (min [-4,-8,-4], size [8,8,8]) maps 1:1 to this box. texOffs=[0,35], uv_size=[8,8,8], mirror=false, no CubeDeformation. PNG textures/entity/wither/wither.png is 64x64, equal to texWidth/texHeight (not animated). Charged variant wither_invulnerable.png (state.isDangerous swap in getTextureLocation) is deferred per the task hint and uses the identical geometry/UV \u2014 only the texture path differs. WITHER_SKULL_CUBES is used by a single part (WITHER_SKULL_PARTS), so no shared-cube split is needed."
+ },
+ "shulker_bullet": {
+  "entity": "shulker_bullet",
+  "texture_path": "textures/entity/shulker/spark.png",
+  "tex_width": 64,
+  "tex_height": 32,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "SHULKER_BULLET_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       8,
+       8,
+       2
+      ],
+      "mirror": false,
+      "note": "main slab XY plane, addBox(-4,-4,-1, 8,8,2)"
+     },
+     {
+      "tex": [
+       0,
+       10
+      ],
+      "uv_size": [
+       2,
+       8,
+       8
+      ],
+      "mirror": false,
+      "note": "main slab YZ plane, addBox(-1,-4,-4, 2,8,8)"
+     },
+     {
+      "tex": [
+       20,
+       0
+      ],
+      "uv_size": [
+       8,
+       2,
+       8
+      ],
+      "mirror": false,
+      "note": "main slab XZ plane, addBox(-4,-1,-4, 8,2,8)"
+     }
+    ]
+   }
+  ],
+  "notes": "Single part `main` at ZERO with three interlocking slabs, all from one CubeListBuilder. The bbb const SHULKER_BULLET_CUBES maps 1:1 in order to the three vanilla texOffs/addBox calls: (0,0) 8x8x2, (0,10) 2x8x8, (20,0) 8x2x8. No CubeDeformation applied, so bbb min/size equal vanilla origin/dims exactly. No mirroring. Const not shared across distinct-texOffs parts. tex_width/tex_height = 64x32 from LayerDefinition.create(mesh, 64, 32); PNG textures/entity/shulker/spark.png is a static 64x32 atlas (not animated). The deferred translucent 1.5x outer-shell pass noted in the bbb header is a separate layer/variant and does not add cubes here."
+ },
+ "wind_charge": {
+  "entity": "wind_charge",
+  "texture_path": "textures/entity/projectiles/wind_charge.png",
+  "tex_width": 64,
+  "tex_height": 32,
+  "png_differs_from_tex": false,
+  "parts": [
+   {
+    "const_name": "WIND_CHARGE_WIND_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       15,
+       20
+      ],
+      "uv_size": [
+       8,
+       2,
+       8
+      ],
+      "mirror": false,
+      "note": "vanilla wind part box1, CubeDeformation(0.0)"
+     },
+     {
+      "tex": [
+       0,
+       9
+      ],
+      "uv_size": [
+       6,
+       4,
+       6
+      ],
+      "mirror": false,
+      "note": "vanilla wind part box2, CubeDeformation(0.0)"
+     }
+    ]
+   },
+   {
+    "const_name": "WIND_CHARGE_CORE_CUBES",
+    "shared_across_parts": false,
+    "cubes": [
+     {
+      "tex": [
+       0,
+       0
+      ],
+      "uv_size": [
+       4,
+       4,
+       4
+      ],
+      "mirror": false,
+      "note": "vanilla wind_charge part box, CubeDeformation(0.0)"
+     }
+    ]
+   }
+  ],
+  "notes": "All three cubes matched unambiguously by part name + min/size. Vanilla WindChargeModel.createBodyLayer builds: bone(no cubes) -> wind (two boxes: texOffs(15,20) addBox(-4,-1,-4, 8,2,8) and texOffs(0,9) addBox(-3,-2,-3, 6,4,6)), and wind_charge (texOffs(0,0) addBox(-2,-2,-2, 4,4,4)). LayerDefinition.create(meshdefinition, 64, 32) gives tex_width=64, tex_height=32. All boxes use CubeDeformation(0.0F), so uv_size = addBox dims and bbb min/size match exactly. No mirror() calls anywhere. No shared-cube-split issues (each const maps to exactly one vanilla part).\n\nANIMATED-TEXTURE FLAG: The prompt hinted wind_charge.png is an animated vertical frame strip via .mcmeta. INVESTIGATED: the actual vanilla PNG at assets/minecraft/textures/entity/projectiles/wind_charge.png is 64x32 \u2014 exactly equal to texWidth/texHeight \u2014 i.e. a single static frame. No wind_charge.png.mcmeta file exists in the 26.1 source tree. So png_differs_from_tex=false and this is a PLAIN STATIC UV for the geometry above. The visual \"wind\" animation in vanilla comes from the WindChargeRenderer scrolling a SEPARATE breezeWind render-type texture (a translucent overlay), NOT from a frame strip on this entity PNG. The bbb file comments confirm the model uses RenderTypes::entityTranslucent and the scrolling breezeWind texture is deferred; for UV conversion purposes the wind_charge.png maps statically to these cubes."
+ }
+}
