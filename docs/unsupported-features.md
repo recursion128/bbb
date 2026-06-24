@@ -1868,8 +1868,8 @@ When an agent does any of the following, update this file in the same slice:
       selects the per-colour texture (`parrot_red_blue` / `_blue` / `_green` / `_yellow_blue` / `parrot_grey.png`),
       matching `ParrotRenderer.getVariantTexture`
     - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
-      colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to the new
-      `EntityModelKind::Shulker`, replacing the former placeholder bounds box. The hierarchy is emitted
+      textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to
+      `EntityModelKind::Shulker { color }`, replacing the former placeholder bounds box. The hierarchy is emitted
       (atlas 64×64): three sibling root parts — the 16×12×16 lid and the 16×8×16 base (both at
       `offset(0, 24, 0)`), and the 6×6×6 head at `offset(0, 12, 0)` — three cubes. The lid peek open/close
       is now projected: `Shulker.getClientPeekAmount(partialTick)` (the synced `DATA_PEEK_ID` byte 17 fed
@@ -1888,9 +1888,10 @@ When an agent does any of the following, update this file in the same slice:
       entity-side `attachFace`/yaw state the native scene does not yet project, so the floor rest pose is
       emitted
       (the geometry is exact; only the wall/ceiling attach orientation is deferred). The sixteen dye-color
-      variants live on the deferred texture-backed path, so the colored debug path renders a purple shell
-      tint plus a yellow head tint. The texture-backed path remains unsupported (this is a colored-first
-      slice)
+      variants are now bound on the textured path: the native scene reads `DATA_COLOR_ID` (18, byte) and
+      `Shulker.getColor()` (0..=15 → the dye, the default byte 16 → `null`) selects the texture, matching
+      `ShulkerRenderer.getTextureLocation` (the uncolored `shulker.png` plus the sixteen `shulker_<color>.png`)
+      — seventeen textures
     - wither entities as renderer-owned vanilla 26.1
       `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` geometry on the colored path: the native
       entity scene (`entity_scene.rs`) projects vanilla type id `145` to the new `EntityModelKind::Wither`,
