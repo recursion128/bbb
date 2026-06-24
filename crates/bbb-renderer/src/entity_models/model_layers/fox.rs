@@ -1,5 +1,6 @@
 use super::{
-    apply_head_look, model_cube as cube, ModelCubeDesc, PartPose, FOX_ORANGE, PART_POSE_ZERO,
+    apply_head_look, limb_swing_at_rest, model_cube as cube, ModelCubeDesc, PartPose, FOX_ORANGE,
+    PART_POSE_ZERO,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
@@ -231,10 +232,35 @@ fn baby_fox_root() -> ModelPart {
     )
 }
 
+/// Vanilla `AdultFoxModel`/`BabyFoxModel.setupAnim` walk leg swing: each leg's `xRot = cos(pos·0.6662
+/// [+ π]) · 1.4 · speed`. The diagonal pairing — back-right & front-left in phase, back-left &
+/// front-right a half-cycle out — is keyed by leg NAME because the fox builds all four legs at the same
+/// negative pivot X (`+2` off-center), so the `QuadrupedModel` `x·z` sign rule can't resolve the phase.
+/// The base leg pose carries no `xRot`, so it is set (not accumulated). A no-op while at rest
+/// (`walkAnimationSpeed == 0`), matching the static leg pose.
+fn apply_fox_leg_swing(root: &mut ModelPart, walk_animation_pos: f32, walk_animation_speed: f32) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    let phase = walk_animation_pos * 0.6662;
+    // back-right (`right_hind_leg`) & front-left (`left_front_leg`) are in phase; the other diagonal is
+    // half a cycle out, exactly the `QuadrupedModel` diagonal gait.
+    for (name, phase_offset) in [
+        ("right_hind_leg", 0.0),
+        ("left_front_leg", 0.0),
+        ("left_hind_leg", std::f32::consts::PI),
+        ("right_front_leg", std::f32::consts::PI),
+    ] {
+        root.child_mut(name).pose.rotation[0] =
+            (phase + phase_offset).cos() * 1.4 * walk_animation_speed;
+    }
+}
+
 /// Mutable fox model, mirroring vanilla `AdultFoxModel` / `BabyFoxModel`. The named root parts hang off
 /// a synthetic root, built from the baked colored geometry for the selected `baby` layout. Colored-only:
 /// `setup_anim` runs the head look ([`apply_head_look`] on `child_mut("head")`, the head leads both
-/// layouts); the walk swing, head roll, and every fox pose stay deferred.
+/// layouts) and the walk leg swing ([`apply_fox_leg_swing`]); the head roll and every other fox pose
+/// (sleeping / sitting / faceplanted / crouching / pouncing) stay deferred.
 pub(in crate::entity_models) struct FoxModel {
     root: ModelPart,
 }
@@ -259,10 +285,18 @@ impl EntityModel for FoxModel {
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         // Vanilla `FoxModel.setupAnim` sets `head.xRot/yRot` from the look while the fox is not sleeping
         // / faceplanted / crouching — none of which bbb projects, so the look applies every frame.
+        let render_state = &instance.render_state;
         apply_head_look(
             self.root.child_mut("head"),
-            instance.render_state.head_yaw,
-            instance.render_state.head_pitch,
+            render_state.head_yaw,
+            render_state.head_pitch,
+        );
+        // The four legs sweep with the gait (the sleeping / sitting / faceplanted branches that suppress
+        // it are deferred, so the swing applies whenever the fox is moving).
+        apply_fox_leg_swing(
+            &mut self.root,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
         );
     }
 }

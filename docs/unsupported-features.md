@@ -2117,10 +2117,12 @@ When an agent does any of the following, update this file in the same slice:
       body has no pitch, and the root child order is head / four legs / body — also ten cubes. The
       `FoxModel.setupAnim`
       head look (`head.xRot/yRot` set from the projected `head_yaw/head_pitch` while not sleeping /
-      faceplanted / crouching, turning only the head and its ears/snout) is reproduced. Everything else
-      stays deferred: the walk leg swing (the standard `cos·1.4·speed` but keyed left/right by part rather
-      than pivot sign — the fox's legs are all built at negative pivot X, so it cannot reuse the
-      `QuadrupedModel` `x·z` helper), the `headRollAngle` head tilt, and the `isCrouching` / `isSleeping` /
+      faceplanted / crouching, turning only the head and its ears/snout) and the walk leg swing (the
+      standard `cos·1.4·speed` keyed left/right by leg NAME rather than pivot sign — the fox builds all four
+      legs at negative pivot X, so it cannot reuse the `QuadrupedModel` `x·z` helper, so the back-right /
+      front-left diagonal swings in phase and the other half a cycle out, consuming the projected
+      `walk_animation_pos/speed`) are reproduced. The remaining `FoxModel` motion stays deferred: the
+      `headRollAngle` head tilt, and the `isCrouching` / `isSleeping` /
       `isSitting` / `isPouncing` / `isFaceplanted` poses (with the pounce / faceplant
       `FoxRenderer.setupRotations` pitch), all reading un-projected `FoxRenderState` state. The red/snow
       `Fox.Variant` idle/sleeping textures and the held-item layer live on the deferred texture-backed

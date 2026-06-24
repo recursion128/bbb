@@ -93,6 +93,41 @@ fn fox_head_look_turns_only_the_head() {
 }
 
 #[test]
+fn fox_legs_swing_with_the_gait() {
+    // Vanilla `FoxModel.setupAnim` sweeps the four legs by `cos(pos·0.6662 [+π])·1.4·speed` (the
+    // back-right/front-left diagonal in phase, the other half a cycle out). The head (vertices `[0, 96)`)
+    // is untouched by the swing; the legs (in `[96, 240)`) move.
+    let rest = EntityModelInstance::fox(420, [0.0, 64.0, 0.0], 0.0, false);
+    let walking = rest.with_walk_animation(3.0, 0.8);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let walk_mesh = entity_model_mesh(&[walking]);
+    assert_eq!(rest_mesh.vertices.len(), walk_mesh.vertices.len());
+    assert_ne!(
+        rest_mesh.vertices, walk_mesh.vertices,
+        "the legs swing with the gait"
+    );
+    assert_eq!(
+        rest_mesh.vertices[..96],
+        walk_mesh.vertices[..96],
+        "the head is untouched by the leg swing"
+    );
+
+    // The swing tracks the walk position, not just the speed.
+    let walk_later = entity_model_mesh(&[rest.with_walk_animation(6.0, 0.8)]);
+    assert_ne!(
+        walk_mesh.vertices, walk_later.vertices,
+        "the swing advances with the walk position"
+    );
+
+    // At zero speed the swing is a no-op even with a non-zero position (the limbs are at rest).
+    let still = entity_model_mesh(&[rest.with_walk_animation(3.0, 0.0)]);
+    assert_eq!(
+        still.vertices, rest_mesh.vertices,
+        "a standing fox holds the bind leg pose"
+    );
+}
+
+#[test]
 fn baby_fox_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `BabyFoxModel.createBodyLayer` (atlas 32×32): six named root parts — head (ears + snout
     // baked in as cubes), four legs, then body (with tail). Flatter than the adult, body has no pitch.
