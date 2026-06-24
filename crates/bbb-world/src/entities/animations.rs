@@ -35,6 +35,21 @@ const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 /// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
 /// CROAKING, tickCount)`).
 const VANILLA_POSE_CROAKING_ID: i32 = 8;
+const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
+/// Vanilla `Sniffer.DATA_STATE`, the synced `EntityDataSerializers.SNIFFER_STATE` accessor serialized
+/// as the `Sniffer.State` ordinal VarInt. The accessor sits at id 18 (Entity 0–7, LivingEntity 8–14,
+/// Mob 15, AgeableMob 16–17, then Sniffer's first own accessor); `Sniffer.onSyncedDataUpdated` reads
+/// it to `resetAnimations()` and `startIfStopped` the matching one-shot `AnimationState`.
+const SNIFFER_STATE_DATA_ID: u8 = 18;
+/// `Sniffer.State` ordinals (the `State(id)` declaration order, which is the serialized VarInt).
+/// `IDLING` and `SEARCHING` have no triggered one-shot keyframe (idle rests, search drives the
+/// looping search-walk), so only the remaining five start an `AnimationState`.
+const SNIFFER_STATE_IDLING_ID: i32 = 0;
+const SNIFFER_STATE_FEELING_HAPPY_ID: i32 = 1;
+const SNIFFER_STATE_SCENTING_ID: i32 = 2;
+const SNIFFER_STATE_SNIFFING_ID: i32 = 3;
+const SNIFFER_STATE_DIGGING_ID: i32 = 5;
+const SNIFFER_STATE_RISING_ID: i32 = 6;
 const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
@@ -122,6 +137,8 @@ pub struct EntityClientAnimationState {
     pub fox: Option<FoxAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_croak: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ender_dragon: Option<EnderDragonAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -242,6 +259,64 @@ impl KeyframeAnimationState {
     fn elapsed_seconds(self, age_ticks: u32, partial_tick: f32) -> Option<f32> {
         self.start_age
             .map(|start| ((age_ticks - start) as f32 + partial_tick) / 20.0)
+    }
+}
+
+/// Returns the `Sniffer.State` ordinal whose one-shot `AnimationState` the renderer drives, or
+/// `None` for a state with no triggered keyframe (`IDLING` rests at the bind pose, `SEARCHING` runs
+/// the looping search-walk handled by the walk path, and an unknown ordinal is treated as idle).
+fn sniffer_animated_state(state_id: i32) -> Option<i32> {
+    match state_id {
+        SNIFFER_STATE_FEELING_HAPPY_ID
+        | SNIFFER_STATE_SCENTING_ID
+        | SNIFFER_STATE_SNIFFING_ID
+        | SNIFFER_STATE_DIGGING_ID
+        | SNIFFER_STATE_RISING_ID => Some(state_id),
+        _ => None,
+    }
+}
+
+/// Canonical client-side sniffer animation state, mirroring vanilla `Sniffer.onSyncedDataUpdated`:
+/// the synced `DATA_STATE` (the mutually-exclusive `Sniffer.State`) drives one one-shot
+/// `AnimationState` at a time. On every `DATA_STATE` change vanilla calls `resetAnimations()` (stops
+/// all five) then `startIfStopped` on the new state's animation, so a state transition restarts the
+/// timer from `0`. We track the current state ordinal and the [`KeyframeAnimationState`] timer that
+/// the renderer samples; `IDLING`/`SEARCHING` and unknown states clear the timer (no triggered
+/// keyframe).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SnifferAnimationState {
+    /// The `Sniffer.State` ordinal whose `AnimationState` is active (`feeling_happy`/`scenting`/
+    /// `sniffing`/`digging`/`rising`), or `IDLING` (the bind-pose rest) when none is running.
+    pub state_id: i32,
+    /// The triggered timer for the active state's keyframe animation, started at the `age_ticks` of
+    /// the `DATA_STATE` transition. Stopped (`start_age == None`) for `IDLING`/`SEARCHING`.
+    pub keyframe: KeyframeAnimationState,
+}
+
+impl SnifferAnimationState {
+    /// Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: `resetAnimations()` then `startIfStopped`
+    /// on the new state's animation. A change to a different ordinal restarts the timer at the
+    /// current age (vanilla `.start(tickCount)` semantics on the transition); a redundant re-set to
+    /// the same state keeps the running timer.
+    fn set_state(&mut self, state_id: i32, age_ticks: u32) {
+        if state_id == self.state_id {
+            return;
+        }
+        self.state_id = state_id;
+        self.keyframe.start_age = sniffer_animated_state(state_id).map(|_| age_ticks);
+    }
+
+    /// The active state's elapsed seconds for the renderer (`-1.0` when no triggered animation is
+    /// running), paired with the projected state id.
+    fn animation(self, age_ticks: u32, partial_tick: f32) -> (i32, f32) {
+        match self
+            .keyframe
+            .elapsed_seconds(age_ticks, partial_tick)
+            .and_then(|seconds| sniffer_animated_state(self.state_id).map(|id| (id, seconds)))
+        {
+            Some((id, seconds)) => (id, seconds),
+            None => (-1, -1.0),
+        }
     }
 }
 
@@ -1040,6 +1115,24 @@ impl EntityClientAnimationState {
                     });
                 }
             }
+            VANILLA_ENTITY_TYPE_SNIFFER_ID => {
+                // Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: the synced state's ordinal
+                // VarInt (id 18) selects the one mutually-exclusive `AnimationState` to start, and a
+                // state change `resetAnimations()` + restarts it. The sniffer's `aiStep` runs
+                // client-side for remote entities, so the synced state drives the pose directly.
+                let state_id =
+                    entity_data_int(data_values, SNIFFER_STATE_DATA_ID, SNIFFER_STATE_IDLING_ID);
+                if let Some(sniffer) = self.sniffer.as_mut() {
+                    sniffer.set_state(state_id, self.age_ticks);
+                } else if sniffer_animated_state(state_id).is_some() {
+                    self.sniffer = Some(SnifferAnimationState {
+                        state_id,
+                        keyframe: KeyframeAnimationState {
+                            start_age: Some(self.age_ticks),
+                        },
+                    });
+                }
+            }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
                 let phase_id = entity_data_int(
                     data_values,
@@ -1139,6 +1232,17 @@ impl EntityClientAnimationState {
         self.frog_croak
             .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
             .unwrap_or(-1.0)
+    }
+
+    /// The sniffer's active `Sniffer.State` animation (vanilla `Sniffer.onSyncedDataUpdated`'s
+    /// one-shot `AnimationState`s) projected for `SnifferModel.setupAnim`: the `(state ordinal,
+    /// elapsed seconds)` of the running triggered keyframe, or `(-1, -1.0)` when the sniffer is
+    /// idling/searching or is any other entity. The renderer matches the id to pick the keyframe
+    /// def (DIG/LONGSNIFF/STAND_UP/HAPPY/SNIFFSNIFF) and samples it at the elapsed seconds.
+    pub fn sniffer_animation(&self, partial_tick: f32) -> (i32, f32) {
+        self.sniffer.map_or((-1, -1.0), |state| {
+            state.animation(self.age_ticks, partial_tick)
+        })
     }
 
     /// Vanilla `Fox.getHeadRollAngle(partialTick)` projected for the renderer

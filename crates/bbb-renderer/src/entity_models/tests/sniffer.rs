@@ -154,3 +154,83 @@ fn sniffer_walk_moves_the_limbs_and_composes_with_the_look() {
         "the six legs share the same walk regardless of the look"
     );
 }
+
+#[test]
+fn sniffer_state_animations_match_vanilla_definitions() {
+    // Vanilla `SnifferAnimation` lengths / looping flags for the one-shots `SnifferModel.setupAnim`
+    // applies from the synced state.
+    assert_eq!(SNIFFER_DIG.length_seconds, 8.0);
+    assert!(!SNIFFER_DIG.looping);
+    assert_eq!(SNIFFER_DIG.bones.len(), 10);
+    assert_eq!(SNIFFER_LONGSNIFF.length_seconds, 1.0);
+    assert!(!SNIFFER_LONGSNIFF.looping);
+    assert_eq!(SNIFFER_STAND_UP.length_seconds, 3.0);
+    assert!(!SNIFFER_STAND_UP.looping);
+    assert_eq!(SNIFFER_STAND_UP.bones.len(), 10);
+    assert_eq!(SNIFFER_HAPPY.length_seconds, 2.0);
+    assert!(SNIFFER_HAPPY.looping);
+    assert_eq!(SNIFFER_SNIFFSNIFF.length_seconds, 8.0);
+    assert!(SNIFFER_SNIFFSNIFF.looping);
+
+    // The dig drops the `body` `-7` y at its `1.5` keyframe (`posVec` negates y, so the offset is
+    // `+7`) and sinks the four corner legs `-5.5` y by the time the dig hole is reached.
+    let (dig_body_pos, _, _) = sample_bone_offsets_with_scale(&SNIFFER_DIG, "body", 1.5, 1.0);
+    assert!((dig_body_pos[1] - 7.0).abs() < 1.0e-4);
+    let (rfl_pos, rfl_rot, _) =
+        sample_bone_offsets_with_scale(&SNIFFER_DIG, "right_front_leg", 1.375, 1.0);
+    assert!((rfl_pos[1] - 5.5).abs() < 1.0e-4);
+    assert!((rfl_rot[2] - 90.0_f32.to_radians()).abs() < 1.0e-4);
+
+    // The long-sniff puffs the `nose` to `scaleVec(1, 4, 1)` ⇒ scale `[1, 4, 1]` at its `0.7083`
+    // keyframe.
+    let (_, _, sniff_nose) =
+        sample_bone_offsets_with_scale(&SNIFFER_LONGSNIFF, "nose", 0.7083, 1.0);
+    let puffed = keyframe_animated_scale(sniff_nose);
+    assert!((puffed[1] - 4.0).abs() < 1.0e-4);
+}
+
+#[test]
+fn sniffer_state_animation_re_poses_off_the_walk_pose() {
+    // A sniffer with no synced-state animation (`-1` id) renders at the walk-sampled (here still)
+    // bind pose plus the look.
+    let resting = entity_model_mesh(&[EntityModelInstance::sniffer(940, [0.0, 64.0, 0.0], 0.0)]);
+
+    // A digging sniffer re-poses off the bind pose: the body sinks, the head dives, the legs fold.
+    let digging = entity_model_mesh(&[EntityModelInstance::sniffer(941, [0.0, 64.0, 0.0], 0.0)
+        .with_sniffer_animation_id(5)
+        .with_sniffer_animation_seconds(2.0)]);
+    assert_eq!(
+        resting.vertices.len(),
+        digging.vertices.len(),
+        "the dig re-poses parts, it does not add or hide cubes"
+    );
+    assert_ne!(
+        resting.vertices, digging.vertices,
+        "the digging sniffer leaves the bind pose"
+    );
+
+    // A different state (the rising stand-up) at the same time poses differently from the dig.
+    let rising = entity_model_mesh(&[EntityModelInstance::sniffer(942, [0.0, 64.0, 0.0], 0.0)
+        .with_sniffer_animation_id(6)
+        .with_sniffer_animation_seconds(2.0)]);
+    assert_ne!(
+        digging.vertices, rising.vertices,
+        "the rising stand-up poses differently from the dig"
+    );
+
+    // Sampling the dig at a different time advances the pose.
+    let digging_later =
+        entity_model_mesh(&[EntityModelInstance::sniffer(943, [0.0, 64.0, 0.0], 0.0)
+            .with_sniffer_animation_id(5)
+            .with_sniffer_animation_seconds(4.0)]);
+    assert_ne!(
+        digging.vertices, digging_later.vertices,
+        "the dig animation advances as its elapsed seconds climb"
+    );
+
+    // The `-1` no-animation sentinel leaves the sniffer at the walk/bind pose.
+    let cleared = entity_model_mesh(&[EntityModelInstance::sniffer(944, [0.0, 64.0, 0.0], 0.0)
+        .with_sniffer_animation_id(-1)
+        .with_sniffer_animation_seconds(-1.0)]);
+    assert_eq!(cleared.vertices, resting.vertices);
+}

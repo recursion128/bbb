@@ -2471,6 +2471,87 @@ fn entity_model_sources_project_frog_croak_seconds() {
 }
 
 #[test]
+fn entity_model_sources_project_sniffer_state_animation() {
+    const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
+    // Vanilla `Sniffer.DATA_STATE` (id 18), the `Sniffer.State` ordinal VarInt;
+    // `Sniffer.onSyncedDataUpdated` `resetAnimations()` then starts the matching one-shot.
+    const SNIFFER_STATE_DATA_ID: u8 = 18;
+    const SNIFFER_STATE_IDLING_ID: i32 = 0;
+    const SNIFFER_STATE_SNIFFING_ID: i32 = 3;
+    const SNIFFER_STATE_SEARCHING_ID: i32 = 4;
+    const SNIFFER_STATE_DIGGING_ID: i32 = 5;
+    let animation = |store: &WorldStore, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 119)
+            .unwrap();
+        (
+            source.sniffer_animation_id,
+            source.sniffer_animation_seconds,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        119,
+        VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    ));
+
+    // An idling sniffer projects the `(-1, -1.0)` no-animation sentinel.
+    assert_eq!(animation(&store, 1.0), (-1, -1.0));
+
+    // Entering `DIGGING` starts the dig one-shot at the current age: the id is the `DIGGING` ordinal
+    // and the elapsed seconds begin at `0` (plus the partial tick), advancing `1 / 20` per tick.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 119,
+        values: vec![protocol_int_data(
+            SNIFFER_STATE_DATA_ID,
+            SNIFFER_STATE_DIGGING_ID
+        )],
+    }));
+    let (id, seconds) = animation(&store, 0.0);
+    assert_eq!(id, SNIFFER_STATE_DIGGING_ID);
+    assert!((seconds - 0.0).abs() < 1.0e-6);
+    // The partial tick folds into the live age (`(0 + 0.5) / 20`).
+    assert!((animation(&store, 0.5).1 - 0.025).abs() < 1.0e-6);
+    store.advance_entity_client_animations(4);
+    assert_eq!(animation(&store, 0.0), (SNIFFER_STATE_DIGGING_ID, 0.2));
+
+    // Changing to a different animated state restarts the timer from `0` (vanilla `resetAnimations()`
+    // + `startIfStopped` on the transition) and switches the id to the new state.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 119,
+        values: vec![protocol_int_data(
+            SNIFFER_STATE_DATA_ID,
+            SNIFFER_STATE_SNIFFING_ID
+        )],
+    }));
+    assert_eq!(animation(&store, 0.0), (SNIFFER_STATE_SNIFFING_ID, 0.0));
+
+    // `SEARCHING` carries no one-shot (it drives the looping search-walk), so it clears to the
+    // no-animation sentinel.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 119,
+        values: vec![protocol_int_data(
+            SNIFFER_STATE_DATA_ID,
+            SNIFFER_STATE_SEARCHING_ID
+        )],
+    }));
+    assert_eq!(animation(&store, 1.0), (-1, -1.0));
+
+    // Returning to `IDLING` likewise stays cleared.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 119,
+        values: vec![protocol_int_data(
+            SNIFFER_STATE_DATA_ID,
+            SNIFFER_STATE_IDLING_ID
+        )],
+    }));
+    assert_eq!(animation(&store, 1.0), (-1, -1.0));
+}
+
+#[test]
 fn entity_model_sources_project_fox_head_roll_and_crouch() {
     const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
     // Vanilla `Fox.DATA_FLAGS_ID` is synced data id 19; `FLAG_CROUCHING` is mask 4 and

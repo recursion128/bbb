@@ -1655,9 +1655,17 @@ When an agent does any of the following, update this file in the same slice:
       position), the body sways with a y-dip, the two ears roll (CatmullRom), and the head pitches
       (CatmullRom) ADDING onto the look it already tracks (a still sniffer samples amplitude 0,
       collapsing to the bind pose plus the head look). The bone → body → head spine and the six legs are
-      hand-walked. The remaining `SnifferModel.setupAnim` is deferred: the search-walk variant
-      (`SNIFFER_SNIFF_SEARCH`, gated on the un-synced `isSearching`) and the dig / long-sniff / stand-up /
-      happy / scenting keyframe animations. The texture-backed path remains unsupported (this is a
+      hand-walked. The synced-`DATA_STATE` (id 18, the `Sniffer.State` ordinal VarInt) one-shot
+      keyframe animations ARE now reproduced, driven the vanilla way: `Sniffer.onSyncedDataUpdated`
+      `resetAnimations()`s and `startIfStopped`s the matching one-shot on each state change, so the
+      world projects a compact `(sniffer_animation_id, sniffer_animation_seconds)` pair (the active
+      state ordinal + elapsed seconds, `(-1, -1.0)` when idle/searching) that the renderer matches to
+      layer the one-shot over the walk: DIGGING(5)→`SNIFFER_DIG` (8 s), SNIFFING(3)→`SNIFFER_LONGSNIFF`
+      (1 s), RISING(6)→`SNIFFER_STAND_UP` (3 s), FEELING_HAPPY(1)→`SNIFFER_HAPPY` (2 s looping),
+      SCENTING(2)→`SNIFFER_SNIFFSNIFF` (8 s looping); a state change restarts the timer from 0. The
+      remaining `SnifferModel.setupAnim` is deferred: the search-walk variant (`SNIFFER_SNIFF_SEARCH`,
+      gated on the un-synced `isSearching`/`walkAnimationPos`) and the baby-transform
+      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`). The texture-backed path remains unsupported (this is a
       colored-first slice; the colored debug path approximates the body with one brown tint and the nose
       pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the

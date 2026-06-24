@@ -589,6 +589,12 @@ impl EntityStore {
         } else {
             1.0
         };
+        // Vanilla `Sniffer.onSyncedDataUpdated`: the active `Sniffer.State` one-shot `AnimationState`
+        // as `(state ordinal, elapsed seconds)`, or `(-1, -1.0)` for an idling/searching sniffer and
+        // every non-sniffer (only the sniffer is given a sniffer animation state).
+        let (sniffer_animation_id, sniffer_animation_seconds) = client_animations
+            .animations
+            .sniffer_animation(partial_ticks);
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
@@ -609,6 +615,8 @@ impl EntityStore {
             frog_croak_seconds: client_animations
                 .animations
                 .frog_croak_seconds(partial_ticks),
+            sniffer_animation_id,
+            sniffer_animation_seconds,
             // Vanilla `Fox.getHeadRollAngle` / `getCrouchAmount`: the lerped client accumulators that
             // drive the head tilt and the crouch body drop. `0.0` for every non-fox (only the fox is
             // given a fox animation state).

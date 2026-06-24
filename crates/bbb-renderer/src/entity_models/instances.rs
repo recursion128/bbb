@@ -238,6 +238,17 @@ entity_render_state! {
     /// (the sentinel for a stopped `croakAnimationState`) for every other entity and for a
     /// non-croaking frog, so the pouch stays hidden and no keyframe is applied.
     (with_frog_croak_seconds) frog_croak_seconds: f32 = -1.0;
+    /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
+    /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered keyframe
+    /// is playing (`FEELING_HAPPY=1`/`SCENTING=2`/`SNIFFING=3`/`DIGGING=5`/`RISING=6`), which
+    /// `SnifferModel.setupAnim` matches to pick and apply the keyframe def. `-1` (no triggered
+    /// animation) for every other entity and for an idling/searching sniffer.
+    (with_sniffer_animation_id) sniffer_animation_id: i32 = -1;
+    /// Vanilla sniffer animation timing: the elapsed seconds since the active `Sniffer.State`
+    /// animation started (paired with [`Self::sniffer_animation_id`]), sampled by
+    /// `SnifferModel.setupAnim`. `-1.0` (the stopped-animation sentinel) for every other entity and
+    /// for an idling/searching sniffer.
+    (with_sniffer_animation_seconds) sniffer_animation_seconds: f32 = -1.0;
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`): an interested
     /// fox tilts its head, which `FoxModel.setWalkingPose` applies as `head.zRot = headRollAngle`.
     /// `0.0` (level) for every other entity and for a fox that is not interested.
@@ -1344,6 +1355,8 @@ mod tests {
                 bee_angry: false,
                 bee_roll_amount: 0.0,
                 frog_croak_seconds: -1.0,
+                sniffer_animation_id: -1,
+                sniffer_animation_seconds: -1.0,
                 fox_head_roll_angle: 0.0,
                 fox_crouch_amount: 0.0,
                 fox_is_crouching: false,

@@ -367,6 +367,19 @@ pub struct EntityModelSourceState {
     /// entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub frog_croak_seconds: f32,
+    /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
+    /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered
+    /// keyframe is playing (`FEELING_HAPPY`/`SCENTING`/`SNIFFING`/`DIGGING`/`RISING`), which
+    /// `SnifferModel.setupAnim` matches to pick and apply the keyframe def. `-1` (no triggered
+    /// animation) for an idling/searching sniffer and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one_i32")]
+    pub sniffer_animation_id: i32,
+    /// Vanilla sniffer animation timing: the elapsed seconds since the active `Sniffer.State`
+    /// animation started (paired with [`Self::sniffer_animation_id`]), sampled by
+    /// `SnifferModel.setupAnim`. `-1.0` (the stopped-animation sentinel) when no triggered animation
+    /// is running.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub sniffer_animation_seconds: f32,
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`, the lerped client
     /// `interestedAngle` accumulator driven by the synced `DATA_FLAGS_ID & 8` interest flag, scaled by
     /// `0.11 · π`): an interested fox tilts its head, which `FoxModel.setWalkingPose` applies as
@@ -586,6 +599,12 @@ fn entity_model_source_default_true() -> bool {
 /// `EntityModelSourceState` is deserialized without a recorded croak time.
 fn entity_model_source_default_neg_one() -> f32 {
     -1.0
+}
+
+/// The "no triggered animation" sentinel (`-1`) for the sniffer animation id, used when an
+/// `EntityModelSourceState` is deserialized without a recorded sniffer state.
+fn entity_model_source_default_neg_one_i32() -> i32 {
+    -1
 }
 
 impl EntityTransformState {
