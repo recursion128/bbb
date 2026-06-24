@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 185] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 189] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -854,6 +854,10 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     WIND_CHARGE_TEXTURE_REF,
     GUARDIAN_TEXTURE_REF,
     GUARDIAN_ELDER_TEXTURE_REF,
+    WARDEN_TEXTURE_REF,
+    FROG_TEXTURE_REF,
+    ARMADILLO_TEXTURE_REF,
+    ARMADILLO_BABY_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1877,6 +1881,50 @@ pub(in crate::entity_models) const GUARDIAN_ENTITY_TEXTURE_REFS: [EntityModelTex
     [GUARDIAN_TEXTURE_REF, GUARDIAN_ELDER_TEXTURE_REF];
 pub fn guardian_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &GUARDIAN_ENTITY_TEXTURE_REFS
+}
+
+// The warden's base body texture (atlas 128×128). The four emissive overlay layers (tendrils,
+// heart, bioluminescent, pulsating spots) and the dig/emerge spawn animations stay deferred.
+pub(in crate::entity_models) const WARDEN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/warden/warden.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [WARDEN_TEXTURE_REF];
+pub fn warden_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &WARDEN_ENTITY_TEXTURE_REFS
+}
+
+// The frog's base texture (atlas 48×48). The temperate variant is wired; the warm/cold colour
+// variants (frog_warm.png / frog_cold.png) share this geometry/UV and stay deferred.
+pub(in crate::entity_models) const FROG_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/frog/frog_temperate.png",
+        size: [48, 48],
+    };
+pub(in crate::entity_models) const FROG_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [FROG_TEXTURE_REF];
+pub fn frog_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &FROG_ENTITY_TEXTURE_REFS
+}
+
+// The armadillo is an `AgeableMobRenderer` two-model entity: the adult and baby share the same UV
+// layout but bind their own 64×64 textures.
+pub(in crate::entity_models) const ARMADILLO_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/armadillo/armadillo.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const ARMADILLO_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/armadillo/armadillo_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const ARMADILLO_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [ARMADILLO_TEXTURE_REF, ARMADILLO_BABY_TEXTURE_REF];
+pub fn armadillo_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &ARMADILLO_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

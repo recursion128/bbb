@@ -6,37 +6,55 @@ fn warden_geometry_matches_vanilla_26_1_body_layer() {
     // at `offset(0, 24, 0)` parenting the body and the two legs.
     assert_eq!(WARDEN_BONE_POSE.offset, [0.0, 24.0, 0.0]);
 
-    // `body` (offset (0, -21, 0)): one 18×21×11 box parenting two ribcages, the head, and arms.
+    // `body` (offset (0, -21, 0)): one 18×21×11 box (`texOffs(0,0)`) parenting two ribcages, the
+    // head, and arms.
     assert_eq!(WARDEN_BODY_POSE.offset, [0.0, -21.0, 0.0]);
     assert_eq!(WARDEN_BODY_CUBES.len(), 1);
     assert_eq!(WARDEN_BODY_CUBES[0].min, [-9.0, -13.0, -4.0]);
     assert_eq!(WARDEN_BODY_CUBES[0].size, [18.0, 21.0, 11.0]);
+    assert_eq!(WARDEN_BODY_CUBES[0].tex, [0.0, 0.0]);
 
-    // The two 9×21×0 ribcage planes.
+    // The two 9×21×0 ribcage planes share `texOffs(90,11)`; the left is the vanilla `mirror()`.
     assert_eq!(WARDEN_RIGHT_RIBCAGE_POSE.offset, [-7.0, -2.0, -4.0]);
     assert_eq!(WARDEN_RIGHT_RIBCAGE_CUBES[0].min, [-2.0, -11.0, -0.1]);
+    assert_eq!(WARDEN_RIGHT_RIBCAGE_CUBES[0].tex, [90.0, 11.0]);
+    assert!(!WARDEN_RIGHT_RIBCAGE_CUBES[0].mirror);
     assert_eq!(WARDEN_LEFT_RIBCAGE_POSE.offset, [7.0, -2.0, -4.0]);
     assert_eq!(WARDEN_LEFT_RIBCAGE_CUBES[0].min, [-7.0, -11.0, -0.1]);
+    assert_eq!(WARDEN_LEFT_RIBCAGE_CUBES[0].tex, [90.0, 11.0]);
+    assert!(WARDEN_LEFT_RIBCAGE_CUBES[0].mirror);
     assert_eq!(WARDEN_RIGHT_RIBCAGE_CUBES[0].size, [9.0, 21.0, 0.0]);
 
-    // `head` (16×16×10) parents the two 16×16×0 tendril planes.
+    // `head` (16×16×10, `texOffs(0,32)`) parents the two 16×16×0 tendril planes (`texOffs(52,32)`
+    // and `texOffs(58,0)` — distinct UV regions, not mirrors).
     assert_eq!(WARDEN_HEAD_POSE.offset, [0.0, -13.0, 0.0]);
     assert_eq!(WARDEN_HEAD_CUBES[0].size, [16.0, 16.0, 10.0]);
+    assert_eq!(WARDEN_HEAD_CUBES[0].tex, [0.0, 32.0]);
     assert_eq!(WARDEN_RIGHT_TENDRIL_POSE.offset, [-8.0, -12.0, 0.0]);
     assert_eq!(WARDEN_RIGHT_TENDRIL_CUBES[0].min, [-16.0, -13.0, 0.0]);
+    assert_eq!(WARDEN_RIGHT_TENDRIL_CUBES[0].tex, [52.0, 32.0]);
     assert_eq!(WARDEN_LEFT_TENDRIL_CUBES[0].min, [0.0, -13.0, 0.0]);
     assert_eq!(WARDEN_LEFT_TENDRIL_CUBES[0].size, [16.0, 16.0, 0.0]);
+    assert_eq!(WARDEN_LEFT_TENDRIL_CUBES[0].tex, [58.0, 0.0]);
 
-    // The two 8×28×8 arms.
+    // The two 8×28×8 arms add the identical box but draw distinct UV regions: the right
+    // `texOffs(44,50)`, the left `texOffs(0,58)` (not mirrors).
     assert_eq!(WARDEN_RIGHT_ARM_POSE.offset, [-13.0, -13.0, 1.0]);
     assert_eq!(WARDEN_LEFT_ARM_POSE.offset, [13.0, -13.0, 1.0]);
-    assert_eq!(WARDEN_ARM_CUBES[0].size, [8.0, 28.0, 8.0]);
+    assert_eq!(WARDEN_RIGHT_ARM_CUBES[0].size, [8.0, 28.0, 8.0]);
+    assert_eq!(WARDEN_RIGHT_ARM_CUBES[0].tex, [44.0, 50.0]);
+    assert!(!WARDEN_RIGHT_ARM_CUBES[0].mirror);
+    assert_eq!(WARDEN_LEFT_ARM_CUBES[0].size, [8.0, 28.0, 8.0]);
+    assert_eq!(WARDEN_LEFT_ARM_CUBES[0].tex, [0.0, 58.0]);
+    assert!(!WARDEN_LEFT_ARM_CUBES[0].mirror);
 
-    // The two 6×13×6 legs (differing only in X origin).
+    // The two 6×13×6 legs differ in X origin and UV (right `texOffs(76,48)`, left `texOffs(76,76)`).
     assert_eq!(WARDEN_RIGHT_LEG_POSE.offset, [-5.9, -13.0, 0.0]);
     assert_eq!(WARDEN_RIGHT_LEG_CUBES[0].min, [-3.1, 0.0, -3.0]);
+    assert_eq!(WARDEN_RIGHT_LEG_CUBES[0].tex, [76.0, 48.0]);
     assert_eq!(WARDEN_LEFT_LEG_POSE.offset, [5.9, -13.0, 0.0]);
     assert_eq!(WARDEN_LEFT_LEG_CUBES[0].min, [-2.9, 0.0, -3.0]);
+    assert_eq!(WARDEN_LEFT_LEG_CUBES[0].tex, [76.0, 76.0]);
 }
 
 #[test]
@@ -338,4 +356,42 @@ fn warden_combat_animations_re_pose_off_the_bind_pose() {
         EntityModelInstance::warden(965, [0.0, 64.0, 0.0], 0.0).with_warden_roar_seconds(-1.0)
     ]);
     assert_eq!(cleared.vertices, resting.vertices);
+}
+
+#[test]
+fn warden_textured_render_matches_vanilla_renderer() {
+    // The warden binds its single base body texture (warden.png, atlas 128×128); the four emissive
+    // overlay layers stay deferred.
+    assert_eq!(
+        warden_textured_layer_passes()[0].texture,
+        WARDEN_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::Warden.vanilla_texture_ref(),
+        Some(WARDEN_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&WARDEN_TEXTURE_REF));
+    assert_eq!(warden_entity_texture_refs(), &[WARDEN_TEXTURE_REF]);
+
+    let images: Vec<EntityModelTextureImage> = warden_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::warden(920, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert!(
+        !mesh.vertices.is_empty(),
+        "the warden emits textured geometry"
+    );
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }

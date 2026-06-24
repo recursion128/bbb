@@ -4,9 +4,9 @@ use super::super::keyframe::{
     sample_bone_offsets_with_scale, scale_vec, AnimationChannel, AnimationDefinition,
     AnimationTarget, BoneAnimation, Keyframe, KeyframeInterpolation,
 };
-use super::{model_cube as cube, ModelCubeDesc, PartPose, FROG_BODY, FROG_EYE, PART_POSE_ZERO};
+use super::{PartPose, FROG_BODY, FROG_EYE, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
@@ -19,46 +19,157 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // geometry and are deferred with the texture-backed path.
 
 // `body`: the `texOffs(3,1)` 7×3×9 box plus the `texOffs(23,22)` 7×0×9 underside plane.
-pub(in crate::entity_models) const FROG_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([-3.5, -2.0, -8.0], [7.0, 3.0, 9.0], FROG_BODY),
-    cube([-3.5, -1.0, -8.0], [7.0, 0.0, 9.0], FROG_BODY),
+pub(in crate::entity_models) const FROG_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-3.5, -2.0, -8.0],
+        [7.0, 3.0, 9.0],
+        FROG_BODY,
+        [7.0, 3.0, 9.0],
+        [3.0, 1.0],
+        false,
+    ),
+    ModelCube::new(
+        [-3.5, -1.0, -8.0],
+        [7.0, 0.0, 9.0],
+        FROG_BODY,
+        [7.0, 0.0, 9.0],
+        [23.0, 22.0],
+        false,
+    ),
 ];
 
 // `head`: the `texOffs(23,13)` 7×0×9 top plane plus the `texOffs(0,13)` 7×3×9 box.
-pub(in crate::entity_models) const FROG_HEAD_CUBES: [ModelCubeDesc; 2] = [
-    cube([-3.5, -1.0, -7.0], [7.0, 0.0, 9.0], FROG_BODY),
-    cube([-3.5, -2.0, -7.0], [7.0, 3.0, 9.0], FROG_BODY),
+pub(in crate::entity_models) const FROG_HEAD_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-3.5, -1.0, -7.0],
+        [7.0, 0.0, 9.0],
+        FROG_BODY,
+        [7.0, 0.0, 9.0],
+        [23.0, 13.0],
+        false,
+    ),
+    ModelCube::new(
+        [-3.5, -2.0, -7.0],
+        [7.0, 3.0, 9.0],
+        FROG_BODY,
+        [7.0, 3.0, 9.0],
+        [0.0, 13.0],
+        false,
+    ),
 ];
 
-// Each eye is the same 3×2×3 box (`texOffs(0,0)`/`(0,5)`).
-pub(in crate::entity_models) const FROG_EYE_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.5, -1.0, -1.5], [3.0, 2.0, 3.0], FROG_EYE)];
+// Each eye is the same 3×2×3 box, but the two eyes draw distinct UV regions (not mirrors): the
+// right eye `texOffs(0,0)`, the left eye `texOffs(0,5)`.
+pub(in crate::entity_models) const FROG_RIGHT_EYE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, -1.0, -1.5],
+    [3.0, 2.0, 3.0],
+    FROG_EYE,
+    [3.0, 2.0, 3.0],
+    [0.0, 0.0],
+    false,
+)];
+pub(in crate::entity_models) const FROG_LEFT_EYE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, -1.0, -1.5],
+    [3.0, 2.0, 3.0],
+    FROG_EYE,
+    [3.0, 2.0, 3.0],
+    [0.0, 5.0],
+    false,
+)];
 
-pub(in crate::entity_models) const FROG_TONGUE_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, 0.0, -7.1], [4.0, 0.0, 7.0], FROG_BODY)];
+pub(in crate::entity_models) const FROG_TONGUE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -7.1],
+    [4.0, 0.0, 7.0],
+    FROG_BODY,
+    [4.0, 0.0, 7.0],
+    [17.0, 13.0],
+    false,
+)];
 
 // `croaking_body`: the `texOffs(26,5)` 7×2×3 pouch box with `CubeDeformation(-0.1)`, so the colored
 // geometry is deflated 0.1 on every face (`min -= grow`, `max += grow` with `grow = -0.1`): min
 // `(-3.5, -0.1, -2.9) + 0.1` = `(-3.4, 0.0, -2.8)`, size `(7, 2, 3) - 0.2` = `(6.8, 1.8, 2.8)`. The
-// pouch is hidden at rest and the `FROG_CROAK` SCALE channel puffs it out and back.
-pub(in crate::entity_models) const FROG_CROAKING_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.4, 0.0, -2.8], [6.8, 1.8, 2.8], FROG_BODY)];
+// `uv_size` stays the integer pre-deformation `addBox` dims `(7, 2, 3)`. The pouch is hidden at rest
+// and the `FROG_CROAK` SCALE channel puffs it out and back.
+pub(in crate::entity_models) const FROG_CROAKING_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-3.4, 0.0, -2.8],
+    [6.8, 1.8, 2.8],
+    FROG_BODY,
+    [7.0, 2.0, 3.0],
+    [26.0, 5.0],
+    false,
+)];
 
-// Both arms share the 2×3×3 box; the webbed hands are 8×0×8 planes that differ only in Z origin.
-pub(in crate::entity_models) const FROG_ARM_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, -1.0], [2.0, 3.0, 3.0], FROG_BODY)];
-pub(in crate::entity_models) const FROG_LEFT_HAND_CUBES: [ModelCubeDesc; 1] =
-    [cube([-4.0, 0.01, -4.0], [8.0, 0.0, 8.0], FROG_BODY)];
-pub(in crate::entity_models) const FROG_RIGHT_HAND_CUBES: [ModelCubeDesc; 1] =
-    [cube([-4.0, 0.01, -5.0], [8.0, 0.0, 8.0], FROG_BODY)];
+// Both arms share the 2×3×3 box (distinct UV regions, not mirrors): the left arm `texOffs(0,32)`,
+// the right arm `texOffs(0,38)`. The webbed hands are 8×0×8 planes differing in Z origin and UV.
+pub(in crate::entity_models) const FROG_LEFT_ARM_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 3.0, 3.0],
+    FROG_BODY,
+    [2.0, 3.0, 3.0],
+    [0.0, 32.0],
+    false,
+)];
+pub(in crate::entity_models) const FROG_RIGHT_ARM_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -1.0],
+    [2.0, 3.0, 3.0],
+    FROG_BODY,
+    [2.0, 3.0, 3.0],
+    [0.0, 38.0],
+    false,
+)];
+pub(in crate::entity_models) const FROG_LEFT_HAND_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.01, -4.0],
+    [8.0, 0.0, 8.0],
+    FROG_BODY,
+    [8.0, 0.0, 8.0],
+    [18.0, 40.0],
+    false,
+)];
+pub(in crate::entity_models) const FROG_RIGHT_HAND_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.01, -5.0],
+    [8.0, 0.0, 8.0],
+    FROG_BODY,
+    [8.0, 0.0, 8.0],
+    [2.0, 40.0],
+    false,
+)];
 
-// The legs differ only in X origin; both feet share one 8×0×8 plane.
-pub(in crate::entity_models) const FROG_LEFT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, -2.0], [3.0, 3.0, 4.0], FROG_BODY)];
-pub(in crate::entity_models) const FROG_RIGHT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, 0.0, -2.0], [3.0, 3.0, 4.0], FROG_BODY)];
-pub(in crate::entity_models) const FROG_FOOT_CUBES: [ModelCubeDesc; 1] =
-    [cube([-4.0, 0.01, -4.0], [8.0, 0.0, 8.0], FROG_BODY)];
+// The legs differ in X origin and UV (left `texOffs(14,25)`, right `texOffs(0,25)`); the two feet
+// share the 8×0×8 plane shape but draw distinct UV regions: the left `texOffs(2,32)`, the right
+// `texOffs(18,32)`.
+pub(in crate::entity_models) const FROG_LEFT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -2.0],
+    [3.0, 3.0, 4.0],
+    FROG_BODY,
+    [3.0, 3.0, 4.0],
+    [14.0, 25.0],
+    false,
+)];
+pub(in crate::entity_models) const FROG_RIGHT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 0.0, -2.0],
+    [3.0, 3.0, 4.0],
+    FROG_BODY,
+    [3.0, 3.0, 4.0],
+    [0.0, 25.0],
+    false,
+)];
+pub(in crate::entity_models) const FROG_LEFT_FOOT_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.01, -4.0],
+    [8.0, 0.0, 8.0],
+    FROG_BODY,
+    [8.0, 0.0, 8.0],
+    [2.0, 32.0],
+    false,
+)];
+pub(in crate::entity_models) const FROG_RIGHT_FOOT_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.01, -4.0],
+    [8.0, 0.0, 8.0],
+    FROG_BODY,
+    [8.0, 0.0, 8.0],
+    [18.0, 32.0],
+    false,
+)];
 
 /// Vanilla `FrogModel.createBodyLayer` rest-pose part poses, rooted at the cubeless `root` part
 /// (`offset(0, 24, 0)`) parenting `body` and the two legs; `body` parents the head (with its eye
@@ -151,71 +262,74 @@ pub(in crate::entity_models) const FROG_RIGHT_FOOT_POSE: PartPose = PartPose {
 /// `left_arm`/`right_arm`, and the two legs are name-addressed by `setup_anim`, so `body` and
 /// `root` carry named children.
 fn frog_root() -> ModelPart {
-    let head = ModelPart::colored(
+    let head = ModelPart::new(
         FROG_HEAD_POSE,
-        &FROG_HEAD_CUBES,
-        vec![ModelPart::new(
-            FROG_EYES_POSE,
-            Vec::new(),
-            vec![
-                (
-                    "left_eye",
-                    ModelPart::leaf_colored(FROG_LEFT_EYE_POSE, &FROG_EYE_CUBES),
-                ),
-                (
-                    "right_eye",
-                    ModelPart::leaf_colored(FROG_RIGHT_EYE_POSE, &FROG_EYE_CUBES),
-                ),
-            ],
+        FROG_HEAD_CUBES.to_vec(),
+        vec![(
+            "0",
+            ModelPart::new(
+                FROG_EYES_POSE,
+                Vec::new(),
+                vec![
+                    (
+                        "left_eye",
+                        ModelPart::leaf(FROG_LEFT_EYE_POSE, FROG_LEFT_EYE_CUBES.to_vec()),
+                    ),
+                    (
+                        "right_eye",
+                        ModelPart::leaf(FROG_RIGHT_EYE_POSE, FROG_RIGHT_EYE_CUBES.to_vec()),
+                    ),
+                ],
+            ),
         )],
     );
-    let left_arm = ModelPart::colored(
+    let left_arm = ModelPart::new(
         FROG_LEFT_ARM_POSE,
-        &FROG_ARM_CUBES,
-        vec![ModelPart::leaf_colored(
-            FROG_LEFT_HAND_POSE,
-            &FROG_LEFT_HAND_CUBES,
+        FROG_LEFT_ARM_CUBES.to_vec(),
+        vec![(
+            "0",
+            ModelPart::leaf(FROG_LEFT_HAND_POSE, FROG_LEFT_HAND_CUBES.to_vec()),
         )],
     );
-    let right_arm = ModelPart::colored(
+    let right_arm = ModelPart::new(
         FROG_RIGHT_ARM_POSE,
-        &FROG_ARM_CUBES,
-        vec![ModelPart::leaf_colored(
-            FROG_RIGHT_HAND_POSE,
-            &FROG_RIGHT_HAND_CUBES,
+        FROG_RIGHT_ARM_CUBES.to_vec(),
+        vec![(
+            "0",
+            ModelPart::leaf(FROG_RIGHT_HAND_POSE, FROG_RIGHT_HAND_CUBES.to_vec()),
         )],
     );
-    let body = ModelPart::colored_named(
+    let body = ModelPart::new(
         FROG_BODY_POSE,
-        &FROG_BODY_CUBES,
+        FROG_BODY_CUBES.to_vec(),
         vec![
             ("head", head),
             (
                 "croaking_body",
-                ModelPart::leaf_colored(FROG_CROAKING_BODY_POSE, &FROG_CROAKING_BODY_CUBES),
+                ModelPart::leaf(FROG_CROAKING_BODY_POSE, FROG_CROAKING_BODY_CUBES.to_vec()),
             ),
             (
                 "tongue",
-                ModelPart::leaf_colored(FROG_TONGUE_POSE, &FROG_TONGUE_CUBES),
+                ModelPart::leaf(FROG_TONGUE_POSE, FROG_TONGUE_CUBES.to_vec()),
             ),
             ("left_arm", left_arm),
             ("right_arm", right_arm),
         ],
     );
-    let left_leg = ModelPart::colored(
+    let left_leg = ModelPart::new(
         FROG_LEFT_LEG_POSE,
-        &FROG_LEFT_LEG_CUBES,
-        vec![ModelPart::leaf_colored(
-            FROG_LEFT_FOOT_POSE,
-            &FROG_FOOT_CUBES,
+        FROG_LEFT_LEG_CUBES.to_vec(),
+        vec![(
+            "0",
+            ModelPart::leaf(FROG_LEFT_FOOT_POSE, FROG_LEFT_FOOT_CUBES.to_vec()),
         )],
     );
-    let right_leg = ModelPart::colored(
+    let right_leg = ModelPart::new(
         FROG_RIGHT_LEG_POSE,
-        &FROG_RIGHT_LEG_CUBES,
-        vec![ModelPart::leaf_colored(
-            FROG_RIGHT_FOOT_POSE,
-            &FROG_FOOT_CUBES,
+        FROG_RIGHT_LEG_CUBES.to_vec(),
+        vec![(
+            "0",
+            ModelPart::leaf(FROG_RIGHT_FOOT_POSE, FROG_RIGHT_FOOT_CUBES.to_vec()),
         )],
     );
     let frog_root = ModelPart::new(

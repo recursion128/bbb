@@ -3,11 +3,9 @@ use super::super::keyframe::{
     sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
     Keyframe, KeyframeInterpolation,
 };
-use super::{
-    model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, WARDEN_BODY, WARDEN_TENDRIL,
-};
+use super::{PartPose, PART_POSE_ZERO, WARDEN_BODY, WARDEN_TENDRIL};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
 
@@ -42,35 +40,99 @@ const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
 // emissive overlay layers (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed
 // path are deferred.
 
-// `body`: one 18×21×11 box.
-pub(in crate::entity_models) const WARDEN_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-9.0, -13.0, -4.0], [18.0, 21.0, 11.0], WARDEN_BODY)];
+// `body`: one 18×21×11 box (`texOffs(0,0)`).
+pub(in crate::entity_models) const WARDEN_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-9.0, -13.0, -4.0],
+    [18.0, 21.0, 11.0],
+    WARDEN_BODY,
+    [18.0, 21.0, 11.0],
+    [0.0, 0.0],
+    false,
+)];
 
 // The two ribcage planes (`texOffs(90,11)`, the left mirrored); both are 9×21×0.
-pub(in crate::entity_models) const WARDEN_RIGHT_RIBCAGE_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, -11.0, -0.1], [9.0, 21.0, 0.0], WARDEN_BODY)];
-pub(in crate::entity_models) const WARDEN_LEFT_RIBCAGE_CUBES: [ModelCubeDesc; 1] =
-    [cube([-7.0, -11.0, -0.1], [9.0, 21.0, 0.0], WARDEN_BODY)];
+pub(in crate::entity_models) const WARDEN_RIGHT_RIBCAGE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -11.0, -0.1],
+    [9.0, 21.0, 0.0],
+    WARDEN_BODY,
+    [9.0, 21.0, 0.0],
+    [90.0, 11.0],
+    false,
+)];
+pub(in crate::entity_models) const WARDEN_LEFT_RIBCAGE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-7.0, -11.0, -0.1],
+    [9.0, 21.0, 0.0],
+    WARDEN_BODY,
+    [9.0, 21.0, 0.0],
+    [90.0, 11.0],
+    true,
+)];
 
-// `head`: one 16×16×10 box.
-pub(in crate::entity_models) const WARDEN_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-8.0, -16.0, -5.0], [16.0, 16.0, 10.0], WARDEN_BODY)];
+// `head`: one 16×16×10 box (`texOffs(0,32)`).
+pub(in crate::entity_models) const WARDEN_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-8.0, -16.0, -5.0],
+    [16.0, 16.0, 10.0],
+    WARDEN_BODY,
+    [16.0, 16.0, 10.0],
+    [0.0, 32.0],
+    false,
+)];
 
-// The two tendril planes (16×16×0), the warden's iconic glow antennae.
-pub(in crate::entity_models) const WARDEN_RIGHT_TENDRIL_CUBES: [ModelCubeDesc; 1] =
-    [cube([-16.0, -13.0, 0.0], [16.0, 16.0, 0.0], WARDEN_TENDRIL)];
-pub(in crate::entity_models) const WARDEN_LEFT_TENDRIL_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, -13.0, 0.0], [16.0, 16.0, 0.0], WARDEN_TENDRIL)];
+// The two tendril planes (16×16×0), the warden's iconic glow antennae. The right tendril is
+// `texOffs(52,32)`, the left `texOffs(58,0)` (distinct UV regions, not mirrors).
+pub(in crate::entity_models) const WARDEN_RIGHT_TENDRIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-16.0, -13.0, 0.0],
+    [16.0, 16.0, 0.0],
+    WARDEN_TENDRIL,
+    [16.0, 16.0, 0.0],
+    [52.0, 32.0],
+    false,
+)];
+pub(in crate::entity_models) const WARDEN_LEFT_TENDRIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -13.0, 0.0],
+    [16.0, 16.0, 0.0],
+    WARDEN_TENDRIL,
+    [16.0, 16.0, 0.0],
+    [58.0, 0.0],
+    false,
+)];
 
-// Both arms share one 8×28×8 box.
-pub(in crate::entity_models) const WARDEN_ARM_CUBES: [ModelCubeDesc; 1] =
-    [cube([-4.0, 0.0, -4.0], [8.0, 28.0, 8.0], WARDEN_BODY)];
+// Both arms add the identical 8×28×8 box (`mirror=false`) but draw from DISTINCT UV regions: the
+// right arm `texOffs(44,50)`, the left arm `texOffs(0,58)` (these are NOT mirrors).
+pub(in crate::entity_models) const WARDEN_RIGHT_ARM_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.0, -4.0],
+    [8.0, 28.0, 8.0],
+    WARDEN_BODY,
+    [8.0, 28.0, 8.0],
+    [44.0, 50.0],
+    false,
+)];
+pub(in crate::entity_models) const WARDEN_LEFT_ARM_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, 0.0, -4.0],
+    [8.0, 28.0, 8.0],
+    WARDEN_BODY,
+    [8.0, 28.0, 8.0],
+    [0.0, 58.0],
+    false,
+)];
 
-// The legs (6×13×6) differ only in X origin.
-pub(in crate::entity_models) const WARDEN_RIGHT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.1, 0.0, -3.0], [6.0, 13.0, 6.0], WARDEN_BODY)];
-pub(in crate::entity_models) const WARDEN_LEFT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.9, 0.0, -3.0], [6.0, 13.0, 6.0], WARDEN_BODY)];
+// The legs (6×13×6) differ in X origin and UV: the right `texOffs(76,48)`, the left `texOffs(76,76)`.
+pub(in crate::entity_models) const WARDEN_RIGHT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-3.1, 0.0, -3.0],
+    [6.0, 13.0, 6.0],
+    WARDEN_BODY,
+    [6.0, 13.0, 6.0],
+    [76.0, 48.0],
+    false,
+)];
+pub(in crate::entity_models) const WARDEN_LEFT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.9, 0.0, -3.0],
+    [6.0, 13.0, 6.0],
+    WARDEN_BODY,
+    [6.0, 13.0, 6.0],
+    [76.0, 76.0],
+    false,
+)];
 
 /// Vanilla `WardenModel.createBodyLayer` rest-pose part poses, rooted at the cubeless `bone` part
 /// (`offset(0, 24, 0)`) parenting the `body` and the two legs; `body` parents the two ribcages, the
@@ -139,40 +201,46 @@ pub(in crate::entity_models) const WARDEN_LEFT_LEG_POSE: PartPose = PartPose {
 /// vanilla `addOrReplaceChild` order. The `bone`, `body`, `head`, both tendrils, both arms, and both
 /// legs are name-addressed by `setup_anim`, so `bone`, `body`, and `head` carry named children.
 fn warden_root() -> ModelPart {
-    let head = ModelPart::colored_named(
+    let head = ModelPart::new(
         WARDEN_HEAD_POSE,
-        &WARDEN_HEAD_CUBES,
+        WARDEN_HEAD_CUBES.to_vec(),
         vec![
             (
                 "right_tendril",
-                ModelPart::leaf_colored(WARDEN_RIGHT_TENDRIL_POSE, &WARDEN_RIGHT_TENDRIL_CUBES),
+                ModelPart::leaf(
+                    WARDEN_RIGHT_TENDRIL_POSE,
+                    WARDEN_RIGHT_TENDRIL_CUBES.to_vec(),
+                ),
             ),
             (
                 "left_tendril",
-                ModelPart::leaf_colored(WARDEN_LEFT_TENDRIL_POSE, &WARDEN_LEFT_TENDRIL_CUBES),
+                ModelPart::leaf(WARDEN_LEFT_TENDRIL_POSE, WARDEN_LEFT_TENDRIL_CUBES.to_vec()),
             ),
         ],
     );
-    let body = ModelPart::colored_named(
+    let body = ModelPart::new(
         WARDEN_BODY_POSE,
-        &WARDEN_BODY_CUBES,
+        WARDEN_BODY_CUBES.to_vec(),
         vec![
             (
                 "right_ribcage",
-                ModelPart::leaf_colored(WARDEN_RIGHT_RIBCAGE_POSE, &WARDEN_RIGHT_RIBCAGE_CUBES),
+                ModelPart::leaf(
+                    WARDEN_RIGHT_RIBCAGE_POSE,
+                    WARDEN_RIGHT_RIBCAGE_CUBES.to_vec(),
+                ),
             ),
             (
                 "left_ribcage",
-                ModelPart::leaf_colored(WARDEN_LEFT_RIBCAGE_POSE, &WARDEN_LEFT_RIBCAGE_CUBES),
+                ModelPart::leaf(WARDEN_LEFT_RIBCAGE_POSE, WARDEN_LEFT_RIBCAGE_CUBES.to_vec()),
             ),
             ("head", head),
             (
                 "right_arm",
-                ModelPart::leaf_colored(WARDEN_RIGHT_ARM_POSE, &WARDEN_ARM_CUBES),
+                ModelPart::leaf(WARDEN_RIGHT_ARM_POSE, WARDEN_RIGHT_ARM_CUBES.to_vec()),
             ),
             (
                 "left_arm",
-                ModelPart::leaf_colored(WARDEN_LEFT_ARM_POSE, &WARDEN_ARM_CUBES),
+                ModelPart::leaf(WARDEN_LEFT_ARM_POSE, WARDEN_LEFT_ARM_CUBES.to_vec()),
             ),
         ],
     );
@@ -183,11 +251,11 @@ fn warden_root() -> ModelPart {
             ("body", body),
             (
                 "right_leg",
-                ModelPart::leaf_colored(WARDEN_RIGHT_LEG_POSE, &WARDEN_RIGHT_LEG_CUBES),
+                ModelPart::leaf(WARDEN_RIGHT_LEG_POSE, WARDEN_RIGHT_LEG_CUBES.to_vec()),
             ),
             (
                 "left_leg",
-                ModelPart::leaf_colored(WARDEN_LEFT_LEG_POSE, &WARDEN_LEFT_LEG_CUBES),
+                ModelPart::leaf(WARDEN_LEFT_LEG_POSE, WARDEN_LEFT_LEG_CUBES.to_vec()),
             ),
         ],
     );

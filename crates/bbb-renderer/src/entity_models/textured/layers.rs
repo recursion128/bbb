@@ -883,6 +883,41 @@ pub(in crate::entity_models) fn guardian_textured_layer_passes(
     )]
 }
 
+pub(in crate::entity_models) fn armadillo_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    // The adult and baby armadillo share the UV layout; the baby binds its own texture.
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        if baby {
+            ARMADILLO_BABY_TEXTURE_REF
+        } else {
+            ARMADILLO_TEXTURE_REF
+        },
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn frog_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    // The frog binds its single base texture (the temperate variant); the warm/cold colour variants
+    // share this geometry and stay deferred.
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        FROG_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn warden_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    // The warden's base body texture; the four emissive overlay layers (tendrils, heart,
+    // bioluminescent, pulsating spots) stay deferred, so this binds warden.png on the cutout pass.
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        WARDEN_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn wind_charge_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     // Vanilla draws the wind charge with `entityTranslucent` + the scrolling breeze-wind texture; the
     // scroll/translucency are deferred, so this binds the static wind_charge.png on the cutout pass.

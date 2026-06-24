@@ -6,36 +6,62 @@ fn frog_geometry_matches_vanilla_26_1_body_layer() {
     // `offset(0, 24, 0)` parenting `body` and the two legs.
     assert_eq!(FROG_ROOT_POSE.offset, [0.0, 24.0, 0.0]);
 
-    // `body`: the 7×3×9 box + the 7×0×9 underside plane, parenting head / tongue / two arms.
+    // `body`: the `texOffs(3,1)` 7×3×9 box + the `texOffs(23,22)` 7×0×9 underside plane, parenting
+    // head / tongue / two arms.
     assert_eq!(FROG_BODY_POSE.offset, [0.0, -2.0, 4.0]);
     assert_eq!(FROG_BODY_CUBES.len(), 2);
     assert_eq!(FROG_BODY_CUBES[0].min, [-3.5, -2.0, -8.0]);
     assert_eq!(FROG_BODY_CUBES[0].size, [7.0, 3.0, 9.0]);
+    assert_eq!(FROG_BODY_CUBES[0].tex, [3.0, 1.0]);
     assert_eq!(FROG_BODY_CUBES[1].size, [7.0, 0.0, 9.0]);
+    assert_eq!(FROG_BODY_CUBES[1].tex, [23.0, 22.0]);
 
-    // `head` (7×0×9 plane + 7×3×9 box) parents the `eyes` pivot.
+    // `head` (`texOffs(23,13)` 7×0×9 plane + `texOffs(0,13)` 7×3×9 box) parents the `eyes` pivot.
     assert_eq!(FROG_HEAD_POSE.offset, [0.0, -2.0, -1.0]);
     assert_eq!(FROG_HEAD_CUBES.len(), 2);
+    assert_eq!(FROG_HEAD_CUBES[0].tex, [23.0, 13.0]);
     assert_eq!(FROG_HEAD_CUBES[1].min, [-3.5, -2.0, -7.0]);
+    assert_eq!(FROG_HEAD_CUBES[1].tex, [0.0, 13.0]);
 
-    // The `eyes` empty pivot parents the two 3×2×3 eyes at ±X.
+    // The `eyes` empty pivot parents the two 3×2×3 eyes at ±X; the right eye `texOffs(0,0)`, the
+    // left `texOffs(0,5)` (distinct UV regions, not mirrors).
     assert_eq!(FROG_EYES_POSE.offset, [-0.5, 0.0, 2.0]);
     assert_eq!(FROG_LEFT_EYE_POSE.offset, [-1.5, -3.0, -6.5]);
     assert_eq!(FROG_RIGHT_EYE_POSE.offset, [2.5, -3.0, -6.5]);
-    assert_eq!(FROG_EYE_CUBES[0].min, [-1.5, -1.0, -1.5]);
-    assert_eq!(FROG_EYE_CUBES[0].size, [3.0, 2.0, 3.0]);
+    assert_eq!(FROG_RIGHT_EYE_CUBES[0].min, [-1.5, -1.0, -1.5]);
+    assert_eq!(FROG_RIGHT_EYE_CUBES[0].size, [3.0, 2.0, 3.0]);
+    assert_eq!(FROG_RIGHT_EYE_CUBES[0].tex, [0.0, 0.0]);
+    assert_eq!(FROG_LEFT_EYE_CUBES[0].size, [3.0, 2.0, 3.0]);
+    assert_eq!(FROG_LEFT_EYE_CUBES[0].tex, [0.0, 5.0]);
 
-    // The arms (2×3×3) each parent an 8×0×8 webbed hand; the hands differ only in Z origin.
+    // The tongue plane `texOffs(17,13)` and the croaking pouch `texOffs(26,5)` (its `uv_size` is the
+    // integer pre-deformation `addBox` dims `(7, 2, 3)`).
+    assert_eq!(FROG_TONGUE_CUBES[0].tex, [17.0, 13.0]);
+    assert_eq!(FROG_CROAKING_BODY_CUBES[0].tex, [26.0, 5.0]);
+    assert_eq!(FROG_CROAKING_BODY_CUBES[0].uv_size, [7.0, 2.0, 3.0]);
+
+    // The arms (2×3×3) each parent an 8×0×8 webbed hand; the hands differ in Z origin and UV. The
+    // arms draw distinct UV regions: the left `texOffs(0,32)`, the right `texOffs(0,38)`.
     assert_eq!(FROG_LEFT_ARM_POSE.offset, [4.0, -1.0, -6.5]);
     assert_eq!(FROG_RIGHT_ARM_POSE.offset, [-4.0, -1.0, -6.5]);
+    assert_eq!(FROG_LEFT_ARM_CUBES[0].tex, [0.0, 32.0]);
+    assert_eq!(FROG_RIGHT_ARM_CUBES[0].tex, [0.0, 38.0]);
     assert_eq!(FROG_LEFT_HAND_CUBES[0].min, [-4.0, 0.01, -4.0]);
+    assert_eq!(FROG_LEFT_HAND_CUBES[0].tex, [18.0, 40.0]);
     assert_eq!(FROG_RIGHT_HAND_CUBES[0].min, [-4.0, 0.01, -5.0]);
+    assert_eq!(FROG_RIGHT_HAND_CUBES[0].tex, [2.0, 40.0]);
 
-    // The legs (differ only in X origin) each parent an 8×0×8 foot plane.
+    // The legs (differ in X origin and UV: left `texOffs(14,25)`, right `texOffs(0,25)`) each parent
+    // an 8×0×8 foot plane; the feet draw distinct UV regions (left `texOffs(2,32)`, right
+    // `texOffs(18,32)`).
     assert_eq!(FROG_LEFT_LEG_POSE.offset, [3.5, -3.0, 4.0]);
     assert_eq!(FROG_LEFT_LEG_CUBES[0].min, [-1.0, 0.0, -2.0]);
+    assert_eq!(FROG_LEFT_LEG_CUBES[0].tex, [14.0, 25.0]);
     assert_eq!(FROG_RIGHT_LEG_CUBES[0].min, [-2.0, 0.0, -2.0]);
-    assert_eq!(FROG_FOOT_CUBES[0].size, [8.0, 0.0, 8.0]);
+    assert_eq!(FROG_RIGHT_LEG_CUBES[0].tex, [0.0, 25.0]);
+    assert_eq!(FROG_LEFT_FOOT_CUBES[0].size, [8.0, 0.0, 8.0]);
+    assert_eq!(FROG_LEFT_FOOT_CUBES[0].tex, [2.0, 32.0]);
+    assert_eq!(FROG_RIGHT_FOOT_CUBES[0].tex, [18.0, 32.0]);
 }
 
 #[test]
@@ -321,4 +347,39 @@ fn frog_idle_water_reposes_the_limbs_off_the_bind_pose() {
         EntityModelInstance::frog(974, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(-1.0)
     ]);
     assert_eq!(cleared.vertices, resting.vertices);
+}
+
+#[test]
+fn frog_textured_render_matches_vanilla_renderer() {
+    // The frog binds its single base texture (the temperate variant, atlas 48×48); the warm/cold
+    // colour variants share this geometry and stay deferred.
+    assert_eq!(frog_textured_layer_passes()[0].texture, FROG_TEXTURE_REF);
+    assert_eq!(
+        EntityModelKind::Frog.vanilla_texture_ref(),
+        Some(FROG_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&FROG_TEXTURE_REF));
+    assert_eq!(frog_entity_texture_refs(), &[FROG_TEXTURE_REF]);
+
+    let images: Vec<EntityModelTextureImage> = frog_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert!(
+        !mesh.vertices.is_empty(),
+        "the frog emits textured geometry"
+    );
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }

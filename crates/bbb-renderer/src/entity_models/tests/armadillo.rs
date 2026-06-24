@@ -6,78 +6,102 @@ fn adult_armadillo_geometry_matches_vanilla_26_1_body_layer() {
     // the four legs directly; the body parents the tail and head, and the head parents the head
     // cube and the two ear pivots.
 
-    // `body` (offset (0, 21, 4)): a `CubeDeformation(0.3)` shell over the bare 8×8×12 box.
+    // `body` (offset (0, 21, 4)): a `CubeDeformation(0.3)` shell (`texOffs(0,20)`) over the bare
+    // 8×8×12 box (`texOffs(0,40)`); both `uv_size` stay the integer dims (8, 8, 12).
     assert_eq!(ADULT_ARMADILLO_BODY_POSE.offset, [0.0, 21.0, 4.0]);
     assert_eq!(ADULT_ARMADILLO_BODY_CUBES.len(), 2);
     assert_eq!(ADULT_ARMADILLO_BODY_CUBES[0].min, [-4.3, -7.3, -10.3]);
     assert_eq!(ADULT_ARMADILLO_BODY_CUBES[0].size, [8.6, 8.6, 12.6]);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES[0].uv_size, [8.0, 8.0, 12.0]);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES[0].tex, [0.0, 20.0]);
     assert_eq!(ADULT_ARMADILLO_BODY_CUBES[1].min, [-4.0, -7.0, -10.0]);
     assert_eq!(ADULT_ARMADILLO_BODY_CUBES[1].size, [8.0, 8.0, 12.0]);
+    assert_eq!(ADULT_ARMADILLO_BODY_CUBES[1].tex, [0.0, 40.0]);
 
-    // `tail`: the 1×6×1 plume, pitched down by 0.5061 rad.
+    // `tail`: the 1×6×1 plume (`texOffs(44,53)`), pitched down by 0.5061 rad.
     assert_eq!(ADULT_ARMADILLO_TAIL_POSE.offset, [0.0, -3.0, 1.0]);
     assert_eq!(ADULT_ARMADILLO_TAIL_POSE.rotation, [0.5061, 0.0, 0.0]);
     assert_eq!(ADULT_ARMADILLO_TAIL_CUBES[0].size, [1.0, 6.0, 1.0]);
+    assert_eq!(ADULT_ARMADILLO_TAIL_CUBES[0].tex, [44.0, 53.0]);
 
     // `head` (offset (0, -2, -11)): a bare pivot parenting the head cube and the two ears.
     assert_eq!(ADULT_ARMADILLO_HEAD_POSE.offset, [0.0, -2.0, -11.0]);
 
-    // `head_cube`: the 3×5×2 snout, pitched up by -0.3927 rad.
+    // `head_cube`: the 3×5×2 snout (`texOffs(43,15)`), pitched up by -0.3927 rad.
     assert_eq!(ADULT_ARMADILLO_HEAD_CUBE_POSE.rotation, [-0.3927, 0.0, 0.0]);
     assert_eq!(ADULT_ARMADILLO_HEAD_CUBES[0].size, [3.0, 5.0, 2.0]);
+    assert_eq!(ADULT_ARMADILLO_HEAD_CUBES[0].tex, [43.0, 15.0]);
 
-    // The two ear pivots and their rotated 2×5×0 ear planes.
+    // The two ear pivots and their rotated 2×5×0 ear planes (`texOffs(43,10)` / `texOffs(47,10)`).
     assert_eq!(ADULT_ARMADILLO_RIGHT_EAR_POSE.offset, [-1.0, -1.0, 0.0]);
     assert_eq!(
         ADULT_ARMADILLO_RIGHT_EAR_CUBE_POSE.rotation,
         [0.1886, -0.3864, -0.0718]
     );
     assert_eq!(ADULT_ARMADILLO_RIGHT_EAR_CUBES[0].min, [-2.0, -3.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_RIGHT_EAR_CUBES[0].tex, [43.0, 10.0]);
     assert_eq!(ADULT_ARMADILLO_LEFT_EAR_POSE.offset, [1.0, -2.0, 0.0]);
     assert_eq!(
         ADULT_ARMADILLO_LEFT_EAR_CUBE_POSE.rotation,
         [0.1886, 0.3864, 0.0718]
     );
     assert_eq!(ADULT_ARMADILLO_LEFT_EAR_CUBES[0].size, [2.0, 5.0, 0.0]);
+    assert_eq!(ADULT_ARMADILLO_LEFT_EAR_CUBES[0].tex, [47.0, 10.0]);
 
-    // The four 2×3×2 legs at the corner pivots.
+    // The four 2×3×2 legs at the corner pivots draw distinct UV regions (none are mirrors): the
+    // right/left hind `texOffs(51,31)`/`(42,31)`, the right/left front `texOffs(51,43)`/`(42,43)`.
     assert_eq!(
         ADULT_ARMADILLO_RIGHT_HIND_LEG_POSE.offset,
         [-2.0, 21.0, 4.0]
     );
+    assert_eq!(
+        ADULT_ARMADILLO_RIGHT_HIND_LEG_CUBES[0].size,
+        [2.0, 3.0, 2.0]
+    );
+    assert_eq!(ADULT_ARMADILLO_RIGHT_HIND_LEG_CUBES[0].tex, [51.0, 31.0]);
     assert_eq!(ADULT_ARMADILLO_LEFT_HIND_LEG_POSE.offset, [2.0, 21.0, 4.0]);
+    assert_eq!(ADULT_ARMADILLO_LEFT_HIND_LEG_CUBES[0].tex, [42.0, 31.0]);
     assert_eq!(
         ADULT_ARMADILLO_RIGHT_FRONT_LEG_POSE.offset,
         [-2.0, 21.0, -4.0]
     );
+    assert_eq!(ADULT_ARMADILLO_RIGHT_FRONT_LEG_CUBES[0].tex, [51.0, 43.0]);
     assert_eq!(
         ADULT_ARMADILLO_LEFT_FRONT_LEG_POSE.offset,
         [2.0, 21.0, -4.0]
     );
-    assert_eq!(ADULT_ARMADILLO_LEG_CUBES[0].size, [2.0, 3.0, 2.0]);
+    assert_eq!(ADULT_ARMADILLO_LEFT_FRONT_LEG_CUBES[0].tex, [42.0, 43.0]);
 }
 
 #[test]
 fn baby_armadillo_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `BabyArmadilloModel.createBodyLayer` (atlas 64×64): smaller geometry, the ears
     // parented to the head cube, and the front legs at swapped X origins.
+    // The shell box `texOffs(0,0)` keeps the integer dims (5, 4, 7); the bare box `texOffs(0,11)`.
     assert_eq!(BABY_ARMADILLO_BODY_POSE.offset, [0.0, 20.0, 0.5]);
     assert_eq!(BABY_ARMADILLO_BODY_CUBES[0].min, [-2.8, -2.3, -3.8]);
     assert_eq!(BABY_ARMADILLO_BODY_CUBES[0].size, [5.6, 4.6, 7.6]);
+    assert_eq!(BABY_ARMADILLO_BODY_CUBES[0].uv_size, [5.0, 4.0, 7.0]);
+    assert_eq!(BABY_ARMADILLO_BODY_CUBES[0].tex, [0.0, 0.0]);
     assert_eq!(BABY_ARMADILLO_BODY_CUBES[1].size, [5.0, 4.0, 6.0]);
+    assert_eq!(BABY_ARMADILLO_BODY_CUBES[1].tex, [0.0, 11.0]);
 
-    // `tail` pivot (offset (0, 0, 3.4)) parents the 1×1×4 stub pitched by -1.0472 rad.
+    // `tail` pivot (offset (0, 0, 3.4)) parents the 1×1×4 stub (`texOffs(22,11)`) pitched by
+    // -1.0472 rad.
     assert_eq!(BABY_ARMADILLO_TAIL_POSE.offset, [0.0, 0.0, 3.4]);
     assert_eq!(BABY_ARMADILLO_TAIL_CUBE_POSE.rotation, [-1.0472, 0.0, 0.0]);
     assert_eq!(BABY_ARMADILLO_TAIL_CUBES[0].size, [1.0, 1.0, 4.0]);
+    assert_eq!(BABY_ARMADILLO_TAIL_CUBES[0].tex, [22.0, 11.0]);
 
-    // `head` pivot parents the head cube (pitched up 0.7417649 rad) which parents the two ears.
+    // `head` pivot parents the head cube (`texOffs(20,17)`, pitched up 0.7417649 rad) which parents
+    // the two ears. Both ears share `texOffs(28,8)`; the right ear is added with `mirror()`.
     assert_eq!(BABY_ARMADILLO_HEAD_POSE.offset, [0.0, 0.0, -3.2]);
     assert_eq!(
         BABY_ARMADILLO_HEAD_CUBE_POSE.rotation,
         [0.7417649, 0.0, 0.0]
     );
     assert_eq!(BABY_ARMADILLO_HEAD_CUBES[0].size, [2.0, 2.0, 4.0]);
+    assert_eq!(BABY_ARMADILLO_HEAD_CUBES[0].tex, [20.0, 17.0]);
     assert_eq!(
         BABY_ARMADILLO_RIGHT_EAR_POSE.rotation,
         [-0.4363, -0.1134, 0.0524]
@@ -87,8 +111,14 @@ fn baby_armadillo_geometry_matches_vanilla_26_1_body_layer() {
         [-0.4363, 0.1134, -0.0524]
     );
     assert_eq!(BABY_ARMADILLO_RIGHT_EAR_CUBES[0].size, [2.0, 3.0, 0.0]);
+    assert_eq!(BABY_ARMADILLO_RIGHT_EAR_CUBES[0].tex, [28.0, 8.0]);
+    assert!(BABY_ARMADILLO_RIGHT_EAR_CUBES[0].mirror);
+    assert_eq!(BABY_ARMADILLO_LEFT_EAR_CUBES[0].tex, [28.0, 8.0]);
+    assert!(!BABY_ARMADILLO_LEFT_EAR_CUBES[0].mirror);
 
-    // The front legs carry vanilla's swapped X origins (right at +1.5, left at -1.5).
+    // The front legs carry vanilla's swapped X origins (right at +1.5, left at -1.5). The four legs
+    // draw distinct UV regions AND mirror flags: the right/left hind `texOffs(20,27)` mirrored /
+    // `texOffs(20,27)`, the right front `texOffs(20,23)`, the left front `texOffs(24,0)` mirrored.
     assert_eq!(
         BABY_ARMADILLO_RIGHT_FRONT_LEG_POSE.offset,
         [-1.5, 22.0, 2.5]
@@ -96,7 +126,15 @@ fn baby_armadillo_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(BABY_ARMADILLO_LEFT_FRONT_LEG_POSE.offset, [1.5, 22.0, 2.5]);
     assert_eq!(BABY_ARMADILLO_RIGHT_HIND_LEG_POSE.offset, [1.5, 22.0, -1.5]);
     assert_eq!(BABY_ARMADILLO_LEFT_HIND_LEG_POSE.offset, [-1.5, 22.0, -1.5]);
-    assert_eq!(BABY_ARMADILLO_LEG_CUBES[0].size, [2.0, 2.0, 2.0]);
+    assert_eq!(BABY_ARMADILLO_RIGHT_HIND_LEG_CUBES[0].size, [2.0, 2.0, 2.0]);
+    assert_eq!(BABY_ARMADILLO_RIGHT_HIND_LEG_CUBES[0].tex, [20.0, 27.0]);
+    assert!(BABY_ARMADILLO_RIGHT_HIND_LEG_CUBES[0].mirror);
+    assert_eq!(BABY_ARMADILLO_LEFT_HIND_LEG_CUBES[0].tex, [20.0, 27.0]);
+    assert!(!BABY_ARMADILLO_LEFT_HIND_LEG_CUBES[0].mirror);
+    assert_eq!(BABY_ARMADILLO_RIGHT_FRONT_LEG_CUBES[0].tex, [20.0, 23.0]);
+    assert!(!BABY_ARMADILLO_RIGHT_FRONT_LEG_CUBES[0].mirror);
+    assert_eq!(BABY_ARMADILLO_LEFT_FRONT_LEG_CUBES[0].tex, [24.0, 0.0]);
+    assert!(BABY_ARMADILLO_LEFT_FRONT_LEG_CUBES[0].mirror);
 }
 
 #[test]
@@ -554,4 +592,72 @@ fn baby_armadillo_walk_moves_the_limbs_and_composes_with_the_look() {
         walking_looking.vertices[144..],
         "the legs share the same walk regardless of the look"
     );
+}
+
+#[test]
+fn armadillo_textured_render_matches_vanilla_renderer() {
+    // The adult and baby armadillo share the UV layout but bind their own 64×64 textures.
+    assert_eq!(
+        armadillo_textured_layer_passes(false)[0].texture,
+        ARMADILLO_TEXTURE_REF
+    );
+    assert_eq!(
+        armadillo_textured_layer_passes(true)[0].texture,
+        ARMADILLO_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::Armadillo {
+            baby: false,
+            rolled_up: false,
+        }
+        .vanilla_texture_ref(),
+        Some(ARMADILLO_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Armadillo {
+            baby: true,
+            rolled_up: false,
+        }
+        .vanilla_texture_ref(),
+        Some(ARMADILLO_BABY_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&ARMADILLO_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&ARMADILLO_BABY_TEXTURE_REF));
+    assert_eq!(
+        armadillo_entity_texture_refs(),
+        &[ARMADILLO_TEXTURE_REF, ARMADILLO_BABY_TEXTURE_REF]
+    );
+
+    let images: Vec<EntityModelTextureImage> = armadillo_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    // Both ages, both rolled/unrolled, emit textured geometry tinted white.
+    for baby in [false, true] {
+        for rolled_up in [false, true] {
+            let mesh = entity_model_textured_mesh(
+                &[EntityModelInstance::armadillo(
+                    980,
+                    [0.0, 64.0, 0.0],
+                    0.0,
+                    baby,
+                    rolled_up,
+                )],
+                &atlas,
+            );
+            assert!(
+                !mesh.vertices.is_empty(),
+                "baby={baby} rolled_up={rolled_up} emits textured geometry"
+            );
+            assert!(mesh
+                .vertices
+                .iter()
+                .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        }
+    }
 }

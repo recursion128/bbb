@@ -3,11 +3,9 @@ use super::super::keyframe::{
     pos_vec, sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget,
     BoneAnimation, Keyframe, KeyframeInterpolation,
 };
-use super::{
-    model_cube as cube, ModelCubeDesc, PartPose, ARMADILLO_SHELL, ARMADILLO_SKIN, PART_POSE_ZERO,
-};
+use super::{PartPose, ARMADILLO_SHELL, ARMADILLO_SKIN, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `AdultArmadilloModel`/`BabyArmadilloModel.createBodyLayer` (atlas 64×64). The mesh
 // root parents the body and the four legs directly (no wrapping bone); the body parents the tail
@@ -31,38 +29,115 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 
 // ----- Adult -----
 
-// `body` (offset (0, 21, 4)): a `CubeDeformation(0.3)` armor shell wrapping the bare 8×8×12 box.
-pub(in crate::entity_models) const ADULT_ARMADILLO_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([-4.3, -7.3, -10.3], [8.6, 8.6, 12.6], ARMADILLO_SHELL),
-    cube([-4.0, -7.0, -10.0], [8.0, 8.0, 12.0], ARMADILLO_SHELL),
+// `body` (offset (0, 21, 4)): a `CubeDeformation(0.3)` armor shell (`texOffs(0,20)`) wrapping the
+// bare 8×8×12 box (`texOffs(0,40)`); both `uv_size` stay the integer `addBox` dims (8, 8, 12).
+pub(in crate::entity_models) const ADULT_ARMADILLO_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-4.3, -7.3, -10.3],
+        [8.6, 8.6, 12.6],
+        ARMADILLO_SHELL,
+        [8.0, 8.0, 12.0],
+        [0.0, 20.0],
+        false,
+    ),
+    ModelCube::new(
+        [-4.0, -7.0, -10.0],
+        [8.0, 8.0, 12.0],
+        ARMADILLO_SHELL,
+        [8.0, 8.0, 12.0],
+        [0.0, 40.0],
+        false,
+    ),
 ];
 
-// `tail`: a 1×6×1 plume pitched down by `0.5061` rad.
-pub(in crate::entity_models) const ADULT_ARMADILLO_TAIL_CUBES: [ModelCubeDesc; 1] = [cube(
+// `tail`: a 1×6×1 plume (`texOffs(44,53)`) pitched down by `0.5061` rad.
+pub(in crate::entity_models) const ADULT_ARMADILLO_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-0.5, -0.0865, 0.0933],
     [1.0, 6.0, 1.0],
     ARMADILLO_SKIN,
+    [1.0, 6.0, 1.0],
+    [44.0, 53.0],
+    false,
 )];
 
-// `head_cube`: the 3×5×2 snout, pitched up by `-0.3927` rad.
-pub(in crate::entity_models) const ADULT_ARMADILLO_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.5, -1.0, -1.0], [3.0, 5.0, 2.0], ARMADILLO_SKIN)];
+// `head_cube`: the 3×5×2 snout (`texOffs(43,15)`), pitched up by `-0.3927` rad.
+pub(in crate::entity_models) const ADULT_ARMADILLO_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, -1.0, -1.0],
+    [3.0, 5.0, 2.0],
+    ARMADILLO_SKIN,
+    [3.0, 5.0, 2.0],
+    [43.0, 15.0],
+    false,
+)];
 
 // The two 2×5×0 ear planes (`texOffs(43,10)` / `texOffs(47,10)`).
-pub(in crate::entity_models) const ADULT_ARMADILLO_RIGHT_EAR_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, -3.0, 0.0], [2.0, 5.0, 0.0], ARMADILLO_SKIN)];
-pub(in crate::entity_models) const ADULT_ARMADILLO_LEFT_EAR_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, -3.0, 0.0], [2.0, 5.0, 0.0], ARMADILLO_SKIN)];
+pub(in crate::entity_models) const ADULT_ARMADILLO_RIGHT_EAR_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-2.0, -3.0, 0.0],
+        [2.0, 5.0, 0.0],
+        ARMADILLO_SKIN,
+        [2.0, 5.0, 0.0],
+        [43.0, 10.0],
+        false,
+    )];
+pub(in crate::entity_models) const ADULT_ARMADILLO_LEFT_EAR_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [0.0, -3.0, 0.0],
+        [2.0, 5.0, 0.0],
+        ARMADILLO_SKIN,
+        [2.0, 5.0, 0.0],
+        [47.0, 10.0],
+        false,
+    )];
 
-// The shared 2×3×2 leg box (all four legs reuse it, differing only in pivot).
-pub(in crate::entity_models) const ADULT_ARMADILLO_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, -1.0], [2.0, 3.0, 2.0], ARMADILLO_SHELL)];
+// The four 2×3×2 leg boxes share the box shape but draw distinct UV regions (none are mirrors): the
+// right/left hind `texOffs(51,31)`/`(42,31)`, the right/left front `texOffs(51,43)`/`(42,43)`.
+pub(in crate::entity_models) const ADULT_ARMADILLO_RIGHT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 3.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 3.0, 2.0],
+        [51.0, 31.0],
+        false,
+    )];
+pub(in crate::entity_models) const ADULT_ARMADILLO_LEFT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 3.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 3.0, 2.0],
+        [42.0, 31.0],
+        false,
+    )];
+pub(in crate::entity_models) const ADULT_ARMADILLO_RIGHT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 3.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 3.0, 2.0],
+        [51.0, 43.0],
+        false,
+    )];
+pub(in crate::entity_models) const ADULT_ARMADILLO_LEFT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 3.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 3.0, 2.0],
+        [42.0, 43.0],
+        false,
+    )];
 
-// Adult shell ball `cube` (root child at (0, 24, 0)): a plain 10×10×10 box, no deformation.
-pub(in crate::entity_models) const ADULT_ARMADILLO_BALL_CUBES: [ModelCubeDesc; 1] = [cube(
+// Adult shell ball `cube` (root child at (0, 24, 0)): a plain 10×10×10 box (`texOffs(0,0)`), no
+// deformation.
+pub(in crate::entity_models) const ADULT_ARMADILLO_BALL_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-5.0, -10.0, -6.0],
     [10.0, 10.0, 10.0],
     ARMADILLO_SHELL,
+    [10.0, 10.0, 10.0],
+    [0.0, 0.0],
+    false,
 )];
 
 /// Vanilla `AdultArmadilloModel.createBodyLayer` rest-pose part poses. The root parents the `body`
@@ -143,9 +218,9 @@ fn adult_armadillo_head() -> ModelPart {
         vec![
             (
                 "head_cube",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     ADULT_ARMADILLO_HEAD_CUBE_POSE,
-                    &ADULT_ARMADILLO_HEAD_CUBES,
+                    ADULT_ARMADILLO_HEAD_CUBES.to_vec(),
                 ),
             ),
             (
@@ -155,9 +230,9 @@ fn adult_armadillo_head() -> ModelPart {
                     Vec::new(),
                     vec![(
                         "right_ear_cube",
-                        ModelPart::leaf_colored(
+                        ModelPart::leaf(
                             ADULT_ARMADILLO_RIGHT_EAR_CUBE_POSE,
-                            &ADULT_ARMADILLO_RIGHT_EAR_CUBES,
+                            ADULT_ARMADILLO_RIGHT_EAR_CUBES.to_vec(),
                         ),
                     )],
                 ),
@@ -169,9 +244,9 @@ fn adult_armadillo_head() -> ModelPart {
                     Vec::new(),
                     vec![(
                         "left_ear_cube",
-                        ModelPart::leaf_colored(
+                        ModelPart::leaf(
                             ADULT_ARMADILLO_LEFT_EAR_CUBE_POSE,
-                            &ADULT_ARMADILLO_LEFT_EAR_CUBES,
+                            ADULT_ARMADILLO_LEFT_EAR_CUBES.to_vec(),
                         ),
                     )],
                 ),
@@ -184,13 +259,16 @@ fn adult_armadillo_head() -> ModelPart {
 /// `head`) and the four legs, in vanilla `addOrReplaceChild` order. The body, tail, head, and four
 /// legs are all name-addressed by `setup_anim`.
 fn adult_armadillo_root() -> ModelPart {
-    let body = ModelPart::colored_named(
+    let body = ModelPart::new(
         ADULT_ARMADILLO_BODY_POSE,
-        &ADULT_ARMADILLO_BODY_CUBES,
+        ADULT_ARMADILLO_BODY_CUBES.to_vec(),
         vec![
             (
                 "tail",
-                ModelPart::leaf_colored(ADULT_ARMADILLO_TAIL_POSE, &ADULT_ARMADILLO_TAIL_CUBES),
+                ModelPart::leaf(
+                    ADULT_ARMADILLO_TAIL_POSE,
+                    ADULT_ARMADILLO_TAIL_CUBES.to_vec(),
+                ),
             ),
             ("head", adult_armadillo_head()),
         ],
@@ -202,30 +280,30 @@ fn adult_armadillo_root() -> ModelPart {
             ("body", body),
             (
                 "right_hind_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     ADULT_ARMADILLO_RIGHT_HIND_LEG_POSE,
-                    &ADULT_ARMADILLO_LEG_CUBES,
+                    ADULT_ARMADILLO_RIGHT_HIND_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "left_hind_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     ADULT_ARMADILLO_LEFT_HIND_LEG_POSE,
-                    &ADULT_ARMADILLO_LEG_CUBES,
+                    ADULT_ARMADILLO_LEFT_HIND_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     ADULT_ARMADILLO_RIGHT_FRONT_LEG_POSE,
-                    &ADULT_ARMADILLO_LEG_CUBES,
+                    ADULT_ARMADILLO_RIGHT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     ADULT_ARMADILLO_LEFT_FRONT_LEG_POSE,
-                    &ADULT_ARMADILLO_LEG_CUBES,
+                    ADULT_ARMADILLO_LEFT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
         ],
@@ -253,21 +331,24 @@ fn adult_armadillo_rolled_root() -> ModelPart {
             ),
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     ADULT_ARMADILLO_RIGHT_FRONT_LEG_POSE,
-                    &ADULT_ARMADILLO_LEG_CUBES,
+                    ADULT_ARMADILLO_RIGHT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     ADULT_ARMADILLO_LEFT_FRONT_LEG_POSE,
-                    &ADULT_ARMADILLO_LEG_CUBES,
+                    ADULT_ARMADILLO_LEFT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "cube",
-                ModelPart::leaf_colored(ADULT_ARMADILLO_BALL_POSE, &ADULT_ARMADILLO_BALL_CUBES),
+                ModelPart::leaf(
+                    ADULT_ARMADILLO_BALL_POSE,
+                    ADULT_ARMADILLO_BALL_CUBES.to_vec(),
+                ),
             ),
         ],
     )
@@ -275,34 +356,118 @@ fn adult_armadillo_rolled_root() -> ModelPart {
 
 // ----- Baby -----
 
-// `body` (offset (0, 20, 0.5)): a `CubeDeformation(0.3)` armor shell over the bare 5×4×6 box.
-pub(in crate::entity_models) const BABY_ARMADILLO_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([-2.8, -2.3, -3.8], [5.6, 4.6, 7.6], ARMADILLO_SHELL),
-    cube([-2.5, -2.0, -3.0], [5.0, 4.0, 6.0], ARMADILLO_SHELL),
+// `body` (offset (0, 20, 0.5)): a `CubeDeformation(0.3)` armor shell (`texOffs(0,0)`, integer dims
+// 5×4×7) over the bare 5×4×6 box (`texOffs(0,11)`).
+pub(in crate::entity_models) const BABY_ARMADILLO_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-2.8, -2.3, -3.8],
+        [5.6, 4.6, 7.6],
+        ARMADILLO_SHELL,
+        [5.0, 4.0, 7.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.5, -2.0, -3.0],
+        [5.0, 4.0, 6.0],
+        ARMADILLO_SHELL,
+        [5.0, 4.0, 6.0],
+        [0.0, 11.0],
+        false,
+    ),
 ];
 
-// `tail` cube (vanilla names it `right_ear_cube`): a 1×1×4 stub pitched by `-1.0472` rad.
-pub(in crate::entity_models) const BABY_ARMADILLO_TAIL_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, -0.5, -2.0], [1.0, 1.0, 4.0], ARMADILLO_SKIN)];
+// `tail` cube (vanilla names it `right_ear_cube`): a 1×1×4 stub (`texOffs(22,11)`) pitched by
+// `-1.0472` rad.
+pub(in crate::entity_models) const BABY_ARMADILLO_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.5, -0.5, -2.0],
+    [1.0, 1.0, 4.0],
+    ARMADILLO_SKIN,
+    [1.0, 1.0, 4.0],
+    [22.0, 11.0],
+    false,
+)];
 
-// `head_cube`: the 2×2×4 snout, pitched up by `0.7417649` rad.
-pub(in crate::entity_models) const BABY_ARMADILLO_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, -2.0, -4.0], [2.0, 2.0, 4.0], ARMADILLO_SKIN)];
+// `head_cube`: the 2×2×4 snout (`texOffs(20,17)`), pitched up by `0.7417649` rad.
+pub(in crate::entity_models) const BABY_ARMADILLO_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -2.0, -4.0],
+    [2.0, 2.0, 4.0],
+    ARMADILLO_SKIN,
+    [2.0, 2.0, 4.0],
+    [20.0, 17.0],
+    false,
+)];
 
-// The two 2×3×0 ear planes (the right one mirrored on the atlas; geometry is identical for colors).
-pub(in crate::entity_models) const BABY_ARMADILLO_RIGHT_EAR_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.8, -2.0, 0.0], [2.0, 3.0, 0.0], ARMADILLO_SKIN)];
-pub(in crate::entity_models) const BABY_ARMADILLO_LEFT_EAR_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.2, -2.0, 0.0], [2.0, 3.0, 0.0], ARMADILLO_SKIN)];
+// The two 2×3×0 ear planes share `texOffs(28,8)`; the right ear is added with `mirror()`.
+pub(in crate::entity_models) const BABY_ARMADILLO_RIGHT_EAR_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.8, -2.0, 0.0],
+        [2.0, 3.0, 0.0],
+        ARMADILLO_SKIN,
+        [2.0, 3.0, 0.0],
+        [28.0, 8.0],
+        true,
+    )];
+pub(in crate::entity_models) const BABY_ARMADILLO_LEFT_EAR_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.2, -2.0, 0.0],
+        [2.0, 3.0, 0.0],
+        ARMADILLO_SKIN,
+        [2.0, 3.0, 0.0],
+        [28.0, 8.0],
+        false,
+    )];
 
-// The shared 2×2×2 leg box.
-pub(in crate::entity_models) const BABY_ARMADILLO_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, -1.0], [2.0, 2.0, 2.0], ARMADILLO_SHELL)];
+// The four 2×2×2 leg boxes share the box shape but draw distinct UV regions AND mirror flags: the
+// right hind `texOffs(20,27)` mirrored, the left hind `texOffs(20,27)`, the right front
+// `texOffs(20,23)`, the left front `texOffs(24,0)` mirrored.
+pub(in crate::entity_models) const BABY_ARMADILLO_RIGHT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 2.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 2.0, 2.0],
+        [20.0, 27.0],
+        true,
+    )];
+pub(in crate::entity_models) const BABY_ARMADILLO_LEFT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 2.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 2.0, 2.0],
+        [20.0, 27.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_ARMADILLO_RIGHT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 2.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 2.0, 2.0],
+        [20.0, 23.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_ARMADILLO_LEFT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.0, 0.0, -1.0],
+        [2.0, 2.0, 2.0],
+        ARMADILLO_SHELL,
+        [2.0, 2.0, 2.0],
+        [24.0, 0.0],
+        true,
+    )];
 
-// Baby shell ball `cube` (root child at (0, 20.7, 0.5)): a 6×6×6 box + `CubeDeformation(0.3)` →
-// min -3.3, size 6.6.
-pub(in crate::entity_models) const BABY_ARMADILLO_BALL_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.3, -3.3, -3.3], [6.6, 6.6, 6.6], ARMADILLO_SHELL)];
+// Baby shell ball `cube` (root child at (0, 20.7, 0.5)): a 6×6×6 box (`texOffs(0,25)`) +
+// `CubeDeformation(0.3)` → min -3.3, size 6.6 (`uv_size` stays the integer 6×6×6).
+pub(in crate::entity_models) const BABY_ARMADILLO_BALL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-3.3, -3.3, -3.3],
+    [6.6, 6.6, 6.6],
+    ARMADILLO_SHELL,
+    [6.0, 6.0, 6.0],
+    [0.0, 25.0],
+    false,
+)];
 
 /// Vanilla `BabyArmadilloModel.createBodyLayer` rest-pose part poses: smaller geometry, the ears
 /// parented to the head cube, and the front legs at swapped X origins.
@@ -383,15 +548,24 @@ pub(in crate::entity_models) fn armadillo_clamped_head_look(
 /// Builds the baby armadillo's `head` cubeless pivot, parenting the pitched head cube which itself
 /// parents the two ear planes. Reused by the rest and rolled-up trees.
 fn baby_armadillo_head() -> ModelPart {
-    let head_cube = ModelPart::colored(
+    let head_cube = ModelPart::new(
         BABY_ARMADILLO_HEAD_CUBE_POSE,
-        &BABY_ARMADILLO_HEAD_CUBES,
+        BABY_ARMADILLO_HEAD_CUBES.to_vec(),
         vec![
-            ModelPart::leaf_colored(
-                BABY_ARMADILLO_RIGHT_EAR_POSE,
-                &BABY_ARMADILLO_RIGHT_EAR_CUBES,
+            (
+                "0",
+                ModelPart::leaf(
+                    BABY_ARMADILLO_RIGHT_EAR_POSE,
+                    BABY_ARMADILLO_RIGHT_EAR_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(BABY_ARMADILLO_LEFT_EAR_POSE, &BABY_ARMADILLO_LEFT_EAR_CUBES),
+            (
+                "1",
+                ModelPart::leaf(
+                    BABY_ARMADILLO_LEFT_EAR_POSE,
+                    BABY_ARMADILLO_LEFT_EAR_CUBES.to_vec(),
+                ),
+            ),
         ],
     );
     ModelPart::new(
@@ -410,12 +584,15 @@ fn baby_armadillo_root() -> ModelPart {
         Vec::new(),
         vec![(
             "tail_cube",
-            ModelPart::leaf_colored(BABY_ARMADILLO_TAIL_CUBE_POSE, &BABY_ARMADILLO_TAIL_CUBES),
+            ModelPart::leaf(
+                BABY_ARMADILLO_TAIL_CUBE_POSE,
+                BABY_ARMADILLO_TAIL_CUBES.to_vec(),
+            ),
         )],
     );
-    let body = ModelPart::colored_named(
+    let body = ModelPart::new(
         BABY_ARMADILLO_BODY_POSE,
-        &BABY_ARMADILLO_BODY_CUBES,
+        BABY_ARMADILLO_BODY_CUBES.to_vec(),
         vec![("tail", tail), ("head", baby_armadillo_head())],
     );
     ModelPart::new(
@@ -425,30 +602,30 @@ fn baby_armadillo_root() -> ModelPart {
             ("body", body),
             (
                 "right_hind_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     BABY_ARMADILLO_RIGHT_HIND_LEG_POSE,
-                    &BABY_ARMADILLO_LEG_CUBES,
+                    BABY_ARMADILLO_RIGHT_HIND_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "left_hind_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     BABY_ARMADILLO_LEFT_HIND_LEG_POSE,
-                    &BABY_ARMADILLO_LEG_CUBES,
+                    BABY_ARMADILLO_LEFT_HIND_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     BABY_ARMADILLO_RIGHT_FRONT_LEG_POSE,
-                    &BABY_ARMADILLO_LEG_CUBES,
+                    BABY_ARMADILLO_RIGHT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     BABY_ARMADILLO_LEFT_FRONT_LEG_POSE,
-                    &BABY_ARMADILLO_LEG_CUBES,
+                    BABY_ARMADILLO_LEFT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
         ],
@@ -473,21 +650,21 @@ fn baby_armadillo_rolled_root() -> ModelPart {
             ),
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     BABY_ARMADILLO_RIGHT_FRONT_LEG_POSE,
-                    &BABY_ARMADILLO_LEG_CUBES,
+                    BABY_ARMADILLO_RIGHT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(
+                ModelPart::leaf(
                     BABY_ARMADILLO_LEFT_FRONT_LEG_POSE,
-                    &BABY_ARMADILLO_LEG_CUBES,
+                    BABY_ARMADILLO_LEFT_FRONT_LEG_CUBES.to_vec(),
                 ),
             ),
             (
                 "cube",
-                ModelPart::leaf_colored(BABY_ARMADILLO_BALL_POSE, &BABY_ARMADILLO_BALL_CUBES),
+                ModelPart::leaf(BABY_ARMADILLO_BALL_POSE, BABY_ARMADILLO_BALL_CUBES.to_vec()),
             ),
         ],
     )

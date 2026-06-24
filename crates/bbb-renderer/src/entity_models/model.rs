@@ -7,14 +7,6 @@ use super::geometry::{
 use super::instances::EntityModelInstance;
 use super::{EntityModelTextureRef, EntityModelUvRect};
 
-/// Vanilla child parts are addressed by name; the descs the migration zips from carry none, so a
-/// zipped child is named by its index. Twenty-four covers the widest part in the entity catalog (the
-/// ender dragon's nineteen root parts).
-const INDEX_CHILD_NAMES: [&str; 24] = [
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16",
-    "17", "18", "19", "20", "21", "22", "23",
-];
-
 /// A unified model cube carrying both render paths' data, mirroring a vanilla `ModelPart.Cube`. The
 /// `min`/`size` geometry is shared; `color` drives the colored debug path and `uv_size`/`tex`/
 /// `mirror` drive the textured path. Authoring one cube replaces the former parallel
@@ -50,19 +42,6 @@ impl ModelCube {
             uv_size,
             tex,
             mirror,
-        }
-    }
-
-    /// A colored-only cube (no textured path yet): the UV fields are unused because
-    /// [`ModelPart::render_textured`] is never called for a colored-only model.
-    fn from_colored_desc(desc: &ModelCubeDesc) -> Self {
-        Self {
-            min: desc.min,
-            size: desc.size,
-            color: desc.color,
-            uv_size: [0.0, 0.0, 0.0],
-            tex: [0.0, 0.0],
-            mirror: false,
         }
     }
 
@@ -136,60 +115,6 @@ impl ModelPart {
     /// A leaf part (no children), the common case for a single bone.
     pub(in crate::entity_models) fn leaf(pose: PartPose, cubes: Vec<ModelCube>) -> Self {
         Self::new(pose, cubes, Vec::new())
-    }
-
-    /// A colored-only leaf built from the existing baked [`ModelCubeDesc`] geometry. Lets a
-    /// colored-only entity (no textured path yet) reuse its `&'static` cube consts verbatim.
-    pub(in crate::entity_models) fn leaf_colored(pose: PartPose, cubes: &[ModelCubeDesc]) -> Self {
-        Self::leaf(
-            pose,
-            cubes.iter().map(ModelCube::from_colored_desc).collect(),
-        )
-    }
-
-    /// A colored-only part carrying both `cubes` (from baked [`ModelCubeDesc`] geometry) and
-    /// `children` — the non-leaf counterpart of [`ModelPart::leaf_colored`], for a colored-only
-    /// model whose tree is assembled at construction (the guardian, whose twelve spikes carry
-    /// computed bind poses) rather than declared as a `&'static` desc tree. Children are named by
-    /// index.
-    pub(in crate::entity_models) fn colored(
-        pose: PartPose,
-        cubes: &[ModelCubeDesc],
-        children: Vec<ModelPart>,
-    ) -> Self {
-        let children = children
-            .into_iter()
-            .enumerate()
-            .map(|(index, child)| (INDEX_CHILD_NAMES[index], child))
-            .collect();
-        Self {
-            pose,
-            default_pose: pose,
-            cubes: cubes.iter().map(ModelCube::from_colored_desc).collect(),
-            children,
-            visible: true,
-            scale: [1.0; 3],
-        }
-    }
-
-    /// A colored-only part carrying both `cubes` (from baked [`ModelCubeDesc`] geometry) and NAMED
-    /// `children` — the named-children counterpart of [`ModelPart::colored`], for a colored-only model
-    /// whose cube-bearing parent (head, body, …) parents children that `setup_anim` addresses by name
-    /// (the frog's `body` arms, the sniffer's `head` ears, the warden's `body` head and `head`
-    /// tendrils, …). Pairs with [`ModelPart::child_mut`] rather than positional index addressing.
-    pub(in crate::entity_models) fn colored_named(
-        pose: PartPose,
-        cubes: &[ModelCubeDesc],
-        children: Vec<(&'static str, ModelPart)>,
-    ) -> Self {
-        Self {
-            pose,
-            default_pose: pose,
-            cubes: cubes.iter().map(ModelCube::from_colored_desc).collect(),
-            children,
-            visible: true,
-            scale: [1.0; 3],
-        }
     }
 
     /// Vanilla `ModelPart.resetPose` over the whole subtree: restores the bind pose and visibility

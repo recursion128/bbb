@@ -26,12 +26,13 @@ mod layers;
 #[cfg(test)]
 pub(super) use layers::EntityModelLayerVisibility;
 pub(super) use layers::{
-    arrow_textured_layer_passes, axolotl_textured_layer_passes, blaze_textured_layer_passes,
-    boat_textured_layer_passes, camel_textured_layer_passes, chicken_textured_layer_passes,
-    cow_textured_layer_passes, creaking_textured_layer_passes, creeper_textured_layer_passes,
-    drowned_textured_layer_passes, ender_dragon_textured_layer_passes,
-    enderman_textured_layer_passes, endermite_textured_layer_passes,
-    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
+    armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
+    blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
+    chicken_textured_layer_passes, cow_textured_layer_passes, creaking_textured_layer_passes,
+    creeper_textured_layer_passes, drowned_textured_layer_passes,
+    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
+    endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
+    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
     ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
     happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
     illager_textured_layer_passes, iron_golem_textured_layer_passes,
@@ -47,7 +48,7 @@ pub(super) use layers::{
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    wind_charge_textured_layer_passes, witch_textured_layer_passes,
+    warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
     wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
     zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
     EntityModelLayerPass, EntityModelLayerRenderType,
