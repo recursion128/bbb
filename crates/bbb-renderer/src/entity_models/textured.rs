@@ -23,8 +23,8 @@ use super::{
         HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
         SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
         TropicalFishModel, TropicalFishPatternModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF,
+        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
+        STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -509,6 +509,7 @@ fn emit_humanoid_armor(
     instance: EntityModelInstance,
     host_root: &ModelPart,
     transform: Mat4,
+    outer: f32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let render_state = &instance.render_state;
@@ -541,7 +542,7 @@ fn emit_humanoid_armor(
         let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
             continue;
         };
-        let mut tree = slot.build_tree();
+        let mut tree = slot.build_tree(outer);
         tree.copy_child_poses_from(host_root, slot.part_names());
         tree.render_textured(
             meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
@@ -553,12 +554,13 @@ fn emit_humanoid_armor(
     }
 }
 
-/// Worn armor for the standard-`HumanoidModel` armor wearers (vanilla `HumanoidModel.createArmorMeshSet`,
-/// `INNER 0.5` / `OUTER 1.0`). The base body is emitted by the shared dispatch / bespoke emits; here we
-/// rebuild and pose an identical host humanoid model purely to read its limb poses, then drape the armor
-/// pieces on it ([`emit_humanoid_armor`]). Covered: the zombie family (zombie, husk, drowned, zombie
-/// villager), the skeleton family (skeleton, stray, wither/normal/bogged), and the player. DEFERRED:
-/// baby variants (a distinct `createBabyArmorMesh`) and the piglin (a `1.02` armor deformation).
+/// Worn armor for the humanoid armor wearers (vanilla `HumanoidModel.createArmorMeshSet`, `INNER 0.5`
+/// / `OUTER 1.0`, or the piglin family's `OUTER 1.02`). The base body is emitted by the shared dispatch
+/// / bespoke emits; here we rebuild and pose an identical host humanoid model purely to read its limb
+/// poses, then drape the armor pieces on it ([`emit_humanoid_armor`]). Covered: the zombie family
+/// (zombie, husk, drowned, zombie villager), the skeleton family (skeleton, stray, wither/normal/bogged),
+/// the player, and the piglin family (piglin, piglin brute, zombified piglin). DEFERRED: baby variants
+/// (a distinct `createBabyArmorMesh`).
 fn emit_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -577,7 +579,14 @@ fn emit_worn_humanoid_armor(
             let mut host = ZombieModel::new(false);
             host.prepare(&instance);
             let transform = entity_model_root_transform(instance);
-            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                atlas,
+            );
         }
         EntityModelKind::ZombieVariant {
             family,
@@ -591,13 +600,27 @@ fn emit_worn_humanoid_armor(
             };
             let mut host = ZombieVariantModel::new(family, false);
             host.prepare(&instance);
-            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                atlas,
+            );
         }
         EntityModelKind::Skeleton => {
             let mut host = SkeletonModel::new(None);
             host.prepare(&instance);
             let transform = entity_model_root_transform(instance);
-            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                atlas,
+            );
         }
         EntityModelKind::SkeletonVariant { family } => {
             let transform = if matches!(family, SkeletonModelFamily::WitherSkeleton) {
@@ -607,13 +630,47 @@ fn emit_worn_humanoid_armor(
             };
             let mut host = SkeletonModel::new(Some(family));
             host.prepare(&instance);
-            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                atlas,
+            );
         }
         EntityModelKind::Player { slim, .. } => {
             let mut host = PlayerModel::new(slim);
             host.prepare(&instance);
             let transform = player_model_root_transform(instance);
-            emit_humanoid_armor(meshes, instance, host.root(), transform, atlas);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                atlas,
+            );
+        }
+        EntityModelKind::Piglin {
+            family,
+            baby: false,
+        } => {
+            // The piglin family (piglin, piglin brute, zombified piglin) wears the same base armor mesh
+            // grown by the piglin `1.02` outer deformation (vanilla `AbstractPiglinModel.createArmorMeshSet`
+            // = `PlayerModel.createArmorMeshSet(..).map(removeEars)`; the removed ears and the player's
+            // empty sleeve/pants parts carry no geometry, so it is the standard mesh).
+            let mut host = PiglinModel::new(family, false);
+            host.prepare(&instance);
+            let transform = entity_model_root_transform(instance);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                PIGLIN_OUTER_ARMOR_DEFORMATION,
+                atlas,
+            );
         }
         _ => {}
     }

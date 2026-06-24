@@ -311,6 +311,71 @@ fn standard_humanoid_wearers_all_drape_armor() {
 }
 
 #[test]
+fn piglin_family_drapes_armor_at_wider_deformation() {
+    let atlas = iron_armor_atlas();
+    let full_iron = |instance: EntityModelInstance| {
+        instance
+            .with_head_armor(Some(EntityArmorMaterial::Iron))
+            .with_chest_armor(Some(EntityArmorMaterial::Iron))
+            .with_legs_armor(Some(EntityArmorMaterial::Iron))
+            .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    };
+    // Every adult piglin-family wearer (piglin, piglin brute, zombified piglin) drapes the same
+    // 10-cube / 240-vertex armor set (vanilla `AbstractPiglinModel.createArmorMeshSet`).
+    for family in [
+        PiglinModelFamily::Piglin,
+        PiglinModelFamily::PiglinBrute,
+        PiglinModelFamily::ZombifiedPiglin,
+    ] {
+        let bare = EntityModelInstance::piglin(90, [0.0, 64.0, 0.0], 0.0, family, false);
+        let bare_meshes = entity_model_textured_meshes(&[bare], &atlas);
+        let armored = entity_model_textured_meshes(&[full_iron(bare)], &atlas);
+        assert_eq!(
+            armored.cutout.vertices.len() - bare_meshes.cutout.vertices.len(),
+            240,
+            "{family:?} drapes the four armor pieces"
+        );
+    }
+
+    // The piglin armor is grown by OUTER 1.02 (vanilla `LayerDefinitions` piglin armor) vs the standard
+    // 1.0, so a rest-posed piglin's armor reaches very slightly wider in X than a same-posed zombie's
+    // (0.02 model units through the shared root transform). Both are idle, so only the deformation
+    // differs.
+    let max_armor_x = |instance: EntityModelInstance| {
+        entity_model_textured_meshes(&[full_iron(instance)], &atlas)
+            .cutout
+            .vertices
+            .iter()
+            .map(|vertex| vertex.position[0])
+            .fold(f32::MIN, f32::max)
+    };
+    let zombie_x = max_armor_x(EntityModelInstance::zombie(
+        91,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    ));
+    let piglin_x = max_armor_x(EntityModelInstance::piglin(
+        92,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PiglinModelFamily::Piglin,
+        false,
+    ));
+    assert!(
+        piglin_x > zombie_x,
+        "piglin armor (OUTER 1.02) extends wider than zombie armor (OUTER 1.0): {piglin_x} vs {zombie_x}"
+    );
+
+    // A baby piglin wears the deferred baby armor mesh, so it drapes nothing.
+    let baby =
+        EntityModelInstance::piglin(93, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, true);
+    let bare = entity_model_textured_meshes(&[baby], &atlas);
+    let armored = entity_model_textured_meshes(&[full_iron(baby)], &atlas);
+    assert_eq!(bare.cutout.vertices.len(), armored.cutout.vertices.len());
+}
+
+#[test]
 fn baby_zombie_armor_is_deferred() {
     let atlas = iron_armor_atlas();
     // The baby zombie wears a distinct baby armor mesh, deferred for now — its cutout is unchanged

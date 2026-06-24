@@ -14,10 +14,11 @@ use crate::entity_models::model::{ModelCube, ModelPart};
 // Vanilla 26.1 humanoid armor layer (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`,
 // atlas 64×32). The armor is the standard humanoid mesh (`createMesh`) grown by a `CubeDeformation`
 // so it floats just outside the body, then split into four per-slot models by `retainExactParts`:
-//   HEAD  (helmet):     head (+ hat child), OUTER deformation `1.0` (hat `g.extend(0.5)` = `1.5`)
-//   CHEST (chestplate): body + both arms,   OUTER deformation `1.0`
+//   HEAD  (helmet):     head (+ hat child), OUTER deformation (hat `g.extend(0.5)`)
+//   CHEST (chestplate): body + both arms,   OUTER deformation
 //   LEGS  (leggings):   body + both legs,   INNER deformation `0.5` (legs `g.extend(-0.1)` = `0.4`)
-//   FEET  (boots):      both legs,          OUTER deformation `1.0` (legs `g.extend(-0.1)` = `0.9`)
+//   FEET  (boots):      both legs,          OUTER deformation (legs `g.extend(-0.1)`)
+// The OUTER deformation is `1.0` for the standard humanoid wearers and `1.02` for the piglin family.
 // The legs are grown by `g - 0.1` so the leggings (inner) and the body/boots (outer) layers do not
 // z-fight where they overlap. Each per-slot tree is draped on the host humanoid model's posed limbs
 // via [`ModelPart::copy_child_poses_from`] (vanilla `copyPropertiesTo`), so the armor inherits the
@@ -26,7 +27,14 @@ use crate::entity_models::model::{ModelCube, ModelPart};
 
 const ARMOR_PLACEHOLDER_COLOR: [f32; 4] = [0.55, 0.55, 0.58, 1.0];
 
-const OUTER_ARMOR_DEFORMATION: f32 = 1.0;
+/// The standard `HumanoidModel.createArmorMeshSet` outer deformation (`1.0`), used by every base
+/// humanoid armor wearer (zombie / skeleton / player families).
+pub(in crate::entity_models) const STANDARD_OUTER_ARMOR_DEFORMATION: f32 = 1.0;
+/// The piglin family's outer deformation (vanilla `LayerDefinitions` piglin armor,
+/// `PiglinModel.createArmorMeshSet(INNER_ARMOR_DEFORMATION, new CubeDeformation(1.02F))`): the same
+/// base armor mesh grown a hair more so it clears the slightly chunkier piglin body. The inner
+/// (leggings) deformation is unchanged.
+pub(in crate::entity_models) const PIGLIN_OUTER_ARMOR_DEFORMATION: f32 = 1.02;
 const INNER_ARMOR_DEFORMATION: f32 = 0.5;
 
 /// Vanilla `CubeListBuilder.addBox(..., g)` with `CubeDeformation(g)`: grows the box (`min -= g`,
@@ -61,56 +69,10 @@ const ARM_SIZE: [f32; 3] = [4.0, 12.0, 4.0];
 const LEG_MIN: [f32; 3] = [-2.0, 0.0, -2.0];
 const LEG_SIZE: [f32; 3] = [4.0, 12.0, 4.0];
 
-// OUTER model parts (g = 1.0; hat `g + 0.5 = 1.5`; legs `g - 0.1 = 0.9`).
-const ARMOR_HEAD_OUTER: [ModelCube; 1] = [armor_cube(
-    HEAD_MIN,
-    HEAD_SIZE,
-    [0.0, 0.0],
-    false,
-    OUTER_ARMOR_DEFORMATION,
-)];
-const ARMOR_HAT_OUTER: [ModelCube; 1] = [armor_cube(
-    HEAD_MIN,
-    HEAD_SIZE,
-    [32.0, 0.0],
-    false,
-    OUTER_ARMOR_DEFORMATION + 0.5,
-)];
-const ARMOR_BODY_OUTER: [ModelCube; 1] = [armor_cube(
-    BODY_MIN,
-    BODY_SIZE,
-    [16.0, 16.0],
-    false,
-    OUTER_ARMOR_DEFORMATION,
-)];
-const ARMOR_RIGHT_ARM_OUTER: [ModelCube; 1] = [armor_cube(
-    RIGHT_ARM_MIN,
-    ARM_SIZE,
-    [40.0, 16.0],
-    false,
-    OUTER_ARMOR_DEFORMATION,
-)];
-const ARMOR_LEFT_ARM_OUTER: [ModelCube; 1] = [armor_cube(
-    LEFT_ARM_MIN,
-    ARM_SIZE,
-    [40.0, 16.0],
-    true,
-    OUTER_ARMOR_DEFORMATION,
-)];
-const ARMOR_RIGHT_LEG_OUTER: [ModelCube; 1] = [armor_cube(
-    LEG_MIN,
-    LEG_SIZE,
-    [0.0, 16.0],
-    false,
-    OUTER_ARMOR_DEFORMATION - 0.1,
-)];
-const ARMOR_LEFT_LEG_OUTER: [ModelCube; 1] = [armor_cube(
-    LEG_MIN,
-    LEG_SIZE,
-    [0.0, 16.0],
-    true,
-    OUTER_ARMOR_DEFORMATION - 0.1,
-)];
+// The OUTER model parts (head/hat/body/arms and the boots' legs) are grown at render time by the
+// wearer's outer deformation — `STANDARD_OUTER_ARMOR_DEFORMATION` (1.0) or
+// `PIGLIN_OUTER_ARMOR_DEFORMATION` (1.02) — so `build_tree` bakes them per call (hat `g + 0.5`,
+// boots' legs `g - 0.1`). Only the INNER (leggings) parts are deformation-fixed.
 
 // INNER model parts (g = 0.5; legs `g - 0.1 = 0.4`).
 const ARMOR_BODY_INNER: [ModelCube; 1] = [armor_cube(
@@ -183,33 +145,64 @@ impl HumanoidArmorSlot {
     }
 
     /// Builds this slot's armor overlay tree: a fresh root carrying exactly the slot's parts, each at
-    /// its humanoid bind pose with the inflated armor cubes. The host's posed limbs are copied in by
-    /// [`ModelPart::copy_child_poses_from`] before rendering.
-    pub(in crate::entity_models) fn build_tree(self) -> ModelPart {
+    /// its humanoid bind pose with the inflated armor cubes. The OUTER parts (helmet / chestplate /
+    /// boots) are grown by `outer` (`1.0` standard, `1.02` piglin); the inner leggings are fixed. The
+    /// host's posed limbs are copied in by [`ModelPart::copy_child_poses_from`] before rendering.
+    pub(in crate::entity_models) fn build_tree(self, outer: f32) -> ModelPart {
         let children: Vec<(&'static str, ModelPart)> = match self {
             Self::Head => vec![(
                 "head",
                 ModelPart::new(
                     HEAD_POSE,
-                    ARMOR_HEAD_OUTER.to_vec(),
+                    vec![armor_cube(HEAD_MIN, HEAD_SIZE, [0.0, 0.0], false, outer)],
                     vec![(
                         "hat",
-                        ModelPart::leaf(PART_POSE_ZERO, ARMOR_HAT_OUTER.to_vec()),
+                        ModelPart::leaf(
+                            PART_POSE_ZERO,
+                            vec![armor_cube(
+                                HEAD_MIN,
+                                HEAD_SIZE,
+                                [32.0, 0.0],
+                                false,
+                                outer + 0.5,
+                            )],
+                        ),
                     )],
                 ),
             )],
             Self::Chest => vec![
                 (
                     "body",
-                    ModelPart::leaf(BODY_POSE, ARMOR_BODY_OUTER.to_vec()),
+                    ModelPart::leaf(
+                        BODY_POSE,
+                        vec![armor_cube(BODY_MIN, BODY_SIZE, [16.0, 16.0], false, outer)],
+                    ),
                 ),
                 (
                     "right_arm",
-                    ModelPart::leaf(RIGHT_ARM_POSE, ARMOR_RIGHT_ARM_OUTER.to_vec()),
+                    ModelPart::leaf(
+                        RIGHT_ARM_POSE,
+                        vec![armor_cube(
+                            RIGHT_ARM_MIN,
+                            ARM_SIZE,
+                            [40.0, 16.0],
+                            false,
+                            outer,
+                        )],
+                    ),
                 ),
                 (
                     "left_arm",
-                    ModelPart::leaf(LEFT_ARM_POSE, ARMOR_LEFT_ARM_OUTER.to_vec()),
+                    ModelPart::leaf(
+                        LEFT_ARM_POSE,
+                        vec![armor_cube(
+                            LEFT_ARM_MIN,
+                            ARM_SIZE,
+                            [40.0, 16.0],
+                            true,
+                            outer,
+                        )],
+                    ),
                 ),
             ],
             Self::Legs => vec![
@@ -229,11 +222,29 @@ impl HumanoidArmorSlot {
             Self::Feet => vec![
                 (
                     "right_leg",
-                    ModelPart::leaf(RIGHT_LEG_POSE, ARMOR_RIGHT_LEG_OUTER.to_vec()),
+                    ModelPart::leaf(
+                        RIGHT_LEG_POSE,
+                        vec![armor_cube(
+                            LEG_MIN,
+                            LEG_SIZE,
+                            [0.0, 16.0],
+                            false,
+                            outer - 0.1,
+                        )],
+                    ),
                 ),
                 (
                     "left_leg",
-                    ModelPart::leaf(LEFT_LEG_POSE, ARMOR_LEFT_LEG_OUTER.to_vec()),
+                    ModelPart::leaf(
+                        LEFT_LEG_POSE,
+                        vec![armor_cube(
+                            LEG_MIN,
+                            LEG_SIZE,
+                            [0.0, 16.0],
+                            true,
+                            outer - 0.1,
+                        )],
+                    ),
                 ),
             ],
         };

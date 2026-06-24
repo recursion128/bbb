@@ -1104,11 +1104,14 @@ When an agent does any of the following, update this file in the same slice:
       (`ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`: leather, copper, chainmail, iron, gold, diamond,
       turtle_scute, netherite) resolve to their `textures/entity/equipment/humanoid/<asset>.png`
       (head/chest/feet) and `humanoid_leggings/<asset>.png` (legs) textures, stitched into the entity
-      atlas. The standard-`HumanoidModel` armor wearers are covered (`emit_worn_humanoid_armor` dispatch):
-      the zombie family (zombie, husk with `HUSK_SCALE`, drowned, zombie villager), the skeleton family
-      (skeleton, stray, wither/bogged), and the player — each rebuilds its posed host model and drapes the
-      armor. Pending coverage: the baby armor mesh (`createBabyArmorMesh`, a distinct waist/feet tree) and
-      the piglin (a `1.02` armor deformation). The cross-crate
+      atlas. The humanoid armor wearers are covered (`emit_worn_humanoid_armor` dispatch): the zombie
+      family (zombie, husk with `HUSK_SCALE`, drowned, zombie villager), the skeleton family (skeleton,
+      stray, wither/bogged), the player, and the piglin family (piglin, piglin brute, zombified piglin) —
+      each rebuilds its posed host model and drapes the armor. The piglin family uses the same base armor
+      mesh grown by the piglin `1.02` outer deformation (`build_tree(outer)`, vanilla
+      `AbstractPiglinModel.createArmorMeshSet` = `PlayerModel.createArmorMeshSet(..).map(removeEars)`, the
+      removed ears / empty player sleeves carrying no geometry) rather than the standard `1.0`. Pending
+      coverage: the baby armor mesh (`createBabyArmorMesh`, a distinct waist/feet tree). The cross-crate
       equipment projection is now wired end-to-end (framework slice 2): `bbb_pack`'s item registry parses
       each `.humanoidArmor(ArmorMaterials.<MAT>, ...)` item to its equipment-asset name
       (`humanoid_armor_asset`), the native layer installs an item id → material table
@@ -1123,7 +1126,7 @@ When an agent does any of the following, update this file in the same slice:
       `armor_layer_tint` forces it opaque and applies it only to leather — exactly vanilla
       `DyedItemColor.getOrDefault` → `EquipmentLayerRenderer.getColorForLayer` (every other material renders
       white, vanilla color `-1`, ignoring any stray dye). STILL DEFERRED: the enchant-glint and armor-trim
-      passes, baby armor, and the piglin / mob-specific armor models
+      passes, the baby armor mesh, and any remaining mob-specific armor models
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla
