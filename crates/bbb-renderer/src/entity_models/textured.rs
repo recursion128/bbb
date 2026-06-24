@@ -512,11 +512,27 @@ fn emit_humanoid_armor(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let render_state = &instance.render_state;
-    for (slot, material) in [
-        (HumanoidArmorSlot::Chest, render_state.chest_armor),
-        (HumanoidArmorSlot::Legs, render_state.legs_armor),
-        (HumanoidArmorSlot::Feet, render_state.feet_armor),
-        (HumanoidArmorSlot::Head, render_state.head_armor),
+    for (slot, material, dye) in [
+        (
+            HumanoidArmorSlot::Chest,
+            render_state.chest_armor,
+            render_state.chest_armor_dye,
+        ),
+        (
+            HumanoidArmorSlot::Legs,
+            render_state.legs_armor,
+            render_state.legs_armor_dye,
+        ),
+        (
+            HumanoidArmorSlot::Feet,
+            render_state.feet_armor,
+            render_state.feet_armor_dye,
+        ),
+        (
+            HumanoidArmorSlot::Head,
+            render_state.head_armor,
+            render_state.head_armor_dye,
+        ),
     ] {
         let Some(material) = material else {
             continue;
@@ -532,7 +548,7 @@ fn emit_humanoid_armor(
             transform,
             texture,
             entry.uv,
-            armor_layer_tint(material),
+            armor_layer_tint(material, dye),
         );
     }
 }

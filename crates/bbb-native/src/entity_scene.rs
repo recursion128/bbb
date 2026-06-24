@@ -540,6 +540,10 @@ fn entity_model_instance(
         .with_chest_armor(armor_material(source.chest_armor))
         .with_legs_armor(armor_material(source.legs_armor))
         .with_feet_armor(armor_material(source.feet_armor))
+        .with_head_armor_dye(armor_dye(source.head_armor_dye))
+        .with_chest_armor_dye(armor_dye(source.chest_armor_dye))
+        .with_legs_armor_dye(armor_dye(source.legs_armor_dye))
+        .with_feet_armor_dye(armor_dye(source.feet_armor_dye))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
@@ -1993,6 +1997,13 @@ fn armor_material(material: Option<WorldArmorMaterialKind>) -> Option<EntityArmo
         WorldArmorMaterialKind::TurtleScute => EntityArmorMaterial::TurtleScute,
         WorldArmorMaterialKind::Netherite => EntityArmorMaterial::Netherite,
     })
+}
+
+/// Carries a projected per-slot `DyedItemColor` (a packed RGB `i32`) onto the renderer's armor dye
+/// tint (`u32`). The renderer forces it opaque and applies it only to leather, matching vanilla
+/// `DyedItemColor.getOrDefault` → `EquipmentLayerRenderer.getColorForLayer`.
+fn armor_dye(dye: Option<i32>) -> Option<u32> {
+    dye.map(|dye| dye as u32)
 }
 
 fn wither_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

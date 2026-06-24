@@ -241,20 +241,34 @@ impl HumanoidArmorSlot {
     }
 }
 
+/// The vanilla `DyedItemColor.LEATHER_COLOR` (`0xA06540`), leather's `colorWhenUndyed`.
+const LEATHER_DEFAULT_COLOR: u32 = 0x00A0_6540;
+
 /// The vanilla `EquipmentLayerRenderer.getColorForLayer` per-layer tint: leather is the only dyeable
-/// humanoid material, so undyed it tints by its default `DyedItemColor.LEATHER_COLOR` (`0xA06540`);
-/// every other material is non-dyeable and renders white (vanilla color `-1`). The per-item
-/// `DyedItemColor` override (custom-dyed leather) is deferred pending dye-color projection.
-pub(in crate::entity_models) fn armor_layer_tint(material: EntityArmorMaterial) -> [f32; 4] {
+/// humanoid material, so it tints by the worn item's `DyedItemColor` when custom-dyed and otherwise by
+/// its default `DyedItemColor.LEATHER_COLOR` (`0xA06540`); every other material is non-dyeable and
+/// renders white (vanilla color `-1`), ignoring any stray dye. `dye` is the projected per-slot
+/// `dyed_color` component (a packed RGB), forced opaque here exactly as `DyedItemColor.getOrDefault`
+/// applies `ARGB.opaque` before `getColorForLayer` reads it.
+pub(in crate::entity_models) fn armor_layer_tint(
+    material: EntityArmorMaterial,
+    dye: Option<u32>,
+) -> [f32; 4] {
     match material {
-        EntityArmorMaterial::Leather => [
-            0xA0 as f32 / 255.0,
-            0x65 as f32 / 255.0,
-            0x40 as f32 / 255.0,
-            1.0,
-        ],
+        EntityArmorMaterial::Leather => opaque_rgb_to_tint(dye.unwrap_or(LEATHER_DEFAULT_COLOR)),
         _ => [1.0, 1.0, 1.0, 1.0],
     }
+}
+
+/// Unpack a 24-bit RGB color into a fully-opaque `[r, g, b, a]` float tint (vanilla `ARGB.opaque`
+/// forces alpha to `0xFF`, so the incoming high byte is discarded).
+fn opaque_rgb_to_tint(rgb: u32) -> [f32; 4] {
+    [
+        ((rgb >> 16) & 0xFF) as f32 / 255.0,
+        ((rgb >> 8) & 0xFF) as f32 / 255.0,
+        (rgb & 0xFF) as f32 / 255.0,
+        1.0,
+    ]
 }
 
 /// The equipment-asset texture for a given armor material in a given slot: the `humanoid_leggings`

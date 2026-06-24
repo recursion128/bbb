@@ -76,13 +76,16 @@ fn leather_armor_tints_with_default_undyed_color_others_white() {
         0x40 as f32 / 255.0,
         1.0,
     ];
-    assert_eq!(armor_layer_tint(EntityArmorMaterial::Leather), leather);
     assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Iron),
+        armor_layer_tint(EntityArmorMaterial::Leather, None),
+        leather
+    );
+    assert_eq!(
+        armor_layer_tint(EntityArmorMaterial::Iron, None),
         [1.0, 1.0, 1.0, 1.0]
     );
     assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Diamond),
+        armor_layer_tint(EntityArmorMaterial::Diamond, None),
         [1.0, 1.0, 1.0, 1.0]
     );
 
@@ -110,6 +113,66 @@ fn leather_armor_tints_with_default_undyed_color_others_white() {
         .vertices
         .iter()
         .any(|vertex| vertex.tint == leather));
+}
+
+#[test]
+fn custom_dyed_leather_tints_by_dye_color_and_non_leather_ignores_it() {
+    // Vanilla `DyedItemColor.getOrDefault` → `getColorForLayer`: a custom-dyed leather piece tints by
+    // its `dyed_color` component (here 0x3F6CDA), forced opaque. The low 24 bits become the RGB tint.
+    let dye = 0x003F_6CDA;
+    let dyed = [
+        0x3F as f32 / 255.0,
+        0x6C as f32 / 255.0,
+        0xDA as f32 / 255.0,
+        1.0,
+    ];
+    assert_eq!(
+        armor_layer_tint(EntityArmorMaterial::Leather, Some(dye)),
+        dyed
+    );
+    // The incoming alpha byte is discarded (vanilla `ARGB.opaque`): 0xFF000000 | rgb is irrelevant.
+    assert_eq!(
+        armor_layer_tint(EntityArmorMaterial::Leather, Some(0xFF00_0000 | dye)),
+        dyed
+    );
+    // Non-dyeable materials always render white regardless of any stray dye (vanilla returns -1).
+    assert_eq!(
+        armor_layer_tint(EntityArmorMaterial::Iron, Some(dye)),
+        [1.0, 1.0, 1.0, 1.0]
+    );
+
+    // The rendered dyed leather chestplate carries the custom tint, not the default brown.
+    let mut refs: Vec<EntityModelTextureRef> = zombie_entity_texture_refs().to_vec();
+    refs.push(ARMOR_LEATHER_HUMANOID_TEXTURE_REF);
+    let images: Vec<EntityModelTextureImage> = refs
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let armored = entity_model_textured_meshes(
+        &[
+            EntityModelInstance::zombie(77, [0.0, 64.0, 0.0], 0.0, false)
+                .with_chest_armor(Some(EntityArmorMaterial::Leather))
+                .with_chest_armor_dye(Some(dye)),
+        ],
+        &atlas,
+    );
+    assert!(armored
+        .cutout
+        .vertices
+        .iter()
+        .any(|vertex| vertex.tint == dyed));
+    assert!(!armored.cutout.vertices.iter().any(|vertex| vertex.tint
+        == [
+            0xA0 as f32 / 255.0,
+            0x65 as f32 / 255.0,
+            0x40 as f32 / 255.0,
+            1.0
+        ]));
 }
 
 #[test]

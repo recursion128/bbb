@@ -501,6 +501,19 @@ impl EntityStore {
                 .item_id?;
             armor_materials.get(&item_id).copied()
         };
+        // Vanilla `DyedItemColor.getOrDefault`: the per-slot worn item's `dyed_color` component (a
+        // packed RGB), carried alongside the material. Only leather consumes it client-side; a slot
+        // with no equipment / no dye component resolves to None.
+        let armor_dye = |slot: ProtocolEquipmentSlot| -> Option<i32> {
+            let equipment = equipment.as_ref()?;
+            equipment
+                .equipment
+                .iter()
+                .find(|update| update.slot == slot)?
+                .item
+                .component_patch
+                .dyed_color
+        };
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -800,6 +813,10 @@ impl EntityStore {
             chest_armor: armor_material(ProtocolEquipmentSlot::Chest),
             legs_armor: armor_material(ProtocolEquipmentSlot::Legs),
             feet_armor: armor_material(ProtocolEquipmentSlot::Feet),
+            head_armor_dye: armor_dye(ProtocolEquipmentSlot::Head),
+            chest_armor_dye: armor_dye(ProtocolEquipmentSlot::Chest),
+            legs_armor_dye: armor_dye(ProtocolEquipmentSlot::Legs),
+            feet_armor_dye: armor_dye(ProtocolEquipmentSlot::Feet),
             data_values: metadata.data_values.clone(),
         })
     }

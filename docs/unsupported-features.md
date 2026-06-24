@@ -1116,10 +1116,14 @@ When an agent does any of the following, update this file in the same slice:
       worn item in each armor slot of the entity's `SetEquipment` to a material, projecting
       `head/chest/legs/feet_armor` onto the render source which the native scene maps to the renderer's
       `EntityArmorMaterial`. So iron-clad zombies, skeletons, and players now render their armor live.
-      Leather armor tints by its vanilla default undyed color (`DyedItemColor.LEATHER_COLOR` 0xA06540)
-      via `armor_layer_tint` (every other material renders white, vanilla color `-1`). STILL DEFERRED:
-      the custom `DyedItemColor` leather override (needs per-slot dye-color projection), the enchant-glint
-      and armor-trim passes, baby armor, and the piglin / mob-specific armor models
+      Leather armor tints by the worn item's `DyedItemColor` when custom-dyed and otherwise by its vanilla
+      default undyed color (`DyedItemColor.LEATHER_COLOR` 0xA06540): the per-slot `dyed_color` component is
+      projected end-to-end (`WorldStore` reads `EntityEquipment`'s item `component_patch.dyed_color` into
+      `head/chest/legs/feet_armor_dye`, native carries it onto the renderer's `*_armor_dye`), and
+      `armor_layer_tint` forces it opaque and applies it only to leather — exactly vanilla
+      `DyedItemColor.getOrDefault` → `EquipmentLayerRenderer.getColorForLayer` (every other material renders
+      white, vanilla color `-1`, ignoring any stray dye). STILL DEFERRED: the enchant-glint and armor-trim
+      passes, baby armor, and the piglin / mob-specific armor models
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla

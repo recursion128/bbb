@@ -993,6 +993,68 @@ fn entity_model_sources_project_worn_armor_materials() {
 }
 
 #[test]
+fn entity_model_sources_project_worn_armor_dye_colors() {
+    use std::collections::BTreeMap;
+    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
+    let leather_chestplate = 810;
+    let leather_boots = 811;
+    let iron_helmet = 812;
+    let dye = 0x3F_6CDA;
+
+    let mut store = WorldStore::new();
+    store.set_item_armor_materials(BTreeMap::from([
+        (leather_chestplate, ArmorMaterialKind::Leather),
+        (leather_boots, ArmorMaterialKind::Leather),
+        (iron_helmet, ArmorMaterialKind::Iron),
+    ]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        51,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+
+    fn dyed_armor_item(item_id: i32, dye: Option<i32>) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                dyed_color: dye,
+                ..Default::default()
+            },
+        }
+    }
+
+    // A custom-dyed leather chestplate, an undyed leather boot, and an iron helmet (non-dyeable).
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 51,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Chest,
+                item: dyed_armor_item(leather_chestplate, Some(dye)),
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Feet,
+                item: dyed_armor_item(leather_boots, None),
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: dyed_armor_item(iron_helmet, None),
+            },
+        ],
+    }));
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    // The dyed leather chestplate carries its `dyed_color`; the undyed leather boot and the bare-of-dye
+    // iron helmet carry None (each paired with its resolved material).
+    assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Leather));
+    assert_eq!(sources[0].chest_armor_dye, Some(dye));
+    assert_eq!(sources[0].feet_armor, Some(ArmorMaterialKind::Leather));
+    assert_eq!(sources[0].feet_armor_dye, None);
+    assert_eq!(sources[0].head_armor, Some(ArmorMaterialKind::Iron));
+    assert_eq!(sources[0].head_armor_dye, None);
+    assert_eq!(sources[0].legs_armor_dye, None);
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid

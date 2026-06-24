@@ -385,6 +385,15 @@ entity_render_state! {
     (with_chest_armor) chest_armor: Option<EntityArmorMaterial> = None;
     (with_legs_armor) legs_armor: Option<EntityArmorMaterial> = None;
     (with_feet_armor) feet_armor: Option<EntityArmorMaterial> = None;
+    /// Vanilla `DyedItemColor.getOrDefault` per worn armor slot: the worn item's `dyed_color`
+    /// component (a packed RGB), paired with the slot's [`Self::head_armor`] material. Only leather is
+    /// dyeable, so `armor_layer_tint` applies this as the leather layer's tint (forced opaque) when
+    /// `Some`, falling back to the default `DyedItemColor.LEATHER_COLOR` brown when `None`; every other
+    /// material ignores it and renders white. `None` for an undyed / non-leather slot.
+    (with_head_armor_dye) head_armor_dye: Option<u32> = None;
+    (with_chest_armor_dye) chest_armor_dye: Option<u32> = None;
+    (with_legs_armor_dye) legs_armor_dye: Option<u32> = None;
+    (with_feet_armor_dye) feet_armor_dye: Option<u32> = None;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -1589,6 +1598,10 @@ mod tests {
                 chest_armor: None,
                 legs_armor: None,
                 feet_armor: None,
+                head_armor_dye: None,
+                chest_armor_dye: None,
+                legs_armor_dye: None,
+                feet_armor_dye: None,
                 illager_spellcasting: false,
                 is_crouching: false,
                 invisible: false,

@@ -660,6 +660,18 @@ pub struct EntityModelSourceState {
     pub legs_armor: Option<ArmorMaterialKind>,
     #[serde(default)]
     pub feet_armor: Option<ArmorMaterialKind>,
+    /// Vanilla `DyedItemColor` per worn armor slot: the worn item's `dyed_color` component (a packed
+    /// RGB), projected alongside the slot's material. Only leather is dyeable, so the renderer applies
+    /// this as the leather layer's tint; `None` leaves leather at its default undyed brown and is
+    /// ignored for every other material. Paired one-to-one with `head_armor` .. `feet_armor`.
+    #[serde(default)]
+    pub head_armor_dye: Option<i32>,
+    #[serde(default)]
+    pub chest_armor_dye: Option<i32>,
+    #[serde(default)]
+    pub legs_armor_dye: Option<i32>,
+    #[serde(default)]
+    pub feet_armor_dye: Option<i32>,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 
