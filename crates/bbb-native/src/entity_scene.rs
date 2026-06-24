@@ -454,6 +454,8 @@ fn entity_model_instance(
         .with_creeper_swelling(source.creeper_swelling)
         .with_shulker_peek(source.shulker_peek)
         .with_tendril_animation(source.tendril_animation)
+        .with_squid_tentacle_angle(source.squid_tentacle_angle)
+        .with_squid_body_tilt(source.squid_x_body_rot, source.squid_z_body_rot)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
 }
@@ -1834,6 +1836,70 @@ mod tests {
             instances[0].render_state.tendril_animation,
             7.0 / 10.0,
             "the projected tendril pulse drives the WardenModel.animateTendrils antenna sway"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_squid_tentacle_and_body_tilt_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            95,
+            VANILLA_ENTITY_TYPE_SQUID_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // Give the squid a diving velocity so the body pitch turns negative
+        // (`Squid.xBodyRot` is driven by `-atan2(horizontal, dm.y)`).
+        assert!(world.apply_entity_position_sync(EntityPositionSync {
+            id: 95,
+            position: Vec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: Vec3d {
+                x: 0.2,
+                y: -0.1,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: false,
+        }));
+
+        // A floating squid at rest projects the bind pose into the render state.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = resting
+            .iter()
+            .find(|instance| instance.entity_id == 95)
+            .unwrap();
+        assert_eq!(resting.render_state.squid_tentacle_angle, 0.0);
+        assert_eq!(resting.render_state.squid_x_body_rot, 0.0);
+        assert_eq!(resting.render_state.squid_z_body_rot, 0.0);
+
+        // After ticking deep into the swim cycle, the world-side squid accumulator
+        // develops a non-zero tentacle flex, a body pitch, and a body roll, all of
+        // which flow through EntityModelSourceState into the renderer EntityRenderState
+        // (`SquidModel.setupAnim` tentacle xRot + `SquidRenderer.setupRotations` tilt).
+        world.advance_entity_client_animations(24);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let squid = instances
+            .iter()
+            .find(|instance| instance.entity_id == 95)
+            .unwrap();
+        assert!(
+            squid.render_state.squid_tentacle_angle > 0.0,
+            "the projected tentacle angle drives SquidModel.setupAnim: {}",
+            squid.render_state.squid_tentacle_angle
+        );
+        assert!(
+            squid.render_state.squid_x_body_rot < 0.0,
+            "a diving squid projects a negative body pitch: {}",
+            squid.render_state.squid_x_body_rot
+        );
+        assert!(
+            squid.render_state.squid_z_body_rot > 0.0,
+            "the projected body roll drives SquidRenderer.setupRotations: {}",
+            squid.render_state.squid_z_body_rot
         );
     }
 

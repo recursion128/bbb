@@ -1994,6 +1994,155 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
 }
 
 #[test]
+fn entity_model_sources_project_squid_tentacle_and_body_animation() {
+    const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
+    const SQUID_RESET_MOVEMENT_EVENT_ID: i8 = 19;
+
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 70)
+            .unwrap()
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_SQUID_ID,
+    ));
+    // Give the squid a horizontal+downward velocity so the body pitch turns away
+    // from zero (vanilla `xBodyRot` is driven by `atan2(horizontal, dm.y)`).
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 70,
+        delta_movement: ProtocolVec3d {
+            x: 0.2,
+            y: -0.1,
+            z: 0.0,
+        },
+    }));
+
+    // A floating squid that has never been ticked is frozen at the bind pose.
+    let resting = source(&store, 1.0);
+    assert_eq!(resting.squid_tentacle_angle, 0.0);
+    assert_eq!(resting.squid_x_body_rot, 0.0);
+    assert_eq!(resting.squid_z_body_rot, 0.0);
+
+    // A few ticks in (still early in the half-cycle, `scale < 0.75`) the tentacle
+    // flex is already off the bind pose, but the body roll has not yet engaged:
+    // vanilla only sets `rotateSpeed = 1` once `scale > 0.75`.
+    store.advance_entity_client_animations(5);
+    let after_five = source(&store, 1.0);
+    assert!(
+        after_five.squid_tentacle_angle > 0.0,
+        "the tentacle angle leaves the bind pose: {}",
+        after_five.squid_tentacle_angle
+    );
+    assert!(
+        after_five.squid_x_body_rot < 0.0,
+        "a diving squid pitches its body negative: {}",
+        after_five.squid_x_body_rot
+    );
+
+    // Advance deep into the half-cycle so `scale > 0.75` engages `rotateSpeed = 1`,
+    // after which the body roll accumulates each tick (`zBodyRot += π·rotateSpeed·1.5`).
+    store.advance_entity_client_animations(18);
+    let after_roll = source(&store, 1.0);
+    assert!(
+        after_roll.squid_z_body_rot > 0.0,
+        "the body roll accumulates once the half-cycle passes 0.75: {}",
+        after_roll.squid_z_body_rot
+    );
+
+    store.advance_entity_client_animations(1);
+    let after_more = source(&store, 1.0);
+    assert!(
+        after_more.squid_z_body_rot > after_roll.squid_z_body_rot,
+        "the body roll keeps advancing across ticks"
+    );
+
+    // The lerped getters track the partial tick between the old and current
+    // endpoints: at partial 0.0 the projection equals last tick's value (the
+    // half-way point of the lerp at 0.5 sits strictly between the two endpoints).
+    let at_zero = source(&store, 0.0).squid_z_body_rot;
+    let at_half = source(&store, 0.5).squid_z_body_rot;
+    let at_one = source(&store, 1.0).squid_z_body_rot;
+    assert!(
+        at_zero < at_half && at_half < at_one,
+        "partial tick lerps the roll: {at_zero} < {at_half} < {at_one}"
+    );
+    assert!(
+        (at_half - (at_zero + (at_one - at_zero) * 0.5)).abs() < 1.0e-4,
+        "the projection is a linear lerp between the endpoints"
+    );
+
+    // Entity event 19 (`Squid.handleEntityEvent`) resets `tentacleMovement` to 0.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 70,
+        event_id: SQUID_RESET_MOVEMENT_EVENT_ID,
+    }));
+    // After the reset, the next tick restarts the half-cycle from near zero, so the
+    // tentacle angle is small (`sin(scale²·π)·π·0.25` with `scale` just above 0).
+    store.advance_entity_client_animations(1);
+    let after_reset = source(&store, 1.0);
+    assert!(
+        after_reset.squid_tentacle_angle < after_five.squid_tentacle_angle,
+        "the event-19 reset rewinds the tentacle cycle"
+    );
+}
+
+#[test]
+fn squid_tentacle_speed_is_seeded_by_entity_id() {
+    const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
+    const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
+
+    // The per-tick tentacle advance equals `tentacleSpeed`, so after one tick the
+    // tentacle movement (read indirectly via the angle the half-cycle produces) is
+    // a deterministic function of the id-seeded speed. Two squids with different
+    // ids advance at different rates, while a glow squid is seeded the same way.
+    let tentacle_angle_after_one_tick = |id: i32, entity_type_id: i32| {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        store.advance_entity_client_animations(1);
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .squid_tentacle_angle
+    };
+
+    let squid_a = tentacle_angle_after_one_tick(7, VANILLA_ENTITY_TYPE_SQUID_ID);
+    let squid_b = tentacle_angle_after_one_tick(1000, VANILLA_ENTITY_TYPE_SQUID_ID);
+    assert!(squid_a > 0.0 && squid_b > 0.0);
+    assert!(
+        (squid_a - squid_b).abs() > 1.0e-6,
+        "different ids seed different tentacle speeds: {squid_a} vs {squid_b}"
+    );
+
+    // A glow squid uses the same id-seeded animation (vanilla `GlowSquid extends Squid`).
+    let glow = tentacle_angle_after_one_tick(7, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID);
+    assert!(
+        (glow - squid_a).abs() < 1.0e-6,
+        "the glow squid shares the squid animation seeding for the same id"
+    );
+}
+
+#[test]
+fn squid_tentacle_speed_matches_java_random_for_known_id() {
+    // Vanilla `Squid` constructor: `random.setSeed(getId()); tentacleSpeed = 1 /
+    // (random.nextFloat() + 1) * 0.2`. Pinned against the Java LCG: for id 0 the
+    // first `nextFloat()` is 0.730_967_76 (matching the audio module's LCG test),
+    // so `tentacleSpeed = 1 / 1.730_967_76 * 0.2 = 0.115_542_31`.
+    let state = super::animations::SquidAnimationState::new(0);
+    assert!(
+        (state.tentacle_speed - 0.115_542_31).abs() < 1.0e-7,
+        "id-0 tentacle speed must match the Java Random formula: {}",
+        state.tentacle_speed
+    );
+}
+
+#[test]
 fn entity_model_sources_project_walk_animation_limb_swing() {
     const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 

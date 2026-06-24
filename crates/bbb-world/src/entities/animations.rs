@@ -11,9 +11,11 @@ use super::dragon::{
 use super::{EntityTransform, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
+const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
 const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
+const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
 const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
 /// Vanilla `FlyingAnimal` implementors (`Bee`, `Parrot`): their
 /// `LivingEntity.calculateEntityAnimation` measures the full 3-D travel distance
@@ -64,6 +66,11 @@ const WARDEN_TENDRIL_ANIMATION_TICKS: i32 = 10;
 /// Vanilla `Warden.handleEntityEvent` resets `tendrilAnimation` to `10` on event
 /// id `61` (a received vibration signal).
 const WARDEN_TENDRIL_EVENT_ID: i8 = 61;
+/// Vanilla `Squid.handleEntityEvent` resets `tentacleMovement` to `0` on event id
+/// `19` (`EntityEvent.SQUID_RESET_MOVEMENT`, broadcast each time the server-side
+/// `tentacleMovement` wraps past `2π`). Without it the client tentacles freeze at
+/// `2π` after the first cycle.
+const SQUID_RESET_MOVEMENT_EVENT_ID: i8 = 19;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -85,6 +92,8 @@ pub struct EntityClientAnimationState {
     pub creeper_swell: Option<CreeperSwellAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warden_tendril: Option<WardenTendrilAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub squid: Option<SquidAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
 }
@@ -159,6 +168,49 @@ pub struct WardenTendrilAnimationState {
     pub previous: i32,
     /// Vanilla `Warden.tendrilAnimation`.
     pub current: i32,
+}
+
+/// Canonical client-side squid tentacle/body animation, mirroring vanilla
+/// `Squid` (`xBodyRot`/`zBodyRot`/`tentacleMovement`/`tentacleAngle` and their
+/// `O`/`old` lerp endpoints). `Squid.aiStep` advances `tentacleMovement` by the
+/// id-seeded `tentacleSpeed` each client tick and derives the tentacle flex angle
+/// and body pitch/roll; `SquidRenderer.extractRenderState` lerps the pairs.
+///
+/// Only the in-water branch is modelled (a squid is a water creature; the rare
+/// out-of-water/suffocating branch is deferred — see [`Self::advance_client_tick`]).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SquidAnimationState {
+    /// Vanilla `Squid.tentacleSpeed`, seeded once from the entity id in the
+    /// constructor: `random.setSeed(getId()); 1 / (random.nextFloat() + 1) * 0.2`.
+    #[serde(default)]
+    pub tentacle_speed: f32,
+    /// Vanilla `Squid.tentacleMovement`.
+    #[serde(default)]
+    pub tentacle_movement: f32,
+    /// Vanilla `Squid.oldTentacleMovement`.
+    #[serde(default)]
+    pub old_tentacle_movement: f32,
+    /// Vanilla `Squid.tentacleAngle`.
+    #[serde(default)]
+    pub tentacle_angle: f32,
+    /// Vanilla `Squid.oldTentacleAngle`.
+    #[serde(default)]
+    pub old_tentacle_angle: f32,
+    /// Vanilla `Squid.xBodyRot` (swim pitch, degrees).
+    #[serde(default)]
+    pub x_body_rot: f32,
+    /// Vanilla `Squid.xBodyRotO`.
+    #[serde(default)]
+    pub old_x_body_rot: f32,
+    /// Vanilla `Squid.zBodyRot` (swim roll, degrees).
+    #[serde(default)]
+    pub z_body_rot: f32,
+    /// Vanilla `Squid.zBodyRotO`.
+    #[serde(default)]
+    pub old_z_body_rot: f32,
+    /// Vanilla `Squid.rotateSpeed`.
+    #[serde(default)]
+    pub rotate_speed: f32,
 }
 
 /// Canonical client-side limb-swing accumulator, mirroring vanilla
@@ -370,6 +422,116 @@ impl WardenTendrilAnimationState {
     }
 }
 
+/// Java `java.util.Random` LCG `setSeed(seed)` then `nextFloat()`, used to seed
+/// `Squid.tentacleSpeed` from the entity id deterministically on the client.
+/// Replicates the multiplier/addend/mask of `LevelEventSoundRandomState` (the
+/// audio module's Java-compatible LCG) so the value matches vanilla exactly.
+fn java_random_first_next_float(seed: i64) -> f32 {
+    const MULTIPLIER: u64 = 0x5DEEC_E66D;
+    const ADDEND: u64 = 0xB;
+    const MASK: u64 = (1_u64 << 48) - 1;
+    // `setSeed(seed)`.
+    let mut state = ((seed as u64) ^ MULTIPLIER) & MASK;
+    // `next(24)`.
+    state = state.wrapping_mul(MULTIPLIER).wrapping_add(ADDEND) & MASK;
+    let bits = (state >> (48 - 24)) as u32;
+    // `nextFloat() = next(24) / (1 << 24)`.
+    bits as f32 / (1_u32 << 24) as f32
+}
+
+impl SquidAnimationState {
+    /// Vanilla `Squid` constructor: `random.setSeed(getId()); tentacleSpeed = 1 /
+    /// (random.nextFloat() + 1) * 0.2`. Seeding by the entity id makes the speed
+    /// deterministic on the client (the `aiStep` re-randomization is server-only).
+    pub(crate) fn new(entity_id: i32) -> Self {
+        let tentacle_speed = 1.0 / (java_random_first_next_float(i64::from(entity_id)) + 1.0) * 0.2;
+        Self {
+            tentacle_speed,
+            tentacle_movement: 0.0,
+            old_tentacle_movement: 0.0,
+            tentacle_angle: 0.0,
+            old_tentacle_angle: 0.0,
+            x_body_rot: 0.0,
+            old_x_body_rot: 0.0,
+            z_body_rot: 0.0,
+            old_z_body_rot: 0.0,
+            rotate_speed: 0.0,
+        }
+    }
+
+    /// Vanilla `Squid.handleEntityEvent(19)`: resets `tentacleMovement = 0`, the
+    /// per-cycle reset broadcast by the server when its counter wraps past `2π`.
+    fn reset_movement(&mut self) {
+        self.tentacle_movement = 0.0;
+    }
+
+    /// Advances one client tick of `Squid.aiStep`, in-water branch.
+    ///
+    /// Vanilla saves the lerp endpoints (`xBodyRotO`/`zBodyRotO`/
+    /// `oldTentacleMovement`/`oldTentacleAngle`), advances `tentacleMovement` by
+    /// `tentacleSpeed`, and on the client clamps it at `2π` (the server instead
+    /// resets to `0` and broadcasts event `19`). The in-water branch then derives
+    /// `tentacleAngle`/`rotateSpeed` from the half-cycle position and turns the
+    /// body roll/pitch from the synced velocity.
+    ///
+    /// DEFERRED: the out-of-water/suffocating branch (`!isInWater()`:
+    /// `tentacleAngle = abs(sin(tentacleMovement)) * π * 0.25` and `xBodyRot`
+    /// easing toward `-90°`) is not modelled — a squid is a water creature, so the
+    /// in-water branch is the always-relevant case. The vanilla movement-derived
+    /// `yBodyRot` refinement is also deferred (that is the entity body yaw, which
+    /// bbb projects separately and must not be perturbed here).
+    fn advance_client_tick(&mut self, delta_movement: EntityVec3) {
+        use std::f32::consts::{PI, TAU};
+
+        self.old_x_body_rot = self.x_body_rot;
+        self.old_z_body_rot = self.z_body_rot;
+        self.old_tentacle_movement = self.tentacle_movement;
+        self.old_tentacle_angle = self.tentacle_angle;
+        self.tentacle_movement += self.tentacle_speed;
+        if self.tentacle_movement > TAU {
+            // Client clamp (server resets to 0 and broadcasts event 19).
+            self.tentacle_movement = TAU;
+        }
+
+        if self.tentacle_movement < PI {
+            let scale = self.tentacle_movement / PI;
+            self.tentacle_angle = (scale * scale * PI).sin() * PI * 0.25;
+            if scale > 0.75 {
+                self.rotate_speed = 1.0;
+            } else {
+                self.rotate_speed *= 0.8;
+            }
+        } else {
+            self.tentacle_angle = 0.0;
+            self.rotate_speed *= 0.99;
+        }
+
+        let horizontal = (delta_movement.x * delta_movement.x + delta_movement.z * delta_movement.z)
+            .sqrt() as f32;
+        self.z_body_rot += PI * self.rotate_speed * 1.5;
+        self.x_body_rot +=
+            (-(horizontal.atan2(delta_movement.y as f32)) * (180.0 / PI) - self.x_body_rot) * 0.1;
+    }
+
+    /// Vanilla `SquidRenderer.extractRenderState`: `lerp(partialTicks,
+    /// oldTentacleAngle, tentacleAngle)`.
+    fn tentacle_angle(&self, partial_tick: f32) -> f32 {
+        self.old_tentacle_angle + (self.tentacle_angle - self.old_tentacle_angle) * partial_tick
+    }
+
+    /// Vanilla `SquidRenderer.extractRenderState`: `lerp(partialTicks, xBodyRotO,
+    /// xBodyRot)`.
+    fn x_body_rot(&self, partial_tick: f32) -> f32 {
+        self.old_x_body_rot + (self.x_body_rot - self.old_x_body_rot) * partial_tick
+    }
+
+    /// Vanilla `SquidRenderer.extractRenderState`: `lerp(partialTicks, zBodyRotO,
+    /// zBodyRot)`.
+    fn z_body_rot(&self, partial_tick: f32) -> f32 {
+        self.old_z_body_rot + (self.z_body_rot - self.old_z_body_rot) * partial_tick
+    }
+}
+
 impl CreeperSwellAnimationState {
     fn set_swell_dir(&mut self, swell_dir: i32) {
         self.swell_dir = swell_dir;
@@ -517,6 +679,17 @@ impl EntityClientAnimationState {
                     current: 0,
                 })
                 .current = WARDEN_TENDRIL_ANIMATION_TICKS;
+        } else if matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
+        ) && event_id == SQUID_RESET_MOVEMENT_EVENT_ID
+        {
+            // Vanilla `Squid.handleEntityEvent(19)`: `tentacleMovement = 0`. Only an
+            // already-ticked squid has a state; if the event arrives first the
+            // animation will start fresh on the next tick anyway, so nothing to do.
+            if let Some(squid) = self.squid.as_mut() {
+                squid.reset_movement();
+            }
         }
     }
 
@@ -604,9 +777,34 @@ impl EntityClientAnimationState {
             .map_or(0.0, |walk| walk.speed(partial_tick))
     }
 
+    /// Vanilla `SquidRenderState.tentacleAngle` (`Squid.tentacleAngle` lerped):
+    /// the tentacle flex angle `SquidModel.setupAnim` writes to every tentacle's
+    /// `xRot`. Returns `0.0` for a non-squid entity (and a frozen/unticked squid).
+    pub fn squid_tentacle_angle(&self, partial_tick: f32) -> f32 {
+        self.squid
+            .map_or(0.0, |squid| squid.tentacle_angle(partial_tick))
+    }
+
+    /// Vanilla `SquidRenderState.xBodyRot` (`Squid.xBodyRot` lerped, degrees): the
+    /// swim pitch `SquidRenderer.setupRotations` applies to the squid root.
+    /// Returns `0.0` for every non-squid entity.
+    pub fn squid_x_body_rot(&self, partial_tick: f32) -> f32 {
+        self.squid
+            .map_or(0.0, |squid| squid.x_body_rot(partial_tick))
+    }
+
+    /// Vanilla `SquidRenderState.zBodyRot` (`Squid.zBodyRot` lerped, degrees): the
+    /// swim roll `SquidRenderer.setupRotations` applies to the squid root. Returns
+    /// `0.0` for every non-squid entity.
+    pub fn squid_z_body_rot(&self, partial_tick: f32) -> f32 {
+        self.squid
+            .map_or(0.0, |squid| squid.z_body_rot(partial_tick))
+    }
+
     pub(crate) fn advance_client_tick(
         &mut self,
         entity_type_id: i32,
+        entity_id: i32,
         transform: EntityTransform,
         is_passenger: bool,
         is_baby: bool,
@@ -665,6 +863,10 @@ impl EntityClientAnimationState {
                 .ender_dragon
                 .get_or_insert_with(EnderDragonAnimationState::default)
                 .advance_client_tick(transform),
+            VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => self
+                .squid
+                .get_or_insert_with(|| SquidAnimationState::new(entity_id))
+                .advance_client_tick(transform.delta_movement),
             _ => {}
         }
         // Vanilla `LivingEntity.calculateEntityAnimation` runs every client tick

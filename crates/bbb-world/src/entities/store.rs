@@ -618,6 +618,14 @@ impl EntityStore {
             walk_animation_speed: client_animations
                 .animations
                 .walk_animation_speed(partial_ticks),
+            // Vanilla `SquidRenderer.extractRenderState`: the lerped tentacle flex
+            // angle and body pitch/roll. `0.0` for every non-squid entity (only the
+            // squid/glow squid is given a squid animation state).
+            squid_tentacle_angle: client_animations
+                .animations
+                .squid_tentacle_angle(partial_ticks),
+            squid_x_body_rot: client_animations.animations.squid_x_body_rot(partial_ticks),
+            squid_z_body_rot: client_animations.animations.squid_z_body_rot(partial_ticks),
             data_values: metadata.data_values.clone(),
         })
     }
@@ -954,6 +962,7 @@ impl EntityStore {
                 let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
+                    identity.id,
                     *transform,
                     is_passenger,
                     is_baby,

@@ -474,6 +474,21 @@ pub struct EntityModelSourceState {
     /// every non-living entity.
     #[serde(default)]
     pub walk_animation_speed: f32,
+    /// Vanilla `SquidRenderState.tentacleAngle` (`Squid.tentacleAngle` lerped):
+    /// the tentacle flex angle `SquidModel.setupAnim` writes to every tentacle's
+    /// `xRot`. `0.0` for a floating squid at rest and every non-squid entity.
+    #[serde(default)]
+    pub squid_tentacle_angle: f32,
+    /// Vanilla `SquidRenderState.xBodyRot` (`Squid.xBodyRot` lerped, degrees): the
+    /// squid swim pitch `SquidRenderer.setupRotations` applies to the root. `0.0`
+    /// at rest and for every non-squid entity.
+    #[serde(default)]
+    pub squid_x_body_rot: f32,
+    /// Vanilla `SquidRenderState.zBodyRot` (`Squid.zBodyRot` lerped, degrees): the
+    /// squid swim roll `SquidRenderer.setupRotations` applies to the root. `0.0` at
+    /// rest and for every non-squid entity.
+    #[serde(default)]
+    pub squid_z_body_rot: f32,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 
