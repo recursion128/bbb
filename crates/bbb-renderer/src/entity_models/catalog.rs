@@ -179,9 +179,13 @@ pub enum EntityModelKind {
     /// is complete; only the texture-backed path is deferred.
     LeashKnot,
     /// `ArrowModel` at its `createBodyLayer` rest pose (the arrowhead plane plus the two crossed
-    /// fletching planes, the whole mesh scaled 0.9). The impact-shake wobble and the
-    /// tipped/spectral textures are deferred; `ArrowRenderer` orients it along its flight.
-    Arrow,
+    /// fletching planes, the whole mesh scaled 0.9). `texture` picks the normal / tipped / spectral
+    /// image (`TippableArrowRenderer` swaps to `arrow_tipped.png` when the arrow carries a potion;
+    /// the spectral arrow binds `arrow_spectral.png`). The impact-shake wobble is deferred;
+    /// `ArrowRenderer` orients it along its flight.
+    Arrow {
+        texture: ArrowModelTexture,
+    },
     /// `TridentModel` — the pole, crossguard, and three spikes. The model has no animation, so the
     /// geometry is complete; the enchant-foil overlay and the texture are deferred.
     /// `ThrownTridentRenderer` orients it along its flight.
@@ -978,6 +982,15 @@ pub enum CatModelVariant {
     White,
     Jellie,
     AllBlack,
+}
+
+/// Which arrow image to bind: the plain `arrow.png`, the `arrow_tipped.png` (`TippableArrowRenderer`
+/// when the arrow carries a potion, `getColor() > 0`), or the spectral arrow's `arrow_spectral.png`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArrowModelTexture {
+    Normal,
+    Tipped,
+    Spectral,
 }
 
 /// Vanilla `Panda.Gene` (the displayed variant from `Panda.getVariant()`): the seven panda genes,

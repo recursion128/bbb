@@ -38,7 +38,12 @@ fn arrow_geometry_matches_vanilla_26_1_body_layer() {
 #[test]
 fn arrow_mesh_uses_vanilla_body_layer_geometry() {
     // 3 planes → 18 faces / 72 vertices / 108 indices; the shaft cross and the head carry their tints.
-    let arrow = entity_model_mesh(&[EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 0.0)]);
+    let arrow = entity_model_mesh(&[EntityModelInstance::arrow(
+        60,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ArrowModelTexture::Normal,
+    )]);
     assert_eq!(arrow.opaque_faces, 18);
     assert_eq!(arrow.vertices.len(), 72);
     assert_eq!(arrow.indices.len(), 108);
@@ -54,22 +59,41 @@ fn arrow_mesh_uses_vanilla_body_layer_geometry() {
 
 #[test]
 fn arrow_textured_render_matches_vanilla_renderer() {
-    assert_eq!(arrow_textured_layer_passes()[0].texture, ARROW_TEXTURE_REF);
+    // One model, three images: normal / tipped (`getColor() > 0`) / spectral (the distinct entity).
+    for (texture, texture_ref) in [
+        (ArrowModelTexture::Normal, ARROW_TEXTURE_REF),
+        (ArrowModelTexture::Tipped, ARROW_TIPPED_TEXTURE_REF),
+        (ArrowModelTexture::Spectral, ARROW_SPECTRAL_TEXTURE_REF),
+    ] {
+        assert_eq!(arrow_textured_layer_passes(texture)[0].texture, texture_ref);
+        assert_eq!(
+            EntityModelKind::Arrow { texture }.vanilla_texture_ref(),
+            Some(texture_ref)
+        );
+        assert!(entity_model_texture_refs().contains(&texture_ref));
+    }
     assert_eq!(
-        EntityModelKind::Arrow.vanilla_texture_ref(),
-        Some(ARROW_TEXTURE_REF)
+        arrow_entity_texture_refs(),
+        &[
+            ARROW_TEXTURE_REF,
+            ARROW_TIPPED_TEXTURE_REF,
+            ARROW_SPECTRAL_TEXTURE_REF
+        ]
     );
-    assert!(entity_model_texture_refs().contains(&ARROW_TEXTURE_REF));
-    assert_eq!(arrow_entity_texture_refs(), &[ARROW_TEXTURE_REF]);
 
     let len = usize::try_from(ARROW_TEXTURE_REF.size[0] * ARROW_TEXTURE_REF.size[1] * 4).unwrap();
     let images = vec![EntityModelTextureImage::new(
-        ARROW_TEXTURE_REF,
+        ARROW_TIPPED_TEXTURE_REF,
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 0.0)],
+        &[EntityModelInstance::arrow(
+            60,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ArrowModelTexture::Tipped,
+        )],
         &atlas,
     );
     assert!(!mesh.vertices.is_empty());

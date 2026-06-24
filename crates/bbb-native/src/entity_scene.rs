@@ -2,13 +2,13 @@ use bbb_protocol::packets::{
     EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind,
 };
 use bbb_renderer::{
-    ArmorStandModelPose, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
-    ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelInstance,
-    EntityModelKind, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HumanoidModelFamily,
-    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant,
-    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
-    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
+    CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor,
+    EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant, HoglinModelFamily,
+    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PandaModelVariant,
+    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+    RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose,
+    SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
     UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
@@ -297,6 +297,10 @@ const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
 const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
+// Vanilla Arrow.ID_EFFECT_COLOR (11, INT): `Arrow extends AbstractArrow extends Projectile extends
+// Entity`, so after Entity (0-7) come the three AbstractArrow accessors ID_FLAGS (8) / PIERCE_LEVEL
+// (9) / IN_GROUND (10), then Arrow's own potion color. `getColor() > 0` marks a tipped arrow.
+const ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 /// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
@@ -829,9 +833,17 @@ fn entity_model_kind_with_time_and_registries(
         | VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID
         | VANILLA_ENTITY_TYPE_TNT_MINECART_ID => EntityModelKind::Minecart,
         VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID => EntityModelKind::NoRender,
-        VANILLA_ENTITY_TYPE_ARROW_ID | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
-            EntityModelKind::Arrow
-        }
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => EntityModelKind::Arrow {
+            texture: ArrowModelTexture::Spectral,
+        },
+        VANILLA_ENTITY_TYPE_ARROW_ID => EntityModelKind::Arrow {
+            // Vanilla `TippableArrowRenderer`: `isTipped = getColor() > 0` swaps to `arrow_tipped.png`.
+            texture: if entity_data_int(data_values, ARROW_EFFECT_COLOR_DATA_ID, -1) > 0 {
+                ArrowModelTexture::Tipped
+            } else {
+                ArrowModelTexture::Normal
+            },
+        },
         VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID => {
             placeholder("todo_block_display_bounds", 1.0, 1.0, 1.0)
         }
@@ -5514,15 +5526,38 @@ mod tests {
     #[test]
     fn entity_model_kind_maps_arrows_to_real_model() {
         // The arrow and spectral arrow were placeholder boxes; they now resolve to the real
-        // `ArrowModel`. They share one model, differing only in the deferred tipped/spectral texture,
-        // so both type ids map to `Arrow`. The impact-shake wobble is deferred entity-side state.
+        // `ArrowModel`, sharing one model but binding different images. A plain arrow is `Normal`; a
+        // tipped arrow (`ID_EFFECT_COLOR` 11 > 0) is `Tipped`; the spectral arrow type is `Spectral`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ARROW_ID, &[]),
-            EntityModelKind::Arrow
+            EntityModelKind::Arrow {
+                texture: ArrowModelTexture::Normal
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                &[protocol_int_data(ARROW_EFFECT_COLOR_DATA_ID, 0x385dc6)]
+            ),
+            EntityModelKind::Arrow {
+                texture: ArrowModelTexture::Tipped
+            }
+        );
+        // A potionless arrow (`getColor()` returns the `-1` sentinel) is not tipped.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                &[protocol_int_data(ARROW_EFFECT_COLOR_DATA_ID, -1)]
+            ),
+            EntityModelKind::Arrow {
+                texture: ArrowModelTexture::Normal
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, &[]),
-            EntityModelKind::Arrow
+            EntityModelKind::Arrow {
+                texture: ArrowModelTexture::Spectral
+            }
         );
     }
 

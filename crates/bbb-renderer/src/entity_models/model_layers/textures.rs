@@ -1,7 +1,7 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
-    AxolotlModelVariant, CatModelVariant, EntityDyeColor, FoxModelVariant, FrogModelVariant,
-    PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
+    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, EntityDyeColor, FoxModelVariant,
+    FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
 };
 
 mod equine;
@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 278] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 280] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -959,6 +959,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     MOOSHROOM_TEXTURE_REF,
     MOOSHROOM_BABY_TEXTURE_REF,
     ARROW_TEXTURE_REF,
+    ARROW_TIPPED_TEXTURE_REF,
+    ARROW_SPECTRAL_TEXTURE_REF,
     LLAMA_SPIT_TEXTURE_REF,
     SHULKER_BULLET_TEXTURE_REF,
     WITHER_TEXTURE_REF,
@@ -2638,8 +2640,33 @@ pub(in crate::entity_models) const ARROW_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/projectiles/arrow.png",
         size: [32, 32],
     };
-pub(in crate::entity_models) const ARROW_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [ARROW_TEXTURE_REF];
+// Vanilla `TippableArrowRenderer.TIPPED_ARROW_LOCATION`: a tipped arrow (any potion, `getColor() > 0`)
+// swaps to `arrow_tipped.png`. `SpectralArrowRenderer.SPECTRAL_ARROW_LOCATION`: the spectral arrow
+// (a distinct entity type) binds `arrow_spectral.png`.
+pub(in crate::entity_models) const ARROW_TIPPED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/projectiles/arrow_tipped.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const ARROW_SPECTRAL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/projectiles/arrow_spectral.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) fn arrow_texture_ref(
+    texture: ArrowModelTexture,
+) -> EntityModelTextureRef {
+    match texture {
+        ArrowModelTexture::Normal => ARROW_TEXTURE_REF,
+        ArrowModelTexture::Tipped => ARROW_TIPPED_TEXTURE_REF,
+        ArrowModelTexture::Spectral => ARROW_SPECTRAL_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) const ARROW_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    ARROW_TEXTURE_REF,
+    ARROW_TIPPED_TEXTURE_REF,
+    ARROW_SPECTRAL_TEXTURE_REF,
+];
 pub fn arrow_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &ARROW_ENTITY_TEXTURE_REFS
 }

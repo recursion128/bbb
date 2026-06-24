@@ -2,12 +2,12 @@ use super::super::{
     catalog::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         llama_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
-        wolf_texture_ref, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
-        ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        FoxModelVariant, FrogModelVariant, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
-        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
-        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
+        wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily,
+        CamelModelFamily, CatModelVariant, ChickenModelVariant, CowModelVariant, EntityDyeColor,
+        EntityModelTextureRef, FoxModelVariant, FrogModelVariant, HoglinModelFamily,
+        IllagerModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
+        PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
+        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
     },
     model_layers::*,
 };
@@ -865,10 +865,13 @@ pub(in crate::entity_models) fn mooshroom_textured_layer_passes(
     )]
 }
 
-pub(in crate::entity_models) fn arrow_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn arrow_textured_layer_passes(
+    texture: ArrowModelTexture,
+) -> Vec<EntityModelLayerPass> {
+    // One model shared by the normal / tipped / spectral arrow; only the bound image differs.
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        ARROW_TEXTURE_REF,
+        arrow_texture_ref(texture),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

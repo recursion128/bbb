@@ -876,8 +876,18 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::LeashKnot, position, y_rot)
     }
 
-    pub fn arrow(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Arrow, position, y_rot)
+    pub fn arrow(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        texture: ArrowModelTexture,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Arrow { texture },
+            position,
+            y_rot,
+        )
     }
 
     pub fn trident(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

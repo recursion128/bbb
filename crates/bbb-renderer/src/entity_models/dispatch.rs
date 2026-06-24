@@ -578,11 +578,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &leash_knot_textured_layer_passes(),
         ),
-        EntityModelKind::Arrow => sink.model(
+        EntityModelKind::Arrow { texture } => sink.model(
             ArrowModel::new(),
             arrow_model_root_transform(*instance),
             instance,
-            &arrow_textured_layer_passes(),
+            &arrow_textured_layer_passes(texture),
         ),
         EntityModelKind::Trident => sink.model(
             TridentModel::new(),
