@@ -4,10 +4,10 @@ use bbb_protocol::packets::{
 use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
     DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
-    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize, SelectionBox, SelectionOutline,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, ParrotModelVariant,
+    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize, SelectionBox,
+    SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose,
+    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
     DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
@@ -251,6 +251,9 @@ const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 const COW_VARIANT_DATA_ID: u8 = 18;
 const PIG_VARIANT_DATA_ID: u8 = 19;
+// Vanilla Parrot.DATA_VARIANT_ID (19, INT): after Mob.DATA_MOB_FLAGS_ID (15), AgeableMob.DATA_BABY_ID
+// (16), and the two TamableAnimal accessors DATA_FLAGS_ID (17) / DATA_OWNERUUID_ID (18).
+const PARROT_VARIANT_DATA_ID: u8 = 19;
 const SHEEP_WOOL_DATA_ID: u8 = 17;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
@@ -881,7 +884,7 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_ominous_item_spawner_bounds", 0.25, 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
-        VANILLA_ENTITY_TYPE_PARROT_ID => EntityModelKind::Parrot,
+        VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(data_values),
         VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {
             size: phantom_size(data_values),
         },
@@ -944,6 +947,15 @@ fn humanoid(family: HumanoidModelFamily, baby: bool) -> EntityModelKind {
 fn rabbit_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
     EntityModelKind::Rabbit {
         baby: ageable_baby(values),
+    }
+}
+
+/// Vanilla `ParrotRenderer.getVariantTexture` selects the parrot colour from `Parrot.getVariant()`
+/// (the synced `DATA_VARIANT_ID` int, mapped through `Parrot.Variant.byId`). Renders through the
+/// dedicated [`EntityModelKind::Parrot`] (`variant` selecting the texture).
+fn parrot_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    EntityModelKind::Parrot {
+        variant: ParrotModelVariant::from_id(entity_data_int(values, PARROT_VARIANT_DATA_ID, 0)),
     }
 }
 
@@ -5053,13 +5065,36 @@ mod tests {
 
     #[test]
     fn entity_model_kind_maps_parrot_to_real_model() {
-        // The parrot was a placeholder bounds box; it now resolves to the real `ParrotModel` at its
-        // STANDING rest pose. The head look, per-pose offsets, wing flap / dance animations, and the
-        // five color variants are deferred entity-side state, so no synced data is read.
+        // The parrot resolves to the real `ParrotModel` at its STANDING rest pose, textured per the
+        // five `Parrot.Variant` colours read from the synced `DATA_VARIANT_ID` (19, INT) via
+        // `Parrot.Variant.byId`. The head look, per-pose offsets, and wing flap / dance animations are
+        // deferred entity-side state.
+        let parrot_variant = |id: i32| EntityDataValue {
+            data_id: PARROT_VARIANT_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(id),
+        };
+        // No synced data → the vanilla DEFAULT (RED_BLUE).
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[]),
-            EntityModelKind::Parrot
+            EntityModelKind::Parrot {
+                variant: ParrotModelVariant::RedBlue,
+            }
         );
+        // Each id selects its colour; out-of-range folds back to RED_BLUE.
+        for (id, variant) in [
+            (0, ParrotModelVariant::RedBlue),
+            (1, ParrotModelVariant::Blue),
+            (2, ParrotModelVariant::Green),
+            (3, ParrotModelVariant::YellowBlue),
+            (4, ParrotModelVariant::Gray),
+            (99, ParrotModelVariant::RedBlue),
+        ] {
+            assert_eq!(
+                entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[parrot_variant(id)]),
+                EntityModelKind::Parrot { variant }
+            );
+        }
     }
 
     #[test]

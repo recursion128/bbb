@@ -60,7 +60,10 @@ fn parrot_sitting_pose_matches_vanilla_prepare() {
     // change is the wings — vanilla's STANDING fall-through sets `zRot = ±(0.0873 + flapAngle)`, so a
     // grounded parrot's wings settle to `zRot = ±0.0873` rather than the bind `zRot = 0`.
     let mut standing = ParrotModel::new();
-    standing.prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0).with_on_ground(true));
+    standing.prepare(
+        &EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0, ParrotModelVariant::RedBlue)
+            .with_on_ground(true),
+    );
     let standing_root = standing.root_mut();
     for (name, pose) in parts {
         let part = standing_root.child_mut(name);
@@ -80,8 +83,10 @@ fn parrot_sitting_pose_matches_vanilla_prepare() {
     // SITTING = `ParrotModel.prepare(SITTING)`: every part raises `y += 1.9`, the tail pitches
     // `xRot += π/6`, the wings tuck to `zRot = ±0.0873`, and the legs fold `xRot += π/2`.
     let mut sitting = ParrotModel::new();
-    sitting
-        .prepare(&EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true));
+    sitting.prepare(
+        &EntityModelInstance::parrot(0, [0.0, 64.0, 0.0], 0.0, ParrotModelVariant::RedBlue)
+            .with_parrot_sitting(true),
+    );
     let root = sitting.root_mut();
     for (name, pose) in parts {
         assert!(
@@ -111,7 +116,7 @@ fn parrot_head_look_turns_only_the_head_subtree() {
     // per-pose switch, so the head and its beak/crest children turn while the body, tail, wings,
     // and legs hold. Depth-first emit order: body/tail/wings `[0, 96)`, the head plus its four
     // children `[96, 216)`, then the two legs `[216, 264)`. Only the head subtree moves.
-    let rest = EntityModelInstance::parrot(990, [0.0, 64.0, 0.0], 0.0);
+    let rest = EntityModelInstance::parrot(990, [0.0, 64.0, 0.0], 0.0, ParrotModelVariant::RedBlue);
     let looked = rest.with_head_look(35.0, -25.0);
     let rest_mesh = entity_model_mesh(&[rest]);
     let looked_mesh = entity_model_mesh(&[looked]);
@@ -145,12 +150,20 @@ fn parrot_head_look_turns_only_the_head_subtree() {
 fn parrot_sitting_mesh_differs_from_standing() {
     // The perched parrot re-poses every part (raise + fold), so its mesh differs from standing
     // while keeping the same 11-cube vertex count.
-    let standing = entity_model_mesh(&[
-        EntityModelInstance::parrot(981, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
-    ]);
-    let sitting = entity_model_mesh(&[
-        EntityModelInstance::parrot(982, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true)
-    ]);
+    let standing = entity_model_mesh(&[EntityModelInstance::parrot(
+        981,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(true)]);
+    let sitting = entity_model_mesh(&[EntityModelInstance::parrot(
+        982,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_parrot_sitting(true)]);
     assert_eq!(standing.vertices.len(), sitting.vertices.len());
     assert_ne!(
         standing.vertices, sitting.vertices,
@@ -198,12 +211,21 @@ fn parrot_walk_swing_moves_only_the_legs_and_tail() {
     // [0, 24), wings [48, 96), and head subtree [96, 216) hold. The walk swing does not touch the
     // wings, and with no flap (`flapAngle == 0`) the wing zRot settles to ±0.0873 for both meshes
     // (the bob also vanishes), so the wing slice matches between rest and walking.
-    let rest = entity_model_mesh(&[
-        EntityModelInstance::parrot(992, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
-    ]);
-    let walking = entity_model_mesh(&[EntityModelInstance::parrot(993, [0.0, 64.0, 0.0], 0.0)
-        .with_on_ground(true)
-        .with_walk_animation(2.0, 1.0)]);
+    let rest = entity_model_mesh(&[EntityModelInstance::parrot(
+        992,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(true)]);
+    let walking = entity_model_mesh(&[EntityModelInstance::parrot(
+        993,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(true)
+    .with_walk_animation(2.0, 1.0)]);
     assert_eq!(rest.vertices.len(), walking.vertices.len());
     assert_eq!(
         rest.vertices[0..24],
@@ -232,12 +254,21 @@ fn parrot_walk_swing_moves_only_the_legs_and_tail() {
     );
 
     // A perched parrot skips the swing: the vanilla SITTING branch breaks before it.
-    let sit_rest = entity_model_mesh(&[
-        EntityModelInstance::parrot(994, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true)
-    ]);
-    let sit_walk = entity_model_mesh(&[EntityModelInstance::parrot(995, [0.0, 64.0, 0.0], 0.0)
-        .with_parrot_sitting(true)
-        .with_walk_animation(2.0, 1.0)]);
+    let sit_rest = entity_model_mesh(&[EntityModelInstance::parrot(
+        994,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_parrot_sitting(true)]);
+    let sit_walk = entity_model_mesh(&[EntityModelInstance::parrot(
+        995,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_parrot_sitting(true)
+    .with_walk_animation(2.0, 1.0)]);
     assert_eq!(
         sit_rest.vertices, sit_walk.vertices,
         "a perched parrot is inert under walk animation"
@@ -252,12 +283,22 @@ fn parrot_flaps_its_wings_when_airborne() {
     // and lifts the bobbing parts. Tested airborne (FLYING) and grounded (STANDING) — both carry the
     // flap.
     for on_ground in [false, true] {
-        let rest = entity_model_mesh(&[EntityModelInstance::parrot(70, [0.0, 64.0, 0.0], 0.0)
-            .with_on_ground(on_ground)
-            .with_parrot_flap_angle(0.0)]);
-        let flapping = entity_model_mesh(&[EntityModelInstance::parrot(71, [0.0, 64.0, 0.0], 0.0)
-            .with_on_ground(on_ground)
-            .with_parrot_flap_angle(0.8)]);
+        let rest = entity_model_mesh(&[EntityModelInstance::parrot(
+            70,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ParrotModelVariant::RedBlue,
+        )
+        .with_on_ground(on_ground)
+        .with_parrot_flap_angle(0.0)]);
+        let flapping = entity_model_mesh(&[EntityModelInstance::parrot(
+            71,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ParrotModelVariant::RedBlue,
+        )
+        .with_on_ground(on_ground)
+        .with_parrot_flap_angle(0.8)]);
         assert_eq!(
             rest.vertices.len(),
             flapping.vertices.len(),
@@ -281,12 +322,20 @@ fn parrot_flying_pitches_legs_back_versus_standing() {
     // Vanilla `ParrotModel.prepare(FLYING)` pitches both legs `xRot += 2π/9`, and FLYING skips the
     // STANDING leg walk swing. With no flap the body/tail/wings/head match between a grounded and an
     // airborne parrot (both settle the wings to ±0.0873, bob is 0), so the only difference is the legs.
-    let standing = entity_model_mesh(&[
-        EntityModelInstance::parrot(72, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
-    ]);
-    let flying = entity_model_mesh(&[
-        EntityModelInstance::parrot(73, [0.0, 64.0, 0.0], 0.0).with_on_ground(false)
-    ]);
+    let standing = entity_model_mesh(&[EntityModelInstance::parrot(
+        72,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(true)]);
+    let flying = entity_model_mesh(&[EntityModelInstance::parrot(
+        73,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(false)]);
     assert_eq!(standing.vertices.len(), flying.vertices.len());
     // body/tail/wings/head [0, 216) hold; only the legs [216, 264) differ.
     assert_eq!(
@@ -305,15 +354,28 @@ fn parrot_flying_pitches_legs_back_versus_standing() {
 fn parrot_sitting_mesh_differs_from_standing_and_flying() {
     // A perched parrot re-poses every part (raise + fold), so its mesh differs from both the standing
     // and the flying parrot while keeping the same vertex count. SITTING ignores the flap.
-    let standing = entity_model_mesh(&[
-        EntityModelInstance::parrot(74, [0.0, 64.0, 0.0], 0.0).with_on_ground(true)
-    ]);
-    let flying = entity_model_mesh(&[
-        EntityModelInstance::parrot(75, [0.0, 64.0, 0.0], 0.0).with_on_ground(false)
-    ]);
-    let sitting = entity_model_mesh(&[EntityModelInstance::parrot(76, [0.0, 64.0, 0.0], 0.0)
-        .with_parrot_sitting(true)
-        .with_parrot_flap_angle(0.8)]);
+    let standing = entity_model_mesh(&[EntityModelInstance::parrot(
+        74,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(true)]);
+    let flying = entity_model_mesh(&[EntityModelInstance::parrot(
+        75,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(false)]);
+    let sitting = entity_model_mesh(&[EntityModelInstance::parrot(
+        76,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_parrot_sitting(true)
+    .with_parrot_flap_angle(0.8)]);
     assert_eq!(standing.vertices.len(), sitting.vertices.len());
     assert_ne!(
         standing.vertices, sitting.vertices,
@@ -324,10 +386,13 @@ fn parrot_sitting_mesh_differs_from_standing_and_flying() {
         "the sitting parrot differs from the flying parrot"
     );
     // A sitting parrot ignores the flap entirely (its pose lives wholly in prepare(SITTING)).
-    let sitting_no_flap =
-        entity_model_mesh(&[
-            EntityModelInstance::parrot(77, [0.0, 64.0, 0.0], 0.0).with_parrot_sitting(true)
-        ]);
+    let sitting_no_flap = entity_model_mesh(&[EntityModelInstance::parrot(
+        77,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_parrot_sitting(true)]);
     assert_eq!(
         sitting.vertices, sitting_no_flap.vertices,
         "a sitting parrot does not flap"
@@ -337,7 +402,12 @@ fn parrot_sitting_mesh_differs_from_standing_and_flying() {
 #[test]
 fn parrot_mesh_uses_vanilla_body_layer_geometry() {
     // The body carries the body tint; the two beak halves carry the beak tint.
-    let parrot = entity_model_mesh(&[EntityModelInstance::parrot(980, [0.0, 64.0, 0.0], 0.0)]);
+    let parrot = entity_model_mesh(&[EntityModelInstance::parrot(
+        980,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )]);
     assert!(parrot
         .vertices
         .iter()
@@ -350,19 +420,44 @@ fn parrot_mesh_uses_vanilla_body_layer_geometry() {
 
 #[test]
 fn parrot_textured_render_matches_vanilla_renderer() {
-    let passes = parrot_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
-    assert_eq!(passes[0].texture, PARROT_TEXTURE_REF);
-    assert_eq!(
-        EntityModelKind::Parrot.vanilla_texture_ref(),
-        Some(EntityModelTextureRef {
-            path: "textures/entity/parrot/parrot_red_blue.png",
+    // The five `Parrot.Variant` colours share one model and differ only by texture
+    // (`ParrotRenderer.getVariantTexture`); `RED_BLUE` is the vanilla `DEFAULT`. Note the `Gray`
+    // variant's file is the British-spelled `parrot_grey.png`.
+    let variant_textures = [
+        (ParrotModelVariant::RedBlue, "parrot_red_blue.png"),
+        (ParrotModelVariant::Blue, "parrot_blue.png"),
+        (ParrotModelVariant::Green, "parrot_green.png"),
+        (ParrotModelVariant::YellowBlue, "parrot_yellow_blue.png"),
+        (ParrotModelVariant::Gray, "parrot_grey.png"),
+    ];
+    for (variant, file) in variant_textures {
+        let expected = EntityModelTextureRef {
+            path: match variant {
+                ParrotModelVariant::RedBlue => "textures/entity/parrot/parrot_red_blue.png",
+                ParrotModelVariant::Blue => "textures/entity/parrot/parrot_blue.png",
+                ParrotModelVariant::Green => "textures/entity/parrot/parrot_green.png",
+                ParrotModelVariant::YellowBlue => "textures/entity/parrot/parrot_yellow_blue.png",
+                ParrotModelVariant::Gray => "textures/entity/parrot/parrot_grey.png",
+            },
             size: [32, 32],
-        })
-    );
-    assert!(entity_model_texture_refs().contains(&PARROT_TEXTURE_REF));
-    assert_eq!(parrot_entity_texture_refs(), &[PARROT_TEXTURE_REF]);
+        };
+        assert!(expected.path.ends_with(file));
+        let passes = parrot_textured_layer_passes(variant);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[0].texture, expected);
+        assert_eq!(
+            EntityModelKind::Parrot { variant }.vanilla_texture_ref(),
+            Some(expected)
+        );
+        assert!(entity_model_texture_refs().contains(&expected));
+    }
+
+    // `Parrot.Variant.byId` folds out-of-range ids back to the `RED_BLUE` default.
+    assert_eq!(ParrotModelVariant::from_id(0), ParrotModelVariant::RedBlue);
+    assert_eq!(ParrotModelVariant::from_id(4), ParrotModelVariant::Gray);
+    assert_eq!(ParrotModelVariant::from_id(99), ParrotModelVariant::RedBlue);
+    assert_eq!(parrot_entity_texture_refs().len(), 5);
 
     let images: Vec<EntityModelTextureImage> = parrot_entity_texture_refs()
         .iter()
@@ -373,13 +468,24 @@ fn parrot_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::parrot(900, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
-    assert!(!mesh.vertices.is_empty());
-    assert!(mesh
-        .vertices
-        .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    // Each colour emits textured geometry tinted white.
+    for (variant, _) in variant_textures {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::parrot(
+                900,
+                [0.0, 64.0, 0.0],
+                0.0,
+                variant,
+            )],
+            &atlas,
+        );
+        assert!(
+            !mesh.vertices.is_empty(),
+            "parrot {variant:?} emits geometry"
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
 }

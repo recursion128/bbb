@@ -4,8 +4,9 @@ use super::super::{
         llama_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
         wolf_texture_ref, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
         EntityDyeColor, EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
-        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize,
-        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
+        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern,
     },
     model_layers::*,
 };
@@ -698,10 +699,14 @@ pub(in crate::entity_models) fn sniffer_textured_layer_passes() -> Vec<EntityMod
     )]
 }
 
-pub(in crate::entity_models) fn parrot_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn parrot_textured_layer_passes(
+    variant: ParrotModelVariant,
+) -> Vec<EntityModelLayerPass> {
+    // The five parrot colours share one model and differ only by texture
+    // (`ParrotRenderer.getVariantTexture`).
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        PARROT_TEXTURE_REF,
+        parrot_texture_ref(variant),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

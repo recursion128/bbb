@@ -1,4 +1,5 @@
 use super::super::EntityModelTextureRef;
+use crate::entity_models::catalog::ParrotModelVariant;
 
 mod equine;
 
@@ -754,7 +755,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 190] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 194] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -828,7 +829,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     TADPOLE_TEXTURE_REF,
     CREAKING_TEXTURE_REF,
     SNIFFER_TEXTURE_REF,
-    PARROT_TEXTURE_REF,
+    PARROT_RED_BLUE_TEXTURE_REF,
+    PARROT_BLUE_TEXTURE_REF,
+    PARROT_GREEN_TEXTURE_REF,
+    PARROT_YELLOW_BLUE_TEXTURE_REF,
+    PARROT_GRAY_TEXTURE_REF,
     SHULKER_TEXTURE_REF,
     ENDER_DRAGON_TEXTURE_REF,
     NAUTILUS_TEXTURE_REF,
@@ -1630,16 +1635,55 @@ pub fn sniffer_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SNIFFER_ENTITY_TEXTURE_REFS
 }
 
-// bbb's `EntityModelKind::Parrot` is a unit variant (no color), so only the default red/blue parrot
-// texture is selectable; the other four `Parrot.Variant` colours need an enum extension to wire.
-pub(in crate::entity_models) const PARROT_TEXTURE_REF: EntityModelTextureRef =
+// The five `Parrot.Variant` colours (`ParrotRenderer.getVariantTexture`) share one `ParrotModel` and
+// differ only by texture. `parrot_red_blue.png` is the vanilla `DEFAULT`; note the `GRAY` variant's
+// file is the British-spelled `parrot_grey.png`.
+pub(in crate::entity_models) const PARROT_RED_BLUE_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/parrot/parrot_red_blue.png",
         size: [32, 32],
     };
+pub(in crate::entity_models) const PARROT_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/parrot/parrot_blue.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const PARROT_GREEN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/parrot/parrot_green.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const PARROT_YELLOW_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/parrot/parrot_yellow_blue.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const PARROT_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/parrot/parrot_grey.png",
+        size: [32, 32],
+    };
 
-pub(in crate::entity_models) const PARROT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [PARROT_TEXTURE_REF];
+/// Vanilla `ParrotRenderer.getVariantTexture`: the parrot's colour texture.
+pub(in crate::entity_models) fn parrot_texture_ref(
+    variant: ParrotModelVariant,
+) -> EntityModelTextureRef {
+    match variant {
+        ParrotModelVariant::RedBlue => PARROT_RED_BLUE_TEXTURE_REF,
+        ParrotModelVariant::Blue => PARROT_BLUE_TEXTURE_REF,
+        ParrotModelVariant::Green => PARROT_GREEN_TEXTURE_REF,
+        ParrotModelVariant::YellowBlue => PARROT_YELLOW_BLUE_TEXTURE_REF,
+        ParrotModelVariant::Gray => PARROT_GRAY_TEXTURE_REF,
+    }
+}
+
+pub(in crate::entity_models) const PARROT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
+    PARROT_RED_BLUE_TEXTURE_REF,
+    PARROT_BLUE_TEXTURE_REF,
+    PARROT_GREEN_TEXTURE_REF,
+    PARROT_YELLOW_BLUE_TEXTURE_REF,
+    PARROT_GRAY_TEXTURE_REF,
+];
 
 pub fn parrot_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &PARROT_ENTITY_TEXTURE_REFS

@@ -134,10 +134,13 @@ pub enum EntityModelKind {
     /// `TadpoleModel` at its `createBodyLayer` rest pose. The tail yaw sway (`tail.yRot`) is
     /// deferred.
     Tadpole,
-    /// `ParrotModel` at its `createBodyLayer` STANDING rest pose. The head look, the per-pose
-    /// `prepare` offsets, the leg walk swing, the wing flap, the flap bob, the PARTY dance, and the
-    /// five color variants are deferred.
-    Parrot,
+    /// `ParrotModel` at its `createBodyLayer` STANDING rest pose, textured per the five
+    /// `Parrot.Variant` colours (`variant`, the synced `DATA_VARIANT_ID`). The head look, the per-pose
+    /// `prepare` offsets, the leg walk swing, the wing flap, the flap bob, and the PARTY dance are
+    /// deferred.
+    Parrot {
+        variant: ParrotModelVariant,
+    },
     /// `ShulkerModel` at its `createBodyLayer` closed rest pose. The peek open/close, the head look,
     /// the `ShulkerRenderer.setupRotations` attach-face rotation and body-yaw inversion, and the
     /// sixteen dye-color variants are deferred.
@@ -820,6 +823,32 @@ pub enum ChickenModelVariant {
     Temperate,
     Warm,
     Cold,
+}
+
+/// Vanilla `Parrot.Variant` (the synced `DATA_VARIANT_ID` int): the five parrot colours, sharing one
+/// `ParrotModel` and differing only by texture (`ParrotRenderer.getVariantTexture`). `RED_BLUE` is the
+/// vanilla `DEFAULT`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParrotModelVariant {
+    RedBlue,
+    Blue,
+    Green,
+    YellowBlue,
+    Gray,
+}
+
+impl ParrotModelVariant {
+    /// Vanilla `Parrot.Variant.byId` (clamped via `byId`'s modulo): maps the synced `DATA_VARIANT_ID`
+    /// int to a colour, defaulting to `RED_BLUE` for the out-of-range ids vanilla folds back to `0`.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Blue,
+            2 => Self::Green,
+            3 => Self::YellowBlue,
+            4 => Self::Gray,
+            _ => Self::RedBlue,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

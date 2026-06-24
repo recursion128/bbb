@@ -548,11 +548,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &tadpole_textured_layer_passes(),
         ),
-        EntityModelKind::Parrot => sink.model(
+        EntityModelKind::Parrot { variant } => sink.model(
             ParrotModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &parrot_textured_layer_passes(),
+            &parrot_textured_layer_passes(variant),
         ),
         EntityModelKind::Shulker => sink.model(
             ShulkerModel::new(),
