@@ -1647,16 +1647,22 @@ When an agent does any of the following, update this file in the same slice:
       renderer tests pinning the three speed branches and the off-bind tail sway. The starting tail
       phase is `0.0` (vanilla seeds it with a per-spawn `random.nextFloat()`, which is
       non-deterministic — only the starting phase is approximated; the sway dynamics are exact). The
-      remaining `setupAnim` / renderer motion is deferred — the `spikesAnimation` withdrawal
-      (`(1 - spikesAnimation) · 0.55`, which needs a per-tick `random.nextFloat()` out of water), the
-      eye target tracking (`lookAtPosition`/`lookDirection`/`eyePosition`), and the `GuardianRenderer`
-      attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
-      which read entity-side state not yet projected. The base texture is now bound on the textured
-      path (`GUARDIAN_TEXTURE_REF` / `GUARDIAN_ELDER_TEXTURE_REF`,
-      `textures/entity/guardian/guardian.png`), the primary now-wired path; only those listed motions
-      (the attack beam, the `spikesAnimation` withdrawal, and the eye target tracking) remain
-      deferred. The colored debug path stays as a fallback (it approximates the body with a single
-      teal tint and the eye with a pink tint)
+      remaining `setupAnim` / renderer motion is partly deferred — the `spikesAnimation` withdrawal
+      (`(1 - spikesAnimation) · 0.55`, which needs a per-tick `random.nextFloat()` out of water) and the
+      eye target tracking (`lookAtPosition`/`lookDirection`/`eyePosition`) still read entity-side state
+      not yet projected. The `GuardianRenderer` attack beam GEOMETRY is now built (renderer slice,
+      `emit_guardian_beam`): when the `guardian_beam` render state is set, the vanilla `renderBeam`
+      12-vertex twisted prism (two crossed inner-radius `0.2` strips + a `0.282` twisting top cap, spun
+      by `rot = attackTime · 0.05 · -1.5`, tinted by the `colorScale = attackScale²` ramp) is drawn in a
+      world-aligned frame (`translate(pos) · translate(0, eyeHeight, 0) · rotY(yRot) · rotX(xRot)`,
+      orienting local +Y onto the world `eye_to_target` vector — no body yaw, matching vanilla where the
+      beam draws after `super.submit` pops `setupRotations`), folded into the scroll (fract-wrap) pass so
+      `guardian_beam.png` tiles vertically over `length · 2.5`. DEFERRED (next slice): the WORLD
+      projection that fills `guardian_beam` — the synced `DATA_ID_ATTACK_TARGET` (idx 17), the
+      client-side `clientSideAttackTime` counter, and the cross-entity target-position +
+      `bbHeight · 0.5` lookup. The base texture is bound on the textured path (`GUARDIAN_TEXTURE_REF` /
+      `GUARDIAN_ELDER_TEXTURE_REF` / `GUARDIAN_BEAM_TEXTURE_REF`). The colored debug path stays as a
+      fallback (it approximates the body with a single teal tint and the eye with a pink tint)
     - frog entities as renderer-owned vanilla 26.1 `FrogModel.createBodyLayer()` geometry on the
       textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `55` to
       `EntityModelKind::Frog { variant }`, replacing the former placeholder box. The static

@@ -274,9 +274,14 @@ fn guardian_textured_render_matches_vanilla_renderer() {
     );
     assert!(entity_model_texture_refs().contains(&GUARDIAN_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&GUARDIAN_ELDER_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&GUARDIAN_BEAM_TEXTURE_REF));
     assert_eq!(
         guardian_entity_texture_refs(),
-        &[GUARDIAN_TEXTURE_REF, GUARDIAN_ELDER_TEXTURE_REF]
+        &[
+            GUARDIAN_TEXTURE_REF,
+            GUARDIAN_ELDER_TEXTURE_REF,
+            GUARDIAN_BEAM_TEXTURE_REF
+        ]
     );
 
     let images: Vec<EntityModelTextureImage> = guardian_entity_texture_refs()
@@ -307,4 +312,143 @@ fn guardian_textured_render_matches_vanilla_renderer() {
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
+}
+
+// Build an atlas covering the guardian base + beam textures, enough to render a beaming guardian.
+fn guardian_beam_atlas() -> EntityModelTextureAtlasLayout {
+    let images: Vec<EntityModelTextureImage> = guardian_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    build_entity_model_texture_atlas(&images).unwrap().0
+}
+
+#[test]
+fn guardian_without_active_target_emits_no_beam() {
+    // Vanilla `GuardianRenderer.submit`: with `attackTargetPosition == null` (no active attack target),
+    // the beam is skipped entirely.
+    let atlas = guardian_beam_atlas();
+    let meshes = entity_model_textured_meshes(
+        &[EntityModelInstance::guardian(
+            500,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )],
+        &atlas,
+    );
+    assert!(
+        meshes.scroll.vertices.is_empty(),
+        "a guardian with no active target emits no beam geometry"
+    );
+}
+
+#[test]
+fn guardian_beam_emits_twisted_prism_with_scale_color() {
+    // Vanilla `GuardianRenderer.renderBeam`: the beam is a 12-vertex twisted prism (two crossed
+    // longitudinal strips + a top cap), folded into the scroll (tiled) pass — three quads → 18 indices.
+    let atlas = guardian_beam_atlas();
+    let meshes = entity_model_textured_meshes(
+        &[
+            EntityModelInstance::guardian(501, [0.0, 64.0, 0.0], 0.0, false).with_guardian_beam(
+                Some(GuardianBeamRenderState {
+                    eye_to_target: [0.0, 8.0, 0.0],
+                    eye_height: 0.5,
+                    attack_time: 0.0,
+                    attack_scale: 1.0,
+                }),
+            ),
+        ],
+        &atlas,
+    );
+    assert_eq!(meshes.scroll.vertices.len(), 12, "12 beam vertices");
+    assert_eq!(meshes.scroll.indices.len(), 18, "3 quads → 18 indices");
+
+    // Vanilla color ramp at `attackScale = 1` (`colorScale = 1`): red `64+191=255`, green `32+191=223`,
+    // blue `128-64=64`, alpha opaque.
+    let expected = [1.0, 223.0 / 255.0, 64.0 / 255.0, 1.0];
+    assert!(meshes
+        .scroll
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == expected));
+    // Every beam vertex carries the beam texture's atlas sub-rect for the shader's vertical tiling.
+    let rect_size = meshes.scroll.vertices[0].uv_rect_size;
+    assert!(rect_size[0] > 0.0 && rect_size[1] > 0.0);
+    // The longitudinal strips span the beam length in V (vanilla `maxV = minV + length * 2.5`,
+    // `length = |beamVector| + 1`): the V extent is `(8 + 1) * 2.5 = 22.5` tiles.
+    let v_values: Vec<f32> = meshes
+        .scroll
+        .vertices
+        .iter()
+        .map(|vertex| vertex.local_uv[1])
+        .collect();
+    let v_span = v_values.iter().cloned().fold(f32::MIN, f32::max)
+        - v_values.iter().cloned().fold(f32::MAX, f32::min);
+    assert!(
+        (v_span - 22.5).abs() < 0.01,
+        "beam V tiles over length * 2.5 = 22.5, got {v_span}"
+    );
+}
+
+#[test]
+fn guardian_beam_orients_along_world_target_vector() {
+    // The beam is built in a world-aligned frame and orients its local +Y onto the world `eye_to_target`
+    // vector, so a beam fired straight along +X extends in world +X (and one along +Z extends in +Z),
+    // independent of the guardian's body yaw.
+    let atlas = guardian_beam_atlas();
+    let beam_along = |delta: [f32; 3], y_rot: f32| {
+        entity_model_textured_meshes(
+            &[
+                EntityModelInstance::guardian(502, [0.0, 64.0, 0.0], y_rot, false)
+                    .with_guardian_beam(Some(GuardianBeamRenderState {
+                        eye_to_target: delta,
+                        eye_height: 0.5,
+                        attack_time: 0.0,
+                        attack_scale: 0.5,
+                    })),
+            ],
+            &atlas,
+        )
+    };
+    let extent = |positions: Vec<f32>| {
+        positions.iter().cloned().fold(f32::MIN, f32::max)
+            - positions.iter().cloned().fold(f32::MAX, f32::min)
+    };
+    // Length = 10 + 1 = 11; a beam along +X reaches ~11 in X but stays thin (radius ≤ 0.282) in Z, and
+    // vice versa — regardless of the body yaw, which the beam ignores.
+    let along_x = beam_along([10.0, 0.0, 0.0], 1.3);
+    let along_x_x: Vec<f32> = along_x
+        .scroll
+        .vertices
+        .iter()
+        .map(|v| v.position[0])
+        .collect();
+    let along_x_z: Vec<f32> = along_x
+        .scroll
+        .vertices
+        .iter()
+        .map(|v| v.position[2])
+        .collect();
+    assert!(extent(along_x_x) > 9.0, "beam along +X spans X");
+    assert!(extent(along_x_z) < 1.0, "beam along +X is thin in Z");
+    let along_z = beam_along([0.0, 0.0, 10.0], 2.7);
+    let along_z_z: Vec<f32> = along_z
+        .scroll
+        .vertices
+        .iter()
+        .map(|v| v.position[2])
+        .collect();
+    let along_z_x: Vec<f32> = along_z
+        .scroll
+        .vertices
+        .iter()
+        .map(|v| v.position[0])
+        .collect();
+    assert!(extent(along_z_z) > 9.0, "beam along +Z spans Z");
+    assert!(extent(along_z_x) < 1.0, "beam along +Z is thin in X");
 }

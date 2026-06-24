@@ -465,6 +465,11 @@ entity_render_state! {
     /// (`sin(swim) * π * {0.05, 0.1, 0.15}`). `0.0` (tail at bind) for an
     /// unticked/out-of-water guardian and every non-guardian entity.
     (with_guardian_tail_animation) guardian_tail_animation: f32 = 0.0;
+    /// Vanilla `GuardianRenderer` attack beam (`GuardianRenderState.attackTargetPosition` present): a
+    /// guardian firing its beam, carrying the world-space eye→target vector, eye height, lerped
+    /// `clientSideAttackTime`, and attack scale. `None` (no beam) for a guardian with no active attack
+    /// target and every other entity.
+    (with_guardian_beam) guardian_beam: Option<GuardianBeamRenderState> = None;
     /// Vanilla `ChickenRenderState.flap` (`Mth.lerp(partialTick, oFlap, flap)`): the
     /// wing-flap phase `ChickenModel.setupAnim` feeds to `flapAngle = (sin(flap) +
     /// 1) * flapSpeed`, written to `rightWing.zRot` / `-leftWing.zRot`. `0.0` for a
@@ -1615,6 +1620,7 @@ mod tests {
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
                 guardian_tail_animation: 0.0,
+                guardian_beam: None,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
                 parrot_flap_angle: 0.0,

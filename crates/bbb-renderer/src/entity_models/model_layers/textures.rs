@@ -781,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 301] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 302] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -970,6 +970,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     WIND_CHARGE_TEXTURE_REF,
     GUARDIAN_TEXTURE_REF,
     GUARDIAN_ELDER_TEXTURE_REF,
+    GUARDIAN_BEAM_TEXTURE_REF,
     WARDEN_TEXTURE_REF,
     WARDEN_BIOLUMINESCENT_TEXTURE_REF,
     WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
@@ -2809,7 +2810,8 @@ pub(in crate::entity_models) const ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF: EntityM
     armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/netherite.png");
 
 // The guardian and elder guardian share one mesh/UV layout, differing only by texture (and the elder's
-// 2.35 root scale). The guardian's attack beam (guardian_beam.png) stays deferred.
+// 2.35 root scale). The shared attack beam (`guardian_beam.png`, 32×32) is the `GuardianRenderer`
+// `BEAM_RENDER_TYPE` texture, tiled vertically along the beam via the scroll (fract-wrap) pipeline.
 pub(in crate::entity_models) const GUARDIAN_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/guardian/guardian.png",
@@ -2820,8 +2822,16 @@ pub(in crate::entity_models) const GUARDIAN_ELDER_TEXTURE_REF: EntityModelTextur
         path: "textures/entity/guardian/guardian_elder.png",
         size: [64, 64],
     };
-pub(in crate::entity_models) const GUARDIAN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [GUARDIAN_TEXTURE_REF, GUARDIAN_ELDER_TEXTURE_REF];
+pub(in crate::entity_models) const GUARDIAN_BEAM_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/guardian/guardian_beam.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const GUARDIAN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    GUARDIAN_TEXTURE_REF,
+    GUARDIAN_ELDER_TEXTURE_REF,
+    GUARDIAN_BEAM_TEXTURE_REF,
+];
 pub fn guardian_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &GUARDIAN_ENTITY_TEXTURE_REFS
 }

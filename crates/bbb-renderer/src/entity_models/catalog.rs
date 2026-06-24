@@ -597,6 +597,21 @@ pub enum EntityArmorMaterial {
     Netherite,
 }
 
+/// Vanilla `GuardianRenderer` attack-beam render state (`GuardianRenderState.attackTargetPosition`
+/// present): a guardian firing its beam at a target. `eye_to_target` is the world-space vector from the
+/// guardian's eye to the target center (`attackTargetPosition − eyePosition`, vanilla `beamVector`);
+/// `eye_height` raises the beam origin from the entity feet to the eye; `attack_time` is the lerped
+/// `clientSideAttackTime + partialTicks` (drives the texture V-scroll and the prism twist); and
+/// `attack_scale` is `getAttackAnimationScale` (`0..1`, drives the beam color ramp). Projected as
+/// `Option`, `None` for a guardian with no active target and every other entity.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GuardianBeamRenderState {
+    pub eye_to_target: [f32; 3],
+    pub eye_height: f32,
+    pub attack_time: f32,
+    pub attack_scale: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlamaModelFamily {
     Llama,

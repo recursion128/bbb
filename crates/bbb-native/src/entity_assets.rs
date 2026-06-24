@@ -283,6 +283,7 @@ mod tests {
                 "textures/entity/projectiles/wind_charge.png",
                 "textures/entity/guardian/guardian.png",
                 "textures/entity/guardian/guardian_elder.png",
+                "textures/entity/guardian/guardian_beam.png",
                 "textures/entity/warden/warden.png",
                 "textures/entity/warden/warden_bioluminescent_layer.png",
                 "textures/entity/warden/warden_pulsating_spots_1.png",

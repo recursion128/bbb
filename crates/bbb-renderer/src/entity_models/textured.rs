@@ -14,7 +14,7 @@ use super::{
     entity_model_root_transform,
     geometry::{
         append_scrolled_textured_mesh, fill_entity_textured_light, fill_entity_textured_overlay,
-        EntityModelScrollMesh, EntityModelTexturedMesh,
+        EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -23,13 +23,14 @@ use super::{
         HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
         SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
         TropicalFishModel, TropicalFishPatternModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
-        STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
-use glam::Mat4;
+use glam::{Mat4, Vec3};
 
 mod layers;
 pub(super) use layers::{
@@ -231,6 +232,9 @@ pub(super) fn entity_model_textured_meshes(
         // `handled`.
         emit_charged_creeper_energy_swirl(&mut meshes, *instance, atlas);
         emit_wither_energy_swirl(&mut meshes, *instance, atlas);
+        // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
+        // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
+        emit_guardian_beam(&mut meshes, *instance, atlas);
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
@@ -495,6 +499,115 @@ fn emit_wither_energy_swirl(
         entry.uv,
         [u_offset, v_offset],
     );
+}
+
+/// The guardian attack beam (vanilla `GuardianRenderer.renderBeam`). When the guardian has an active
+/// attack target, a world-space twisted prism is drawn from the guardian eye toward the target along
+/// the world `beamVector` (`eye_to_target`): two crossed longitudinal strips (the inner `0.2`-radius
+/// rays) plus a twisting `0.282`-radius top cap, the whole thing spun by `rot = attackTime · 0.05 ·
+/// -1.5` and tinted by the attack-scale color ramp (`colorScale = scale²`). The `guardian_beam.png`
+/// texture tiles vertically (V spans `length · 2.5` units, scrolled by `texVOff`) via the scroll
+/// (fract-wrap) pass. Built in a world-aligned frame (`translate(pos) · translate(0, eyeHeight, 0) ·
+/// rotY(yRot) · rotX(xRot)`, no body yaw / model flip), mirroring vanilla where the beam draws after
+/// `super.submit` has popped the model's `setupRotations` back to the entity-origin frame.
+fn emit_guardian_beam(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(beam) = instance.render_state.guardian_beam else {
+        return;
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, GUARDIAN_BEAM_TEXTURE_REF) else {
+        return;
+    };
+
+    // Orient local +Y onto the world beam direction, then lift the origin from the entity feet to the
+    // eye. Vanilla: `xRot = acos(dir.y)`, `yRot = π/2 − atan2(dir.z, dir.x)`.
+    let beam_vector = Vec3::from_array(beam.eye_to_target);
+    let length = beam_vector.length() + 1.0;
+    let dir = beam_vector.normalize_or_zero();
+    let x_rot = dir.y.clamp(-1.0, 1.0).acos();
+    let y_rot = std::f32::consts::FRAC_PI_2 - dir.z.atan2(dir.x);
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.0, beam.eye_height, 0.0))
+        * Mat4::from_rotation_y(y_rot)
+        * Mat4::from_rotation_x(x_rot);
+
+    // The prism cross-section: four inner rays at radius 0.2 and four outer cap rays at 0.282, each
+    // offset around the beam axis by a fixed angle plus the time spin `rot`.
+    use std::f32::consts::PI;
+    let rot = beam.attack_time * 0.05 * -1.5;
+    let ring = |angle: f32, radius: f32| {
+        let a = rot + angle;
+        (a.cos() * radius, a.sin() * radius)
+    };
+    let (wnx, wnz) = ring(PI * 3.0 / 4.0, 0.282);
+    let (enx, enz) = ring(PI / 4.0, 0.282);
+    let (wsx, wsz) = ring(PI * 5.0 / 4.0, 0.282);
+    let (esx, esz) = ring(PI * 7.0 / 4.0, 0.282);
+    let (wx, wz) = ring(PI, 0.2);
+    let (ex, ez) = ring(0.0, 0.2);
+    let (nx, nz) = ring(PI / 2.0, 0.2);
+    let (sx, sz) = ring(PI * 3.0 / 2.0, 0.2);
+
+    // Vanilla color ramp from the attack scale, truncated to ints exactly as the `(int)` casts do.
+    let color_scale = beam.attack_scale * beam.attack_scale;
+    let tint = [
+        (64 + (color_scale * 191.0) as i32) as f32 / 255.0,
+        (32 + (color_scale * 191.0) as i32) as f32 / 255.0,
+        (128 - (color_scale * 64.0) as i32) as f32 / 255.0,
+        1.0,
+    ];
+
+    let top = length;
+    let tex_v_off = (beam.attack_time * 0.5).rem_euclid(1.0);
+    let min_v = -1.0 + tex_v_off;
+    let max_v = min_v + length * 2.5;
+    let v_base = if (beam.attack_time.floor() as i32).rem_euclid(2) == 0 {
+        0.5
+    } else {
+        0.0
+    };
+
+    // 12 vertices in three quads (W↔E strip, N↔S strip, twisting top cap), local UVs in `0..1` for U and
+    // tiling for V — matching `GuardianRenderer.vertex` exactly.
+    let vertices: [(f32, f32, f32, f32, f32); 12] = [
+        (wx, top, wz, 0.4999, max_v),
+        (wx, 0.0, wz, 0.4999, min_v),
+        (ex, 0.0, ez, 0.0, min_v),
+        (ex, top, ez, 0.0, max_v),
+        (nx, top, nz, 0.4999, max_v),
+        (nx, 0.0, nz, 0.4999, min_v),
+        (sx, 0.0, sz, 0.0, min_v),
+        (sx, top, sz, 0.0, max_v),
+        (wnx, top, wnz, 0.5, v_base + 0.5),
+        (enx, top, enz, 1.0, v_base + 0.5),
+        (esx, top, esz, 1.0, v_base),
+        (wsx, top, wsz, 0.5, v_base),
+    ];
+    let rect = entry.uv;
+    let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
+    let base =
+        u32::try_from(meshes.scroll.vertices.len()).expect("scroll vertex count fits in u32");
+    for (x, y, z, u, v) in vertices {
+        let world = transform.transform_point3(Vec3::new(x, y, z));
+        meshes.scroll.vertices.push(EntityModelScrollVertex {
+            position: world.to_array(),
+            local_uv: [u, v],
+            uv_rect_min: rect.min,
+            uv_rect_size: size,
+            tint,
+        });
+    }
+    // Each quad → two triangles (the scroll pipeline renders cull-off, so winding is immaterial).
+    for quad in 0..3u32 {
+        let o = base + quad * 4;
+        meshes
+            .scroll
+            .indices
+            .extend_from_slice(&[o, o + 1, o + 2, o, o + 2, o + 3]);
+    }
 }
 
 /// The `HumanoidArmorLayer` worn-armor overlay (vanilla `HumanoidArmorLayer.submit`): for each filled
