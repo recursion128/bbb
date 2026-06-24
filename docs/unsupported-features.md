@@ -2320,9 +2320,13 @@ When an agent does any of the following, update this file in the same slice:
       projected — via the registry-holder mapping shared with chicken/cow/pig/frog — onto one of the eleven
       vanilla breeds (tabby/black/red/siamese/british_shorthair/calico/persian/ragdoll/white/jellie/all_black),
       falling back to the bootstrap order (tabby=0..all_black=10, default BLACK) before the dynamic
-      `cat_variant` registry arrives; the ocelot keeps its single breed-less texture. This makes the feline
-      texture set a 24-entry matrix (eleven breeds × adult/baby + ocelot × adult/baby), bumping the master
-      `ENTITY_MODEL_TEXTURE_REFS` array to 260. Only the cat collar layer stays deferred
+      `cat_variant` registry arrives; the ocelot keeps its single breed-less texture. The tame cat's dyed
+      collar (`CatCollarLayer`) is wired too: a second cutout pass binds `cat_collar.png` / `cat_collar_baby.png`
+      tinted by the dye's diffuse color, projected onto `collar` mirroring `CatRenderer`
+      (`isTame() ? getCollarColor() : null`) off the `TamableAnimal` tame flag and `Cat.DATA_COLLAR_COLOR`
+      (23, `DyeColor.byId`, default RED); the ocelot never carries one. This makes the feline texture set a
+      26-entry matrix (eleven breeds × adult/baby + ocelot × adult/baby + the collar × adult/baby). Nothing on
+      the cat base/collar path stays deferred (only the feline pose animations above remain)
     - mooshroom entities (adult and baby) as renderer-owned vanilla 26.1 cow-body geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now maps vanilla type id `86` (adult and baby) to
       the new `EntityModelKind::Mooshroom` (`baby` selecting the layout), replacing the generic six-cube
