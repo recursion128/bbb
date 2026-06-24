@@ -5,11 +5,11 @@ use bbb_renderer::{
     ArmorStandModelPose, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
     ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelInstance,
     EntityModelKind, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HumanoidModelFamily,
-    IllagerModelFamily, LlamaModelFamily, LlamaVariant, ParrotModelVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
-    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant,
+    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
+    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -285,6 +285,11 @@ const CAT_VARIANT_DATA_ID: u8 = 20;
 const SHEEP_WOOL_DATA_ID: u8 = 18;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
+// Vanilla Panda MAIN_GENE_ID (21, BYTE) / HIDDEN_GENE_ID (22, BYTE): `Panda extends Animal`, so after
+// Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob accessors (16/17), and the three int counters
+// UNHAPPY (18) / SNEEZE (19) / EAT (20) come the two gene bytes; DATA_ID_FLAGS follows at 23.
+const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
+const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 /// Vanilla `Turtle.HAS_EGG` data id (18): the synced boolean, the turtle's first own accessor
@@ -1023,10 +1028,15 @@ fn parrot_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entit
 }
 
 /// Vanilla `PandaRenderer` (an `AgeableMobRenderer`) picks `PandaModel` for an adult and `BabyPandaModel`
-/// for a baby; both render through the dedicated [`EntityModelKind::Panda`] (`baby` selecting the layout).
+/// for a baby; both render through the dedicated [`EntityModelKind::Panda`] (`baby` selecting the
+/// layout, `variant` selecting the gene-driven texture). The displayed gene is
+/// `Panda.Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two synced gene bytes (21/22).
 fn panda_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    let main_gene = entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, 0) as i32;
+    let hidden_gene = entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, 0) as i32;
     EntityModelKind::Panda {
         baby: ageable_baby(values),
+        variant: PandaModelVariant::from_genes(main_gene, hidden_gene),
     }
 }
 
@@ -5586,17 +5596,62 @@ mod tests {
             ),
             EntityModelKind::PolarBear { baby: true }
         );
-        // The panda (adult and baby) renders through its dedicated `PandaModel` / `BabyPandaModel`.
+        // The panda (adult and baby) renders through its dedicated `PandaModel` / `BabyPandaModel`;
+        // with no gene metadata the displayed variant is the vanilla default `NORMAL`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PANDA_ID, &[]),
-            EntityModelKind::Panda { baby: false }
+            EntityModelKind::Panda {
+                baby: false,
+                variant: PandaModelVariant::Normal
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_PANDA_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Panda { baby: true }
+            EntityModelKind::Panda {
+                baby: true,
+                variant: PandaModelVariant::Normal
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_panda_gene_variant_from_data() {
+        // Vanilla `Panda.getVariant()` = `Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two
+        // synced gene bytes (21/22). A dominant main gene always shows.
+        assert_eq!(
+            panda_model_kind(&[
+                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 6),
+                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 0),
+            ]),
+            EntityModelKind::Panda {
+                baby: false,
+                variant: PandaModelVariant::Aggressive
+            }
+        );
+        // A recessive main gene (BROWN=4) shows only when both genes match.
+        assert_eq!(
+            panda_model_kind(&[
+                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
+                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 4),
+            ]),
+            EntityModelKind::Panda {
+                baby: false,
+                variant: PandaModelVariant::Brown
+            }
+        );
+        // An unmatched recessive main gene falls back to NORMAL.
+        assert_eq!(
+            panda_model_kind(&[
+                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
+                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 1),
+            ]),
+            EntityModelKind::Panda {
+                baby: false,
+                variant: PandaModelVariant::Normal
+            }
         );
     }
 

@@ -299,9 +299,12 @@ pub enum EntityModelKind {
     /// (`baby` selects the baby body layout — body-first, no body pitch). The shared
     /// `QuadrupedModel.setupAnim` head look and four-leg walk swing are reproduced; every panda-specific
     /// pose (`isUnhappy`, `isSneezing`, `sitAmount`, `lieOnBackAmount`, `rollAmount`) reads un-projected
-    /// `PandaRenderState` state and stays deferred, as do the gene-driven textures.
+    /// `PandaRenderState` state and stays deferred. The gene-driven base texture IS projected: `variant`
+    /// is the displayed `Panda.Gene` (`PandaRenderer.getTextureLocation` keys the 7-gene × age texture
+    /// matrix off it).
     Panda {
         baby: bool,
+        variant: PandaModelVariant,
     },
     /// `AdultFelineModel` / `BabyFelineModel` at their `createBodyMesh` rest pose, shared by the ocelot
     /// (`cat = false`) and the cat (`cat = true`). The adult cat scales the shared adult mesh 0.8 (via
@@ -968,6 +971,57 @@ pub enum CatModelVariant {
     White,
     Jellie,
     AllBlack,
+}
+
+/// Vanilla `Panda.Gene` (the displayed variant from `Panda.getVariant()`): the seven panda genes,
+/// sharing the `PandaModel` / `BabyPandaModel` mesh and differing only by texture × age
+/// (`PandaRenderer.getTextureLocation`). `NORMAL` is the vanilla default; `BROWN`/`WEAK` are the two
+/// recessive genes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PandaModelVariant {
+    Normal,
+    Lazy,
+    Worried,
+    Playful,
+    Brown,
+    Weak,
+    Aggressive,
+}
+
+impl PandaModelVariant {
+    /// Vanilla `Panda.Gene.byId` (`ByIdMap.continuous` with `OutOfBoundsStrategy.ZERO`): the gene id
+    /// `0..=6` maps directly, an out-of-range id folding back to `NORMAL`.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Lazy,
+            2 => Self::Worried,
+            3 => Self::Playful,
+            4 => Self::Brown,
+            5 => Self::Weak,
+            6 => Self::Aggressive,
+            _ => Self::Normal,
+        }
+    }
+
+    /// The two recessive genes (`Panda.Gene.isRecessive`).
+    fn is_recessive(self) -> bool {
+        matches!(self, Self::Brown | Self::Weak)
+    }
+
+    /// Vanilla `Panda.Gene.getVariantFromGenes`: a recessive main gene shows only when both genes
+    /// match (otherwise `NORMAL`); a dominant main gene always shows.
+    pub fn from_genes(main_id: i32, hidden_id: i32) -> Self {
+        let main = Self::from_id(main_id);
+        if main.is_recessive() {
+            if main == Self::from_id(hidden_id) {
+                main
+            } else {
+                Self::Normal
+            }
+        } else {
+            main
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,7 +1,7 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
     AxolotlModelVariant, CatModelVariant, EntityDyeColor, FoxModelVariant, FrogModelVariant,
-    ParrotModelVariant, RabbitModelVariant,
+    PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
 };
 
 mod equine;
@@ -758,7 +758,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 260] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 272] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -857,8 +857,20 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ENDER_DRAGON_TEXTURE_REF,
     NAUTILUS_TEXTURE_REF,
     NAUTILUS_BABY_TEXTURE_REF,
-    PANDA_TEXTURE_REF,
-    PANDA_BABY_TEXTURE_REF,
+    PANDA_NORMAL_TEXTURE_REF,
+    PANDA_NORMAL_BABY_TEXTURE_REF,
+    PANDA_LAZY_TEXTURE_REF,
+    PANDA_LAZY_BABY_TEXTURE_REF,
+    PANDA_WORRIED_TEXTURE_REF,
+    PANDA_WORRIED_BABY_TEXTURE_REF,
+    PANDA_PLAYFUL_TEXTURE_REF,
+    PANDA_PLAYFUL_BABY_TEXTURE_REF,
+    PANDA_BROWN_TEXTURE_REF,
+    PANDA_BROWN_BABY_TEXTURE_REF,
+    PANDA_WEAK_TEXTURE_REF,
+    PANDA_WEAK_BABY_TEXTURE_REF,
+    PANDA_AGGRESSIVE_TEXTURE_REF,
+    PANDA_AGGRESSIVE_BABY_TEXTURE_REF,
     AXOLOTL_LUCY_TEXTURE_REF,
     AXOLOTL_LUCY_BABY_TEXTURE_REF,
     AXOLOTL_WILD_TEXTURE_REF,
@@ -1927,18 +1939,117 @@ pub fn nautilus_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &NAUTILUS_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const PANDA_TEXTURE_REF: EntityModelTextureRef =
+// The seven panda genes × age (`PandaRenderer.TEXTURES` / `BABY_TEXTURES`); all share the 64×64
+// atlas. Note the inconsistent vanilla baby filenames (`panda_baby.png` but `lazy_panda_baby.png`).
+pub(in crate::entity_models) const PANDA_NORMAL_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/panda/panda.png",
         size: [64, 64],
     };
-pub(in crate::entity_models) const PANDA_BABY_TEXTURE_REF: EntityModelTextureRef =
+pub(in crate::entity_models) const PANDA_NORMAL_BABY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/panda/panda_baby.png",
         size: [64, 64],
     };
-pub(in crate::entity_models) const PANDA_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [PANDA_TEXTURE_REF, PANDA_BABY_TEXTURE_REF];
+pub(in crate::entity_models) const PANDA_LAZY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda_lazy.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_LAZY_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/lazy_panda_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_WORRIED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda_worried.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_WORRIED_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/worried_panda_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_PLAYFUL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda_playful.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_PLAYFUL_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/playful_panda_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_BROWN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda_brown.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_BROWN_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/brown_panda_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_WEAK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda_weak.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_WEAK_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/weak_panda_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_AGGRESSIVE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda_aggressive.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_AGGRESSIVE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/aggressive_panda_baby.png",
+        size: [64, 64],
+    };
+/// `PandaRenderer.getTextureLocation`: the displayed `Panda.Gene` × `isBaby` selects the texture,
+/// defaulting (here folded into [`PandaModelVariant::from_id`]) to the `NORMAL` gene.
+pub(in crate::entity_models) fn panda_texture_ref(
+    variant: PandaModelVariant,
+    baby: bool,
+) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (PandaModelVariant::Normal, false) => PANDA_NORMAL_TEXTURE_REF,
+        (PandaModelVariant::Normal, true) => PANDA_NORMAL_BABY_TEXTURE_REF,
+        (PandaModelVariant::Lazy, false) => PANDA_LAZY_TEXTURE_REF,
+        (PandaModelVariant::Lazy, true) => PANDA_LAZY_BABY_TEXTURE_REF,
+        (PandaModelVariant::Worried, false) => PANDA_WORRIED_TEXTURE_REF,
+        (PandaModelVariant::Worried, true) => PANDA_WORRIED_BABY_TEXTURE_REF,
+        (PandaModelVariant::Playful, false) => PANDA_PLAYFUL_TEXTURE_REF,
+        (PandaModelVariant::Playful, true) => PANDA_PLAYFUL_BABY_TEXTURE_REF,
+        (PandaModelVariant::Brown, false) => PANDA_BROWN_TEXTURE_REF,
+        (PandaModelVariant::Brown, true) => PANDA_BROWN_BABY_TEXTURE_REF,
+        (PandaModelVariant::Weak, false) => PANDA_WEAK_TEXTURE_REF,
+        (PandaModelVariant::Weak, true) => PANDA_WEAK_BABY_TEXTURE_REF,
+        (PandaModelVariant::Aggressive, false) => PANDA_AGGRESSIVE_TEXTURE_REF,
+        (PandaModelVariant::Aggressive, true) => PANDA_AGGRESSIVE_BABY_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) const PANDA_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 14] = [
+    PANDA_NORMAL_TEXTURE_REF,
+    PANDA_NORMAL_BABY_TEXTURE_REF,
+    PANDA_LAZY_TEXTURE_REF,
+    PANDA_LAZY_BABY_TEXTURE_REF,
+    PANDA_WORRIED_TEXTURE_REF,
+    PANDA_WORRIED_BABY_TEXTURE_REF,
+    PANDA_PLAYFUL_TEXTURE_REF,
+    PANDA_PLAYFUL_BABY_TEXTURE_REF,
+    PANDA_BROWN_TEXTURE_REF,
+    PANDA_BROWN_BABY_TEXTURE_REF,
+    PANDA_WEAK_TEXTURE_REF,
+    PANDA_WEAK_BABY_TEXTURE_REF,
+    PANDA_AGGRESSIVE_TEXTURE_REF,
+    PANDA_AGGRESSIVE_BABY_TEXTURE_REF,
+];
 pub fn panda_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &PANDA_ENTITY_TEXTURE_REFS
 }

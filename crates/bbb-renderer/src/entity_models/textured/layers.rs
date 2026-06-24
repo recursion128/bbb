@@ -5,9 +5,9 @@ use super::super::{
         wolf_texture_ref, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
         FoxModelVariant, FrogModelVariant, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
-        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern,
+        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
     },
     model_layers::*,
 };
@@ -747,15 +747,13 @@ pub(in crate::entity_models) fn nautilus_textured_layer_passes(
 }
 
 pub(in crate::entity_models) fn panda_textured_layer_passes(
+    variant: PandaModelVariant,
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
+    // The seven genes share one `PandaModel` / `BabyPandaModel` and differ only by texture × age.
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        if baby {
-            PANDA_BABY_TEXTURE_REF
-        } else {
-            PANDA_TEXTURE_REF
-        },
+        panda_texture_ref(variant, baby),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

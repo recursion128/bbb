@@ -636,11 +636,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             // cow geometry and bind the mooshroom texture (the block-mushroom layer stays deferred).
             &mooshroom_textured_layer_passes(baby),
         ),
-        EntityModelKind::Panda { baby } => sink.model(
+        EntityModelKind::Panda { baby, variant } => sink.model(
             PandaModel::new(baby),
             entity_model_root_transform(*instance),
             instance,
-            &panda_textured_layer_passes(baby),
+            &panda_textured_layer_passes(variant, baby),
         ),
         EntityModelKind::Nautilus { baby } => sink.model(
             NautilusModel::new(baby),

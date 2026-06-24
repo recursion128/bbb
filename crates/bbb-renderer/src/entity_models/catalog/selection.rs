@@ -259,8 +259,8 @@ impl EntityModelKind {
             Self::Goat { baby: true, .. } => "goat_baby",
             Self::PolarBear { baby: false } => "polar_bear",
             Self::PolarBear { baby: true } => "polar_bear_baby",
-            Self::Panda { baby: false } => "panda",
-            Self::Panda { baby: true } => "panda_baby",
+            Self::Panda { baby: false, .. } => "panda",
+            Self::Panda { baby: true, .. } => "panda_baby",
             Self::Feline {
                 cat: true,
                 baby: false,
@@ -404,8 +404,7 @@ impl EntityModelKind {
             Self::Armadillo { baby: true, .. } => Some(ARMADILLO_BABY_TEXTURE_REF),
             Self::Nautilus { baby: false } => Some(NAUTILUS_TEXTURE_REF),
             Self::Nautilus { baby: true } => Some(NAUTILUS_BABY_TEXTURE_REF),
-            Self::Panda { baby: false } => Some(PANDA_TEXTURE_REF),
-            Self::Panda { baby: true } => Some(PANDA_BABY_TEXTURE_REF),
+            Self::Panda { baby, variant } => Some(panda_texture_ref(variant, baby)),
             Self::Axolotl { baby, variant } => Some(axolotl_texture_ref(variant, baby)),
             // The kind carries the variant and age; the sleeping dimension is dynamic render state,
             // so this representative ref is the idle texture (`fox_textured_layer_passes` picks the

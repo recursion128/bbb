@@ -40,6 +40,7 @@ fn panda_mesh_uses_vanilla_body_layer_geometry() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        PandaModelVariant::Normal,
     )]);
     assert_eq!(panda.opaque_faces, 54);
     assert_eq!(panda.vertices.len(), 216);
@@ -64,6 +65,7 @@ fn panda_colored_runtime_skips_the_texture_backed_panda() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        PandaModelVariant::Normal,
     )];
     assert!(!entity_model_mesh(&instances).vertices.is_empty());
     assert!(entity_model_colored_runtime_mesh(&instances)
@@ -75,7 +77,8 @@ fn panda_colored_runtime_skips_the_texture_backed_panda() {
 fn panda_head_look_turns_only_the_head() {
     // Vanilla `QuadrupedModel.setupAnim` sets `head.xRot/yRot` from the look angles. The head is the
     // first root part (four cubes → vertices `[0, 96)`); the body and four legs `[96, 216)` hold.
-    let rest = EntityModelInstance::panda(602, [0.0, 64.0, 0.0], 0.0, false);
+    let rest =
+        EntityModelInstance::panda(602, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal);
     let looked = rest.with_head_look(35.0, -25.0);
     let rest_mesh = entity_model_mesh(&[rest]);
     let looked_mesh = entity_model_mesh(&[looked]);
@@ -102,7 +105,8 @@ fn panda_head_look_turns_only_the_head() {
 fn panda_walk_swings_only_the_legs() {
     // Vanilla `QuadrupedModel.setupAnim` swings the four legs off the walk cycle (a no-op at rest).
     // The legs are the last four root parts (vertices `[120, 216)`); the head and body `[0, 120)` hold.
-    let still = EntityModelInstance::panda(603, [0.0, 64.0, 0.0], 0.0, false);
+    let still =
+        EntityModelInstance::panda(603, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal);
     let walking = still.with_walk_animation(6.0, 1.0);
     let still_mesh = entity_model_mesh(&[still]);
     let walking_mesh = entity_model_mesh(&[walking]);
@@ -119,11 +123,14 @@ fn panda_walk_swings_only_the_legs() {
     );
 
     // A standing panda (walk speed 0) collapses the swing to the bind pose.
-    let zero_speed =
-        entity_model_mesh(&[
-            EntityModelInstance::panda(604, [0.0, 64.0, 0.0], 0.0, false)
-                .with_walk_animation(6.0, 0.0),
-        ]);
+    let zero_speed = entity_model_mesh(&[EntityModelInstance::panda(
+        604,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        PandaModelVariant::Normal,
+    )
+    .with_walk_animation(6.0, 0.0)]);
     assert_eq!(still_mesh.vertices, zero_speed.vertices);
 }
 
@@ -152,7 +159,8 @@ fn baby_panda_geometry_matches_vanilla_26_1_body_layer() {
 fn baby_panda_head_is_part_one_and_turns_with_the_look() {
     // The baby layout lists the body first (vertices `[0, 24)`) then the head (four cubes,
     // `[24, 120)`), then the four legs. The head look turns the head; the body and legs hold.
-    let rest = EntityModelInstance::panda(610, [0.0, 64.0, 0.0], 0.0, true);
+    let rest =
+        EntityModelInstance::panda(610, [0.0, 64.0, 0.0], 0.0, true, PandaModelVariant::Normal);
     let baby = entity_model_mesh(&[rest]);
     assert_eq!(baby.vertices.len(), 216);
     let looked = entity_model_mesh(&[rest.with_head_look(35.0, -25.0)]);
@@ -174,6 +182,7 @@ fn baby_panda_head_is_part_one_and_turns_with_the_look() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        PandaModelVariant::Normal,
     )]);
     let (adult_min, adult_max) = mesh_extents(&adult);
     let (baby_min, baby_max) = mesh_extents(&baby);
@@ -182,41 +191,136 @@ fn baby_panda_head_is_part_one_and_turns_with_the_look() {
 
 #[test]
 fn panda_exposes_stable_model_keys() {
-    assert_eq!(EntityModelKind::Panda { baby: false }.model_key(), "panda");
     assert_eq!(
-        EntityModelKind::Panda { baby: true }.model_key(),
+        EntityModelKind::Panda {
+            baby: false,
+            variant: PandaModelVariant::Normal
+        }
+        .model_key(),
+        "panda"
+    );
+    assert_eq!(
+        EntityModelKind::Panda {
+            baby: true,
+            variant: PandaModelVariant::Aggressive
+        }
+        .model_key(),
         "panda_baby"
     );
 }
 
 #[test]
+fn panda_gene_variant_combination_matches_vanilla() {
+    // Vanilla `Panda.Gene.byId` is `ByIdMap.continuous` with `OutOfBoundsStrategy.ZERO`.
+    assert_eq!(PandaModelVariant::from_id(0), PandaModelVariant::Normal);
+    assert_eq!(PandaModelVariant::from_id(1), PandaModelVariant::Lazy);
+    assert_eq!(PandaModelVariant::from_id(2), PandaModelVariant::Worried);
+    assert_eq!(PandaModelVariant::from_id(3), PandaModelVariant::Playful);
+    assert_eq!(PandaModelVariant::from_id(4), PandaModelVariant::Brown);
+    assert_eq!(PandaModelVariant::from_id(5), PandaModelVariant::Weak);
+    assert_eq!(PandaModelVariant::from_id(6), PandaModelVariant::Aggressive);
+    assert_eq!(PandaModelVariant::from_id(7), PandaModelVariant::Normal);
+    assert_eq!(PandaModelVariant::from_id(-1), PandaModelVariant::Normal);
+
+    // Vanilla `Panda.Gene.getVariantFromGenes`: a dominant main gene always shows.
+    assert_eq!(
+        PandaModelVariant::from_genes(1, 4),
+        PandaModelVariant::Lazy,
+        "dominant LAZY shows regardless of the hidden gene"
+    );
+    // A recessive main gene (BROWN=4, WEAK=5) shows only when both genes match, else NORMAL.
+    assert_eq!(
+        PandaModelVariant::from_genes(4, 4),
+        PandaModelVariant::Brown,
+        "matching recessive BROWN shows"
+    );
+    assert_eq!(
+        PandaModelVariant::from_genes(4, 1),
+        PandaModelVariant::Normal,
+        "an unmatched recessive BROWN main falls back to NORMAL"
+    );
+    assert_eq!(
+        PandaModelVariant::from_genes(5, 5),
+        PandaModelVariant::Weak,
+        "matching recessive WEAK shows"
+    );
+    assert_eq!(
+        PandaModelVariant::from_genes(5, 0),
+        PandaModelVariant::Normal,
+        "an unmatched recessive WEAK main falls back to NORMAL"
+    );
+}
+
+#[test]
 fn panda_textured_render_matches_vanilla_renderer() {
-    assert_eq!(
-        panda_textured_layer_passes(false)[0].texture,
-        PANDA_TEXTURE_REF
-    );
-    assert_eq!(
-        panda_textured_layer_passes(true)[0].texture,
-        PANDA_BABY_TEXTURE_REF
-    );
-    assert_eq!(
-        panda_textured_layer_passes(false)[0].render_type,
-        EntityModelLayerRenderType::Cutout
-    );
-    assert_eq!(
-        EntityModelKind::Panda { baby: false }.vanilla_texture_ref(),
-        Some(PANDA_TEXTURE_REF)
-    );
-    assert_eq!(
-        EntityModelKind::Panda { baby: true }.vanilla_texture_ref(),
-        Some(PANDA_BABY_TEXTURE_REF)
-    );
-    assert!(entity_model_texture_refs().contains(&PANDA_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&PANDA_BABY_TEXTURE_REF));
-    assert_eq!(
-        panda_entity_texture_refs(),
-        &[PANDA_TEXTURE_REF, PANDA_BABY_TEXTURE_REF]
-    );
+    // The seven genes × age form a 14-texture matrix; `PandaRenderer.getTextureLocation` keys it off
+    // the displayed gene and `isBaby`.
+    for (variant, adult, baby) in [
+        (
+            PandaModelVariant::Normal,
+            PANDA_NORMAL_TEXTURE_REF,
+            PANDA_NORMAL_BABY_TEXTURE_REF,
+        ),
+        (
+            PandaModelVariant::Lazy,
+            PANDA_LAZY_TEXTURE_REF,
+            PANDA_LAZY_BABY_TEXTURE_REF,
+        ),
+        (
+            PandaModelVariant::Worried,
+            PANDA_WORRIED_TEXTURE_REF,
+            PANDA_WORRIED_BABY_TEXTURE_REF,
+        ),
+        (
+            PandaModelVariant::Playful,
+            PANDA_PLAYFUL_TEXTURE_REF,
+            PANDA_PLAYFUL_BABY_TEXTURE_REF,
+        ),
+        (
+            PandaModelVariant::Brown,
+            PANDA_BROWN_TEXTURE_REF,
+            PANDA_BROWN_BABY_TEXTURE_REF,
+        ),
+        (
+            PandaModelVariant::Weak,
+            PANDA_WEAK_TEXTURE_REF,
+            PANDA_WEAK_BABY_TEXTURE_REF,
+        ),
+        (
+            PandaModelVariant::Aggressive,
+            PANDA_AGGRESSIVE_TEXTURE_REF,
+            PANDA_AGGRESSIVE_BABY_TEXTURE_REF,
+        ),
+    ] {
+        assert_eq!(
+            panda_textured_layer_passes(variant, false)[0].texture,
+            adult
+        );
+        assert_eq!(panda_textured_layer_passes(variant, true)[0].texture, baby);
+        assert_eq!(
+            panda_textured_layer_passes(variant, false)[0].render_type,
+            EntityModelLayerRenderType::Cutout
+        );
+        assert_eq!(
+            EntityModelKind::Panda {
+                baby: false,
+                variant
+            }
+            .vanilla_texture_ref(),
+            Some(adult)
+        );
+        assert_eq!(
+            EntityModelKind::Panda {
+                baby: true,
+                variant
+            }
+            .vanilla_texture_ref(),
+            Some(baby)
+        );
+        assert!(entity_model_texture_refs().contains(&adult));
+        assert!(entity_model_texture_refs().contains(&baby));
+    }
+    assert_eq!(panda_entity_texture_refs().len(), 14);
 
     let images: Vec<EntityModelTextureImage> = panda_entity_texture_refs()
         .iter()
@@ -229,7 +333,13 @@ fn panda_textured_render_matches_vanilla_renderer() {
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for baby in [false, true] {
         let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::panda(900, [0.0, 64.0, 0.0], 0.0, baby)],
+            &[EntityModelInstance::panda(
+                900,
+                [0.0, 64.0, 0.0],
+                0.0,
+                baby,
+                PandaModelVariant::Brown,
+            )],
             &atlas,
         );
         assert!(
