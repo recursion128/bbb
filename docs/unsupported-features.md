@@ -2080,9 +2080,11 @@ When an agent does any of the following, update this file in the same slice:
       (`Ry(-yr)`), a flight-history pitch, a fixed `translate(0, 0, 1)`, and the standard flip / `-1.501`
       y-offset (captured by `ender_dragon_model_root_transform`, with the pitch and bounce deferred to
       identity at rest and the yaw projected through `body_rot`). The base texture is now bound on the
-      textured path (`ENDER_DRAGON_TEXTURE_REF`), the primary now-wired path; the dying-dissolve render type,
-      the emissive `dragon_eyes` layer, and the crystal-healing beam stay deferred. The colored debug path
-      stays as a fallback (it renders the body dark and the wing membranes a lighter tint)
+      textured path (`ENDER_DRAGON_TEXTURE_REF`), the primary now-wired path, together with the always-on
+      emissive `dragon_eyes.png` eyes overlay (`ENDER_DRAGON_EYES_TEXTURE_REF`, an eyes-render-type pass
+      re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`); the dying-dissolve render
+      type and the crystal-healing beam stay deferred. The colored debug path stays as a fallback (it renders
+      the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which emits no geometry — exact parity with vanilla, whose `EntityRenderers` registers all three to
       `NoopRenderer` (the area effect cloud is drawn as particles, not a model; the marker is a pure
