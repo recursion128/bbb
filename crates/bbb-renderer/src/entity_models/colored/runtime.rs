@@ -4,9 +4,10 @@ use std::borrow::Cow;
 use glam::{Mat4, Vec3};
 
 use super::super::catalog::{sheep_wool_render_color, *};
+use super::super::dispatch::{dispatch_uniform_entity_model, ColoredSink};
 use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
-use super::super::model::{EntityModel, StaticModel};
+use super::super::model::EntityModel;
 use super::super::model_layers::*;
 use super::armor_stand::emit_armor_stand_model;
 use super::mounts::{
@@ -17,19 +18,11 @@ use super::selection::{
     hoglin_model_color, humanoid_model_color, piglin_model_color, quadruped_model_color,
 };
 use super::transforms::{
-    arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
-    cod_model_root_transform, creeper_model_root_transform, end_crystal_model_root_transform,
-    ender_dragon_model_root_transform, entity_model_root_transform,
-    evoker_fangs_model_root_transform, ghast_model_root_transform,
-    happy_ghast_model_root_transform, leash_knot_model_root_transform,
-    llama_spit_model_root_transform, magma_cube_model_root_transform,
-    mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
-    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
-    salmon_model_root_transform, scaled_model_root_transform, shulker_bullet_model_root_transform,
-    slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
-    tropical_fish_model_root_transform, villager_adult_model_root_transform,
-    wind_charge_model_root_transform, wither_skeleton_model_root_transform,
-    wither_skull_model_root_transform, GIANT_SCALE, HUSK_SCALE,
+    cod_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, player_model_root_transform,
+    pufferfish_model_root_transform, scaled_model_root_transform, slime_model_root_transform,
+    squid_model_root_transform, tropical_fish_model_root_transform,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -55,651 +48,206 @@ fn entity_model_mesh_with_options(
             continue;
         }
         let light_start = mesh.vertices.len();
-        match instance.kind {
-            EntityModelKind::Chicken { variant, baby } => {
-                if !skip_texture_backed_entities {
-                    ChickenModel::new(variant, baby).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+        let handled = {
+            let mut sink = ColoredSink {
+                mesh: &mut mesh,
+                skip_texture_backed: skip_texture_backed_entities,
+            };
+            dispatch_uniform_entity_model(instance, &mut sink)
+        };
+        if !handled {
+            // Only the bespoke entities remain here — those whose colored and textured paths diverge
+            // (recolor, two model trees, family helpers, part visibility, single-pass `render_textured_pass`
+            // emits, bespoke hand-walks) and the colored-only nontrivial / placeholder / no-render kinds.
+            // The uniform kinds are emitted by `dispatch_uniform_entity_model` above and are unreachable
+            // here, so the match ends with `_ => {}`.
+            match instance.kind {
+                EntityModelKind::Player { slim, .. } => {
+                    if !skip_texture_backed_entities {
+                        PlayerModel::new(slim).prepare_and_render(
+                            &mut mesh,
+                            instance,
+                            player_model_root_transform(*instance),
+                        );
+                    }
                 }
-            }
-            EntityModelKind::Pig { variant, baby } => {
-                if !skip_texture_backed_entities {
-                    PigModel::new(variant, baby).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Humanoid { family, baby } => {
+                    emit_humanoid_model(&mut mesh, *instance, family, baby)
                 }
-            }
-            EntityModelKind::Player { slim, .. } => {
-                if !skip_texture_backed_entities {
-                    PlayerModel::new(slim).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        player_model_root_transform(*instance),
-                    );
+                EntityModelKind::ArmorStand {
+                    small,
+                    show_arms,
+                    show_base_plate,
+                    pose,
+                } => {
+                    if !skip_texture_backed_entities {
+                        emit_armor_stand_model(
+                            &mut mesh,
+                            *instance,
+                            small,
+                            show_arms,
+                            show_base_plate,
+                            pose,
+                        );
+                    }
                 }
-            }
-            EntityModelKind::Humanoid { family, baby } => {
-                emit_humanoid_model(&mut mesh, *instance, family, baby)
-            }
-            EntityModelKind::ArmorStand {
-                small,
-                show_arms,
-                show_base_plate,
-                pose,
-            } => {
-                if !skip_texture_backed_entities {
-                    emit_armor_stand_model(
-                        &mut mesh,
-                        *instance,
-                        small,
-                        show_arms,
-                        show_base_plate,
-                        pose,
-                    );
+                EntityModelKind::Slime { size } => {
+                    if !skip_texture_backed_entities {
+                        emit_slime_model(&mut mesh, *instance, size);
+                    }
                 }
-            }
-            EntityModelKind::Slime { size } => {
-                if !skip_texture_backed_entities {
-                    emit_slime_model(&mut mesh, *instance, size);
+                EntityModelKind::Vex => {
+                    if !skip_texture_backed_entities {
+                        emit_vex_model(&mut mesh, *instance);
+                    }
                 }
-            }
-            EntityModelKind::MagmaCube { size } => {
-                if !skip_texture_backed_entities {
-                    MagmaCubeModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        magma_cube_model_root_transform(*instance, size),
-                    );
+                EntityModelKind::Allay => {
+                    if !skip_texture_backed_entities {
+                        emit_allay_model(&mut mesh, *instance);
+                    }
                 }
-            }
-            EntityModelKind::Ghast => {
-                if !skip_texture_backed_entities {
-                    GhastModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        ghast_model_root_transform(*instance),
-                    );
+                EntityModelKind::Strider { baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_strider_model(&mut mesh, *instance, baby);
+                    }
                 }
-            }
-            EntityModelKind::HappyGhast => {
-                if !skip_texture_backed_entities {
-                    HappyGhastModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        happy_ghast_model_root_transform(*instance),
-                    );
+                EntityModelKind::Turtle { baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_turtle_model(&mut mesh, *instance, baby);
+                    }
                 }
-            }
-            EntityModelKind::Blaze => {
-                if !skip_texture_backed_entities {
-                    BlazeModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Bat => {
+                    if !skip_texture_backed_entities {
+                        emit_bat_model(&mut mesh, *instance);
+                    }
                 }
-            }
-            EntityModelKind::Endermite => {
-                if !skip_texture_backed_entities {
-                    EndermiteModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Bee { baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_bee_model(&mut mesh, *instance, baby);
+                    }
                 }
-            }
-            EntityModelKind::Silverfish => {
-                if !skip_texture_backed_entities {
-                    SilverfishModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Breeze => {
+                    if !skip_texture_backed_entities {
+                        emit_breeze_model(&mut mesh, *instance);
+                    }
                 }
-            }
-            EntityModelKind::Vex => {
-                if !skip_texture_backed_entities {
-                    emit_vex_model(&mut mesh, *instance);
+                EntityModelKind::Dolphin { baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_dolphin_model(&mut mesh, *instance, baby);
+                    }
                 }
-            }
-            EntityModelKind::Allay => {
-                if !skip_texture_backed_entities {
-                    emit_allay_model(&mut mesh, *instance);
+                EntityModelKind::EndCrystal => {
+                    // Colored-only so far (no texture-backed end crystal yet), so this arm always emits.
+                    emit_end_crystal_model(&mut mesh, *instance);
                 }
-            }
-            EntityModelKind::Strider { baby } => {
-                if !skip_texture_backed_entities {
-                    emit_strider_model(&mut mesh, *instance, baby);
+                EntityModelKind::NoRender => {
+                    // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
+                    // model, so this arm emits nothing — exact parity with vanilla.
                 }
-            }
-            EntityModelKind::Turtle { baby } => {
-                if !skip_texture_backed_entities {
-                    emit_turtle_model(&mut mesh, *instance, baby);
+                EntityModelKind::Pufferfish { puff_state } => {
+                    if !skip_texture_backed_entities {
+                        emit_pufferfish_model(&mut mesh, *instance, puff_state);
+                    }
                 }
-            }
-            EntityModelKind::Bat => {
-                if !skip_texture_backed_entities {
-                    emit_bat_model(&mut mesh, *instance);
+                EntityModelKind::ZombieVariant { family, baby } => {
+                    // The husk, drowned, and zombie villager all have wired texture-backed paths now.
+                    if !skip_texture_backed_entities {
+                        emit_zombie_variant_model(&mut mesh, *instance, family, baby)
+                    }
                 }
-            }
-            EntityModelKind::Bee { baby } => {
-                if !skip_texture_backed_entities {
-                    emit_bee_model(&mut mesh, *instance, baby);
+                EntityModelKind::Piglin { family, baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_piglin_model(&mut mesh, *instance, family, baby)
+                    }
                 }
-            }
-            EntityModelKind::Breeze => {
-                if !skip_texture_backed_entities {
-                    emit_breeze_model(&mut mesh, *instance);
+                EntityModelKind::Hoglin { family, baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_hoglin_model(&mut mesh, *instance, family, baby)
+                    }
                 }
-            }
-            EntityModelKind::Dolphin { baby } => {
-                if !skip_texture_backed_entities {
-                    emit_dolphin_model(&mut mesh, *instance, baby);
+                EntityModelKind::Skeleton => {
+                    if !skip_texture_backed_entities {
+                        SkeletonModel::new(None).prepare_and_render(
+                            &mut mesh,
+                            instance,
+                            entity_model_root_transform(*instance),
+                        );
+                    }
                 }
-            }
-            EntityModelKind::Guardian { elder } => {
-                // Colored-only so far (no texture-backed guardian yet), so this arm is always
-                // emitted rather than gated behind `skip_texture_backed_entities`. The elder is the
-                // same mesh scaled 2.35× at the root.
-                let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
-                GuardianModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    mesh_transformer_scaled_model_root_transform(*instance, scale),
-                );
-            }
-            EntityModelKind::Frog => {
-                // Colored-only so far (no texture-backed frog yet), so this arm is always emitted.
-                FrogModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Creaking => {
-                // Colored-only so far (no texture-backed creaking yet), so this arm always emits.
-                CreakingModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Sniffer => {
-                // Colored-only so far (no texture-backed sniffer yet), so this arm always emits.
-                SnifferModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Warden => {
-                // Colored-only so far (no texture-backed warden yet), so this arm always emits.
-                WardenModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Armadillo { baby, rolled_up } => {
-                // Colored-only so far (no texture-backed armadillo yet), so this arm always emits.
-                ArmadilloModel::new(baby, rolled_up).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Axolotl { baby } => {
-                // Colored-only so far (no texture-backed axolotl yet), so this arm always emits.
-                AxolotlModel::new(baby).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Tadpole => {
-                // Colored-only so far (no texture-backed tadpole yet), so this arm always emits.
-                TadpoleModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Parrot => {
-                // Colored-only so far (no texture-backed parrot yet), so this arm always emits.
-                ParrotModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Shulker => {
-                // Colored-only so far (no texture-backed shulker yet), so this arm always emits.
-                ShulkerModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Wither => {
-                // Colored-only so far (no texture-backed wither yet), so this arm always emits.
-                // First entity on the mutable `ModelPart` tree: build, run `setup_anim`, render.
-                WitherModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Giant => {
-                // Colored-only so far (no texture-backed giant yet), so this arm always emits.
-                // `GiantZombieModel extends ZombieModel`: the same non-baby zombie body and
-                // `setupAnim`, baked through `MeshTransformer.scaling(6.0)`.
-                ZombieModel::new(false).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    mesh_transformer_scaled_model_root_transform(*instance, GIANT_SCALE),
-                );
-            }
-            EntityModelKind::EndCrystal => {
-                // Colored-only so far (no texture-backed end crystal yet), so this arm always emits.
-                emit_end_crystal_model(&mut mesh, *instance);
-            }
-            EntityModelKind::EvokerFangs => {
-                // Static (the bite open/close, base drop, and emerge scale are deferred); colored-only.
-                StaticModel::new(&EVOKER_FANGS_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    evoker_fangs_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::LeashKnot => {
-                // Static (vanilla `LeashKnotModel` has no `setupAnim`); colored-only.
-                StaticModel::new(&LEASH_KNOT_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    leash_knot_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Arrow => {
-                // Static (the impact-shake wobble is deferred); colored-only.
-                StaticModel::new(&ARROW_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    arrow_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Trident => {
-                // Static (vanilla `TridentModel` has no animation); colored-only.
-                StaticModel::new(&TRIDENT_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    trident_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::LlamaSpit => {
-                // Static (vanilla `LlamaSpitModel` has no `setupAnim`); colored-only.
-                StaticModel::new(&LLAMA_SPIT_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    llama_spit_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::WitherSkull => {
-                // The skull's flight facing folds into the root transform (single part at ZERO), so the
-                // mesh is static; colored-only (the wither / invulnerable textures are deferred).
-                StaticModel::new(&WITHER_SKULL_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    wither_skull_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::ShulkerBullet => {
-                // Static (the age-driven tumble and the outer-shell pass are deferred); colored-only.
-                StaticModel::new(&SHULKER_BULLET_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    shulker_bullet_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::WindCharge => {
-                // Colored-only so far (no texture-backed wind charge yet), so this arm always emits.
-                WindChargeModel::new().prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    wind_charge_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::EnderDragon => {
-                // Static (the whole procedural `setupAnim` — flight-history spine, wing flap, jaw,
-                // root bounce — is deferred); colored-only.
-                StaticModel::new(&ENDER_DRAGON_PARTS).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    ender_dragon_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::NoRender => {
-                // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
-                // model, so this arm emits nothing — exact parity with vanilla.
-            }
-            EntityModelKind::Phantom { size } => {
-                if !skip_texture_backed_entities {
-                    emit_phantom_model(&mut mesh, *instance, size);
+                EntityModelKind::SkeletonVariant { family } => {
+                    if !skip_texture_backed_entities {
+                        emit_skeleton_variant_model(&mut mesh, *instance, family)
+                    }
                 }
-            }
-            EntityModelKind::Pufferfish { puff_state } => {
-                if !skip_texture_backed_entities {
-                    emit_pufferfish_model(&mut mesh, *instance, puff_state);
+                EntityModelKind::Sheep {
+                    baby,
+                    sheared,
+                    wool_color,
+                    jeb,
+                    age_ticks,
+                } => {
+                    if !skip_texture_backed_entities {
+                        emit_sheep_model(
+                            &mut mesh, *instance, baby, sheared, wool_color, jeb, age_ticks,
+                        );
+                    }
                 }
-            }
-            EntityModelKind::Zombie { baby } => {
-                if !skip_texture_backed_entities {
-                    ZombieModel::new(baby).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Horse { baby } => emit_horse_model(&mut mesh, *instance, baby),
+                EntityModelKind::Donkey {
+                    family,
+                    baby,
+                    has_chest,
+                } => emit_donkey_model(&mut mesh, *instance, family, baby, has_chest),
+                EntityModelKind::UndeadHorse { family, baby } => {
+                    emit_undead_horse_model(&mut mesh, *instance, family, baby)
                 }
-            }
-            EntityModelKind::ZombieVariant { family, baby } => {
-                // The husk, drowned, and zombie villager all have wired texture-backed paths now.
-                if !skip_texture_backed_entities {
-                    emit_zombie_variant_model(&mut mesh, *instance, family, baby)
+                EntityModelKind::Camel { family, baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_camel_model(&mut mesh, *instance, family, baby);
+                    }
                 }
-            }
-            EntityModelKind::Piglin { family, baby } => {
-                if !skip_texture_backed_entities {
-                    emit_piglin_model(&mut mesh, *instance, family, baby)
+                EntityModelKind::Llama {
+                    family,
+                    variant,
+                    baby,
+                    has_chest,
+                } => {
+                    if !skip_texture_backed_entities {
+                        emit_llama_model(&mut mesh, *instance, family, variant, baby, has_chest);
+                    }
                 }
-            }
-            EntityModelKind::Hoglin { family, baby } => {
-                if !skip_texture_backed_entities {
-                    emit_hoglin_model(&mut mesh, *instance, family, baby)
+                EntityModelKind::Quadruped { family, baby } => {
+                    emit_quadruped_model(&mut mesh, *instance, family, baby)
                 }
-            }
-            EntityModelKind::Ravager => {
-                if !skip_texture_backed_entities {
-                    RavagerModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Squid { glow, baby } => {
+                    if !skip_texture_backed_entities {
+                        emit_squid_model(&mut mesh, *instance, glow, baby);
+                    }
                 }
-            }
-            EntityModelKind::Skeleton => {
-                if !skip_texture_backed_entities {
-                    SkeletonModel::new(None).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Cod => {
+                    if !skip_texture_backed_entities {
+                        let in_water = instance.render_state.in_water;
+                        CodModel::new().prepare_and_render(
+                            &mut mesh,
+                            instance,
+                            cod_model_root_transform(*instance, in_water),
+                        );
+                    }
                 }
-            }
-            EntityModelKind::SkeletonVariant { family } => {
-                if !skip_texture_backed_entities {
-                    emit_skeleton_variant_model(&mut mesh, *instance, family)
+                EntityModelKind::TropicalFish {
+                    shape, base_color, ..
+                } => {
+                    // The colored debug path approximates the textured base body as a solid base-color
+                    // box; the `TropicalFishPatternLayer` overlay is a cutout texture (its shape comes
+                    // from the texture alpha) and so is only meaningful on the textured path.
+                    if !skip_texture_backed_entities {
+                        emit_tropical_fish_model(&mut mesh, *instance, shape, base_color);
+                    }
                 }
-            }
-            EntityModelKind::Cow { variant, baby } => {
-                if !skip_texture_backed_entities {
-                    CowModel::new(variant, baby).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
+                EntityModelKind::Placeholder { bounds, .. } => {
+                    emit_placeholder_bounds_model(&mut mesh, *instance, bounds)
                 }
-            }
-            EntityModelKind::Mooshroom { baby } => {
-                // The mooshroom shares the temperate `CowModel` / `BabyCowModel` body. It is a
-                // colored-only slice (the mushroom block-model layer and red/brown textures are
-                // deferred), so unlike the graduated `Cow` it renders on both paths, replacing the
-                // generic quadruped stand-in with the real cow body.
-                CowModel::new(CowModelVariant::Temperate, baby).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Sheep {
-                baby,
-                sheared,
-                wool_color,
-                jeb,
-                age_ticks,
-            } => {
-                if !skip_texture_backed_entities {
-                    emit_sheep_model(
-                        &mut mesh, *instance, baby, sheared, wool_color, jeb, age_ticks,
-                    );
-                }
-            }
-            EntityModelKind::Villager { baby } => {
-                if !skip_texture_backed_entities {
-                    let transform = if baby {
-                        entity_model_root_transform(*instance)
-                    } else {
-                        villager_adult_model_root_transform(*instance)
-                    };
-                    VillagerModel::new(baby).prepare_and_render(&mut mesh, instance, transform);
-                }
-            }
-            EntityModelKind::WanderingTrader => {
-                if !skip_texture_backed_entities {
-                    WanderingTraderModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        villager_adult_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::Wolf { baby, angry, .. } => {
-                if !skip_texture_backed_entities {
-                    emit_wolf_model(&mut mesh, *instance, baby, angry);
-                }
-            }
-            EntityModelKind::Horse { baby } => emit_horse_model(&mut mesh, *instance, baby),
-            EntityModelKind::Donkey {
-                family,
-                baby,
-                has_chest,
-            } => emit_donkey_model(&mut mesh, *instance, family, baby, has_chest),
-            EntityModelKind::UndeadHorse { family, baby } => {
-                emit_undead_horse_model(&mut mesh, *instance, family, baby)
-            }
-            EntityModelKind::Camel { family, baby } => {
-                if !skip_texture_backed_entities {
-                    emit_camel_model(&mut mesh, *instance, family, baby);
-                }
-            }
-            EntityModelKind::Llama {
-                family,
-                variant,
-                baby,
-                has_chest,
-            } => {
-                if !skip_texture_backed_entities {
-                    emit_llama_model(&mut mesh, *instance, family, variant, baby, has_chest);
-                }
-            }
-            EntityModelKind::Goat {
-                baby,
-                left_horn,
-                right_horn,
-            } => {
-                if !skip_texture_backed_entities {
-                    GoatModel::new(baby, left_horn, right_horn).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::PolarBear { baby } => {
-                if !skip_texture_backed_entities {
-                    let transform = if baby {
-                        entity_model_root_transform(*instance)
-                    } else {
-                        polar_bear_model_root_transform(*instance)
-                    };
-                    PolarBearModel::new(baby).prepare_and_render(&mut mesh, instance, transform);
-                }
-            }
-            EntityModelKind::Panda { baby } => {
-                PandaModel::new(baby).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Feline { cat, baby } => {
-                // Only the adult cat gets the 0.8 `CAT_TRANSFORMER` scale; the ocelot and both babies
-                // render the layer unscaled.
-                let transform = if cat && !baby {
-                    mesh_transformer_scaled_model_root_transform(*instance, FELINE_CAT_SCALE)
-                } else {
-                    entity_model_root_transform(*instance)
-                };
-                FelineModel::new(baby).prepare_and_render(&mut mesh, instance, transform);
-            }
-            EntityModelKind::Fox { baby } => {
-                FoxModel::new(baby).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Nautilus { baby } => {
-                NautilusModel::new(baby).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Rabbit { baby } => {
-                RabbitModel::new(baby).prepare_and_render(
-                    &mut mesh,
-                    instance,
-                    entity_model_root_transform(*instance),
-                );
-            }
-            EntityModelKind::Quadruped { family, baby } => {
-                emit_quadruped_model(&mut mesh, *instance, family, baby)
-            }
-            EntityModelKind::Creeper => {
-                if !skip_texture_backed_entities {
-                    CreeperModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        creeper_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::Spider => {
-                if !skip_texture_backed_entities {
-                    emit_spider_model(&mut mesh, *instance);
-                }
-            }
-            EntityModelKind::CaveSpider => {
-                if !skip_texture_backed_entities {
-                    emit_cave_spider_model(&mut mesh, *instance);
-                }
-            }
-            EntityModelKind::Enderman => {
-                if !skip_texture_backed_entities {
-                    emit_enderman_model(&mut mesh, *instance);
-                }
-            }
-            EntityModelKind::IronGolem => {
-                if !skip_texture_backed_entities {
-                    IronGolemModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::SnowGolem => {
-                if !skip_texture_backed_entities {
-                    SnowGolemModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::Witch => {
-                if !skip_texture_backed_entities {
-                    WitchModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        villager_adult_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::Squid { glow, baby } => {
-                if !skip_texture_backed_entities {
-                    emit_squid_model(&mut mesh, *instance, glow, baby);
-                }
-            }
-            EntityModelKind::Cod => {
-                if !skip_texture_backed_entities {
-                    let in_water = instance.render_state.in_water;
-                    CodModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        cod_model_root_transform(*instance, in_water),
-                    );
-                }
-            }
-            EntityModelKind::Salmon { size } => {
-                if !skip_texture_backed_entities {
-                    let in_water = instance.render_state.in_water;
-                    SalmonModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        salmon_model_root_transform(*instance, in_water, size),
-                    );
-                }
-            }
-            EntityModelKind::TropicalFish {
-                shape, base_color, ..
-            } => {
-                // The colored debug path approximates the textured base body as a solid base-color
-                // box; the `TropicalFishPatternLayer` overlay is a cutout texture (its shape comes
-                // from the texture alpha) and so is only meaningful on the textured path.
-                if !skip_texture_backed_entities {
-                    emit_tropical_fish_model(&mut mesh, *instance, shape, base_color);
-                }
-            }
-            EntityModelKind::Illager { family } => {
-                if !skip_texture_backed_entities {
-                    IllagerModel::new(instance, family).prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        villager_adult_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::Minecart => {
-                if !skip_texture_backed_entities {
-                    MinecartModel::new().prepare_and_render(
-                        &mut mesh,
-                        instance,
-                        entity_model_root_transform(*instance),
-                    );
-                }
-            }
-            EntityModelKind::Boat { family, chest } => {
-                if !skip_texture_backed_entities {
-                    emit_boat_model(&mut mesh, *instance, family, chest);
-                }
-            }
-            EntityModelKind::Placeholder { bounds, .. } => {
-                emit_placeholder_bounds_model(&mut mesh, *instance, bounds)
+                _ => {}
             }
         }
         fill_entity_model_light(&mut mesh, light_start, instance.render_state.shader_light());
@@ -831,14 +379,6 @@ fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     for cube in END_CRYSTAL_PARTS[3].cubes {
         emit_model_cube(mesh, core_t, *cube);
     }
-}
-
-fn emit_phantom_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
-    // The unified `PhantomModel` tree drives both render paths; `setup_anim` flaps the nested
-    // wing/tail chains from `flapTime` (`id*3 + ageInTicks`), while the body and head hold their rest
-    // tilt. The size scale and body pitch live in the root transform.
-    let root = phantom_model_root_transform(instance, size);
-    PhantomModel::new().prepare_and_render(mesh, &instance, root);
 }
 
 fn emit_pufferfish_model(
@@ -1191,23 +731,6 @@ fn emit_sheep_model(
     }
 }
 
-fn emit_wolf_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    baby: bool,
-    angry: bool,
-) {
-    // The unified `WolfModel` tree drives both render paths; `setup_anim` looks the head, folds the
-    // `setSittingPose` or swings the four legs at the `QuadrupedModel` diagonal phase, then sets the
-    // tail `xRot = tailAngle` + wag `yRot` (angry → the raised constant, no wag). The water-shake body
-    // roll is deferred. The colored fallback renders the baked wolf-gray tree.
-    WolfModel::new(baby, angry).prepare_and_render(
-        mesh,
-        &instance,
-        entity_model_root_transform(instance),
-    );
-}
-
 fn emit_quadruped_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
@@ -1335,44 +858,6 @@ pub(in crate::entity_models) fn quadruped_leg_x_rotations(
     let in_phase = phase.cos() * 1.4 * limb_swing_amount;
     let out_of_phase = (phase + std::f32::consts::PI).cos() * 1.4 * limb_swing_amount;
     [in_phase, out_of_phase, out_of_phase, in_phase]
-}
-
-fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The unified `SpiderModel` tree drives both render paths; `setup_anim` looks the head and
-    // sweeps/steps the eight legs once.
-    SpiderModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The cave spider shares `SpiderModel`, differing only by its smaller root transform.
-    SpiderModel::new().prepare_and_render(
-        mesh,
-        &instance,
-        cave_spider_model_root_transform(instance),
-    );
-}
-
-fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // The unified `EndermanModel` tree drives both render paths; `setup_anim` looks the head, swings
-    // the clamped arms/legs, overrides the arms when carrying a block, and applies the creepy
-    // head/hat shift.
-    EndermanModel::new().prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-}
-
-fn emit_boat_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: BoatModelFamily,
-    chest: bool,
-) {
-    // The unified `BoatModel` tree drives both render paths; `new` selects the boat / raft / chest tree.
-    // The boat is a static mesh (the vanilla paddle swing is deferred), so the colored fallback just
-    // renders the baked wood-colored tree at its bind pose.
-    BoatModel::new(family, chest).prepare_and_render(
-        mesh,
-        &instance,
-        boat_model_root_transform(instance),
-    );
 }
 
 fn emit_placeholder_bounds_model(

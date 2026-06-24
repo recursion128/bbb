@@ -1,43 +1,35 @@
+use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::model::EntityModel;
 use super::{
-    boat_model_root_transform,
     catalog::squid_texture_ref,
     catalog::{
-        ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant,
-        CowModelVariant, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, HoglinModelFamily,
-        IllagerModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
+        ArmorStandModelPose, CamelModelFamily, EntityDyeColor, EntityModelKind,
+        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
+        HoglinModelFamily, LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility,
+        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
+        ZombieVariantModelFamily,
     },
-    cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
-    entity_model_root_transform,
+    cod_model_root_transform, entity_model_root_transform,
     geometry::{
         fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
         EntityModelTexturedMesh,
     },
-    ghast_model_root_transform, happy_ghast_model_root_transform,
     instances::EntityModelInstance,
-    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
+    mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        AllayModel, ArmorStandModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel,
-        CamelModel, ChickenModel, CodModel, CowModel, CreeperModel, DolphinModel, EndermanModel,
-        EndermiteModel, GhastModel, GoatModel, HappyGhastModel, HoglinModel, IllagerModel,
-        IronGolemModel, LlamaModel, MagmaCubeModel, MinecartModel, PhantomModel, PigModel,
-        PiglinModel, PlayerModel, PolarBearModel, PufferfishModel, RavagerModel, SalmonModel,
-        SheepFurModel, SheepModel, SilverfishModel, SkeletonClothingModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel,
-        TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
-        WanderingTraderModel, WitchModel, WolfModel, ZombieModel, ZombieVariantModel,
-        ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF,
-        BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
-        DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF, STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF,
-        TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+        AllayModel, ArmorStandModel, BatModel, BeeModel, BreezeModel, CamelModel, CodModel,
+        DolphinModel, HoglinModel, LlamaModel, PiglinModel, PlayerModel, PufferfishModel,
+        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
+        SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
+        TurtleModel, VexModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
+        BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF, BEE_TEXTURE_REF, BREEZE_TEXTURE_REF,
+        COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, PUFFERFISH_TEXTURE_REF,
+        STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
+        TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
     },
-    phantom_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, salmon_model_root_transform, slime_model_root_transform,
+    player_model_root_transform, pufferfish_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, tropical_fish_model_root_transform,
-    villager_adult_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::Mat4;
 
@@ -110,246 +102,158 @@ pub(super) fn entity_model_textured_meshes(
         let cutout_start = meshes.cutout.vertices.len();
         let translucent_start = meshes.translucent.vertices.len();
         let eyes_start = meshes.eyes.vertices.len();
-        match instance.kind {
-            EntityModelKind::Chicken { variant, baby } => {
-                emit_chicken_textured_model(&mut meshes, *instance, variant, baby, atlas);
-            }
-            EntityModelKind::Pig { variant, baby } => {
-                emit_pig_textured_model(&mut meshes, *instance, variant, baby, atlas);
-            }
-            EntityModelKind::Cow { variant, baby } => {
-                emit_cow_textured_model(&mut meshes, *instance, variant, baby, atlas);
-            }
-            EntityModelKind::Llama {
-                variant,
-                baby,
-                has_chest,
-                ..
-            } => {
-                emit_llama_textured_model(&mut meshes, *instance, variant, baby, has_chest, atlas);
-            }
-            EntityModelKind::Camel { family, baby } => {
-                emit_camel_textured_model(&mut meshes, *instance, family, baby, atlas);
-            }
-            EntityModelKind::Squid { glow, baby } => {
-                emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
-            }
-            EntityModelKind::Cod => {
-                emit_cod_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Salmon { size } => {
-                emit_salmon_textured_model(&mut meshes, *instance, size, atlas);
-            }
-            EntityModelKind::TropicalFish {
-                shape,
-                base_color,
-                pattern,
-                pattern_color,
-            } => {
-                emit_tropical_fish_textured_model(
-                    &mut meshes,
-                    *instance,
+        let handled = {
+            let mut sink = TexturedSink {
+                meshes: &mut meshes,
+                atlas,
+            };
+            dispatch_uniform_entity_model(instance, &mut sink)
+        };
+        if !handled {
+            // Only the bespoke textured emits remain here — the recolor / two-tree / family / part-vis /
+            // single-pass entities that the shared dispatch leaves out. Colored-only uniform kinds emit no
+            // textured geometry (their dispatch call walks an empty pass list, a no-op), so they must NOT
+            // appear here; every kind without a textured arm falls into `_ => {}`.
+            match instance.kind {
+                EntityModelKind::Llama {
+                    variant,
+                    baby,
+                    has_chest,
+                    ..
+                } => {
+                    emit_llama_textured_model(
+                        &mut meshes,
+                        *instance,
+                        variant,
+                        baby,
+                        has_chest,
+                        atlas,
+                    );
+                }
+                EntityModelKind::Camel { family, baby } => {
+                    emit_camel_textured_model(&mut meshes, *instance, family, baby, atlas);
+                }
+                EntityModelKind::Squid { glow, baby } => {
+                    emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
+                }
+                EntityModelKind::Cod => {
+                    emit_cod_textured_model(&mut meshes, *instance, atlas);
+                }
+                EntityModelKind::TropicalFish {
                     shape,
                     base_color,
                     pattern,
                     pattern_color,
-                    atlas,
-                );
-            }
-            EntityModelKind::Vex => {
-                emit_vex_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Allay => {
-                emit_allay_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Strider { baby } => {
-                emit_strider_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::Turtle { baby } => {
-                emit_turtle_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::Bat => {
-                emit_bat_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Bee { baby } => {
-                emit_bee_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::Breeze => {
-                emit_breeze_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Dolphin { baby } => {
-                emit_dolphin_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::Creeper => {
-                emit_creeper_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Spider => {
-                emit_spider_textured_model(&mut meshes, *instance, false, atlas);
-            }
-            EntityModelKind::CaveSpider => {
-                emit_spider_textured_model(&mut meshes, *instance, true, atlas);
-            }
-            EntityModelKind::Enderman => {
-                emit_enderman_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::IronGolem => {
-                emit_iron_golem_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::SnowGolem => {
-                emit_snow_golem_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Witch => {
-                emit_witch_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Slime { size } => {
-                emit_slime_textured_model(&mut meshes, *instance, size, atlas);
-            }
-            EntityModelKind::MagmaCube { size } => {
-                emit_magma_cube_textured_model(&mut meshes, *instance, size, atlas);
-            }
-            EntityModelKind::Ghast => {
-                emit_ghast_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::HappyGhast => {
-                emit_happy_ghast_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Minecart => {
-                emit_minecart_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::ArmorStand {
-                small,
-                show_arms,
-                show_base_plate,
-                pose,
-            } => {
-                emit_armor_stand_textured_model(
-                    &mut meshes,
-                    *instance,
+                } => {
+                    emit_tropical_fish_textured_model(
+                        &mut meshes,
+                        *instance,
+                        shape,
+                        base_color,
+                        pattern,
+                        pattern_color,
+                        atlas,
+                    );
+                }
+                EntityModelKind::Vex => {
+                    emit_vex_textured_model(&mut meshes, *instance, atlas);
+                }
+                EntityModelKind::Allay => {
+                    emit_allay_textured_model(&mut meshes, *instance, atlas);
+                }
+                EntityModelKind::Strider { baby } => {
+                    emit_strider_textured_model(&mut meshes, *instance, baby, atlas);
+                }
+                EntityModelKind::Turtle { baby } => {
+                    emit_turtle_textured_model(&mut meshes, *instance, baby, atlas);
+                }
+                EntityModelKind::Bat => {
+                    emit_bat_textured_model(&mut meshes, *instance, atlas);
+                }
+                EntityModelKind::Bee { baby } => {
+                    emit_bee_textured_model(&mut meshes, *instance, baby, atlas);
+                }
+                EntityModelKind::Breeze => {
+                    emit_breeze_textured_model(&mut meshes, *instance, atlas);
+                }
+                EntityModelKind::Dolphin { baby } => {
+                    emit_dolphin_textured_model(&mut meshes, *instance, baby, atlas);
+                }
+                EntityModelKind::Slime { size } => {
+                    emit_slime_textured_model(&mut meshes, *instance, size, atlas);
+                }
+                EntityModelKind::ArmorStand {
                     small,
                     show_arms,
                     show_base_plate,
                     pose,
-                    atlas,
-                );
-            }
-            EntityModelKind::Zombie { baby } => {
-                emit_zombie_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::ZombieVariant {
-                family: ZombieVariantModelFamily::Husk,
-                baby,
-            } => {
-                emit_husk_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::ZombieVariant {
-                family: ZombieVariantModelFamily::Drowned,
-                baby,
-            } => {
-                emit_drowned_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::ZombieVariant {
-                family: ZombieVariantModelFamily::ZombieVillager,
-                baby,
-            } => {
-                emit_zombie_villager_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::Piglin { family, baby } => {
-                emit_piglin_textured_model(&mut meshes, *instance, family, baby, atlas);
-            }
-            EntityModelKind::Blaze => {
-                emit_blaze_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Endermite => {
-                emit_endermite_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Silverfish => {
-                emit_silverfish_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Phantom { size } => {
-                emit_phantom_textured_model(&mut meshes, *instance, size, atlas);
-            }
-            EntityModelKind::Pufferfish { puff_state } => {
-                emit_pufferfish_textured_model(&mut meshes, *instance, puff_state, atlas);
-            }
-            EntityModelKind::PolarBear { baby } => {
-                emit_polar_bear_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::Hoglin { family, baby } => {
-                emit_hoglin_textured_model(&mut meshes, *instance, family, baby, atlas);
-            }
-            EntityModelKind::Ravager => {
-                emit_ravager_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Villager { baby } => {
-                emit_villager_textured_model(&mut meshes, *instance, baby, atlas);
-            }
-            EntityModelKind::WanderingTrader => {
-                emit_wandering_trader_textured_model(&mut meshes, *instance, atlas);
-            }
-            EntityModelKind::Illager { family } => {
-                emit_illager_textured_model(&mut meshes, *instance, family, atlas);
-            }
-            EntityModelKind::Player { slim, parts } => {
-                emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
-            }
-            EntityModelKind::Sheep {
-                baby,
-                sheared,
-                wool_color,
-                jeb,
-                age_ticks,
-            } => {
-                emit_sheep_textured_model(
-                    &mut meshes,
-                    *instance,
+                } => {
+                    emit_armor_stand_textured_model(
+                        &mut meshes,
+                        *instance,
+                        small,
+                        show_arms,
+                        show_base_plate,
+                        pose,
+                        atlas,
+                    );
+                }
+                EntityModelKind::ZombieVariant {
+                    family: ZombieVariantModelFamily::Husk,
+                    baby,
+                } => {
+                    emit_husk_textured_model(&mut meshes, *instance, baby, atlas);
+                }
+                EntityModelKind::ZombieVariant {
+                    family: ZombieVariantModelFamily::Drowned,
+                    baby,
+                } => {
+                    emit_drowned_textured_model(&mut meshes, *instance, baby, atlas);
+                }
+                EntityModelKind::ZombieVariant {
+                    family: ZombieVariantModelFamily::ZombieVillager,
+                    baby,
+                } => {
+                    emit_zombie_villager_textured_model(&mut meshes, *instance, baby, atlas);
+                }
+                EntityModelKind::Piglin { family, baby } => {
+                    emit_piglin_textured_model(&mut meshes, *instance, family, baby, atlas);
+                }
+                EntityModelKind::Pufferfish { puff_state } => {
+                    emit_pufferfish_textured_model(&mut meshes, *instance, puff_state, atlas);
+                }
+                EntityModelKind::Hoglin { family, baby } => {
+                    emit_hoglin_textured_model(&mut meshes, *instance, family, baby, atlas);
+                }
+                EntityModelKind::Player { slim, parts } => {
+                    emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
+                }
+                EntityModelKind::Sheep {
                     baby,
                     sheared,
                     wool_color,
                     jeb,
                     age_ticks,
-                    atlas,
-                );
+                } => {
+                    emit_sheep_textured_model(
+                        &mut meshes,
+                        *instance,
+                        baby,
+                        sheared,
+                        wool_color,
+                        jeb,
+                        age_ticks,
+                        atlas,
+                    );
+                }
+                EntityModelKind::Skeleton => {
+                    emit_skeleton_textured_model(&mut meshes, *instance, None, atlas);
+                }
+                EntityModelKind::SkeletonVariant { family } => {
+                    emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
+                }
+                _ => {}
             }
-            EntityModelKind::Wolf {
-                baby,
-                tame,
-                angry,
-                collar_color,
-            } => {
-                emit_wolf_textured_model(
-                    &mut meshes,
-                    *instance,
-                    baby,
-                    tame,
-                    angry,
-                    collar_color,
-                    atlas,
-                );
-            }
-            EntityModelKind::Goat {
-                baby,
-                left_horn,
-                right_horn,
-            } => {
-                emit_goat_textured_model(
-                    &mut meshes,
-                    *instance,
-                    baby,
-                    left_horn,
-                    right_horn,
-                    atlas,
-                );
-            }
-            EntityModelKind::Skeleton => {
-                emit_skeleton_textured_model(&mut meshes, *instance, None, atlas);
-            }
-            EntityModelKind::SkeletonVariant { family } => {
-                emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
-            }
-            EntityModelKind::Boat { family, chest } => {
-                emit_boat_textured_model(&mut meshes, *instance, family, chest, atlas);
-            }
-            _ => {}
         }
         let light = instance.render_state.shader_light();
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
@@ -361,27 +265,6 @@ pub(super) fn entity_model_textured_meshes(
         fill_entity_textured_overlay(&mut meshes.eyes, eyes_start, overlay);
     }
     meshes
-}
-
-fn emit_boat_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    family: BoatModelFamily,
-    chest: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `BoatModel` tree drives both render paths; `new` selects the boat / raft / chest tree.
-    // The boat is a single cutout pass; the per-family / chest texture comes from the pass.
-    let transform = boat_model_root_transform(instance);
-    let mut model = BoatModel::new(family, chest);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        boat_textured_layer_passes(family, chest),
-        atlas,
-    );
 }
 
 /// Render one textured pass of an already-prepared model: look up the texture's atlas entry and,
@@ -408,7 +291,7 @@ fn render_textured_pass<M: EntityModel>(
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.
-fn render_textured_layers<M: EntityModel>(
+pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
     meshes: &mut EntityModelTexturedMeshes,
     model: &M,
     transform: Mat4,
@@ -426,69 +309,6 @@ fn render_textured_layers<M: EntityModel>(
             atlas,
         );
     }
-}
-
-fn emit_chicken_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    variant: ChickenModelVariant,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `ChickenModel` tree drives both render paths; `setup_anim` swings the two legs once.
-    // The chicken has no head look; its wing flap is driven by the untracked `flap`/`flapSpeed` state.
-    let transform = entity_model_root_transform(instance);
-    let mut model = ChickenModel::new(variant, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        chicken_textured_layer_passes(variant, baby),
-        atlas,
-    );
-}
-
-fn emit_pig_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    variant: PigModelVariant,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `PigModel` tree drives both render paths; `setup_anim` looks the head and swings
-    // the four legs once.
-    let transform = entity_model_root_transform(instance);
-    let mut model = PigModel::new(variant, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        pig_textured_layer_passes(variant, baby),
-        atlas,
-    );
-}
-
-fn emit_cow_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    variant: CowModelVariant,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `CowModel` tree drives both render paths; `setup_anim` looks the head and swings
-    // the four legs once.
-    let transform = entity_model_root_transform(instance);
-    let mut model = CowModel::new(variant, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        cow_textured_layer_passes(variant, baby),
-        atlas,
-    );
 }
 
 /// The textured camel base layer. Vanilla `CamelModel.setupAnim` drives every limb via
@@ -541,32 +361,6 @@ fn emit_cod_textured_model(
         EntityModelLayerRenderType::Cutout,
         COD_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-/// The textured salmon base layer. The salmon parts are static apart from the back body
-/// segment, which carries the tail and rear top fin and is swayed by the vanilla
-/// `SalmonModel.setupAnim`; the swim wiggle, out-of-water flop, and small/medium/large
-/// mesh scale live in [`salmon_model_root_transform`].
-fn emit_salmon_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    size: SalmonModelSize,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `SalmonModel` tree drives both render paths; `setup_anim` sways the back body
-    // segment once. Each layer pass supplies the texture / render type / tint, and the posed tree
-    // supplies the geometry (vanilla `SalmonRenderer` is a single cutout layer per size).
-    let in_water = instance.render_state.in_water;
-    let transform = salmon_model_root_transform(instance, in_water, size);
-    let mut model = SalmonModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        salmon_textured_layer_passes(size),
         atlas,
     );
 }
@@ -886,129 +680,6 @@ fn emit_llama_textured_model(
     );
 }
 
-fn emit_creeper_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `CreeperModel` tree drives both render paths; `setup_anim` follows the head look and
-    // applies the standard `QuadrupedModel` leg swing once. The swell is folded into the root
-    // transform; the powered charge layer is deferred.
-    let transform = creeper_model_root_transform(instance);
-    let mut model = CreeperModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        creeper_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_spider_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    cave: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `SpiderModel` tree drives both render paths; `setup_anim` looks the head and
-    // sweeps/steps the eight legs once. Both the base and eyes passes read this one posed tree. The
-    // cave spider shares the model and differs only by its smaller root transform.
-    let transform = if cave {
-        cave_spider_model_root_transform(instance)
-    } else {
-        entity_model_root_transform(instance)
-    };
-    let mut model = SpiderModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        spider_textured_layer_passes(cave),
-        atlas,
-    );
-}
-
-fn emit_enderman_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `EndermanModel` tree drives both render paths; `setup_anim` looks the head, swings
-    // the clamped arms/legs, overrides the arms when carrying a block, and applies the creepy
-    // head/hat shift. Both the base and eyes passes read this one posed tree.
-    let transform = entity_model_root_transform(instance);
-    let mut model = EndermanModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        enderman_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_iron_golem_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `IronGolemModel` tree drives both render paths; `setup_anim` follows the head look
-    // then swings the arms and legs once. The attack swing and offer-flower arm pose are deferred.
-    let transform = entity_model_root_transform(instance);
-    let mut model = IronGolemModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        iron_golem_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_snow_golem_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `SnowGolemModel` tree drives both render paths; `setup_anim` looks the head, twists
-    // the upper body by a quarter of the head yaw, and orbits the two stick arms once.
-    let transform = entity_model_root_transform(instance);
-    let mut model = SnowGolemModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        snow_golem_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_witch_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `WitchModel` tree drives both render paths; `setup_anim` looks the head, swings the
-    // legs at the villager-family half amplitude, and bobs the nose (the head's nose child, so it
-    // inherits the head look). The `isHoldingItem` nose hold pose and combined `arms` part defer.
-    let transform = villager_adult_model_root_transform(instance);
-    let mut model = WitchModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        witch_textured_layer_passes(),
-        atlas,
-    );
-}
-
 fn emit_slime_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1041,83 +712,6 @@ fn emit_slime_textured_model(
     }
 }
 
-fn emit_magma_cube_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    size: i32,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `MagmaCubeModel` tree drives both render paths; its `setup_anim` is a no-op (the
-    // squish stretch is deferred), so this renders the rest pose under the per-size root transform.
-    let transform = magma_cube_model_root_transform(instance, size);
-    let mut model = MagmaCubeModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        magma_cube_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_ghast_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `GhastModel` tree drives both render paths; `setup_anim` waves the nine tentacles
-    // from `ageInTicks` once. The layer pass supplies the texture / render type / tint.
-    let transform = ghast_model_root_transform(instance);
-    let mut model = GhastModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        ghast_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_happy_ghast_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `HappyGhastModel` tree drives both render paths; `setup_anim` reuses the ghast
-    // tentacle wave from `ageInTicks` once. The layer pass supplies the texture / render type / tint.
-    let transform = happy_ghast_model_root_transform(instance);
-    let mut model = HappyGhastModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        happy_ghast_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_minecart_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `MinecartModel` tree drives both render paths; its `setup_anim` is a no-op (static
-    // box), so this renders the rest pose under the entity root transform.
-    let transform = entity_model_root_transform(instance);
-    let mut model = MinecartModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        minecart_textured_layer_passes(),
-        atlas,
-    );
-}
-
 #[allow(clippy::too_many_arguments)]
 fn emit_armor_stand_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
@@ -1141,26 +735,6 @@ fn emit_armor_stand_textured_model(
         EntityModelLayerRenderType::Cutout,
         ARMOR_STAND_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-        atlas,
-    );
-}
-
-fn emit_zombie_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `ZombieModel` tree drives both render paths; `setup_anim` looks the head, runs the
-    // humanoid leg swing, then overrides the arms with the held-out `animateZombieArms` pose.
-    let transform = entity_model_root_transform(instance);
-    let mut model = ZombieModel::new(baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        zombie_textured_layer_passes(baby),
         atlas,
     );
 }
@@ -1259,111 +833,6 @@ fn emit_piglin_textured_model(
     );
 }
 
-fn emit_illager_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    family: IllagerModelFamily,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `IllagerModel` tree drives both render paths; `new` selects the crossed/uncrossed
-    // tree by family and spell-cast state, and `setup_anim` looks the head, swings the legs at the
-    // villager-family half amplitude, then swings the pillager's separate arms or raises a
-    // spellcasting evoker/illusioner's arms into the `SPELLCASTING` pose. The other arm-pose
-    // overrides (attack/bow/crossbow/celebrate), the riding sit pose, and the item-in-hand layers
-    // stay deferred.
-    let transform = villager_adult_model_root_transform(instance);
-    let mut model = IllagerModel::new(&instance, family);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        illager_textured_layer_passes(family),
-        atlas,
-    );
-}
-
-fn emit_blaze_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `BlazeModel` tree drives both render paths; `setup_anim` follows the head look and
-    // SETs all twelve rod offsets from `ageInTicks` once. The layer pass supplies the texture /
-    // render type / tint.
-    let transform = entity_model_root_transform(instance);
-    let mut model = BlazeModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        blaze_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_endermite_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `EndermiteModel` tree drives both render paths; `setup_anim` wiggles the four
-    // chitin segments once. The layer pass supplies the texture / render type / tint.
-    let transform = entity_model_root_transform(instance);
-    let mut model = EndermiteModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        endermite_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_silverfish_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `SilverfishModel` tree drives both render paths; `setup_anim` wiggles the seven
-    // body segments and copies the three overlay layers once. The layer pass supplies the texture /
-    // render type / tint.
-    let transform = entity_model_root_transform(instance);
-    let mut model = SilverfishModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        silverfish_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_phantom_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    size: i32,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `PhantomModel` tree drives both render paths; `setup_anim` flaps the nested
-    // wing/tail chains from `flapTime` (`id*3 + ageInTicks`). The cutout base layer and the emissive
-    // eyes overlay both re-render the same posed tree. The size scale and body pitch live in the root
-    // transform.
-    let transform = phantom_model_root_transform(instance, size);
-    let mut model = PhantomModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        phantom_textured_layer_passes(),
-        atlas,
-    );
-}
-
 fn emit_pufferfish_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1387,30 +856,6 @@ fn emit_pufferfish_textured_model(
     );
 }
 
-fn emit_polar_bear_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `PolarBearModel` tree drives both render paths; `setup_anim` runs the head look and
-    // four-leg swing, then adds the standing rear-up deltas on top when `standScale != 0`.
-    let transform = if baby {
-        entity_model_root_transform(instance)
-    } else {
-        polar_bear_model_root_transform(instance)
-    };
-    let mut model = PolarBearModel::new(baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        polar_bear_textured_layer_passes(baby),
-        atlas,
-    );
-}
-
 fn emit_hoglin_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1429,69 +874,6 @@ fn emit_hoglin_textured_model(
         &model,
         transform,
         hoglin_textured_layer_passes(family, baby),
-        atlas,
-    );
-}
-
-fn emit_ravager_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `RavagerModel` tree drives both render paths; `setup_anim` swings the four legs and
-    // looks the head (nested under the neck, so its horn/mouth descendants inherit the look). The
-    // neck/mouth attack/stun/roar poses are deferred.
-    let transform = entity_model_root_transform(instance);
-    let mut model = RavagerModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        ravager_textured_layer_passes(),
-        atlas,
-    );
-}
-
-fn emit_villager_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `VillagerModel` tree drives both render paths; `setup_anim` looks the head and
-    // swings the legs at the villager-family half amplitude once.
-    let transform = if baby {
-        entity_model_root_transform(instance)
-    } else {
-        villager_adult_model_root_transform(instance)
-    };
-    let mut model = VillagerModel::new(baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        villager_textured_layer_passes(baby),
-        atlas,
-    );
-}
-
-fn emit_wandering_trader_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `WanderingTraderModel` tree drives both render paths; `setup_anim` looks the head and
-    // swings the legs at the villager-family half amplitude once.
-    let transform = villager_adult_model_root_transform(instance);
-    let mut model = WanderingTraderModel::new();
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        wandering_trader_textured_layer_passes(),
         atlas,
     );
 }
@@ -1556,53 +938,6 @@ fn emit_sheep_textured_model(
             );
         }
     }
-}
-
-fn emit_wolf_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    tame: bool,
-    angry: bool,
-    collar_color: Option<EntityDyeColor>,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `WolfModel` tree drives both render paths; `setup_anim` looks the head, folds the
-    // sitting pose or swings the four legs, and sets the tail angle/wag (angry → raised). Every pass
-    // (base, collar) shares the body-layer layout, so both re-render the same posed tree; the collar dye
-    // pass supplies its tinted texture. The water-shake body roll is deferred.
-    let transform = entity_model_root_transform(instance);
-    let mut model = WolfModel::new(baby, angry);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        wolf_textured_layer_passes(baby, tame, angry, collar_color),
-        atlas,
-    );
-}
-
-fn emit_goat_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    left_horn: bool,
-    right_horn: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `GoatModel` tree drives both render paths; `setup_anim` looks the head, swings the
-    // four legs, and toggles each horn child's visibility from the `left_horn`/`right_horn` flags.
-    let transform = entity_model_root_transform(instance);
-    let mut model = GoatModel::new(baby, left_horn, right_horn);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        goat_textured_layer_passes(baby),
-        atlas,
-    );
 }
 
 fn emit_skeleton_textured_model(
