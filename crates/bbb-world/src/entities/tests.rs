@@ -2297,6 +2297,95 @@ fn entity_model_sources_project_bee_roll_amount() {
 }
 
 #[test]
+fn entity_model_sources_project_fox_head_roll_and_crouch() {
+    const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
+    // Vanilla `Fox.DATA_FLAGS_ID` is synced data id 19; `FLAG_CROUCHING` is mask 4 and
+    // `FLAG_INTERESTED` is mask 8 within that byte.
+    let fox_flags = |raw: i8| ProtocolEntityDataValue {
+        data_id: 19,
+        serializer_id: 0,
+        value: EntityDataValueKind::Byte(raw),
+    };
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 91)
+            .unwrap()
+    };
+    let head_roll = |store: &WorldStore, partial: f32| source(store, partial).fox_head_roll_angle;
+    let crouch = |store: &WorldStore, partial: f32| source(store, partial).fox_crouch_amount;
+    const HEAD_ROLL_SCALE: f32 = 0.11 * std::f32::consts::PI;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        91,
+        VANILLA_ENTITY_TYPE_FOX_ID,
+    ));
+
+    // A resting fox projects level head and no crouch, and no flag bools.
+    assert_eq!(head_roll(&store, 1.0), 0.0);
+    assert_eq!(crouch(&store, 1.0), 0.0);
+    assert!(!source(&store, 1.0).fox_is_crouching);
+    assert!(!source(&store, 1.0).fox_is_sleeping);
+
+    // Setting `FLAG_INTERESTED` eases `interestedAngle` toward 1 by `* 0.4`/tick. After one tick the
+    // angle is `0.4`, so the head roll is `0.4 * 0.11 * π`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 91,
+        values: vec![fox_flags(8)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!((head_roll(&store, 1.0) - 0.4 * HEAD_ROLL_SCALE).abs() < 1.0e-6);
+    // A second tick: `0.4 + (1 - 0.4) * 0.4 = 0.64`.
+    store.advance_entity_client_animations(1);
+    assert!((head_roll(&store, 1.0) - 0.64 * HEAD_ROLL_SCALE).abs() < 1.0e-6);
+
+    // Setting `FLAG_CROUCHING` (and clearing interest) climbs `crouchAmount` by `0.2`/tick and instantly
+    // resets the interest ease toward 0.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 91,
+        values: vec![fox_flags(4)],
+    }));
+    assert!(source(&store, 1.0).fox_is_crouching);
+    store.advance_entity_client_animations(1);
+    assert!((crouch(&store, 1.0) - 0.2).abs() < 1.0e-6);
+    store.advance_entity_client_animations(1);
+    assert!((crouch(&store, 1.0) - 0.4).abs() < 1.0e-6);
+
+    // `crouchAmount` saturates at `5.0` (vanilla `MAX_CROUCH_AMOUNT`).
+    store.advance_entity_client_animations(30);
+    assert!((crouch(&store, 1.0) - 5.0).abs() < 1.0e-6);
+
+    // The crouch getter lerps across the partial tick (vanilla `Fox.getCrouchAmount`); clearing the
+    // flag resets `crouchAmount` to `0` INSTANTLY (vanilla's non-crouching branch is an assignment).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 91,
+        values: vec![fox_flags(0)],
+    }));
+    assert!(!source(&store, 1.0).fox_is_crouching);
+    store.advance_entity_client_animations(1);
+    assert_eq!(crouch(&store, 1.0), 0.0);
+    // Mid-tick the lerp still shows the drop from `5.0` to `0.0`.
+    let at_zero = crouch(&store, 0.0);
+    let at_half = crouch(&store, 0.5);
+    assert!((at_zero - 5.0).abs() < 1.0e-6);
+    assert!((at_half - 2.5).abs() < 1.0e-6);
+
+    // The plain sleep/sit/pounce/faceplant bools project straight off the synced byte.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 91,
+        values: vec![fox_flags(32 | 1 | 16 | 64)],
+    }));
+    let posed = source(&store, 1.0);
+    assert!(posed.fox_is_sleeping);
+    assert!(posed.fox_is_sitting);
+    assert!(posed.fox_is_pouncing);
+    assert!(posed.fox_is_faceplanted);
+    assert!(!posed.fox_is_crouching);
+}
+
+#[test]
 fn chicken_flap_state_initializes_flapping_to_one() {
     // Vanilla `Chicken` field initializer `public float flapping = 1.0F;`; every
     // other flap field defaults to 0.

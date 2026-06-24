@@ -2133,20 +2133,33 @@ When an agent does any of the following, update this file in the same slice:
       and the four legs at `offset(±{5,1}, 17.5, {7,0})` (each the shared 2×6×2 box inflated by the vanilla
       `CubeDeformation(0.001)` fudge and built off-center at `+2` X) — ten cubes. The baby uses the flatter
       `BabyFoxModel` layout (atlas 32×32): the head bakes the ears/snout as cubes (no child parts), the
-      body has no pitch, and the root child order is head / four legs / body — also ten cubes. The
-      `FoxModel.setupAnim`
-      head look (`head.xRot/yRot` set from the projected `head_yaw/head_pitch` while not sleeping /
-      faceplanted / crouching, turning only the head and its ears/snout) and the walk leg swing (the
-      standard `cos·1.4·speed` keyed left/right by leg NAME rather than pivot sign — the fox builds all four
-      legs at negative pivot X, so it cannot reuse the `QuadrupedModel` `x·z` helper, so the back-right /
-      front-left diagonal swings in phase and the other half a cycle out, consuming the projected
-      `walk_animation_pos/speed`) are reproduced. The remaining `FoxModel` motion stays deferred: the
-      `headRollAngle` head tilt, and the `isCrouching` / `isSleeping` /
-      `isSitting` / `isPouncing` / `isFaceplanted` poses (with the pounce / faceplant
-      `FoxRenderer.setupRotations` pitch), all reading un-projected `FoxRenderState` state. The red/snow
-      `Fox.Variant` idle/sleeping textures and the held-item layer live on the deferred texture-backed
-      path, so the colored debug path renders one orange tint. The
-      texture-backed path remains unsupported (this is a colored-first slice)
+      body has no pitch, and the root child order is head / four legs / body — also ten cubes. The full
+      `FoxModel.setupAnim` (with its `AdultFoxModel` overrides) is now mirrored end to end on both render
+      paths off the synced `Fox.DATA_FLAGS_ID` (data id `19`) and the two eased client accumulators (the
+      bee-roll cross-crate pattern): the always-run `setWalkingPose` tilts the head by the projected
+      `fox_head_roll_angle` (`Fox.getHeadRollAngle`, the lerped `interestedAngle` accumulator easing
+      toward the synced `FLAG_INTERESTED` bit `8` by `* 0.4`/tick, scaled `0.11 · π`), keeps all four legs
+      visible, and sweeps the adult gait (`cos·1.4·speed` keyed left/right by leg NAME — the fox builds all
+      four legs at negative pivot X, so it cannot reuse the `QuadrupedModel` `x·z` helper, so the
+      back-right / front-left diagonal swings in phase and the other half a cycle out, consuming the
+      projected `walk_animation_pos/speed`). Then exactly one of `setCrouchingPose` (the synced
+      `FLAG_CROUCHING` bit `4`: body pitch + `head.y += crouchAmount · ageScale` + adult `body.y +=
+      crouchAmount` / baby `+ crouchAmount/6` + the `cos(ageInTicks)·0.05` body/leg wiggle, the
+      `crouchAmount` accumulator climbing `0.2`/tick to `5.0` and resetting instantly to `0`),
+      `setSleepingPose` (the synced `FLAG_SLEEPING` bit `32`: HIDES all four legs via `ModelPart::visible`,
+      mirroring the bee stinger, and folds the body onto its side), or `setSittingPose` (the synced
+      `FLAG_SITTING` bit `1`: folds the body down and the legs back); then the adult `setPouncingPose`
+      `body/head.y -= crouchAmount/2` drop (the synced `FLAG_POUNCING` bit `16`); the resting head look
+      (suppressed while sleeping / faceplanted / crouching); the sleeping head wobble
+      (`head.zRot = cos(ageInTicks·0.027)/22`); and the faceplant leg twitch (the synced `FLAG_FACEPLANTED`
+      bit `64`: `cos(ageInTicks·0.67·0.4662 [+π])·0.1`, the diagonals out of phase). `ageScale` is the
+      standard `0.5` baby / `1.0` adult (`LivingEntity.getAgeScale`; `Fox.BABY_SCALE = 0.6` only scales the
+      bounding box, not the model). Deferred: the baby `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait (so a
+      moving baby holds its bind legs — its flag poses still apply); the `FoxRenderer.setupRotations`
+      body-PITCH flip for `isPouncing || isFaceplanted` (a renderer root-transform concern, like the death
+      tip-over); and the red/snow `Fox.Variant` idle/sleeping textures and the held-item layer, which live
+      on the deferred texture-backed path, so the colored debug path renders one orange tint (this is a
+      colored-first slice)
     - cat and ocelot entities (adult and baby) as renderer-owned vanilla 26.1
       `AdultFelineModel.createBodyMesh()` / `BabyFelineModel.createBodyMesh()` geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now splits vanilla type ids `21` (cat) and `91`

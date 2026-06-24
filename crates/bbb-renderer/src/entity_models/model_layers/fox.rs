@@ -4,18 +4,24 @@ use super::{
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelPart};
+use std::f32::consts::{FRAC_PI_2, PI};
 
 // Vanilla 26.1 `AdultFoxModel.createBodyLayer` (atlas 48×32). `FoxModel extends EntityModel`: six root
 // parts — the `head` (carrying the two ears and the snout), the pitched `body` (carrying the tail), and
-// the four legs (all sharing one fudge-inflated 2×6×2 box built off-center at `+2` X). At rest (not
-// sleeping / faceplanted / crouching) `FoxModel.setupAnim` sets `head.xRot/yRot` from the look; the tail,
-// head roll, and legs keep their bind pose. Everything else is deferred: the walk leg swing (the standard
-// `cos·1.4·speed` but keyed left/right by part rather than pivot sign, since the fox's legs are all built
-// at negative pivot X, so it can't reuse the `QuadrupedModel` `x·z` helper), the `headRollAngle` head
-// tilt, and the `isCrouching` / `isSleeping` / `isSitting` / `isPouncing` / `isFaceplanted` poses, all
-// reading un-projected `FoxRenderState` state. The four `Fox.Variant` (red/snow) idle/sleeping textures
-// and the held-item layer are deferred, so the colored debug path renders one orange tint. The pounce /
-// faceplant `FoxRenderer.setupRotations` pitch is deferred too.
+// the four legs (all sharing one fudge-inflated 2×6×2 box built off-center at `+2` X). `FoxModel.setupAnim`
+// (with its `AdultFoxModel` overrides) is mirrored end to end off the synced `Fox.DATA_FLAGS_ID` (19) and
+// the two eased client accumulators (`getHeadRollAngle` / `getCrouchAmount`): the always-run
+// `setWalkingPose` tilts the head (`head.zRot = headRollAngle`), keeps the four legs visible and sweeps
+// the adult gait (`cos·1.4·speed`); then one of `setCrouchingPose` / `setSleepingPose` / `setSittingPose`
+// (the crouch/sleep/sit branch), the pounce drop, the resting head look, the sleeping head wobble, and the
+// faceplant leg twitch. The sleeping pose hides all four legs via `ModelPart::visible`, mirroring how the
+// bee hides its stinger.
+//
+// Deferred: the baby `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait (so a moving baby holds its bind legs
+// — the baby's flag poses still apply); the `FoxRenderer.setupRotations` body-PITCH flip for
+// `isPouncing || isFaceplanted` (a renderer root-transform concern, like the death tip-over); the four
+// `Fox.Variant` (red/snow) idle/sleeping textures and the held-item layer (so the colored debug path
+// renders one orange tint).
 
 // `head` cubes: the 8×6×6 skull, the two 2×2×1 ears, and the 4×2×3 snout.
 pub(in crate::entity_models) const FOX_HEAD_CUBES: [ModelCubeDesc; 1] =
@@ -97,10 +103,13 @@ fn fox_root() -> ModelPart {
             ModelPart::leaf_colored(FOX_HEAD_CHILD_POSE, &FOX_NOSE_CUBES),
         ],
     );
-    let body = ModelPart::colored(
+    let body = ModelPart::colored_named(
         FOX_BODY_POSE,
         &FOX_BODY_CUBES,
-        vec![ModelPart::leaf_colored(FOX_TAIL_POSE, &FOX_TAIL_CUBES)],
+        vec![(
+            "tail",
+            ModelPart::leaf_colored(FOX_TAIL_POSE, &FOX_TAIL_CUBES),
+        )],
     );
     ModelPart::new(
         PART_POSE_ZERO,
@@ -195,12 +204,12 @@ pub(in crate::entity_models) const BABY_FOX_TAIL_POSE: PartPose = PartPose {
 /// in as cubes), the four legs, then the `body` (parenting the `tail`), in the vanilla
 /// `addOrReplaceChild` order.
 fn baby_fox_root() -> ModelPart {
-    let body = ModelPart::colored(
+    let body = ModelPart::colored_named(
         BABY_FOX_BODY_POSE,
         &BABY_FOX_BODY_CUBES,
-        vec![ModelPart::leaf_colored(
-            BABY_FOX_TAIL_POSE,
-            &BABY_FOX_TAIL_CUBES,
+        vec![(
+            "tail",
+            ModelPart::leaf_colored(BABY_FOX_TAIL_POSE, &BABY_FOX_TAIL_CUBES),
         )],
     );
     ModelPart::new(
@@ -232,13 +241,18 @@ fn baby_fox_root() -> ModelPart {
     )
 }
 
-/// Vanilla `AdultFoxModel`/`BabyFoxModel.setupAnim` walk leg swing: each leg's `xRot = cos(pos·0.6662
-/// [+ π]) · 1.4 · speed`. The diagonal pairing — back-right & front-left in phase, back-left &
-/// front-right a half-cycle out — is keyed by leg NAME because the fox builds all four legs at the same
-/// negative pivot X (`+2` off-center), so the `QuadrupedModel` `x·z` sign rule can't resolve the phase.
-/// The base leg pose carries no `xRot`, so it is set (not accumulated). A no-op while at rest
-/// (`walkAnimationSpeed == 0`), matching the static leg pose.
-fn apply_fox_leg_swing(root: &mut ModelPart, walk_animation_pos: f32, walk_animation_speed: f32) {
+/// Vanilla `AdultFoxModel.setWalkingPose` leg swing: each leg's `xRot = cos(pos·0.6662 [+ π]) · 1.4 ·
+/// speed`. The diagonal pairing — back-right & front-left in phase, back-left & front-right a half-cycle
+/// out — is keyed by leg NAME because the fox builds all four legs at the same negative pivot X (`+2`
+/// off-center), so the `QuadrupedModel` `x·z` sign rule can't resolve the phase. The base leg pose
+/// carries no `xRot`, so it is set (not accumulated). A no-op while at rest (`walkAnimationSpeed == 0`),
+/// matching the static leg pose. The baby uses `FoxBabyAnimation.FOX_BABY_WALK` instead, which is
+/// deferred, so this swing is adult-only.
+fn apply_fox_adult_leg_swing(
+    root: &mut ModelPart,
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+) {
     if limb_swing_at_rest(walk_animation_speed) {
         return;
     }
@@ -248,27 +262,188 @@ fn apply_fox_leg_swing(root: &mut ModelPart, walk_animation_pos: f32, walk_anima
     for (name, phase_offset) in [
         ("right_hind_leg", 0.0),
         ("left_front_leg", 0.0),
-        ("left_hind_leg", std::f32::consts::PI),
-        ("right_front_leg", std::f32::consts::PI),
+        ("left_hind_leg", PI),
+        ("right_front_leg", PI),
     ] {
         root.child_mut(name).pose.rotation[0] =
             (phase + phase_offset).cos() * 1.4 * walk_animation_speed;
     }
 }
 
+/// Vanilla `FoxModel.setWalkingPose` + the `AdultFoxModel` override: always run. Tilts the head by the
+/// eased `headRollAngle` (`head.zRot`), keeps all four legs visible (un-doing any prior sleep hide on a
+/// reused tree), and — for the adult — sweeps the gait. The legs' bind pose carries no roll, so the
+/// `head.zRot` is set; the walk swing sets `xRot` (a no-op at rest).
+fn fox_set_walking_pose(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+    let state = &instance.render_state;
+    root.child_mut("head").pose.rotation[2] = state.fox_head_roll_angle;
+    for name in FOX_LEG_NAMES {
+        root.child_mut(name).visible = true;
+    }
+    if !baby {
+        apply_fox_adult_leg_swing(root, state.walk_animation_pos, state.walk_animation_speed);
+    }
+}
+
+/// Vanilla `FoxModel.setCrouchingPose` + the adult/baby override. The base pose pitches the body
+/// (`body.xRot += π/30`), lifts the head by `crouchAmount · ageScale`, and wiggles the body yaw and legs
+/// by `cos(ageInTicks) · 0.05`; the adult adds `body.y += crouchAmount`, the baby `body.y +=
+/// crouchAmount / 6`.
+fn fox_set_crouching_pose(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+    let state = &instance.render_state;
+    let age_scale = fox_age_scale(baby);
+    let crouch = state.fox_crouch_amount;
+    let wiggle = state.age_in_ticks.cos() * 0.05;
+
+    let head = root.child_mut("head");
+    head.pose.offset[1] += crouch * age_scale;
+
+    let body = root.child_mut("body");
+    body.pose.rotation[0] += 0.10471976;
+    body.pose.rotation[1] = wiggle;
+    body.pose.offset[1] += if baby { crouch / 6.0 } else { crouch };
+
+    root.child_mut("right_hind_leg").pose.rotation[2] = wiggle;
+    root.child_mut("left_hind_leg").pose.rotation[2] = wiggle;
+    root.child_mut("right_front_leg").pose.rotation[2] = wiggle / 2.0;
+    root.child_mut("left_front_leg").pose.rotation[2] = wiggle / 2.0;
+}
+
+/// Vanilla `FoxModel.setSleepingPose` + the adult/baby override. The base pose hides all four legs; the
+/// adult/baby override then folds the body onto its side (`body.zRot = -π/2`), drops the tail and shifts
+/// the head. Mirrors how the bee hides its stinger via `ModelPart::visible`. The head's
+/// `xRot`/`yRot`/`zRot` set here is overwritten by the `setupAnim` sleeping override afterwards; the
+/// `head.x`/`head.y` shifts persist.
+fn fox_set_sleeping_pose(root: &mut ModelPart, baby: bool) {
+    for name in FOX_LEG_NAMES {
+        root.child_mut(name).visible = false;
+    }
+    if baby {
+        let body = root.child_mut("body");
+        body.pose.rotation[2] = -FRAC_PI_2;
+        body.pose.rotation[0] = -PI / 18.0;
+        body.pose.offset[1] += 1.5;
+        body.pose.offset[2] -= 1.5;
+        body.pose.offset[0] -= 1.5;
+        let tail = body.child_mut("tail");
+        tail.pose.rotation[0] = -2.1816616;
+        tail.pose.offset[0] -= 0.7;
+        tail.pose.offset[2] += 0.6;
+        tail.pose.offset[1] += 0.9;
+        let head = root.child_mut("head");
+        head.pose.offset[0] -= 2.0;
+        head.pose.offset[1] += 2.8;
+        head.pose.offset[2] -= 4.0;
+    } else {
+        let body = root.child_mut("body");
+        body.pose.rotation[2] = -FRAC_PI_2;
+        body.pose.offset[1] += 5.0;
+        body.child_mut("tail").pose.rotation[0] = -PI * 5.0 / 6.0;
+        let head = root.child_mut("head");
+        head.pose.offset[0] += 2.0;
+        head.pose.offset[1] += 2.99;
+    }
+}
+
+/// Vanilla `FoxModel.setSittingPose` + the adult/baby override (the base sets `head.xRot/yRot = 0`). The
+/// adult folds the body down and back, lifts the hind legs and pitches the front legs and tail; the baby
+/// scales most shifts by `ageScale`.
+fn fox_set_sitting_pose(root: &mut ModelPart, baby: bool) {
+    let age_scale = fox_age_scale(baby);
+    if baby {
+        let body = root.child_mut("body");
+        body.pose.rotation[0] = -0.959931;
+        body.pose.offset[2] -= 4.5 * age_scale;
+        body.pose.offset[1] += 3.0 * age_scale;
+        let tail = body.child_mut("tail");
+        tail.pose.offset[1] -= 0.6;
+        tail.pose.offset[2] -= 2.0 * age_scale;
+        tail.pose.rotation[0] = 0.95993114;
+
+        let head = root.child_mut("head");
+        head.pose.rotation = [0.0, 0.0, head.pose.rotation[2]];
+        head.pose.offset[1] -= 0.75;
+
+        for (name, x_sign) in [("right_front_leg", 1.0), ("left_front_leg", -1.0)] {
+            let leg = root.child_mut(name);
+            leg.pose.rotation[0] = -PI / 12.0;
+            leg.pose.offset[2] -= 1.5;
+            leg.pose.offset[0] += 0.01 * x_sign;
+        }
+        for (name, x_sign) in [("right_hind_leg", 1.0), ("left_hind_leg", -1.0)] {
+            let leg = root.child_mut(name);
+            leg.pose.offset[2] -= 3.75;
+            leg.pose.offset[0] += 0.01 * x_sign;
+        }
+    } else {
+        let body = root.child_mut("body");
+        body.pose.rotation[0] = PI / 6.0;
+        body.pose.offset[1] -= 7.0;
+        body.pose.offset[2] += 3.0;
+        let tail = body.child_mut("tail");
+        tail.pose.rotation[0] = PI / 4.0;
+        tail.pose.offset[2] -= 1.0;
+
+        let head = root.child_mut("head");
+        head.pose.rotation = [0.0, 0.0, head.pose.rotation[2]];
+        head.pose.offset[1] -= 6.5;
+        head.pose.offset[2] += 2.75;
+
+        root.child_mut("right_front_leg").pose.rotation[0] = -PI / 12.0;
+        root.child_mut("left_front_leg").pose.rotation[0] = -PI / 12.0;
+        for name in ["right_hind_leg", "left_hind_leg"] {
+            let leg = root.child_mut(name);
+            leg.pose.rotation[0] = -PI * 5.0 / 12.0;
+            leg.pose.offset[1] += 4.0;
+            leg.pose.offset[2] -= 0.25;
+        }
+    }
+}
+
+/// Vanilla `AdultFoxModel.setPouncingPose`: drops the body and head by `crouchAmount / 2`. The base
+/// `FoxModel.setPouncingPose` is empty and the baby does not override it, so this is adult-only.
+fn fox_set_pouncing_pose(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+    if baby {
+        return;
+    }
+    let drop = instance.render_state.fox_crouch_amount / 2.0;
+    root.child_mut("body").pose.offset[1] -= drop;
+    root.child_mut("head").pose.offset[1] -= drop;
+}
+
+/// The four leg part names shared by both layouts, in vanilla `addOrReplaceChild` order.
+const FOX_LEG_NAMES: [&str; 4] = [
+    "right_hind_leg",
+    "left_hind_leg",
+    "right_front_leg",
+    "left_front_leg",
+];
+
+/// Vanilla `state.ageScale` for the fox = `LivingEntity.getAgeScale()` (`0.5` baby / `1.0` adult). The
+/// fox does NOT override `getAgeScale`; `Fox.BABY_SCALE = 0.6` only scales the bounding box, not the
+/// model. `setCrouchingPose` multiplies the head lift by this.
+fn fox_age_scale(baby: bool) -> f32 {
+    if baby {
+        0.5
+    } else {
+        1.0
+    }
+}
+
 /// Mutable fox model, mirroring vanilla `AdultFoxModel` / `BabyFoxModel`. The named root parts hang off
-/// a synthetic root, built from the baked colored geometry for the selected `baby` layout. Colored-only:
-/// `setup_anim` runs the head look ([`apply_head_look`] on `child_mut("head")`, the head leads both
-/// layouts) and the walk leg swing ([`apply_fox_leg_swing`]); the head roll and every other fox pose
-/// (sleeping / sitting / faceplanted / crouching / pouncing) stay deferred.
+/// a synthetic root, built from the baked colored geometry for the selected `baby` layout. The unified
+/// tree drives both render paths; `setup_anim` mirrors `FoxModel.setupAnim` faithfully (the baby walk
+/// keyframe and the renderer pounce/faceplant body pitch stay deferred).
 pub(in crate::entity_models) struct FoxModel {
     root: ModelPart,
+    baby: bool,
 }
 
 impl FoxModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
         Self {
             root: if baby { baby_fox_root() } else { fox_root() },
+            baby,
         }
     }
 }
@@ -283,20 +458,54 @@ impl EntityModel for FoxModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        // Vanilla `FoxModel.setupAnim` sets `head.xRot/yRot` from the look while the fox is not sleeping
-        // / faceplanted / crouching — none of which bbb projects, so the look applies every frame.
-        let render_state = &instance.render_state;
-        apply_head_look(
-            self.root.child_mut("head"),
-            render_state.head_yaw,
-            render_state.head_pitch,
-        );
-        // The four legs sweep with the gait (the sleeping / sitting / faceplanted branches that suppress
-        // it are deferred, so the swing applies whenever the fox is moving).
-        apply_fox_leg_swing(
-            &mut self.root,
-            render_state.walk_animation_pos,
-            render_state.walk_animation_speed,
-        );
+        let state = &instance.render_state;
+        let baby = self.baby;
+
+        // Vanilla `FoxModel.setupAnim`: `setWalkingPose` always runs (head tilt, legs visible, adult gait).
+        fox_set_walking_pose(&mut self.root, baby, instance);
+
+        // Then exactly one of the crouch / sleep / sit poses (crouch wins, then sleep, then sit).
+        if state.fox_is_crouching {
+            fox_set_crouching_pose(&mut self.root, baby, instance);
+        } else if state.fox_is_sleeping {
+            fox_set_sleeping_pose(&mut self.root, baby);
+        } else if state.fox_is_sitting {
+            fox_set_sitting_pose(&mut self.root, baby);
+        }
+
+        // The pounce drop layers on top of whichever pose ran.
+        if state.fox_is_pouncing {
+            fox_set_pouncing_pose(&mut self.root, baby, instance);
+        }
+
+        // Resting head look: only while not sleeping / faceplanted / crouching (those own the head).
+        if !state.fox_is_sleeping && !state.fox_is_faceplanted && !state.fox_is_crouching {
+            apply_head_look(
+                self.root.child_mut("head"),
+                state.head_yaw,
+                state.head_pitch,
+            );
+        }
+
+        // Sleeping head override: a fixed yaw with a slow `ageInTicks` roll wobble.
+        if state.fox_is_sleeping {
+            let head = self.root.child_mut("head");
+            head.pose.rotation[0] = 0.0;
+            head.pose.rotation[1] = -PI * 2.0 / 3.0;
+            head.pose.rotation[2] = (state.age_in_ticks * 0.027).cos() / 22.0;
+        }
+
+        // Faceplant leg twitch: a small `ageInTicks`-driven cosine flap, the diagonals out of phase. The
+        // model is rebuilt each frame, so vanilla's persistent `legMotionPos` accumulator is derived from
+        // `ageInTicks` here (the same `+= 0.67`/tick cadence, phase-continuous across frames).
+        if state.fox_is_faceplanted {
+            let leg_motion_pos = state.age_in_ticks * 0.67;
+            let twitch = (leg_motion_pos * 0.4662).cos() * 0.1;
+            let twitch_offset = (leg_motion_pos * 0.4662 + PI).cos() * 0.1;
+            self.root.child_mut("right_hind_leg").pose.rotation[0] = twitch;
+            self.root.child_mut("left_hind_leg").pose.rotation[0] = twitch_offset;
+            self.root.child_mut("right_front_leg").pose.rotation[0] = twitch_offset;
+            self.root.child_mut("left_front_leg").pose.rotation[0] = twitch;
+        }
     }
 }

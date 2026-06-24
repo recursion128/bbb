@@ -18,10 +18,10 @@ use super::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_vex,
-    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, vanilla_render_scale,
-    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, VANILLA_POSE_CROUCHING_ID,
-    VANILLA_POSE_SLEEPING_ID,
+    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
+    vanilla_is_vex, vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
+    vanilla_render_scale, vanilla_zombie_model_family, ENTITY_DATA_POSE_ID,
+    VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -76,6 +76,20 @@ const BEE_FLAG_HAS_STUNG: i8 = 4;
 /// Vanilla `Vex.DATA_FLAGS_ID` data id (16): the byte holding the vex flags, the first own
 /// `Vex` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
 const VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
+
+/// Vanilla `Fox.DATA_FLAGS_ID` data id (19): the byte holding the fox flags, defined after the
+/// `AgeableMob` accessors (`16..=17`) and the fox's own `DATA_TYPE_ID` variant int (18).
+const VANILLA_FOX_FLAGS_DATA_ID: u8 = 19;
+
+/// Vanilla `Fox` flag masks within `DATA_FLAGS_ID`: `FLAG_SITTING=1`, `FLAG_CROUCHING=4`,
+/// `FLAG_POUNCING=16`, `FLAG_SLEEPING=32`, `FLAG_FACEPLANTED=64` (`getFlag(mask) = (byte & mask) != 0`).
+/// `FLAG_INTERESTED=8` drives only the head-tilt accumulator and so is read by the animation layer, not
+/// projected as a render-state bool.
+const FOX_FLAG_SITTING: i8 = 1;
+const FOX_FLAG_CROUCHING: i8 = 4;
+const FOX_FLAG_POUNCING: i8 = 16;
+const FOX_FLAG_SLEEPING: i8 = 32;
+const FOX_FLAG_FACEPLANTED: i8 = 64;
 
 /// Vanilla `Vex.FLAG_IS_CHARGING` (1): the `DATA_FLAGS_ID` bit set while the vex charges an
 /// attack (`Vex.isCharging`).
@@ -505,6 +519,23 @@ impl EntityStore {
                 .unwrap_or(0)
                 & BEE_FLAG_HAS_STUNG
                 == 0;
+        // Vanilla `FoxModel.setupAnim` reads the fox's synced `DATA_FLAGS_ID` (19) crouch / sleep /
+        // sit / pounce / faceplant bits directly (no easing) to pick its pose branch. Only the fox
+        // defines that flags byte, so the five bool projections are gated to it and default off. The
+        // interest bit (8) is read by the animation layer instead, to drive the `headRollAngle`
+        // accumulator below.
+        let is_fox = vanilla_is_fox(identity.entity_type_id);
+        let fox_flags = if is_fox {
+            self.metadata_byte(id, VANILLA_FOX_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let fox_is_crouching = fox_flags & FOX_FLAG_CROUCHING != 0;
+        let fox_is_sleeping = fox_flags & FOX_FLAG_SLEEPING != 0;
+        let fox_is_sitting = fox_flags & FOX_FLAG_SITTING != 0;
+        let fox_is_pouncing = fox_flags & FOX_FLAG_POUNCING != 0;
+        let fox_is_faceplanted = fox_flags & FOX_FLAG_FACEPLANTED != 0;
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
         // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). Only the vex
         // defines that flags byte, so the projection is gated to it and defaults to idle.
@@ -573,6 +604,20 @@ impl EntityStore {
             bat_resting,
             bee_has_stinger,
             bee_roll_amount: client_animations.animations.bee_roll_amount(partial_ticks),
+            // Vanilla `Fox.getHeadRollAngle` / `getCrouchAmount`: the lerped client accumulators that
+            // drive the head tilt and the crouch body drop. `0.0` for every non-fox (only the fox is
+            // given a fox animation state).
+            fox_head_roll_angle: client_animations
+                .animations
+                .fox_head_roll_angle(partial_ticks),
+            fox_crouch_amount: client_animations
+                .animations
+                .fox_crouch_amount(partial_ticks),
+            fox_is_crouching,
+            fox_is_sleeping,
+            fox_is_sitting,
+            fox_is_pouncing,
+            fox_is_faceplanted,
             vex_charging,
             is_crouching,
             is_auto_spin_attack,

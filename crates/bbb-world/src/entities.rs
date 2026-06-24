@@ -359,6 +359,45 @@ pub struct EntityModelSourceState {
     /// bee and `0.0` (upright) for every other entity.
     #[serde(default)]
     pub bee_roll_amount: f32,
+    /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`, the lerped client
+    /// `interestedAngle` accumulator driven by the synced `DATA_FLAGS_ID & 8` interest flag, scaled by
+    /// `0.11 · π`): an interested fox tilts its head, which `FoxModel.setWalkingPose` applies as
+    /// `head.zRot`. Projected only for the fox and `0.0` (level) for every other entity.
+    #[serde(default)]
+    pub fox_head_roll_angle: f32,
+    /// Vanilla `FoxRenderState.crouchAmount` (`Fox.getCrouchAmount(partialTick)`, the lerped client
+    /// `crouchAmount` accumulator driven by the synced `DATA_FLAGS_ID & 4` crouch flag, climbing
+    /// `0.2`/tick to `5.0` and reset instantly to `0` when not crouching): a stalking fox lowers its
+    /// body, which `FoxModel.setCrouchingPose` applies as `head.y += crouchAmount · ageScale` (and the
+    /// subclass `body.y` drop). Projected only for the fox and `0.0` for every other entity.
+    #[serde(default)]
+    pub fox_crouch_amount: f32,
+    /// Vanilla `FoxRenderState.isCrouching` (`Fox.isCrouching()`, the synced `DATA_FLAGS_ID & 4`): a
+    /// stalking fox, whose `FoxModel.setupAnim` runs `setCrouchingPose` (overriding the sleeping/sitting
+    /// branches). Projected only for the fox; `false` for every other entity.
+    #[serde(default)]
+    pub fox_is_crouching: bool,
+    /// Vanilla `FoxRenderState.isSleeping` (`Fox.isSleeping()`, the synced `DATA_FLAGS_ID & 32`): a
+    /// sleeping fox, whose `FoxModel.setupAnim` runs `setSleepingPose` (hiding all four legs) and
+    /// overrides the head pose. Projected only for the fox; `false` for every other entity.
+    #[serde(default)]
+    pub fox_is_sleeping: bool,
+    /// Vanilla `FoxRenderState.isSitting` (`Fox.isSitting()`, the synced `DATA_FLAGS_ID & 1`): a
+    /// perched fox, whose `FoxModel.setupAnim` runs `setSittingPose`. Projected only for the fox;
+    /// `false` for every other entity.
+    #[serde(default)]
+    pub fox_is_sitting: bool,
+    /// Vanilla `FoxRenderState.isPouncing` (`Fox.isPouncing()`, the synced `DATA_FLAGS_ID & 16`): a
+    /// pouncing fox, whose `FoxModel.setupAnim` runs `setPouncingPose`. Projected only for the fox;
+    /// `false` for every other entity. The `FoxRenderer.setupRotations` body-pitch flip stays deferred.
+    #[serde(default)]
+    pub fox_is_pouncing: bool,
+    /// Vanilla `FoxRenderState.isFaceplanted` (`Fox.isFaceplanted()`, the synced `DATA_FLAGS_ID & 64`):
+    /// a face-planted fox, whose `FoxModel.setupAnim` twitches all four legs. Projected only for the
+    /// fox; `false` for every other entity. The `FoxRenderer.setupRotations` body-pitch flip stays
+    /// deferred.
+    #[serde(default)]
+    pub fox_is_faceplanted: bool,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
     /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex

@@ -425,6 +425,13 @@ fn entity_model_instance(
         .with_bat_resting(source.bat_resting)
         .with_bee_has_stinger(source.bee_has_stinger)
         .with_bee_roll_amount(source.bee_roll_amount)
+        .with_fox_head_roll_angle(source.fox_head_roll_angle)
+        .with_fox_crouch_amount(source.fox_crouch_amount)
+        .with_fox_is_crouching(source.fox_is_crouching)
+        .with_fox_is_sleeping(source.fox_is_sleeping)
+        .with_fox_is_sitting(source.fox_is_sitting)
+        .with_fox_is_pouncing(source.fox_is_pouncing)
+        .with_fox_is_faceplanted(source.fox_is_faceplanted)
         .with_bee_angry(bee_is_angry(
             source.entity_type_id,
             &source.data_values,

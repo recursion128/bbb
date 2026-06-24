@@ -50,6 +50,31 @@ const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
 /// standing flag). `FLAG_ROLL` is mask `2` within that byte.
 const BEE_FLAGS_DATA_ID: u8 = 18;
 const BEE_FLAG_ROLL: i8 = 2;
+/// Vanilla `Fox` entity type id (`EntityType.FOX`).
+const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
+/// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
+/// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
+/// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
+/// (`19`). `getFlag(mask) = (byte19 & mask) != 0`.
+const FOX_FLAGS_DATA_ID: u8 = 19;
+/// Vanilla `Fox.FLAG_CROUCHING`: the synced crouch flag that drives both the
+/// client `crouchAmount` accumulator and the `FoxModel.setCrouchingPose`.
+const FOX_FLAG_CROUCHING: i8 = 4;
+/// Vanilla `Fox.FLAG_INTERESTED`: the synced interest flag that drives the
+/// client `interestedAngle` accumulator (the head tilt). Not a render-state
+/// field itself — only its eased angle is projected.
+const FOX_FLAG_INTERESTED: i8 = 8;
+/// Vanilla `Fox.interestedAngle` per-tick ease toward the `FLAG_INTERESTED`
+/// target: `interestedAngle += (target - interestedAngle) * 0.4`.
+const FOX_INTERESTED_EASE: f32 = 0.4;
+/// Vanilla `Fox.getHeadRollAngle` scale: `lerp(pt, interestedAngleO,
+/// interestedAngle) * 0.11 * π`.
+const FOX_HEAD_ROLL_SCALE: f32 = 0.11;
+/// Vanilla `Fox.crouchAmount` per-tick climb while `FLAG_CROUCHING` is set
+/// (`crouchAmount += 0.2`).
+const FOX_CROUCH_PER_TICK: f32 = 0.2;
+/// Vanilla `Fox.MAX_CROUCH_AMOUNT`: the crouch accumulator saturates here.
+const FOX_MAX_CROUCH_AMOUNT: f32 = 5.0;
 /// Vanilla `LivingEntity.hurtDuration`: the hurt animation (and red damage
 /// overlay) runs for 10 client ticks after a hurt animation or damage event.
 const HURT_ANIMATION_DURATION: i32 = 10;
@@ -89,6 +114,8 @@ pub struct EntityClientAnimationState {
     pub shulker_peek: Option<ShulkerPeekAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bee_roll: Option<BeeRollAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fox: Option<FoxAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ender_dragon: Option<EnderDragonAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -170,6 +197,25 @@ pub struct BeeRollAnimationState {
     pub rolling: bool,
     pub previous_roll_amount: f32,
     pub current_roll_amount: f32,
+}
+
+/// Canonical client-side fox accumulators, mirroring vanilla `Fox.tick`'s two
+/// eased fields. While the synced `FLAG_INTERESTED` (mask `8`) is set,
+/// `interestedAngle` eases toward `1` by `* 0.4`/tick (and toward `0` otherwise);
+/// `getHeadRollAngle(pt) = lerp(pt, interestedAngleO, interestedAngle) * 0.11 * π`
+/// drives the head tilt. While `FLAG_CROUCHING` (mask `4`) is set, `crouchAmount`
+/// climbs by `0.2`/tick (clamped to `5.0`); otherwise it is reset INSTANTLY to
+/// `0` (vanilla's non-crouching branch is an assignment, not a decay).
+/// `getCrouchAmount(pt) = lerp(pt, crouchAmountO, crouchAmount)` drives
+/// `FoxModel.setCrouchingPose`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct FoxAnimationState {
+    pub interested: bool,
+    pub previous_interested_angle: f32,
+    pub current_interested_angle: f32,
+    pub crouching: bool,
+    pub previous_crouch_amount: f32,
+    pub current_crouch_amount: f32,
 }
 
 /// Canonical client-side sheep eat-grass animation countdown, mirroring vanilla
@@ -416,6 +462,19 @@ impl Default for BeeRollAnimationState {
             rolling: false,
             previous_roll_amount: 0.0,
             current_roll_amount: 0.0,
+        }
+    }
+}
+
+impl Default for FoxAnimationState {
+    fn default() -> Self {
+        Self {
+            interested: false,
+            previous_interested_angle: 0.0,
+            current_interested_angle: 0.0,
+            crouching: false,
+            previous_crouch_amount: 0.0,
+            current_crouch_amount: 0.0,
         }
     }
 }
@@ -717,6 +776,48 @@ impl BeeRollAnimationState {
     }
 }
 
+impl FoxAnimationState {
+    fn set_flags(&mut self, interested: bool, crouching: bool) {
+        self.interested = interested;
+        self.crouching = crouching;
+    }
+
+    /// Vanilla `Fox.tick`: `interestedAngleO = interestedAngle`, then it eases
+    /// toward `isInterested ? 1 : 0` by `* 0.4`/tick. Independently,
+    /// `crouchAmountO = crouchAmount`, then a crouching fox climbs by `0.2`/tick
+    /// (clamped to `MAX_CROUCH_AMOUNT`) while a non-crouching one is reset INSTANTLY
+    /// to `0` (an assignment, not a decay).
+    fn advance_client_tick(&mut self) {
+        self.previous_interested_angle = self.current_interested_angle;
+        let target = if self.interested { 1.0 } else { 0.0 };
+        self.current_interested_angle +=
+            (target - self.current_interested_angle) * FOX_INTERESTED_EASE;
+
+        self.previous_crouch_amount = self.current_crouch_amount;
+        if self.crouching {
+            self.current_crouch_amount =
+                (self.current_crouch_amount + FOX_CROUCH_PER_TICK).min(FOX_MAX_CROUCH_AMOUNT);
+        } else {
+            self.current_crouch_amount = 0.0;
+        }
+    }
+
+    /// Vanilla `Fox.getHeadRollAngle(partialTick)` =
+    /// `Mth.lerp(partialTick, interestedAngleO, interestedAngle) * 0.11 * π`.
+    fn head_roll_angle(self, partial_tick: f32) -> f32 {
+        let lerped = self.previous_interested_angle
+            + partial_tick * (self.current_interested_angle - self.previous_interested_angle);
+        lerped * FOX_HEAD_ROLL_SCALE * std::f32::consts::PI
+    }
+
+    /// Vanilla `Fox.getCrouchAmount(partialTick)` =
+    /// `Mth.lerp(partialTick, crouchAmountO, crouchAmount)`.
+    fn crouch_amount(self, partial_tick: f32) -> f32 {
+        self.previous_crouch_amount
+            + partial_tick * (self.current_crouch_amount - self.previous_crouch_amount)
+    }
+}
+
 impl EntityClientAnimationState {
     pub(crate) fn sync_targets_from_metadata(
         &mut self,
@@ -781,6 +882,19 @@ impl EntityClientAnimationState {
                     self.bee_roll = Some(BeeRollAnimationState {
                         rolling,
                         ..BeeRollAnimationState::default()
+                    });
+                }
+            }
+            VANILLA_ENTITY_TYPE_FOX_ID => {
+                let interested = fox_is_interested(data_values);
+                let crouching = fox_is_crouching(data_values);
+                if let Some(fox) = self.fox.as_mut() {
+                    fox.set_flags(interested, crouching);
+                } else if interested || crouching {
+                    self.fox = Some(FoxAnimationState {
+                        interested,
+                        crouching,
+                        ..FoxAnimationState::default()
                     });
                 }
             }
@@ -871,6 +985,22 @@ impl EntityClientAnimationState {
     pub fn bee_roll_amount(&self, partial_tick: f32) -> f32 {
         self.bee_roll
             .map_or(0.0, |state| state.roll_amount(partial_tick))
+    }
+
+    /// Vanilla `Fox.getHeadRollAngle(partialTick)` projected for the renderer
+    /// `FoxModel.setWalkingPose` head tilt. Returns `0.0` when the entity is not an
+    /// interested fox.
+    pub fn fox_head_roll_angle(&self, partial_tick: f32) -> f32 {
+        self.fox
+            .map_or(0.0, |state| state.head_roll_angle(partial_tick))
+    }
+
+    /// Vanilla `Fox.getCrouchAmount(partialTick)` projected for the renderer
+    /// `FoxModel.setCrouchingPose` body drop. Returns `0.0` when the entity is not a
+    /// crouching fox.
+    pub fn fox_crouch_amount(&self, partial_tick: f32) -> f32 {
+        self.fox
+            .map_or(0.0, |state| state.crouch_amount(partial_tick))
     }
 
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
@@ -1023,6 +1153,11 @@ impl EntityClientAnimationState {
                     roll.advance_client_tick();
                 }
             }
+            VANILLA_ENTITY_TYPE_FOX_ID => {
+                if let Some(fox) = self.fox.as_mut() {
+                    fox.advance_client_tick();
+                }
+            }
             VANILLA_ENTITY_TYPE_WARDEN_ID => {
                 if let Some(tendril) = self.warden_tendril.as_mut() {
                     tendril.advance_client_tick();
@@ -1090,6 +1225,16 @@ fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
 /// Vanilla `Bee.isRolling()` = `getFlag(FLAG_ROLL)` = `(flags & 2) != 0`.
 fn bee_is_rolling(data_values: &[EntityDataValue]) -> bool {
     entity_data_byte(data_values, BEE_FLAGS_DATA_ID, 0) & BEE_FLAG_ROLL != 0
+}
+
+/// Vanilla `Fox.isInterested()` = `getFlag(FLAG_INTERESTED)` = `(flags & 8) != 0`.
+fn fox_is_interested(data_values: &[EntityDataValue]) -> bool {
+    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, 0) & FOX_FLAG_INTERESTED != 0
+}
+
+/// Vanilla `Fox.isCrouching()` = `getFlag(FLAG_CROUCHING)` = `(flags & 4) != 0`.
+fn fox_is_crouching(data_values: &[EntityDataValue]) -> bool {
+    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, 0) & FOX_FLAG_CROUCHING != 0
 }
 
 /// Vanilla `Creeper.tick`: the fuse advances by `getSwellDir()`, but an ignited

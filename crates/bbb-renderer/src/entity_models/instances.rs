@@ -231,6 +231,37 @@ entity_render_state! {
     /// rotLerpRad(rollAmount, bone.xRot, 3.0915928)`. `0.0` (upright) for every other entity and
     /// for an upright bee.
     (with_bee_roll_amount) bee_roll_amount: f32 = 0.0;
+    /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`): an interested
+    /// fox tilts its head, which `FoxModel.setWalkingPose` applies as `head.zRot = headRollAngle`.
+    /// `0.0` (level) for every other entity and for a fox that is not interested.
+    (with_fox_head_roll_angle) fox_head_roll_angle: f32 = 0.0;
+    /// Vanilla `FoxRenderState.crouchAmount` (`Fox.getCrouchAmount(partialTick)`): a stalking fox
+    /// lowers its body, which `FoxModel.setCrouchingPose` applies as `head.y += crouchAmount ·
+    /// ageScale` (plus the adult `body.y += crouchAmount` / baby `+ crouchAmount/6` drop and the
+    /// pounce `body.y -= crouchAmount/2`). `0.0` for every other entity and for an upright fox.
+    (with_fox_crouch_amount) fox_crouch_amount: f32 = 0.0;
+    /// Vanilla `FoxRenderState.isCrouching` (`Fox.isCrouching()`, the synced `DATA_FLAGS_ID & 4`): a
+    /// stalking fox, whose `FoxModel.setupAnim` runs `setCrouchingPose` (the first pose branch, taken
+    /// over sleeping/sitting). `false` for every other entity and for an upright fox.
+    (with_fox_is_crouching) fox_is_crouching: bool = false;
+    /// Vanilla `FoxRenderState.isSleeping` (`Fox.isSleeping()`, the synced `DATA_FLAGS_ID & 32`): a
+    /// sleeping fox, whose `FoxModel.setSleepingPose` hides all four legs and whose `setupAnim`
+    /// overrides the head pose with a wobble. `false` for every other entity and for an awake fox.
+    (with_fox_is_sleeping) fox_is_sleeping: bool = false;
+    /// Vanilla `FoxRenderState.isSitting` (`Fox.isSitting()`, the synced `DATA_FLAGS_ID & 1`): a
+    /// perched fox, whose `FoxModel.setSittingPose` folds it down. `false` for every other entity and
+    /// for a standing fox.
+    (with_fox_is_sitting) fox_is_sitting: bool = false;
+    /// Vanilla `FoxRenderState.isPouncing` (`Fox.isPouncing()`, the synced `DATA_FLAGS_ID & 16`): a
+    /// pouncing fox, whose `FoxModel.setPouncingPose` (adult only) drops the body/head by
+    /// `crouchAmount/2`. `false` for every other entity and for a fox that is not pouncing. The
+    /// `FoxRenderer.setupRotations` body-pitch flip is a deferred renderer concern.
+    (with_fox_is_pouncing) fox_is_pouncing: bool = false;
+    /// Vanilla `FoxRenderState.isFaceplanted` (`Fox.isFaceplanted()`, the synced `DATA_FLAGS_ID &
+    /// 64`): a face-planted fox, whose `FoxModel.setupAnim` twitches all four legs on `ageInTicks`.
+    /// `false` for every other entity and for an upright fox. The `FoxRenderer.setupRotations`
+    /// body-pitch flip is a deferred renderer concern.
+    (with_fox_is_faceplanted) fox_is_faceplanted: bool = false;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
     /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
@@ -1297,6 +1328,13 @@ mod tests {
                 bee_has_stinger: true,
                 bee_angry: false,
                 bee_roll_amount: 0.0,
+                fox_head_roll_angle: 0.0,
+                fox_crouch_amount: 0.0,
+                fox_is_crouching: false,
+                fox_is_sleeping: false,
+                fox_is_sitting: false,
+                fox_is_pouncing: false,
+                fox_is_faceplanted: false,
                 vex_charging: false,
                 illager_spellcasting: false,
                 is_crouching: false,

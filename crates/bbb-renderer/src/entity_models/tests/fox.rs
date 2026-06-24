@@ -94,9 +94,9 @@ fn fox_head_look_turns_only_the_head() {
 
 #[test]
 fn fox_legs_swing_with_the_gait() {
-    // Vanilla `FoxModel.setupAnim` sweeps the four legs by `cos(pos·0.6662 [+π])·1.4·speed` (the
-    // back-right/front-left diagonal in phase, the other half a cycle out). The head (vertices `[0, 96)`)
-    // is untouched by the swing; the legs (in `[96, 240)`) move.
+    // Vanilla `AdultFoxModel.setWalkingPose` sweeps the four legs by `cos(pos·0.6662 [+π])·1.4·speed`
+    // (the back-right/front-left diagonal in phase, the other half a cycle out). The head (vertices
+    // `[0, 96)`) is untouched by the swing; the legs (in `[96, 240)`) move.
     let rest = EntityModelInstance::fox(420, [0.0, 64.0, 0.0], 0.0, false);
     let walking = rest.with_walk_animation(3.0, 0.8);
     let rest_mesh = entity_model_mesh(&[rest]);
@@ -183,6 +183,112 @@ fn baby_fox_mesh_is_more_compact_than_the_adult() {
         baby_rest_mesh.vertices[96..],
         baby_looked_mesh.vertices[96..]
     );
+}
+
+#[test]
+fn sleeping_fox_hides_its_four_legs() {
+    // Vanilla `FoxModel.setSleepingPose` hides all four legs (`rightHindLeg.visible = false`, …),
+    // mirroring how the bee hides its stinger. The adult is 10 cubes → 240 vertices; the four legs are
+    // four cubes (96 vertices), so a sleeping fox drops to six cubes → 144 vertices.
+    let awake = entity_model_mesh(&[EntityModelInstance::fox(430, [0.0, 64.0, 0.0], 0.0, false)]);
+    assert_eq!(awake.opaque_faces, 60);
+    assert_eq!(awake.vertices.len(), 240);
+
+    let sleeping =
+        entity_model_mesh(&[
+            EntityModelInstance::fox(431, [0.0, 64.0, 0.0], 0.0, false).with_fox_is_sleeping(true)
+        ]);
+    assert_eq!(
+        sleeping.opaque_faces, 36,
+        "the four legs are hidden (6 cubes)"
+    );
+    assert_eq!(sleeping.vertices.len(), 144);
+
+    // The baby (also 10 cubes) hides its four legs too.
+    let baby_sleeping =
+        entity_model_mesh(&[
+            EntityModelInstance::fox(432, [0.0, 64.0, 0.0], 0.0, true).with_fox_is_sleeping(true)
+        ]);
+    assert_eq!(baby_sleeping.vertices.len(), 144);
+}
+
+#[test]
+fn interested_fox_tilts_its_head() {
+    // Vanilla `FoxModel.setWalkingPose` sets `head.zRot = headRollAngle`, the eased interest tilt. The
+    // head is the first root part (vertices `[0, 96)`); the body, tail, and legs `[96, 240)` hold.
+    let rest = EntityModelInstance::fox(440, [0.0, 64.0, 0.0], 0.0, false);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let tilted = entity_model_mesh(&[rest.with_fox_head_roll_angle(0.3)]);
+    assert_eq!(rest_mesh.vertices.len(), tilted.vertices.len());
+    assert_ne!(
+        rest_mesh.vertices[..96],
+        tilted.vertices[..96],
+        "the head rolls with the interest tilt"
+    );
+    assert_eq!(
+        rest_mesh.vertices[96..],
+        tilted.vertices[96..],
+        "the body, tail, and legs hold"
+    );
+
+    // A zero roll is the bind pose (the tilt is just `head.zRot = 0`).
+    let zero = entity_model_mesh(&[rest.with_fox_head_roll_angle(0.0)]);
+    assert_eq!(rest_mesh.vertices, zero.vertices);
+}
+
+#[test]
+fn crouching_fox_lowers_its_body_off_the_bind_pose() {
+    // Vanilla `FoxModel.setCrouchingPose` pitches the body, lifts the head by `crouchAmount · ageScale`,
+    // and wiggles the body/legs by `cos(ageInTicks) · 0.05`, plus the adult `body.y += crouchAmount`.
+    // The whole model re-poses off the bind pose.
+    let rest = EntityModelInstance::fox(450, [0.0, 64.0, 0.0], 0.0, false);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let crouching = rest.with_fox_is_crouching(true).with_fox_crouch_amount(5.0);
+    let crouch_mesh = entity_model_mesh(&[crouching]);
+    assert_eq!(rest_mesh.vertices.len(), crouch_mesh.vertices.len());
+    assert_ne!(
+        rest_mesh.vertices, crouch_mesh.vertices,
+        "a crouching fox folds off the bind pose"
+    );
+
+    // A deeper crouch lifts the head further (the `crouchAmount · ageScale` head term), so the pose
+    // tracks the eased amount, not just the flag.
+    let shallow =
+        entity_model_mesh(&[rest.with_fox_is_crouching(true).with_fox_crouch_amount(1.0)]);
+    assert_ne!(
+        shallow.vertices, crouch_mesh.vertices,
+        "the crouch pose tracks the eased crouchAmount"
+    );
+}
+
+#[test]
+fn sleeping_fox_overrides_the_head_pose() {
+    // Vanilla `FoxModel.setupAnim` gives a sleeping fox a fixed head yaw with a slow `ageInTicks` roll
+    // wobble, and suppresses the resting head look. The head re-poses even with no look applied, and the
+    // wobble tracks `ageInTicks`.
+    let base =
+        EntityModelInstance::fox(460, [0.0, 64.0, 0.0], 0.0, false).with_fox_is_sleeping(true);
+    let at_zero = entity_model_mesh(&[base.with_age_in_ticks(0.0)]);
+    let later = entity_model_mesh(&[base.with_age_in_ticks(40.0)]);
+    assert_eq!(at_zero.vertices.len(), later.vertices.len());
+    assert_ne!(
+        at_zero.vertices, later.vertices,
+        "the sleeping head roll wobbles with ageInTicks"
+    );
+}
+
+#[test]
+fn fox_flag_poses_match_on_both_render_paths() {
+    // The fox is a unified tree, so the crouch/sleep/sit flag poses emit identically on the colored
+    // runtime path and the full path (one `setup_anim` drives both).
+    let posed = [EntityModelInstance::fox(470, [0.0, 64.0, 0.0], 0.0, false)
+        .with_fox_is_crouching(true)
+        .with_fox_crouch_amount(3.0)
+        .with_fox_head_roll_angle(0.2)];
+    let full = entity_model_mesh(&posed);
+    let colored = entity_model_colored_runtime_mesh(&posed);
+    assert_eq!(full.vertices, colored.vertices);
+    assert_eq!(full.indices, colored.indices);
 }
 
 #[test]

@@ -733,6 +733,14 @@ pub(crate) fn vanilla_is_bee(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_BEE_ID
 }
 
+/// Whether the entity is rendered with the vanilla `FoxModel`. Its `setupAnim` reads the
+/// fox's own `DATA_FLAGS_ID` (19) crouch/sleep/sit/pounce/faceplant bits and the two eased
+/// `interestedAngle`/`crouchAmount` accumulators, so those projections are gated to this one
+/// type — only the fox defines that flags byte.
+pub(crate) fn vanilla_is_fox(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_FOX_ID
+}
+
 /// Whether the entity is rendered with the vanilla `EndermanModel`. Its `setupAnim`
 /// poses the arms forward to hold a block (`!carriedBlock.isEmpty()`) and drops the
 /// head/raises the hat when staring at a player (`isCreepy`), so the carried-block and
