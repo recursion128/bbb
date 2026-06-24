@@ -346,7 +346,7 @@ fn entity_model_instance(
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
 ) -> Option<EntityModelInstance> {
-    let kind = entity_model_kind_with_time_and_registries(
+    let mut kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
         &source.data_values,
         source.age_ticks as f32 + entity_partial_tick,
@@ -355,6 +355,13 @@ fn entity_model_instance(
         cow_variants,
         pig_variants,
     );
+    // Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`: the
+    // shell-ball swap is gated on the client `inStateTicks`, which `entity_model_kind` (data-only)
+    // cannot see, so it falls back to the steady SCARED hide. Override it with the world-projected
+    // `isHidingInShell`, which also covers the ROLLING/UNROLLING transition windows.
+    if let EntityModelKind::Armadillo { rolled_up, .. } = &mut kind {
+        *rolled_up = source.armadillo_is_hiding_in_shell;
+    }
     let head_eat = sheep_head_eat_pose(
         source.entity_type_id,
         source.sheep_eat_animation_tick,
@@ -428,6 +435,10 @@ fn entity_model_instance(
         .with_frog_croak_seconds(source.frog_croak_seconds)
         .with_sniffer_animation_id(source.sniffer_animation_id)
         .with_sniffer_animation_seconds(source.sniffer_animation_seconds)
+        .with_armadillo_is_hiding_in_shell(source.armadillo_is_hiding_in_shell)
+        .with_armadillo_roll_up_seconds(source.armadillo_roll_up_seconds)
+        .with_armadillo_roll_out_seconds(source.armadillo_roll_out_seconds)
+        .with_armadillo_peek_seconds(source.armadillo_peek_seconds)
         .with_fox_head_roll_angle(source.fox_head_roll_angle)
         .with_fox_crouch_amount(source.fox_crouch_amount)
         .with_fox_is_crouching(source.fox_is_crouching)

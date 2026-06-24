@@ -380,6 +380,29 @@ pub struct EntityModelSourceState {
     /// is running.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub sniffer_animation_seconds: f32,
+    /// Vanilla `Armadillo.shouldHideInShell()` (`ArmadilloRenderState.isHidingInShell`, the synced
+    /// `ARMADILLO_STATE` gated on the client `inStateTicks`): `true` for the steady SCARED ball and
+    /// for the ROLLING/UNROLLING transition windows (rolling hides after tick 5, unrolling un-hides at
+    /// tick 26), which `ArmadilloModel.setupAnim` renders as the shell ball. `false` (unrolled) for an
+    /// IDLE armadillo and every other entity.
+    #[serde(default)]
+    pub armadillo_is_hiding_in_shell: bool,
+    /// Vanilla armadillo roll-up timing (`Armadillo.rollUpAnimationState`, started on entry to
+    /// ROLLING): the elapsed seconds since the curl-in began, which `ArmadilloModel.setupAnim` samples
+    /// from `ARMADILLO_ROLL_UP` onto the body/legs/head. `-1.0` (the stopped-animation sentinel) when
+    /// no roll-up is running and for every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub armadillo_roll_up_seconds: f32,
+    /// Vanilla armadillo roll-out timing (`Armadillo.rollOutAnimationState`, started on entry to
+    /// UNROLLING): the elapsed seconds since the un-curl began, sampled from `ARMADILLO_ROLL_OUT`.
+    /// `-1.0` when no roll-out is running and for every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub armadillo_roll_out_seconds: f32,
+    /// Vanilla armadillo peek timing (`Armadillo.peekAnimationState`). Deferred: always `-1.0` (the
+    /// peek's `fastForward` baseline is not cleanly derivable; see `docs/unsupported-features.md`),
+    /// so the renderer applies no `ARMADILLO_PEEK` keyframe.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub armadillo_peek_seconds: f32,
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`, the lerped client
     /// `interestedAngle` accumulator driven by the synced `DATA_FLAGS_ID & 8` interest flag, scaled by
     /// `0.11 · π`): an interested fox tilts its head, which `FoxModel.setWalkingPose` applies as

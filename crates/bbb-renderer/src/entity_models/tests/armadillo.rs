@@ -369,6 +369,142 @@ fn baby_armadillo_walk_animation_matches_vanilla_definition() {
 }
 
 #[test]
+fn armadillo_roll_up_and_out_animations_match_vanilla_definitions() {
+    // Vanilla `ArmadilloAnimation.ARMADILLO_ROLL_UP`: 0.5 s non-looping. The applied bone set is the
+    // seven rest-tree bones (body, tail, head, four legs); the `cube` channel is omitted (the ball is
+    // rendered statically). 58 keyframes across those bones.
+    assert_eq!(ARMADILLO_ROLL_UP.length_seconds, 0.5);
+    assert!(!ARMADILLO_ROLL_UP.looping);
+    assert_eq!(ARMADILLO_ROLL_UP.bones.len(), 7);
+    let roll_up_keyframes: usize = ARMADILLO_ROLL_UP
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(roll_up_keyframes, 58);
+    // The head whips down to `degreeVec(-72.5, 0, 0)` at its t=0.25 keyframe as the armadillo balls up.
+    let (_, head_rot) = sample_bone_offsets(&ARMADILLO_ROLL_UP, "head", 0.25, 1.0);
+    assert!((head_rot[0] - (-72.5_f32).to_radians()).abs() < 1.0e-4);
+
+    // Vanilla `ARMADILLO_ROLL_OUT`: 1.5 s non-looping, six applied bones (head, four legs, body — the
+    // body channel is POSITION-only; the `cube` channel is omitted). 103 keyframes.
+    assert_eq!(ARMADILLO_ROLL_OUT.length_seconds, 1.5);
+    assert!(!ARMADILLO_ROLL_OUT.looping);
+    assert_eq!(ARMADILLO_ROLL_OUT.bones.len(), 6);
+    let roll_out_keyframes: usize = ARMADILLO_ROLL_OUT
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(roll_out_keyframes, 103);
+    // The body springs up to `posVec(0, 5, 0)` at its t=1.25 keyframe as it un-balls (`pos_vec`
+    // negates Y to the model's coordinate convention, so the offset is `-5`).
+    let (body_pos, _) = sample_bone_offsets(&ARMADILLO_ROLL_OUT, "body", 1.25, 1.0);
+    assert!((body_pos[1] - -5.0).abs() < 1.0e-4);
+}
+
+#[test]
+fn armadillo_rolling_re_poses_off_the_bind_pose_before_the_ball_takes_over() {
+    // During ROLLING's first ~5 ticks the armadillo is NOT yet hiding (`shouldHideInShell` flips at
+    // tick 5), so it renders the full rest tree with the roll-up keyframe ADDED onto the walk/bind
+    // pose — the body curls in. A rolling armadillo therefore re-poses off the bind pose without
+    // changing the cube count (10 cubes / 240 vertices).
+    let rest = entity_model_mesh(&[EntityModelInstance::armadillo(
+        82,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )]);
+    let rolling = entity_model_mesh(&[EntityModelInstance::armadillo(
+        83,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )
+    .with_armadillo_roll_up_seconds(0.2)]);
+    assert_eq!(
+        rest.vertices.len(),
+        rolling.vertices.len(),
+        "the roll-up re-poses parts, it does not add or hide cubes"
+    );
+    assert_ne!(
+        rest.vertices, rolling.vertices,
+        "the rolling armadillo curls off the bind pose before the ball takes over"
+    );
+    // Advancing the roll-up's elapsed seconds advances the curl.
+    let rolling_later = entity_model_mesh(&[EntityModelInstance::armadillo(
+        84,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )
+    .with_armadillo_roll_up_seconds(0.4)]);
+    assert_ne!(
+        rolling.vertices, rolling_later.vertices,
+        "the curl-in advances as the roll-up elapsed seconds climb"
+    );
+}
+
+#[test]
+fn armadillo_unrolling_re_poses_off_the_bind_pose() {
+    // Once UNROLLING un-hides (inStateTicks >= 26) the rest tree shows again with the roll-out
+    // keyframe ADDED, so the body un-curls off the bind pose (same cube count).
+    let rest = entity_model_mesh(&[EntityModelInstance::armadillo(
+        85,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )]);
+    let unrolling = entity_model_mesh(&[EntityModelInstance::armadillo(
+        86,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )
+    .with_armadillo_roll_out_seconds(1.35)]);
+    assert_eq!(rest.vertices.len(), unrolling.vertices.len());
+    assert_ne!(
+        rest.vertices, unrolling.vertices,
+        "the unrolling armadillo un-curls off the bind pose"
+    );
+}
+
+#[test]
+fn armadillo_hidden_shows_the_static_ball_ignoring_roll_seconds() {
+    // While `isHidingInShell` (the `rolled_up` tree) the shell ball is rendered statically: the
+    // roll-up / roll-out elapsed seconds do not change the mesh (vanilla's `cube` wobble is deferred).
+    let hidden = entity_model_mesh(&[EntityModelInstance::armadillo(
+        87,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+    )]);
+    let hidden_rolling = entity_model_mesh(&[EntityModelInstance::armadillo(
+        88,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+    )
+    .with_armadillo_roll_up_seconds(0.2)
+    .with_armadillo_roll_out_seconds(1.0)]);
+    // Six cubes → 36 faces / 144 vertices: the shell ball, head, ears, two front legs.
+    assert_eq!(hidden.vertices.len(), 144);
+    assert_eq!(
+        hidden.vertices, hidden_rolling.vertices,
+        "a hidden armadillo shows the static ball regardless of the roll seconds"
+    );
+}
+
+#[test]
 fn baby_armadillo_walk_moves_the_limbs_and_composes_with_the_look() {
     // The baby shares the adult's `body → tail/head` + four-leg topology, so its head subtree is the
     // same [72, 144) span. A still baby collapses to the bind pose; a walking baby samples

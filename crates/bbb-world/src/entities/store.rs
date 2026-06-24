@@ -617,6 +617,21 @@ impl EntityStore {
                 .frog_croak_seconds(partial_ticks),
             sniffer_animation_id,
             sniffer_animation_seconds,
+            // Vanilla `Armadillo.shouldHideInShell` + the rollUp/rollOut transition timers: the
+            // shell-ball hide window and the curl-in / un-curl elapsed seconds. `false`/`-1.0` for
+            // every non-armadillo (only the armadillo is given a roll animation state).
+            armadillo_is_hiding_in_shell: client_animations
+                .animations
+                .armadillo_is_hiding_in_shell(),
+            armadillo_roll_up_seconds: client_animations
+                .animations
+                .armadillo_roll_up_seconds(partial_ticks),
+            armadillo_roll_out_seconds: client_animations
+                .animations
+                .armadillo_roll_out_seconds(partial_ticks),
+            armadillo_peek_seconds: client_animations
+                .animations
+                .armadillo_peek_seconds(partial_ticks),
             // Vanilla `Fox.getHeadRollAngle` / `getCrouchAmount`: the lerped client accumulators that
             // drive the head tilt and the crouch body drop. `0.0` for every non-fox (only the fox is
             // given a fox animation state).

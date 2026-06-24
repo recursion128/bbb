@@ -2552,6 +2552,95 @@ fn entity_model_sources_project_sniffer_state_animation() {
 }
 
 #[test]
+fn entity_model_sources_project_armadillo_state_animation() {
+    const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
+    // Vanilla `Armadillo.ARMADILLO_STATE` (id 18), the `ArmadilloState` id VarInt (serializer 36).
+    // `Armadillo.setupAnimationStates` `.startIfStopped`s rollUp into ROLLING / rollOut into
+    // UNROLLING, and `shouldHideInShell(inStateTicks)` gates the shell-ball swap.
+    const ARMADILLO_STATE_DATA_ID: u8 = 18;
+    const ARMADILLO_STATE_ROLLING_ID: i32 = 1;
+    const ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
+    let project = |store: &WorldStore| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 4)
+            .unwrap();
+        (
+            source.armadillo_is_hiding_in_shell,
+            source.armadillo_roll_up_seconds,
+            source.armadillo_roll_out_seconds,
+            source.armadillo_peek_seconds,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        4,
+        VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+    ));
+
+    // An IDLE armadillo (no state synced) is unrolled with no transition timers.
+    assert_eq!(project(&store), (false, -1.0, -1.0, -1.0));
+
+    // Entering ROLLING starts the roll-up timer at the current age (elapsed `0`) and does NOT yet
+    // hide: vanilla `ROLLING.shouldHideInShell(inStateTicks) = inStateTicks > 5`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 4,
+        values: vec![protocol_enum_data(
+            ARMADILLO_STATE_DATA_ID,
+            EntityDataEnumSerializer::ArmadilloState,
+            ARMADILLO_STATE_ROLLING_ID,
+        )],
+    }));
+    let (hiding, roll_up, roll_out, peek) = project(&store);
+    assert!(!hiding, "rolling does not hide until inStateTicks > 5");
+    assert!((roll_up - 0.0).abs() < 1.0e-6, "roll-up starts at 0s");
+    assert_eq!((roll_out, peek), (-1.0, -1.0));
+
+    // The roll-up elapsed seconds advance `1 / 20` per client tick.
+    store.advance_entity_client_animations(5);
+    assert!((project(&store).1 - 0.25).abs() < 1.0e-6);
+    // At inStateTicks == 5 it still does not hide (`> 5` is strict); the next tick flips it true.
+    assert!(!project(&store).0, "inStateTicks == 5 is not yet hiding");
+    store.advance_entity_client_animations(1);
+    assert!(
+        project(&store).0,
+        "inStateTicks == 6 hides the body in the shell"
+    );
+    // The roll-up keeps advancing past the hide (vanilla applies it regardless of hiding).
+    assert!((project(&store).1 - 0.3).abs() < 1.0e-6);
+
+    // Entering UNROLLING restarts: the roll-out timer starts at 0, the roll-up stops, and the body
+    // stays hidden while `inStateTicks < 26` (`UNROLLING.shouldHideInShell`).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 4,
+        values: vec![protocol_enum_data(
+            ARMADILLO_STATE_DATA_ID,
+            EntityDataEnumSerializer::ArmadilloState,
+            ARMADILLO_STATE_UNROLLING_ID,
+        )],
+    }));
+    let (hiding, roll_up, roll_out, _) = project(&store);
+    assert!(
+        hiding,
+        "unrolling keeps the ball until inStateTicks reaches 26"
+    );
+    assert_eq!(roll_up, -1.0, "the roll-up timer stops on the transition");
+    assert!((roll_out - 0.0).abs() < 1.0e-6, "roll-out starts at 0s");
+
+    // The body stays hidden through inStateTicks 25, then un-hides at 26.
+    store.advance_entity_client_animations(25);
+    assert!(project(&store).0, "inStateTicks == 25 is still hiding");
+    assert!(
+        (project(&store).2 - 1.25).abs() < 1.0e-6,
+        "roll-out advanced 25 ticks"
+    );
+    store.advance_entity_client_animations(1);
+    assert!(!project(&store).0, "inStateTicks == 26 un-hides the body");
+}
+
+#[test]
 fn entity_model_sources_project_warden_combat_animations() {
     const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     // Vanilla `Pose.ROARING(11)` / `Pose.SNIFFING(12)` synced via `DATA_POSE` (id 6);

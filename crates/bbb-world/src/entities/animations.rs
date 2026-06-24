@@ -1,4 +1,4 @@
-use bbb_protocol::packets::{EntityDataValue, EntityDataValueKind};
+use bbb_protocol::packets::{EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind};
 use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
@@ -50,6 +50,18 @@ const SNIFFER_STATE_SCENTING_ID: i32 = 2;
 const SNIFFER_STATE_SNIFFING_ID: i32 = 3;
 const SNIFFER_STATE_DIGGING_ID: i32 = 5;
 const SNIFFER_STATE_RISING_ID: i32 = 6;
+const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
+/// Vanilla `Armadillo.ARMADILLO_STATE`, the synced `EntityDataSerializers.ARMADILLO_STATE` accessor
+/// serialized as the `ArmadilloState` ordinal-id VarInt. Like `Sniffer.DATA_STATE` it is the first
+/// own accessor after `AgeableMob` (Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17), id 18.
+/// `Armadillo.onSyncedDataUpdated` reads it to `setupAnimationStates()`.
+const ARMADILLO_STATE_DATA_ID: u8 = 18;
+/// `ArmadilloState` ids (the 4th enum-ctor arg, which is the serialized VarInt; this is the declared
+/// order too). Each state carries an `animationDuration` and a `shouldHideInShell(ticksInState)`.
+const ARMADILLO_STATE_IDLE_ID: i32 = 0;
+const ARMADILLO_STATE_ROLLING_ID: i32 = 1;
+const ARMADILLO_STATE_SCARED_ID: i32 = 2;
+const ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
 const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
@@ -158,6 +170,8 @@ pub struct EntityClientAnimationState {
     pub frog_croak: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub armadillo: Option<ArmadilloAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ender_dragon: Option<EnderDragonAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -338,6 +352,68 @@ impl SnifferAnimationState {
             Some((id, seconds)) => (id, seconds),
             None => (-1, -1.0),
         }
+    }
+}
+
+/// Vanilla `Armadillo.ArmadilloState.shouldHideInShell(ticksInState)`. The body is hidden in the
+/// shell ball (`ArmadilloModel.setupAnim`'s `isHidingInShell` branch) for the whole steady SCARED
+/// state, never while IDLE, and for an `inStateTicks` window during the ROLLING/UNROLLING
+/// transitions (curl-in completes after tick 5; the unroll keeps the ball until tick 26).
+fn armadillo_should_hide_in_shell(state_id: i32, in_state_ticks: u32) -> bool {
+    match state_id {
+        ARMADILLO_STATE_ROLLING_ID => in_state_ticks > 5,
+        ARMADILLO_STATE_SCARED_ID => true,
+        ARMADILLO_STATE_UNROLLING_ID => in_state_ticks < 26,
+        // IDLE and any unknown ordinal stay unrolled.
+        _ => false,
+    }
+}
+
+/// Canonical client-side armadillo roll animation state, mirroring vanilla
+/// `Armadillo.setupAnimationStates()`. The synced `ARMADILLO_STATE` (the `ArmadilloState` enum)
+/// plus the `inStateTicks` counter (vanilla `Armadillo.inStateTicks`, reset to `0` on a state
+/// change and `++` each tick) drive both the `isHidingInShell` shell-ball swap and the three
+/// triggered keyframe `AnimationState`s: `rollUp` on entry to ROLLING, `rollOut` on entry to
+/// UNROLLING, `peek` while SCARED. We reconstruct `inStateTicks` from the `age_ticks` recorded when
+/// the state last changed, and reuse [`KeyframeAnimationState`] for the rollUp/rollOut elapsed
+/// timers (started at the state-entry age, vanilla's `.startIfStopped(tickCount)`). The `peek`
+/// animation, which vanilla `fastForward`s on the first SCARED tick, is deferred (see
+/// `docs/unsupported-features.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArmadilloAnimationState {
+    /// The current `ArmadilloState` ordinal id (the synced `ARMADILLO_STATE`).
+    pub state_id: i32,
+    /// The `age_ticks` recorded when the state last changed; `in_state_ticks = age_ticks - this`
+    /// reconstructs vanilla `Armadillo.inStateTicks`.
+    pub state_change_age: u32,
+    /// The `ARMADILLO_ROLL_UP` one-shot, started on the rising edge into ROLLING.
+    pub roll_up: KeyframeAnimationState,
+    /// The `ARMADILLO_ROLL_OUT` one-shot, started on the rising edge into UNROLLING.
+    pub roll_out: KeyframeAnimationState,
+}
+
+impl ArmadilloAnimationState {
+    /// Vanilla `Armadillo.switchToState` + `setupAnimationStates`: a change to a different ordinal
+    /// resets `inStateTicks` (so we re-anchor `state_change_age`) and `.startIfStopped`s the new
+    /// state's transition timer (rollUp into ROLLING, rollOut into UNROLLING); the other timers
+    /// stop. A redundant re-set to the same state keeps the running timers.
+    fn set_state(&mut self, state_id: i32, age_ticks: u32) {
+        if state_id == self.state_id {
+            return;
+        }
+        self.state_id = state_id;
+        self.state_change_age = age_ticks;
+        self.roll_up.start_age = (state_id == ARMADILLO_STATE_ROLLING_ID).then_some(age_ticks);
+        self.roll_out.start_age = (state_id == ARMADILLO_STATE_UNROLLING_ID).then_some(age_ticks);
+    }
+
+    /// Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`,
+    /// projected for the renderer `isHidingInShell` shell-ball swap.
+    fn is_hiding_in_shell(self, age_ticks: u32) -> bool {
+        armadillo_should_hide_in_shell(
+            self.state_id,
+            age_ticks.saturating_sub(self.state_change_age),
+        )
     }
 }
 
@@ -1244,6 +1320,38 @@ impl EntityClientAnimationState {
                     });
                 }
             }
+            VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
+                // Vanilla `Armadillo.onSyncedDataUpdated(ARMADILLO_STATE)` → `setupAnimationStates`:
+                // the synced `ArmadilloState` id (id 18) selects the shell-ball hide window and the
+                // rollUp/rollOut/peek `AnimationState`s. The armadillo's `aiStep` runs client-side for
+                // remote entities, so the synced state drives the transitions directly. We track the
+                // state and the `age_ticks` at the change (for `inStateTicks`); IDLE carries no hide
+                // or transition timer but must still be tracked so a later roll re-anchors correctly.
+                // `ARMADILLO_STATE` is serialized as the `ArmadilloState` enum (serializer 36), so it
+                // arrives as an `EnumId`, not a plain `Int`.
+                let state_id = entity_data_enum_id(
+                    data_values,
+                    ARMADILLO_STATE_DATA_ID,
+                    EntityDataEnumSerializer::ArmadilloState,
+                    ARMADILLO_STATE_IDLE_ID,
+                );
+                if let Some(armadillo) = self.armadillo.as_mut() {
+                    armadillo.set_state(state_id, self.age_ticks);
+                } else if state_id != ARMADILLO_STATE_IDLE_ID {
+                    self.armadillo = Some(ArmadilloAnimationState {
+                        state_id,
+                        state_change_age: self.age_ticks,
+                        roll_up: KeyframeAnimationState {
+                            start_age: (state_id == ARMADILLO_STATE_ROLLING_ID)
+                                .then_some(self.age_ticks),
+                        },
+                        roll_out: KeyframeAnimationState {
+                            start_age: (state_id == ARMADILLO_STATE_UNROLLING_ID)
+                                .then_some(self.age_ticks),
+                        },
+                    });
+                }
+            }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
                 let phase_id = entity_data_int(
                     data_values,
@@ -1415,6 +1523,42 @@ impl EntityClientAnimationState {
         self.sniffer.map_or((-1, -1.0), |state| {
             state.animation(self.age_ticks, partial_tick)
         })
+    }
+
+    /// Vanilla `Armadillo.shouldHideInShell()` projected for the renderer `isHidingInShell` shell-ball
+    /// swap: `true` for the steady SCARED state and for the `inStateTicks`-gated ROLLING/UNROLLING
+    /// windows (rolling hides after tick 5, unrolling un-hides at tick 26). `false` for an IDLE
+    /// armadillo and every other entity (only the armadillo is given a roll animation state).
+    pub fn armadillo_is_hiding_in_shell(&self) -> bool {
+        self.armadillo
+            .is_some_and(|state| state.is_hiding_in_shell(self.age_ticks))
+    }
+
+    /// The armadillo's `ARMADILLO_ROLL_UP` elapsed seconds (vanilla `rollUpAnimationState`, started
+    /// on entry to ROLLING), projected for `ArmadilloModel.setupAnim`. Returns `-1.0` (the
+    /// stopped-animation sentinel) when no roll-up is running and for every other entity; the
+    /// renderer applies no `ARMADILLO_ROLL_UP` keyframe for a negative value.
+    pub fn armadillo_roll_up_seconds(&self, partial_tick: f32) -> f32 {
+        self.armadillo
+            .and_then(|state| state.roll_up.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The armadillo's `ARMADILLO_ROLL_OUT` elapsed seconds (vanilla `rollOutAnimationState`, started
+    /// on entry to UNROLLING), projected for `ArmadilloModel.setupAnim`. Returns `-1.0` when no
+    /// roll-out is running and for every other entity.
+    pub fn armadillo_roll_out_seconds(&self, partial_tick: f32) -> f32 {
+        self.armadillo
+            .and_then(|state| state.roll_out.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The armadillo's `ARMADILLO_PEEK` elapsed seconds (vanilla `peekAnimationState`). Deferred: the
+    /// `fastForward(50, 1.0)` baseline vanilla applies on the first SCARED tick is not cleanly
+    /// derivable from the synced state + `inStateTicks`, so the peek is never driven (`-1.0`), and
+    /// the renderer applies no `ARMADILLO_PEEK` keyframe. See `docs/unsupported-features.md`.
+    pub fn armadillo_peek_seconds(&self, _partial_tick: f32) -> f32 {
+        -1.0
     }
 
     /// Vanilla `Fox.getHeadRollAngle(partialTick)` projected for the renderer
@@ -1723,6 +1867,29 @@ fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) 
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Int(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
+}
+
+/// Reads an `EntityDataSerializers` enum accessor (e.g. `ARMADILLO_STATE`, serializer 36), which is
+/// wire-encoded as the enum's id VarInt and decoded into an [`EntityDataValueKind::EnumId`]. Returns
+/// the `id` of the matching serializer, or `fallback` when the slot is absent or carries a different
+/// serializer.
+fn entity_data_enum_id(
+    data_values: &[EntityDataValue],
+    data_id: u8,
+    serializer: EntityDataEnumSerializer,
+    fallback: i32,
+) -> i32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::EnumId {
+                serializer: value_serializer,
+                id,
+            } if *value_serializer == serializer => Some(*id),
             _ => None,
         })
         .unwrap_or(fallback)

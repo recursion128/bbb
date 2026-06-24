@@ -267,6 +267,24 @@ entity_render_state! {
     /// `SnifferModel.setupAnim`. `-1.0` (the stopped-animation sentinel) for every other entity and
     /// for an idling/searching sniffer.
     (with_sniffer_animation_seconds) sniffer_animation_seconds: f32 = -1.0;
+    /// Vanilla `ArmadilloRenderState.isHidingInShell` (`Armadillo.shouldHideInShell()`): the synced
+    /// `ARMADILLO_STATE` gated on the client `inStateTicks` — `true` for the steady SCARED ball and
+    /// for the ROLLING/UNROLLING transition windows. `ArmadilloModel.setupAnim` renders the shell ball
+    /// (body/tail/hind legs hidden) when set. `false` (unrolled) for every other entity.
+    (with_armadillo_is_hiding_in_shell) armadillo_is_hiding_in_shell: bool = false;
+    /// Vanilla armadillo roll-up timing (`Armadillo.rollUpAnimationState`, started on entry to
+    /// ROLLING): the elapsed seconds since the curl-in began, which `ArmadilloModel.setupAnim` samples
+    /// from `ARMADILLO_ROLL_UP` onto the body/legs/head. `-1.0` (the stopped-animation sentinel) for
+    /// every other entity and for an armadillo that is not rolling up.
+    (with_armadillo_roll_up_seconds) armadillo_roll_up_seconds: f32 = -1.0;
+    /// Vanilla armadillo roll-out timing (`Armadillo.rollOutAnimationState`, started on entry to
+    /// UNROLLING): the elapsed seconds since the un-curl began, sampled from `ARMADILLO_ROLL_OUT`.
+    /// `-1.0` for every other entity and for an armadillo that is not unrolling.
+    (with_armadillo_roll_out_seconds) armadillo_roll_out_seconds: f32 = -1.0;
+    /// Vanilla armadillo peek timing (`Armadillo.peekAnimationState`). Deferred: always `-1.0` (the
+    /// peek's `fastForward` baseline is not cleanly derivable; see `docs/unsupported-features.md`), so
+    /// `ArmadilloModel.setupAnim` applies no `ARMADILLO_PEEK` keyframe.
+    (with_armadillo_peek_seconds) armadillo_peek_seconds: f32 = -1.0;
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`): an interested
     /// fox tilts its head, which `FoxModel.setWalkingPose` applies as `head.zRot = headRollAngle`.
     /// `0.0` (level) for every other entity and for a fox that is not interested.
@@ -1379,6 +1397,10 @@ mod tests {
                 frog_croak_seconds: -1.0,
                 sniffer_animation_id: -1,
                 sniffer_animation_seconds: -1.0,
+                armadillo_is_hiding_in_shell: false,
+                armadillo_roll_up_seconds: -1.0,
+                armadillo_roll_out_seconds: -1.0,
+                armadillo_peek_seconds: -1.0,
                 fox_head_roll_angle: 0.0,
                 fox_crouch_amount: 0.0,
                 fox_is_crouching: false,

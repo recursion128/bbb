@@ -1722,13 +1722,29 @@ When an agent does any of the following, update this file in the same slice:
       head snout, two 2×5×0 ears, and four 2×3×2 legs — ten cubes; the baby is the smaller 5×4×7 / 5×4×6
       shell with a 1×1×4 tail stub, a 2×2×4 snout, two 2×3×0 ears parented to the head cube, and four
       2×2×2 legs (front legs at vanilla's swapped X origins) — ten cubes. The `isHidingInShell` visibility
-      swap is now projected: the synced `Armadillo.ARMADILLO_STATE` (data id `18`, the `ArmadilloState`
-      enum; `SCARED` = id `2`) drives `setupAnim`'s shell pose — `body.skipDraw` hides the body cubes, the
-      tail and both hind legs hide, and the `cube` ball shows, while the head (+ ears) and both front legs
-      stay drawn (adult 10×10×10 ball / baby 6×6×6 + `CubeDeformation(0.3)` ball; six cubes rolled up). Only
-      the steady `SCARED` state is server-derivable (its `shouldHideInShell` is `true` for every tick); the
-      tick-gated `ROLLING` / `UNROLLING` transitions and the `inStateTicks`-driven smooth roll-out / roll-up
-      / peek keyframe scrunch stay deferred (treated as not rolled up). While NOT hiding, the clamped head
+      swap is now projected through the full state machine: the synced `Armadillo.ARMADILLO_STATE` (data id
+      `18`, the `ArmadilloState` enum — `IDLE`=0/`ROLLING`=1/`SCARED`=2/`UNROLLING`=3, each carrying an
+      `animationDuration` and `shouldHideInShell(ticksInState)`) is tracked client-side together with the
+      reconstructed `inStateTicks` (the `age_ticks` recorded at the last state change), exactly as vanilla
+      `Armadillo.setupAnimationStates()` reads `inStateTicks` (reset to `0` on a state change, `++` each
+      tick). `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)` is projected as
+      `ArmadilloRenderState.isHidingInShell` and drives `setupAnim`'s shell pose — `body.skipDraw` hides the
+      body cubes, the tail and both hind legs hide, and the `cube` ball shows, while the head (+ ears) and
+      both front legs stay drawn (adult 10×10×10 ball / baby 6×6×6 + `CubeDeformation(0.3)` ball; six cubes
+      rolled up). The hide window is now faithful for every state: `IDLE` never hides, `SCARED` always hides,
+      `ROLLING` hides once `inStateTicks > 5`, and `UNROLLING` un-hides at `inStateTicks >= 26`. The two
+      transition keyframe animations are reproduced and ADD onto the walk pose during the visible not-hiding
+      window: `ARMADILLO_ROLL_UP` (0.5 s, non-looping; started on entry to `ROLLING`, projected as
+      `armadillo_roll_up_seconds`) curls the body/tail/head/four legs in during the first ~5 ticks before the
+      ball takes over, and `ARMADILLO_ROLL_OUT` (1.5 s, non-looping; started on entry to `UNROLLING`,
+      projected as `armadillo_roll_out_seconds`) un-curls them once the ball un-hides at tick 26 (the
+      `body` channel is POSITION-only). Both transitions' `cube` channels stay deferred — bbb renders the
+      shell ball statically while hiding, and the rest tree (which the keyframes pose) carries no `cube`. The
+      `ARMADILLO_PEEK` SCARED animation (2.5 s, non-looping) stays deferred: vanilla `start`s it then
+      `fastForward(50, 1.0)`s it on the first SCARED tick, a baseline that is not cleanly derivable from the
+      synced state + `inStateTicks` alone, so `armadillo_peek_seconds` is always `-1.0` (no peek keyframe
+      applied). The baby rolls share the adult roll defs (same bone names; the baby-specific roll keyframes
+      stay deferred). While NOT hiding, the clamped head
       look is reproduced: `setupAnim` clamps the projected look to vanilla's bounds (pitch `head.xRot` to
       [-22.5, 25], yaw `head.yRot` to [-32.5, 32.5] degrees) and turns the body-nested head pivot so the
       snout and both ears inherit the turn; the look is skipped while hiding (the head is balled up). The
