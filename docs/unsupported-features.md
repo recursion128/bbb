@@ -1752,12 +1752,13 @@ When an agent does any of the following, update this file in the same slice:
       booming re-pose vs bind and differently from each other. DEFERRED: the `EMERGING` (13) / `DIGGING` (14)
       spawn/despawn one-shots (`WARDEN_EMERGE`, 6.68s, ~270 lines; `WARDEN_DIG`, 5.0s, ~180 lines) are large
       and rarely seen — a clean follow-up; their pose ordinals are tracked but only update `prev_pose`. The
-      base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), the primary now-wired path;
-      only the four emissive overlay layers
-      (`WardenEmissiveLayer` for the tendrils, heart, bioluminescent spots, and pulsating spots, each
-      keyed off the danger/heartbeat/anger animation state) remain deferred. The colored debug path
-      stays as a fallback (it approximates the body with one dark-teal tint and the tendrils with a
-      brighter cyan tint)
+      base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), together with the always-on
+      bioluminescent emissive overlay (`WARDEN_BIOLUMINESCENT_TEXTURE_REF`, an eyes-render-type pass at the
+      constant vanilla alpha 1.0). The remaining four `WardenEmissiveLayer`s — the two pulsating-spots
+      layers (`cos(ageInTicks·0.045)·0.25`), the heart, and the tendrils — pulse on a per-tick / animation
+      alpha and stay deferred (they need per-instance overlay-alpha plumbing). The colored debug path stays
+      as a fallback (it approximates the body with one dark-teal tint and the tendrils with a brighter cyan
+      tint)
     - armadillo entities as renderer-owned vanilla 26.1 `AdultArmadilloModel` /
       `BabyArmadilloModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `4` to the new `EntityModelKind::Armadillo { baby }`,
