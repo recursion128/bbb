@@ -1994,8 +1994,8 @@ When an agent does any of the following, update this file in the same slice:
       side. The colored debug path stays as a fallback (it renders the knot with one brown tint)
     - arrow and spectral arrow entities as renderer-owned vanilla 26.1 `ArrowModel.createBodyLayer()`
       geometry on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type ids `6`
-      (arrow) and `123` (spectral arrow) to the new `EntityModelKind::Arrow` (they share one model, differing
-      only in the deferred tipped/spectral texture), replacing the former placeholder bounds box. The static
+      (arrow) and `123` (spectral arrow) to the new `EntityModelKind::Arrow { texture }` (they share one model,
+      differing only in the bound image), replacing the former placeholder bounds box. The static
       rest-pose hierarchy is emitted directly (atlas 32×32): three sibling planes — the `back` arrowhead (a
       0×5×5 YZ plane at `offset(-11, 0, 0)`, pitched π/4, with `withScale(0.8)` baked into its cube → a 0×4×4
       box) and the two crossed fletching planes (`cross_1`/`cross_2`, each a 16×4×0 XY plane pitched π/4 and
@@ -2003,10 +2003,12 @@ When an agent does any of the following, update this file in the same slice:
       0.9 lives in `arrow_model_root_transform`. `ArrowModel.setupAnim` only adds the impact-shake `root.zRot`
       wobble (`-sin(shake·3)·shake`), which is deferred. `ArrowRenderer` is a plain `EntityRenderer` that
       orients the arrow along its flight with `Ry(yRot - 90)` then `Rz(xRot)` (no flip), projected through the
-      instance's `body_rot` / `head_pitch`. The plain arrow base texture is now bound on the textured path
-      (`ARROW_TEXTURE_REF`), the primary now-wired path; the tipped-arrow color tint and the spectral-arrow
-      overlay texture stay deferred. The colored debug path stays as a fallback (it renders the shaft cross
-      and the head with two tints)
+      instance's `body_rot` / `head_pitch`. All three arrow images are now bound on the textured path:
+      `ArrowModelTexture::{Normal,Tipped,Spectral}` selects `arrow.png` / `arrow_tipped.png` / `arrow_spectral.png`
+      via `arrow_texture_ref` — a tipped arrow (`TippableArrowRenderer`, `getColor() > 0` off the synced
+      `ID_EFFECT_COLOR` 11) binds the tipped image, and the spectral-arrow type binds the spectral image.
+      Only the impact-shake wobble stays deferred. The colored debug path stays as a fallback (it renders the
+      shaft cross and the head with two tints)
     - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `135` to the new
       `EntityModelKind::Trident`, replacing the former placeholder bounds box. The static hierarchy is
