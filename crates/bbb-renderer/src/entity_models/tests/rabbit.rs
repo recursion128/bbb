@@ -74,19 +74,20 @@ fn rabbit_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
-fn rabbit_mesh_matches_on_both_render_paths() {
-    // The rabbit is a colored-only entity, so the texture-skipping colored runtime path emits the
-    // exact same mesh as the full path (unlike the texture-backed wolf proxy it replaced).
+fn rabbit_colored_runtime_skips_the_texture_backed_rabbit() {
+    // The rabbit now carries vanilla texture UVs, so it renders through the textured path. The
+    // texture-skipping colored runtime path emits nothing for it, while the full path still emits the
+    // colored fallback geometry.
     let instances = [EntityModelInstance::rabbit(
         701,
         [0.0, 64.0, 0.0],
         0.0,
         false,
     )];
-    let full = entity_model_mesh(&instances);
-    let colored = entity_model_colored_runtime_mesh(&instances);
-    assert_eq!(full.vertices, colored.vertices);
-    assert_eq!(full.indices, colored.indices);
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
 }
 
 #[test]
@@ -196,4 +197,63 @@ fn rabbit_exposes_stable_model_keys() {
         EntityModelKind::Rabbit { baby: true }.model_key(),
         "rabbit_baby"
     );
+}
+
+#[test]
+fn rabbit_textured_render_matches_vanilla_renderer() {
+    assert_eq!(
+        rabbit_textured_layer_passes(false)[0].texture,
+        RABBIT_TEXTURE_REF
+    );
+    assert_eq!(
+        rabbit_textured_layer_passes(true)[0].texture,
+        RABBIT_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        rabbit_textured_layer_passes(false)[0].render_type,
+        EntityModelLayerRenderType::Cutout
+    );
+    assert_eq!(
+        EntityModelKind::Rabbit { baby: false }.vanilla_texture_ref(),
+        Some(RABBIT_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Rabbit { baby: true }.vanilla_texture_ref(),
+        Some(RABBIT_BABY_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&RABBIT_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&RABBIT_BABY_TEXTURE_REF));
+    assert_eq!(
+        rabbit_entity_texture_refs(),
+        &[RABBIT_TEXTURE_REF, RABBIT_BABY_TEXTURE_REF]
+    );
+
+    let images: Vec<EntityModelTextureImage> = rabbit_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    for baby in [false, true] {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::rabbit(
+                900,
+                [0.0, 64.0, 0.0],
+                0.0,
+                baby,
+            )],
+            &atlas,
+        );
+        assert!(
+            !mesh.vertices.is_empty(),
+            "baby={baby} emits textured geometry"
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
 }

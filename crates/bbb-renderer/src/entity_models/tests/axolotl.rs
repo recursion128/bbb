@@ -172,3 +172,62 @@ fn axolotl_adult_body_turns_toward_the_look_yaw() {
         "the baby axolotl ignores the look"
     );
 }
+
+#[test]
+fn axolotl_textured_render_matches_vanilla_renderer() {
+    assert_eq!(
+        axolotl_textured_layer_passes(false)[0].texture,
+        AXOLOTL_TEXTURE_REF
+    );
+    assert_eq!(
+        axolotl_textured_layer_passes(true)[0].texture,
+        AXOLOTL_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        axolotl_textured_layer_passes(false)[0].render_type,
+        EntityModelLayerRenderType::Cutout
+    );
+    assert_eq!(
+        EntityModelKind::Axolotl { baby: false }.vanilla_texture_ref(),
+        Some(AXOLOTL_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Axolotl { baby: true }.vanilla_texture_ref(),
+        Some(AXOLOTL_BABY_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&AXOLOTL_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&AXOLOTL_BABY_TEXTURE_REF));
+    assert_eq!(
+        axolotl_entity_texture_refs(),
+        &[AXOLOTL_TEXTURE_REF, AXOLOTL_BABY_TEXTURE_REF]
+    );
+
+    let images: Vec<EntityModelTextureImage> = axolotl_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    for baby in [false, true] {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::axolotl(
+                900,
+                [0.0, 64.0, 0.0],
+                0.0,
+                baby,
+            )],
+            &atlas,
+        );
+        assert!(
+            !mesh.vertices.is_empty(),
+            "baby={baby} emits textured geometry"
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
+}

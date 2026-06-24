@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 162] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 172] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -831,6 +831,16 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PARROT_TEXTURE_REF,
     SHULKER_TEXTURE_REF,
     ENDER_DRAGON_TEXTURE_REF,
+    NAUTILUS_TEXTURE_REF,
+    NAUTILUS_BABY_TEXTURE_REF,
+    PANDA_TEXTURE_REF,
+    PANDA_BABY_TEXTURE_REF,
+    AXOLOTL_TEXTURE_REF,
+    AXOLOTL_BABY_TEXTURE_REF,
+    FOX_TEXTURE_REF,
+    FOX_BABY_TEXTURE_REF,
+    RABBIT_TEXTURE_REF,
+    RABBIT_BABY_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1643,6 +1653,88 @@ pub(in crate::entity_models) const ENDER_DRAGON_ENTITY_TEXTURE_REFS: [EntityMode
 
 pub fn ender_dragon_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &ENDER_DRAGON_ENTITY_TEXTURE_REFS
+}
+
+// Baby-pair entities: bbb's `EntityModelKind` carries the `baby` flag, selecting the adult or baby
+// texture (the baby has its own smaller atlas + body layer). The colour/breed variants (axolotl
+// colour, fox snow, rabbit colour) need a further enum extension; only the default is wired here.
+pub(in crate::entity_models) const NAUTILUS_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/nautilus/nautilus.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const NAUTILUS_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/nautilus/nautilus_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const NAUTILUS_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [NAUTILUS_TEXTURE_REF, NAUTILUS_BABY_TEXTURE_REF];
+pub fn nautilus_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &NAUTILUS_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const PANDA_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/panda/panda_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const PANDA_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [PANDA_TEXTURE_REF, PANDA_BABY_TEXTURE_REF];
+pub fn panda_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &PANDA_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const AXOLOTL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_lucy.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const AXOLOTL_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/axolotl/axolotl_lucy_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const AXOLOTL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [AXOLOTL_TEXTURE_REF, AXOLOTL_BABY_TEXTURE_REF];
+pub fn axolotl_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &AXOLOTL_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const FOX_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/fox/fox.png",
+    size: [48, 32],
+};
+pub(in crate::entity_models) const FOX_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/fox/fox_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const FOX_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [FOX_TEXTURE_REF, FOX_BABY_TEXTURE_REF];
+pub fn fox_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &FOX_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const RABBIT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_brown.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const RABBIT_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/rabbit/rabbit_brown_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const RABBIT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [RABBIT_TEXTURE_REF, RABBIT_BABY_TEXTURE_REF];
+pub fn rabbit_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &RABBIT_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

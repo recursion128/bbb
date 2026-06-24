@@ -55,19 +55,20 @@ fn panda_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
-fn panda_mesh_matches_on_both_render_paths() {
-    // The panda is a colored-only entity, so the texture-skipping colored runtime path emits the
-    // exact same mesh as the full path (unlike the cow proxy it replaced).
+fn panda_colored_runtime_skips_the_texture_backed_panda() {
+    // The panda now carries vanilla texture UVs, so it renders through the textured path. The
+    // texture-skipping colored runtime path emits nothing for it, while the full path still emits the
+    // colored fallback geometry.
     let instances = [EntityModelInstance::panda(
         601,
         [0.0, 64.0, 0.0],
         0.0,
         false,
     )];
-    let full = entity_model_mesh(&instances);
-    let colored = entity_model_colored_runtime_mesh(&instances);
-    assert_eq!(full.vertices, colored.vertices);
-    assert_eq!(full.indices, colored.indices);
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
 }
 
 #[test]
@@ -186,4 +187,58 @@ fn panda_exposes_stable_model_keys() {
         EntityModelKind::Panda { baby: true }.model_key(),
         "panda_baby"
     );
+}
+
+#[test]
+fn panda_textured_render_matches_vanilla_renderer() {
+    assert_eq!(
+        panda_textured_layer_passes(false)[0].texture,
+        PANDA_TEXTURE_REF
+    );
+    assert_eq!(
+        panda_textured_layer_passes(true)[0].texture,
+        PANDA_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        panda_textured_layer_passes(false)[0].render_type,
+        EntityModelLayerRenderType::Cutout
+    );
+    assert_eq!(
+        EntityModelKind::Panda { baby: false }.vanilla_texture_ref(),
+        Some(PANDA_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Panda { baby: true }.vanilla_texture_ref(),
+        Some(PANDA_BABY_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&PANDA_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&PANDA_BABY_TEXTURE_REF));
+    assert_eq!(
+        panda_entity_texture_refs(),
+        &[PANDA_TEXTURE_REF, PANDA_BABY_TEXTURE_REF]
+    );
+
+    let images: Vec<EntityModelTextureImage> = panda_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    for baby in [false, true] {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::panda(900, [0.0, 64.0, 0.0], 0.0, baby)],
+            &atlas,
+        );
+        assert!(
+            !mesh.vertices.is_empty(),
+            "baby={baby} emits textured geometry"
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
 }

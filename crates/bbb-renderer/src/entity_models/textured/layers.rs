@@ -722,6 +722,74 @@ pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<Enti
     )]
 }
 
+pub(in crate::entity_models) fn nautilus_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        if baby {
+            NAUTILUS_BABY_TEXTURE_REF
+        } else {
+            NAUTILUS_TEXTURE_REF
+        },
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn panda_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        if baby {
+            PANDA_BABY_TEXTURE_REF
+        } else {
+            PANDA_TEXTURE_REF
+        },
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn axolotl_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        if baby {
+            AXOLOTL_BABY_TEXTURE_REF
+        } else {
+            AXOLOTL_TEXTURE_REF
+        },
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn fox_textured_layer_passes(baby: bool) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        if baby {
+            FOX_BABY_TEXTURE_REF
+        } else {
+            FOX_TEXTURE_REF
+        },
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
+pub(in crate::entity_models) fn rabbit_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        if baby {
+            RABBIT_BABY_TEXTURE_REF
+        } else {
+            RABBIT_TEXTURE_REF
+        },
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass {

@@ -54,14 +54,15 @@ fn fox_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
-fn fox_mesh_matches_on_both_render_paths() {
-    // The fox is a colored-only entity, so the texture-skipping colored runtime path emits the exact
-    // same mesh as the full path (unlike the wolf proxy it replaced).
+fn fox_colored_runtime_skips_the_texture_backed_fox() {
+    // The fox now carries vanilla texture UVs, so it renders through the textured path. The
+    // texture-skipping colored runtime path emits nothing for it, while the full path still emits the
+    // colored fallback geometry.
     let instances = [EntityModelInstance::fox(401, [0.0, 64.0, 0.0], 0.0, false)];
-    let full = entity_model_mesh(&instances);
-    let colored = entity_model_colored_runtime_mesh(&instances);
-    assert_eq!(full.vertices, colored.vertices);
-    assert_eq!(full.indices, colored.indices);
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
 }
 
 #[test]
@@ -278,21 +279,58 @@ fn sleeping_fox_overrides_the_head_pose() {
 }
 
 #[test]
-fn fox_flag_poses_match_on_both_render_paths() {
-    // The fox is a unified tree, so the crouch/sleep/sit flag poses emit identically on the colored
-    // runtime path and the full path (one `setup_anim` drives both).
-    let posed = [EntityModelInstance::fox(470, [0.0, 64.0, 0.0], 0.0, false)
-        .with_fox_is_crouching(true)
-        .with_fox_crouch_amount(3.0)
-        .with_fox_head_roll_angle(0.2)];
-    let full = entity_model_mesh(&posed);
-    let colored = entity_model_colored_runtime_mesh(&posed);
-    assert_eq!(full.vertices, colored.vertices);
-    assert_eq!(full.indices, colored.indices);
-}
-
-#[test]
 fn fox_exposes_stable_model_keys() {
     assert_eq!(EntityModelKind::Fox { baby: false }.model_key(), "fox");
     assert_eq!(EntityModelKind::Fox { baby: true }.model_key(), "fox_baby");
+}
+
+#[test]
+fn fox_textured_render_matches_vanilla_renderer() {
+    assert_eq!(fox_textured_layer_passes(false)[0].texture, FOX_TEXTURE_REF);
+    assert_eq!(
+        fox_textured_layer_passes(true)[0].texture,
+        FOX_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        fox_textured_layer_passes(false)[0].render_type,
+        EntityModelLayerRenderType::Cutout
+    );
+    assert_eq!(
+        EntityModelKind::Fox { baby: false }.vanilla_texture_ref(),
+        Some(FOX_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Fox { baby: true }.vanilla_texture_ref(),
+        Some(FOX_BABY_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&FOX_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&FOX_BABY_TEXTURE_REF));
+    assert_eq!(
+        fox_entity_texture_refs(),
+        &[FOX_TEXTURE_REF, FOX_BABY_TEXTURE_REF]
+    );
+
+    let images: Vec<EntityModelTextureImage> = fox_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    for baby in [false, true] {
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::fox(900, [0.0, 64.0, 0.0], 0.0, baby)],
+            &atlas,
+        );
+        assert!(
+            !mesh.vertices.is_empty(),
+            "baby={baby} emits textured geometry"
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
 }
