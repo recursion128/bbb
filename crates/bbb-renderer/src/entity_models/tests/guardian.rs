@@ -182,3 +182,58 @@ fn guardian_whole_body_turns_with_the_look() {
         entity_model_mesh(&[elder.with_head_look(35.0, -20.0)]).vertices,
     );
 }
+
+#[test]
+fn guardian_tail_sways_with_the_swim_accumulator() {
+    // Vanilla `GuardianModel.setupAnim`: `float swim = state.tailAnimation; tailParts[i].yRot =
+    // sin(swim) * π * {0.05, 0.1, 0.15}`. A non-zero tail animation (off the sin zero) re-poses the
+    // three-segment tail off the bind pose without touching the cube count, and the elder shares it.
+    for elder in [false, true] {
+        let base = EntityModelInstance::guardian(996, [0.0, 64.0, 0.0], 0.0, elder);
+        let rest = entity_model_mesh(&[base]); // tailAnimation = 0 → sin(0) = 0 → bind tail
+
+        // `tailAnimation = 0` (and any multiple of π) keeps the tail at the bind pose.
+        let zero = entity_model_mesh(&[base.with_guardian_tail_animation(0.0)]);
+        assert_eq!(
+            rest.vertices, zero.vertices,
+            "tailAnimation = 0 holds the bind tail pose (elder = {elder})"
+        );
+
+        // A live sway phase (sin ≠ 0) bends the tail.
+        let swaying = entity_model_mesh(&[base.with_guardian_tail_animation(1.0)]);
+        assert_eq!(rest.vertices.len(), swaying.vertices.len());
+        assert_ne!(
+            rest.vertices, swaying.vertices,
+            "a non-zero tail animation sways the tail off the bind pose (elder = {elder})"
+        );
+
+        // A different phase re-poses the tail again (the sway tracks the phase).
+        let swaying_other = entity_model_mesh(&[base.with_guardian_tail_animation(2.5)]);
+        assert_ne!(swaying.vertices, swaying_other.vertices);
+    }
+}
+
+#[test]
+fn guardian_tail_sway_is_independent_of_the_spike_pulse() {
+    // The tail sway (`guardian_tail_animation`) and the spike pulse (`age_in_ticks`) come from
+    // separate render-state channels and pose disjoint parts, so each drives a distinct mesh change.
+    let base = EntityModelInstance::guardian(997, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = entity_model_mesh(&[base]);
+
+    let only_tail = entity_model_mesh(&[base.with_guardian_tail_animation(1.0)]);
+    let only_spikes = entity_model_mesh(&[base.with_age_in_ticks(10.0)]);
+    let both = entity_model_mesh(&[base
+        .with_guardian_tail_animation(1.0)
+        .with_age_in_ticks(10.0)]);
+
+    assert_ne!(
+        rest.vertices, only_tail.vertices,
+        "the tail sway moves the tail"
+    );
+    assert_ne!(
+        rest.vertices, only_spikes.vertices,
+        "the spike pulse moves the spikes"
+    );
+    assert_ne!(only_tail.vertices, both.vertices);
+    assert_ne!(only_spikes.vertices, both.vertices);
+}

@@ -2129,6 +2129,106 @@ fn squid_tentacle_speed_is_seeded_by_entity_id() {
 }
 
 #[test]
+fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
+    // Vanilla `Guardian.aiStep` ramps `clientSideTailAnimationSpeed` differently per
+    // tick depending on `isInWater()` and the synced `isMoving()` (`DATA_ID_MOVING`),
+    // then integrates `clientSideTailAnimation += speed`. The projected
+    // `guardian_tail_animation` advances by that per-tick speed, so its one-tick delta
+    // pins which branch ran:
+    //   - out of water  → speed = 2.0   (the frantic flop)
+    //   - in water, moving, from rest (speed < 0.5) → speed snaps to 4.0
+    //   - in water, idle → speed eases toward 0.125 (≈ 0.025 from rest, by 0.2)
+    const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+
+    let tail = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 80)
+            .unwrap()
+            .guardian_tail_animation
+    };
+
+    // A guardian standing in a tall water column (submerged) and flagged moving.
+    let make_store = |moving: bool, in_water: bool| {
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        store.insert_decoded_chunk(empty_test_chunk());
+        store.apply_add_entity(ProtocolAddEntity {
+            id: 80,
+            uuid: default_entity_uuid(),
+            entity_type_id: VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+            position: ProtocolVec3d {
+                x: 8.5,
+                y: 2.0,
+                z: 8.5,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 99,
+        });
+        if in_water {
+            // Fill the column the guardian's AABB occupies so `world_aabb_in_water`
+            // sees a submerged box.
+            for y in 1..=4 {
+                assert!(store.apply_block_update(ProtocolBlockUpdate {
+                    pos: ProtocolBlockPos { x: 8, y, z: 8 },
+                    block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+                }));
+            }
+        }
+        if moving {
+            assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+                id: 80,
+                values: vec![protocol_bool_data(16, true)],
+            }));
+        }
+        store
+    };
+
+    // In water + moving: from the rest speed (`0`, which is `< 0.5`) the first tick
+    // snaps the speed to `4.0`, so the tail jumps by 4 per tick.
+    let mut wet_moving = make_store(true, true);
+    wet_moving.advance_entity_client_animations(1);
+    let after_one = tail(&wet_moving);
+    assert!(
+        (after_one - 4.0).abs() < 1.0e-4,
+        "in-water moving guardian snaps its tail speed to 4.0 from rest: {after_one}"
+    );
+
+    // In water + idle: the speed eases toward `0.125` by `0.2` (`0 + (0.125 - 0)*0.2 =
+    // 0.025`), a slow hover wave — far slower than either other branch.
+    let mut wet_idle = make_store(false, true);
+    wet_idle.advance_entity_client_animations(1);
+    let idle_one = tail(&wet_idle);
+    assert!(
+        (idle_one - 0.025).abs() < 1.0e-4,
+        "in-water idle guardian eases its tail speed toward 0.125 (0.025 from rest): {idle_one}"
+    );
+
+    // Out of water: the speed is forced to `2.0` regardless of the moving flag.
+    let mut dry = make_store(true, false);
+    dry.advance_entity_client_animations(1);
+    let dry_one = tail(&dry);
+    assert!(
+        (dry_one - 2.0).abs() < 1.0e-4,
+        "an out-of-water guardian flops its tail at speed 2.0: {dry_one}"
+    );
+
+    // The three branches advance the tail at distinctly different rates.
+    assert!(after_one > dry_one && dry_one > idle_one);
+}
+
+#[test]
 fn squid_tentacle_speed_matches_java_random_for_known_id() {
     // Vanilla `Squid` constructor: `random.setSeed(getId()); tentacleSpeed = 1 /
     // (random.nextFloat() + 1) * 0.2`. Pinned against the Java LCG: for id 0 the

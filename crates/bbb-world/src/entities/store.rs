@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, fmt};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt,
+};
 
 use bbb_protocol::packets::AttributeSnapshot as ProtocolAttributeSnapshot;
 use hecs::{Entity, World};
@@ -16,6 +19,7 @@ use super::{
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
+use crate::entities::animations::{entity_animation_uses_in_water, guardian_is_moving};
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
     vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
@@ -721,6 +725,12 @@ impl EntityStore {
                 .squid_tentacle_angle(partial_ticks),
             squid_x_body_rot: client_animations.animations.squid_x_body_rot(partial_ticks),
             squid_z_body_rot: client_animations.animations.squid_z_body_rot(partial_ticks),
+            // Vanilla `GuardianRenderer.extractRenderState`: the lerped tail-sway
+            // phase. `0.0` for every non-guardian entity (only the guardian / elder
+            // guardian is given a tail animation state).
+            guardian_tail_animation: client_animations
+                .animations
+                .guardian_tail_animation(partial_ticks),
             // Vanilla `ChickenRenderer.extractRenderState`: the lerped wing-flap
             // phase and amplitude. `0.0` for every non-chicken entity (only the
             // chicken is given a flap animation state).
@@ -1054,7 +1064,51 @@ impl EntityStore {
         Some(())
     }
 
-    pub(crate) fn advance_client_animations(&mut self, ticks: u32) {
+    /// Gathers the world AABBs the per-entity `in_water` map is built from, for the
+    /// entity types whose client-tick animation reads `isInWater()`
+    /// ([`entity_animation_uses_in_water`]). Each tuple is `(entity_id, aabb_min,
+    /// aabb_max)` with the AABB resolved from the SAME bounds source the projection
+    /// uses ([`Self::pick_bounds`] → `vanilla_pick_bounds_for_entity_data`), so the
+    /// fluid overlap matches the projected `in_water`. `WorldStore` (which holds the
+    /// chunk/fluid data) turns each AABB into a `bool`.
+    pub(crate) fn in_water_aabb_inputs(&self) -> Vec<(i32, [f64; 3], [f64; 3])> {
+        let mut inputs = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if !entity_animation_uses_in_water(identity.entity_type_id) {
+                continue;
+            }
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            let Some(bounds) = self.pick_bounds(identity.id) else {
+                continue;
+            };
+            let aabb_min = [
+                transform.position.x + f64::from(bounds.min[0]),
+                transform.position.y + f64::from(bounds.min[1]),
+                transform.position.z + f64::from(bounds.min[2]),
+            ];
+            let aabb_max = [
+                transform.position.x + f64::from(bounds.max[0]),
+                transform.position.y + f64::from(bounds.max[1]),
+                transform.position.z + f64::from(bounds.max[2]),
+            ];
+            inputs.push((identity.id, aabb_min, aabb_max));
+        }
+        inputs
+    }
+
+    pub(crate) fn advance_client_animations(
+        &mut self,
+        ticks: u32,
+        in_water_by_id: &HashMap<i32, bool>,
+    ) {
         for _ in 0..ticks {
             for (_, (identity, transform, mount, metadata, animations)) in self.ecs.query_mut::<(
                 &EntityIdentity,
@@ -1068,12 +1122,19 @@ impl EntityStore {
                 // baby (`updateWalkAnimation`).
                 let is_passenger = mount.vehicle_id.is_some();
                 let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
+                // The per-tick world fact (`isInWater()`) the world resolved before
+                // this mutable pass, defaulting to `false` for non-consumers, and the
+                // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
+                let in_water = in_water_by_id.get(&identity.id).copied().unwrap_or(false);
+                let is_moving = guardian_is_moving(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
                     *transform,
                     is_passenger,
                     is_baby,
+                    in_water,
+                    is_moving,
                 );
             }
         }

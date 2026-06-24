@@ -605,6 +605,12 @@ pub struct EntityModelSourceState {
     /// rest and for every non-squid entity.
     #[serde(default)]
     pub squid_z_body_rot: f32,
+    /// Vanilla `GuardianRenderState.tailAnimation` (`Guardian.getTailAnimation`
+    /// lerped): the tail-sway phase `GuardianModel.setupAnim` feeds to the three
+    /// tail segments' `yRot` (`sin(swim) * π * {0.05, 0.1, 0.15}`). `0.0` for an
+    /// unticked guardian and every non-guardian entity.
+    #[serde(default)]
+    pub guardian_tail_animation: f32,
     /// Vanilla `ChickenRenderState.flap` (`Chicken.flap` lerped): the wing-flap
     /// phase `ChickenModel.setupAnim` feeds to `(sin(flap) + 1) * flapSpeed`. `0.0`
     /// for an unticked/still chicken and every non-chicken entity.

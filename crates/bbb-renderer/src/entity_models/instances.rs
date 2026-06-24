@@ -414,6 +414,12 @@ entity_render_state! {
     /// as `Axis.YP.rotationDegrees(zBodyRot)` after the pitch. Accumulates while
     /// swimming. `0.0` at rest and for every non-squid entity.
     () squid_z_body_rot: f32 = 0.0;
+    /// Vanilla `GuardianRenderState.tailAnimation` (`Mth.lerp(partialTick,
+    /// clientSideTailAnimationO, clientSideTailAnimation)`): the tail-sway phase
+    /// `GuardianModel.setupAnim` feeds to the three tail segments' `yRot`
+    /// (`sin(swim) * π * {0.05, 0.1, 0.15}`). `0.0` (tail at bind) for an
+    /// unticked/out-of-water guardian and every non-guardian entity.
+    (with_guardian_tail_animation) guardian_tail_animation: f32 = 0.0;
     /// Vanilla `ChickenRenderState.flap` (`Mth.lerp(partialTick, oFlap, flap)`): the
     /// wing-flap phase `ChickenModel.setupAnim` feeds to `flapAngle = (sin(flap) +
     /// 1) * flapSpeed`, written to `rightWing.zRot` / `-leftWing.zRot`. `0.0` for a
@@ -1453,6 +1459,7 @@ mod tests {
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
+                guardian_tail_animation: 0.0,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
                 parrot_flap_angle: 0.0,

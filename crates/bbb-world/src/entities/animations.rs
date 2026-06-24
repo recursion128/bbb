@@ -12,6 +12,15 @@ use super::{EntityTransform, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
+/// Vanilla `EntityType.ELDER_GUARDIAN` / `EntityType.GUARDIAN`. Both share
+/// `GuardianModel` and the same client `Guardian.aiStep` tail accumulator (the
+/// elder is the guardian mesh scaled 2.35×, with no animation override).
+const VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID: i32 = 40;
+const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
+/// Vanilla `Guardian.DATA_ID_MOVING` (`isMoving()`): the guardian's first own
+/// synced accessor after `Entity` (`0..=7`), `LivingEntity` (`8..=14`) and `Mob`
+/// (`15`). A `Boolean`, default `false`.
+const GUARDIAN_MOVING_DATA_ID: u8 = 16;
 const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
@@ -198,6 +207,8 @@ pub struct EntityClientAnimationState {
     pub chicken_flap: Option<ChickenFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parrot_flap: Option<ParrotFlapAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guardian_tail: Option<GuardianTailAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
 }
@@ -637,6 +648,82 @@ pub struct ParrotFlapAnimationState {
     /// Vanilla `Parrot.flapping` (field initializer `1.0`).
     #[serde(default)]
     pub flapping: f32,
+}
+
+/// Canonical client-side guardian tail-sway animation, mirroring vanilla
+/// `Guardian` (`clientSideTailAnimation`/`clientSideTailAnimationO`/
+/// `clientSideTailAnimationSpeed`). `Guardian.aiStep` advances the tail phase by
+/// `clientSideTailAnimationSpeed` each client tick, ramping that speed differently
+/// depending on whether the guardian is out of water (`2.0`, the frantic
+/// out-of-water flop), in water and moving (toward `0.5`, a fast snap to `4.0`
+/// from a near-rest speed), or in water and idle (toward `0.125`, a slow hover
+/// wave). `GuardianRenderer.extractRenderState` lerps the pair into
+/// `tailAnimation`, which `GuardianModel.setupAnim` feeds to the three tail
+/// segments' `yRot` (`sin(swim) * π * {0.05, 0.1, 0.15}`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct GuardianTailAnimationState {
+    /// Vanilla `Guardian.clientSideTailAnimation` (the integrated tail phase).
+    #[serde(default)]
+    pub tail_animation: f32,
+    /// Vanilla `Guardian.clientSideTailAnimationO` (the previous-tick phase, the
+    /// lerp endpoint).
+    #[serde(default)]
+    pub previous_tail_animation: f32,
+    /// Vanilla `Guardian.clientSideTailAnimationSpeed`.
+    #[serde(default)]
+    pub tail_animation_speed: f32,
+}
+
+impl Default for GuardianTailAnimationState {
+    fn default() -> Self {
+        // Vanilla seeds `clientSideTailAnimation = random.nextFloat()` in the
+        // constructor (and `clientSideTailAnimationO = clientSideTailAnimation`).
+        // That per-spawn RNG is non-deterministic, so we start the phase at `0.0`:
+        // only the starting phase is an approximation of a value vanilla itself
+        // randomizes — the per-tick sway dynamics below are exact.
+        Self {
+            tail_animation: 0.0,
+            previous_tail_animation: 0.0,
+            tail_animation_speed: 0.0,
+        }
+    }
+}
+
+impl GuardianTailAnimationState {
+    /// Advances one client tick of `Guardian.aiStep`'s tail-sway accumulator.
+    ///
+    /// Vanilla saves the lerp endpoint (`clientSideTailAnimationO`), then ramps
+    /// `clientSideTailAnimationSpeed`: out of water it snaps to `2.0`; in water and
+    /// moving it jumps to `4.0` from a near-rest speed (`< 0.5`) else eases toward
+    /// `0.5` by `0.1`; in water and idle it eases toward `0.125` by `0.2`. Finally
+    /// it integrates `clientSideTailAnimation += clientSideTailAnimationSpeed`. The
+    /// out-of-water flop-sound / `clientSideTouchedGround` bookkeeping in the same
+    /// branch is server-adjacent audio and is intentionally not modelled here, and
+    /// the `clientSideSpikesAnimation` attack withdrawal (which needs a per-tick
+    /// `random.nextFloat()` out of water) stays deferred.
+    fn advance_client_tick(&mut self, in_water: bool, is_moving: bool) {
+        self.previous_tail_animation = self.tail_animation;
+        if !in_water {
+            self.tail_animation_speed = 2.0;
+        } else if is_moving {
+            if self.tail_animation_speed < 0.5 {
+                self.tail_animation_speed = 4.0;
+            } else {
+                self.tail_animation_speed += (0.5 - self.tail_animation_speed) * 0.1;
+            }
+        } else {
+            self.tail_animation_speed += (0.125 - self.tail_animation_speed) * 0.2;
+        }
+        self.tail_animation += self.tail_animation_speed;
+    }
+
+    /// Vanilla `GuardianRenderer.extractRenderState`: `state.tailAnimation =
+    /// entity.getTailAnimation(partialTicks) = Mth.lerp(partialTick,
+    /// clientSideTailAnimationO, clientSideTailAnimation)`.
+    fn tail_animation(&self, partial_tick: f32) -> f32 {
+        self.previous_tail_animation
+            + (self.tail_animation - self.previous_tail_animation) * partial_tick
+    }
 }
 
 /// Canonical client-side limb-swing accumulator, mirroring vanilla
@@ -1716,6 +1803,15 @@ impl EntityClientAnimationState {
             .map_or(0.0, |flap| flap.flap_angle(partial_tick))
     }
 
+    /// Vanilla `GuardianRenderState.tailAnimation` (`Guardian.getTailAnimation`
+    /// lerped): the tail-sway phase `GuardianModel.setupAnim` feeds to the three
+    /// tail segments' `yRot`. Returns `0.0` for every non-guardian entity (and an
+    /// unticked guardian), so the tail holds the bind pose.
+    pub fn guardian_tail_animation(&self, partial_tick: f32) -> f32 {
+        self.guardian_tail
+            .map_or(0.0, |tail| tail.tail_animation(partial_tick))
+    }
+
     pub(crate) fn advance_client_tick(
         &mut self,
         entity_type_id: i32,
@@ -1723,6 +1819,15 @@ impl EntityClientAnimationState {
         transform: EntityTransform,
         is_passenger: bool,
         is_baby: bool,
+        // The per-tick world fact `Guardian.aiStep` reads via `isInWater()`,
+        // resolved by [`WorldStore::advance_entity_client_animations`] (which holds
+        // the chunk/fluid data this context lacks). `false` for entities that do
+        // not consume it. See [`entity_animation_uses_in_water`].
+        in_water: bool,
+        // The synced `Guardian.DATA_ID_MOVING` flag (`isMoving()`), read from the
+        // entity metadata in the tick loop. `false` for entities that do not
+        // consume it.
+        is_moving: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -1792,6 +1897,12 @@ impl EntityClientAnimationState {
                 .squid
                 .get_or_insert_with(|| SquidAnimationState::new(entity_id))
                 .advance_client_tick(transform.delta_movement),
+            VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => self
+                .guardian_tail
+                .get_or_insert_with(GuardianTailAnimationState::default)
+                // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
+                // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
+                .advance_client_tick(in_water, is_moving),
             VANILLA_ENTITY_TYPE_CHICKEN_ID => self
                 .chicken_flap
                 .get_or_insert_with(ChickenFlapAnimationState::default)
@@ -1826,9 +1937,44 @@ impl EntityClientAnimationState {
     }
 }
 
+/// Whether an entity type's client-tick animation reads `isInWater()` and so needs
+/// the per-entity `in_water` map [`WorldStore::advance_entity_client_animations`]
+/// builds. Keeping this cheap (a tiny `match`) lets the world skip the AABB / fluid
+/// probe for every other entity. Adding a consumer (the frog swim-idle, dolphin,
+/// axolotl, fish, …) is just another arm here.
+pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
+    )
+}
+
+/// Vanilla `Guardian.isMoving()` = the synced `DATA_ID_MOVING` boolean (default
+/// `false`). Read straight from the entity metadata in the tick loop.
+pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, GUARDIAN_MOVING_DATA_ID, false)
+}
+
 impl WorldStore {
     pub fn advance_entity_client_animations(&mut self, ticks: u32) {
-        self.entities.advance_client_animations(ticks);
+        // Vanilla `Guardian.aiStep` recomputes `isInWater()` each client tick, but
+        // within one `advance` batch the entity transforms and the chunk fluid state
+        // are static (only the animation accumulators mutate), so the per-entity
+        // `in_water` result is identical across all `ticks` iterations. Compute it
+        // once here — where the chunk/fluid data lives — and thread it into the tick
+        // loop. The immutable reads (build the map) MUST precede the mutable advance.
+        let in_water_inputs = self.entities.in_water_aabb_inputs();
+        let in_water_by_id: std::collections::HashMap<i32, bool> = in_water_inputs
+            .into_iter()
+            .map(|(id, aabb_min, aabb_max)| {
+                (
+                    id,
+                    crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max),
+                )
+            })
+            .collect();
+        self.entities
+            .advance_client_animations(ticks, &in_water_by_id);
     }
 }
 

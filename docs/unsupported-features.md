@@ -1592,10 +1592,19 @@ When an agent does any of the following, update this file in the same slice:
       `GuardianModel.setupAnim` also pulses each spike in and out with the projected `ageInTicks`
       (`getSpikeOffset = 1 + cos(ageInTicks · 1.5 + i) · 0.01`, the spikes being the head's first
       twelve children), with a test pinning that the spikes move with the age phase and that
-      `ageInTicks = 0` reproduces the baked bind pose. The remaining `setupAnim` / renderer motion is
-      deferred — the `spikesAnimation` withdrawal (`(1 - spikesAnimation) · 0.55`), the eye target
-      tracking (`lookAtPosition`/`lookDirection`/`eyePosition`), the tail sway (`tailAnimation`), and
-      the `GuardianRenderer` attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
+      `ageInTicks = 0` reproduces the baked bind pose. The three-segment tail sway IS reproduced —
+      `Guardian.aiStep`'s client `clientSideTailAnimation` accumulator runs world-side each client
+      tick (its `clientSideTailAnimationSpeed` ramps to `2.0` out of water, snaps toward `0.5` while
+      moving in water, and settles toward `0.125` while idle, off the per-tick `isInWater()` resolved
+      from the chunk fluid state and the synced `DATA_ID_MOVING` `isMoving()` flag), and the lerped
+      `tailAnimation` drives `tailParts[i].yRot = sin(swim) · π · {0.05, 0.1, 0.15}`, with world and
+      renderer tests pinning the three speed branches and the off-bind tail sway. The starting tail
+      phase is `0.0` (vanilla seeds it with a per-spawn `random.nextFloat()`, which is
+      non-deterministic — only the starting phase is approximated; the sway dynamics are exact). The
+      remaining `setupAnim` / renderer motion is deferred — the `spikesAnimation` withdrawal
+      (`(1 - spikesAnimation) · 0.55`, which needs a per-tick `random.nextFloat()` out of water), the
+      eye target tracking (`lookAtPosition`/`lookDirection`/`eyePosition`), and the `GuardianRenderer`
+      attack beam (`attackTargetPosition`/`attackTime`/`attackScale`) — all of
       which read entity-side state not yet projected. The texture-backed path
       (`textures/entity/guardian/guardian.png`) and its lighting/overlay also remain unsupported
       (this is a colored-first slice; the colored debug path approximates the body with a single

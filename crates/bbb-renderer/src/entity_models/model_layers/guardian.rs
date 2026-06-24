@@ -143,6 +143,15 @@ pub(in crate::entity_models) fn guardian_spike_bind_pose(i: usize) -> PartPose {
 const GUARDIAN_SPIKE_CHILD_NAMES: [&str; 12] =
     ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
 
+/// `tail0` is the head's fourteenth child (twelve spikes `"0"`..=`"11"`, then the eye `"12"`, then
+/// `tail0` `"13"`), and `tail1`/`tail2` are each the single (index-`"0"`) child of the segment above.
+const GUARDIAN_TAIL0_CHILD_NAME: &str = "13";
+const GUARDIAN_TAIL_NESTED_CHILD_NAME: &str = "0";
+
+/// Vanilla `GuardianModel.setupAnim` tail-segment `yRot` scales: `sin(swim) * π * {0.05, 0.1,
+/// 0.15}` for `tail0`/`tail1`/`tail2`, so each deeper segment sways a little harder.
+const GUARDIAN_TAIL_YROT_SCALE: [f32; 3] = [0.05, 0.1, 0.15];
+
 /// Builds the guardian's `head` part tree: the body shell carries the twelve spikes, the eye, and
 /// the three-segment tail chain (`tail0` → `tail1` → `tail2`) as children, in vanilla emit order.
 fn guardian_head_part() -> ModelPart {
@@ -166,8 +175,9 @@ fn guardian_head_part() -> ModelPart {
 /// single `head` root part (body shell + twelve spikes + eye + three-segment tail), so the head IS
 /// the model root. The elder variant is the same tree at the 2.35× scaled root transform (applied at
 /// the call site). Colored-only: `setup_anim` turns the head — and with it the whole guardian — to
-/// the look angles and pulses the twelve spikes in and out with the entity age (eye tracking, tail
-/// sway, and attack beam stay deferred).
+/// the look angles, pulses the twelve spikes in and out with the entity age, and sways the
+/// three-segment tail with the in-water swim accumulator (eye tracking and the attack beam stay
+/// deferred).
 pub(in crate::entity_models) struct GuardianModel {
     root: ModelPart,
 }
@@ -206,5 +216,18 @@ impl EntityModel for GuardianModel {
             self.root.child_mut(GUARDIAN_SPIKE_CHILD_NAMES[i]).pose =
                 guardian_spike_pose(i, age_pulse);
         }
+        // Vanilla `GuardianModel.setupAnim`: `float swim = state.tailAnimation; tailParts[i].yRot =
+        // sin(swim) * π * {0.05, 0.1, 0.15}`. The three tail segments are a `tail0 → tail1 → tail2`
+        // chain; each bind pose is ZERO-rotation, so the sway is the segment's whole `yRot`. The
+        // accumulator (`Guardian.aiStep`) runs `2.0`/tick out of water (a frantic flop), snaps up and
+        // eases toward `0.5`/tick while moving in water, and settles toward `0.125`/tick while idle.
+        let swim = instance.render_state.guardian_tail_animation;
+        let sway = swim.sin() * std::f32::consts::PI;
+        let tail0 = self.root.child_mut(GUARDIAN_TAIL0_CHILD_NAME);
+        tail0.pose.rotation[1] = sway * GUARDIAN_TAIL_YROT_SCALE[0];
+        let tail1 = tail0.child_mut(GUARDIAN_TAIL_NESTED_CHILD_NAME);
+        tail1.pose.rotation[1] = sway * GUARDIAN_TAIL_YROT_SCALE[1];
+        let tail2 = tail1.child_mut(GUARDIAN_TAIL_NESTED_CHILD_NAME);
+        tail2.pose.rotation[1] = sway * GUARDIAN_TAIL_YROT_SCALE[2];
     }
 }
