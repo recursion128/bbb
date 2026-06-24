@@ -2505,8 +2505,9 @@ fn entity_model_sources_project_sniffer_state_animation() {
     // and the elapsed seconds begin at `0` (plus the partial tick), advancing `1 / 20` per tick.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_int_data(
+        values: vec![protocol_enum_data(
             SNIFFER_STATE_DATA_ID,
+            EntityDataEnumSerializer::SnifferState,
             SNIFFER_STATE_DIGGING_ID
         )],
     }));
@@ -2522,8 +2523,9 @@ fn entity_model_sources_project_sniffer_state_animation() {
     // + `startIfStopped` on the transition) and switches the id to the new state.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_int_data(
+        values: vec![protocol_enum_data(
             SNIFFER_STATE_DATA_ID,
+            EntityDataEnumSerializer::SnifferState,
             SNIFFER_STATE_SNIFFING_ID
         )],
     }));
@@ -2533,8 +2535,9 @@ fn entity_model_sources_project_sniffer_state_animation() {
     // no-animation sentinel.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_int_data(
+        values: vec![protocol_enum_data(
             SNIFFER_STATE_DATA_ID,
+            EntityDataEnumSerializer::SnifferState,
             SNIFFER_STATE_SEARCHING_ID
         )],
     }));
@@ -2543,8 +2546,9 @@ fn entity_model_sources_project_sniffer_state_animation() {
     // Returning to `IDLING` likewise stays cleared.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_int_data(
+        values: vec![protocol_enum_data(
             SNIFFER_STATE_DATA_ID,
+            EntityDataEnumSerializer::SnifferState,
             SNIFFER_STATE_IDLING_ID
         )],
     }));

@@ -1303,12 +1303,18 @@ impl EntityClientAnimationState {
                     .set_pose(pose_id, self.age_ticks);
             }
             VANILLA_ENTITY_TYPE_SNIFFER_ID => {
-                // Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: the synced state's ordinal
-                // VarInt (id 18) selects the one mutually-exclusive `AnimationState` to start, and a
-                // state change `resetAnimations()` + restarts it. The sniffer's `aiStep` runs
-                // client-side for remote entities, so the synced state drives the pose directly.
-                let state_id =
-                    entity_data_int(data_values, SNIFFER_STATE_DATA_ID, SNIFFER_STATE_IDLING_ID);
+                // Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: the synced state (id 18) selects
+                // the one mutually-exclusive `AnimationState` to start, and a state change
+                // `resetAnimations()` + restarts it. The sniffer's `aiStep` runs client-side for
+                // remote entities, so the synced state drives the pose directly. `DATA_STATE` is
+                // serialized as the `SnifferState` enum (serializer 35), so it arrives as an
+                // `EnumId`, not a plain `Int`.
+                let state_id = entity_data_enum_id(
+                    data_values,
+                    SNIFFER_STATE_DATA_ID,
+                    EntityDataEnumSerializer::SnifferState,
+                    SNIFFER_STATE_IDLING_ID,
+                );
                 if let Some(sniffer) = self.sniffer.as_mut() {
                     sniffer.set_state(state_id, self.age_ticks);
                 } else if sniffer_animated_state(state_id).is_some() {
