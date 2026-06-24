@@ -62,6 +62,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     WitchBase,
     WolfBase,
     WolfCollar,
+    FelineCollar,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -810,14 +811,30 @@ pub(in crate::entity_models) fn feline_textured_layer_passes(
     cat: bool,
     baby: bool,
     cat_variant: CatModelVariant,
+    collar: Option<EntityDyeColor>,
 ) -> Vec<EntityModelLayerPass> {
-    // The cat and ocelot share `AbstractFelineModel`, so the pass differs only in which image it
+    // The cat and ocelot share `AbstractFelineModel`, so the base pass differs only in which image it
     // binds: the per-breed `CatVariant` texture for cats, the `ocelot` texture otherwise.
-    vec![EntityModelLayerPass::base(
+    let mut passes = vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
         feline_texture_ref(cat, baby, cat_variant),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )];
+    // Vanilla `CatCollarLayer`: a tame cat re-renders the mesh with `cat_collar.png` tinted by the
+    // dye's diffuse color (`collar` is already gated on cat && tame; the ocelot never carries one).
+    if let Some(collar) = collar {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::FelineCollar,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: "",
+            texture: feline_collar_texture_ref(baby),
+            visibility: EntityModelLayerVisibility::All,
+            tint: collar.texture_diffuse_color(),
+            collector_order: 1,
+            submit_sequence: 1,
+        });
+    }
+    passes
 }
 
 pub(in crate::entity_models) fn mooshroom_textured_layer_passes(

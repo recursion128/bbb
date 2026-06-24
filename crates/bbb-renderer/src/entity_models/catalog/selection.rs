@@ -419,6 +419,7 @@ impl EntityModelKind {
                 cat,
                 baby,
                 cat_variant,
+                ..
             } => Some(feline_texture_ref(cat, baby, cat_variant)),
             Self::Mooshroom { baby: false } => Some(MOOSHROOM_TEXTURE_REF),
             Self::Mooshroom { baby: true } => Some(MOOSHROOM_BABY_TEXTURE_REF),

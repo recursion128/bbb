@@ -758,7 +758,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 273] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 275] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -930,6 +930,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
     FELINE_OCELOT_TEXTURE_REF,
     FELINE_OCELOT_BABY_TEXTURE_REF,
+    FELINE_CAT_COLLAR_TEXTURE_REF,
+    FELINE_CAT_COLLAR_BABY_TEXTURE_REF,
     MOOSHROOM_TEXTURE_REF,
     MOOSHROOM_BABY_TEXTURE_REF,
     ARROW_TEXTURE_REF,
@@ -2483,6 +2485,25 @@ pub(in crate::entity_models) const FELINE_OCELOT_BABY_TEXTURE_REF: EntityModelTe
         path: "textures/entity/cat/ocelot_baby.png",
         size: [32, 32],
     };
+// Vanilla `CatCollarLayer`: the tame cat's collar overlay, tinted by the dye's diffuse color and
+// sharing the feline mesh, so it carries the same 64×32 adult / 32×32 baby atlas as the cat body.
+pub(in crate::entity_models) const FELINE_CAT_COLLAR_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_collar.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const FELINE_CAT_COLLAR_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cat/cat_collar_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) fn feline_collar_texture_ref(baby: bool) -> EntityModelTextureRef {
+    if baby {
+        FELINE_CAT_COLLAR_BABY_TEXTURE_REF
+    } else {
+        FELINE_CAT_COLLAR_TEXTURE_REF
+    }
+}
 fn feline_cat_texture_ref(variant: CatModelVariant, baby: bool) -> EntityModelTextureRef {
     match (variant, baby) {
         (CatModelVariant::Tabby, false) => FELINE_CAT_TABBY_TEXTURE_REF,
@@ -2520,7 +2541,7 @@ pub(in crate::entity_models) fn feline_texture_ref(
         (false, true) => FELINE_OCELOT_BABY_TEXTURE_REF,
     }
 }
-pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 24] = [
+pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 26] = [
     FELINE_CAT_TABBY_TEXTURE_REF,
     FELINE_CAT_TABBY_BABY_TEXTURE_REF,
     FELINE_CAT_BLACK_TEXTURE_REF,
@@ -2545,6 +2566,8 @@ pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextu
     FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
     FELINE_OCELOT_TEXTURE_REF,
     FELINE_OCELOT_BABY_TEXTURE_REF,
+    FELINE_CAT_COLLAR_TEXTURE_REF,
+    FELINE_CAT_COLLAR_BABY_TEXTURE_REF,
 ];
 pub fn feline_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &FELINE_ENTITY_TEXTURE_REFS

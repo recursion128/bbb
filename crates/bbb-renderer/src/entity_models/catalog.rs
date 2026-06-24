@@ -313,14 +313,15 @@ pub enum EntityModelKind {
     /// reproduced, plus the adult's standing `tail2` droop (`xRot = 1.7278761` — the baby's `tail2` is
     /// cubeless, so vanilla's identical assignment is invisible). The bespoke walk leg swing / tail
     /// wobble and every feline pose (`isCrouching`, `isSprinting`, `isSitting`, `lieDownAmount`,
-    /// `relaxStateOneAmount`) read un-projected `FelineRenderState` state and stay deferred, as does the
-    /// cat collar layer. The textured path binds the cat-breed texture (`cat_variant`, the eleven
-    /// `CatVariant`s) for cats and the `ocelot` texture for ocelots (`cat_variant` is ignored when
-    /// `!cat`).
+    /// `relaxStateOneAmount`) read un-projected `FelineRenderState` state and stay deferred. The textured
+    /// path binds the cat-breed texture (`cat_variant`, the eleven `CatVariant`s) for cats and the
+    /// `ocelot` texture for ocelots (`cat_variant` is ignored when `!cat`). `collar` is the tame cat's
+    /// dyed collar overlay (`CatCollarLayer`, `Some` only for a tame cat — the ocelot never has one).
     Feline {
         cat: bool,
         baby: bool,
         cat_variant: CatModelVariant,
+        collar: Option<EntityDyeColor>,
     },
     /// `AdultFoxModel` / `BabyFoxModel` (custom `EntityModel`s) at their `createBodyLayer` rest pose
     /// (`baby` selects the baby body layout). The `setupAnim` head look and the curled sleeping pose

@@ -94,6 +94,7 @@ fn feline_mesh_uses_vanilla_body_layer_geometry() {
         false,
         false,
         CatModelVariant::Black,
+        None,
     )]);
     assert_eq!(ocelot.opaque_faces, 66);
     assert_eq!(ocelot.vertices.len(), 264);
@@ -114,6 +115,7 @@ fn baby_feline_mesh_uses_vanilla_body_layer_geometry() {
         false,
         true,
         CatModelVariant::Black,
+        None,
     )]);
     assert_eq!(baby.opaque_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
@@ -137,6 +139,7 @@ fn feline_colored_runtime_skips_the_texture_backed_feline() {
             false,
             false,
             CatModelVariant::Black,
+            None,
         ),
         EntityModelInstance::feline(
             507,
@@ -145,6 +148,7 @@ fn feline_colored_runtime_skips_the_texture_backed_feline() {
             true,
             true,
             CatModelVariant::Black,
+            None,
         ),
     ];
     assert!(!entity_model_mesh(&instances).vertices.is_empty());
@@ -164,6 +168,7 @@ fn baby_cat_and_baby_ocelot_share_the_same_mesh() {
         true,
         true,
         CatModelVariant::Black,
+        None,
     )]);
     let ocelot = entity_model_mesh(&[EntityModelInstance::feline(
         508,
@@ -172,6 +177,7 @@ fn baby_cat_and_baby_ocelot_share_the_same_mesh() {
         false,
         true,
         CatModelVariant::Black,
+        None,
     )]);
     assert_eq!(cat.vertices, ocelot.vertices);
 }
@@ -188,6 +194,7 @@ fn feline_head_look_turns_only_the_head() {
         false,
         false,
         CatModelVariant::Black,
+        None,
     );
     let looked = rest.with_head_look(35.0, -25.0);
     let rest_mesh = entity_model_mesh(&[rest]);
@@ -217,6 +224,7 @@ fn feline_legs_swing_with_the_gait() {
         false,
         false,
         CatModelVariant::Black,
+        None,
     );
     let walking = rest.with_walk_animation(3.0, 0.8);
     let rest_mesh = entity_model_mesh(&[rest]);
@@ -250,6 +258,7 @@ fn baby_feline_head_look_turns_only_the_head() {
         false,
         true,
         CatModelVariant::Black,
+        None,
     );
     let looked = rest.with_head_look(35.0, -25.0);
     let rest_mesh = entity_model_mesh(&[rest]);
@@ -279,6 +288,7 @@ fn feline_standing_drops_the_lower_tail() {
         false,
         false,
         CatModelVariant::Black,
+        None,
     ));
     assert!((model.root_mut().child_mut("tail2").pose.rotation[0] - 1.7278761).abs() < 1.0e-6);
     assert_eq!(model.root_mut().child_mut("tail1").pose.rotation[0], 0.9);
@@ -299,6 +309,7 @@ fn feline_lower_tail_wobbles_with_the_gait() {
         false,
         false,
         CatModelVariant::Black,
+        None,
     ));
     let rest_tail2 = model.root_mut().child_mut("tail2").pose.rotation[0];
     assert!((rest_tail2 - 1.7278761).abs() < 1.0e-6);
@@ -314,6 +325,7 @@ fn feline_lower_tail_wobbles_with_the_gait() {
             false,
             false,
             CatModelVariant::Black,
+            None,
         )
         .with_walk_animation(pos, speed),
     );
@@ -334,6 +346,7 @@ fn feline_lower_tail_wobbles_with_the_gait() {
             false,
             false,
             CatModelVariant::Black,
+            None,
         )
         .with_walk_animation(6.0, speed),
     );
@@ -349,6 +362,7 @@ fn feline_lower_tail_wobbles_with_the_gait() {
             false,
             false,
             CatModelVariant::Black,
+            None,
         )
         .with_walk_animation(3.0, 0.0),
     );
@@ -367,6 +381,7 @@ fn cat_mesh_is_the_ocelot_mesh_scaled_down() {
         false,
         false,
         CatModelVariant::Black,
+        None,
     )]);
     let cat = entity_model_mesh(&[EntityModelInstance::feline(
         505,
@@ -375,6 +390,7 @@ fn cat_mesh_is_the_ocelot_mesh_scaled_down() {
         true,
         false,
         CatModelVariant::Black,
+        None,
     )]);
     assert_eq!(ocelot.vertices.len(), cat.vertices.len());
     let (ocelot_min, ocelot_max) = mesh_extents(&ocelot);
@@ -398,6 +414,7 @@ fn baby_feline_is_not_scaled_like_the_adult_cat() {
         true,
         true,
         CatModelVariant::Black,
+        None,
     )]);
     let baby_ocelot = entity_model_mesh(&[EntityModelInstance::feline(
         510,
@@ -406,6 +423,7 @@ fn baby_feline_is_not_scaled_like_the_adult_cat() {
         false,
         true,
         CatModelVariant::Black,
+        None,
     )]);
     let (cat_min, cat_max) = mesh_extents(&baby_cat);
     let (ocelot_min, ocelot_max) = mesh_extents(&baby_ocelot);
@@ -427,7 +445,8 @@ fn feline_exposes_stable_model_keys() {
                 EntityModelKind::Feline {
                     cat,
                     baby,
-                    cat_variant
+                    cat_variant,
+                    collar: None
                 }
                 .model_key(),
                 key
@@ -458,18 +477,19 @@ fn feline_textured_render_matches_vanilla_renderer() {
             // The cat binds its per-breed texture; the ocelot ignores the breed.
             let cat_texture = feline_texture_ref(true, baby, cat_variant);
             assert_eq!(
-                feline_textured_layer_passes(true, baby, cat_variant)[0].texture,
+                feline_textured_layer_passes(true, baby, cat_variant, None)[0].texture,
                 cat_texture
             );
             assert_eq!(
-                feline_textured_layer_passes(true, baby, cat_variant)[0].render_type,
+                feline_textured_layer_passes(true, baby, cat_variant, None)[0].render_type,
                 EntityModelLayerRenderType::Cutout
             );
             assert_eq!(
                 EntityModelKind::Feline {
                     cat: true,
                     baby,
-                    cat_variant
+                    cat_variant,
+                    collar: None
                 }
                 .vanilla_texture_ref(),
                 Some(cat_texture)
@@ -486,12 +506,12 @@ fn feline_textured_render_matches_vanilla_renderer() {
                 }
             );
             assert_eq!(
-                feline_textured_layer_passes(false, baby, cat_variant)[0].texture,
+                feline_textured_layer_passes(false, baby, cat_variant, None)[0].texture,
                 ocelot_texture
             );
         }
     }
-    assert_eq!(feline_entity_texture_refs().len(), 24);
+    assert_eq!(feline_entity_texture_refs().len(), 26);
 
     let images: Vec<EntityModelTextureImage> = feline_entity_texture_refs()
         .iter()
@@ -511,6 +531,7 @@ fn feline_textured_render_matches_vanilla_renderer() {
                 cat,
                 baby,
                 CatModelVariant::Black,
+                None,
             )],
             &atlas,
         );
@@ -523,4 +544,40 @@ fn feline_textured_render_matches_vanilla_renderer() {
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
+}
+
+#[test]
+fn feline_collar_layer_matches_vanilla_cat_collar_layer() {
+    // Vanilla `CatCollarLayer`: a tame cat re-renders the mesh with `cat_collar.png` (adult) /
+    // `cat_collar_baby.png` (baby), tinted by the dye's diffuse color. With no collar there is just
+    // the base body pass.
+    assert_eq!(
+        feline_textured_layer_passes(true, false, CatModelVariant::Black, None).len(),
+        1
+    );
+    for (baby, collar_texture) in [
+        (false, FELINE_CAT_COLLAR_TEXTURE_REF),
+        (true, FELINE_CAT_COLLAR_BABY_TEXTURE_REF),
+    ] {
+        let passes = feline_textured_layer_passes(
+            true,
+            baby,
+            CatModelVariant::Black,
+            Some(EntityDyeColor::Red),
+        );
+        assert_eq!(passes.len(), 2, "the base body plus the collar overlay");
+        assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[1].texture, collar_texture);
+        assert_eq!(passes[1].tint, EntityDyeColor::Red.texture_diffuse_color());
+        assert!(entity_model_texture_refs().contains(&collar_texture));
+    }
+
+    // Each dye tints the collar by its diffuse color.
+    let lime = feline_textured_layer_passes(
+        true,
+        false,
+        CatModelVariant::Black,
+        Some(EntityDyeColor::Lime),
+    );
+    assert_eq!(lime[1].tint, EntityDyeColor::Lime.texture_diffuse_color());
 }

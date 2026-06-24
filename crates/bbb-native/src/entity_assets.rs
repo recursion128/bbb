@@ -266,6 +266,8 @@ mod tests {
                 "textures/entity/cat/cat_all_black_baby.png",
                 "textures/entity/cat/ocelot.png",
                 "textures/entity/cat/ocelot_baby.png",
+                "textures/entity/cat/cat_collar.png",
+                "textures/entity/cat/cat_collar_baby.png",
                 "textures/entity/cow/mooshroom_red.png",
                 "textures/entity/cow/mooshroom_red_baby.png",
                 "textures/entity/projectiles/arrow.png",

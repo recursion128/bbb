@@ -1289,6 +1289,7 @@ impl EntityModelInstance {
         cat: bool,
         baby: bool,
         cat_variant: CatModelVariant,
+        collar: Option<EntityDyeColor>,
     ) -> Self {
         Self::new(
             entity_id,
@@ -1296,6 +1297,7 @@ impl EntityModelInstance {
                 cat,
                 baby,
                 cat_variant,
+                collar,
             },
             position,
             y_rot,

@@ -280,6 +280,10 @@ const PARROT_VARIANT_DATA_ID: u8 = 20;
 // AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors
 // DATA_FLAGS_ID (18) / DATA_OWNERUUID_ID (19). `Cat extends TamableAnimal`; the ocelot has no breed.
 const CAT_VARIANT_DATA_ID: u8 = 20;
+// Vanilla Cat.DATA_COLLAR_COLOR (23, INT): after DATA_VARIANT_ID (20) come IS_LYING (21) /
+// RELAX_STATE_ONE (22) / DATA_COLLAR_COLOR (23). `getCollarColor()` = `DyeColor.byId`, default RED (14).
+const CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
+const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 // Vanilla Sheep.DATA_WOOL_ID (18, BYTE): `Sheep extends Animal`, so its first own accessor follows
 // Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17).
 const SHEEP_WOOL_DATA_ID: u8 = 18;
@@ -1045,12 +1049,15 @@ fn panda_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entity
 /// flatter `BabyFelineModel` mesh (unscaled for both breeds) for a baby. Both render through the
 /// dedicated [`EntityModelKind::Feline`] (`cat` selecting the breed/scale, `baby` selecting the
 /// layout). For cats the `cat_variant` is decoded from `DATA_VARIANT_ID` (20, `Holder<CatVariant>`);
-/// the ocelot has no breed, so it carries the default (ignored when `!cat`).
+/// the ocelot has no breed, so it carries the default (ignored when `!cat`). `collar` mirrors vanilla
+/// `CatRenderer` (`isTame() ? getCollarColor() : null`): the dyed collar of a tame cat only.
 fn feline_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     cat: bool,
     cat_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
+    let tame =
+        (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_TAME_FLAG) != 0;
     EntityModelKind::Feline {
         cat,
         baby: ageable_baby(values),
@@ -1059,6 +1066,13 @@ fn feline_model_kind(
         } else {
             CatModelVariant::Black
         },
+        collar: (cat && tame).then(|| {
+            EntityDyeColor::from_vanilla_id(entity_data_int(
+                values,
+                CAT_COLLAR_COLOR_DATA_ID,
+                CAT_DEFAULT_COLLAR_COLOR_ID,
+            ))
+        }),
     }
 }
 
@@ -5763,7 +5777,8 @@ mod tests {
             EntityModelKind::Feline {
                 cat: true,
                 baby: false,
-                cat_variant: CatModelVariant::Black
+                cat_variant: CatModelVariant::Black,
+                collar: None
             }
         );
         assert_eq!(
@@ -5771,7 +5786,8 @@ mod tests {
             EntityModelKind::Feline {
                 cat: false,
                 baby: false,
-                cat_variant: CatModelVariant::Black
+                cat_variant: CatModelVariant::Black,
+                collar: None
             }
         );
         assert_eq!(
@@ -5791,7 +5807,8 @@ mod tests {
             EntityModelKind::Feline {
                 cat: true,
                 baby: true,
-                cat_variant: CatModelVariant::Black
+                cat_variant: CatModelVariant::Black,
+                collar: None
             }
         );
         assert_eq!(
@@ -5802,7 +5819,8 @@ mod tests {
             EntityModelKind::Feline {
                 cat: false,
                 baby: true,
-                cat_variant: CatModelVariant::Black
+                cat_variant: CatModelVariant::Black,
+                collar: None
             }
         );
         assert_eq!(
@@ -5930,7 +5948,8 @@ mod tests {
                 EntityModelKind::Feline {
                     cat: true,
                     baby: false,
-                    cat_variant: variant
+                    cat_variant: variant,
+                    collar: None
                 }
             );
         }
@@ -5942,8 +5961,67 @@ mod tests {
             EntityModelKind::Feline {
                 cat: false,
                 baby: false,
-                cat_variant: CatModelVariant::Black
+                cat_variant: CatModelVariant::Black,
+                collar: None
             }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
+        // Vanilla `CatRenderer`: `state.collarColor = isTame() ? getCollarColor() : null`, and
+        // `getCollarColor() = DyeColor.byId(DATA_COLLAR_COLOR)` (default RED). The ocelot has no collar.
+        fn collar_of(kind: &EntityModelKind) -> Option<EntityDyeColor> {
+            match kind {
+                EntityModelKind::Feline { collar, .. } => *collar,
+                other => panic!("expected feline, got {other:?}"),
+            }
+        }
+
+        // An untamed cat carries no collar even with a color set.
+        assert_eq!(
+            collar_of(&feline_model_kind(
+                &[protocol_int_data(CAT_COLLAR_COLOR_DATA_ID, 5)],
+                true,
+                None,
+            )),
+            None
+        );
+        // A tame cat with no explicit color defaults to RED (14).
+        assert_eq!(
+            collar_of(&feline_model_kind(
+                &[protocol_byte_data(
+                    TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                    TAMABLE_ANIMAL_TAME_FLAG
+                )],
+                true,
+                None,
+            )),
+            Some(EntityDyeColor::Red)
+        );
+        // A tame cat shows its dyed collar color.
+        assert_eq!(
+            collar_of(&feline_model_kind(
+                &[
+                    protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                    protocol_int_data(CAT_COLLAR_COLOR_DATA_ID, 5),
+                ],
+                true,
+                None,
+            )),
+            Some(EntityDyeColor::Lime)
+        );
+        // A tame ocelot still has no collar.
+        assert_eq!(
+            collar_of(&feline_model_kind(
+                &[protocol_byte_data(
+                    TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                    TAMABLE_ANIMAL_TAME_FLAG
+                )],
+                false,
+                None,
+            )),
+            None
         );
     }
 
@@ -5973,7 +6051,8 @@ mod tests {
             EntityModelKind::Feline {
                 cat: true,
                 baby: false,
-                cat_variant: CatModelVariant::Black
+                cat_variant: CatModelVariant::Black,
+                collar: None
             }
         );
         world.apply_add_entity(protocol_add_entity(
@@ -6010,7 +6089,8 @@ mod tests {
                         0.0,
                         true,
                         false,
-                        CatModelVariant::Jellie
+                        CatModelVariant::Jellie,
+                        None,
                     ),
                     EntityModelInstance::feline(
                         42,
@@ -6018,7 +6098,8 @@ mod tests {
                         0.0,
                         true,
                         true,
-                        CatModelVariant::White
+                        CatModelVariant::White,
+                        None,
                     ),
                 ],
                 1.0,
