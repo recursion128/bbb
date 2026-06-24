@@ -241,6 +241,22 @@ impl HumanoidArmorSlot {
     }
 }
 
+/// The vanilla `EquipmentLayerRenderer.getColorForLayer` per-layer tint: leather is the only dyeable
+/// humanoid material, so undyed it tints by its default `DyedItemColor.LEATHER_COLOR` (`0xA06540`);
+/// every other material is non-dyeable and renders white (vanilla color `-1`). The per-item
+/// `DyedItemColor` override (custom-dyed leather) is deferred pending dye-color projection.
+pub(in crate::entity_models) fn armor_layer_tint(material: EntityArmorMaterial) -> [f32; 4] {
+    match material {
+        EntityArmorMaterial::Leather => [
+            0xA0 as f32 / 255.0,
+            0x65 as f32 / 255.0,
+            0x40 as f32 / 255.0,
+            1.0,
+        ],
+        _ => [1.0, 1.0, 1.0, 1.0],
+    }
+}
+
 /// The equipment-asset texture for a given armor material in a given slot: the `humanoid_leggings`
 /// variant for the inner (legs) slot, the `humanoid` variant otherwise (vanilla
 /// `EquipmentClientInfo.LayerType` → `getTextureLocation`). `TurtleScute` only ever fills the head

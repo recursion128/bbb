@@ -19,11 +19,12 @@ use super::{
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        armor_slot_texture, CamelModel, CreeperModel, HoglinModel, HumanoidArmorSlot, LlamaModel,
-        PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel,
-        WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF,
-        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        armor_layer_tint, armor_slot_texture, CamelModel, CreeperModel, HoglinModel,
+        HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
+        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
+        TropicalFishModel, TropicalFishPatternModel, WindChargeModel, WitherModel, ZombieModel,
+        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -531,7 +532,7 @@ fn emit_humanoid_armor(
             transform,
             texture,
             entry.uv,
-            [1.0, 1.0, 1.0, 1.0],
+            armor_layer_tint(material),
         );
     }
 }

@@ -67,6 +67,52 @@ fn armor_slot_part_subsets_match_vanilla_retain_exact_parts() {
 }
 
 #[test]
+fn leather_armor_tints_with_default_undyed_color_others_white() {
+    // Vanilla `EquipmentLayerRenderer.getColorForLayer`: leather (the only dyeable humanoid material)
+    // tints by `DyedItemColor.LEATHER_COLOR` (0xA06540) when undyed; non-dyeable materials render white.
+    let leather = [
+        0xA0 as f32 / 255.0,
+        0x65 as f32 / 255.0,
+        0x40 as f32 / 255.0,
+        1.0,
+    ];
+    assert_eq!(armor_layer_tint(EntityArmorMaterial::Leather), leather);
+    assert_eq!(
+        armor_layer_tint(EntityArmorMaterial::Iron),
+        [1.0, 1.0, 1.0, 1.0]
+    );
+    assert_eq!(
+        armor_layer_tint(EntityArmorMaterial::Diamond),
+        [1.0, 1.0, 1.0, 1.0]
+    );
+
+    // The rendered leather chestplate carries the brown tint; iron stays white.
+    let mut refs: Vec<EntityModelTextureRef> = zombie_entity_texture_refs().to_vec();
+    refs.push(ARMOR_LEATHER_HUMANOID_TEXTURE_REF);
+    let images: Vec<EntityModelTextureImage> = refs
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let armored = entity_model_textured_meshes(
+        &[
+            EntityModelInstance::zombie(76, [0.0, 64.0, 0.0], 0.0, false)
+                .with_chest_armor(Some(EntityArmorMaterial::Leather)),
+        ],
+        &atlas,
+    );
+    assert!(armored
+        .cutout
+        .vertices
+        .iter()
+        .any(|vertex| vertex.tint == leather));
+}
+
+#[test]
 fn armored_zombie_emits_inflated_armor_pieces() {
     let atlas = iron_armor_atlas();
 
