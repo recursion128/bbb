@@ -754,7 +754,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 154] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 156] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -823,6 +823,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ENDERMITE_TEXTURE_REF,
     SILVERFISH_TEXTURE_REF,
     LEASH_KNOT_TEXTURE_REF,
+    TRIDENT_TEXTURE_REF,
+    EVOKER_FANGS_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
@@ -1527,6 +1529,32 @@ pub(in crate::entity_models) const LEASH_KNOT_ENTITY_TEXTURE_REFS: [EntityModelT
 
 pub fn leash_knot_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &LEASH_KNOT_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const TRIDENT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/trident/trident.png",
+        size: [32, 32],
+    };
+
+pub(in crate::entity_models) const TRIDENT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [TRIDENT_TEXTURE_REF];
+
+pub fn trident_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &TRIDENT_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const EVOKER_FANGS_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/illager/evoker_fangs.png",
+        size: [64, 32],
+    };
+
+pub(in crate::entity_models) const EVOKER_FANGS_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [EVOKER_FANGS_TEXTURE_REF];
+
+pub fn evoker_fangs_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &EVOKER_FANGS_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PHANTOM_TEXTURE_REF: EntityModelTextureRef =

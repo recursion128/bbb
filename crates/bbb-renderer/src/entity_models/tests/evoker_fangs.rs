@@ -1,41 +1,35 @@
 use super::*;
 
-fn count_cubes(parts: &[ModelPartDesc]) -> usize {
-    parts
-        .iter()
-        .map(|part| part.cubes.len() + count_cubes(part.children))
-        .sum()
-}
+use crate::entity_models::model::ModelCube;
 
 #[test]
-fn evoker_fangs_geometry_matches_vanilla_26_1_body_layer() {
-    // Vanilla `EvokerFangsModel.createBodyLayer` (atlas 64×32): the base block at offset (-5, 24,
-    // -5) parents the two jaws (a shared 4×14×8 box) at their closed-jaw bind rotations.
-    assert_eq!(EVOKER_FANGS_PARTS.len(), 1);
-
-    let base = &EVOKER_FANGS_PARTS[0];
-    assert_eq!(base.pose.offset, [-5.0, 24.0, -5.0]);
-    assert_eq!(base.cubes[0].min, [0.0, 0.0, 0.0]);
-    assert_eq!(base.cubes[0].size, [10.0, 12.0, 10.0]);
-    assert_eq!(base.children.len(), 2);
-
-    // `upper_jaw` at offset (6.5, 0, 1), closed-jaw `zRot = 0.65π = 2.042035`.
-    let upper = &base.children[0];
-    assert_eq!(upper.pose.offset, [6.5, 0.0, 1.0]);
-    assert_eq!(upper.pose.rotation, [0.0, 0.0, 2.042035]);
-    let closed_upper_zrot = std::f32::consts::PI - 0.35 * std::f32::consts::PI;
-    assert!((upper.pose.rotation[2] - closed_upper_zrot).abs() < 1.0e-4);
-    assert_eq!(upper.cubes[0].size, [4.0, 14.0, 8.0]);
-
-    // `lower_jaw` at offset (3.5, 0, 9), `yRot = π` and closed-jaw `zRot = 1.35π = 4.2411504`.
-    let lower = &base.children[1];
-    assert_eq!(lower.pose.offset, [3.5, 0.0, 9.0]);
-    assert_eq!(lower.pose.rotation, [0.0, std::f32::consts::PI, 4.2411504]);
-    let closed_lower_zrot = std::f32::consts::PI + 0.35 * std::f32::consts::PI;
-    assert!((lower.pose.rotation[2] - closed_lower_zrot).abs() < 1.0e-4);
-
-    // Three cubes total.
-    assert_eq!(count_cubes(&EVOKER_FANGS_PARTS), 3);
+fn evoker_fangs_cubes_match_vanilla_26_1_body_layer() {
+    // Vanilla `EvokerFangsModel.createBodyLayer` (atlas 64×32): the base block (texOffs 0,0) and the
+    // shared jaw box (texOffs 40,0). Each unified cube carries the colored tint and the textured UV.
+    assert_eq!(
+        EVOKER_FANGS_BASE_CUBE,
+        ModelCube::new(
+            [0.0, 0.0, 0.0],
+            [10.0, 12.0, 10.0],
+            EVOKER_FANGS_BASE,
+            [10.0, 12.0, 10.0],
+            [0.0, 0.0],
+            false
+        )
+    );
+    // Both jaws share this one box, differing only by pivot and rotation.
+    assert_eq!(
+        EVOKER_FANGS_JAW_CUBE,
+        ModelCube::new(
+            [0.0, 0.0, 0.0],
+            [4.0, 14.0, 8.0],
+            EVOKER_FANGS_JAW,
+            [4.0, 14.0, 8.0],
+            [40.0, 0.0],
+            false
+        )
+    );
+    assert_eq!(EVOKER_FANGS_TEXTURE_REF.size, [64, 32]);
 }
 
 #[test]
@@ -57,4 +51,50 @@ fn evoker_fangs_mesh_uses_vanilla_body_layer_geometry() {
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(EVOKER_FANGS_JAW, 1.0)));
+}
+
+#[test]
+fn evoker_fangs_layer_passes_and_texture_ref_match_vanilla_renderer() {
+    let passes = evoker_fangs_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(passes[0].texture, EVOKER_FANGS_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+
+    assert_eq!(
+        EntityModelKind::EvokerFangs.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/illager/evoker_fangs.png",
+            size: [64, 32],
+        })
+    );
+    assert!(entity_model_texture_refs().contains(&EVOKER_FANGS_TEXTURE_REF));
+    assert_eq!(
+        evoker_fangs_entity_texture_refs(),
+        &[EVOKER_FANGS_TEXTURE_REF]
+    );
+}
+
+#[test]
+fn evoker_fangs_textured_mesh_uses_vanilla_uvs_and_geometry() {
+    let images: Vec<EntityModelTextureImage> = evoker_fangs_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::evoker_fangs(
+            470,
+            [0.0, 64.0, 0.0],
+            0.0,
+        )],
+        &atlas,
+    );
+    assert_eq!(mesh.cutout_faces, 18);
+    assert_eq!(mesh.vertices.len(), 72);
+    assert_eq!(mesh.indices.len(), 108);
 }
