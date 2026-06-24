@@ -1,5 +1,5 @@
 use super::super::EntityModelTextureRef;
-use crate::entity_models::catalog::ParrotModelVariant;
+use crate::entity_models::catalog::{FrogModelVariant, ParrotModelVariant};
 
 mod equine;
 
@@ -755,7 +755,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 194] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 196] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -861,7 +861,9 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     GUARDIAN_TEXTURE_REF,
     GUARDIAN_ELDER_TEXTURE_REF,
     WARDEN_TEXTURE_REF,
-    FROG_TEXTURE_REF,
+    FROG_TEMPERATE_TEXTURE_REF,
+    FROG_WARM_TEXTURE_REF,
+    FROG_COLD_TEXTURE_REF,
     ARMADILLO_TEXTURE_REF,
     ARMADILLO_BABY_TEXTURE_REF,
     PHANTOM_TEXTURE_REF,
@@ -1954,15 +1956,37 @@ pub fn warden_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WARDEN_ENTITY_TEXTURE_REFS
 }
 
-// The frog's base texture (atlas 48×48). The temperate variant is wired; the warm/cold colour
-// variants (frog_warm.png / frog_cold.png) share this geometry/UV and stay deferred.
-pub(in crate::entity_models) const FROG_TEXTURE_REF: EntityModelTextureRef =
+// The frog's three temperature textures (atlas 48×48). All share one `FrogModel` geometry/UV and
+// differ only by texture; `FrogRenderer.getTextureLocation` reads the variant's `assetInfo` path.
+pub(in crate::entity_models) const FROG_TEMPERATE_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/frog/frog_temperate.png",
         size: [48, 48],
     };
-pub(in crate::entity_models) const FROG_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [FROG_TEXTURE_REF];
+pub(in crate::entity_models) const FROG_WARM_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/frog/frog_warm.png",
+        size: [48, 48],
+    };
+pub(in crate::entity_models) const FROG_COLD_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/frog/frog_cold.png",
+        size: [48, 48],
+    };
+pub(in crate::entity_models) fn frog_texture_ref(
+    variant: FrogModelVariant,
+) -> EntityModelTextureRef {
+    match variant {
+        FrogModelVariant::Temperate => FROG_TEMPERATE_TEXTURE_REF,
+        FrogModelVariant::Warm => FROG_WARM_TEXTURE_REF,
+        FrogModelVariant::Cold => FROG_COLD_TEXTURE_REF,
+    }
+}
+pub(in crate::entity_models) const FROG_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    FROG_TEMPERATE_TEXTURE_REF,
+    FROG_WARM_TEXTURE_REF,
+    FROG_COLD_TEXTURE_REF,
+];
 pub fn frog_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &FROG_ENTITY_TEXTURE_REFS
 }

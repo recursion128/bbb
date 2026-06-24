@@ -102,9 +102,12 @@ pub enum EntityModelKind {
     Guardian {
         elder: bool,
     },
-    /// `FrogModel` at its `createBodyLayer` rest pose. The keyframe animations (jump, croak,
-    /// tongue, swim/walk, idle-in-water) and the three texture variants are deferred.
-    Frog,
+    /// `FrogModel` at its `createBodyLayer` rest pose, textured by temperature variant
+    /// (`FrogVariant` asset). The keyframe animations (jump, croak, tongue, swim/walk,
+    /// idle-in-water) are deferred.
+    Frog {
+        variant: FrogModelVariant,
+    },
     /// `CreakingModel` at its `createBodyLayer` rest pose. The head look, walk, attack,
     /// invulnerable, and death keyframe animations and the emissive eyes layer are deferred.
     Creaking,
@@ -849,6 +852,16 @@ impl ParrotModelVariant {
             _ => Self::RedBlue,
         }
     }
+}
+
+/// Vanilla `FrogVariant` (the synced `DATA_VARIANT_ID` `Holder<FrogVariant>`): the three temperature
+/// frogs, sharing one `FrogModel` and differing only by texture (`FrogRenderer.getTextureLocation`
+/// reads `state.texture` from the variant's `assetInfo`). `TEMPERATE` is the vanilla default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrogModelVariant {
+    Temperate,
+    Warm,
+    Cold,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

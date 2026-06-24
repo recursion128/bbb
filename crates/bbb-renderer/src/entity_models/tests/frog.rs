@@ -67,7 +67,12 @@ fn frog_geometry_matches_vanilla_26_1_body_layer() {
 #[test]
 fn frog_mesh_uses_vanilla_body_layer_geometry() {
     // 15 cubes → 90 faces / 360 vertices / 540 indices.
-    let frog = entity_model_mesh(&[EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0)]);
+    let frog = entity_model_mesh(&[EntityModelInstance::frog(
+        950,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )]);
     assert_eq!(frog.opaque_faces, 90);
     assert_eq!(frog.vertices.len(), 360);
     assert_eq!(frog.indices.len(), 540);
@@ -131,10 +136,19 @@ fn frog_walk_moves_the_limbs_off_the_walk_cycle() {
     // A still frog (walk speed 0) samples the cycle at amplitude 0, collapsing to the bind pose; a
     // walking frog samples the FROG_WALK offsets, animating the body, arms, and legs. The vertex
     // count is preserved (no parts appear or vanish).
-    let still = entity_model_mesh(&[EntityModelInstance::frog(70, [0.0, 64.0, 0.0], 0.0)]);
-    let walking = entity_model_mesh(&[
-        EntityModelInstance::frog(71, [0.0, 64.0, 0.0], 0.0).with_walk_animation(6.0, 1.0)
-    ]);
+    let still = entity_model_mesh(&[EntityModelInstance::frog(
+        70,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )]);
+    let walking = entity_model_mesh(&[EntityModelInstance::frog(
+        71,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_walk_animation(6.0, 1.0)]);
     assert_eq!(still.vertices.len(), walking.vertices.len());
     assert_ne!(
         still.vertices, walking.vertices,
@@ -142,7 +156,12 @@ fn frog_walk_moves_the_limbs_off_the_walk_cycle() {
     );
 
     // The still frog equals the plain bind-pose emit (amplitude 0 ⇒ no offsets).
-    let bind = entity_model_mesh(&[EntityModelInstance::frog(72, [0.0, 64.0, 0.0], 0.0)]);
+    let bind = entity_model_mesh(&[EntityModelInstance::frog(
+        72,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )]);
     assert_eq!(still.vertices, bind.vertices);
 }
 
@@ -181,13 +200,22 @@ fn frog_croak_animation_matches_vanilla_definition() {
 fn frog_croak_shows_and_poses_the_pouch_off_the_hidden_bind_pose() {
     // A non-croaking frog (`-1.0` sentinel) hides the `croaking_body` pouch, so the mesh is the 15
     // visible cubes (90 faces) and matches the plain bind pose.
-    let resting = entity_model_mesh(&[EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0)]);
+    let resting = entity_model_mesh(&[EntityModelInstance::frog(
+        950,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )]);
     assert_eq!(resting.opaque_faces, 90);
 
     // A croaking frog shows the pouch, adding one cube (6 faces / 24 vertices), and re-poses it.
-    let croaking = entity_model_mesh(&[
-        EntityModelInstance::frog(951, [0.0, 64.0, 0.0], 0.0).with_frog_croak_seconds(0.5417)
-    ]);
+    let croaking = entity_model_mesh(&[EntityModelInstance::frog(
+        951,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_croak_seconds(0.5417)]);
     assert_eq!(
         croaking.opaque_faces, 96,
         "the croaking frog reveals the puffed pouch cube"
@@ -195,9 +223,13 @@ fn frog_croak_shows_and_poses_the_pouch_off_the_hidden_bind_pose() {
     assert_eq!(croaking.vertices.len(), resting.vertices.len() + 24);
 
     // Sampling the animation at a different time re-poses the pouch (the scale puffs and collapses).
-    let early = entity_model_mesh(&[
-        EntityModelInstance::frog(952, [0.0, 64.0, 0.0], 0.0).with_frog_croak_seconds(0.4167)
-    ]);
+    let early = entity_model_mesh(&[EntityModelInstance::frog(
+        952,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_croak_seconds(0.4167)]);
     assert_eq!(early.opaque_faces, 96);
     assert_ne!(
         early.vertices, croaking.vertices,
@@ -205,9 +237,13 @@ fn frog_croak_shows_and_poses_the_pouch_off_the_hidden_bind_pose() {
     );
 
     // An explicit `-1.0` (the not-croaking sentinel) leaves the pouch hidden, equal to the rest mesh.
-    let cleared = entity_model_mesh(&[
-        EntityModelInstance::frog(953, [0.0, 64.0, 0.0], 0.0).with_frog_croak_seconds(-1.0)
-    ]);
+    let cleared = entity_model_mesh(&[EntityModelInstance::frog(
+        953,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_croak_seconds(-1.0)]);
     assert_eq!(cleared.vertices, resting.vertices);
 }
 
@@ -249,13 +285,22 @@ fn frog_jump_animation_matches_vanilla_definition() {
 #[test]
 fn frog_jump_reposes_the_limbs_off_the_bind_pose() {
     // A non-jumping frog (`-1.0` sentinel) renders the plain bind/walk-rest pose.
-    let resting = entity_model_mesh(&[EntityModelInstance::frog(960, [0.0, 64.0, 0.0], 0.0)]);
+    let resting = entity_model_mesh(&[EntityModelInstance::frog(
+        960,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )]);
 
     // A long-jumping frog tips the body and tucks the limbs into the hold pose: the same 15 cubes
     // (no pouch), but re-posed off the bind pose.
-    let jumping = entity_model_mesh(&[
-        EntityModelInstance::frog(961, [0.0, 64.0, 0.0], 0.0).with_frog_jump_seconds(0.0)
-    ]);
+    let jumping = entity_model_mesh(&[EntityModelInstance::frog(
+        961,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_jump_seconds(0.0)]);
     assert_eq!(jumping.opaque_faces, resting.opaque_faces);
     assert_eq!(jumping.vertices.len(), resting.vertices.len());
     assert_ne!(
@@ -264,15 +309,23 @@ fn frog_jump_reposes_the_limbs_off_the_bind_pose() {
     );
 
     // The hold pose is constant across the 0.5s window, so a later sample matches.
-    let later = entity_model_mesh(&[
-        EntityModelInstance::frog(962, [0.0, 64.0, 0.0], 0.0).with_frog_jump_seconds(0.25)
-    ]);
+    let later = entity_model_mesh(&[EntityModelInstance::frog(
+        962,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_jump_seconds(0.25)]);
     assert_eq!(later.vertices, jumping.vertices);
 
     // An explicit `-1.0` (the not-jumping sentinel) leaves the frog at the bind pose.
-    let cleared = entity_model_mesh(&[
-        EntityModelInstance::frog(963, [0.0, 64.0, 0.0], 0.0).with_frog_jump_seconds(-1.0)
-    ]);
+    let cleared = entity_model_mesh(&[EntityModelInstance::frog(
+        963,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_jump_seconds(-1.0)]);
     assert_eq!(cleared.vertices, resting.vertices);
 }
 
@@ -315,13 +368,22 @@ fn frog_idle_water_animation_matches_vanilla_definition() {
 #[test]
 fn frog_idle_water_reposes_the_limbs_off_the_bind_pose() {
     // A dry/moving frog (`-1.0` sentinel) renders the plain bind/walk-rest pose (no swim-idle).
-    let resting = entity_model_mesh(&[EntityModelInstance::frog(970, [0.0, 64.0, 0.0], 0.0)]);
+    let resting = entity_model_mesh(&[EntityModelInstance::frog(
+        970,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )]);
 
     // An in-water idling frog hovers its limbs into the looping idle pose: the same 15 cubes (no
     // pouch), but re-posed off the bind pose. Even at `t = 0` the arms/legs carry a nonzero offset.
-    let idling = entity_model_mesh(&[
-        EntityModelInstance::frog(971, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(0.0)
-    ]);
+    let idling = entity_model_mesh(&[EntityModelInstance::frog(
+        971,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_swim_idle_seconds(0.0)]);
     assert_eq!(idling.opaque_faces, resting.opaque_faces);
     assert_eq!(idling.vertices.len(), resting.vertices.len());
     assert_ne!(
@@ -330,36 +392,60 @@ fn frog_idle_water_reposes_the_limbs_off_the_bind_pose() {
     );
 
     // A different phase mid-cycle re-poses the hover again (the sway tracks the elapsed seconds).
-    let idling_mid = entity_model_mesh(&[
-        EntityModelInstance::frog(972, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(1.5)
-    ]);
+    let idling_mid = entity_model_mesh(&[EntityModelInstance::frog(
+        972,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_swim_idle_seconds(1.5)]);
     assert_ne!(idling.vertices, idling_mid.vertices);
 
     // The animation loops at 3.0s, so sampling one full period later returns the start pose.
-    let idling_wrapped =
-        entity_model_mesh(&[
-            EntityModelInstance::frog(973, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(3.0)
-        ]);
+    let idling_wrapped = entity_model_mesh(&[EntityModelInstance::frog(
+        973,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_swim_idle_seconds(3.0)]);
     assert_eq!(idling_wrapped.vertices, idling.vertices);
 
     // An explicit `-1.0` (the dry/moving sentinel) leaves the frog at the bind pose.
-    let cleared = entity_model_mesh(&[
-        EntityModelInstance::frog(974, [0.0, 64.0, 0.0], 0.0).with_frog_swim_idle_seconds(-1.0)
-    ]);
+    let cleared = entity_model_mesh(&[EntityModelInstance::frog(
+        974,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_swim_idle_seconds(-1.0)]);
     assert_eq!(cleared.vertices, resting.vertices);
 }
 
 #[test]
 fn frog_textured_render_matches_vanilla_renderer() {
-    // The frog binds its single base texture (the temperate variant, atlas 48×48); the warm/cold
-    // colour variants share this geometry and stay deferred.
-    assert_eq!(frog_textured_layer_passes()[0].texture, FROG_TEXTURE_REF);
+    // Each of the three temperature variants binds its own base texture (atlas 48×48); all share
+    // one `FrogModel` geometry. The three refs match `FrogRenderer.getTextureLocation`'s asset paths.
+    for (variant, texture) in [
+        (FrogModelVariant::Temperate, FROG_TEMPERATE_TEXTURE_REF),
+        (FrogModelVariant::Warm, FROG_WARM_TEXTURE_REF),
+        (FrogModelVariant::Cold, FROG_COLD_TEXTURE_REF),
+    ] {
+        assert_eq!(frog_textured_layer_passes(variant)[0].texture, texture);
+        assert_eq!(
+            EntityModelKind::Frog { variant }.vanilla_texture_ref(),
+            Some(texture)
+        );
+        assert!(entity_model_texture_refs().contains(&texture));
+    }
     assert_eq!(
-        EntityModelKind::Frog.vanilla_texture_ref(),
-        Some(FROG_TEXTURE_REF)
+        frog_entity_texture_refs(),
+        &[
+            FROG_TEMPERATE_TEXTURE_REF,
+            FROG_WARM_TEXTURE_REF,
+            FROG_COLD_TEXTURE_REF
+        ]
     );
-    assert!(entity_model_texture_refs().contains(&FROG_TEXTURE_REF));
-    assert_eq!(frog_entity_texture_refs(), &[FROG_TEXTURE_REF]);
 
     let images: Vec<EntityModelTextureImage> = frog_entity_texture_refs()
         .iter()
@@ -371,7 +457,12 @@ fn frog_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0)],
+        &[EntityModelInstance::frog(
+            950,
+            [0.0, 64.0, 0.0],
+            0.0,
+            FrogModelVariant::Warm,
+        )],
         &atlas,
     );
     assert!(

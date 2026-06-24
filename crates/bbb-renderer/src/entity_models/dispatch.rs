@@ -506,11 +506,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 &guardian_textured_layer_passes(elder),
             )
         }
-        EntityModelKind::Frog => sink.model(
+        EntityModelKind::Frog { variant } => sink.model(
             FrogModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &frog_textured_layer_passes(),
+            &frog_textured_layer_passes(variant),
         ),
         EntityModelKind::Creaking => sink.model(
             CreakingModel::new(),

@@ -768,8 +768,13 @@ impl EntityModelInstance {
         )
     }
 
-    pub fn frog(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Frog, position, y_rot)
+    pub fn frog(entity_id: i32, position: [f32; 3], y_rot: f32, variant: FrogModelVariant) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Frog { variant },
+            position,
+            y_rot,
+        )
     }
 
     pub fn creaking(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

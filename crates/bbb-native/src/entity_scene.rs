@@ -3,12 +3,12 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-    DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
-    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, ParrotModelVariant,
-    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SalmonModelSize, SelectionBox,
-    SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose,
-    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, FrogModelVariant,
+    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
+    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
+    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -254,6 +254,10 @@ const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 const COW_VARIANT_DATA_ID: u8 = 18;
 const PIG_VARIANT_DATA_ID: u8 = 19;
+// Vanilla Frog.DATA_VARIANT_ID (18, Holder<FrogVariant>): `Frog extends Animal`, so its first own
+// accessor follows Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) /
+// AGE_LOCKED (17).
+const FROG_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
 // accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
 // (18) / DATA_OWNERUUID_ID (19).
@@ -323,6 +327,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let chicken_variants = world.registry_content("minecraft:chicken_variant");
     let cow_variants = world.registry_content("minecraft:cow_variant");
     let pig_variants = world.registry_content("minecraft:pig_variant");
+    let frog_variants = world.registry_content("minecraft:frog_variant");
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick)
@@ -338,6 +343,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
                 chicken_variants,
                 cow_variants,
                 pig_variants,
+                frog_variants,
             )
         })
         .collect()
@@ -365,6 +371,7 @@ fn entity_model_instance(
     chicken_variants: Option<&RegistryContentState>,
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
+    frog_variants: Option<&RegistryContentState>,
 ) -> Option<EntityModelInstance> {
     let mut kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
@@ -374,6 +381,7 @@ fn entity_model_instance(
         chicken_variants,
         cow_variants,
         pig_variants,
+        frog_variants,
     );
     // Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`: the
     // shell-ball swap is gated on the client `inStateTicks`, which `entity_model_kind` (data-only)
@@ -624,7 +632,7 @@ fn entity_model_kind(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    entity_model_kind_with_registries(entity_type_id, data_values, None, None, None)
+    entity_model_kind_with_registries(entity_type_id, data_values, None, None, None, None)
 }
 
 fn entity_model_kind_with_registries(
@@ -633,6 +641,7 @@ fn entity_model_kind_with_registries(
     chicken_variants: Option<&RegistryContentState>,
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
+    frog_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     entity_model_kind_with_time_and_registries(
         entity_type_id,
@@ -642,6 +651,7 @@ fn entity_model_kind_with_registries(
         chicken_variants,
         cow_variants,
         pig_variants,
+        frog_variants,
     )
 }
 
@@ -653,6 +663,7 @@ fn entity_model_kind_with_time_and_registries(
     chicken_variants: Option<&RegistryContentState>,
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
+    frog_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, chicken_variants),
@@ -857,7 +868,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
             placeholder("todo_fishing_bobber_bounds", 0.25, 0.25, 0.25)
         }
-        VANILLA_ENTITY_TYPE_FROG_ID => EntityModelKind::Frog,
+        VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, frog_variants),
         VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
@@ -1558,6 +1569,72 @@ fn chicken_variant_from_vanilla_registry_id(registry_id: i32) -> ChickenModelVar
         1 => ChickenModelVariant::Warm,
         2 => ChickenModelVariant::Cold,
         _ => ChickenModelVariant::Temperate,
+    }
+}
+
+fn frog_model_kind(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> EntityModelKind {
+    EntityModelKind::Frog {
+        variant: frog_model_variant(values, variants),
+    }
+}
+
+fn frog_model_variant(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> FrogModelVariant {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == FROG_VARIANT_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::FrogVariant,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .map(|id| {
+            if let Some(registry) = variants {
+                frog_variant_from_registry_id(registry, id).unwrap_or(FrogModelVariant::Temperate)
+            } else {
+                frog_variant_from_vanilla_registry_id(id)
+            }
+        })
+        .unwrap_or(FrogModelVariant::Temperate)
+}
+
+fn frog_variant_from_registry_id(
+    registry: &RegistryContentState,
+    registry_id: i32,
+) -> Option<FrogModelVariant> {
+    if registry_id < 0 {
+        return None;
+    }
+    registry
+        .entries
+        .get(registry_id as usize)
+        .and_then(|entry| frog_variant_from_entry_id(entry.id.as_str()))
+}
+
+fn frog_variant_from_entry_id(id: &str) -> Option<FrogModelVariant> {
+    match id {
+        "minecraft:temperate" => Some(FrogModelVariant::Temperate),
+        "minecraft:warm" => Some(FrogModelVariant::Warm),
+        "minecraft:cold" => Some(FrogModelVariant::Cold),
+        _ => None,
+    }
+}
+
+// Vanilla `FrogVariants.bootstrap` registers TEMPERATE, WARM, COLD in that order, so the static
+// fallback ids (used before the dynamic `frog_variant` registry arrives) are 0/1/2.
+fn frog_variant_from_vanilla_registry_id(registry_id: i32) -> FrogModelVariant {
+    match registry_id {
+        1 => FrogModelVariant::Warm,
+        2 => FrogModelVariant::Cold,
+        _ => FrogModelVariant::Temperate,
     }
 }
 
@@ -3359,6 +3436,7 @@ mod tests {
                 &[protocol_chicken_variant_data(99)],
                 Some(chicken_registry),
                 None,
+                None,
                 None
             ),
             EntityModelKind::Chicken {
@@ -3464,6 +3542,7 @@ mod tests {
                 &[protocol_cow_variant_data(99)],
                 None,
                 Some(cow_registry),
+                None,
                 None
             ),
             EntityModelKind::Cow {
@@ -3569,7 +3648,8 @@ mod tests {
                 &[protocol_pig_variant_data(99)],
                 None,
                 None,
-                Some(pig_registry)
+                Some(pig_registry),
+                None
             ),
             EntityModelKind::Pig {
                 variant: PigModelVariant::Temperate,
@@ -4202,13 +4282,29 @@ mod tests {
 
     #[test]
     fn entity_model_kind_maps_frog_to_real_model() {
-        // The frog was a placeholder render box; it now resolves to the real `FrogModel` at its
-        // rest pose. The keyframe animations (jump/croak/tongue/swim/walk/idle) and the three
-        // texture variants are deferred entity-side state, so no synced data is read.
+        // The frog resolves to the real `FrogModel` at its rest pose, textured by temperature
+        // variant. With no synced `DATA_VARIANT_ID` it defaults to TEMPERATE; otherwise the
+        // `Holder<FrogVariant>` registry id selects the colour. Without a synced `frog_variant`
+        // registry, the static `FrogVariants.bootstrap` order (TEMPERATE=0, WARM=1, COLD=2) applies.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_FROG_ID, &[]),
-            EntityModelKind::Frog
+            EntityModelKind::Frog {
+                variant: FrogModelVariant::Temperate
+            }
         );
+        for (id, variant) in [
+            (0, FrogModelVariant::Temperate),
+            (1, FrogModelVariant::Warm),
+            (2, FrogModelVariant::Cold),
+        ] {
+            assert_eq!(
+                entity_model_kind(
+                    VANILLA_ENTITY_TYPE_FROG_ID,
+                    &[protocol_frog_variant_data(id)]
+                ),
+                EntityModelKind::Frog { variant }
+            );
+        }
     }
 
     #[test]
@@ -4686,6 +4782,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Sheep {
                 baby: false,
@@ -4707,6 +4804,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Sheep {
                 baby: false,
@@ -4725,6 +4823,7 @@ mod tests {
                 )],
                 25.0,
                 0,
+                None,
                 None,
                 None,
                 None,
@@ -5492,6 +5591,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Wolf {
                 baby: false,
@@ -5506,6 +5606,7 @@ mod tests {
                 &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
                 0.0,
                 200,
+                None,
                 None,
                 None,
                 None,
@@ -5526,6 +5627,7 @@ mod tests {
                 ],
                 0.0,
                 199,
+                None,
                 None,
                 None,
                 None,
@@ -6396,6 +6498,18 @@ mod tests {
             serializer_id: 28,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::PigVariant,
+                id,
+            },
+        }
+    }
+
+    fn protocol_frog_variant_data(id: i32) -> EntityDataValue {
+        // Vanilla `EntityDataSerializers.FROG_VARIANT` is serializer id 27.
+        EntityDataValue {
+            data_id: FROG_VARIANT_DATA_ID,
+            serializer_id: 27,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::FrogVariant,
                 id,
             },
         }

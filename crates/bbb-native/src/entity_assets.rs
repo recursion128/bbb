@@ -201,6 +201,8 @@ mod tests {
                 "textures/entity/guardian/guardian_elder.png",
                 "textures/entity/warden/warden.png",
                 "textures/entity/frog/frog_temperate.png",
+                "textures/entity/frog/frog_warm.png",
+                "textures/entity/frog/frog_cold.png",
                 "textures/entity/armadillo/armadillo.png",
                 "textures/entity/armadillo/armadillo_baby.png",
                 "textures/entity/phantom/phantom.png",

@@ -3,10 +3,10 @@ use super::super::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         llama_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
         wolf_texture_ref, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-        EntityDyeColor, EntityModelTextureRef, HoglinModelFamily, IllagerModelFamily, LlamaVariant,
-        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern,
+        EntityDyeColor, EntityModelTextureRef, FrogModelVariant, HoglinModelFamily,
+        IllagerModelFamily, LlamaVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern,
     },
     model_layers::*,
 };
@@ -914,12 +914,13 @@ pub(in crate::entity_models) fn armadillo_textured_layer_passes(
     )]
 }
 
-pub(in crate::entity_models) fn frog_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    // The frog binds its single base texture (the temperate variant); the warm/cold colour variants
-    // share this geometry and stay deferred.
+pub(in crate::entity_models) fn frog_textured_layer_passes(
+    variant: FrogModelVariant,
+) -> Vec<EntityModelLayerPass> {
+    // The frog binds its temperature-variant base texture; all three share one `FrogModel` geometry.
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        FROG_TEXTURE_REF,
+        frog_texture_ref(variant),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }
