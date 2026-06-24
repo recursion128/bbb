@@ -145,6 +145,7 @@ fn strider_adult_mesh_uses_vanilla_body_layer_geometry() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        false,
     )]);
     assert_eq!(strider.opaque_faces, 54);
     assert_eq!(strider.vertices.len(), 216);
@@ -167,6 +168,7 @@ fn strider_baby_mesh_uses_vanilla_body_layer_geometry() {
         [0.0, 64.0, 0.0],
         0.0,
         true,
+        false,
     )]);
     assert_eq!(baby.opaque_faces, 36);
     assert_eq!(baby.vertices.len(), 144);
@@ -178,6 +180,7 @@ fn strider_baby_mesh_uses_vanilla_body_layer_geometry() {
         [0.0, 64.0, 0.0],
         0.0,
         false,
+        false,
     )]);
     assert_ne!(baby.vertices.len(), adult.vertices.len());
 }
@@ -185,7 +188,7 @@ fn strider_baby_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn strider_body_tracks_look_angles() {
     // The body tracks the projected look yaw/pitch.
-    let base = EntityModelInstance::strider(703, [0.0, 64.0, 0.0], 0.0, false);
+    let base = EntityModelInstance::strider(703, [0.0, 64.0, 0.0], 0.0, false, false);
     let forward = entity_model_mesh(&[base]);
     let looking = entity_model_mesh(&[base.with_head_look(40.0, -25.0)]);
     assert_eq!(forward.vertices.len(), looking.vertices.len());
@@ -199,7 +202,7 @@ fn strider_body_tracks_look_angles() {
 fn strider_walk_animates_legs_body_and_bristles() {
     // A standing strider differs from a walking one: the legs swing/lift, the body sways/bobs,
     // and the bristles flow.
-    let base = EntityModelInstance::strider(704, [0.0, 64.0, 0.0], 0.0, false);
+    let base = EntityModelInstance::strider(704, [0.0, 64.0, 0.0], 0.0, false, false);
     let standing = entity_model_mesh(&[base]);
     let walking = entity_model_mesh(&[base.with_walk_animation(3.0, 0.2)]);
     assert_eq!(standing.vertices.len(), walking.vertices.len());
@@ -217,27 +220,69 @@ fn strider_walk_animates_legs_body_and_bristles() {
 #[test]
 fn strider_texture_refs_match_vanilla_renderer() {
     assert_eq!(
-        EntityModelKind::Strider { baby: false }.model_key(),
+        EntityModelKind::Strider {
+            baby: false,
+            cold: false,
+        }
+        .model_key(),
         "strider"
     );
     assert_eq!(
-        EntityModelKind::Strider { baby: true }.model_key(),
+        EntityModelKind::Strider {
+            baby: true,
+            cold: false,
+        }
+        .model_key(),
         "strider_baby"
     );
     assert_eq!(
-        EntityModelKind::Strider { baby: false }.vanilla_texture_ref(),
+        EntityModelKind::Strider {
+            baby: false,
+            cold: false,
+        }
+        .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/strider/strider.png",
             size: [64, 128],
         })
     );
     assert_eq!(
-        EntityModelKind::Strider { baby: true }.vanilla_texture_ref(),
+        EntityModelKind::Strider {
+            baby: true,
+            cold: false,
+        }
+        .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/strider/strider_baby.png",
             size: [32, 32],
         })
     );
+    // A suffocating (cold) strider swaps to the `strider_cold` texture × age
+    // (`StriderRenderer.getTextureLocation`).
+    assert_eq!(
+        EntityModelKind::Strider {
+            baby: false,
+            cold: true,
+        }
+        .vanilla_texture_ref(),
+        Some(STRIDER_COLD_TEXTURE_REF)
+    );
+    assert_eq!(
+        EntityModelKind::Strider {
+            baby: true,
+            cold: true,
+        }
+        .vanilla_texture_ref(),
+        Some(STRIDER_COLD_BABY_TEXTURE_REF)
+    );
+    assert_eq!(strider_texture_ref(false, true), STRIDER_COLD_TEXTURE_REF);
+    assert_eq!(
+        strider_texture_ref(true, true),
+        STRIDER_COLD_BABY_TEXTURE_REF
+    );
+    assert!(entity_model_texture_refs().contains(&STRIDER_COLD_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&STRIDER_COLD_BABY_TEXTURE_REF));
+    assert_eq!(strider_entity_texture_refs().len(), 4);
 }
 
 #[test]
@@ -246,7 +291,7 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
 
     // Adult renders into the cutout mesh (default `RenderTypes::entityCutout`). Nine cubes →
     // 54 faces / 216 vertices, with nothing on the translucent or eyes passes.
-    let adult = EntityModelInstance::strider(750, [0.0, 64.0, 0.0], 0.0, false);
+    let adult = EntityModelInstance::strider(750, [0.0, 64.0, 0.0], 0.0, false, false);
     let meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -260,7 +305,7 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
     // Baby is the smaller model: six cubes → 36 faces / 144 vertices.
-    let baby = EntityModelInstance::strider(751, [0.0, 64.0, 0.0], 0.0, true);
+    let baby = EntityModelInstance::strider(751, [0.0, 64.0, 0.0], 0.0, true, false);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.cutout.vertices.len(), 144);
 

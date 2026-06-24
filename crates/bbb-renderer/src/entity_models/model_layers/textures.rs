@@ -223,6 +223,29 @@ pub(in crate::entity_models) const STRIDER_BABY_TEXTURE_REF: EntityModelTextureR
         path: "textures/entity/strider/strider_baby.png",
         size: [32, 32],
     };
+// Vanilla `StriderRenderer.getTextureLocation`: a suffocating (cold, off-lava shivering) strider
+// swaps to the `strider_cold` texture × age.
+pub(in crate::entity_models) const STRIDER_COLD_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/strider/strider_cold.png",
+        size: [64, 128],
+    };
+pub(in crate::entity_models) const STRIDER_COLD_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/strider/strider_cold_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) fn strider_texture_ref(
+    baby: bool,
+    cold: bool,
+) -> EntityModelTextureRef {
+    match (cold, baby) {
+        (false, false) => STRIDER_TEXTURE_REF,
+        (false, true) => STRIDER_BABY_TEXTURE_REF,
+        (true, false) => STRIDER_COLD_TEXTURE_REF,
+        (true, true) => STRIDER_COLD_BABY_TEXTURE_REF,
+    }
+}
 
 // Vanilla `TurtleRenderer` textures (adult 128×64, baby 16×16).
 pub(in crate::entity_models) const TURTLE_TEXTURE_REF: EntityModelTextureRef =
@@ -758,7 +781,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 276] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 278] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1015,6 +1038,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ALLAY_TEXTURE_REF,
     STRIDER_TEXTURE_REF,
     STRIDER_BABY_TEXTURE_REF,
+    STRIDER_COLD_TEXTURE_REF,
+    STRIDER_COLD_BABY_TEXTURE_REF,
     TURTLE_TEXTURE_REF,
     TURTLE_BABY_TEXTURE_REF,
     BAT_TEXTURE_REF,
@@ -1090,8 +1115,12 @@ pub fn allay_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &ALLAY_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const STRIDER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [STRIDER_TEXTURE_REF, STRIDER_BABY_TEXTURE_REF];
+pub(in crate::entity_models) const STRIDER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
+    STRIDER_TEXTURE_REF,
+    STRIDER_BABY_TEXTURE_REF,
+    STRIDER_COLD_TEXTURE_REF,
+    STRIDER_COLD_BABY_TEXTURE_REF,
+];
 
 pub fn strider_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &STRIDER_ENTITY_TEXTURE_REFS

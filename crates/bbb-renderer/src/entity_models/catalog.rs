@@ -54,11 +54,13 @@ pub enum EntityModelKind {
     Allay,
     /// Strider (`AdultStriderModel` / `BabyStriderModel`, `StriderRenderer`). The body sway,
     /// vertical bob, leg swing/lift, and bristle flow read `EntityRenderState.age_in_ticks`,
-    /// the walk animation, and the look angles. The ridden pose (`isRidden` zeroing the body
-    /// look), the saddle equipment layer, and the cold/suffocating texture and shake are
+    /// the walk animation, and the look angles. The `cold` flag (the synced `isSuffocating()`) swaps
+    /// to the `strider_cold` texture × age (`StriderRenderer.getTextureLocation`). The ridden pose
+    /// (`isRidden` zeroing the body look), the saddle equipment layer, and the suffocating shake are
     /// deferred entity-side state.
     Strider {
         baby: bool,
+        cold: bool,
     },
     /// Turtle (`AdultTurtleModel` / `BabyTurtleModel`, `TurtleRenderer`). The
     /// `QuadrupedModel` head look plus the `TurtleModel.setupAnim` land walk / water swim leg

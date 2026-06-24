@@ -351,6 +351,8 @@ mod tests {
                 "textures/entity/allay/allay.png",
                 "textures/entity/strider/strider.png",
                 "textures/entity/strider/strider_baby.png",
+                "textures/entity/strider/strider_cold.png",
+                "textures/entity/strider/strider_cold_baby.png",
                 "textures/entity/turtle/turtle.png",
                 "textures/entity/turtle/turtle_baby.png",
                 "textures/entity/bat/bat.png",

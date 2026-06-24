@@ -725,10 +725,10 @@ impl EntityModelInstance {
         Self::new(entity_id, EntityModelKind::Allay, position, y_rot)
     }
 
-    pub fn strider(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+    pub fn strider(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool, cold: bool) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Strider { baby },
+            EntityModelKind::Strider { baby, cold },
             position,
             y_rot,
         )

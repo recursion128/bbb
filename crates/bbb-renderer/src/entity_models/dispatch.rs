@@ -27,12 +27,12 @@ use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
 use super::model::EntityModel;
 use super::model_layers::{
-    AllayModel, ArmadilloModel, ArmorStandModel, ArrowModel, AxolotlModel, BatModel, BeeModel,
-    BlazeModel, BoatModel, BreezeModel, ChickenModel, CodModel, CowModel, CreakingModel,
-    CreeperModel, DolphinModel, EnderDragonModel, EndermanModel, EndermiteModel, EvokerFangsModel,
-    FelineModel, FoxModel, FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel,
-    IllagerModel, IronGolemModel, LeashKnotModel, LlamaSpitModel, MagmaCubeModel, MinecartModel,
-    NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel,
+    strider_texture_ref, AllayModel, ArmadilloModel, ArmorStandModel, ArrowModel, AxolotlModel,
+    BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel, ChickenModel, CodModel, CowModel,
+    CreakingModel, CreeperModel, DolphinModel, EnderDragonModel, EndermanModel, EndermiteModel,
+    EvokerFangsModel, FelineModel, FoxModel, FrogModel, GhastModel, GoatModel, GuardianModel,
+    HappyGhastModel, IllagerModel, IronGolemModel, LeashKnotModel, LlamaSpitModel, MagmaCubeModel,
+    MinecartModel, NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel,
     PufferfishModel, RabbitModel, RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel,
     SilverfishModel, SnifferModel, SnowGolemModel, SpiderModel, StriderModel, TadpoleModel,
     TridentModel, TurtleModel, VexModel, VillagerModel, WanderingTraderModel, WardenModel,
@@ -40,8 +40,7 @@ use super::model_layers::{
     ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BEE_BABY_TEXTURE_REF,
     BEE_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
     DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF,
-    STRIDER_BABY_TEXTURE_REF, STRIDER_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
-    TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+    TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -375,23 +374,16 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 [1.0, 1.0, 1.0, 1.0],
             )],
         ),
-        EntityModelKind::Strider { baby } => {
-            let texture = if baby {
-                STRIDER_BABY_TEXTURE_REF
-            } else {
-                STRIDER_TEXTURE_REF
-            };
-            sink.model(
-                StriderModel::new(baby),
-                entity_model_root_transform(*instance),
-                instance,
-                &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::Cutout,
-                    texture,
-                    [1.0, 1.0, 1.0, 1.0],
-                )],
-            )
-        }
+        EntityModelKind::Strider { baby, cold } => sink.model(
+            StriderModel::new(baby),
+            entity_model_root_transform(*instance),
+            instance,
+            &[EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Cutout,
+                strider_texture_ref(baby, cold),
+                [1.0, 1.0, 1.0, 1.0],
+            )],
+        ),
         EntityModelKind::Bat => sink.model(
             BatModel::new(),
             entity_model_root_transform(*instance),

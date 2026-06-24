@@ -294,6 +294,9 @@ const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 // UNHAPPY (18) / SNEEZE (19) / EAT (20) come the two gene bytes; DATA_ID_FLAGS follows at 23.
 const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
 const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
+// Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
+// two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
+const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 /// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
@@ -975,6 +978,7 @@ fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_STRIDER_ID => EntityModelKind::Strider {
             baby: ageable_baby(data_values),
+            cold: entity_data_bool(data_values, STRIDER_SUFFOCATING_DATA_ID, false),
         },
         VANILLA_ENTITY_TYPE_TADPOLE_ID => EntityModelKind::Tadpole,
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
@@ -4511,22 +4515,38 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_kind_projects_strider_baby_from_data() {
+    fn entity_model_kind_projects_strider_baby_and_cold_from_data() {
         // The strider previously fell back to the horse quadruped; it now resolves to the real
         // `AdultStriderModel` / `BabyStriderModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
-        // (index 16, default adult). The body sway/bob, leg swing/lift, and bristle flow read
-        // the projected age, walk animation, and look angles; the ridden pose, saddle layer, and
-        // cold/suffocating texture are deferred entity-side state.
+        // (index 16, default adult). The `cold` flag is the synced `DATA_SUFFOCATING` (19), swapping
+        // to the `strider_cold` texture. The ridden pose and saddle layer stay deferred.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_STRIDER_ID, &[]),
-            EntityModelKind::Strider { baby: false }
+            EntityModelKind::Strider {
+                baby: false,
+                cold: false
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_STRIDER_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Strider { baby: true }
+            EntityModelKind::Strider {
+                baby: true,
+                cold: false
+            }
+        );
+        // A suffocating strider carries the cold texture.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_STRIDER_ID,
+                &[protocol_bool_data(STRIDER_SUFFOCATING_DATA_ID, true)]
+            ),
+            EntityModelKind::Strider {
+                baby: false,
+                cold: true
+            }
         );
     }
 
