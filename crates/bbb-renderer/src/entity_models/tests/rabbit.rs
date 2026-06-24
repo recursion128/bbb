@@ -22,11 +22,14 @@ fn adult_rabbit_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(RABBIT_HEAD_POSE.rotation, [0.3927, 0.0, 0.0]);
     assert_eq!(RABBIT_HEAD_CUBES[0].min, [-2.5, -3.0, -4.0]);
     assert_eq!(RABBIT_HEAD_CUBES[0].size, [5.0, 5.0, 5.0]);
-    // The two 2×5×1 ears share their box, differing only in the pivot X sign.
+    // The two 2×5×1 ears share their box geometry, differing only in the pivot X sign (and, on the
+    // textured path, in their per-side texOffs — so the box is now a per-side cube const).
     assert_eq!(RABBIT_RIGHT_EAR_POSE.offset, [1.5, -3.7071, -0.8787]);
     assert_eq!(RABBIT_LEFT_EAR_POSE.offset, [-1.5, -3.7071, -0.8787]);
-    assert_eq!(RABBIT_EAR_CUBES[0].min, [-1.0, -4.2929, -0.1213]);
-    assert_eq!(RABBIT_EAR_CUBES[0].size, [2.0, 5.0, 1.0]);
+    assert_eq!(RABBIT_RIGHT_EAR_CUBES[0].min, [-1.0, -4.2929, -0.1213]);
+    assert_eq!(RABBIT_RIGHT_EAR_CUBES[0].size, [2.0, 5.0, 1.0]);
+    assert_eq!(RABBIT_LEFT_EAR_CUBES[0].min, [-1.0, -4.2929, -0.1213]);
+    assert_eq!(RABBIT_LEFT_EAR_CUBES[0].size, [2.0, 5.0, 1.0]);
 
     // `frontlegs` (offset (0, -1.5349, -6.3108)): a cubeless pivot parenting the two front legs.
     assert_eq!(RABBIT_FRONTLEGS_POSE.offset, [0.0, -1.5349, -6.3108]);
@@ -45,8 +48,8 @@ fn adult_rabbit_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(RABBIT_RIGHT_HIND_LEG_POSE.offset, [-3.0, 0.5, 0.0]);
     assert_eq!(RABBIT_RIGHT_HAUNCH_POSE.offset, [0.0, -0.5, 0.0]);
     assert_eq!(RABBIT_RIGHT_HAUNCH_POSE.rotation, [0.0, 0.3927, 0.0]);
-    assert_eq!(RABBIT_HAUNCH_CUBES[0].min, [-1.0, 0.0, -5.0]);
-    assert_eq!(RABBIT_HAUNCH_CUBES[0].size, [2.0, 1.0, 6.0]);
+    assert_eq!(RABBIT_RIGHT_HAUNCH_CUBES[0].min, [-1.0, 0.0, -5.0]);
+    assert_eq!(RABBIT_RIGHT_HAUNCH_CUBES[0].size, [2.0, 1.0, 6.0]);
     assert_eq!(RABBIT_LEFT_HIND_LEG_POSE.offset, [3.0, 0.5, 0.0]);
     assert_eq!(RABBIT_LEFT_HAUNCH_POSE.rotation, [0.0, -0.3927, 0.0]);
 }
@@ -139,19 +142,19 @@ fn baby_rabbit_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(BABY_RABBIT_HEAD_POSE.offset, [0.0, -5.0, -2.6]);
     assert_eq!(BABY_RABBIT_HEAD_CUBES[0].size, [5.0, 4.0, 4.0]);
     assert_eq!(BABY_RABBIT_RIGHT_EAR_POSE.offset, [-1.5, -3.5, -0.5]);
-    assert_eq!(BABY_RABBIT_EAR_CUBES[0].size, [2.0, 4.0, 1.0]);
+    assert_eq!(BABY_RABBIT_RIGHT_EAR_CUBES[0].size, [2.0, 4.0, 1.0]);
 
     // `frontlegs` (cubeless) → each front leg (cubeless, pitched 0.3927) → its `_r1` cube.
     assert_eq!(BABY_RABBIT_LEFT_FRONT_LEG_POSE.offset, [1.0, 1.0, -0.5]);
     assert_eq!(BABY_RABBIT_LEFT_FRONT_LEG_POSE.rotation, [0.3927, 0.0, 0.0]);
     assert_eq!(BABY_RABBIT_FRONT_LEG_R1_POSE.rotation, [-0.3927, 0.0, 0.0]);
-    assert_eq!(BABY_RABBIT_FRONT_LEG_CUBES[0].size, [1.0, 3.0, 1.0]);
+    assert_eq!(BABY_RABBIT_LEFT_FRONT_LEG_CUBES[0].size, [1.0, 3.0, 1.0]);
 
     // `backlegs` (cubeless) → each hind leg (cubeless, yawed π) → its yawed haunch.
     assert_eq!(BABY_RABBIT_BACKLEGS_POSE.offset, [0.0, 23.0, 2.0]);
     assert_eq!(BABY_RABBIT_LEFT_HIND_LEG_POSE.rotation, [0.0, 3.1416, 0.0]);
     assert_eq!(BABY_RABBIT_LEFT_HAUNCH_POSE.rotation, [0.0, -0.7854, 0.0]);
-    assert_eq!(BABY_RABBIT_HAUNCH_CUBES[0].size, [2.0, 1.0, 3.0]);
+    assert_eq!(BABY_RABBIT_LEFT_HAUNCH_CUBES[0].size, [2.0, 1.0, 3.0]);
 }
 
 #[test]

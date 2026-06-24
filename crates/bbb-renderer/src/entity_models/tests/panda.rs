@@ -143,8 +143,8 @@ fn baby_panda_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(BABY_PANDA_HEAD_CUBES[2].min, [-4.5, -4.0, -3.5]);
     assert_eq!(BABY_PANDA_HEAD_CUBES[3].min, [1.5, -4.0, -3.5]);
 
-    // The four legs share the 3×2×3 box.
-    assert_eq!(BABY_PANDA_LEG_CUBES[0].size, [3.0, 2.0, 3.0]);
+    // The four legs share the 3×2×3 box (one cube const per leg, distinct UV).
+    assert_eq!(BABY_PANDA_RIGHT_HIND_LEG_CUBES[0].size, [3.0, 2.0, 3.0]);
 }
 
 #[test]

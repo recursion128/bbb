@@ -4,11 +4,9 @@ use super::super::keyframe::{
     sample_bone_offsets_with_scale, scale_vec, AnimationChannel, AnimationDefinition,
     AnimationTarget, BoneAnimation, Keyframe, KeyframeInterpolation,
 };
-use super::{
-    model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, SNIFFER_BROWN, SNIFFER_NOSE,
-};
+use super::{PartPose, PART_POSE_ZERO, SNIFFER_BROWN, SNIFFER_NOSE};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `SnifferModel.createBodyLayer` (atlas 192×192). The mesh root holds one `bone`
 // part at `offset(0, 5, 0)` parenting the body and the six legs; `body` parents the head, which
@@ -21,36 +19,118 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // [`SNIFFER_LONGSNIFF`], RISING→[`SNIFFER_STAND_UP`], FEELING_HAPPY→[`SNIFFER_HAPPY`], SCENTING→
 // [`SNIFFER_SNIFFSNIFF`] (driven by the projected `sniffer_animation_id`/`_seconds`). The search-walk
 // variant (`SNIFFER_SNIFF_SEARCH`, gated on the un-synced `isSearching`) and the baby-transform stay
-// deferred. The texture-backed path is deferred.
+// deferred.
 
-// `body`: the 25×29×40 trunk, a 25×24×40 inner block inflated by `CubeDeformation(0.5)` (geometry
-// `min -= 0.5`, `size += 1`), and the 25×0×40 belly plane.
-pub(in crate::entity_models) const SNIFFER_BODY_CUBES: [ModelCubeDesc; 3] = [
-    cube([-12.5, -14.0, -20.0], [25.0, 29.0, 40.0], SNIFFER_BROWN),
-    cube([-13.0, -14.5, -20.5], [26.0, 25.0, 41.0], SNIFFER_BROWN),
-    cube([-12.5, 12.0, -20.0], [25.0, 0.0, 40.0], SNIFFER_BROWN),
+// `body`: the 25×29×40 trunk (texOffs(62,68)), a 25×24×40 inner block inflated by
+// `CubeDeformation(0.5)` (geometry `min -= 0.5`, `size += 1`, texOffs(62,0), un-inflated `uv_size`
+// `[25,24,40]`), and the 25×0×40 belly plane (texOffs(87,68)).
+pub(in crate::entity_models) const SNIFFER_BODY_CUBES: [ModelCube; 3] = [
+    ModelCube::new(
+        [-12.5, -14.0, -20.0],
+        [25.0, 29.0, 40.0],
+        SNIFFER_BROWN,
+        [25.0, 29.0, 40.0],
+        [62.0, 68.0],
+        false,
+    ),
+    ModelCube::new(
+        [-13.0, -14.5, -20.5],
+        [26.0, 25.0, 41.0],
+        SNIFFER_BROWN,
+        [25.0, 24.0, 40.0],
+        [62.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-12.5, 12.0, -20.0],
+        [25.0, 0.0, 40.0],
+        SNIFFER_BROWN,
+        [25.0, 0.0, 40.0],
+        [87.0, 68.0],
+        false,
+    ),
 ];
 
-// `head`: the 13×18×11 skull plus a 13×0×11 top plane.
-pub(in crate::entity_models) const SNIFFER_HEAD_CUBES: [ModelCubeDesc; 2] = [
-    cube([-6.5, -7.5, -11.5], [13.0, 18.0, 11.0], SNIFFER_BROWN),
-    cube([-6.5, 7.5, -11.5], [13.0, 0.0, 11.0], SNIFFER_BROWN),
+// `head`: the 13×18×11 skull (texOffs(8,15)) plus a 13×0×11 top plane (texOffs(8,4)).
+pub(in crate::entity_models) const SNIFFER_HEAD_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-6.5, -7.5, -11.5],
+        [13.0, 18.0, 11.0],
+        SNIFFER_BROWN,
+        [13.0, 18.0, 11.0],
+        [8.0, 15.0],
+        false,
+    ),
+    ModelCube::new(
+        [-6.5, 7.5, -11.5],
+        [13.0, 0.0, 11.0],
+        SNIFFER_BROWN,
+        [13.0, 0.0, 11.0],
+        [8.0, 4.0],
+        false,
+    ),
 ];
 
-pub(in crate::entity_models) const SNIFFER_LEFT_EAR_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, 0.0, -3.0], [1.0, 19.0, 7.0], SNIFFER_BROWN)];
-pub(in crate::entity_models) const SNIFFER_RIGHT_EAR_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, -3.0], [1.0, 19.0, 7.0], SNIFFER_BROWN)];
+pub(in crate::entity_models) const SNIFFER_LEFT_EAR_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [0.0, 0.0, -3.0],
+    [1.0, 19.0, 7.0],
+    SNIFFER_BROWN,
+    [1.0, 19.0, 7.0],
+    [2.0, 0.0],
+    false,
+)];
+pub(in crate::entity_models) const SNIFFER_RIGHT_EAR_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -3.0],
+    [1.0, 19.0, 7.0],
+    SNIFFER_BROWN,
+    [1.0, 19.0, 7.0],
+    [48.0, 0.0],
+    false,
+)];
 
-// The 13×2×9 nose pad (the sniffer's distinctive snout) and the 13×12×9 lower beak / jaw.
-pub(in crate::entity_models) const SNIFFER_NOSE_CUBES: [ModelCubeDesc; 1] =
-    [cube([-6.5, -2.0, -9.0], [13.0, 2.0, 9.0], SNIFFER_NOSE)];
-pub(in crate::entity_models) const SNIFFER_LOWER_BEAK_CUBES: [ModelCubeDesc; 1] =
-    [cube([-6.5, -7.0, -8.0], [13.0, 12.0, 9.0], SNIFFER_BROWN)];
+// The 13×2×9 nose pad (the sniffer's distinctive snout, texOffs(10,45)) and the 13×12×9 lower
+// beak / jaw (texOffs(10,57)).
+pub(in crate::entity_models) const SNIFFER_NOSE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-6.5, -2.0, -9.0],
+    [13.0, 2.0, 9.0],
+    SNIFFER_NOSE,
+    [13.0, 2.0, 9.0],
+    [10.0, 45.0],
+    false,
+)];
+pub(in crate::entity_models) const SNIFFER_LOWER_BEAK_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-6.5, -7.0, -8.0],
+    [13.0, 12.0, 9.0],
+    SNIFFER_BROWN,
+    [13.0, 12.0, 9.0],
+    [10.0, 57.0],
+    false,
+)];
 
-// All six legs share one 7×10×8 box.
-pub(in crate::entity_models) const SNIFFER_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.5, -1.0, -4.0], [7.0, 10.0, 8.0], SNIFFER_BROWN)];
+// All six legs share one 7×10×8 box geometry, but vanilla gives each leg its OWN texOffs (right
+// column at u=32, left column at u=0; front/mid/hind at v=87/105/123), so the cube is split per leg.
+const fn sniffer_leg_cube(tex: [f32; 2]) -> ModelCube {
+    ModelCube::new(
+        [-3.5, -1.0, -4.0],
+        [7.0, 10.0, 8.0],
+        SNIFFER_BROWN,
+        [7.0, 10.0, 8.0],
+        tex,
+        false,
+    )
+}
+pub(in crate::entity_models) const SNIFFER_RIGHT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [sniffer_leg_cube([32.0, 87.0])];
+pub(in crate::entity_models) const SNIFFER_RIGHT_MID_LEG_CUBES: [ModelCube; 1] =
+    [sniffer_leg_cube([32.0, 105.0])];
+pub(in crate::entity_models) const SNIFFER_RIGHT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [sniffer_leg_cube([32.0, 123.0])];
+pub(in crate::entity_models) const SNIFFER_LEFT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [sniffer_leg_cube([0.0, 87.0])];
+pub(in crate::entity_models) const SNIFFER_LEFT_MID_LEG_CUBES: [ModelCube; 1] =
+    [sniffer_leg_cube([0.0, 105.0])];
+pub(in crate::entity_models) const SNIFFER_LEFT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [sniffer_leg_cube([0.0, 123.0])];
 
 /// Vanilla `SnifferModel.createBodyLayer` rest-pose part poses, rooted at the cubeless `bone` part
 /// (`offset(0, 5, 0)`) parenting the `body` and the six legs; `body` parents the `head`, which
@@ -126,30 +206,33 @@ pub(in crate::entity_models) const SNIFFER_LEFT_HIND_LEG_POSE: PartPose = PartPo
 /// `addOrReplaceChild` order. The `bone`, `body`, `head`, both ears, and the six legs are
 /// name-addressed by `setup_anim`, so `bone`, `body`, and `head` carry named children.
 fn sniffer_root() -> ModelPart {
-    let head = ModelPart::colored_named(
+    let head = ModelPart::new(
         SNIFFER_HEAD_POSE,
-        &SNIFFER_HEAD_CUBES,
+        SNIFFER_HEAD_CUBES.to_vec(),
         vec![
             (
                 "left_ear",
-                ModelPart::leaf_colored(SNIFFER_LEFT_EAR_POSE, &SNIFFER_LEFT_EAR_CUBES),
+                ModelPart::leaf(SNIFFER_LEFT_EAR_POSE, SNIFFER_LEFT_EAR_CUBES.to_vec()),
             ),
             (
                 "right_ear",
-                ModelPart::leaf_colored(SNIFFER_RIGHT_EAR_POSE, &SNIFFER_RIGHT_EAR_CUBES),
+                ModelPart::leaf(SNIFFER_RIGHT_EAR_POSE, SNIFFER_RIGHT_EAR_CUBES.to_vec()),
             ),
             (
                 "nose",
-                ModelPart::leaf_colored(SNIFFER_NOSE_POSE, &SNIFFER_NOSE_CUBES),
+                ModelPart::leaf(SNIFFER_NOSE_POSE, SNIFFER_NOSE_CUBES.to_vec()),
             ),
             (
                 "lower_beak",
-                ModelPart::leaf_colored(SNIFFER_LOWER_BEAK_POSE, &SNIFFER_LOWER_BEAK_CUBES),
+                ModelPart::leaf(SNIFFER_LOWER_BEAK_POSE, SNIFFER_LOWER_BEAK_CUBES.to_vec()),
             ),
         ],
     );
-    let body =
-        ModelPart::colored_named(SNIFFER_BODY_POSE, &SNIFFER_BODY_CUBES, vec![("head", head)]);
+    let body = ModelPart::new(
+        SNIFFER_BODY_POSE,
+        SNIFFER_BODY_CUBES.to_vec(),
+        vec![("head", head)],
+    );
     let bone = ModelPart::new(
         SNIFFER_BONE_POSE,
         Vec::new(),
@@ -157,27 +240,45 @@ fn sniffer_root() -> ModelPart {
             ("body", body),
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(SNIFFER_RIGHT_FRONT_LEG_POSE, &SNIFFER_LEG_CUBES),
+                ModelPart::leaf(
+                    SNIFFER_RIGHT_FRONT_LEG_POSE,
+                    SNIFFER_RIGHT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "right_mid_leg",
-                ModelPart::leaf_colored(SNIFFER_RIGHT_MID_LEG_POSE, &SNIFFER_LEG_CUBES),
+                ModelPart::leaf(
+                    SNIFFER_RIGHT_MID_LEG_POSE,
+                    SNIFFER_RIGHT_MID_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "right_hind_leg",
-                ModelPart::leaf_colored(SNIFFER_RIGHT_HIND_LEG_POSE, &SNIFFER_LEG_CUBES),
+                ModelPart::leaf(
+                    SNIFFER_RIGHT_HIND_LEG_POSE,
+                    SNIFFER_RIGHT_HIND_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(SNIFFER_LEFT_FRONT_LEG_POSE, &SNIFFER_LEG_CUBES),
+                ModelPart::leaf(
+                    SNIFFER_LEFT_FRONT_LEG_POSE,
+                    SNIFFER_LEFT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "left_mid_leg",
-                ModelPart::leaf_colored(SNIFFER_LEFT_MID_LEG_POSE, &SNIFFER_LEG_CUBES),
+                ModelPart::leaf(
+                    SNIFFER_LEFT_MID_LEG_POSE,
+                    SNIFFER_LEFT_MID_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "left_hind_leg",
-                ModelPart::leaf_colored(SNIFFER_LEFT_HIND_LEG_POSE, &SNIFFER_LEG_CUBES),
+                ModelPart::leaf(
+                    SNIFFER_LEFT_HIND_LEG_POSE,
+                    SNIFFER_LEFT_HIND_LEG_CUBES.to_vec(),
+                ),
             ),
         ],
     );
@@ -988,7 +1089,7 @@ pub(in crate::entity_models) const SNIFFER_HAPPY: AnimationDefinition = Animatio
 
 /// Mutable sniffer model, mirroring vanilla `SnifferModel`. The cubeless `bone` root (parenting the
 /// body and the six legs; `body` parents the head, which parents the two ears, nose, and beak) hangs
-/// off a synthetic root, built from the baked colored geometry as a named-children tree. Colored-only:
+/// off a synthetic root, built from the baked geometry as a named-children tree.
 /// `setup_anim` sets the head look, adds the looping `SNIFFER_WALK` cycle onto the body, head, ears,
 /// and the six legs, then layers the active synced-state one-shot (dig / long-sniff / stand-up /
 /// happy / sniff-sniff) on top. The un-synced search-walk variant (`SNIFFER_SNIFF_SEARCH`) and the

@@ -1,9 +1,6 @@
-use super::{
-    apply_head_look, limb_swing_at_rest, model_cube as cube, ModelCubeDesc, PartPose, FELINE_TAN,
-    PART_POSE_ZERO,
-};
+use super::{apply_head_look, limb_swing_at_rest, PartPose, FELINE_TAN, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `AdultFelineModel.createBodyMesh(CubeDeformation.NONE)` (atlas 64×32), shared by the
 // ocelot (`ModelLayers.OCELOT`, unscaled) and the cat (`ModelLayers.CAT`, the same mesh scaled 0.8 by
@@ -22,32 +19,93 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 /// feline mesh scaled 0.8. The ocelot layer is unscaled.
 pub(in crate::entity_models) const FELINE_CAT_SCALE: f32 = 0.8;
 
-// `head` cubes: the 5×4×5 skull, the 3×2×2 nose, and the two 1×1×2 ears.
-pub(in crate::entity_models) const FELINE_HEAD_CUBES: [ModelCubeDesc; 4] = [
-    cube([-2.5, -2.0, -3.0], [5.0, 4.0, 5.0], FELINE_TAN),
-    cube([-1.5, -0.001, -4.0], [3.0, 2.0, 2.0], FELINE_TAN),
-    cube([-2.0, -3.0, 0.0], [1.0, 1.0, 2.0], FELINE_TAN),
-    cube([1.0, -3.0, 0.0], [1.0, 1.0, 2.0], FELINE_TAN),
+// `head` cubes: the 5×4×5 skull (texOffs (0,0)), the 3×2×2 nose (texOffs (0,24)), and the two 1×1×2
+// ears (texOffs (0,10) / (6,10) — distinct, not mirrors).
+pub(in crate::entity_models) const FELINE_HEAD_CUBES: [ModelCube; 4] = [
+    ModelCube::new(
+        [-2.5, -2.0, -3.0],
+        [5.0, 4.0, 5.0],
+        FELINE_TAN,
+        [5.0, 4.0, 5.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-1.5, -0.001, -4.0],
+        [3.0, 2.0, 2.0],
+        FELINE_TAN,
+        [3.0, 2.0, 2.0],
+        [0.0, 24.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.0, -3.0, 0.0],
+        [1.0, 1.0, 2.0],
+        FELINE_TAN,
+        [1.0, 1.0, 2.0],
+        [0.0, 10.0],
+        false,
+    ),
+    ModelCube::new(
+        [1.0, -3.0, 0.0],
+        [1.0, 1.0, 2.0],
+        FELINE_TAN,
+        [1.0, 1.0, 2.0],
+        [6.0, 10.0],
+        false,
+    ),
 ];
 
-// `body`: the 4×16×6 trunk (pitched onto its belly).
-pub(in crate::entity_models) const FELINE_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, 3.0, -8.0], [4.0, 16.0, 6.0], FELINE_TAN)];
+// `body`: the 4×16×6 trunk (pitched onto its belly), texOffs (20,0).
+pub(in crate::entity_models) const FELINE_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, 3.0, -8.0],
+    [4.0, 16.0, 6.0],
+    FELINE_TAN,
+    [4.0, 16.0, 6.0],
+    [20.0, 0.0],
+    false,
+)];
 
-// `tail1`: the upper 1×8×1 tail segment.
-pub(in crate::entity_models) const FELINE_TAIL1_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, 0.0, 0.0], [1.0, 8.0, 1.0], FELINE_TAN)];
+// `tail1`: the upper 1×8×1 tail segment, texOffs (0,15).
+pub(in crate::entity_models) const FELINE_TAIL1_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.5, 0.0, 0.0],
+    [1.0, 8.0, 1.0],
+    FELINE_TAN,
+    [1.0, 8.0, 1.0],
+    [0.0, 15.0],
+    false,
+)];
 
 // `tail2`: the lower 1×8×1 tail segment, deflated by the vanilla `CubeDeformation(-0.02)` (min += 0.02,
-// size -= 0.04).
-pub(in crate::entity_models) const FELINE_TAIL2_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.48, 0.02, 0.02], [0.96, 7.96, 0.96], FELINE_TAN)];
+// size -= 0.04). texOffs (4,15); the UV box size stays the un-inflated [1,8,1] (the integer dx,dy,dz
+// passed to `addBox`).
+pub(in crate::entity_models) const FELINE_TAIL2_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.48, 0.02, 0.02],
+    [0.96, 7.96, 0.96],
+    FELINE_TAN,
+    [1.0, 8.0, 1.0],
+    [4.0, 15.0],
+    false,
+)];
 
-// The two 2×6×2 hind legs (shared box), and the two 2×10×2 front legs (shared box).
-pub(in crate::entity_models) const FELINE_HIND_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, 1.0], [2.0, 6.0, 2.0], FELINE_TAN)];
-pub(in crate::entity_models) const FELINE_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, 0.0], [2.0, 10.0, 2.0], FELINE_TAN)];
+// The two 2×6×2 hind legs (shared box, texOffs (8,13)), and the two 2×10×2 front legs (shared box,
+// texOffs (40,0)). Left & right re-use the same box/texOffs (no mirror).
+pub(in crate::entity_models) const FELINE_HIND_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, 1.0],
+    [2.0, 6.0, 2.0],
+    FELINE_TAN,
+    [2.0, 6.0, 2.0],
+    [8.0, 13.0],
+    false,
+)];
+pub(in crate::entity_models) const FELINE_FRONT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, 0.0],
+    [2.0, 10.0, 2.0],
+    FELINE_TAN,
+    [2.0, 10.0, 2.0],
+    [40.0, 0.0],
+    false,
+)];
 
 /// Vanilla `AdultFelineModel.createBodyMesh` rest-pose hierarchy (`addOrReplaceChild` order): `head`,
 /// `body` (pitched `π/2`), `tail1` (pitched `0.9`), `tail2`, then the left-hind / right-hind /
@@ -102,35 +160,35 @@ fn feline_root() -> ModelPart {
         vec![
             (
                 "head",
-                ModelPart::leaf_colored(FELINE_HEAD_POSE, &FELINE_HEAD_CUBES),
+                ModelPart::leaf(FELINE_HEAD_POSE, FELINE_HEAD_CUBES.to_vec()),
             ),
             (
                 "body",
-                ModelPart::leaf_colored(FELINE_BODY_POSE, &FELINE_BODY_CUBES),
+                ModelPart::leaf(FELINE_BODY_POSE, FELINE_BODY_CUBES.to_vec()),
             ),
             (
                 "tail1",
-                ModelPart::leaf_colored(FELINE_TAIL1_POSE, &FELINE_TAIL1_CUBES),
+                ModelPart::leaf(FELINE_TAIL1_POSE, FELINE_TAIL1_CUBES.to_vec()),
             ),
             (
                 "tail2",
-                ModelPart::leaf_colored(FELINE_TAIL2_POSE, &FELINE_TAIL2_CUBES),
+                ModelPart::leaf(FELINE_TAIL2_POSE, FELINE_TAIL2_CUBES.to_vec()),
             ),
             (
                 "left_hind_leg",
-                ModelPart::leaf_colored(FELINE_LEFT_HIND_LEG_POSE, &FELINE_HIND_LEG_CUBES),
+                ModelPart::leaf(FELINE_LEFT_HIND_LEG_POSE, FELINE_HIND_LEG_CUBES.to_vec()),
             ),
             (
                 "right_hind_leg",
-                ModelPart::leaf_colored(FELINE_RIGHT_HIND_LEG_POSE, &FELINE_HIND_LEG_CUBES),
+                ModelPart::leaf(FELINE_RIGHT_HIND_LEG_POSE, FELINE_HIND_LEG_CUBES.to_vec()),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(FELINE_LEFT_FRONT_LEG_POSE, &FELINE_FRONT_LEG_CUBES),
+                ModelPart::leaf(FELINE_LEFT_FRONT_LEG_POSE, FELINE_FRONT_LEG_CUBES.to_vec()),
             ),
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(FELINE_RIGHT_FRONT_LEG_POSE, &FELINE_FRONT_LEG_CUBES),
+                ModelPart::leaf(FELINE_RIGHT_FRONT_LEG_POSE, FELINE_FRONT_LEG_CUBES.to_vec()),
             ),
         ],
     )
@@ -143,25 +201,105 @@ fn feline_root() -> ModelPart {
 // `head.xRot/yRot` from the look and `tail2.xRot = 1.7278761`, but the latter is invisible here (the
 // cubeless lower tail has no geometry), so the baby's only reproduced pose is the head look.
 
-// Baby `head` cubes (offset 0,20,-3.125): the 5×4×4 skull, two 1×1×2 ears, and a 3×2×1 nose.
-pub(in crate::entity_models) const BABY_FELINE_HEAD_CUBES: [ModelCubeDesc; 4] = [
-    cube([-2.5, -3.0, -2.875], [5.0, 4.0, 4.0], FELINE_TAN),
-    cube([-2.0, -4.0, -0.875], [1.0, 1.0, 2.0], FELINE_TAN),
-    cube([1.0, -4.0, -0.875], [1.0, 1.0, 2.0], FELINE_TAN),
-    cube([-1.5, -1.0, -3.875], [3.0, 2.0, 1.0], FELINE_TAN),
+// Baby `head` cubes (offset 0,20,-3.125): the 5×4×4 skull (texOffs (0,0)), two 1×1×2 ears (texOffs
+// (18,0) / (24,0) — distinct, not mirrors), and a 3×2×1 nose (texOffs (18,3)).
+pub(in crate::entity_models) const BABY_FELINE_HEAD_CUBES: [ModelCube; 4] = [
+    ModelCube::new(
+        [-2.5, -3.0, -2.875],
+        [5.0, 4.0, 4.0],
+        FELINE_TAN,
+        [5.0, 4.0, 4.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.0, -4.0, -0.875],
+        [1.0, 1.0, 2.0],
+        FELINE_TAN,
+        [1.0, 1.0, 2.0],
+        [18.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [1.0, -4.0, -0.875],
+        [1.0, 1.0, 2.0],
+        FELINE_TAN,
+        [1.0, 1.0, 2.0],
+        [24.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-1.5, -1.0, -3.875],
+        [3.0, 2.0, 1.0],
+        FELINE_TAN,
+        [3.0, 2.0, 1.0],
+        [18.0, 3.0],
+        false,
+    ),
 ];
 
-// Baby `body`: the 4×3×7 trunk (upright, not pitched).
-pub(in crate::entity_models) const BABY_FELINE_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, -1.5, -3.5], [4.0, 3.0, 7.0], FELINE_TAN)];
+// Baby `body`: the 4×3×7 trunk (upright, not pitched), texOffs (0,8).
+pub(in crate::entity_models) const BABY_FELINE_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -1.5, -3.5],
+    [4.0, 3.0, 7.0],
+    FELINE_TAN,
+    [4.0, 3.0, 7.0],
+    [0.0, 8.0],
+    false,
+)];
 
-// Baby legs: one shared 1×2×2 box for all four.
-pub(in crate::entity_models) const BABY_FELINE_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, 0.0, -1.0], [1.0, 2.0, 2.0], FELINE_TAN)];
+// Baby legs: all four share the same 1×2×2 box, but — unlike the adult's shared-builder legs — each
+// gets its OWN texOffs (no mirrors), so each leg carries a distinct cube const.
+// `left_front_leg`: texOffs (18,18).
+pub(in crate::entity_models) const BABY_FELINE_LEFT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.5, 0.0, -1.0],
+        [1.0, 2.0, 2.0],
+        FELINE_TAN,
+        [1.0, 2.0, 2.0],
+        [18.0, 18.0],
+        false,
+    )];
+// `right_front_leg`: texOffs (12,18).
+pub(in crate::entity_models) const BABY_FELINE_RIGHT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.5, 0.0, -1.0],
+        [1.0, 2.0, 2.0],
+        FELINE_TAN,
+        [1.0, 2.0, 2.0],
+        [12.0, 18.0],
+        false,
+    )];
+// `left_hind_leg`: texOffs (18,22).
+pub(in crate::entity_models) const BABY_FELINE_LEFT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.5, 0.0, -1.0],
+        [1.0, 2.0, 2.0],
+        FELINE_TAN,
+        [1.0, 2.0, 2.0],
+        [18.0, 22.0],
+        false,
+    )];
+// `right_hind_leg`: texOffs (12,22).
+pub(in crate::entity_models) const BABY_FELINE_RIGHT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.5, 0.0, -1.0],
+        [1.0, 2.0, 2.0],
+        FELINE_TAN,
+        [1.0, 2.0, 2.0],
+        [12.0, 22.0],
+        false,
+    )];
 
-// Baby `tail1`: the single 1×1×5 tail segment (`tail2` below it is cubeless).
-pub(in crate::entity_models) const BABY_FELINE_TAIL1_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, -0.107, 0.0849], [1.0, 1.0, 5.0], FELINE_TAN)];
+// Baby `tail1`: the single 1×1×5 tail segment (`tail2` below it is cubeless), texOffs (0,18).
+pub(in crate::entity_models) const BABY_FELINE_TAIL1_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.5, -0.107, 0.0849],
+    [1.0, 1.0, 5.0],
+    FELINE_TAN,
+    [1.0, 1.0, 5.0],
+    [0.0, 18.0],
+    false,
+)];
 
 /// Vanilla `BabyFelineModel.createBodyMesh` rest-pose hierarchy (`addOrReplaceChild` order): `head`,
 /// the left-front / right-front / left-hind legs, `body`, `right_hind_leg`, `tail1` (pitched
@@ -214,36 +352,45 @@ fn baby_feline_root() -> ModelPart {
         vec![
             (
                 "head",
-                ModelPart::leaf_colored(BABY_FELINE_HEAD_POSE, &BABY_FELINE_HEAD_CUBES),
+                ModelPart::leaf(BABY_FELINE_HEAD_POSE, BABY_FELINE_HEAD_CUBES.to_vec()),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(BABY_FELINE_LEFT_FRONT_LEG_POSE, &BABY_FELINE_LEG_CUBES),
+                ModelPart::leaf(
+                    BABY_FELINE_LEFT_FRONT_LEG_POSE,
+                    BABY_FELINE_LEFT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(BABY_FELINE_RIGHT_FRONT_LEG_POSE, &BABY_FELINE_LEG_CUBES),
+                ModelPart::leaf(
+                    BABY_FELINE_RIGHT_FRONT_LEG_POSE,
+                    BABY_FELINE_RIGHT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "left_hind_leg",
-                ModelPart::leaf_colored(BABY_FELINE_LEFT_HIND_LEG_POSE, &BABY_FELINE_LEG_CUBES),
+                ModelPart::leaf(
+                    BABY_FELINE_LEFT_HIND_LEG_POSE,
+                    BABY_FELINE_LEFT_HIND_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "body",
-                ModelPart::leaf_colored(BABY_FELINE_BODY_POSE, &BABY_FELINE_BODY_CUBES),
+                ModelPart::leaf(BABY_FELINE_BODY_POSE, BABY_FELINE_BODY_CUBES.to_vec()),
             ),
             (
                 "right_hind_leg",
-                ModelPart::leaf_colored(BABY_FELINE_RIGHT_HIND_LEG_POSE, &BABY_FELINE_LEG_CUBES),
+                ModelPart::leaf(
+                    BABY_FELINE_RIGHT_HIND_LEG_POSE,
+                    BABY_FELINE_RIGHT_HIND_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "tail1",
-                ModelPart::leaf_colored(BABY_FELINE_TAIL1_POSE, &BABY_FELINE_TAIL1_CUBES),
+                ModelPart::leaf(BABY_FELINE_TAIL1_POSE, BABY_FELINE_TAIL1_CUBES.to_vec()),
             ),
-            (
-                "tail2",
-                ModelPart::leaf_colored(BABY_FELINE_TAIL2_POSE, &[]),
-            ),
+            ("tail2", ModelPart::leaf(BABY_FELINE_TAIL2_POSE, Vec::new())),
         ],
     )
 }
@@ -268,9 +415,9 @@ fn feline_tail2_wobble_x_rot(walk_animation_pos: f32, walk_animation_speed: f32)
 }
 
 /// Mutable feline model, mirroring vanilla `AdultFelineModel` / `BabyFelineModel` (ocelot and cat
-/// share each). The named root parts hang off a synthetic root, built from the baked colored geometry;
+/// share each). The named root parts hang off a synthetic root, built from the baked geometry;
 /// the adult cat's 0.8 scale lives in the root transform ([`FELINE_CAT_SCALE`], applied by the
-/// runtime — the babies are unscaled). Colored-only: `setup_anim` runs the head look
+/// runtime — the babies are unscaled). `setup_anim` runs the head look
 /// ([`apply_head_look`] on `child_mut("head")`), swings the legs with the gait, and, for the adult,
 /// drops and wobbles the lower tail via `child_mut("tail2")`; the sitting/crouching/sprinting and
 /// lie-down feline poses stay deferred.

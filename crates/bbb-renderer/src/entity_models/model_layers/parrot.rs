@@ -1,9 +1,6 @@
-use super::{
-    apply_head_look, model_cube as cube, ModelCubeDesc, PartPose, PARROT_BEAK, PARROT_BODY,
-    PART_POSE_ZERO,
-};
+use super::{apply_head_look, PartPose, PARROT_BEAK, PARROT_BODY, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `ParrotModel.createBodyLayer` (atlas 32×32). The mesh root holds seven sibling parts
 // (body, tail, the two wings, head, and the two legs); the head parents the upper-head block, the
@@ -29,39 +26,95 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // colored debug path renders one body tint plus a beak tint. Parrot uses a plain `MobRenderer` with no
 // transform overrides.
 
-// `body`: the 3×6×3 torso.
-pub(in crate::entity_models) const PARROT_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.5, 0.0, -1.5], [3.0, 6.0, 3.0], PARROT_BODY)];
+// `body`: the 3×6×3 torso at texOffs(2, 8).
+pub(in crate::entity_models) const PARROT_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, 0.0, -1.5],
+    [3.0, 6.0, 3.0],
+    PARROT_BODY,
+    [3.0, 6.0, 3.0],
+    [2.0, 8.0],
+    false,
+)];
 
-// `tail`: the 3×4×1 plate.
-pub(in crate::entity_models) const PARROT_TAIL_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.5, -1.0, -1.0], [3.0, 4.0, 1.0], PARROT_BODY)];
+// `tail`: the 3×4×1 plate at texOffs(22, 1).
+pub(in crate::entity_models) const PARROT_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.5, -1.0, -1.0],
+    [3.0, 4.0, 1.0],
+    PARROT_BODY,
+    [3.0, 4.0, 1.0],
+    [22.0, 1.0],
+    false,
+)];
 
-// The shared 1×5×3 wing (both wings reuse it, differing only in pivot X sign).
-pub(in crate::entity_models) const PARROT_WING_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, 0.0, -1.5], [1.0, 5.0, 3.0], PARROT_BODY)];
+// The shared 1×5×3 wing at texOffs(19, 8) (both wings reuse it — same texOffs, no mirror — differing
+// only in pivot X sign and the `yRot = -π` flip).
+pub(in crate::entity_models) const PARROT_WING_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.5, 0.0, -1.5],
+    [1.0, 5.0, 3.0],
+    PARROT_BODY,
+    [1.0, 5.0, 3.0],
+    [19.0, 8.0],
+    false,
+)];
 
-// `head`: the 2×3×2 skull.
-pub(in crate::entity_models) const PARROT_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, -1.5, -1.0], [2.0, 3.0, 2.0], PARROT_BODY)];
+// `head`: the 2×3×2 skull at texOffs(2, 2).
+pub(in crate::entity_models) const PARROT_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -1.5, -1.0],
+    [2.0, 3.0, 2.0],
+    PARROT_BODY,
+    [2.0, 3.0, 2.0],
+    [2.0, 2.0],
+    false,
+)];
 
-// `head2`: the 2×1×4 upper-head block.
-pub(in crate::entity_models) const PARROT_HEAD2_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, -0.5, -2.0], [2.0, 1.0, 4.0], PARROT_BODY)];
+// `head2`: the 2×1×4 upper-head block at texOffs(10, 0).
+pub(in crate::entity_models) const PARROT_HEAD2_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -0.5, -2.0],
+    [2.0, 1.0, 4.0],
+    PARROT_BODY,
+    [2.0, 1.0, 4.0],
+    [10.0, 0.0],
+    false,
+)];
 
-// `beak1` / `beak2`: the two 1×2×1 beak halves.
-pub(in crate::entity_models) const PARROT_BEAK1_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, -1.0, -0.5], [1.0, 2.0, 1.0], PARROT_BEAK)];
-pub(in crate::entity_models) const PARROT_BEAK2_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, 0.0, -0.5], [1.0, 2.0, 1.0], PARROT_BEAK)];
+// `beak1` / `beak2`: the two 1×2×1 beak halves at texOffs(11, 7) and texOffs(16, 7).
+pub(in crate::entity_models) const PARROT_BEAK1_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.5, -1.0, -0.5],
+    [1.0, 2.0, 1.0],
+    PARROT_BEAK,
+    [1.0, 2.0, 1.0],
+    [11.0, 7.0],
+    false,
+)];
+pub(in crate::entity_models) const PARROT_BEAK2_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.5, 0.0, -0.5],
+    [1.0, 2.0, 1.0],
+    PARROT_BEAK,
+    [1.0, 2.0, 1.0],
+    [16.0, 7.0],
+    false,
+)];
 
-// `feather`: the 0×5×4 crest plane.
-pub(in crate::entity_models) const PARROT_FEATHER_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, -4.0, -2.0], [0.0, 5.0, 4.0], PARROT_BODY)];
+// `feather`: the 0×5×4 crest plane at texOffs(2, 18).
+pub(in crate::entity_models) const PARROT_FEATHER_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -4.0, -2.0],
+    [0.0, 5.0, 4.0],
+    PARROT_BODY,
+    [0.0, 5.0, 4.0],
+    [2.0, 18.0],
+    false,
+)];
 
-// The shared 1×2×1 leg (both legs reuse it, differing only in pivot X sign).
-pub(in crate::entity_models) const PARROT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, 0.0, -0.5], [1.0, 2.0, 1.0], PARROT_BODY)];
+// The shared 1×2×1 leg at texOffs(14, 18) (both legs reuse it — same texOffs, no mirror — differing
+// only in pivot X sign).
+pub(in crate::entity_models) const PARROT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.5, 0.0, -0.5],
+    [1.0, 2.0, 1.0],
+    PARROT_BODY,
+    [1.0, 2.0, 1.0],
+    [14.0, 18.0],
+    false,
+)];
 
 /// `body` part pose: `PartPose.offsetAndRotation(0, 16.5, -3, 0.4937, 0, 0)`.
 pub(in crate::entity_models) const PARROT_BODY_POSE: PartPose = PartPose {
@@ -147,14 +200,26 @@ const PARROT_FLYING_LEG_X_ROT: f32 = std::f32::consts::PI * 2.0 / 9.0;
 /// `addOrReplaceChild` order. The cube-bearing `head` parents `head2`, the two beak halves, and the
 /// crest feather (index-named, never addressed by name in `setup_anim`).
 fn parrot_root() -> ModelPart {
-    let head = ModelPart::colored(
+    let head = ModelPart::new(
         PARROT_HEAD_POSE,
-        &PARROT_HEAD_CUBES,
+        PARROT_HEAD_CUBES.to_vec(),
         vec![
-            ModelPart::leaf_colored(PARROT_HEAD2_POSE, &PARROT_HEAD2_CUBES),
-            ModelPart::leaf_colored(PARROT_BEAK1_POSE, &PARROT_BEAK1_CUBES),
-            ModelPart::leaf_colored(PARROT_BEAK2_POSE, &PARROT_BEAK2_CUBES),
-            ModelPart::leaf_colored(PARROT_FEATHER_POSE, &PARROT_FEATHER_CUBES),
+            (
+                "0",
+                ModelPart::leaf(PARROT_HEAD2_POSE, PARROT_HEAD2_CUBES.to_vec()),
+            ),
+            (
+                "1",
+                ModelPart::leaf(PARROT_BEAK1_POSE, PARROT_BEAK1_CUBES.to_vec()),
+            ),
+            (
+                "2",
+                ModelPart::leaf(PARROT_BEAK2_POSE, PARROT_BEAK2_CUBES.to_vec()),
+            ),
+            (
+                "3",
+                ModelPart::leaf(PARROT_FEATHER_POSE, PARROT_FEATHER_CUBES.to_vec()),
+            ),
         ],
     );
     ModelPart::new(
@@ -163,28 +228,28 @@ fn parrot_root() -> ModelPart {
         vec![
             (
                 "body",
-                ModelPart::leaf_colored(PARROT_BODY_POSE, &PARROT_BODY_CUBES),
+                ModelPart::leaf(PARROT_BODY_POSE, PARROT_BODY_CUBES.to_vec()),
             ),
             (
                 "tail",
-                ModelPart::leaf_colored(PARROT_TAIL_POSE, &PARROT_TAIL_CUBES),
+                ModelPart::leaf(PARROT_TAIL_POSE, PARROT_TAIL_CUBES.to_vec()),
             ),
             (
                 "left_wing",
-                ModelPart::leaf_colored(PARROT_LEFT_WING_POSE, &PARROT_WING_CUBES),
+                ModelPart::leaf(PARROT_LEFT_WING_POSE, PARROT_WING_CUBES.to_vec()),
             ),
             (
                 "right_wing",
-                ModelPart::leaf_colored(PARROT_RIGHT_WING_POSE, &PARROT_WING_CUBES),
+                ModelPart::leaf(PARROT_RIGHT_WING_POSE, PARROT_WING_CUBES.to_vec()),
             ),
             ("head", head),
             (
                 "left_leg",
-                ModelPart::leaf_colored(PARROT_LEFT_LEG_POSE, &PARROT_LEG_CUBES),
+                ModelPart::leaf(PARROT_LEFT_LEG_POSE, PARROT_LEG_CUBES.to_vec()),
             ),
             (
                 "right_leg",
-                ModelPart::leaf_colored(PARROT_RIGHT_LEG_POSE, &PARROT_LEG_CUBES),
+                ModelPart::leaf(PARROT_RIGHT_LEG_POSE, PARROT_LEG_CUBES.to_vec()),
             ),
         ],
     )
@@ -283,9 +348,9 @@ pub(in crate::entity_models) fn parrot_tail_swing_pose(
 }
 
 /// Mutable parrot model, mirroring vanilla `ParrotModel`. Its seven named sibling parts hang off a
-/// synthetic root, each built from the baked colored geometry. Colored-only (no textured path yet):
-/// `setup_anim` derives the pose from `parrot_sitting`/`on_ground`, sets the head look, then runs the
-/// per-pose `prepare` + `setupAnim` math — the SITTING perch, the STANDING leg walk swing plus
+/// synthetic root, each built from the baked geometry (carrying both the colored tint and the textured
+/// UV). `setup_anim` derives the pose from `parrot_sitting`/`on_ground`, sets the head look, then runs
+/// the per-pose `prepare` + `setupAnim` math — the SITTING perch, the STANDING leg walk swing plus
 /// bob/wing-flap, or the FLYING leg pitch plus bob/wing-flap.
 pub(in crate::entity_models) struct ParrotModel {
     root: ModelPart,

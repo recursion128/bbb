@@ -1,8 +1,6 @@
-use super::{
-    model_cube as cube, ModelCubeDesc, PartPose, AXOLOTL_BODY, AXOLOTL_GILLS, PART_POSE_ZERO,
-};
+use super::{PartPose, AXOLOTL_BODY, AXOLOTL_GILLS, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `AdultAxolotlModel` (atlas 64×64) / `BabyAxolotlModel` (atlas 32×32)
 // `createBodyLayer`. The axolotl is one of the `AgeableMobRenderer` two-model entities: the synced
@@ -19,50 +17,92 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // ----- Adult -----
 
 // `body` (offset (0, 19.5, 5)): the 8×4×10 trunk plus a 0×5×9 dorsal fin plane.
-pub(in crate::entity_models) const ADULT_AXOLOTL_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([-4.0, -2.0, -9.0], [8.0, 4.0, 10.0], AXOLOTL_BODY),
-    cube([0.0, -3.0, -8.0], [0.0, 5.0, 9.0], AXOLOTL_BODY),
+pub(in crate::entity_models) const ADULT_AXOLOTL_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-4.0, -2.0, -9.0],
+        [8.0, 4.0, 10.0],
+        AXOLOTL_BODY,
+        [8.0, 4.0, 10.0],
+        [0.0, 11.0],
+        false,
+    ),
+    ModelCube::new(
+        [0.0, -3.0, -8.0],
+        [0.0, 5.0, 9.0],
+        AXOLOTL_BODY,
+        [0.0, 5.0, 9.0],
+        [2.0, 17.0],
+        false,
+    ),
 ];
 
 // `head` (offset (0, 0, -9)): the 8×5×5 skull (`CubeDeformation(0.001)` fudge baked in).
-pub(in crate::entity_models) const ADULT_AXOLOTL_HEAD_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-4.001, -3.001, -5.001],
     [8.002, 5.002, 5.002],
     AXOLOTL_BODY,
+    [8.0, 5.0, 5.0],
+    [0.0, 1.0],
+    false,
 )];
 
 // The three gill planes (top 8×3×0, and the two 3×7×0 side frills), all fudge-inflated.
-pub(in crate::entity_models) const ADULT_AXOLOTL_TOP_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
-    [-4.001, -3.001, -0.001],
-    [8.002, 3.002, 0.002],
-    AXOLOTL_GILLS,
-)];
-pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
-    [-3.001, -5.001, -0.001],
-    [3.002, 7.002, 0.002],
-    AXOLOTL_GILLS,
-)];
-pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCubeDesc; 1] = [cube(
-    [-0.001, -5.001, -0.001],
-    [3.002, 7.002, 0.002],
-    AXOLOTL_GILLS,
-)];
+pub(in crate::entity_models) const ADULT_AXOLOTL_TOP_GILLS_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-4.001, -3.001, -0.001],
+        [8.002, 3.002, 0.002],
+        AXOLOTL_GILLS,
+        [8.0, 3.0, 0.0],
+        [3.0, 37.0],
+        false,
+    )];
+pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_GILLS_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-3.001, -5.001, -0.001],
+        [3.002, 7.002, 0.002],
+        AXOLOTL_GILLS,
+        [3.0, 7.0, 0.0],
+        [0.0, 40.0],
+        false,
+    )];
+pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.001, -5.001, -0.001],
+        [3.002, 7.002, 0.002],
+        AXOLOTL_GILLS,
+        [3.0, 7.0, 0.0],
+        [11.0, 40.0],
+        false,
+    )];
 
 // The 3×5×0 leg planes — the right legs use the `-2` origin, the left legs the `-1` origin.
-pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
-    [-2.001, -0.001, -0.001],
-    [3.002, 5.002, 0.002],
-    AXOLOTL_BODY,
-)];
-pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_LEG_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const ADULT_AXOLOTL_RIGHT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-2.001, -0.001, -0.001],
+        [3.002, 5.002, 0.002],
+        AXOLOTL_BODY,
+        [3.0, 5.0, 0.0],
+        [2.0, 13.0],
+        false,
+    )];
+pub(in crate::entity_models) const ADULT_AXOLOTL_LEFT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-1.001, -0.001, -0.001],
     [3.002, 5.002, 0.002],
     AXOLOTL_BODY,
+    [3.0, 5.0, 0.0],
+    [2.0, 13.0],
+    false,
 )];
 
 // `tail` (offset (0, 0, 1)): the 0×5×12 tail fin plane.
-pub(in crate::entity_models) const ADULT_AXOLOTL_TAIL_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, -3.0, 0.0], [0.0, 5.0, 12.0], AXOLOTL_BODY)];
+pub(in crate::entity_models) const ADULT_AXOLOTL_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -3.0, 0.0],
+    [0.0, 5.0, 12.0],
+    AXOLOTL_BODY,
+    [0.0, 5.0, 12.0],
+    [2.0, 19.0],
+    false,
+)];
 
 /// `body` part pose: `PartPose.offset(0, 19.5, 5)`. The body parents the head (with the three gills),
 /// the four leg planes, and the tail fin; only the `body` itself is turned (by yaw) in `setup_anim`,
@@ -120,43 +160,70 @@ pub(in crate::entity_models) const ADULT_AXOLOTL_TAIL_POSE: PartPose = PartPose 
 /// Builds the adult axolotl's cube-bearing `body` part (parenting the index-named head — itself
 /// parenting the three gill planes — the four leg planes, and the tail fin), in vanilla order.
 fn adult_axolotl_body() -> ModelPart {
-    let head = ModelPart::colored(
+    let head = ModelPart::new(
         ADULT_AXOLOTL_HEAD_POSE,
-        &ADULT_AXOLOTL_HEAD_CUBES,
+        ADULT_AXOLOTL_HEAD_CUBES.to_vec(),
         vec![
-            ModelPart::leaf_colored(ADULT_AXOLOTL_TOP_GILLS_POSE, &ADULT_AXOLOTL_TOP_GILLS_CUBES),
-            ModelPart::leaf_colored(
-                ADULT_AXOLOTL_LEFT_GILLS_POSE,
-                &ADULT_AXOLOTL_LEFT_GILLS_CUBES,
+            (
+                "0",
+                ModelPart::leaf(
+                    ADULT_AXOLOTL_TOP_GILLS_POSE,
+                    ADULT_AXOLOTL_TOP_GILLS_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(
-                ADULT_AXOLOTL_RIGHT_GILLS_POSE,
-                &ADULT_AXOLOTL_RIGHT_GILLS_CUBES,
+            (
+                "1",
+                ModelPart::leaf(
+                    ADULT_AXOLOTL_LEFT_GILLS_POSE,
+                    ADULT_AXOLOTL_LEFT_GILLS_CUBES.to_vec(),
+                ),
+            ),
+            (
+                "2",
+                ModelPart::leaf(
+                    ADULT_AXOLOTL_RIGHT_GILLS_POSE,
+                    ADULT_AXOLOTL_RIGHT_GILLS_CUBES.to_vec(),
+                ),
             ),
         ],
     );
-    ModelPart::colored(
+    ModelPart::new(
         ADULT_AXOLOTL_BODY_POSE,
-        &ADULT_AXOLOTL_BODY_CUBES,
+        ADULT_AXOLOTL_BODY_CUBES.to_vec(),
         vec![
-            head,
-            ModelPart::leaf_colored(
-                ADULT_AXOLOTL_RIGHT_FRONT_LEG_POSE,
-                &ADULT_AXOLOTL_RIGHT_LEG_CUBES,
+            ("0", head),
+            (
+                "1",
+                ModelPart::leaf(
+                    ADULT_AXOLOTL_RIGHT_FRONT_LEG_POSE,
+                    ADULT_AXOLOTL_RIGHT_LEG_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(
-                ADULT_AXOLOTL_LEFT_FRONT_LEG_POSE,
-                &ADULT_AXOLOTL_LEFT_LEG_CUBES,
+            (
+                "2",
+                ModelPart::leaf(
+                    ADULT_AXOLOTL_LEFT_FRONT_LEG_POSE,
+                    ADULT_AXOLOTL_LEFT_LEG_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(
-                ADULT_AXOLOTL_RIGHT_HIND_LEG_POSE,
-                &ADULT_AXOLOTL_RIGHT_LEG_CUBES,
+            (
+                "3",
+                ModelPart::leaf(
+                    ADULT_AXOLOTL_RIGHT_HIND_LEG_POSE,
+                    ADULT_AXOLOTL_RIGHT_LEG_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(
-                ADULT_AXOLOTL_LEFT_HIND_LEG_POSE,
-                &ADULT_AXOLOTL_LEFT_LEG_CUBES,
+            (
+                "4",
+                ModelPart::leaf(
+                    ADULT_AXOLOTL_LEFT_HIND_LEG_POSE,
+                    ADULT_AXOLOTL_LEFT_LEG_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(ADULT_AXOLOTL_TAIL_POSE, &ADULT_AXOLOTL_TAIL_CUBES),
+            (
+                "5",
+                ModelPart::leaf(ADULT_AXOLOTL_TAIL_POSE, ADULT_AXOLOTL_TAIL_CUBES.to_vec()),
+            ),
         ],
     )
 }
@@ -164,36 +231,110 @@ fn adult_axolotl_body() -> ModelPart {
 // ----- Baby -----
 
 // `body` (offset (0, -1.25, 1.75) under the root bone): the 4×2×6 trunk plus a 0×3×5 dorsal fin.
-pub(in crate::entity_models) const BABY_AXOLOTL_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([-2.0, -0.75, -2.75], [4.0, 2.0, 6.0], AXOLOTL_BODY),
-    cube([0.0, -1.75, -2.75], [0.0, 3.0, 5.0], AXOLOTL_BODY),
+pub(in crate::entity_models) const BABY_AXOLOTL_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-2.0, -0.75, -2.75],
+        [4.0, 2.0, 6.0],
+        AXOLOTL_BODY,
+        [4.0, 2.0, 6.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [0.0, -1.75, -2.75],
+        [0.0, 3.0, 5.0],
+        AXOLOTL_BODY,
+        [0.0, 3.0, 5.0],
+        [0.0, 12.0],
+        false,
+    ),
 ];
 
 // The 3×0×1 horizontal leg planes (the right hind leg is a doubly-rotated pivot/cube pair).
-pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
-pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
-pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
-pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_HIND_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, 0.0, -0.5], [3.0, 0.0, 1.0], AXOLOTL_BODY)];
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-3.0, 0.0, -0.5],
+        [3.0, 0.0, 1.0],
+        AXOLOTL_BODY,
+        [3.0, 0.0, 1.0],
+        [20.0, 16.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [0.0, 0.0, -0.5],
+        [3.0, 0.0, 1.0],
+        AXOLOTL_BODY,
+        [3.0, 0.0, 1.0],
+        [20.0, 14.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [0.0, 0.0, -0.5],
+        [3.0, 0.0, 1.0],
+        AXOLOTL_BODY,
+        [3.0, 0.0, 1.0],
+        [20.0, 13.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_HIND_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [0.0, 0.0, -0.5],
+        [3.0, 0.0, 1.0],
+        AXOLOTL_BODY,
+        [3.0, 0.0, 1.0],
+        [20.0, 14.0],
+        false,
+    )];
 
 // `tail` (offset (0, -0.25, 3.25)): the 0×3×8 tail fin plane.
-pub(in crate::entity_models) const BABY_AXOLOTL_TAIL_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, -1.5, -1.0], [0.0, 3.0, 8.0], AXOLOTL_BODY)];
+pub(in crate::entity_models) const BABY_AXOLOTL_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [0.0, -1.5, -1.0],
+    [0.0, 3.0, 8.0],
+    AXOLOTL_BODY,
+    [0.0, 3.0, 8.0],
+    [10.0, 9.0],
+    false,
+)];
 
 // `head` (offset (0, 0.25, -2.75)): the 6×3×4 skull.
-pub(in crate::entity_models) const BABY_AXOLOTL_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.0, -2.0, -4.0], [6.0, 3.0, 4.0], AXOLOTL_BODY)];
+pub(in crate::entity_models) const BABY_AXOLOTL_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, -2.0, -4.0],
+    [6.0, 3.0, 4.0],
+    AXOLOTL_BODY,
+    [6.0, 3.0, 4.0],
+    [0.0, 8.0],
+    false,
+)];
 
 // The three gill planes (two 3×5×0 side frills and the 6×3×0 top frill).
-pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_GILLS_CUBES: [ModelCubeDesc; 1] =
-    [cube([0.0, -3.5, 0.0], [3.0, 5.0, 0.0], AXOLOTL_GILLS)];
-pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.0, -3.5, 0.0], [3.0, 5.0, 0.0], AXOLOTL_GILLS)];
-pub(in crate::entity_models) const BABY_AXOLOTL_TOP_GILLS_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.0, -3.0, 0.0], [6.0, 3.0, 0.0], AXOLOTL_GILLS)];
+pub(in crate::entity_models) const BABY_AXOLOTL_LEFT_GILLS_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [0.0, -3.5, 0.0],
+        [3.0, 5.0, 0.0],
+        AXOLOTL_GILLS,
+        [3.0, 5.0, 0.0],
+        [20.0, 8.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_AXOLOTL_RIGHT_GILLS_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-3.0, -3.5, 0.0],
+        [3.0, 5.0, 0.0],
+        AXOLOTL_GILLS,
+        [3.0, 5.0, 0.0],
+        [20.0, 3.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_AXOLOTL_TOP_GILLS_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, -3.0, 0.0],
+    [6.0, 3.0, 0.0],
+    AXOLOTL_GILLS,
+    [6.0, 3.0, 0.0],
+    [20.0, 0.0],
+    false,
+)];
 
 /// Baby `root` bone pose: `PartPose.offset(0, 24, 0)`.
 pub(in crate::entity_models) const BABY_AXOLOTL_ROOT_POSE: PartPose = PartPose {
@@ -260,16 +401,31 @@ pub(in crate::entity_models) const BABY_AXOLOTL_TOP_GILLS_POSE: PartPose = PartP
 /// index-named leg pivots — the right hind leg being a doubly-rotated pivot/cube pair — the tail fin,
 /// and the head with its three gill planes), in vanilla order.
 fn baby_axolotl_root() -> ModelPart {
-    let head = ModelPart::colored(
+    let head = ModelPart::new(
         BABY_AXOLOTL_HEAD_POSE,
-        &BABY_AXOLOTL_HEAD_CUBES,
+        BABY_AXOLOTL_HEAD_CUBES.to_vec(),
         vec![
-            ModelPart::leaf_colored(BABY_AXOLOTL_LEFT_GILLS_POSE, &BABY_AXOLOTL_LEFT_GILLS_CUBES),
-            ModelPart::leaf_colored(
-                BABY_AXOLOTL_RIGHT_GILLS_POSE,
-                &BABY_AXOLOTL_RIGHT_GILLS_CUBES,
+            (
+                "0",
+                ModelPart::leaf(
+                    BABY_AXOLOTL_LEFT_GILLS_POSE,
+                    BABY_AXOLOTL_LEFT_GILLS_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(BABY_AXOLOTL_TOP_GILLS_POSE, &BABY_AXOLOTL_TOP_GILLS_CUBES),
+            (
+                "1",
+                ModelPart::leaf(
+                    BABY_AXOLOTL_RIGHT_GILLS_POSE,
+                    BABY_AXOLOTL_RIGHT_GILLS_CUBES.to_vec(),
+                ),
+            ),
+            (
+                "2",
+                ModelPart::leaf(
+                    BABY_AXOLOTL_TOP_GILLS_POSE,
+                    BABY_AXOLOTL_TOP_GILLS_CUBES.to_vec(),
+                ),
+            ),
         ],
     );
     let right_hind_leg = ModelPart::new(
@@ -277,31 +433,43 @@ fn baby_axolotl_root() -> ModelPart {
         Vec::new(),
         vec![(
             "right_leg_r1",
-            ModelPart::leaf_colored(
+            ModelPart::leaf(
                 BABY_AXOLOTL_RIGHT_LEG_R1_POSE,
-                &BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES,
+                BABY_AXOLOTL_RIGHT_HIND_LEG_CUBES.to_vec(),
             ),
         )],
     );
-    let body = ModelPart::colored(
+    let body = ModelPart::new(
         BABY_AXOLOTL_BODY_POSE,
-        &BABY_AXOLOTL_BODY_CUBES,
+        BABY_AXOLOTL_BODY_CUBES.to_vec(),
         vec![
-            ModelPart::leaf_colored(
-                BABY_AXOLOTL_RIGHT_FRONT_LEG_POSE,
-                &BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES,
+            (
+                "0",
+                ModelPart::leaf(
+                    BABY_AXOLOTL_RIGHT_FRONT_LEG_POSE,
+                    BABY_AXOLOTL_RIGHT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
-            right_hind_leg,
-            ModelPart::leaf_colored(
-                BABY_AXOLOTL_LEFT_FRONT_LEG_POSE,
-                &BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES,
+            ("1", right_hind_leg),
+            (
+                "2",
+                ModelPart::leaf(
+                    BABY_AXOLOTL_LEFT_FRONT_LEG_POSE,
+                    BABY_AXOLOTL_LEFT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(
-                BABY_AXOLOTL_LEFT_HIND_LEG_POSE,
-                &BABY_AXOLOTL_LEFT_HIND_LEG_CUBES,
+            (
+                "3",
+                ModelPart::leaf(
+                    BABY_AXOLOTL_LEFT_HIND_LEG_POSE,
+                    BABY_AXOLOTL_LEFT_HIND_LEG_CUBES.to_vec(),
+                ),
             ),
-            ModelPart::leaf_colored(BABY_AXOLOTL_TAIL_POSE, &BABY_AXOLOTL_TAIL_CUBES),
-            head,
+            (
+                "4",
+                ModelPart::leaf(BABY_AXOLOTL_TAIL_POSE, BABY_AXOLOTL_TAIL_CUBES.to_vec()),
+            ),
+            ("5", head),
         ],
     );
     ModelPart::new(BABY_AXOLOTL_ROOT_POSE, Vec::new(), vec![("body", body)])

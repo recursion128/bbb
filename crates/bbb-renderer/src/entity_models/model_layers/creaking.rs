@@ -3,9 +3,9 @@ use super::super::keyframe::{
     sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
     Keyframe, KeyframeInterpolation,
 };
-use super::{model_cube as cube, ModelCubeDesc, PartPose, CREAKING_BARK, PART_POSE_ZERO};
+use super::{PartPose, CREAKING_BARK, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `CreakingModel.createBodyLayer` (atlas 64×64). The mesh root holds one `root` part
 // at `offset(0, 24, 0)` parenting `upper_body` and the two legs; `upper_body` (an empty pivot)
@@ -16,46 +16,158 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // invulnerable, and death keyframe animations are deferred, as is the un-projected `canMove` freeze
 // gate (a frozen creaking has walk speed ≈ 0, so the amplitude already collapses to the rest pose —
 // fittingly, the creaking turns to a statue while observed). The emissive eyes layer
-// (`createEyesLayer`, the `head` part only) and the texture-backed path are also deferred.
+// (`createEyesLayer`, the `head` part only) reuses the identical head UVs and is also deferred.
 
 // `head`: the 6×10×6 skull, the 6×3×6 brow, and two 9×14×0 antler/branch planes.
-pub(in crate::entity_models) const CREAKING_HEAD_CUBES: [ModelCubeDesc; 4] = [
-    cube([-3.0, -10.0, -3.0], [6.0, 10.0, 6.0], CREAKING_BARK),
-    cube([-3.0, -13.0, -3.0], [6.0, 3.0, 6.0], CREAKING_BARK),
-    cube([3.0, -13.0, 0.0], [9.0, 14.0, 0.0], CREAKING_BARK),
-    cube([-12.0, -14.0, 0.0], [9.0, 14.0, 0.0], CREAKING_BARK),
+pub(in crate::entity_models) const CREAKING_HEAD_CUBES: [ModelCube; 4] = [
+    ModelCube::new(
+        [-3.0, -10.0, -3.0],
+        [6.0, 10.0, 6.0],
+        CREAKING_BARK,
+        [6.0, 10.0, 6.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-3.0, -13.0, -3.0],
+        [6.0, 3.0, 6.0],
+        CREAKING_BARK,
+        [6.0, 3.0, 6.0],
+        [28.0, 31.0],
+        false,
+    ),
+    ModelCube::new(
+        [3.0, -13.0, 0.0],
+        [9.0, 14.0, 0.0],
+        CREAKING_BARK,
+        [9.0, 14.0, 0.0],
+        [12.0, 40.0],
+        false,
+    ),
+    ModelCube::new(
+        [-12.0, -14.0, 0.0],
+        [9.0, 14.0, 0.0],
+        CREAKING_BARK,
+        [9.0, 14.0, 0.0],
+        [34.0, 12.0],
+        false,
+    ),
 ];
 
 // `body`: the 6×13×5 trunk plus the 6×7×5 upper block.
-pub(in crate::entity_models) const CREAKING_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([0.0, -3.0, -3.0], [6.0, 13.0, 5.0], CREAKING_BARK),
-    cube([-6.0, -4.0, -3.0], [6.0, 7.0, 5.0], CREAKING_BARK),
+pub(in crate::entity_models) const CREAKING_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [0.0, -3.0, -3.0],
+        [6.0, 13.0, 5.0],
+        CREAKING_BARK,
+        [6.0, 13.0, 5.0],
+        [0.0, 16.0],
+        false,
+    ),
+    ModelCube::new(
+        [-6.0, -4.0, -3.0],
+        [6.0, 7.0, 5.0],
+        CREAKING_BARK,
+        [6.0, 7.0, 5.0],
+        [24.0, 0.0],
+        false,
+    ),
 ];
 
 // `right_arm`: a 3×21×3 limb plus a 3×4×3 hand.
-pub(in crate::entity_models) const CREAKING_RIGHT_ARM_CUBES: [ModelCubeDesc; 2] = [
-    cube([-2.0, -1.5, -1.5], [3.0, 21.0, 3.0], CREAKING_BARK),
-    cube([-2.0, 19.5, -1.5], [3.0, 4.0, 3.0], CREAKING_BARK),
+pub(in crate::entity_models) const CREAKING_RIGHT_ARM_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-2.0, -1.5, -1.5],
+        [3.0, 21.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 21.0, 3.0],
+        [22.0, 13.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.0, 19.5, -1.5],
+        [3.0, 4.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 4.0, 3.0],
+        [46.0, 0.0],
+        false,
+    ),
 ];
 
 // `left_arm`: a 3×16×3 limb with a 3×4×3 shoulder block and a 3×4×3 hand.
-pub(in crate::entity_models) const CREAKING_LEFT_ARM_CUBES: [ModelCubeDesc; 3] = [
-    cube([0.0, -1.0, -1.5], [3.0, 16.0, 3.0], CREAKING_BARK),
-    cube([0.0, -5.0, -1.5], [3.0, 4.0, 3.0], CREAKING_BARK),
-    cube([0.0, 15.0, -1.5], [3.0, 4.0, 3.0], CREAKING_BARK),
+pub(in crate::entity_models) const CREAKING_LEFT_ARM_CUBES: [ModelCube; 3] = [
+    ModelCube::new(
+        [0.0, -1.0, -1.5],
+        [3.0, 16.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 16.0, 3.0],
+        [30.0, 40.0],
+        false,
+    ),
+    ModelCube::new(
+        [0.0, -5.0, -1.5],
+        [3.0, 4.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 4.0, 3.0],
+        [52.0, 12.0],
+        false,
+    ),
+    ModelCube::new(
+        [0.0, 15.0, -1.5],
+        [3.0, 4.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 4.0, 3.0],
+        [52.0, 19.0],
+        false,
+    ),
 ];
 
 // `left_leg`: a 3×16×3 limb plus a 5×0×9 foot plane.
-pub(in crate::entity_models) const CREAKING_LEFT_LEG_CUBES: [ModelCubeDesc; 2] = [
-    cube([-1.5, 0.0, -1.5], [3.0, 16.0, 3.0], CREAKING_BARK),
-    cube([-1.5, 15.7, -4.5], [5.0, 0.0, 9.0], CREAKING_BARK),
+pub(in crate::entity_models) const CREAKING_LEFT_LEG_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-1.5, 0.0, -1.5],
+        [3.0, 16.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 16.0, 3.0],
+        [42.0, 40.0],
+        false,
+    ),
+    ModelCube::new(
+        [-1.5, 15.7, -4.5],
+        [5.0, 0.0, 9.0],
+        CREAKING_BARK,
+        [5.0, 0.0, 9.0],
+        [45.0, 55.0],
+        false,
+    ),
 ];
 
 // `right_leg`: a 3×19×3 limb, a 5×0×9 foot plane, and a 3×3×3 hip block.
-pub(in crate::entity_models) const CREAKING_RIGHT_LEG_CUBES: [ModelCubeDesc; 3] = [
-    cube([-3.0, -1.5, -1.5], [3.0, 19.0, 3.0], CREAKING_BARK),
-    cube([-5.0, 17.2, -4.5], [5.0, 0.0, 9.0], CREAKING_BARK),
-    cube([-3.0, -4.5, -1.5], [3.0, 3.0, 3.0], CREAKING_BARK),
+pub(in crate::entity_models) const CREAKING_RIGHT_LEG_CUBES: [ModelCube; 3] = [
+    ModelCube::new(
+        [-3.0, -1.5, -1.5],
+        [3.0, 19.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 19.0, 3.0],
+        [0.0, 34.0],
+        false,
+    ),
+    ModelCube::new(
+        [-5.0, 17.2, -4.5],
+        [5.0, 0.0, 9.0],
+        CREAKING_BARK,
+        [5.0, 0.0, 9.0],
+        [45.0, 46.0],
+        false,
+    ),
+    ModelCube::new(
+        [-3.0, -4.5, -1.5],
+        [3.0, 3.0, 3.0],
+        CREAKING_BARK,
+        [3.0, 3.0, 3.0],
+        [12.0, 34.0],
+        false,
+    ),
 ];
 
 /// Vanilla `CreakingModel.createBodyLayer` rest-pose hierarchy, rooted at the `root` part. Sixteen
@@ -110,19 +222,19 @@ fn creaking_root() -> ModelPart {
         vec![
             (
                 "head",
-                ModelPart::leaf_colored(CREAKING_HEAD_POSE, &CREAKING_HEAD_CUBES),
+                ModelPart::leaf(CREAKING_HEAD_POSE, CREAKING_HEAD_CUBES.to_vec()),
             ),
             (
                 "body",
-                ModelPart::leaf_colored(CREAKING_BODY_POSE, &CREAKING_BODY_CUBES),
+                ModelPart::leaf(CREAKING_BODY_POSE, CREAKING_BODY_CUBES.to_vec()),
             ),
             (
                 "right_arm",
-                ModelPart::leaf_colored(CREAKING_RIGHT_ARM_POSE, &CREAKING_RIGHT_ARM_CUBES),
+                ModelPart::leaf(CREAKING_RIGHT_ARM_POSE, CREAKING_RIGHT_ARM_CUBES.to_vec()),
             ),
             (
                 "left_arm",
-                ModelPart::leaf_colored(CREAKING_LEFT_ARM_POSE, &CREAKING_LEFT_ARM_CUBES),
+                ModelPart::leaf(CREAKING_LEFT_ARM_POSE, CREAKING_LEFT_ARM_CUBES.to_vec()),
             ),
         ],
     );
@@ -133,11 +245,11 @@ fn creaking_root() -> ModelPart {
             ("upper_body", upper_body),
             (
                 "left_leg",
-                ModelPart::leaf_colored(CREAKING_LEFT_LEG_POSE, &CREAKING_LEFT_LEG_CUBES),
+                ModelPart::leaf(CREAKING_LEFT_LEG_POSE, CREAKING_LEFT_LEG_CUBES.to_vec()),
             ),
             (
                 "right_leg",
-                ModelPart::leaf_colored(CREAKING_RIGHT_LEG_POSE, &CREAKING_RIGHT_LEG_CUBES),
+                ModelPart::leaf(CREAKING_RIGHT_LEG_POSE, CREAKING_RIGHT_LEG_CUBES.to_vec()),
             ),
         ],
     )
@@ -285,10 +397,10 @@ pub(in crate::entity_models) const CREAKING_WALK: AnimationDefinition = Animatio
 
 /// Mutable creaking model, mirroring vanilla `CreakingModel`. The cubeless `root` part (parenting
 /// the empty `upper_body` pivot and the two legs; `upper_body` parents head, body, and two arms)
-/// hangs off a synthetic root, built from the baked colored geometry with named children. Colored-only:
-/// `setup_anim` sets the head look, then adds the looping `CREAKING_WALK` cycle onto the upper body,
-/// head, arms, and legs (the attack / invulnerable / death keyframes stay deferred), addressing each
-/// bone via `child_mut`.
+/// hangs off a synthetic root, built from the baked geometry with named children carrying both the
+/// colored tint and the textured UVs. `setup_anim` sets the head look, then adds the looping
+/// `CREAKING_WALK` cycle onto the upper body, head, arms, and legs (the attack / invulnerable /
+/// death keyframes stay deferred), addressing each bone via `child_mut`.
 pub(in crate::entity_models) struct CreakingModel {
     root: ModelPart,
 }

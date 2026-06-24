@@ -60,13 +60,14 @@ fn baby_feline_geometry_matches_vanilla_26_1_body_layer() {
     assert_eq!(BABY_FELINE_HEAD_CUBES[3].min, [-1.5, -1.0, -3.875]);
     assert_eq!(BABY_FELINE_HEAD_CUBES[3].size, [3.0, 2.0, 1.0]);
 
-    // The four 1×2×2 legs (shared box): left/right front at z=-1.5, left/right hind at z=2.5.
+    // The four 1×2×2 legs (same box dims, but each leg carries its own texOffs): left/right front at
+    // z=-1.5, left/right hind at z=2.5.
     assert_eq!(BABY_FELINE_LEFT_FRONT_LEG_POSE.offset, [1.0, 22.0, -1.5]);
     assert_eq!(BABY_FELINE_RIGHT_FRONT_LEG_POSE.offset, [-1.0, 22.0, -1.5]);
     assert_eq!(BABY_FELINE_LEFT_HIND_LEG_POSE.offset, [1.0, 22.0, 2.5]);
     assert_eq!(BABY_FELINE_RIGHT_HIND_LEG_POSE.offset, [-1.0, 22.0, 2.5]);
-    assert_eq!(BABY_FELINE_LEG_CUBES[0].min, [-0.5, 0.0, -1.0]);
-    assert_eq!(BABY_FELINE_LEG_CUBES[0].size, [1.0, 2.0, 2.0]);
+    assert_eq!(BABY_FELINE_LEFT_FRONT_LEG_CUBES[0].min, [-0.5, 0.0, -1.0]);
+    assert_eq!(BABY_FELINE_LEFT_FRONT_LEG_CUBES[0].size, [1.0, 2.0, 2.0]);
 
     // `body` (offset (0, 20.5, 0.5)): the 4×3×7 trunk, upright (no pitch).
     assert_eq!(BABY_FELINE_BODY_POSE.offset, [0.0, 20.5, 0.5]);

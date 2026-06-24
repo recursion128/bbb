@@ -1,9 +1,6 @@
-use super::{
-    apply_head_look, model_cube as cube, ModelCubeDesc, PartPose, NAUTILUS_BODY, NAUTILUS_SHELL,
-    PART_POSE_ZERO,
-};
+use super::{apply_head_look, PartPose, NAUTILUS_BODY, NAUTILUS_SHELL, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `NautilusModel.createBodyLayer` (atlas 128×128) — the new rideable nautilus mob.
 // `NautilusModel extends EntityModel`: one cubeless `root` pivot parenting the `shell` (the spiral shell,
@@ -14,37 +11,84 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // reproduced; the SWIMMING keyframe undulation needs the keyframe machinery + an `AnimationState`, so it
 // stays deferred (the nautilus renders at this bind pose plus the clamped look). Both the adult
 // `createBodyMesh` and the smaller baby `createBabyBodyLayer` are modeled (same `root → shell + body →
-// mouths` structure). The variant textures and the saddle / armor / coral layers are deferred, so the
-// colored debug path renders a tan shell over a pale body. Colored-only (no textured path yet), so the
-// cubes stay [`ModelCubeDesc`] and the tree is assembled from `leaf_colored` (and `colored` for the
-// cube-bearing `body`). Nautilus uses a plain `MobRenderer`.
+// mouths` structure). The variant textures and the saddle / armor / coral layers are deferred. Each
+// unified cube carries both the colored debug tint (tan shell over a pale body) and the textured
+// `uv_size` / `texOffs`. Nautilus uses a plain `MobRenderer`.
 
 // `shell` cubes: the 14×10×16 dome, the 14×8×20 whorl, and a 14×8×0 rear fin plane.
-pub(in crate::entity_models) const NAUTILUS_SHELL_CUBES: [ModelCubeDesc; 3] = [
-    cube([-7.0, -10.0, -7.0], [14.0, 10.0, 16.0], NAUTILUS_SHELL),
-    cube([-7.0, 0.0, -7.0], [14.0, 8.0, 20.0], NAUTILUS_SHELL),
-    cube([-7.0, 0.0, 6.0], [14.0, 8.0, 0.0], NAUTILUS_SHELL),
+pub(in crate::entity_models) const NAUTILUS_SHELL_CUBES: [ModelCube; 3] = [
+    ModelCube::new(
+        [-7.0, -10.0, -7.0],
+        [14.0, 10.0, 16.0],
+        NAUTILUS_SHELL,
+        [14.0, 10.0, 16.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-7.0, 0.0, -7.0],
+        [14.0, 8.0, 20.0],
+        NAUTILUS_SHELL,
+        [14.0, 8.0, 20.0],
+        [0.0, 26.0],
+        false,
+    ),
+    ModelCube::new(
+        [-7.0, 0.0, 6.0],
+        [14.0, 8.0, 0.0],
+        NAUTILUS_SHELL,
+        [14.0, 8.0, 0.0],
+        [48.0, 26.0],
+        false,
+    ),
 ];
 
 // `body` cubes: the 10×8×14 trunk and a 10×8×0 rear fin plane.
-pub(in crate::entity_models) const NAUTILUS_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([-5.0, -4.51, -3.0], [10.0, 8.0, 14.0], NAUTILUS_BODY),
-    cube([-5.0, -4.51, 7.0], [10.0, 8.0, 0.0], NAUTILUS_BODY),
+pub(in crate::entity_models) const NAUTILUS_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-5.0, -4.51, -3.0],
+        [10.0, 8.0, 14.0],
+        NAUTILUS_BODY,
+        [10.0, 8.0, 14.0],
+        [0.0, 54.0],
+        false,
+    ),
+    ModelCube::new(
+        [-5.0, -4.51, 7.0],
+        [10.0, 8.0, 0.0],
+        NAUTILUS_BODY,
+        [10.0, 8.0, 0.0],
+        [0.0, 76.0],
+        false,
+    ),
 ];
 
 // The three mouth boxes. Upper/lower use the vanilla `CubeDeformation(-0.001)` (min += 0.001,
-// size -= 0.002); the inner mouth is undeformed.
-pub(in crate::entity_models) const NAUTILUS_UPPER_MOUTH_CUBES: [ModelCubeDesc; 1] = [cube(
+// size -= 0.002); the inner mouth is undeformed. The UV-unwrap dimensions stay the UN-inflated
+// addBox dims (10×4×4), so the deformed cubes' `uv_size` differs from their (inflated) `size`.
+pub(in crate::entity_models) const NAUTILUS_UPPER_MOUTH_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-4.999, -1.999, 0.001],
     [9.998, 3.998, 3.998],
     NAUTILUS_BODY,
+    [10.0, 4.0, 4.0],
+    [54.0, 54.0],
+    false,
 )];
-pub(in crate::entity_models) const NAUTILUS_INNER_MOUTH_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.0, -2.0, -0.5], [6.0, 4.0, 4.0], NAUTILUS_BODY)];
-pub(in crate::entity_models) const NAUTILUS_LOWER_MOUTH_CUBES: [ModelCubeDesc; 1] = [cube(
+pub(in crate::entity_models) const NAUTILUS_INNER_MOUTH_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, -2.0, -0.5],
+    [6.0, 4.0, 4.0],
+    NAUTILUS_BODY,
+    [6.0, 4.0, 4.0],
+    [54.0, 70.0],
+    false,
+)];
+pub(in crate::entity_models) const NAUTILUS_LOWER_MOUTH_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-4.999, -1.979, 0.001],
     [9.998, 3.998, 3.998],
     NAUTILUS_BODY,
+    [10.0, 4.0, 4.0],
+    [54.0, 62.0],
+    false,
 )];
 
 /// `root` pivot pose: `PartPose.offset(0, 29, -6)`.
@@ -82,32 +126,83 @@ pub(in crate::entity_models) const NAUTILUS_LOWER_MOUTH_POSE: PartPose = PartPos
 // mouths` hierarchy as the adult, scaled down to the hatchling proportions.
 
 // Baby `shell` cubes: the 7×4×7 dome, the 7×4×9 whorl, and a 7×4×0 rear fin plane.
-pub(in crate::entity_models) const BABY_NAUTILUS_SHELL_CUBES: [ModelCubeDesc; 3] = [
-    cube([-6.0, -4.0, -1.0], [7.0, 4.0, 7.0], NAUTILUS_SHELL),
-    cube([-6.0, 0.0, -1.0], [7.0, 4.0, 9.0], NAUTILUS_SHELL),
-    cube([-6.0, 0.0, 5.0], [7.0, 4.0, 0.0], NAUTILUS_SHELL),
+pub(in crate::entity_models) const BABY_NAUTILUS_SHELL_CUBES: [ModelCube; 3] = [
+    ModelCube::new(
+        [-6.0, -4.0, -1.0],
+        [7.0, 4.0, 7.0],
+        NAUTILUS_SHELL,
+        [7.0, 4.0, 7.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-6.0, 0.0, -1.0],
+        [7.0, 4.0, 9.0],
+        NAUTILUS_SHELL,
+        [7.0, 4.0, 9.0],
+        [0.0, 11.0],
+        false,
+    ),
+    ModelCube::new(
+        [-6.0, 0.0, 5.0],
+        [7.0, 4.0, 0.0],
+        NAUTILUS_SHELL,
+        [7.0, 4.0, 0.0],
+        [23.0, 11.0],
+        false,
+    ),
 ];
 
 // Baby `body` cubes: the 5×4×7 trunk and a 5×4×0 rear fin plane.
-pub(in crate::entity_models) const BABY_NAUTILUS_BODY_CUBES: [ModelCubeDesc; 2] = [
-    cube([-2.5, -3.01, -1.0], [5.0, 4.0, 7.0], NAUTILUS_BODY),
-    cube([-2.5, -3.01, 4.1], [5.0, 4.0, 0.0], NAUTILUS_BODY),
+pub(in crate::entity_models) const BABY_NAUTILUS_BODY_CUBES: [ModelCube; 2] = [
+    ModelCube::new(
+        [-2.5, -3.01, -1.0],
+        [5.0, 4.0, 7.0],
+        NAUTILUS_BODY,
+        [5.0, 4.0, 7.0],
+        [0.0, 24.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.5, -3.01, 4.1],
+        [5.0, 4.0, 0.0],
+        NAUTILUS_BODY,
+        [5.0, 4.0, 0.0],
+        [0.0, 35.0],
+        false,
+    ),
 ];
 
 // The three baby mouth boxes. Upper/lower use the vanilla `CubeDeformation(-0.001)` (min += 0.001,
-// size -= 0.002, on the same 5×2×2 box); the inner mouth is an undeformed 3×2×2.
-pub(in crate::entity_models) const BABY_NAUTILUS_UPPER_MOUTH_CUBES: [ModelCubeDesc; 1] = [cube(
-    [-2.499, -0.999, 0.001],
-    [4.998, 1.998, 1.998],
-    NAUTILUS_BODY,
-)];
-pub(in crate::entity_models) const BABY_NAUTILUS_INNER_MOUTH_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.5, -1.0, -1.0], [3.0, 2.0, 2.0], NAUTILUS_BODY)];
-pub(in crate::entity_models) const BABY_NAUTILUS_LOWER_MOUTH_CUBES: [ModelCubeDesc; 1] = [cube(
-    [-2.499, -0.999, 0.001],
-    [4.998, 1.998, 1.998],
-    NAUTILUS_BODY,
-)];
+// size -= 0.002, on the same 5×2×2 box); the inner mouth is an undeformed 3×2×2. The deformed
+// cubes' `uv_size` stays the UN-inflated addBox dims (5×2×2).
+pub(in crate::entity_models) const BABY_NAUTILUS_UPPER_MOUTH_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-2.499, -0.999, 0.001],
+        [4.998, 1.998, 1.998],
+        NAUTILUS_BODY,
+        [5.0, 2.0, 2.0],
+        [24.0, 24.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_NAUTILUS_INNER_MOUTH_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-1.5, -1.0, -1.0],
+        [3.0, 2.0, 2.0],
+        NAUTILUS_BODY,
+        [3.0, 2.0, 2.0],
+        [24.0, 32.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_NAUTILUS_LOWER_MOUTH_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-2.499, -0.999, 0.001],
+        [4.998, 1.998, 1.998],
+        NAUTILUS_BODY,
+        [5.0, 2.0, 2.0],
+        [24.0, 28.0],
+        false,
+    )];
 
 /// Baby `root` pivot pose: `PartPose.offset(-0.5, 28, -0.5)`.
 pub(in crate::entity_models) const BABY_NAUTILUS_ROOT_POSE: PartPose = PartPose {
@@ -146,21 +241,30 @@ pub(in crate::entity_models) const BABY_NAUTILUS_LOWER_MOUTH_POSE: PartPose = Pa
 /// adult and baby share the identical `root → shell + body → mouths` structure.
 fn nautilus_root(baby: bool) -> ModelPart {
     if baby {
-        let body = ModelPart::colored(
+        let body = ModelPart::new(
             BABY_NAUTILUS_BODY_POSE,
-            &BABY_NAUTILUS_BODY_CUBES,
+            BABY_NAUTILUS_BODY_CUBES.to_vec(),
             vec![
-                ModelPart::leaf_colored(
-                    BABY_NAUTILUS_UPPER_MOUTH_POSE,
-                    &BABY_NAUTILUS_UPPER_MOUTH_CUBES,
+                (
+                    "0",
+                    ModelPart::leaf(
+                        BABY_NAUTILUS_UPPER_MOUTH_POSE,
+                        BABY_NAUTILUS_UPPER_MOUTH_CUBES.to_vec(),
+                    ),
                 ),
-                ModelPart::leaf_colored(
-                    BABY_NAUTILUS_INNER_MOUTH_POSE,
-                    &BABY_NAUTILUS_INNER_MOUTH_CUBES,
+                (
+                    "1",
+                    ModelPart::leaf(
+                        BABY_NAUTILUS_INNER_MOUTH_POSE,
+                        BABY_NAUTILUS_INNER_MOUTH_CUBES.to_vec(),
+                    ),
                 ),
-                ModelPart::leaf_colored(
-                    BABY_NAUTILUS_LOWER_MOUTH_POSE,
-                    &BABY_NAUTILUS_LOWER_MOUTH_CUBES,
+                (
+                    "2",
+                    ModelPart::leaf(
+                        BABY_NAUTILUS_LOWER_MOUTH_POSE,
+                        BABY_NAUTILUS_LOWER_MOUTH_CUBES.to_vec(),
+                    ),
                 ),
             ],
         );
@@ -170,19 +274,37 @@ fn nautilus_root(baby: bool) -> ModelPart {
             vec![
                 (
                     "shell",
-                    ModelPart::leaf_colored(BABY_NAUTILUS_SHELL_POSE, &BABY_NAUTILUS_SHELL_CUBES),
+                    ModelPart::leaf(BABY_NAUTILUS_SHELL_POSE, BABY_NAUTILUS_SHELL_CUBES.to_vec()),
                 ),
                 ("body", body),
             ],
         )
     } else {
-        let body = ModelPart::colored(
+        let body = ModelPart::new(
             NAUTILUS_BODY_POSE,
-            &NAUTILUS_BODY_CUBES,
+            NAUTILUS_BODY_CUBES.to_vec(),
             vec![
-                ModelPart::leaf_colored(NAUTILUS_UPPER_MOUTH_POSE, &NAUTILUS_UPPER_MOUTH_CUBES),
-                ModelPart::leaf_colored(NAUTILUS_INNER_MOUTH_POSE, &NAUTILUS_INNER_MOUTH_CUBES),
-                ModelPart::leaf_colored(NAUTILUS_LOWER_MOUTH_POSE, &NAUTILUS_LOWER_MOUTH_CUBES),
+                (
+                    "0",
+                    ModelPart::leaf(
+                        NAUTILUS_UPPER_MOUTH_POSE,
+                        NAUTILUS_UPPER_MOUTH_CUBES.to_vec(),
+                    ),
+                ),
+                (
+                    "1",
+                    ModelPart::leaf(
+                        NAUTILUS_INNER_MOUTH_POSE,
+                        NAUTILUS_INNER_MOUTH_CUBES.to_vec(),
+                    ),
+                ),
+                (
+                    "2",
+                    ModelPart::leaf(
+                        NAUTILUS_LOWER_MOUTH_POSE,
+                        NAUTILUS_LOWER_MOUTH_CUBES.to_vec(),
+                    ),
+                ),
             ],
         );
         ModelPart::new(
@@ -191,7 +313,7 @@ fn nautilus_root(baby: bool) -> ModelPart {
             vec![
                 (
                     "shell",
-                    ModelPart::leaf_colored(NAUTILUS_SHELL_POSE, &NAUTILUS_SHELL_CUBES),
+                    ModelPart::leaf(NAUTILUS_SHELL_POSE, NAUTILUS_SHELL_CUBES.to_vec()),
                 ),
                 ("body", body),
             ],
@@ -205,7 +327,7 @@ const NAUTILUS_LOOK_CLAMP_DEGREES: f32 = 10.0;
 /// Mutable nautilus model, mirroring vanilla `NautilusModel` (`baby` selecting the adult
 /// `createBodyMesh` or the smaller `createBabyBodyLayer` geometry). The named hierarchy
 /// (`root → shell + body → upper_mouth/inner_mouth/lower_mouth`) hangs off a synthetic root, built
-/// from the baked colored geometry. Colored-only: `setup_anim` steers the body by the clamped look
+/// from the baked geometry. `setup_anim` steers the body by the clamped look
 /// ([`apply_head_look`] on the `body` part, with the yaw/pitch pre-clamped to ±10°) via `child_mut`;
 /// the SWIMMING keyframe undulation and every other pose stay deferred.
 pub(in crate::entity_models) struct NautilusModel {

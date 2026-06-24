@@ -38,8 +38,14 @@ fn sniffer_geometry_matches_vanilla_26_1_body_layer() {
         SNIFFER_LEFT_HIND_LEG_POSE,
     ] {
         assert_eq!(expected.offset[1], 10.0);
-        assert_eq!(SNIFFER_LEG_CUBES[0].size, [7.0, 10.0, 8.0]);
     }
+    // All six legs share the 7×10×8 box geometry but carry per-leg texOffs (right column u=32,
+    // left column u=0; front/mid/hind at v=87/105/123).
+    assert_eq!(SNIFFER_RIGHT_FRONT_LEG_CUBES[0].size, [7.0, 10.0, 8.0]);
+    assert_eq!(SNIFFER_RIGHT_FRONT_LEG_CUBES[0].tex, [32.0, 87.0]);
+    assert_eq!(SNIFFER_RIGHT_HIND_LEG_CUBES[0].tex, [32.0, 123.0]);
+    assert_eq!(SNIFFER_LEFT_FRONT_LEG_CUBES[0].tex, [0.0, 87.0]);
+    assert_eq!(SNIFFER_LEFT_HIND_LEG_CUBES[0].tex, [0.0, 123.0]);
     assert_eq!(SNIFFER_RIGHT_FRONT_LEG_POSE.offset, [-7.5, 10.0, -15.0]);
     assert_eq!(SNIFFER_LEFT_HIND_LEG_POSE.offset, [7.5, 10.0, 15.0]);
 }

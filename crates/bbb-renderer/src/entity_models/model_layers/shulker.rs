@@ -1,8 +1,6 @@
-use super::{
-    model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, SHULKER_HEAD, SHULKER_SHELL,
-};
+use super::{PartPose, PART_POSE_ZERO, SHULKER_HEAD, SHULKER_SHELL};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `ShulkerModel.createBodyLayer` (atlas 64×64). The mesh root holds three sibling
 // parts: the 16×12×16 lid and the 16×8×16 base (both at `offset(0, 24, 0)`), and the 6×6×6 head at
@@ -16,20 +14,39 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // `ShulkerRenderer.setupRotations` non-floor attach-face rotation (`attachFace.getOpposite()`, the
 // identity for a floor shulker) and the `bodyRot + 180` body-yaw inversion read the entity-side
 // `attachFace`/yaw state, which the native scene does not yet project, so the floor rest orientation
-// is emitted. The sixteen dye-color variants live on the deferred texture-backed path, so the colored
-// debug path renders a purple shell tint plus a yellow head tint.
+// is emitted. The sixteen dye-color variants share this one UV layout (only the texture image
+// differs); the colored debug path renders a purple shell tint plus a yellow head tint.
 
-// `lid`: the 16×12×16 upper shell.
-pub(in crate::entity_models) const SHULKER_LID_CUBES: [ModelCubeDesc; 1] =
-    [cube([-8.0, -16.0, -8.0], [16.0, 12.0, 16.0], SHULKER_SHELL)];
+// `lid`: the 16×12×16 upper shell at texOffs(0, 0). Each unified cube carries the colored tint and
+// the textured `uv_size` / `texOffs`.
+pub(in crate::entity_models) const SHULKER_LID_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-8.0, -16.0, -8.0],
+    [16.0, 12.0, 16.0],
+    SHULKER_SHELL,
+    [16.0, 12.0, 16.0],
+    [0.0, 0.0],
+    false,
+)];
 
-// `base`: the 16×8×16 lower shell.
-pub(in crate::entity_models) const SHULKER_BASE_CUBES: [ModelCubeDesc; 1] =
-    [cube([-8.0, -8.0, -8.0], [16.0, 8.0, 16.0], SHULKER_SHELL)];
+// `base`: the 16×8×16 lower shell at texOffs(0, 28).
+pub(in crate::entity_models) const SHULKER_BASE_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-8.0, -8.0, -8.0],
+    [16.0, 8.0, 16.0],
+    SHULKER_SHELL,
+    [16.0, 8.0, 16.0],
+    [0.0, 28.0],
+    false,
+)];
 
-// `head`: the 6×6×6 yellow head.
-pub(in crate::entity_models) const SHULKER_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-3.0, 0.0, -3.0], [6.0, 6.0, 6.0], SHULKER_HEAD)];
+// `head`: the 6×6×6 yellow head at texOffs(0, 52).
+pub(in crate::entity_models) const SHULKER_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-3.0, 0.0, -3.0],
+    [6.0, 6.0, 6.0],
+    SHULKER_HEAD,
+    [6.0, 6.0, 6.0],
+    [0.0, 52.0],
+    false,
+)];
 
 /// `lid` and `base` part poses: both `PartPose.offset(0, 24, 0)`.
 pub(in crate::entity_models) const SHULKER_SHELL_POSE: PartPose = PartPose {
@@ -66,9 +83,8 @@ pub(in crate::entity_models) fn shulker_lid_pose(peek: f32, age_in_ticks: f32) -
 }
 
 /// Mutable shulker model, mirroring vanilla `ShulkerModel`. Its three named sibling parts (`lid`,
-/// `base`, `head`) hang off a synthetic root, each built from the baked colored geometry. Colored-only
-/// (no textured path yet): `setup_anim` opens the lid from the synced peek and turns the head to the
-/// look angles via `child_mut`.
+/// `base`, `head`) hang off a synthetic root, each built from the baked geometry. `setup_anim` opens
+/// the lid from the synced peek and turns the head to the look angles via `child_mut`.
 pub(in crate::entity_models) struct ShulkerModel {
     root: ModelPart,
 }
@@ -82,15 +98,15 @@ impl ShulkerModel {
                 vec![
                     (
                         "lid",
-                        ModelPart::leaf_colored(SHULKER_SHELL_POSE, &SHULKER_LID_CUBES),
+                        ModelPart::leaf(SHULKER_SHELL_POSE, SHULKER_LID_CUBES.to_vec()),
                     ),
                     (
                         "base",
-                        ModelPart::leaf_colored(SHULKER_SHELL_POSE, &SHULKER_BASE_CUBES),
+                        ModelPart::leaf(SHULKER_SHELL_POSE, SHULKER_BASE_CUBES.to_vec()),
                     ),
                     (
                         "head",
-                        ModelPart::leaf_colored(SHULKER_HEAD_POSE, &SHULKER_HEAD_CUBES),
+                        ModelPart::leaf(SHULKER_HEAD_POSE, SHULKER_HEAD_CUBES.to_vec()),
                     ),
                 ],
             ),

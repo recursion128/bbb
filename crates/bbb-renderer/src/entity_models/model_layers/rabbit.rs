@@ -1,8 +1,6 @@
-use super::{
-    apply_head_look, model_cube as cube, ModelCubeDesc, PartPose, PART_POSE_ZERO, RABBIT_BROWN,
-};
+use super::{apply_head_look, PartPose, PART_POSE_ZERO, RABBIT_BROWN};
 use crate::entity_models::instances::EntityModelInstance;
-use crate::entity_models::model::{EntityModel, ModelPart};
+use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `AdultRabbitModel.createBodyLayer` (atlas 64×64). The mesh root holds two parts: the
 // `body` (carrying the tail, head — with the two ears — and the cubeless `frontlegs` pivot) and the
@@ -11,42 +9,101 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 // rather than adds) when the idle-head-tilt animation is not playing; the looping `RabbitAnimation.HOP`
 // and `IDLE_HEAD_TILT` keyframe animations need un-projected `AnimationState`s and stay deferred, so a
 // resting rabbit renders at this bind pose plus the head look. The seven `Rabbit.Variant` colors and
-// the baby body layer live on the deferred texture-backed / baby paths, so the colored debug path
-// renders one brown tint. Colored-only (no textured path yet), so the cubes stay [`ModelCubeDesc`] and
-// the tree is assembled imperatively from named children. Rabbit uses a plain
-// `MobRenderer`/`LivingEntityRenderer.setupRotations`.
+// the baby body layer live on the textured / baby paths; the colored debug path renders one brown
+// tint while each unified cube also carries the textured `uv_size` / `texOffs` / `mirror`. The two ears
+// and the two haunches share their bbb box geometry but vanilla gives the left and right sides distinct
+// `texOffs`, so the textured UV forces a per-side cube const (the geometry stays identical). Rabbit uses
+// a plain `MobRenderer`/`LivingEntityRenderer.setupRotations`.
 
-// `body`: the 8×6×10 torso.
-pub(in crate::entity_models) const RABBIT_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-4.0, -6.0, -9.0], [8.0, 6.0, 10.0], RABBIT_BROWN)];
+// `body`: the 8×6×10 torso, texOffs(0, 0).
+pub(in crate::entity_models) const RABBIT_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -6.0, -9.0],
+    [8.0, 6.0, 10.0],
+    RABBIT_BROWN,
+    [8.0, 6.0, 10.0],
+    [0.0, 0.0],
+    false,
+)];
 
-// `tail`: the 4×4×4 puff.
-pub(in crate::entity_models) const RABBIT_TAIL_CUBES: [ModelCubeDesc; 1] = [cube(
+// `tail`: the 4×4×4 puff, texOffs(20, 16).
+pub(in crate::entity_models) const RABBIT_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-2.0, -3.0084, -1.0125],
     [4.0, 4.0, 4.0],
     RABBIT_BROWN,
+    [4.0, 4.0, 4.0],
+    [20.0, 16.0],
+    false,
 )];
 
-// `head`: the 5×5×5 skull.
-pub(in crate::entity_models) const RABBIT_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.5, -3.0, -4.0], [5.0, 5.0, 5.0], RABBIT_BROWN)];
+// `head`: the 5×5×5 skull, texOffs(0, 16).
+pub(in crate::entity_models) const RABBIT_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -3.0, -4.0],
+    [5.0, 5.0, 5.0],
+    RABBIT_BROWN,
+    [5.0, 5.0, 5.0],
+    [0.0, 16.0],
+    false,
+)];
 
-// The shared 2×5×1 ear (both ears reuse it, differing only in pivot X sign).
-pub(in crate::entity_models) const RABBIT_EAR_CUBES: [ModelCubeDesc; 1] = [cube(
+// The 2×5×1 ear box. The two ears share their geometry but carry distinct vanilla `texOffs` (so the
+// shared bbb box becomes a per-side const here): bbb's `right_ear` child (pivot X +1.5, equal to
+// vanilla's `left_ear` pivot) → texOffs(32, 0); bbb's `left_ear` child (pivot X -1.5, vanilla's
+// `right_ear` pivot) → texOffs(26, 0). The naming is inverted vs vanilla; UV is keyed by pivot.
+pub(in crate::entity_models) const RABBIT_RIGHT_EAR_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-1.0, -4.2929, -0.1213],
     [2.0, 5.0, 1.0],
     RABBIT_BROWN,
+    [2.0, 5.0, 1.0],
+    [32.0, 0.0],
+    false,
+)];
+pub(in crate::entity_models) const RABBIT_LEFT_EAR_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -4.2929, -0.1213],
+    [2.0, 5.0, 1.0],
+    RABBIT_BROWN,
+    [2.0, 5.0, 1.0],
+    [26.0, 0.0],
+    false,
 )];
 
-// The two 2×4×2 front legs (the right one's box is nudged on X, matching vanilla).
-pub(in crate::entity_models) const RABBIT_RIGHT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.9, -1.0, -0.9], [2.0, 4.0, 2.0], RABBIT_BROWN)];
-pub(in crate::entity_models) const RABBIT_LEFT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, -1.0, -1.0], [2.0, 4.0, 2.0], RABBIT_BROWN)];
+// The two 2×4×2 front legs (distinct boxes — the right one's box is nudged on X, matching vanilla).
+// Right front leg texOffs(36, 18); left front leg texOffs(44, 18).
+pub(in crate::entity_models) const RABBIT_RIGHT_FRONT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-0.9, -1.0, -0.9],
+    [2.0, 4.0, 2.0],
+    RABBIT_BROWN,
+    [2.0, 4.0, 2.0],
+    [36.0, 18.0],
+    false,
+)];
+pub(in crate::entity_models) const RABBIT_LEFT_FRONT_LEG_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -1.0, -1.0],
+    [2.0, 4.0, 2.0],
+    RABBIT_BROWN,
+    [2.0, 4.0, 2.0],
+    [44.0, 18.0],
+    false,
+)];
 
-// The shared 2×1×6 haunch (both reuse it, differing only in the haunch yaw sign).
-pub(in crate::entity_models) const RABBIT_HAUNCH_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, 0.0, -5.0], [2.0, 1.0, 6.0], RABBIT_BROWN)];
+// The 2×1×6 haunch box. The two haunches share their geometry but carry distinct vanilla `texOffs`
+// (so the shared bbb box becomes a per-side const here): bbb's right haunch (yaw +0.3927) →
+// texOffs(20, 24); bbb's left haunch (yaw -0.3927) → texOffs(36, 24). UV is keyed by the haunch yaw.
+pub(in crate::entity_models) const RABBIT_RIGHT_HAUNCH_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -5.0],
+    [2.0, 1.0, 6.0],
+    RABBIT_BROWN,
+    [2.0, 1.0, 6.0],
+    [20.0, 24.0],
+    false,
+)];
+pub(in crate::entity_models) const RABBIT_LEFT_HAUNCH_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, 0.0, -5.0],
+    [2.0, 1.0, 6.0],
+    RABBIT_BROWN,
+    [2.0, 1.0, 6.0],
+    [36.0, 24.0],
+    false,
+)];
 
 /// Vanilla `AdultRabbitModel.createBodyLayer` rest-pose hierarchy: the `body` (pitched `-0.3927`)
 /// and the cubeless `backlegs` pivot. Nine cubes (the `frontlegs`, `backlegs`, and the two hind-leg
@@ -122,12 +179,20 @@ pub(in crate::entity_models) const RABBIT_LEFT_HAUNCH_POSE: PartPose = PartPose 
 /// and the cubeless `backlegs` pivot (parenting the two cubeless hind-leg pivots, each carrying its
 /// haunch). The head is name-addressed by `setup_anim`, so `body` carries named children.
 fn adult_rabbit_root() -> ModelPart {
-    let head = ModelPart::colored(
+    // `head`'s two ears were unnamed (index-named) children under the original `ModelPart::colored`,
+    // so they keep the positional `"0"` / `"1"` names that `INDEX_CHILD_NAMES` produced.
+    let head = ModelPart::new(
         RABBIT_HEAD_POSE,
-        &RABBIT_HEAD_CUBES,
+        RABBIT_HEAD_CUBES.to_vec(),
         vec![
-            ModelPart::leaf_colored(RABBIT_RIGHT_EAR_POSE, &RABBIT_EAR_CUBES),
-            ModelPart::leaf_colored(RABBIT_LEFT_EAR_POSE, &RABBIT_EAR_CUBES),
+            (
+                "0",
+                ModelPart::leaf(RABBIT_RIGHT_EAR_POSE, RABBIT_RIGHT_EAR_CUBES.to_vec()),
+            ),
+            (
+                "1",
+                ModelPart::leaf(RABBIT_LEFT_EAR_POSE, RABBIT_LEFT_EAR_CUBES.to_vec()),
+            ),
         ],
     );
     let frontlegs = ModelPart::new(
@@ -136,21 +201,27 @@ fn adult_rabbit_root() -> ModelPart {
         vec![
             (
                 "right_front_leg",
-                ModelPart::leaf_colored(RABBIT_RIGHT_FRONT_LEG_POSE, &RABBIT_RIGHT_FRONT_LEG_CUBES),
+                ModelPart::leaf(
+                    RABBIT_RIGHT_FRONT_LEG_POSE,
+                    RABBIT_RIGHT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
             (
                 "left_front_leg",
-                ModelPart::leaf_colored(RABBIT_LEFT_FRONT_LEG_POSE, &RABBIT_LEFT_FRONT_LEG_CUBES),
+                ModelPart::leaf(
+                    RABBIT_LEFT_FRONT_LEG_POSE,
+                    RABBIT_LEFT_FRONT_LEG_CUBES.to_vec(),
+                ),
             ),
         ],
     );
-    let body = ModelPart::colored_named(
+    let body = ModelPart::new(
         RABBIT_BODY_POSE,
-        &RABBIT_BODY_CUBES,
+        RABBIT_BODY_CUBES.to_vec(),
         vec![
             (
                 "tail",
-                ModelPart::leaf_colored(RABBIT_TAIL_POSE, &RABBIT_TAIL_CUBES),
+                ModelPart::leaf(RABBIT_TAIL_POSE, RABBIT_TAIL_CUBES.to_vec()),
             ),
             ("head", head),
             ("frontlegs", frontlegs),
@@ -161,7 +232,7 @@ fn adult_rabbit_root() -> ModelPart {
         Vec::new(),
         vec![(
             "haunch",
-            ModelPart::leaf_colored(RABBIT_RIGHT_HAUNCH_POSE, &RABBIT_HAUNCH_CUBES),
+            ModelPart::leaf(RABBIT_RIGHT_HAUNCH_POSE, RABBIT_RIGHT_HAUNCH_CUBES.to_vec()),
         )],
     );
     let left_hind_leg = ModelPart::new(
@@ -169,7 +240,7 @@ fn adult_rabbit_root() -> ModelPart {
         Vec::new(),
         vec![(
             "haunch",
-            ModelPart::leaf_colored(RABBIT_LEFT_HAUNCH_POSE, &RABBIT_HAUNCH_CUBES),
+            ModelPart::leaf(RABBIT_LEFT_HAUNCH_POSE, RABBIT_LEFT_HAUNCH_CUBES.to_vec()),
         )],
     );
     let backlegs = ModelPart::new(
@@ -191,27 +262,95 @@ fn adult_rabbit_root() -> ModelPart {
 // every cube hangs off an `_r1` rotation-intermediate part, and the `body` lists `body_r1` / `tail` /
 // `head` / `frontlegs` (so the head is `body`'s THIRD child). Nine cubes.
 
-// `body_r1`: the 4×3×6 trunk.
-pub(in crate::entity_models) const BABY_RABBIT_BODY_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, -2.0, -3.0], [4.0, 3.0, 6.0], RABBIT_BROWN)];
-// `tail_r1`: the 3×3×3 puff.
-pub(in crate::entity_models) const BABY_RABBIT_TAIL_CUBES: [ModelCubeDesc; 1] = [cube(
+// `body_r1`: the 4×3×6 trunk, texOffs(0, 8).
+pub(in crate::entity_models) const BABY_RABBIT_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.0, -2.0, -3.0],
+    [4.0, 3.0, 6.0],
+    RABBIT_BROWN,
+    [4.0, 3.0, 6.0],
+    [0.0, 8.0],
+    false,
+)];
+// `tail_r1`: the 3×3×3 puff, texOffs(0, 21).
+pub(in crate::entity_models) const BABY_RABBIT_TAIL_CUBES: [ModelCube; 1] = [ModelCube::new(
     [-1.4, -2.0268, -1.0177],
     [3.0, 3.0, 3.0],
     RABBIT_BROWN,
+    [3.0, 3.0, 3.0],
+    [0.0, 21.0],
+    false,
 )];
-// `head`: the 5×4×4 skull.
-pub(in crate::entity_models) const BABY_RABBIT_HEAD_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.5, -3.0, -3.0], [5.0, 4.0, 4.0], RABBIT_BROWN)];
-// The shared 2×4×1 ear (both ears reuse it).
-pub(in crate::entity_models) const BABY_RABBIT_EAR_CUBES: [ModelCubeDesc; 1] =
-    [cube([-1.0, -3.5, -0.5], [2.0, 4.0, 1.0], RABBIT_BROWN)];
-// The shared 1×3×1 front-leg box (both `_r1` legs reuse it).
-pub(in crate::entity_models) const BABY_RABBIT_FRONT_LEG_CUBES: [ModelCubeDesc; 1] =
-    [cube([-0.5, -1.5, -0.5], [1.0, 3.0, 1.0], RABBIT_BROWN)];
-// The shared 2×1×3 haunch box (both reuse it).
-pub(in crate::entity_models) const BABY_RABBIT_HAUNCH_CUBES: [ModelCubeDesc; 1] =
-    [cube([-2.0, -0.5, 0.0], [2.0, 1.0, 3.0], RABBIT_BROWN)];
+// `head`: the 5×4×4 skull, texOffs(0, 0).
+pub(in crate::entity_models) const BABY_RABBIT_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -3.0, -3.0],
+    [5.0, 4.0, 4.0],
+    RABBIT_BROWN,
+    [5.0, 4.0, 4.0],
+    [0.0, 0.0],
+    false,
+)];
+// The 2×4×1 ear box. The two ears share their geometry but carry distinct vanilla `texOffs` (so the
+// shared bbb box becomes a per-side const here): bbb's right ear (pivot offset [-1.5,…]) →
+// texOffs(18, 0); bbb's left ear (pivot offset [1.5,…]) → texOffs(24, 0). UV is keyed by pivot.
+pub(in crate::entity_models) const BABY_RABBIT_RIGHT_EAR_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -3.5, -0.5],
+    [2.0, 4.0, 1.0],
+    RABBIT_BROWN,
+    [2.0, 4.0, 1.0],
+    [18.0, 0.0],
+    false,
+)];
+pub(in crate::entity_models) const BABY_RABBIT_LEFT_EAR_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-1.0, -3.5, -0.5],
+    [2.0, 4.0, 1.0],
+    RABBIT_BROWN,
+    [2.0, 4.0, 1.0],
+    [24.0, 0.0],
+    false,
+)];
+// The 1×3×1 front-leg `_r1` box. The two legs share their geometry but carry distinct vanilla
+// `texOffs` (so the shared bbb box becomes a per-side const here): bbb's left front leg (built first)
+// → texOffs(18, 8); bbb's right front leg (built second) → texOffs(14, 8). UV is keyed by build order.
+pub(in crate::entity_models) const BABY_RABBIT_LEFT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.5, -1.5, -0.5],
+        [1.0, 3.0, 1.0],
+        RABBIT_BROWN,
+        [1.0, 3.0, 1.0],
+        [18.0, 8.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_RABBIT_RIGHT_FRONT_LEG_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-0.5, -1.5, -0.5],
+        [1.0, 3.0, 1.0],
+        RABBIT_BROWN,
+        [1.0, 3.0, 1.0],
+        [14.0, 8.0],
+        false,
+    )];
+// The 2×1×3 haunch box. The two haunches share their geometry but carry distinct vanilla `texOffs`
+// (so the shared bbb box becomes a per-side const here): bbb's left haunch (pivot offset [1,0,0.5],
+// yaw -0.7854) → texOffs(10, 17); bbb's right haunch (pivot offset [0.5,0,-0.9], yaw +0.7854) →
+// texOffs(0, 17). UV is keyed by pivot / yaw.
+pub(in crate::entity_models) const BABY_RABBIT_LEFT_HAUNCH_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-2.0, -0.5, 0.0],
+        [2.0, 1.0, 3.0],
+        RABBIT_BROWN,
+        [2.0, 1.0, 3.0],
+        [10.0, 17.0],
+        false,
+    )];
+pub(in crate::entity_models) const BABY_RABBIT_RIGHT_HAUNCH_CUBES: [ModelCube; 1] =
+    [ModelCube::new(
+        [-2.0, -0.5, 0.0],
+        [2.0, 1.0, 3.0],
+        RABBIT_BROWN,
+        [2.0, 1.0, 3.0],
+        [0.0, 17.0],
+        false,
+    )];
 
 /// Vanilla `BabyRabbitModel.createBodyLayer` rest-pose hierarchy: the cubeless `body` pivot (parenting
 /// `body_r1` / `tail` / `head` / `frontlegs`) and the cubeless `backlegs` pivot. Nine cubes.
@@ -306,15 +445,29 @@ fn baby_rabbit_root() -> ModelPart {
         Vec::new(),
         vec![(
             "tail_r1",
-            ModelPart::leaf_colored(BABY_RABBIT_TAIL_R1_POSE, &BABY_RABBIT_TAIL_CUBES),
+            ModelPart::leaf(BABY_RABBIT_TAIL_R1_POSE, BABY_RABBIT_TAIL_CUBES.to_vec()),
         )],
     );
-    let head = ModelPart::colored(
+    // The baby `head`'s two ears were likewise unnamed (index-named) children under the original
+    // `ModelPart::colored`, so they keep the positional `"0"` / `"1"` names.
+    let head = ModelPart::new(
         BABY_RABBIT_HEAD_POSE,
-        &BABY_RABBIT_HEAD_CUBES,
+        BABY_RABBIT_HEAD_CUBES.to_vec(),
         vec![
-            ModelPart::leaf_colored(BABY_RABBIT_RIGHT_EAR_POSE, &BABY_RABBIT_EAR_CUBES),
-            ModelPart::leaf_colored(BABY_RABBIT_LEFT_EAR_POSE, &BABY_RABBIT_EAR_CUBES),
+            (
+                "0",
+                ModelPart::leaf(
+                    BABY_RABBIT_RIGHT_EAR_POSE,
+                    BABY_RABBIT_RIGHT_EAR_CUBES.to_vec(),
+                ),
+            ),
+            (
+                "1",
+                ModelPart::leaf(
+                    BABY_RABBIT_LEFT_EAR_POSE,
+                    BABY_RABBIT_LEFT_EAR_CUBES.to_vec(),
+                ),
+            ),
         ],
     );
     let left_front_leg = ModelPart::new(
@@ -322,7 +475,10 @@ fn baby_rabbit_root() -> ModelPart {
         Vec::new(),
         vec![(
             "left_front_leg_r1",
-            ModelPart::leaf_colored(BABY_RABBIT_FRONT_LEG_R1_POSE, &BABY_RABBIT_FRONT_LEG_CUBES),
+            ModelPart::leaf(
+                BABY_RABBIT_FRONT_LEG_R1_POSE,
+                BABY_RABBIT_LEFT_FRONT_LEG_CUBES.to_vec(),
+            ),
         )],
     );
     let right_front_leg = ModelPart::new(
@@ -330,7 +486,10 @@ fn baby_rabbit_root() -> ModelPart {
         Vec::new(),
         vec![(
             "right_front_leg_r1",
-            ModelPart::leaf_colored(BABY_RABBIT_FRONT_LEG_R1_POSE, &BABY_RABBIT_FRONT_LEG_CUBES),
+            ModelPart::leaf(
+                BABY_RABBIT_FRONT_LEG_R1_POSE,
+                BABY_RABBIT_RIGHT_FRONT_LEG_CUBES.to_vec(),
+            ),
         )],
     );
     let frontlegs = ModelPart::new(
@@ -347,7 +506,7 @@ fn baby_rabbit_root() -> ModelPart {
         vec![
             (
                 "body_r1",
-                ModelPart::leaf_colored(BABY_RABBIT_BODY_R1_POSE, &BABY_RABBIT_BODY_CUBES),
+                ModelPart::leaf(BABY_RABBIT_BODY_R1_POSE, BABY_RABBIT_BODY_CUBES.to_vec()),
             ),
             ("tail", tail),
             ("head", head),
@@ -359,7 +518,10 @@ fn baby_rabbit_root() -> ModelPart {
         Vec::new(),
         vec![(
             "haunch",
-            ModelPart::leaf_colored(BABY_RABBIT_LEFT_HAUNCH_POSE, &BABY_RABBIT_HAUNCH_CUBES),
+            ModelPart::leaf(
+                BABY_RABBIT_LEFT_HAUNCH_POSE,
+                BABY_RABBIT_LEFT_HAUNCH_CUBES.to_vec(),
+            ),
         )],
     );
     let right_hind_leg = ModelPart::new(
@@ -367,7 +529,10 @@ fn baby_rabbit_root() -> ModelPart {
         Vec::new(),
         vec![(
             "haunch",
-            ModelPart::leaf_colored(BABY_RABBIT_RIGHT_HAUNCH_POSE, &BABY_RABBIT_HAUNCH_CUBES),
+            ModelPart::leaf(
+                BABY_RABBIT_RIGHT_HAUNCH_POSE,
+                BABY_RABBIT_RIGHT_HAUNCH_CUBES.to_vec(),
+            ),
         )],
     );
     let backlegs = ModelPart::new(
@@ -386,9 +551,9 @@ fn baby_rabbit_root() -> ModelPart {
 }
 
 /// Mutable rabbit model, mirroring vanilla `AdultRabbitModel` / `BabyRabbitModel`. The two named root
-/// parts hang off a synthetic root, built from the baked colored geometry for the selected `baby`
-/// layout. Colored-only: `setup_anim` turns the body-nested `head` (`child_mut("body").child_mut("head")`)
-/// to the look angles (the hop / idle-head-tilt keyframes stay deferred).
+/// parts hang off a synthetic root, built from the baked geometry for the selected `baby` layout.
+/// `setup_anim` turns the body-nested `head` (`child_mut("body").child_mut("head")`) to the look
+/// angles (the hop / idle-head-tilt keyframes stay deferred).
 pub(in crate::entity_models) struct RabbitModel {
     root: ModelPart,
 }
