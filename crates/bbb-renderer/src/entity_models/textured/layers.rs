@@ -725,11 +725,20 @@ pub(in crate::entity_models) fn shulker_textured_layer_passes(
 }
 
 pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
-        ENDER_DRAGON_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+    vec![
+        EntityModelLayerPass::base(
+            EntityModelLayerRenderType::Cutout,
+            ENDER_DRAGON_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+        ),
+        // Vanilla `EnderDragonRenderer` always re-submits the whole model with the emissive
+        // `dragon_eyes.png` in the eyes render type; the dying-dissolve and crystal beam stay deferred.
+        EntityModelLayerPass::base(
+            EntityModelLayerRenderType::Eyes,
+            ENDER_DRAGON_EYES_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+        ),
+    ]
 }
 
 pub(in crate::entity_models) fn nautilus_textured_layer_passes(

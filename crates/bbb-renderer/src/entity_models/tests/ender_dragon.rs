@@ -85,9 +85,12 @@ fn ender_dragon_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn ender_dragon_textured_render_matches_vanilla_renderer() {
     let passes = ender_dragon_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
+    // The cutout base body plus the always-on emissive `dragon_eyes.png` eyes overlay.
+    assert_eq!(passes.len(), 2);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
     assert_eq!(passes[0].texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[1].texture, ENDER_DRAGON_EYES_TEXTURE_REF);
     assert_eq!(
         EntityModelKind::EnderDragon.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
@@ -96,9 +99,10 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
         })
     );
     assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_EYES_TEXTURE_REF));
     assert_eq!(
         ender_dragon_entity_texture_refs(),
-        &[ENDER_DRAGON_TEXTURE_REF]
+        &[ENDER_DRAGON_TEXTURE_REF, ENDER_DRAGON_EYES_TEXTURE_REF]
     );
 
     let images: Vec<EntityModelTextureImage> = ender_dragon_entity_texture_refs()

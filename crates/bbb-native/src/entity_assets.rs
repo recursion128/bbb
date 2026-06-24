@@ -191,6 +191,7 @@ mod tests {
                 "textures/entity/shulker/shulker_red.png",
                 "textures/entity/shulker/shulker_black.png",
                 "textures/entity/enderdragon/dragon.png",
+                "textures/entity/enderdragon/dragon_eyes.png",
                 "textures/entity/nautilus/nautilus.png",
                 "textures/entity/nautilus/nautilus_baby.png",
                 "textures/entity/panda/panda.png",
