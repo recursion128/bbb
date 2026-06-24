@@ -2421,6 +2421,56 @@ fn entity_model_sources_project_bee_roll_amount() {
 }
 
 #[test]
+fn entity_model_sources_project_frog_croak_seconds() {
+    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
+    // Vanilla `Pose.CROAKING(8, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated` starts
+    // `croakAnimationState` when the pose becomes CROAKING and stops it otherwise.
+    const VANILLA_POSE_STANDING_ID: i32 = 0;
+    const VANILLA_POSE_CROAKING_ID: i32 = 8;
+    let croak = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 55)
+            .unwrap()
+            .frog_croak_seconds
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        55,
+        VANILLA_ENTITY_TYPE_FROG_ID,
+    ));
+
+    // A frog not in `Pose.CROAKING` projects the `-1.0` stopped sentinel (pouch hidden).
+    assert_eq!(croak(&store, 1.0), -1.0);
+
+    // Entering `Pose.CROAKING` starts the timer at the current age, so the elapsed seconds begin at
+    // `0` (plus the partial tick): vanilla `((ageInTicks - startTick)) / 20`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_CROAKING_ID)],
+    }));
+    assert!((croak(&store, 0.0) - 0.0).abs() < 1.0e-6);
+    // The partial tick folds into the live age (`(0 + 0.5) / 20`).
+    assert!((croak(&store, 0.5) - 0.025).abs() < 1.0e-6);
+
+    // Each client tick advances the elapsed seconds by `1 / 20 = 0.05` (the age climbs, the start
+    // tick is fixed).
+    store.advance_entity_client_animations(1);
+    assert!((croak(&store, 0.0) - 0.05).abs() < 1.0e-6);
+    store.advance_entity_client_animations(4);
+    assert!((croak(&store, 0.0) - 0.25).abs() < 1.0e-6);
+
+    // Leaving `Pose.CROAKING` stops the animation, returning the `-1.0` sentinel.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_STANDING_ID)],
+    }));
+    assert_eq!(croak(&store, 1.0), -1.0);
+}
+
+#[test]
 fn entity_model_sources_project_fox_head_roll_and_crouch() {
     const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
     // Vanilla `Fox.DATA_FLAGS_ID` is synced data id 19; `FLAG_CROUCHING` is mask 4 and

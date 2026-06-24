@@ -604,6 +604,11 @@ impl EntityStore {
             bat_resting,
             bee_has_stinger,
             bee_roll_amount: client_animations.animations.bee_roll_amount(partial_ticks),
+            // Vanilla `Frog.croakAnimationState`: the elapsed seconds since `Pose.CROAKING` started,
+            // or `-1.0` for a non-croaking frog (only the frog is given a croak animation state).
+            frog_croak_seconds: client_animations
+                .animations
+                .frog_croak_seconds(partial_ticks),
             // Vanilla `Fox.getHeadRollAngle` / `getCrouchAmount`: the lerped client accumulators that
             // drive the head tilt and the crouch body drop. `0.0` for every non-fox (only the fox is
             // given a fox animation state).

@@ -1594,17 +1594,26 @@ When an agent does any of the following, update this file in the same slice:
       the new `EntityModelKind::Frog`, replacing the former placeholder box. The static
       rest-pose hierarchy is emitted directly (atlas 48×48): the `root` part at `offset(0, 24, 0)`
       parents `body` (the 7×3×9 box + 7×0×9 underside plane) and the two legs; `body` parents the
-      head (7×0×9 plane + 7×3×9 box) with its `eyes` pivot and two 3×2×3 eyes, the tongue, and the
-      two 2×3×3 arms, each carrying an 8×0×8 webbed hand; each leg carries an 8×0×8 foot — fifteen
-      visible cubes (the `croaking_body` is hidden at rest, so it is omitted). The looping
-      `FrogAnimation.FROG_WALK` keyframe cycle is reproduced: `FrogModel.setupAnim` samples it via
-      `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.5, 2.5)` — the walk position drives the
-      sample time (`(long)(pos·50·1.5)` ms, wrapped by the 1.25 s length) and the walk speed scales
-      the amplitude (`min(speed·2.5, 1)`), so a still frog collapses to the bind pose — and the
+      head (7×0×9 plane + 7×3×9 box) with its `eyes` pivot and two 3×2×3 eyes, the `croaking_body`
+      pouch, the tongue, and the two 2×3×3 arms, each carrying an 8×0×8 webbed hand; each leg carries
+      an 8×0×8 foot — fifteen visible cubes plus the `croaking_body` pouch (hidden until the frog
+      croaks). The looping `FrogAnimation.FROG_WALK` keyframe cycle is reproduced: `FrogModel.setupAnim`
+      samples it via `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.5, 2.5)` — the walk position
+      drives the sample time (`(long)(pos·50·1.5)` ms, wrapped by the 1.25 s length) and the walk speed
+      scales the amplitude (`min(speed·2.5, 1)`), so a still frog collapses to the bind pose — and the
       sampled per-bone position/rotation offsets are folded onto the `body`, the two arms, and the two
-      legs (the spine is hand-walked). The jump, croak (and the `croaking_body` it reveals), tongue,
-      and the in-water swim/idle keyframe animations need un-projected `AnimationState`s and stay
-      deferred, as does the swim-walk variant (`applyWalk(..., 1.0, 2.5)` while `isSwimming`). The
+      legs (the spine is hand-walked). The triggered `FrogAnimation.FROG_CROAK` pouch animation is also
+      reproduced as the first consumer of the triggered-keyframe tier: the client `frog_croak`
+      `KeyframeAnimationState` (mirroring vanilla `AnimationState`) is started/stopped from the synced
+      `Pose.CROAKING` (id `8`) — `animateWhen(pose == CROAKING, ageTicks)` — and projects the elapsed
+      seconds since the croak started (or the `-1.0` not-croaking sentinel). While croaking,
+      `FrogModel.setupAnim` shows the `croaking_body` pouch and samples `FROG_CROAK`'s POSITION channel
+      (the pouch lifts) and SCALE channel (it puffs `(1.3, 2.1, 1.6)` twice and rests collapsed) via the
+      new `AnimationChannel.Targets.SCALE` keyframe target and per-part `ModelPart.scale`. The jump
+      (`Pose.LONG_JUMPING`), tongue (needs `DATA_TONGUE_TARGET_ID` prey targeting), and the in-water
+      swim/idle keyframe animations (swimIdle needs `isInWater`, not projected into the tick) need their
+      own un-projected `AnimationState`s and stay deferred, as does the swim-walk variant
+      (`applyWalk(..., 1.0, 2.5)` while `isSwimming`). The
       texture-backed path and the three frog texture variants
       (temperate/warm/cold, `FrogVariant`) also remain unsupported (this is a colored-first slice;
       the colored debug path approximates the body with one orange-tan tint and the eyes with a

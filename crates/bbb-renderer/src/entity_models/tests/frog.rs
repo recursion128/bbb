@@ -119,3 +119,68 @@ fn frog_walk_moves_the_limbs_off_the_walk_cycle() {
     let bind = entity_model_mesh(&[EntityModelInstance::frog(72, [0.0, 64.0, 0.0], 0.0)]);
     assert_eq!(still.vertices, bind.vertices);
 }
+
+#[test]
+fn frog_croak_animation_matches_vanilla_definition() {
+    // Vanilla `FrogAnimation.FROG_CROAK`: 3.0s, NOT looping, one `croaking_body` bone with a
+    // POSITION channel (6 keyframes) and a SCALE channel (16 keyframes).
+    assert_eq!(FROG_CROAK.length_seconds, 3.0);
+    assert!(!FROG_CROAK.looping);
+    assert_eq!(FROG_CROAK.bones.len(), 1);
+    assert_eq!(FROG_CROAK.bones[0].bone, "croaking_body");
+    let keyframes: usize = FROG_CROAK.bones[0]
+        .channels
+        .iter()
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 22);
+
+    // At t=0 the pouch is at its bind position and collapsed (`scaleVec(0, 0, 0)` ⇒ scale `[0,0,0]`).
+    let (pos0, _, scale0) = sample_bone_offsets_with_scale(&FROG_CROAK, "croaking_body", 0.0, 1.0);
+    assert_eq!(pos0, [0.0, 0.0, 0.0]);
+    assert_eq!(keyframe_animated_scale(scale0), [0.0, 0.0, 0.0]);
+
+    // Once inflated the pouch lifts `+1` y (`posVec` negates y, so the offset is `-1`) and at the
+    // `0.5417` keyframe puffs to `scaleVec(1.3, 2.1, 1.6)` ⇒ scale `[1.3, 2.1, 1.6]`.
+    let (pos_up, _, _) = sample_bone_offsets_with_scale(&FROG_CROAK, "croaking_body", 1.0, 1.0);
+    assert!((pos_up[1] - -1.0).abs() < 1.0e-6);
+    let (_, _, puff) = sample_bone_offsets_with_scale(&FROG_CROAK, "croaking_body", 0.5417, 1.0);
+    let puffed = keyframe_animated_scale(puff);
+    assert!((puffed[0] - 1.3).abs() < 1.0e-4);
+    assert!((puffed[1] - 2.1).abs() < 1.0e-4);
+    assert!((puffed[2] - 1.6).abs() < 1.0e-4);
+}
+
+#[test]
+fn frog_croak_shows_and_poses_the_pouch_off_the_hidden_bind_pose() {
+    // A non-croaking frog (`-1.0` sentinel) hides the `croaking_body` pouch, so the mesh is the 15
+    // visible cubes (90 faces) and matches the plain bind pose.
+    let resting = entity_model_mesh(&[EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0)]);
+    assert_eq!(resting.opaque_faces, 90);
+
+    // A croaking frog shows the pouch, adding one cube (6 faces / 24 vertices), and re-poses it.
+    let croaking = entity_model_mesh(&[
+        EntityModelInstance::frog(951, [0.0, 64.0, 0.0], 0.0).with_frog_croak_seconds(0.5417)
+    ]);
+    assert_eq!(
+        croaking.opaque_faces, 96,
+        "the croaking frog reveals the puffed pouch cube"
+    );
+    assert_eq!(croaking.vertices.len(), resting.vertices.len() + 24);
+
+    // Sampling the animation at a different time re-poses the pouch (the scale puffs and collapses).
+    let early = entity_model_mesh(&[
+        EntityModelInstance::frog(952, [0.0, 64.0, 0.0], 0.0).with_frog_croak_seconds(0.4167)
+    ]);
+    assert_eq!(early.opaque_faces, 96);
+    assert_ne!(
+        early.vertices, croaking.vertices,
+        "the pouch puffs out as the croak animation advances"
+    );
+
+    // An explicit `-1.0` (the not-croaking sentinel) leaves the pouch hidden, equal to the rest mesh.
+    let cleared = entity_model_mesh(&[
+        EntityModelInstance::frog(953, [0.0, 64.0, 0.0], 0.0).with_frog_croak_seconds(-1.0)
+    ]);
+    assert_eq!(cleared.vertices, resting.vertices);
+}

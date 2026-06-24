@@ -8,8 +8,8 @@
 //! surrounding keyframes, a clamped alpha, and the interpolation.
 //!
 //! The [`KeyframeInterpolation::Linear`] and [`KeyframeInterpolation::CatmullRom`] interpolations
-//! and the position/rotation targets are implemented — the `SCALE` target is added when the first
-//! entity that uses it is wired.
+//! and the position/rotation/scale targets are implemented ([`AnimationTarget::Scale`] mirrors
+//! `ModelPart::offsetScale`, the croaking frog's first consumer).
 
 /// Vanilla `AnimationChannel.Interpolations` (`LINEAR` and the cubic `CATMULLROM`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,11 +19,14 @@ pub(in crate::entity_models) enum KeyframeInterpolation {
 }
 
 /// Vanilla `AnimationChannel.Target` (the subset implemented so far). `Position` mirrors
-/// `ModelPart::offsetPos` and `Rotation` mirrors `ModelPart::offsetRotation`.
+/// `ModelPart::offsetPos`, `Rotation` mirrors `ModelPart::offsetRotation`, and `Scale` mirrors
+/// `ModelPart::offsetScale` (its `scaleVec` value is an offset added to the part's `1.0` base
+/// scale).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::entity_models) enum AnimationTarget {
     Position,
     Rotation,
+    Scale,
 }
 
 /// Vanilla `Keyframe(timestamp, preTarget, postTarget, interpolation)`. The single-target
@@ -69,6 +72,13 @@ pub(in crate::entity_models) const fn pos_vec(x: f32, y: f32, z: f32) -> [f32; 3
 pub(in crate::entity_models) const fn degree_vec(x: f32, y: f32, z: f32) -> [f32; 3] {
     const RAD: f32 = std::f32::consts::PI / 180.0;
     [x * RAD, y * RAD, z * RAD]
+}
+
+/// Vanilla `KeyframeAnimations.scaleVec(x, y, z)` — stores `(x - 1, y - 1, z - 1)`, the per-axis
+/// offset `ModelPart::offsetScale` adds to the part's `1.0` base scale, so a `scaleVec(1, 1, 1)`
+/// keyframe is the identity (zero offset) and `scaleVec(0, 0, 0)` collapses the part.
+pub(in crate::entity_models) const fn scale_vec(x: f32, y: f32, z: f32) -> [f32; 3] {
+    [x - 1.0, y - 1.0, z - 1.0]
 }
 
 /// The single-target `Keyframe` constructor (`pre == post`).
@@ -190,8 +200,24 @@ pub(in crate::entity_models) fn sample_bone_offsets(
     seconds: f32,
     target_scale: f32,
 ) -> ([f32; 3], [f32; 3]) {
+    let (position, rotation, _) =
+        sample_bone_offsets_with_scale(definition, bone, seconds, target_scale);
+    (position, rotation)
+}
+
+/// Like [`sample_bone_offsets`] but also returns the bone's scale offset (vanilla
+/// `ModelPart::offsetScale`'s `scaleVec` value, a per-axis offset added to the part's `1.0` base
+/// scale via [`keyframe_animated_scale`]). `[0, 0, 0]` for a bone with no `SCALE` channel — the
+/// identity offset, so the part holds its `[1, 1, 1]` base scale.
+pub(in crate::entity_models) fn sample_bone_offsets_with_scale(
+    definition: &AnimationDefinition,
+    bone: &str,
+    seconds: f32,
+    target_scale: f32,
+) -> ([f32; 3], [f32; 3], [f32; 3]) {
     let mut position = [0.0; 3];
     let mut rotation = [0.0; 3];
+    let mut scale = [0.0; 3];
     for bone_animation in definition.bones {
         if bone_animation.bone != bone {
             continue;
@@ -201,10 +227,22 @@ pub(in crate::entity_models) fn sample_bone_offsets(
             match channel.target {
                 AnimationTarget::Position => position = value,
                 AnimationTarget::Rotation => rotation = value,
+                AnimationTarget::Scale => scale = value,
             }
         }
     }
-    (position, rotation)
+    (position, rotation, scale)
+}
+
+/// Fold a `SCALE`-channel offset onto a part's `1.0` base scale (vanilla `ModelPart::offsetScale`
+/// adds the `scaleVec` offset to `xScale`/`yScale`/`zScale`, all `1.0` at the bind pose). The
+/// identity offset `[0, 0, 0]` returns `[1, 1, 1]`.
+pub(in crate::entity_models) fn keyframe_animated_scale(scale_offset: [f32; 3]) -> [f32; 3] {
+    [
+        1.0 + scale_offset[0],
+        1.0 + scale_offset[1],
+        1.0 + scale_offset[2],
+    ]
 }
 
 /// Combine a bind pose with the keyframe position/rotation offsets (vanilla `ModelPart::offsetPos` /
@@ -225,5 +263,46 @@ pub(in crate::entity_models) fn keyframe_animated_pose(
             bind.rotation[1] + rotation[1],
             bind.rotation[2] + rotation[2],
         ],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LOOPING: AnimationDefinition = AnimationDefinition {
+        length_seconds: 3.0,
+        looping: true,
+        bones: &[],
+    };
+    const ONCE: AnimationDefinition = AnimationDefinition {
+        length_seconds: 3.0,
+        looping: false,
+        bones: &[],
+    };
+
+    #[test]
+    fn keyframe_elapsed_seconds_wraps_a_looping_definition_by_its_length() {
+        // Vanilla `KeyframeAnimation.getElapsedSeconds`: a looping definition wraps the elapsed time
+        // by its length (3.0s here), a non-looping one runs straight through.
+        assert!((keyframe_elapsed_seconds(&LOOPING, 1.5) - 1.5).abs() < 1.0e-6);
+        assert!((keyframe_elapsed_seconds(&LOOPING, 3.0) - 0.0).abs() < 1.0e-6);
+        assert!((keyframe_elapsed_seconds(&LOOPING, 3.25) - 0.25).abs() < 1.0e-6);
+        assert!((keyframe_elapsed_seconds(&LOOPING, 7.0) - 1.0).abs() < 1.0e-6);
+        // A non-looping definition is unwrapped (the sampling clamps at the end keyframe).
+        assert!((keyframe_elapsed_seconds(&ONCE, 5.0) - 5.0).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn scale_vec_offsets_around_unit_and_folds_back_to_a_base_scale() {
+        // Vanilla `scaleVec(x, y, z) = (x - 1, y - 1, z - 1)`: a unit scale is the identity offset
+        // and folds back to `[1, 1, 1]`; a zero scale collapses the part to `[0, 0, 0]`.
+        assert_eq!(scale_vec(1.0, 1.0, 1.0), [0.0, 0.0, 0.0]);
+        assert_eq!(keyframe_animated_scale(scale_vec(1.0, 1.0, 1.0)), [1.0; 3]);
+        assert_eq!(keyframe_animated_scale(scale_vec(0.0, 0.0, 0.0)), [0.0; 3]);
+        assert_eq!(
+            keyframe_animated_scale(scale_vec(1.3, 2.1, 1.6)),
+            [1.3, 2.1, 1.6]
+        );
     }
 }

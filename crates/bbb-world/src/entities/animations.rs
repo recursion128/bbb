@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
-use super::dimensions::vanilla_living_entity_type;
+use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -31,6 +31,10 @@ const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
 const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
+/// Vanilla `Pose.CROAKING` ordinal (`Pose.CROAKING(8, …)`), the synced `DATA_POSE` int value that
+/// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
+/// CROAKING, tickCount)`).
+const VANILLA_POSE_CROAKING_ID: i32 = 8;
 const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
@@ -117,6 +121,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fox: Option<FoxAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frog_croak: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ender_dragon: Option<EnderDragonAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sheep_eat: Option<SheepEatAnimationState>,
@@ -199,6 +205,44 @@ pub struct BeeRollAnimationState {
     pub rolling: bool,
     pub previous_roll_amount: f32,
     pub current_roll_amount: f32,
+}
+
+/// Canonical client-side triggered keyframe-animation state, mirroring vanilla
+/// `net.minecraft.world.entity.AnimationState`: a one-shot timer that records the
+/// `age_ticks` it started at and is cleared (`None`) when stopped. The renderer
+/// projects the elapsed seconds since the start and wraps/samples the matching
+/// `KeyframeAnimation` definition. Reusable for the whole triggered-keyframe tier
+/// (the frog's croak is the first consumer; the warden/sniffer/camel/armadillo
+/// triggered poses follow the same pattern).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KeyframeAnimationState {
+    /// Vanilla `AnimationState.startTick` recorded at the rising edge (`age_ticks`
+    /// when the trigger condition first became true). `None` is vanilla's
+    /// "not started" sentinel (`startTick == NOT_STARTED`).
+    pub start_age: Option<u32>,
+}
+
+impl KeyframeAnimationState {
+    /// Vanilla `AnimationState.animateWhen(condition, tickCount)`: starts the timer
+    /// on the rising edge (`startIfStopped`, so a still-running timer keeps its
+    /// original start) and stops it (clearing `start_age`) once the condition drops.
+    fn animate_when(&mut self, condition: bool, age_ticks: u32) {
+        if condition {
+            if self.start_age.is_none() {
+                self.start_age = Some(age_ticks);
+            }
+        } else {
+            self.start_age = None;
+        }
+    }
+
+    /// Vanilla `AnimationState.getTimeInMillis(ageInTicks)` / `KeyframeAnimation`'s
+    /// `getElapsedSeconds`: `((ageInTicks - startTick) * 50) / 1000` = elapsed ticks
+    /// / 20, with the partial tick folded into the live age. `None` while stopped.
+    fn elapsed_seconds(self, age_ticks: u32, partial_tick: f32) -> Option<f32> {
+        self.start_age
+            .map(|start| ((age_ticks - start) as f32 + partial_tick) / 20.0)
+    }
 }
 
 /// Canonical client-side fox accumulators, mirroring vanilla `Fox.tick`'s two
@@ -982,6 +1026,20 @@ impl EntityClientAnimationState {
                     });
                 }
             }
+            VANILLA_ENTITY_TYPE_FROG_ID => {
+                // Vanilla `Frog.onSyncedDataUpdated`: when `DATA_POSE` changes, the croak animation
+                // is `animateWhen(pose == CROAKING, tickCount)` — started on the rising edge into
+                // `Pose.CROAKING` and stopped otherwise. The frog's `aiStep` runs client-side for
+                // remote entities, so the synced pose drives the croak directly.
+                let croaking = entity_data_pose(data_values) == VANILLA_POSE_CROAKING_ID;
+                if let Some(croak) = self.frog_croak.as_mut() {
+                    croak.animate_when(croaking, self.age_ticks);
+                } else if croaking {
+                    self.frog_croak = Some(KeyframeAnimationState {
+                        start_age: Some(self.age_ticks),
+                    });
+                }
+            }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
                 let phase_id = entity_data_int(
                     data_values,
@@ -1069,6 +1127,18 @@ impl EntityClientAnimationState {
     pub fn bee_roll_amount(&self, partial_tick: f32) -> f32 {
         self.bee_roll
             .map_or(0.0, |state| state.roll_amount(partial_tick))
+    }
+
+    /// The frog croak's elapsed seconds since `Pose.CROAKING` started (vanilla
+    /// `croakAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for
+    /// `FrogModel.setupAnim`. Returns `-1.0` (the stopped-animation sentinel) for a
+    /// non-croaking frog and every other entity, so the renderer hides the
+    /// `croaking_body` pouch and applies no `FROG_CROAK` keyframe; the renderer wraps
+    /// a non-negative value by the 3.0s length before sampling.
+    pub fn frog_croak_seconds(&self, partial_tick: f32) -> f32 {
+        self.frog_croak
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
     }
 
     /// Vanilla `Fox.getHeadRollAngle(partialTick)` projected for the renderer

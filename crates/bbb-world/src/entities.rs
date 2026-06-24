@@ -359,6 +359,14 @@ pub struct EntityModelSourceState {
     /// bee and `0.0` (upright) for every other entity.
     #[serde(default)]
     pub bee_roll_amount: f32,
+    /// Vanilla frog croak timing (`FrogRenderState.croakAnimationState`, the triggered
+    /// `AnimationState` started/stopped by the synced `Pose.CROAKING`): the elapsed seconds since the
+    /// croak started, which `FrogModel.setupAnim` uses to show the `croaking_body` pouch and sample
+    /// the `FrogAnimation.FROG_CROAK` animation. Projected only for the frog and `-1.0` (the
+    /// stopped-animation sentinel, so the pouch stays hidden) for a non-croaking frog and every other
+    /// entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub frog_croak_seconds: f32,
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`, the lerped client
     /// `interestedAngle` accumulator driven by the synced `DATA_FLAGS_ID & 8` interest flag, scaled by
     /// `0.11 · π`): an interested fox tilts its head, which `FoxModel.setWalkingPose` applies as
@@ -572,6 +580,12 @@ fn entity_model_source_default_scale() -> f32 {
 
 fn entity_model_source_default_true() -> bool {
     true
+}
+
+/// The stopped-animation sentinel for the frog croak (`-1.0`, meaning "not croaking") used when an
+/// `EntityModelSourceState` is deserialized without a recorded croak time.
+fn entity_model_source_default_neg_one() -> f32 {
+    -1.0
 }
 
 impl EntityTransformState {

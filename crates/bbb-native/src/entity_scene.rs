@@ -425,6 +425,7 @@ fn entity_model_instance(
         .with_bat_resting(source.bat_resting)
         .with_bee_has_stinger(source.bee_has_stinger)
         .with_bee_roll_amount(source.bee_roll_amount)
+        .with_frog_croak_seconds(source.frog_croak_seconds)
         .with_fox_head_roll_angle(source.fox_head_roll_angle)
         .with_fox_crouch_amount(source.fox_crouch_amount)
         .with_fox_is_crouching(source.fox_is_crouching)

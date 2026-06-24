@@ -1,7 +1,8 @@
 use super::super::keyframe::{
-    degree_vec, keyframe, keyframe_animated_pose, keyframe_walk_sample, pos_vec,
-    sample_bone_offsets, AnimationChannel, AnimationDefinition, AnimationTarget, BoneAnimation,
-    Keyframe, KeyframeInterpolation,
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_animated_scale,
+    keyframe_elapsed_seconds, keyframe_walk_sample, pos_vec, sample_bone_offsets,
+    sample_bone_offsets_with_scale, scale_vec, AnimationChannel, AnimationDefinition,
+    AnimationTarget, BoneAnimation, Keyframe, KeyframeInterpolation,
 };
 use super::{model_cube as cube, ModelCubeDesc, PartPose, FROG_BODY, FROG_EYE, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
@@ -9,12 +10,13 @@ use crate::entity_models::model::{EntityModel, ModelPart};
 
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
-// chain), the tongue, and the two arms (with their hands). The `croaking_body` cube is omitted
-// because `setupAnim` only makes it visible while the croak animation plays. The looping
-// `FrogAnimation.FROG_WALK` keyframe animation is reproduced ([`FROG_WALK`]); the jump, croak,
-// tongue, in-water swim/idle keyframe animations stay deferred (un-projected `AnimationState`s), so
-// a still or non-swimming frog renders at the walk-sampled pose. The three frog texture variants
-// share this geometry and are deferred with the texture-backed path.
+// chain), the `croaking_body` pouch, the tongue, and the two arms (with their hands). The looping
+// `FrogAnimation.FROG_WALK` keyframe animation is reproduced ([`FROG_WALK`]) and the triggered
+// `FrogAnimation.FROG_CROAK` pouch animation is reproduced ([`FROG_CROAK`], applied only while the
+// projected `frog_croak_seconds >= 0`); the jump, tongue, and in-water swim/idle keyframe
+// animations stay deferred (un-projected `AnimationState`s), so a still or non-swimming,
+// non-croaking frog renders at the walk-sampled pose. The three frog texture variants share this
+// geometry and are deferred with the texture-backed path.
 
 // `body`: the `texOffs(3,1)` 7×3×9 box plus the `texOffs(23,22)` 7×0×9 underside plane.
 pub(in crate::entity_models) const FROG_BODY_CUBES: [ModelCubeDesc; 2] = [
@@ -35,6 +37,13 @@ pub(in crate::entity_models) const FROG_EYE_CUBES: [ModelCubeDesc; 1] =
 pub(in crate::entity_models) const FROG_TONGUE_CUBES: [ModelCubeDesc; 1] =
     [cube([-2.0, 0.0, -7.1], [4.0, 0.0, 7.0], FROG_BODY)];
 
+// `croaking_body`: the `texOffs(26,5)` 7×2×3 pouch box with `CubeDeformation(-0.1)`, so the colored
+// geometry is deflated 0.1 on every face (`min -= grow`, `max += grow` with `grow = -0.1`): min
+// `(-3.5, -0.1, -2.9) + 0.1` = `(-3.4, 0.0, -2.8)`, size `(7, 2, 3) - 0.2` = `(6.8, 1.8, 2.8)`. The
+// pouch is hidden at rest and the `FROG_CROAK` SCALE channel puffs it out and back.
+pub(in crate::entity_models) const FROG_CROAKING_BODY_CUBES: [ModelCubeDesc; 1] =
+    [cube([-3.4, 0.0, -2.8], [6.8, 1.8, 2.8], FROG_BODY)];
+
 // Both arms share the 2×3×3 box; the webbed hands are 8×0×8 planes that differ only in Z origin.
 pub(in crate::entity_models) const FROG_ARM_CUBES: [ModelCubeDesc; 1] =
     [cube([-1.0, 0.0, -1.0], [2.0, 3.0, 3.0], FROG_BODY)];
@@ -53,8 +62,8 @@ pub(in crate::entity_models) const FROG_FOOT_CUBES: [ModelCubeDesc; 1] =
 
 /// Vanilla `FrogModel.createBodyLayer` rest-pose part poses, rooted at the cubeless `root` part
 /// (`offset(0, 24, 0)`) parenting `body` and the two legs; `body` parents the head (with its eye
-/// chain), the tongue, and the two arms (with their hands). Fifteen visible cubes (the
-/// `croaking_body` is hidden at rest).
+/// chain), the `croaking_body` pouch, the tongue, and the two arms (with their hands). Fifteen
+/// visible cubes at rest; the sixteenth `croaking_body` cube is hidden until the frog croaks.
 /// `root` cubeless-pivot part pose: `PartPose.offset(0, 24, 0)`.
 pub(in crate::entity_models) const FROG_ROOT_POSE: PartPose = PartPose {
     offset: [0.0, 24.0, 0.0],
@@ -83,6 +92,11 @@ pub(in crate::entity_models) const FROG_LEFT_EYE_POSE: PartPose = PartPose {
 /// `right_eye` part pose: `PartPose.offset(2.5, -3, -6.5)`.
 pub(in crate::entity_models) const FROG_RIGHT_EYE_POSE: PartPose = PartPose {
     offset: [2.5, -3.0, -6.5],
+    rotation: [0.0, 0.0, 0.0],
+};
+/// `croaking_body` part pose: `PartPose.offset(0, -1, -5)`.
+pub(in crate::entity_models) const FROG_CROAKING_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, -1.0, -5.0],
     rotation: [0.0, 0.0, 0.0],
 };
 /// `tongue` part pose: `PartPose.offset(0, -1.01, 1)`.
@@ -132,9 +146,10 @@ pub(in crate::entity_models) const FROG_RIGHT_FOOT_POSE: PartPose = PartPose {
 };
 
 /// Builds the frog's synthetic root parenting the single cubeless `root` part, which parents the
-/// cube-bearing `body` (head → eyes → two eyes; tongue; two arms → hands) and the two legs (each
-/// → foot), in vanilla `addOrReplaceChild` order. The `body`, `left_arm`/`right_arm`, and the two
-/// legs are name-addressed by `setup_anim`, so `body` and `root` carry named children.
+/// cube-bearing `body` (head → eyes → two eyes; croaking_body; tongue; two arms → hands) and the
+/// two legs (each → foot), in vanilla `addOrReplaceChild` order. The `body`, `croaking_body`,
+/// `left_arm`/`right_arm`, and the two legs are name-addressed by `setup_anim`, so `body` and
+/// `root` carry named children.
 fn frog_root() -> ModelPart {
     let head = ModelPart::colored(
         FROG_HEAD_POSE,
@@ -175,6 +190,10 @@ fn frog_root() -> ModelPart {
         &FROG_BODY_CUBES,
         vec![
             ("head", head),
+            (
+                "croaking_body",
+                ModelPart::leaf_colored(FROG_CROAKING_BODY_POSE, &FROG_CROAKING_BODY_CUBES),
+            ),
             (
                 "tongue",
                 ModelPart::leaf_colored(FROG_TONGUE_POSE, &FROG_TONGUE_CUBES),
@@ -345,11 +364,70 @@ pub(in crate::entity_models) const FROG_WALK: AnimationDefinition = AnimationDef
 pub(in crate::entity_models) const FROG_WALK_SPEED_FACTOR: f32 = 1.5;
 pub(in crate::entity_models) const FROG_WALK_SCALE_FACTOR: f32 = 2.5;
 
+// ----- `FrogAnimation.FROG_CROAK` (length 3.0s, NOT looping). The single `croaking_body` bone has
+// a POSITION channel (the pouch lifts `+1` y once inflated) and a SCALE channel (the pouch puffs
+// `(1.3, 2.1, 1.6)` twice and rests collapsed at `(0, 0, 0)`, so it is invisible until the croak).
+// All keyframes are LINEAR; `posVec` negates the y axis and `scaleVec` stores `value - 1`. -----
+
+const FROG_CROAK_BODY_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4583, pos_vec(0.0, 1.0, 0.0), LINEAR),
+    keyframe(2.9583, pos_vec(0.0, 1.0, 0.0), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const FROG_CROAK_BODY_SCALE: [Keyframe; 16] = [
+    keyframe(0.0, scale_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, scale_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(0.4583, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(0.5417, scale_vec(1.3, 2.1, 1.6), LINEAR),
+    keyframe(0.625, scale_vec(1.3, 2.1, 1.6), LINEAR),
+    keyframe(0.7083, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(2.25, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(2.3333, scale_vec(1.3, 2.1, 1.6), LINEAR),
+    keyframe(2.4167, scale_vec(1.3, 2.1, 1.6), LINEAR),
+    keyframe(2.5, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(2.5833, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(2.6667, scale_vec(1.3, 2.1, 1.6), LINEAR),
+    keyframe(2.875, scale_vec(1.3, 2.1, 1.6), LINEAR),
+    keyframe(2.9583, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(3.0, scale_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const fn scale_channel(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Scale,
+        keyframes,
+    }
+}
+
+const FROG_CROAK_BODY_CHANNELS: [AnimationChannel; 2] = [
+    pos(&FROG_CROAK_BODY_POS),
+    scale_channel(&FROG_CROAK_BODY_SCALE),
+];
+
+const FROG_CROAK_BONES: [BoneAnimation; 1] = [BoneAnimation {
+    bone: "croaking_body",
+    channels: &FROG_CROAK_BODY_CHANNELS,
+}];
+
+/// Vanilla `FrogAnimation.FROG_CROAK`: the triggered 3.0s pouch animation (NOT looping), sampled by
+/// `FrogModel.setupAnim` via `croakAnimation.apply(croakAnimationState, ageInTicks)` while the frog
+/// is in `Pose.CROAKING`. The renderer applies it only when the projected `frog_croak_seconds >= 0`.
+pub(in crate::entity_models) const FROG_CROAK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 3.0,
+    looping: false,
+    bones: &FROG_CROAK_BONES,
+};
+
 /// Mutable frog model, mirroring vanilla `FrogModel`. The cubeless `root` part (parenting `body`
-/// and the two legs; `body` parents the head, tongue, and two arms) hangs off a synthetic root,
-/// built from the baked colored geometry as a named-children tree. Colored-only: `setup_anim`
-/// applies the looping `FROG_WALK` keyframe cycle to the body, arms, and legs (the jump / croak /
-/// tongue / swim animations stay deferred).
+/// and the two legs; `body` parents the head, croaking_body pouch, tongue, and two arms) hangs off
+/// a synthetic root, built from the baked colored geometry as a named-children tree. Colored-only:
+/// `setup_anim` applies the looping `FROG_WALK` keyframe cycle to the body, arms, and legs, and the
+/// triggered `FROG_CROAK` pouch animation while croaking (the jump / tongue / swim animations stay
+/// deferred).
 pub(in crate::entity_models) struct FrogModel {
     root: ModelPart,
 }
@@ -386,12 +464,32 @@ impl EntityModel for FrogModel {
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 
+        // Vanilla `FrogModel.setupAnim` then runs `croakAnimation.apply(croakAnimationState,
+        // ageInTicks)` and `croakingBody.visible = croakAnimationState.isStarted()`. The projected
+        // `frog_croak_seconds` carries the elapsed seconds since the croak started, or `-1` when the
+        // frog is not croaking (the `croakAnimationState` is stopped). While croaking, the pouch is
+        // shown and the `FROG_CROAK` POSITION/SCALE channels lift and puff it; otherwise it stays
+        // hidden at its collapsed bind pose.
+        let croak_seconds = instance.render_state.frog_croak_seconds;
+
         let frog_root = self.root.child_mut("root");
         {
             let body = frog_root.child_mut("body");
             animate(body, "body");
             animate(body.child_mut("left_arm"), "left_arm");
             animate(body.child_mut("right_arm"), "right_arm");
+
+            let croaking_body = body.child_mut("croaking_body");
+            if croak_seconds >= 0.0 {
+                croaking_body.visible = true;
+                let seconds = keyframe_elapsed_seconds(&FROG_CROAK, croak_seconds);
+                let (position, rotation, scale_offset) =
+                    sample_bone_offsets_with_scale(&FROG_CROAK, "croaking_body", seconds, 1.0);
+                croaking_body.pose = keyframe_animated_pose(croaking_body.pose, position, rotation);
+                croaking_body.scale = keyframe_animated_scale(scale_offset);
+            } else {
+                croaking_body.visible = false;
+            }
         }
         animate(frog_root.child_mut("left_leg"), "left_leg");
         animate(frog_root.child_mut("right_leg"), "right_leg");

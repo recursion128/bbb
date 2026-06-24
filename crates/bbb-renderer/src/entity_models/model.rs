@@ -107,6 +107,12 @@ pub(in crate::entity_models) struct ModelPart {
     children: Vec<(&'static str, ModelPart)>,
     /// Vanilla `ModelPart.visible`: a hidden part and its whole subtree are skipped at render.
     pub(in crate::entity_models) visible: bool,
+    /// Vanilla `ModelPart.xScale/yScale/zScale` (each `1.0` at the bind pose): `translateAndRotate`
+    /// applies them last as `poseStack.scale(...)`, scaling this part's cubes and its subtree about
+    /// the part origin. Reset to `[1, 1, 1]` each frame and mutated by `setup_anim` (the keyframe
+    /// `AnimationChannel.Targets.SCALE` channel folds `scaleVec` offsets onto it). Only the croaking
+    /// frog uses it so far, so most parts hold `[1, 1, 1]` (an identity scale the render skips).
+    pub(in crate::entity_models) scale: [f32; 3],
 }
 
 impl ModelPart {
@@ -123,6 +129,7 @@ impl ModelPart {
             cubes,
             children,
             visible: true,
+            scale: [1.0; 3],
         }
     }
 
@@ -161,6 +168,7 @@ impl ModelPart {
             cubes: cubes.iter().map(ModelCube::from_colored_desc).collect(),
             children,
             visible: true,
+            scale: [1.0; 3],
         }
     }
 
@@ -180,6 +188,7 @@ impl ModelPart {
             cubes: cubes.iter().map(ModelCube::from_colored_desc).collect(),
             children,
             visible: true,
+            scale: [1.0; 3],
         }
     }
 
@@ -210,6 +219,7 @@ impl ModelPart {
             cubes,
             children,
             visible: true,
+            scale: [1.0; 3],
         }
     }
 
@@ -228,6 +238,7 @@ impl ModelPart {
             cubes: Vec::new(),
             children,
             visible: true,
+            scale: [1.0; 3],
         }
     }
 
@@ -236,8 +247,22 @@ impl ModelPart {
     pub(in crate::entity_models) fn reset_pose(&mut self) {
         self.pose = self.default_pose;
         self.visible = true;
+        self.scale = [1.0; 3];
         for (_, child) in &mut self.children {
             child.reset_pose();
+        }
+    }
+
+    /// This part's local transform: the bind/animated [`PartPose`] (translate + rotate) followed by
+    /// the part scale (vanilla `translateAndRotate`'s final `poseStack.scale`), which scales this
+    /// part's cubes and its subtree about the part origin. The identity scale `[1, 1, 1]` is the
+    /// no-op common case.
+    fn local_transform(&self) -> Mat4 {
+        let transform = part_pose_transform(self.pose);
+        if self.scale == [1.0; 3] {
+            transform
+        } else {
+            transform * Mat4::from_scale(glam::Vec3::from_array(self.scale))
         }
     }
 
@@ -261,7 +286,7 @@ impl ModelPart {
         if !self.visible {
             return;
         }
-        let transform = parent_transform * part_pose_transform(self.pose);
+        let transform = parent_transform * self.local_transform();
         for cube in &self.cubes {
             emit_model_cube(mesh, transform, cube.colored_desc());
         }
@@ -283,7 +308,7 @@ impl ModelPart {
         if !self.visible {
             return;
         }
-        let transform = parent_transform * part_pose_transform(self.pose);
+        let transform = parent_transform * self.local_transform();
         for cube in &self.cubes {
             let mut desc = cube.colored_desc();
             desc.color = color;
@@ -308,7 +333,7 @@ impl ModelPart {
         if !self.visible {
             return;
         }
-        let transform = parent_transform * part_pose_transform(self.pose);
+        let transform = parent_transform * self.local_transform();
         for cube in &self.cubes {
             emit_textured_model_cube(
                 mesh,

@@ -231,6 +231,13 @@ entity_render_state! {
     /// rotLerpRad(rollAmount, bone.xRot, 3.0915928)`. `0.0` (upright) for every other entity and
     /// for an upright bee.
     (with_bee_roll_amount) bee_roll_amount: f32 = 0.0;
+    /// Vanilla frog croak timing (`FrogRenderState.croakAnimationState` driven by the synced
+    /// `Pose.CROAKING`): the elapsed seconds since the croak started, projected for
+    /// `FrogModel.setupAnim`, which shows the `croaking_body` pouch (`croakAnimationState.isStarted`)
+    /// and samples the triggered `FrogAnimation.FROG_CROAK` POSITION/SCALE pouch animation. `-1.0`
+    /// (the sentinel for a stopped `croakAnimationState`) for every other entity and for a
+    /// non-croaking frog, so the pouch stays hidden and no keyframe is applied.
+    (with_frog_croak_seconds) frog_croak_seconds: f32 = -1.0;
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`): an interested
     /// fox tilts its head, which `FoxModel.setWalkingPose` applies as `head.zRot = headRollAngle`.
     /// `0.0` (level) for every other entity and for a fox that is not interested.
@@ -1336,6 +1343,7 @@ mod tests {
                 bee_has_stinger: true,
                 bee_angry: false,
                 bee_roll_amount: 0.0,
+                frog_croak_seconds: -1.0,
                 fox_head_roll_angle: 0.0,
                 fox_crouch_amount: 0.0,
                 fox_is_crouching: false,
