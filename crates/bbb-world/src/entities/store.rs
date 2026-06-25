@@ -732,6 +732,12 @@ impl EntityStore {
             scale,
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             goat_lower_head_tick: client_animations.animations.goat_lower_head_tick(),
+            iron_golem_attack_ticks_remaining: client_animations
+                .animations
+                .iron_golem_attack_ticks_remaining(partial_ticks),
+            iron_golem_offer_flower_tick: client_animations
+                .animations
+                .iron_golem_offer_flower_tick(),
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),

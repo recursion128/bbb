@@ -551,6 +551,15 @@ pub struct EntityModelSourceState {
     /// goat not ramming and every non-goat.
     #[serde(default)]
     pub goat_lower_head_tick: i32,
+    /// Vanilla `IronGolemRenderState.attackTicksRemaining` (the partial-lerped `attackAnimationTick`,
+    /// from entity event 4): drives `IronGolemModel.setupAnim`'s two-fisted smash arm wave. `0.0` for a
+    /// golem not attacking and every non-golem.
+    #[serde(default)]
+    pub iron_golem_attack_ticks_remaining: f32,
+    /// Vanilla `IronGolemRenderState.offerFlowerTick` (`offerFlowerTick`, from entity events 11/34): the
+    /// golem holds a poppy out to a villager. `0` when not offering and for every non-golem.
+    #[serde(default)]
+    pub iron_golem_offer_flower_tick: i32,
     #[serde(default)]
     pub polar_bear_stand_scale: f32,
     /// Stored block+sky light at the entity's light-probe block position,

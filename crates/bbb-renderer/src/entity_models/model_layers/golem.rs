@@ -1,6 +1,7 @@
 use super::{
-    apply_head_look, apply_iron_golem_walk, snow_golem_arm_pose, snow_golem_upper_body_pose,
-    snow_golem_upper_body_yrot, PartPose, IRON_GOLEM_STONE, SNOW_GOLEM_WHITE,
+    apply_head_look, apply_iron_golem_arm_events, apply_iron_golem_walk, snow_golem_arm_pose,
+    snow_golem_upper_body_pose, snow_golem_upper_body_yrot, PartPose, IRON_GOLEM_STONE,
+    SNOW_GOLEM_WHITE,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
@@ -228,8 +229,9 @@ fn snow_golem_tree() -> ModelPart {
 /// Mutable iron golem model, mirroring vanilla `IronGolemModel`. The unified tree is built with the
 /// vanilla child names: `head`, `body`, `right_arm`/`left_arm`, `right_leg`/`left_leg`. `setup_anim`
 /// follows the head look ([`apply_head_look`] on `head`) then swings the arms and legs
-/// ([`apply_iron_golem_walk`]). The attack swing and offer-flower arm pose are deferred event
-/// animations.
+/// ([`apply_iron_golem_walk`]), then overrides the arms with the attack smash / offer-flower poses
+/// ([`apply_iron_golem_arm_events`]) while their event timers are active. The held poppy block is the
+/// only deferred piece.
 pub(in crate::entity_models) struct IronGolemModel {
     root: ModelPart,
 }
@@ -262,6 +264,13 @@ impl EntityModel for IronGolemModel {
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
+        );
+        // Vanilla `IronGolemModel.setupAnim`: the attack smash / offer-flower arm poses override the
+        // walk arm swing while their event timers are active (the legs keep the walk swing).
+        apply_iron_golem_arm_events(
+            &mut self.root,
+            render_state.iron_golem_attack_ticks_remaining,
+            render_state.iron_golem_offer_flower_tick,
         );
     }
 }

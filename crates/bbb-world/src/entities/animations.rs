@@ -99,6 +99,7 @@ const BEE_FLAG_ROLL: i8 = 2;
 /// Vanilla `Fox` entity type id (`EntityType.FOX`).
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
+const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -193,6 +194,14 @@ const GOAT_RAISE_HEAD_EVENT_ID: i8 = 59;
 /// Vanilla `Goat.aiStep` clamps `lowerHeadTick` to `[0, 20]`: `++` while lowering, `-= 2` otherwise.
 /// `getRammingXHeadRot` normalises it by this cap.
 const GOAT_LOWER_HEAD_MAX_TICKS: i32 = 20;
+/// Vanilla `IronGolem.handleEntityEvent`: event `4` sets `attackAnimationTick = 10` (the two-fisted
+/// smash), event `11` sets `offerFlowerTick = 400` (offering a poppy to a villager), event `34` clears
+/// it. Both counters decrement each client `aiStep` toward `0`.
+const IRON_GOLEM_ATTACK_EVENT_ID: i8 = 4;
+const IRON_GOLEM_OFFER_FLOWER_EVENT_ID: i8 = 11;
+const IRON_GOLEM_STOP_OFFER_FLOWER_EVENT_ID: i8 = 34;
+const IRON_GOLEM_ATTACK_TICKS: i32 = 10;
+const IRON_GOLEM_OFFER_FLOWER_TICKS: i32 = 400;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -222,6 +231,8 @@ pub struct EntityClientAnimationState {
     pub sheep_eat: Option<SheepEatAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub goat_ramming: Option<GoatRammingAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iron_golem: Option<IronGolemAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -546,6 +557,46 @@ impl GoatRammingAnimationState {
     /// can be dropped (a resting goat projects no head tilt).
     fn is_settled(&self) -> bool {
         !self.lowering_head && self.lower_head_tick == 0
+    }
+}
+
+/// Canonical client-side iron golem attack / offer-flower timers, mirroring vanilla
+/// `IronGolem.attackAnimationTick` / `offerFlowerTick`. Entity event `4` sets the attack timer to
+/// [`IRON_GOLEM_ATTACK_TICKS`] (the two-fisted smash), event `11` sets the offer timer to
+/// [`IRON_GOLEM_OFFER_FLOWER_TICKS`] (holding out a poppy) and event `34` clears it; each client
+/// `aiStep` decrements both toward `0`. `IronGolemModel.setupAnim` raises the arms for whichever is
+/// active (attack taking priority), else the limbs fall back to the walk swing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IronGolemAnimationState {
+    pub attack_animation_tick: i32,
+    pub offer_flower_tick: i32,
+}
+
+impl IronGolemAnimationState {
+    /// Vanilla `IronGolem.aiStep`: `if attackAnimationTick > 0 { attackAnimationTick-- }` and the same
+    /// for `offerFlowerTick`.
+    fn advance_client_tick(&mut self) {
+        if self.attack_animation_tick > 0 {
+            self.attack_animation_tick -= 1;
+        }
+        if self.offer_flower_tick > 0 {
+            self.offer_flower_tick -= 1;
+        }
+    }
+
+    /// Both timers have run out, so the golem is back to its walk/idle and the state can be dropped.
+    fn is_settled(&self) -> bool {
+        self.attack_animation_tick == 0 && self.offer_flower_tick == 0
+    }
+
+    /// Vanilla `IronGolemRenderer.extractRenderState`: `attackTicksRemaining = getAttackAnimationTick()
+    /// > 0 ? tick - partialTicks : 0`. The partial-lerped attack timer drives the smash arm wave.
+    fn attack_ticks_remaining(self, partial_tick: f32) -> f32 {
+        if self.attack_animation_tick > 0 {
+            self.attack_animation_tick as f32 - partial_tick
+        } else {
+            0.0
+        }
     }
 }
 
@@ -1743,6 +1794,27 @@ impl EntityClientAnimationState {
                     lower_head_tick: 0,
                 })
                 .lowering_head = event_id == GOAT_LOWER_HEAD_EVENT_ID;
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_IRON_GOLEM_ID
+            && matches!(
+                event_id,
+                IRON_GOLEM_ATTACK_EVENT_ID
+                    | IRON_GOLEM_OFFER_FLOWER_EVENT_ID
+                    | IRON_GOLEM_STOP_OFFER_FLOWER_EVENT_ID
+            )
+        {
+            // Vanilla `IronGolem.handleEntityEvent`: event 4 → `attackAnimationTick = 10`, 11 →
+            // `offerFlowerTick = 400`, 34 → `offerFlowerTick = 0`. The `aiStep` decrements both.
+            let golem = self.iron_golem.get_or_insert(IronGolemAnimationState {
+                attack_animation_tick: 0,
+                offer_flower_tick: 0,
+            });
+            match event_id {
+                IRON_GOLEM_ATTACK_EVENT_ID => golem.attack_animation_tick = IRON_GOLEM_ATTACK_TICKS,
+                IRON_GOLEM_OFFER_FLOWER_EVENT_ID => {
+                    golem.offer_flower_tick = IRON_GOLEM_OFFER_FLOWER_TICKS
+                }
+                _ => golem.offer_flower_tick = 0,
+            }
         }
     }
 
@@ -1757,6 +1829,19 @@ impl EntityClientAnimationState {
     /// goat is not ramming. No partial-tick lerp: vanilla `getRammingXHeadRot` reads the raw int.
     pub fn goat_lower_head_tick(&self) -> i32 {
         self.goat_ramming.map_or(0, |state| state.lower_head_tick)
+    }
+
+    /// Vanilla `IronGolemRenderState.attackTicksRemaining` (the partial-lerped `attackAnimationTick`),
+    /// exposed for the renderer `IronGolemModel.setupAnim` smash arm wave. `0.0` when not attacking.
+    pub fn iron_golem_attack_ticks_remaining(&self, partial_tick: f32) -> f32 {
+        self.iron_golem
+            .map_or(0.0, |state| state.attack_ticks_remaining(partial_tick))
+    }
+
+    /// Vanilla `IronGolemRenderState.offerFlowerTick` (the raw `offerFlowerTick`), exposed for the
+    /// renderer offer-flower arm hold. `0` when the golem is not offering a poppy.
+    pub fn iron_golem_offer_flower_tick(&self) -> i32 {
+        self.iron_golem.map_or(0, |state| state.offer_flower_tick)
     }
 
     /// Vanilla `Warden.getTendrilAnimation(partialTick)`, exposed for the renderer
@@ -2181,6 +2266,14 @@ impl EntityClientAnimationState {
                     ramming.advance_client_tick();
                     if ramming.is_settled() {
                         self.goat_ramming = None;
+                    }
+                }
+            }
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => {
+                if let Some(golem) = self.iron_golem.as_mut() {
+                    golem.advance_client_tick();
+                    if golem.is_settled() {
+                        self.iron_golem = None;
                     }
                 }
             }

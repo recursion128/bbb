@@ -452,6 +452,15 @@ entity_render_state! {
     /// `head.xRot` to it while non-zero, overwriting the head-look pitch. `0.0` for a resting goat and
     /// every other entity.
     (with_goat_ramming_x_head_rot) goat_ramming_x_head_rot: f32 = 0.0;
+    /// Vanilla `IronGolemRenderState.attackTicksRemaining` (the partial-lerped `attackAnimationTick`):
+    /// while `> 0`, `IronGolemModel.setupAnim` raises both arms into the two-fisted smash
+    /// (`xRot = -2 + 1.5·triangleWave(tick, 10)`), overriding the walk swing. `0.0` for a golem not
+    /// attacking and every other entity.
+    (with_iron_golem_attack_ticks_remaining) iron_golem_attack_ticks_remaining: f32 = 0.0;
+    /// Vanilla `IronGolemRenderState.offerFlowerTick`: while `> 0` (and not attacking), the golem holds
+    /// its right arm out with a poppy (`xRot = -0.8 + 0.025·triangleWave(tick, 70)`, left arm flat).
+    /// `0` for a golem not offering and every other entity. The flower block itself is not yet rendered.
+    (with_iron_golem_offer_flower_tick) iron_golem_offer_flower_tick: i32 = 0;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -1671,6 +1680,8 @@ mod tests {
                 panda_sneezing: false,
                 panda_sneeze_time: 0,
                 goat_ramming_x_head_rot: 0.0,
+                iron_golem_attack_ticks_remaining: 0.0,
+                iron_golem_offer_flower_tick: 0,
                 is_crouching: false,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,

@@ -837,6 +837,28 @@ pub(in crate::entity_models) fn apply_iron_golem_walk(
     }
 }
 
+/// Vanilla `IronGolemModel.setupAnim`'s arm event poses, applied AFTER [`apply_iron_golem_walk`] so
+/// they override the walk arm swing (the legs keep it). While `attackTicksRemaining > 0` both arms
+/// raise into the two-fisted smash (`xRot = -2 + 1.5·triangleWave(tick, 10)`); else while
+/// `offerFlowerTick > 0` the right arm holds a poppy out (`xRot = -0.8 + 0.025·triangleWave(tick, 70)`)
+/// and the left arm drops flat (`xRot = 0`). Only `xRot` is set (the walk pose preserves `yRot`/`zRot`),
+/// matching vanilla's per-branch assignment. A no-op when neither timer is active.
+pub(in crate::entity_models) fn apply_iron_golem_arm_events(
+    root: &mut ModelPart,
+    attack_ticks_remaining: f32,
+    offer_flower_tick: i32,
+) {
+    if attack_ticks_remaining > 0.0 {
+        let x_rot = -2.0 + 1.5 * triangle_wave(attack_ticks_remaining, 10.0);
+        root.child_mut("right_arm").pose.rotation[0] = x_rot;
+        root.child_mut("left_arm").pose.rotation[0] = x_rot;
+    } else if offer_flower_tick > 0 {
+        root.child_mut("right_arm").pose.rotation[0] =
+            -0.8 + 0.025 * triangle_wave(offer_flower_tick as f32, 70.0);
+        root.child_mut("left_arm").pose.rotation[0] = 0.0;
+    }
+}
+
 /// Vanilla `SpiderModel.setupAnim` walking swing for one leg part. With
 /// `animationPos = walkAnimationPos * 0.6662`, vanilla computes a horizontal `swing`
 /// `-(cos(animationPos * 2 + phase) * 0.4) * walkAnimationSpeed` accumulated onto

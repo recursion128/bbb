@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn iron_golem_model_parts_match_vanilla_26_1_body_layer() {
@@ -506,4 +506,82 @@ fn golem_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+// Vanilla `Mth.triangleWave(index, period)` (replicated for the test expectations).
+fn triangle_wave(index: f32, period: f32) -> f32 {
+    ((index % period - period * 0.5).abs() - period * 0.25) / (period * 0.25)
+}
+
+#[test]
+fn attacking_iron_golem_raises_both_fists() {
+    // Vanilla `IronGolemModel.setupAnim`: while `attackTicksRemaining > 0` both arms raise into the
+    // smash (`xRot = -2 + 1.5·triangleWave(tick, 10)`), overriding the walk swing; the legs keep it.
+    let attack = 8.0_f32;
+    let walking =
+        EntityModelInstance::iron_golem(73, [0.0, 64.0, 0.0], 0.0).with_walk_animation(3.0, 1.0);
+    let attacking = walking.with_iron_golem_attack_ticks_remaining(attack);
+
+    let mut model = IronGolemModel::new();
+    model.prepare(&attacking);
+    let expected = -2.0 + 1.5 * triangle_wave(attack, 10.0);
+    let right_arm = model.root_mut().child_mut("right_arm").pose.rotation[0];
+    let left_arm = model.root_mut().child_mut("left_arm").pose.rotation[0];
+    assert!(
+        (right_arm - expected).abs() < 1.0e-6,
+        "right fist raises: {right_arm}"
+    );
+    assert!(
+        (left_arm - expected).abs() < 1.0e-6,
+        "left fist raises: {left_arm}"
+    );
+
+    // The legs still walk-swing (the smash only overrides the arms): they differ from a standing golem.
+    let standing = {
+        let mut m = IronGolemModel::new();
+        m.prepare(&EntityModelInstance::iron_golem(73, [0.0, 64.0, 0.0], 0.0));
+        m.root_mut().child_mut("right_leg").pose.rotation[0]
+    };
+    let attacking_leg = model.root_mut().child_mut("right_leg").pose.rotation[0];
+    assert_ne!(
+        attacking_leg, standing,
+        "the legs keep walking during the smash"
+    );
+}
+
+#[test]
+fn offering_iron_golem_holds_out_a_poppy() {
+    // Vanilla `IronGolemModel.setupAnim`: while `offerFlowerTick > 0` (and not attacking) the right arm
+    // holds the poppy out (`xRot = -0.8 + 0.025·triangleWave(tick, 70)`) and the left arm drops flat.
+    let offer = 200;
+    let base = EntityModelInstance::iron_golem(74, [0.0, 64.0, 0.0], 0.0)
+        .with_iron_golem_offer_flower_tick(offer);
+    let mut model = IronGolemModel::new();
+    model.prepare(&base);
+
+    let right_arm = model.root_mut().child_mut("right_arm").pose.rotation[0];
+    let left_arm = model.root_mut().child_mut("left_arm").pose.rotation[0];
+    assert!(
+        (right_arm - (-0.8 + 0.025 * triangle_wave(offer as f32, 70.0))).abs() < 1.0e-6,
+        "the right arm holds out the poppy: {right_arm}"
+    );
+    assert_eq!(left_arm, 0.0, "the left arm drops flat");
+
+    // Attack takes priority over the offer pose.
+    let mut both = IronGolemModel::new();
+    both.prepare(&base.with_iron_golem_attack_ticks_remaining(5.0));
+    let both_left = both.root_mut().child_mut("left_arm").pose.rotation[0];
+    let both_right = both.root_mut().child_mut("right_arm").pose.rotation[0];
+    assert!(
+        (both_left - both_right).abs() < 1.0e-6,
+        "the attack raises both arms equally, overriding the offer"
+    );
+
+    // A resting golem with neither timer keeps its bind arms (no override).
+    let mut resting = IronGolemModel::new();
+    resting.prepare(&EntityModelInstance::iron_golem(74, [0.0, 64.0, 0.0], 0.0));
+    assert_eq!(
+        resting.root_mut().child_mut("right_arm").pose.rotation[0],
+        0.0
+    );
 }

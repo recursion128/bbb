@@ -636,8 +636,14 @@ When an agent does any of the following, update this file in the same slice:
     triangleWave(pos, 13)) * speed`), a triangle-wave gait rather than a cosine one; the
     arms sit at part offset `x = 0`, so the right/left role is fixed by slot (arms
     `[2, 3]`, legs `[4, 5]`). This is the first model whose **arm** swing is a pure
-    walk-driven animation (so it is implemented); the attack swing and the offer-flower
-    arm pose are deferred event animations. The ravager (`emit_ravager_model` colored and
+    walk-driven animation (so it is implemented). The attack swing and the offer-flower
+    arm pose are implemented too (`apply_iron_golem_arm_events`, overriding the walk arms
+    after the swing): `IronGolem.handleEntityEvent` event `4` sets `attackAnimationTick = 10`
+    (projected, partial-lerped, as `attackTicksRemaining`) → both arms `xRot = -2 + 1.5 *
+    triangleWave(tick, 10)` (the two-fisted smash); events `11`/`34` set/clear `offerFlowerTick`
+    (`400`-tick countdown) → right arm `xRot = -0.8 + 0.025 * triangleWave(tick, 70)`, left arm
+    `xRot = 0` (holding a poppy out); attack takes priority, and the legs keep the walk swing
+    under both. Only the held poppy block render is deferred. The ravager (`emit_ravager_model` colored and
     `emit_ravager_textured_model` textured) uses a dedicated `ravager_leg_swing_pose`:
     `RavagerModel` is a custom `EntityModel` whose `setupAnim` swings the four legs with
     the `QuadrupedModel` diagonal phase (`cos(pos * 0.6662 [+ π])`, in phase when
@@ -715,8 +721,8 @@ When an agent does any of the following, update this file in the same slice:
     implemented — see below; the `GoatModel` ramming head
     tilt is implemented — see the goat note below), the `HoglinModel` headbutt head tilt (the `EndermanModel`
     carried-block arm pose and creepy head/hat shift are implemented — see the
-    enderman note above), the `IronGolemModel`
-    attack swing and offer-flower arm pose, the `HumanoidModel`
+    enderman note above; the `IronGolemModel`
+    attack swing and offer-flower arm pose are implemented — see the iron golem note above), the `HumanoidModel`
     item/attack/swim/elytra poses, and the
     player swim/elytra `speedValue` poses) are separate animations driven by
     states the client does not yet track (the `HumanoidModel` crouch sneaking
@@ -1539,10 +1545,11 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/iron_golem/iron_golem.png` texture reference from
       `IronGolemRenderer`, texture-backed base layer pass emission, and
       official PNG atlas upload/bind/sample path, and the vanilla
-      `IronGolemModel.setupAnim` head-look yaw/pitch on the head part (colored and
-      textured); crackiness overlay textures, flower block layer, attack arm
-      pose, offer-flower arm pose, leg walk animation, and renderer body-wobble
-      rotation remain unsupported
+      `IronGolemModel.setupAnim` head-look yaw/pitch on the head part, the
+      triangle-wave leg/arm walk swing, and the event-driven attack smash /
+      offer-flower arm poses (colored and textured — see the iron golem note
+      above); crackiness overlay textures, the held flower block layer, and the
+      renderer body-wobble rotation remain unsupported
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the

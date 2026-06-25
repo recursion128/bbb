@@ -6890,6 +6890,80 @@ fn goat_ram_events_drive_the_lower_head_tick_counter() {
 }
 
 #[test]
+fn iron_golem_attack_and_offer_events_drive_client_animation_timers() {
+    const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        74,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        75,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let source = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+
+    // Vanilla IronGolem.handleEntityEvent: event 4 sets attackAnimationTick to 10; the projection lerps
+    // it with the partial tick (attackTicksRemaining = tick - partial).
+    assert_eq!(
+        source(&store, 74, 0.0).iron_golem_attack_ticks_remaining,
+        0.0
+    );
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 74,
+        event_id: 4,
+    }));
+    assert_eq!(
+        source(&store, 74, 0.0).iron_golem_attack_ticks_remaining,
+        10.0
+    );
+    assert_eq!(
+        source(&store, 74, 0.5).iron_golem_attack_ticks_remaining,
+        9.5
+    );
+    store.advance_entity_client_animations(10);
+    // After 10 ticks the attack timer has run out.
+    assert_eq!(
+        source(&store, 74, 0.0).iron_golem_attack_ticks_remaining,
+        0.0
+    );
+
+    // Event 11 sets offerFlowerTick to 400; event 34 clears it.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 74,
+        event_id: 11,
+    }));
+    assert_eq!(source(&store, 74, 0.0).iron_golem_offer_flower_tick, 400);
+    store.advance_entity_client_animations(3);
+    assert_eq!(source(&store, 74, 0.0).iron_golem_offer_flower_tick, 397);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 74,
+        event_id: 34,
+    }));
+    assert_eq!(source(&store, 74, 0.0).iron_golem_offer_flower_tick, 0);
+
+    // The same events on a non-golem never start the golem timers.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 75,
+        event_id: 4,
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        source(&store, 75, 0.0).iron_golem_attack_ticks_remaining,
+        0.0
+    );
+}
+
+#[test]
 fn warden_tendril_event_drives_client_animation_pulse() {
     const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
