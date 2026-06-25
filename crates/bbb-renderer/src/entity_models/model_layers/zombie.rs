@@ -622,7 +622,7 @@ fn zombie_villager_tree(baby: bool) -> ModelPart {
 /// shared by the plain zombie and every zombie variant (husk, drowned, zombie villager): look the
 /// head ([`apply_head_look`] on `head`), run the humanoid leg swing
 /// ([`apply_humanoid_leg_swing_named`]), then override the arms with the held-out `animateZombieArms`
-/// pose ([`apply_zombie_arms_held_out_named`], `isAggressive`-driven).
+/// pose ([`apply_zombie_arms_held_out_named`], `isAggressive`-driven and swung by `attack_anim`).
 fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let render_state = &instance.render_state;
     apply_head_look(
@@ -635,7 +635,12 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
         render_state.walk_animation_pos,
         render_state.walk_animation_speed,
     );
-    apply_zombie_arms_held_out_named(root, render_state.is_aggressive, render_state.age_in_ticks);
+    apply_zombie_arms_held_out_named(
+        root,
+        render_state.is_aggressive,
+        render_state.attack_anim,
+        render_state.age_in_ticks,
+    );
 }
 
 /// Mutable zombie model, mirroring vanilla `ZombieModel` (an `AbstractZombieModel` over `HumanoidModel`).

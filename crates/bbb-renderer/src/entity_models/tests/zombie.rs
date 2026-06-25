@@ -161,8 +161,8 @@ fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
         rotation: [0.0, 0.0, 0.0],
     };
     let arm_drop = -std::f32::consts::PI / 2.25;
-    let right = zombie_arm_held_out_pose(right_arm_pose, false, 0.0);
-    let left = zombie_arm_held_out_pose(left_arm_pose, false, 0.0);
+    let right = zombie_arm_held_out_pose(right_arm_pose, false, 0.0, 0.0);
+    let left = zombie_arm_held_out_pose(left_arm_pose, false, 0.0, 0.0);
     // At ageInTicks 0 the bob's xRot term is sin(0) * 0.05 = 0, so xRot is the bare arm drop.
     assert!(
         (right.rotation[0] - arm_drop).abs() < 1e-6,
@@ -188,7 +188,7 @@ fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
     // (more negative) than the calm -π/2.25. Only xRot changes; the yRot splay and the bob
     // are unchanged.
     let aggressive_arm_drop = -std::f32::consts::PI / 1.5;
-    let aggressive_right = zombie_arm_held_out_pose(right_arm_pose, true, 0.0);
+    let aggressive_right = zombie_arm_held_out_pose(right_arm_pose, true, 0.0, 0.0);
     assert!(
         (aggressive_right.rotation[0] - aggressive_arm_drop).abs() < 1e-6,
         "aggressive right arm drop: {}",
@@ -207,6 +207,48 @@ fn zombie_arm_held_out_pose_matches_vanilla_resting_animate_zombie_arms() {
     assert!(
         (aggressive_right.rotation[2] - 0.1).abs() < 1e-6,
         "bob zRot unchanged"
+    );
+}
+
+#[test]
+fn zombie_arm_held_out_pose_swings_during_a_melee_strike() {
+    use std::f32::consts::PI;
+    // Vanilla AnimationUtils.animateZombieArms attack terms (attackTime > 0): attackYRot = sin(t·π)
+    // lifts both arms' yRot toward center (yRot = ±(0.1 - attackYRot·0.6)) and the xRot chops
+    // (`+= attackYRot·1.2 - sin((1-(1-t)²)·π)·0.4`), over the held-out arm drop.
+    let right_arm_pose = PartPose {
+        offset: [-5.0, 2.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    };
+    let t = 0.5_f32;
+    let arm_drop = -PI / 2.25;
+    let attack_y = (t * PI).sin();
+    let attack_x = ((1.0 - (1.0 - t) * (1.0 - t)) * PI).sin();
+
+    let resting = zombie_arm_held_out_pose(right_arm_pose, false, 0.0, 0.0);
+    let swinging = zombie_arm_held_out_pose(right_arm_pose, false, t, 0.0);
+
+    // The right arm chops up off the rest drop (xRot rises by attackYRot·1.2 - attackX·0.4).
+    assert!(
+        (swinging.rotation[0] - (arm_drop + attack_y * 1.2 - attack_x * 0.4)).abs() < 1e-6,
+        "right arm xRot swings: {}",
+        swinging.rotation[0]
+    );
+    assert!(
+        swinging.rotation[0] > resting.rotation[0],
+        "the strike lifts the arm off the held-out drop"
+    );
+    // The yRot pulls in toward center: right arm -(0.1 - attackYRot·0.6) = +0.2 at t = 0.5.
+    assert!(
+        (swinging.rotation[1] - (-(0.1 - attack_y * 0.6))).abs() < 1e-6,
+        "right arm yRot pulls in: {}",
+        swinging.rotation[1]
+    );
+
+    // attackTime 0 reproduces the resting held-out pose exactly.
+    assert_eq!(
+        zombie_arm_held_out_pose(right_arm_pose, false, 0.0, 0.0),
+        resting
     );
 }
 

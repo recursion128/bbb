@@ -348,15 +348,17 @@ pub(in crate::entity_models) fn apply_humanoid_leg_swing_named(
 /// Vanilla `ZombieModel.setupAnim` held-out arm override applied to a model root's named arm children
 /// `right_arm`/`left_arm` ([`zombie_arm_held_out_pose`]). The zombie family (zombie, husk, drowned,
 /// zombie villager) replaces the inherited humanoid arm swing with this aggressive/idle held-out pose,
-/// which always re-poses the arms (the idle bob folded in advances every frame).
+/// which always re-poses the arms (the idle bob folded in advances every frame). `attack_anim` swings
+/// the held-out arms during a melee strike.
 pub(in crate::entity_models) fn apply_zombie_arms_held_out_named(
     root: &mut ModelPart,
     aggressive: bool,
+    attack_anim: f32,
     age_in_ticks: f32,
 ) {
     for name in ["right_arm", "left_arm"] {
         let arm = root.child_mut(name);
-        arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, age_in_ticks);
+        arm.pose = zombie_arm_held_out_pose(arm.pose, aggressive, attack_anim, age_in_ticks);
     }
 }
 
@@ -396,26 +398,35 @@ pub(in crate::entity_models) fn humanoid_crouch_leg_pose(base: PartPose) -> Part
     }
 }
 
-/// Vanilla `AnimationUtils.animateZombieArms` resting pose — the iconic held-out zombie
-/// arms — at `attackTime = 0` (not mid-swing). Each arm drops forward to `xRot = armDrop`,
-/// splays out by `yRot` (right arm, part offset `x < 0`, `-0.1`; left arm `+0.1`), zeroes
-/// `zRot`, then takes the idle bob (`bobArms` → [`humanoid_arm_bob_pose`]). `armDrop =
-/// -π / (aggressive ? 1.5 : 2.25)` — an aggressive mob (`Mob.isAggressive`,
-/// `DATA_MOB_FLAGS_ID & 4`, projected as `is_aggressive`) raises its arms higher.
-/// `ZombieModel.setupAnim` calls this *after* the inherited `HumanoidModel.setupAnim`, so it
-/// overrides the walk arm swing while the legs keep theirs (the base arm pose carries no
-/// `xRot`/`yRot`, so the held-out values are set, not accumulated). The attack swing
-/// (`attackTime > 0`, which needs the swing-progress render state) stays deferred.
+/// Vanilla `AnimationUtils.animateZombieArms` held-out zombie arms — the iconic forward reach. Each arm
+/// drops to `xRot = armDrop`, splays by `yRot` (right arm, part offset `x < 0`, `-0.1`; left arm `+0.1`),
+/// zeroes `zRot`, then takes the idle bob (`bobArms` → [`humanoid_arm_bob_pose`]). `armDrop =
+/// -π / (aggressive ? 1.5 : 2.25)` — an aggressive mob (`Mob.isAggressive`, `DATA_MOB_FLAGS_ID & 4`,
+/// projected as `is_aggressive`) raises its arms higher. A melee strike (`attack_anim` =
+/// `getAttackAnim(partialTick) > 0`) swings the held-out arms: `attackYRot = sin(t·π)` lifts both arms'
+/// yRot toward center (`yRot = ±(0.1 - attackYRot·0.6)`) and `xRot += attackYRot·1.2 - sin((1-(1-t)²)·π)
+/// ·0.4` chops them down then back. `ZombieModel.setupAnim` calls this *after* the inherited
+/// `HumanoidModel.setupAnim`, so it overrides the walk arm swing while the legs keep theirs (the held-out
+/// values are set absolutely). The body twist / arm-anchor reposition from the inherited
+/// `setupAttackAnimation` (and the per-item STAB swing-type skip) stay deferred for the zombie family.
 pub(in crate::entity_models) fn zombie_arm_held_out_pose(
     base: PartPose,
     aggressive: bool,
+    attack_anim: f32,
     age_in_ticks: f32,
 ) -> PartPose {
-    let arm_drop = -std::f32::consts::PI / if aggressive { 1.5 } else { 2.25 };
-    let y_rot = if base.offset[0] < 0.0 { -0.1 } else { 0.1 };
+    use std::f32::consts::PI;
+    let arm_drop = -PI / if aggressive { 1.5 } else { 2.25 };
+    let attack_y_rot = (attack_anim * PI).sin();
+    let attack_x_rot = ((1.0 - (1.0 - attack_anim) * (1.0 - attack_anim)) * PI).sin();
+    let side = if base.offset[0] < 0.0 { -1.0 } else { 1.0 };
     let held_out = PartPose {
         offset: base.offset,
-        rotation: [arm_drop, y_rot, 0.0],
+        rotation: [
+            arm_drop + attack_y_rot * 1.2 - attack_x_rot * 0.4,
+            side * (0.1 - attack_y_rot * 0.6),
+            0.0,
+        ],
     };
     humanoid_arm_bob_pose(held_out, age_in_ticks)
 }

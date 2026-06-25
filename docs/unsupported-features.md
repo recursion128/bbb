@@ -686,8 +686,9 @@ When an agent does any of the following, update this file in the same slice:
     are not `HumanoidModel`, do not get it); only the `SPYGLASS`-pose skip (needs a held
     spyglass) and the enderman's halve/clamp composition of the bob stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
-    arms' attack swing — the resting held-out pose, with the synced `Mob.isAggressive`
-    arm-raise, is implemented, see the zombie-arms note below; the skeleton `BOW_AND_ARROW`
+    arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
+    arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —
+    is implemented, see the zombie-arms note below; the skeleton `BOW_AND_ARROW`
     aim and the melee swing (`isAggressive && !isHoldingBow`, the raised-and-chopping arms
     driven by the projected `attack_anim`) are both implemented — see the skeleton note
     below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
@@ -1350,8 +1351,10 @@ When an agent does any of the following, update this file in the same slice:
       no mirroring), with official PNG atlas upload/bind/sample and the head-look /
       leg-swing animation plus the held-out `animateZombieArms` resting arm pose
       (`armDrop = -π / (isAggressive ? 1.5 : 2.25)` from the synced `Mob.isAggressive`
-      flag, `yRot ∓0.1`, `zRot 0`, then the idle bob) on both render paths (only the
-      attack swing stays deferred); husk entities share that texture-backed render path through
+      flag, `yRot ∓0.1`, `zRot 0`, then the idle bob) plus the `animateZombieArms` melee
+      swing over the projected `attack_anim` (`attackYRot = sin(t·π)` toward center,
+      `xRot += attackYRot·1.2 - sin((1-(1-t)²)·π)·0.4`) on both render paths (only the
+      inherited `setupAttackAnimation` body twist / arm-anchor reposition stays deferred); husk entities share that texture-backed render path through
       `HuskRenderer extends ZombieRenderer`: they reuse the zombie adult/baby body
       parts (so the husk geometry is byte-for-byte the zombie geometry) over
       `textures/entity/zombie/husk.png` / `textures/entity/zombie/husk_baby.png`,
@@ -1405,9 +1408,12 @@ When an agent does any of the following, update this file in the same slice:
       rotation, trident throw arm pose, zombie villager type/profession/level
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
-      layers, held items, attack/walk/dance/crossbow/admiring animation, and the
-      zombie-arm attack swing (the resting held-out arms, including the
-      `Mob.isAggressive` arm-raise, are implemented) remain unsupported;
+      layers, held items, and the piglin attack/dance/crossbow/admiring animation
+      remain unsupported; the zombie-arm attack swing IS implemented (the
+      held-out arms, the `Mob.isAggressive` arm-raise, and the
+      `animateZombieArms` melee swing over the projected `attack_anim` — only the
+      inherited `setupAttackAnimation` body twist / arm-anchor reposition and the
+      STAB swing-type skip stay deferred for the zombie family);
       the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
@@ -2238,7 +2244,8 @@ When an agent does any of the following, update this file in the same slice:
       extends ZombieModel`, the giant extracts the same `ZombieRenderState`). The base texture is now bound
       on the textured path (the giant binds the zombie texture via the shared `zombie_textured_layer_passes`),
       the primary now-wired path; the
-      `HumanoidArmorLayer`, the `ItemInHandLayer`, and the zombie-arm attack swing remain deferred. The
+      `HumanoidArmorLayer` and the `ItemInHandLayer` remain deferred (the `attack_anim` melee swing is
+      implemented via the shared zombie-family anim). The
       colored debug path stays as a fallback (the giant reuses the zombie body
       tints; the `Mob.isAggressive` arm-raise is implemented)
     - end crystal entities as renderer-owned vanilla 26.1 `EndCrystalModel.createBodyLayer()` geometry on
