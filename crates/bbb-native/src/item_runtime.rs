@@ -14,6 +14,7 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
 };
+use bbb_renderer::{ItemSpriteRect, SpriteAlphaMask};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
@@ -636,6 +637,33 @@ impl NativeItemRuntime {
         self.registry.as_ref()?.resource_id(protocol_id)
     }
 
+    /// The generated (flat) item layers for a stack — each layer's alpha silhouette, atlas UV rect, and
+    /// resolved tint — for 3D extrusion (vanilla `builtin/generated`). Reuses the resolved item icon, so
+    /// it returns the same per-layer sprites + tints the flat billboard uses; empty when the item has no
+    /// icon (or its sprites are missing from the atlas).
+    pub(crate) fn generated_item_layers_for_stack(
+        &self,
+        stack: &ItemStackSummary,
+    ) -> Vec<GeneratedItemLayer> {
+        let Some(icon) = self.icon_for_stack(stack) else {
+            return Vec::new();
+        };
+        icon.layers
+            .into_iter()
+            .filter_map(|layer| {
+                let mask = self.textures.alpha_mask_for_uv(layer.uv)?;
+                Some(GeneratedItemLayer {
+                    mask,
+                    rect: ItemSpriteRect {
+                        min: layer.uv.min,
+                        max: layer.uv.max,
+                    },
+                    tint: layer.tint,
+                })
+            })
+            .collect()
+    }
+
     pub(crate) fn icon_for_stack_with_bundle_selected_item(
         &self,
         stack: &ItemStackSummary,
@@ -961,6 +989,14 @@ pub(crate) struct ItemAtlasIcon {
     pub(crate) layers: Vec<ItemAtlasIconLayer>,
 }
 
+/// One layer of a generated (flat) item ready for 3D extrusion: the sprite's alpha silhouette, its
+/// atlas UV rect (item atlas), and the resolved layer tint.
+pub(crate) struct GeneratedItemLayer {
+    pub(crate) mask: SpriteAlphaMask,
+    pub(crate) rect: ItemSpriteRect,
+    pub(crate) tint: [f32; 4],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ItemAtlasIconLayer {
     pub(crate) uv: ItemAtlasUvRect,
@@ -1043,6 +1079,39 @@ impl ItemTextureState {
     fn texture_uv_rect(&self, texture_index: u32) -> Option<ItemAtlasUvRect> {
         let sprite = self.atlas.layout.sprites.get(texture_index as usize)?;
         Some(item_uv_rect(&self.atlas.layout, sprite))
+    }
+
+    /// Builds the per-pixel alpha silhouette of the sprite a UV rect covers, for generated-item
+    /// extrusion. Inverts the half-texel inset [`item_uv_rect`] applies to recover the exact content
+    /// pixel bounds, then reads the stitched atlas alpha (vanilla `SpriteContents.isTransparent`: a pixel
+    /// is opaque iff its alpha byte is non-zero).
+    fn alpha_mask_for_uv(&self, uv: ItemAtlasUvRect) -> Option<SpriteAlphaMask> {
+        let (atlas_width, atlas_height) = self.atlas_size();
+        let width = atlas_width as f32;
+        let height = atlas_height as f32;
+        let x0 = (uv.min[0] * width - 0.5).round() as i64;
+        let x1 = (uv.max[0] * width + 0.5).round() as i64;
+        let y0 = (uv.min[1] * height - 0.5).round() as i64;
+        let y1 = (uv.max[1] * height + 0.5).round() as i64;
+        if x0 < 0 || y0 < 0 || x1 <= x0 || y1 <= y0 {
+            return None;
+        }
+        if x1 as u32 > atlas_width || y1 as u32 > atlas_height {
+            return None;
+        }
+        let mask_width = (x1 - x0) as u32;
+        let mask_height = (y1 - y0) as u32;
+        let rgba = self.atlas_rgba();
+        let mut opaque = Vec::with_capacity((mask_width * mask_height) as usize);
+        for py in 0..mask_height {
+            for px in 0..mask_width {
+                let ax = x0 as u32 + px;
+                let ay = y0 as u32 + py;
+                let alpha_index = ((ay * atlas_width + ax) * 4 + 3) as usize;
+                opaque.push(rgba.get(alpha_index).copied().unwrap_or(0) != 0);
+            }
+        }
+        Some(SpriteAlphaMask::new(mask_width, mask_height, opaque))
     }
 }
 

@@ -405,7 +405,8 @@ pub(crate) fn pump_network_and_terrain(
         item_runtime,
         &dropped_item_models.handled_entity_ids,
     ));
-    renderer.set_block_item_model_meshes(dropped_item_models.meshes);
+    renderer.set_block_item_model_meshes(dropped_item_models.block_meshes);
+    renderer.set_flat_item_model_meshes(dropped_item_models.flat_meshes);
     renderer.set_entity_model_instances(entity_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
