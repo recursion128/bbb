@@ -784,9 +784,18 @@ When an agent does any of the following, update this file in the same slice:
     (`isUsingItem` + the using hand holds `minecraft:brush`, the only `BRUSH` use-animation item) lowers the
     holding arm to the block — `xRot = arm.xRot · 0.5 − π/5`, `yRot = 0`. (Like every bbb posed arm, the
     halved `arm.xRot` carries bbb's small folded-in idle bob rather than vanilla's bob-applied-after; the
-    full bob-reorder that would make the multiply exact is the shared deferred convention.) The remaining
-    use-item arm poses on the same dispatch (the generic `ITEM`/`BLOCK` hold poses, the off-arm
-    `EMPTY`/`ITEM` pose + the `affectsOffhandPose`/`isTwoHanded` routing) stay deferred. The
+    full bob-reorder that would make the multiply exact is the shared deferred convention.) The generic
+    main-hand `ITEM` hold pose IS now implemented too (`apply_humanoid_item_hold_pose`, the
+    `AvatarRenderer.getArmPose` fallback `ArmPose.ITEM` → `HumanoidModel.poseRightArm` ITEM case): a player
+    holding a plain item in the main hand and NOT using it lowers/halves the arm — `xRot = arm.xRot · 0.5 −
+    π/10`, `yRot = 0` — applied before the crouch/attack blocks (vanilla `poseArm` precedes
+    `setupAttackAnimation`, and crouch/attack are additive offsets that commute). It is gated to the player
+    kind (`HumanoidMobRenderer.getArmPose` never returns `ITEM`), a non-empty main hand, and `!isUsingItem`,
+    and excludes spears (→ `SPEAR`) and charged crossbows (→ `CROSSBOW_HOLD`) so their dedicated poses win; a
+    non-charged crossbow or a held (not drawn) bow correctly falls through to `ITEM`. The remaining
+    use-item arm poses on the same dispatch (the `BLOCK` hold pose, the using-item routes that also resolve to
+    `ITEM` — `EAT`/`DRINK` — and the `BOW_AND_ARROW`/`CROSSBOW` draw poses, the off-arm `EMPTY`/`ITEM` pose +
+    the `affectsOffhandPose`/`isTwoHanded` routing) stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —

@@ -628,6 +628,17 @@ fn entity_main_hand_holds_melee_weapon(world: &WorldStore, entity_id: i32) -> bo
         .contains(&DATA_COMPONENT_TOOL_TYPE_ID)
 }
 
+/// Whether the entity's main hand holds any item at all. Vanilla `AvatarRenderer.getArmPose` falls back to
+/// the `ITEM` arm pose for a non-empty main hand that is not a spear / charged crossbow / item-in-use; this is
+/// the "is the main hand non-empty" half of that fallback. Resolved from the held-item summary only (no item
+/// registry needed), so it works without the runtime; `false` for an empty hand.
+fn entity_main_hand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
+    world
+        .held_item(entity_id, false)
+        .and_then(|stack| stack.item_id)
+        .is_some()
+}
+
 /// Vanilla `ItemTags.PIGLIN_LOVED` tag id — the items a piglin admires.
 const PIGLIN_LOVED_ITEM_TAG: &str = "minecraft:piglin_loved";
 
@@ -762,6 +773,19 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         );
+    // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM` arm pose (`HumanoidModel.poseRightArm` ITEM case):
+    // a player holding a generic item in its main hand lowers and halves the arm swing. This is the `ITEM`
+    // branch reached after the special-pose checks fail, gated here to the "not using an item" case — the
+    // dominant "holding a tool/block/weapon" scenario. The using-an-item routes (`EAT`/`DRINK` -> `ITEM`,
+    // `BOW`/`CROSSBOW` draw -> their own poses) stay deferred. Spears (-> `SPEAR`) and charged crossbows
+    // (-> `CROSSBOW_HOLD`) are excluded so their dedicated poses win; a non-charged crossbow or a held (not
+    // drawn) bow correctly falls through to `ITEM`. Only `PlayerModel` consumes it (`HumanoidMobRenderer`
+    // never returns `ITEM`).
+    let player_main_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
+        && !source.is_using_item
+        && entity_main_hand_non_empty(world, source.entity_id)
+        && !entity_main_hand_holds_spear(world, item_runtime, source.entity_id)
+        && !entity_main_hand_holds_charged_crossbow(world, item_runtime, source.entity_id);
     // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
     let main_hand_holds_crossbow =
         matches!(
@@ -925,6 +949,7 @@ fn entity_model_instance(
         .with_player_using_spyglass(player_using_spyglass)
         .with_player_tooting_horn(player_tooting_horn)
         .with_player_brushing(player_brushing)
+        .with_player_main_hand_item_pose(player_main_hand_item_pose)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_drowned_throw_trident(drowned_throw_trident)
@@ -4137,6 +4162,80 @@ mod tests {
             .render_state
             .player_brushing;
         assert!(!brushing);
+    }
+
+    #[test]
+    fn entity_model_instances_project_player_main_hand_item_pose() {
+        // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM`: a player holding a plain main-hand item, not
+        // using it, lowers/halves the arm. Gated to the player kind, a non-empty main hand, and not using an
+        // item; an empty hand, a using-item player, or a non-player mob never reaches the `ITEM` fallback.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+        // Any item id resolves the same way without a runtime — only "main hand non-empty" drives the gate.
+        const PLAIN_ITEM_ID: i32 = 710;
+
+        let plain_main_hand = |entity_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id: Some(PLAIN_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let posing = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .player_main_hand_item_pose
+        };
+
+        let mut world = WorldStore::new();
+        // A player holding a plain item in the main hand reaches the ITEM fallback pose.
+        world.apply_add_entity(protocol_add_entity(
+            260,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, 8.0],
+        ));
+        assert!(world.apply_set_equipment(plain_main_hand(260)));
+        assert!(posing(&world, 260));
+
+        // The same player with an empty main hand has no item to pose.
+        world.apply_add_entity(protocol_add_entity(
+            261,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [2.0, 64.0, 8.0],
+        ));
+        assert!(!posing(&world, 261));
+
+        // A player USING the held item routes through the use-item poses, not the held-item ITEM fallback.
+        world.apply_add_entity(protocol_add_entity(
+            262,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [3.0, 64.0, 8.0],
+        ));
+        assert!(world.apply_set_equipment(plain_main_hand(262)));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 262,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING
+            )],
+        }));
+        assert!(!posing(&world, 262));
+
+        // A non-player mob holding an item never returns ITEM (`HumanoidMobRenderer.getArmPose`).
+        world.apply_add_entity(protocol_add_entity(
+            263,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [4.0, 64.0, 8.0],
+        ));
+        assert!(world.apply_set_equipment(plain_main_hand(263)));
+        assert!(!posing(&world, 263));
     }
 
     #[test]

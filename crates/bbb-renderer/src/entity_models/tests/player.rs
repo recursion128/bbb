@@ -621,6 +621,47 @@ fn player_brushing_lowers_the_arm_to_the_block() {
 }
 
 #[test]
+fn player_holding_an_item_lowers_the_main_arm() {
+    use std::f32::consts::PI;
+
+    // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM` (`HumanoidModel.poseRightArm` ITEM case): a player
+    // holding a plain main-hand item lowers/halves the arm — `xRot = arm.xRot · 0.5 − π/10`, `yRot = 0`. At
+    // rest (age 0, not walking) the arm pitch is `0`, so the ITEM pose lands the right arm at exactly `−π/10`.
+    let base =
+        EntityModelInstance::player(930, [0.0, 64.0, 0.0], 0.0, false).with_head_look(20.0, -10.0);
+
+    let mut held = PlayerModel::new(false);
+    held.prepare(&base.with_player_main_hand_item_pose(true));
+    let right = held.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-PI / 10.0)).abs() < 1e-6,
+        "the right arm lowers to −π/10: {}",
+        right.rotation[0]
+    );
+    assert_eq!(right.rotation[1], 0.0, "the ITEM pose zeroes the arm yaw");
+
+    // An empty-handed player keeps its (much higher) idle arm pitch — holding an item visibly lowers it.
+    let mut idle = PlayerModel::new(false);
+    idle.prepare(&base);
+    assert!(
+        idle.root_mut().child_mut("right_arm").pose.rotation[0] > -PI / 10.0 + 0.3,
+        "an empty-handed player does not lower the arm"
+    );
+
+    // The ITEM pose is main-hand only (right arm); the left arm is untouched.
+    let mut held_left = PlayerModel::new(false);
+    held_left.prepare(&base.with_player_main_hand_item_pose(true));
+    let left = held_left.root_mut().child_mut("left_arm").pose;
+    let mut bare_left = PlayerModel::new(false);
+    bare_left.prepare(&base);
+    assert_eq!(
+        left.rotation,
+        bare_left.root_mut().child_mut("left_arm").pose.rotation,
+        "the ITEM pose leaves the off (left) arm alone"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

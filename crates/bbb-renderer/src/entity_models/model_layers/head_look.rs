@@ -427,6 +427,24 @@ pub(in crate::entity_models) fn apply_humanoid_brush_pose(root: &mut ModelPart, 
     arm.pose.rotation[1] = 0.0;
 }
 
+/// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` generic `ITEM` arm pose (the `AvatarRenderer.getArmPose`
+/// fallback for a player holding any plain item): the holding arm lowers and halves its swing —
+/// `xRot = arm.xRot · 0.5 − π/10`, `yRot = 0`. Like the brush pose this READS the arm's current pitch and
+/// halves it (vanilla runs it before the idle bob, which bbb folds into `apply_humanoid_walk`, so the halved
+/// value carries bbb's small bob component — the shared posed-arm bob convention, see the
+/// renderer-scene-parity note). Applied before the crouch/attack blocks (vanilla `poseArm` precedes
+/// `setupAttackAnimation`, and crouch/attack commute as additive offsets).
+pub(in crate::entity_models) fn apply_humanoid_item_hold_pose(
+    root: &mut ModelPart,
+    off_hand: bool,
+) {
+    use std::f32::consts::PI;
+    let arm_name = if off_hand { "left_arm" } else { "right_arm" };
+    let arm = root.child_mut(arm_name);
+    arm.pose.rotation[0] = arm.pose.rotation[0] * 0.5 - PI / 10.0;
+    arm.pose.rotation[1] = 0.0;
+}
+
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
 fn progress(t: f32, a: f32, b: f32) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)

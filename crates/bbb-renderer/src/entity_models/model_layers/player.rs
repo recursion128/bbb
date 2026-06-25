@@ -1,6 +1,6 @@
 use super::{
     apply_head_look, apply_humanoid_attack_animation, apply_humanoid_brush_pose,
-    apply_humanoid_crouch_named, apply_humanoid_spyglass_pose,
+    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose, apply_humanoid_spyglass_pose,
     apply_humanoid_stab_attack_animation, apply_humanoid_toot_horn_pose, apply_humanoid_walk,
     PartPose, PART_POSE_ZERO, PLAYER_BLUE,
 };
@@ -337,6 +337,12 @@ impl EntityModel for PlayerModel {
         }
         if render_state.player_brushing {
             apply_humanoid_brush_pose(&mut self.root, render_state.use_item_off_hand);
+        }
+        // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM`: a player holding a plain main-hand item lowers
+        // and halves the arm. It runs as part of `poseRightArm` (before crouch/attack) and only on the main
+        // (right) arm, so this is unconditionally the right arm.
+        if render_state.player_main_hand_item_pose {
+            apply_humanoid_item_hold_pose(&mut self.root, false);
         }
         if render_state.is_crouching {
             apply_humanoid_crouch_named(&mut self.root);
