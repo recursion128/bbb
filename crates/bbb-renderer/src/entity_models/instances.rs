@@ -336,6 +336,13 @@ entity_render_state! {
     /// this flag (the pillager/piglin route through their own `is_charging_crossbow`); the off-hand draw
     /// stays deferred.
     (with_player_charging_crossbow) player_charging_crossbow: bool = false;
+    /// Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`): a player
+    /// holding a charged main-hand crossbow while not mid-swing levels the crossbow along the head look (the
+    /// right arm braces it, the left reaches the trigger). Reuses the same pose helper as the pillager.
+    /// `false` for every entity not holding a charged crossbow — only `PlayerModel` consumes it on this flag
+    /// (the pillager routes through its own `is_charging_crossbow` `false` path); the off-hand hold stays
+    /// deferred.
+    (with_player_crossbow_hold) player_crossbow_hold: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1872,6 +1879,7 @@ mod tests {
                 player_throwing_trident: false,
                 player_drawing_bow: false,
                 player_charging_crossbow: false,
+                player_crossbow_hold: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,

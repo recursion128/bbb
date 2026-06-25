@@ -1,10 +1,10 @@
 use super::{
-    apply_crossbow_charge_pose, apply_head_look, apply_humanoid_attack_animation,
-    apply_humanoid_block_pose, apply_humanoid_bow_pose, apply_humanoid_brush_pose,
-    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose, apply_humanoid_spyglass_pose,
-    apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
-    apply_humanoid_toot_horn_pose, apply_humanoid_walk, PartPose, CROSSBOW_CHARGE_DURATION_TICKS,
-    PART_POSE_ZERO, PLAYER_BLUE,
+    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look,
+    apply_humanoid_attack_animation, apply_humanoid_block_pose, apply_humanoid_bow_pose,
+    apply_humanoid_brush_pose, apply_humanoid_crouch_named, apply_humanoid_item_hold_pose,
+    apply_humanoid_spyglass_pose, apply_humanoid_stab_attack_animation,
+    apply_humanoid_throw_trident_pose, apply_humanoid_toot_horn_pose, apply_humanoid_walk,
+    PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -382,6 +382,17 @@ impl EntityModel for PlayerModel {
         // OFF (left) arm. Independent of the main-hand pose (separate arm), so order between them is moot.
         if render_state.player_off_hand_item_pose {
             apply_humanoid_item_hold_pose(&mut self.root, true);
+        }
+        // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`animateCrossbowHold`): a charged main-hand
+        // crossbow levels along the head look, setting BOTH arms. It is two-handed + affectsOffhandPose and
+        // vanilla runs `poseRightArm` last for this case, overwriting any off-hand ITEM, so it is applied
+        // after the ITEM blocks (and before crouch/attack).
+        if render_state.player_crossbow_hold {
+            apply_crossbow_hold_pose(
+                &mut self.root,
+                render_state.head_yaw,
+                render_state.head_pitch,
+            );
         }
         if render_state.is_crouching {
             apply_humanoid_crouch_named(&mut self.root);

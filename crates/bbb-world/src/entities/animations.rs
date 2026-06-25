@@ -3131,6 +3131,13 @@ impl EntityClientAnimationState {
         self.attack_swing.is_some_and(|s| s.off_hand)
     }
 
+    /// Vanilla `LivingEntity.swinging`: whether a melee swing is currently in progress. Gates the player's
+    /// `CROSSBOW_HOLD` arm pose (`AvatarRenderer.getArmPose`: `!swinging && crossbow && charged`), which
+    /// yields to the swing while attacking. `false` for an entity that is not mid-swing.
+    pub fn is_swinging(&self) -> bool {
+        self.attack_swing.is_some_and(|s| s.swinging)
+    }
+
     /// Vanilla `LivingEntityRenderState.deathTime`: `entity.deathTime > 0 ?
     /// entity.deathTime + partialTick : 0`, projected for the renderer death
     /// tip-over (`LivingEntityRenderer.setupRotations`). Returns `0.0` for a

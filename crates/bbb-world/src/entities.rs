@@ -743,6 +743,11 @@ pub struct EntityModelSourceState {
     /// swing is the off (left) hand. `false` for a main-hand swing and every non-swinging entity.
     #[serde(default)]
     pub attack_arm_off_hand: bool,
+    /// Vanilla `LivingEntity.swinging`: whether a melee swing is in progress. Gates the player's
+    /// `CROSSBOW_HOLD` arm pose (`AvatarRenderer.getArmPose`: `!swinging && crossbow && charged`), which
+    /// yields to the swing while attacking. `false` for an entity that is not mid-swing.
+    #[serde(default)]
+    pub is_swinging: bool,
     /// Vanilla `SquidRenderState.tentacleAngle` (`Squid.tentacleAngle` lerped):
     /// the tentacle flex angle `SquidModel.setupAnim` writes to every tentacle's
     /// `xRot`. `0.0` for a floating squid at rest and every non-squid entity.

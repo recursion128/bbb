@@ -822,10 +822,16 @@ When an agent does any of the following, update this file in the same slice:
     arm braces and the left pulls the string back over `crossbow_charge_ticks / 25`. The draw counter is the
     shared `getTicksUsingItem` reconstruction, now advanced for the player off its `isUsingItem` bit in the
     world tick loop (`getTicksUsingItem` is item-agnostic, so the same counter serves; the native layer gates
-    the pose to the crossbow). The remaining
+    the pose to the crossbow). The `CROSSBOW_HOLD` pose IS now implemented for the player too
+    (`apply_crossbow_hold_pose`, the same `AnimationUtils.animateCrossbowHold` the pillager levels): a player
+    holding a CHARGED main-hand crossbow while not mid-swing (`AvatarRenderer.getArmPose`: `!swinging &&
+    crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look,
+    setting both arms. The `swinging` boolean is now projected (`LivingEntity.swinging`, off the attack-swing
+    state) so the swing wins as in vanilla, and the pose runs after the ITEM blocks so it overwrites the
+    off-hand `ITEM` exactly as vanilla's `poseRightArm`-runs-last does for this case. The remaining
     use-item arm poses on the same dispatch (the using-item routes that also resolve to
-    `ITEM` — `EAT`/`DRINK` — the player `CROSSBOW_HOLD` (a held charged crossbow), the
-    mirrored off-hand bow/trident/crossbow draw, a non-shield
+    `ITEM` — `EAT`/`DRINK` — the
+    mirrored off-hand bow/trident/crossbow draw + off-hand `CROSSBOW_HOLD`, a non-shield
     datapack `BLOCKS_ATTACKS` item, the off-arm `EMPTY` reset, and the
     `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
     off-hand spear/charged crossbow while the main hand draws a two-handed item) stay deferred. The

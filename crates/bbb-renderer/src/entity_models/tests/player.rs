@@ -880,6 +880,44 @@ fn player_charging_a_crossbow_braces_and_draws_the_string() {
 }
 
 #[test]
+fn player_holding_a_charged_crossbow_levels_it_along_the_head_look() {
+    use std::f32::consts::FRAC_PI_2;
+
+    // Vanilla `AnimationUtils.animateCrossbowHold` (right-handed): the right arm levels the crossbow
+    // (`xRot = −π/2 + head.xRot + 0.1`, `yRot = −0.3 + head.yRot`) while the left reaches the trigger
+    // (`xRot = −1.5 + head.xRot`, `yRot = 0.6 + head.yRot`). Reuses the same helper as the pillager.
+    let yaw = 20.0_f32.to_radians();
+    let pitch = (-10.0_f32).to_radians();
+    let base =
+        EntityModelInstance::player(990, [0.0, 64.0, 0.0], 0.0, false).with_head_look(20.0, -10.0);
+
+    let mut holding = PlayerModel::new(false);
+    holding.prepare(&base.with_player_crossbow_hold(true));
+    let right = holding.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-FRAC_PI_2 + pitch + 0.1)).abs() < 1e-6,
+        "the right arm levels at −π/2 + head.xRot + 0.1: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (-0.3 + yaw)).abs() < 1e-6,
+        "the right arm yaws −0.3 + head.yRot: {}",
+        right.rotation[1]
+    );
+    let left = holding.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (-1.5 + pitch)).abs() < 1e-6,
+        "the left arm reaches the trigger at −1.5 + head.xRot: {}",
+        left.rotation[0]
+    );
+    assert!(
+        (left.rotation[1] - (0.6 + yaw)).abs() < 1e-6,
+        "the left arm yaws 0.6 + head.yRot: {}",
+        left.rotation[1]
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

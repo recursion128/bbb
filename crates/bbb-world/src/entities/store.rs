@@ -879,6 +879,7 @@ impl EntityStore {
             // progress and which arm swings. `0.0` for an entity that is not mid-swing.
             attack_anim: client_animations.animations.attack_anim(partial_ticks),
             attack_arm_off_hand: client_animations.animations.attack_arm_off_hand(),
+            is_swinging: client_animations.animations.is_swinging(),
             // Vanilla `SquidRenderer.extractRenderState`: the lerped tentacle flex
             // angle and body pitch/roll. `0.0` for every non-squid entity (only the
             // squid/glow squid is given a squid animation state).

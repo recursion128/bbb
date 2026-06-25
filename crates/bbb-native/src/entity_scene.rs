@@ -882,6 +882,15 @@ fn entity_model_instance(
         && !source.use_item_off_hand
         && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id)
         && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
+    // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, the same one
+    // the pillager levels): a player holding a CHARGED main-hand crossbow while not mid-swing (`!swinging &&
+    // crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look.
+    // Gated to the player kind, the main hand (the pose is right-handed; the off-hand hold stays deferred),
+    // and `!is_swinging` (the swing wins). Applied after the ITEM blocks in the model so it overwrites both
+    // arms exactly as vanilla's `poseRightArm` runs last for this case.
+    let player_crossbow_hold = matches!(kind, EntityModelKind::Player { .. })
+        && !source.is_swinging
+        && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
     // Vanilla `HumanoidModel.setupAnim` dispatch (lines 245-257): when the main hand uses an
     // `affectsOffhandPose` item (the two-handed draws — `BOW_AND_ARROW` / `THROW_TRIDENT` / `CROSSBOW_CHARGE`
     // / `CROSSBOW_HOLD`, which bbb poses for the player except the deferred player CROSSBOW_HOLD),
@@ -1089,6 +1098,7 @@ fn entity_model_instance(
         .with_player_throwing_trident(player_throwing_trident)
         .with_player_drawing_bow(player_drawing_bow)
         .with_player_charging_crossbow(player_charging_crossbow)
+        .with_player_crossbow_hold(player_crossbow_hold)
         .with_player_main_hand_item_pose(player_main_hand_item_pose)
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_use_item_off_hand(source.use_item_off_hand)
@@ -4423,6 +4433,26 @@ mod tests {
             .render_state
             .player_charging_crossbow;
         assert!(!charging);
+    }
+
+    #[test]
+    fn entity_model_instances_crossbow_hold_pose_needs_a_resolved_charged_crossbow() {
+        // The CROSSBOW_HOLD pose needs the main-hand item resolved through the item registry to confirm a
+        // CHARGED crossbow; without an item runtime it can never resolve, so the projection defaults off even
+        // for a (non-swinging) player.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            257,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [8.0, 64.0, -10.0],
+        ));
+        let holding = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 257)
+            .unwrap()
+            .render_state
+            .player_crossbow_hold;
+        assert!(!holding);
     }
 
     #[test]
