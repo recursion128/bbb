@@ -698,19 +698,6 @@ fn celebrating_raiders_raise_the_victory_arms() {
         );
     }
 
-    // An aggressive vindicator's ATTACKING melee swing is deferred (it needs `attackTime`), and
-    // aggression outranks celebrating in vanilla `getArmPose`, so it stays crossed (216).
-    let vindicator =
-        EntityModelInstance::illager(140, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Vindicator);
-    let attacking = entity_model_mesh(&[vindicator
-        .with_illager_celebrating(true)
-        .with_is_aggressive(true)]);
-    assert_eq!(
-        attacking.vertices.len(),
-        216,
-        "an aggressive vindicator stays crossed (ATTACKING deferred)"
-    );
-
     // The celebrate flag is gated to the evoker/vindicator: a celebrating pillager keeps its
     // crossbow-swing arms (it never returns CELEBRATING), and an illusioner is unaffected (it draws
     // a bow when aggressive, crosses otherwise).
@@ -721,6 +708,66 @@ fn celebrating_raiders_raise_the_victory_arms() {
         entity_model_mesh(&[pillager.with_illager_celebrating(true)]).vertices,
         "the pillager ignores the celebrate flag"
     );
+}
+
+#[test]
+fn aggressive_vindicator_chops_with_its_axe() {
+    use std::f32::consts::PI;
+
+    // Vanilla `Vindicator.getArmPose`: aggressive → ATTACKING. `IllagerModel.setupAnim` takes the armed
+    // `AnimationUtils.swingWeaponDown` (mainArm = RIGHT): the right arm raises overhead
+    // (`xRot = -1.8849558 + cos(age·0.09)·0.15`) and chops with `+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`,
+    // the left arm trails (`xRot = cos(age·0.19)·0.5 + sin(t·π)·1.2 - …·0.4`), both yawing apart `±π/20`.
+    // Aggression outranks celebrating, so the celebrate flag is ignored. `age = 0`, `t = 0` here.
+    let attacking =
+        EntityModelInstance::illager(140, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Vindicator)
+            .with_illager_celebrating(true)
+            .with_is_aggressive(true);
+    let mut model = IllagerModel::new(&attacking, IllagerModelFamily::Vindicator);
+    model.prepare(&attacking);
+
+    let right = model.root_mut().child_mut("right_arm").pose.rotation;
+    assert!(
+        (right[0] - (-1.8849558 + 0.15)).abs() < 1.0e-6,
+        "the right arm raises overhead: {}",
+        right[0]
+    );
+    assert!((right[1] - PI / 20.0).abs() < 1.0e-6);
+    // `swingWeaponDown` zeroes `zRot`, then `bobArms` rolls it back out (`+cos(0)·0.05 + 0.05 = 0.1`).
+    assert!(
+        (right[2] - 0.1).abs() < 1.0e-6,
+        "the bob rolls zRot: {}",
+        right[2]
+    );
+    let left = model.root_mut().child_mut("left_arm").pose.rotation;
+    assert!(
+        (left[0] - 0.5).abs() < 1.0e-6,
+        "the off arm trails at cos(0)·0.5: {}",
+        left[0]
+    );
+    assert!((left[1] - (-PI / 20.0)).abs() < 1.0e-6);
+    assert!(
+        (left[2] - (-0.1)).abs() < 1.0e-6,
+        "the off arm bob mirrors: {}",
+        left[2]
+    );
+
+    // Mid-swing (`t = 0.5`) the chop drives the right arm forward from its raised rest.
+    let raised = right[0];
+    let mid = attacking.with_attack_anim(0.5);
+    let mut swinging = IllagerModel::new(&mid, IllagerModelFamily::Vindicator);
+    swinging.prepare(&mid);
+    let chopping = swinging.root_mut().child_mut("right_arm").pose.rotation[0];
+    let attack2 = (0.5_f32 * PI).sin();
+    let attack = ((1.0 - 0.5 * 0.5) * PI).sin();
+    assert!(
+        (chopping - (-1.8849558 + 0.15 + (attack2 * 2.2 - attack * 0.4))).abs() < 1.0e-6,
+        "the axe chops down with the attack swing: {chopping}"
+    );
+    assert!(chopping > raised, "the chop swings the arm forward");
+
+    // The aggressive vindicator swaps the crossed arms (216) for the uncrossed two-arm layout (192).
+    assert_eq!(entity_model_mesh(&[attacking]).vertices.len(), 192);
 }
 
 #[test]

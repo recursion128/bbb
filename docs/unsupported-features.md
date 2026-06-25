@@ -578,8 +578,15 @@ When an agent does any of the following, update this file in the same slice:
     suppressed while casting / aggressive): both separate arms bob
     `xRot = cos(ageInTicks · 0.6662) · 0.05` and raise asymmetrically (right `zRot =
     2.670354`, left `zRot = -3π/4`). These swaps to the uncrossed separate-arm layout
-    mirror vanilla `crossedArms = pose == CROSSED`. The vindicator melee `ATTACKING` swing
-    (which needs the projected `attackTime`/`getAttackAnim`), the pillager `CROSSBOW_CHARGE`
+    mirror vanilla `crossedArms = pose == CROSSED`. The vindicator melee `ATTACKING` swing is
+    projected too (`Vindicator.getArmPose`: `isAggressive` → ATTACKING; the vindicator always
+    holds an iron axe, so `IllagerModel.setupAnim` takes the armed `AnimationUtils.swingWeaponDown`
+    `mainArm = RIGHT` branch over the projected `attack_anim`): the uncrossed right arm raises
+    overhead (`xRot = -1.8849558 + cos(age·0.09)·0.15`) and chops with `+= sin(t·π)·2.2 -
+    sin((1-(1-t)²)·π)·0.4`, the left arm trails (`xRot = cos(age·0.19)·0.5 + sin(t·π)·1.2 -
+    …·0.4`), both yawing apart `±π/20` with the shared `bobArms` roll — and `IllagerModel` is not a
+    `HumanoidModel`, so there is no body twist (no `setupAttackAnimation`). The empty-hand
+    `animateZombieArms` ATTACKING branch (no illager uses it), the pillager `CROSSBOW_CHARGE`
     pull-back (which needs `ticksUsingItem`/`maxCrossbowChargeDuration`), and the riding sit
     pose stay deferred. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
@@ -602,9 +609,12 @@ When an agent does any of the following, update this file in the same slice:
     [`apply_humanoid_attack_animation`]: the body twists `yRot = sin(sqrt(t)·2π)·0.2` (off arm
     negated), both arm anchors swing around it (`x = ∓cos · 5`, `z = ±sin · 5`), and the
     attacking arm whacks down (`xRot -= sin(outQuart(t)·π)·1.2 + sin(t·π)·-(headXRot-0.7)·0.75`,
-    `yRot += bodyYRot·2`, `zRot += sin(t·π)·-0.4`). Extending the same helper to the other
-    humanoid models (zombie/skeleton/illager/vindicator), the per-item swing duration, and the
-    STAB / NONE swing types are deferred (every swing is the default 6-tick whack). The
+    `yRot += bodyYRot·2`, `zRot += sin(t·π)·-0.4`). The same `apply_humanoid_attack_animation`
+    helper is wired into the skeleton (with the `SkeletonModel` melee arm override), the zombie
+    family applies the `animateZombieArms` arm-swing terms, and the vindicator chops with the
+    `IllagerModel` `swingWeaponDown` axe pose; extending the body twist to the piglin, the per-item
+    swing duration, and the STAB / NONE swing types are deferred (every swing is the default 6-tick
+    whack). The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
@@ -694,10 +704,11 @@ When an agent does any of the following, update this file in the same slice:
     below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
     `PiglinModel` dance/attack/crossbow/admire poses (the `AbstractPiglinModel` ear flap is
     implemented for every piglin/zombified-piglin subclass — see below), the `IllagerModel`
-    vindicator `ATTACKING` swing and pillager `CROSSBOW_CHARGE` overrides and riding sit
+    pillager `CROSSBOW_CHARGE` override and riding sit
     pose (the default walk arm swing is implemented for the pillager, and the
     evoker/illusioner spellcasting raise, the illusioner `BOW_AND_ARROW`, the pillager
-    `CROSSBOW_HOLD`, and the evoker/vindicator `CELEBRATING` poses are implemented — see the
+    `CROSSBOW_HOLD`, the evoker/vindicator `CELEBRATING`, and the vindicator `ATTACKING`
+    axe swing poses are implemented — see the
     illager note above), the `VillagerModel` unhappy
     head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
     implemented — see below), the `GoatModel` ramming head

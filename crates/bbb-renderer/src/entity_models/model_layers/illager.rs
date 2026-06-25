@@ -1,6 +1,6 @@
 use super::{
-    apply_half_amplitude_leg_swing, apply_head_look, humanoid_arm_swing_pose, PartPose,
-    ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
+    apply_half_amplitude_leg_swing, apply_head_look, humanoid_arm_bob_pose,
+    humanoid_arm_swing_pose, PartPose, ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -302,6 +302,36 @@ fn apply_illager_bow_aim(root: &mut ModelPart, head_yaw_degrees: f32, head_pitch
     ];
 }
 
+/// Vanilla `AnimationUtils.swingWeaponDown` (`mainArm = RIGHT`, the vindicator `ATTACKING` axe): the
+/// main (right) arm raises overhead (`xRot = -1.8849558`) and chops down with the attack
+/// (`+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`), the off (left) arm trails (`+= sin(t·π)·1.2 - …·0.4`),
+/// both yawing slightly apart (`±π/20`) with a per-arm idle wobble and the shared bob on top. `t` is the
+/// projected `attack_anim`; at rest (`t = 0`) the weapon holds raised. Mirrors `IllagerModel.setupAnim`'s
+/// armed `ATTACKING` branch.
+fn apply_illager_weapon_swing_down(root: &mut ModelPart, attack_anim: f32, age_in_ticks: f32) {
+    use std::f32::consts::PI;
+    let attack2 = (attack_anim * PI).sin();
+    let attack = ((1.0 - (1.0 - attack_anim) * (1.0 - attack_anim)) * PI).sin();
+    {
+        let right = root.child_mut("right_arm");
+        right.pose.rotation = [
+            -1.8849558 + (age_in_ticks * 0.09).cos() * 0.15 + (attack2 * 2.2 - attack * 0.4),
+            PI / 20.0,
+            0.0,
+        ];
+        right.pose = humanoid_arm_bob_pose(right.pose, age_in_ticks);
+    }
+    {
+        let left = root.child_mut("left_arm");
+        left.pose.rotation = [
+            (age_in_ticks * 0.19).cos() * 0.5 + (attack2 * 1.2 - attack * 0.4),
+            -PI / 20.0,
+            0.0,
+        ];
+        left.pose = humanoid_arm_bob_pose(left.pose, age_in_ticks);
+    }
+}
+
 /// Vanilla `IllagerModel.setupAnim` `CROSSBOW_HOLD` arm pose (`AnimationUtils.animateCrossbowHold` with
 /// `holdingInRightArm = true`): the right (holding) arm levels the crossbow along the head look
 /// (`yRot = -0.3 + head.yRot`, `xRot = -π/2 + head.xRot + 0.1`) while the left (shooting) arm reaches
@@ -349,6 +379,8 @@ enum IllagerArmPose {
     BowAndArrow,
     /// Evoker/vindicator `CELEBRATING` victory dance.
     Celebrating,
+    /// Vindicator `ATTACKING` weapon swing-down (`AnimationUtils.swingWeaponDown`, armed main hand).
+    Attacking,
 }
 
 impl IllagerArmPose {
@@ -390,7 +422,12 @@ fn resolve_illager_arm_pose(
             }
         }
         IllagerModelFamily::Vindicator => {
-            if !rs.is_aggressive && rs.illager_celebrating {
+            if rs.is_aggressive {
+                // Vanilla `Vindicator.getArmPose`: aggressive → ATTACKING. The vindicator always holds
+                // an iron axe, so `IllagerModel.setupAnim` takes the armed `swingWeaponDown` branch (the
+                // empty-hand `animateZombieArms` ATTACKING branch is deferred).
+                IllagerArmPose::Attacking
+            } else if rs.illager_celebrating {
                 IllagerArmPose::Celebrating
             } else {
                 IllagerArmPose::Crossed
@@ -485,6 +522,12 @@ impl EntityModel for IllagerModel {
                 right.pose = illager_celebrate_arm_pose(right.pose, age, true);
                 let left = self.root.child_mut("left_arm");
                 left.pose = illager_celebrate_arm_pose(left.pose, age, false);
+            }
+            IllagerArmPose::Attacking => {
+                // Vindicator ATTACKING: the armed `swingWeaponDown` raises the axe overhead and chops
+                // with the projected attack swing. IllagerModel is not a HumanoidModel, so there is no
+                // body twist — only the two-arm pose.
+                apply_illager_weapon_swing_down(&mut self.root, render_state.attack_anim, age);
             }
         }
     }
