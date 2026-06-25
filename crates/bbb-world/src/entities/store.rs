@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
+use bbb_protocol::packets::ItemStackSummary;
 
 use super::{
     ArmorMaterialKind, EntityAttributes, EntityCameraPoseState, EntityClientAnimations,
@@ -971,6 +972,26 @@ impl EntityStore {
 
     pub(crate) fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
         self.item_stacks_for_entity_types(&[VANILLA_ENTITY_TYPE_ITEM_ID])
+    }
+
+    /// The item a humanoid entity holds in its main (`off_hand = false`) or off hand (vanilla
+    /// `EntityEquipment` `MainHand`/`OffHand` slot), or `None` for an empty hand / no equipment. Drives
+    /// the third-person held-item render.
+    pub(crate) fn held_item(&self, id: i32, off_hand: bool) -> Option<ItemStackSummary> {
+        let slot = if off_hand {
+            ProtocolEquipmentSlot::OffHand
+        } else {
+            ProtocolEquipmentSlot::MainHand
+        };
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let equipment = self.ecs.get::<&EntityEquipment>(entity).ok()?;
+        let item = equipment
+            .equipment
+            .iter()
+            .find(|update| update.slot == slot)?
+            .item
+            .clone();
+        item.item_id.map(|_| item)
     }
 
     /// Collects the `DATA_ITEM_STACK` carried by every entity whose type id is in `type_ids`. Used both

@@ -8,7 +8,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use bbb_renderer::{bake_generated_item_quads, ItemModelMesh, ItemModelQuad};
+use bbb_renderer::{
+    bake_generated_item_quads, bake_item_model_mesh, player_hand_attach_transform,
+    EntityModelInstance, ItemModelMesh, ItemModelQuad,
+};
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
 
@@ -135,6 +138,116 @@ pub(crate) fn dropped_item_models(
         block_meshes,
         flat_meshes,
         handled_entity_ids,
+    }
+}
+
+/// Vanilla third-person right-hand display transform for a block item (`minecraft:block/block`):
+/// rotation `[75, 45, 0]°`, translation `[0, 2.5, 0]`/16, scale `0.375`.
+const BLOCK_THIRD_PERSON: DisplayTransform = DisplayTransform {
+    rotation_deg: [75.0, 45.0, 0.0],
+    translation: [0.0, 2.5, 0.0],
+    scale: 0.375,
+};
+
+/// Vanilla third-person right-hand display transform for a flat item (`minecraft:item/generated`):
+/// rotation `[0, 0, 0]°`, translation `[0, 3, 1]`/16, scale `0.55`. Handheld tools use a distinct angled
+/// transform; until per-item display transforms are retained, tools fall back to this.
+const GENERATED_THIRD_PERSON: DisplayTransform = DisplayTransform {
+    rotation_deg: [0.0, 0.0, 0.0],
+    translation: [0.0, 3.0, 1.0],
+    scale: 0.55,
+};
+
+/// A vanilla `ItemTransform` (a display context): Euler rotation in degrees, translation in 1/16 units,
+/// uniform scale.
+struct DisplayTransform {
+    rotation_deg: [f32; 3],
+    translation: [f32; 3],
+    scale: f32,
+}
+
+/// The display transform about the model center: `T(t) · Rxyz · S · T(-0.5)` (vanilla
+/// `ItemTransform.apply`, right hand — no left-hand mirror). `Rxyz` matches joml `rotationXYZ`.
+fn display_matrix(display: &DisplayTransform) -> Mat4 {
+    let translation = Vec3::new(
+        display.translation[0] / 16.0,
+        display.translation[1] / 16.0,
+        display.translation[2] / 16.0,
+    );
+    let rotation = Mat4::from_rotation_x(display.rotation_deg[0].to_radians())
+        * Mat4::from_rotation_y(display.rotation_deg[1].to_radians())
+        * Mat4::from_rotation_z(display.rotation_deg[2].to_radians());
+    Mat4::from_translation(translation)
+        * rotation
+        * Mat4::from_scale(Vec3::splat(display.scale))
+        * Mat4::from_translation(Vec3::splat(-0.5))
+}
+
+/// The baked held-item meshes for this frame, split by atlas (block-items vs flat items).
+pub(crate) struct HeldItemModels {
+    pub block_meshes: Vec<ItemModelMesh>,
+    pub flat_meshes: Vec<ItemModelMesh>,
+}
+
+/// Bakes the third-person main-hand held item for every player entity that holds one (vanilla
+/// `ItemInHandLayer`). The hand attach transform comes from the renderer's posed player model; native
+/// resolves the item to quads (block or flat) and applies the item's third-person display transform.
+pub(crate) fn held_item_models(
+    instances: &[EntityModelInstance],
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+) -> HeldItemModels {
+    let mut block_meshes = Vec::new();
+    let mut flat_meshes = Vec::new();
+    let Some(item_runtime) = item_runtime else {
+        return HeldItemModels {
+            block_meshes,
+            flat_meshes,
+        };
+    };
+
+    for instance in instances {
+        let Some(stack) = world.held_item(instance.entity_id, false) else {
+            continue;
+        };
+        let Some(item_id) = stack.item_id else {
+            continue;
+        };
+        let Some(hand) = player_hand_attach_transform(instance, false) else {
+            continue;
+        };
+
+        // Block path.
+        if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
+            if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
+                if !quads.is_empty() {
+                    let transform = hand * display_matrix(&BLOCK_THIRD_PERSON);
+                    block_meshes.push(bake_item_model_mesh(&quads, transform));
+                    continue;
+                }
+            }
+        }
+
+        // Flat path.
+        let mut quads: Vec<ItemModelQuad> = Vec::new();
+        for layer in item_runtime.generated_item_layers_for_stack(&stack) {
+            quads.extend(bake_generated_item_quads(
+                &layer.mask,
+                layer.rect,
+                layer.tint,
+            ));
+        }
+        if quads.is_empty() {
+            continue;
+        }
+        let transform = hand * display_matrix(&GENERATED_THIRD_PERSON);
+        flat_meshes.push(bake_item_model_mesh(&quads, transform));
+    }
+
+    HeldItemModels {
+        block_meshes,
+        flat_meshes,
     }
 }
 
@@ -380,5 +493,15 @@ mod tests {
         // Java `new Random(0).nextFloat()` is 0.7309678 — the LCG reproduces it bit-for-bit.
         let mut random = LegacyRandom::new(0);
         assert!((random.next_float() - 0.730_967_8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn display_matrix_centers_the_model_at_the_translation() {
+        // The display transform is about the model center (`T(-0.5)`), so the unit-cube center
+        // (0.5,0.5,0.5) lands exactly at the (1/16-scaled) translation regardless of rotation/scale.
+        let generated = display_matrix(&GENERATED_THIRD_PERSON).transform_point3(Vec3::splat(0.5));
+        assert!((generated - Vec3::new(0.0, 3.0 / 16.0, 1.0 / 16.0)).length() < 1e-6);
+        let block = display_matrix(&BLOCK_THIRD_PERSON).transform_point3(Vec3::splat(0.5));
+        assert!((block - Vec3::new(0.0, 2.5 / 16.0, 0.0)).length() < 1e-6);
     }
 }

@@ -39,7 +39,7 @@ use crate::{
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
     item_entities::item_entity_billboards_from_world,
-    item_models::dropped_item_models,
+    item_models::{dropped_item_models, held_item_models},
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
@@ -405,12 +405,19 @@ pub(crate) fn pump_network_and_terrain(
         item_runtime,
         &dropped_item_models.handled_entity_ids,
     ));
-    renderer.set_block_item_model_meshes(dropped_item_models.block_meshes);
-    renderer.set_flat_item_model_meshes(dropped_item_models.flat_meshes);
-    renderer.set_entity_model_instances(entity_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-    ));
+    // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
+    // the two atlas draws). The entity instances are built once and reused for the hand transforms.
+    let entity_instances =
+        entity_model_instances_from_world_at_partial_tick(world, entity_partial_tick);
+    let held_item_models =
+        held_item_models(&entity_instances, world, item_runtime, terrain_textures);
+    let mut block_item_meshes = dropped_item_models.block_meshes;
+    block_item_meshes.extend(held_item_models.block_meshes);
+    let mut flat_item_meshes = dropped_item_models.flat_meshes;
+    flat_item_meshes.extend(held_item_models.flat_meshes);
+    renderer.set_block_item_model_meshes(block_item_meshes);
+    renderer.set_flat_item_model_meshes(flat_item_meshes);
+    renderer.set_entity_model_instances(entity_instances);
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));

@@ -1041,6 +1041,12 @@ impl WorldStore {
         self.entities.item_entity_stacks()
     }
 
+    /// The item a humanoid entity holds in its main (`off_hand = false`) or off hand, or `None` for an
+    /// empty hand. Drives the third-person held-item 3D render.
+    pub fn held_item(&self, id: i32, off_hand: bool) -> Option<ProtocolItemStackSummary> {
+        self.entities.held_item(id, off_hand)
+    }
+
     /// Collects the `DATA_ITEM_STACK` carried by every entity whose type id is in `type_ids`. The
     /// thrown-item projectiles (snowball, egg, ender pearl, potions, …) that vanilla's
     /// `ThrownItemRenderer` draws as an item sprite share the dropped item's data layout, so this feeds
