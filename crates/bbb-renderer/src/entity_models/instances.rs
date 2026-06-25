@@ -589,6 +589,11 @@ entity_render_state! {
     /// (`sin(swim) * π * {0.05, 0.1, 0.15}`). `0.0` (tail at bind) for an
     /// unticked/out-of-water guardian and every non-guardian entity.
     (with_guardian_tail_animation) guardian_tail_animation: f32 = 0.0;
+    /// Vanilla `GuardianRenderState.spikesAnimation` (`Guardian.getSpikesAnimation` lerped):
+    /// `GuardianModel.setupAnim` turns it into `withdrawal = (1 - it) · 0.55`, the per-spike inset
+    /// (spikes retract while swimming, extend while idle). `1.0` (withdrawal `0`, fully extended) for
+    /// an unticked guardian and every non-guardian entity.
+    (with_guardian_spikes_animation) guardian_spikes_animation: f32 = 1.0;
     /// Vanilla `GuardianRenderer` attack beam (`GuardianRenderState.attackTargetPosition` present): a
     /// guardian firing its beam, carrying the world-space eye→target vector, eye height, lerped
     /// `clientSideAttackTime`, and attack scale. `None` (no beam) for a guardian with no active attack
@@ -1813,6 +1818,7 @@ mod tests {
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,
                 guardian_tail_animation: 0.0,
+                guardian_spikes_animation: 1.0,
                 guardian_beam: None,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,

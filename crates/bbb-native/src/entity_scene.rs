@@ -723,6 +723,7 @@ fn entity_model_instance(
         .with_squid_tentacle_angle(source.squid_tentacle_angle)
         .with_squid_body_tilt(source.squid_x_body_rot, source.squid_z_body_rot)
         .with_guardian_tail_animation(source.guardian_tail_animation)
+        .with_guardian_spikes_animation(source.guardian_spikes_animation)
         .with_chicken_flap(source.chicken_flap)
         .with_chicken_flap_speed(source.chicken_flap_speed)
         .with_slime_squish(source.slime_squish)

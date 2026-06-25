@@ -145,14 +145,19 @@ pub(in crate::entity_models) const GUARDIAN_TAIL2_POSE: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
-/// Vanilla `GuardianModel` spike `i` at `getSpike{X,Y,Z}(i, _, ageInTicks)` with rotation
-/// `PI * SPIKE_{X,Y,Z}_ROT[i]`, where `getSpikeOffset(i, _, ageInTicks) = 1 + cos(ageInTicks · 1.5 + i)
-/// · 0.01` and the Y base adds 16. So the spikes slowly pulse in and out with the entity age:
-/// `createBodyLayer` bakes the bind pose at `ageInTicks = 0` (`cos(i)`), and `setupAnim` re-poses
-/// each spike every frame with the live phase. (The `spikesAnimation` attack withdrawal that scales
-/// the `0.01` amplitude stays deferred, so the full amplitude always applies.)
-pub(in crate::entity_models) fn guardian_spike_pose(i: usize, age_pulse: f32) -> PartPose {
-    let offset = 1.0 + (age_pulse + i as f32).cos() * 0.01;
+/// Vanilla `GuardianModel` spike `i` at `getSpike{X,Y,Z}(i, ageInTicks, withdrawal)` with rotation
+/// `PI * SPIKE_{X,Y,Z}_ROT[i]`, where `getSpikeOffset(i, ageInTicks, withdrawal) =
+/// 1 + cos(ageInTicks · 1.5 + i) · 0.01 - withdrawal` and the Y base adds 16. So the spikes slowly
+/// pulse in and out with the entity age, and the whole spike crown retracts by `withdrawal` (vanilla
+/// `setupAnim`'s `(1 - spikesAnimation) · 0.55`) — fully extended (`withdrawal = 0`) while idle in
+/// water, pulled ~0.55 in while swimming. `createBodyLayer` bakes the bind pose at `ageInTicks = 0`,
+/// `withdrawal = 0` (`cos(i)`), and `setupAnim` re-poses each spike every frame with the live phase.
+pub(in crate::entity_models) fn guardian_spike_pose(
+    i: usize,
+    age_pulse: f32,
+    withdrawal: f32,
+) -> PartPose {
+    let offset = 1.0 + (age_pulse + i as f32).cos() * 0.01 - withdrawal;
     PartPose {
         offset: [
             GUARDIAN_SPIKE_X[i] * offset,
@@ -167,10 +172,10 @@ pub(in crate::entity_models) fn guardian_spike_pose(i: usize, age_pulse: f32) ->
     }
 }
 
-/// The spike rest pose — the age pulse evaluated at `ageInTicks = 0` (`cos(i)`) — used to build the
-/// bind tree before `setupAnim` re-poses the spikes with the live age phase.
+/// The spike rest pose — the age pulse at `ageInTicks = 0` with no withdrawal (`cos(i)`) — used to
+/// build the bind tree before `setupAnim` re-poses the spikes with the live age phase and withdrawal.
 pub(in crate::entity_models) fn guardian_spike_bind_pose(i: usize) -> PartPose {
-    guardian_spike_pose(i, 0.0)
+    guardian_spike_pose(i, 0.0, 0.0)
 }
 
 /// The twelve spikes are the head's first twelve children (built before the eye and tail), so they
@@ -260,12 +265,15 @@ impl EntityModel for GuardianModel {
             instance.render_state.head_pitch,
         );
         // Vanilla `setupAnim` also pulses each of the twelve spikes in and out by
-        // `getSpikeOffset(i, _, ageInTicks) = 1 + cos(ageInTicks · 1.5 + i) · 0.01`. The spikes are
-        // the head's first twelve children, in build order, so they re-pose with the live age phase.
+        // `getSpikeOffset(i, ageInTicks, withdrawal) = 1 + cos(ageInTicks · 1.5 + i) · 0.01 -
+        // withdrawal`, where `withdrawal = (1 - state.spikesAnimation) · 0.55` retracts the whole
+        // crown — `0` while idle in water (fully extended), ~`0.55` while swimming. The spikes are the
+        // head's first twelve children, in build order, so they re-pose with the live age + withdrawal.
         let age_pulse = instance.render_state.age_in_ticks * 1.5;
+        let withdrawal = (1.0 - instance.render_state.guardian_spikes_animation) * 0.55;
         for i in 0..GUARDIAN_SPIKE_X.len() {
             self.root.child_mut(GUARDIAN_SPIKE_CHILD_NAMES[i]).pose =
-                guardian_spike_pose(i, age_pulse);
+                guardian_spike_pose(i, age_pulse, withdrawal);
         }
         // Vanilla `GuardianModel.setupAnim`: `float swim = state.tailAnimation; tailParts[i].yRot =
         // sin(swim) * π * {0.05, 0.1, 0.15}`. The three tail segments are a `tail0 → tail1 → tail2`

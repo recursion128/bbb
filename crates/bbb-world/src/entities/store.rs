@@ -866,6 +866,12 @@ impl EntityStore {
             guardian_tail_animation: client_animations
                 .animations
                 .guardian_tail_animation(partial_ticks),
+            // Vanilla `GuardianRenderState.spikesAnimation`: the lerped spike-withdrawal phase
+            // (`withdrawal = (1 - it) · 0.55`). `1.0` (withdrawal `0`, fully extended) for every
+            // non-guardian entity (only the guardian / elder guardian is given a spikes state).
+            guardian_spikes_animation: client_animations
+                .animations
+                .guardian_spikes_animation(partial_ticks),
             // Vanilla `ChickenRenderer.extractRenderState`: the lerped wing-flap
             // phase and amplitude. `0.0` for every non-chicken entity (only the
             // chicken is given a flap animation state).

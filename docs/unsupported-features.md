@@ -1942,10 +1942,16 @@ When an agent does any of the following, update this file in the same slice:
       renderer tests pinning the three speed branches and the off-bind tail sway. The starting tail
       phase is `0.0` (vanilla seeds it with a per-spawn `random.nextFloat()`, which is
       non-deterministic — only the starting phase is approximated; the sway dynamics are exact). The
-      remaining `setupAnim` / renderer motion is partly deferred — the `spikesAnimation` withdrawal
-      (`(1 - spikesAnimation) · 0.55`, which needs a per-tick `random.nextFloat()` out of water) and the
-      eye target tracking (`lookAtPosition`/`lookDirection`/`eyePosition`) still read entity-side state
-      not yet projected. The `GuardianRenderer` attack beam GEOMETRY is now built (renderer slice,
+      spike WITHDRAWAL is now reproduced too: the same `Guardian.aiStep` eases
+      `clientSideSpikesAnimation` (spawn `0`) IN WATER toward `0` while `isMoving()` (by `0.25`, the
+      spikes retract as it swims) or toward `1` while idle (by `0.06`, the spikes fully extend), driven
+      off the same per-tick `isInWater()` + `DATA_ID_MOVING`, and `GuardianModel.setupAnim` subtracts
+      `withdrawal = (1 - spikesAnimation) · 0.55` from every spike offset (world + renderer tests pin the
+      in-water ease branches and the off-bind retraction). The out-of-water branch (`spikesAnimation =
+      random.nextFloat()` each tick) is the one piece deferred — its unseeded client RNG is not
+      reconstructable, so the value is held steady out of water rather than faked (a flopping/dying
+      guardian edge case). The eye target tracking (`lookAtPosition`/`lookDirection`/`eyePosition`) still
+      reads entity-side state not yet projected. The `GuardianRenderer` attack beam GEOMETRY is now built (renderer slice,
       `emit_guardian_beam`): when the `guardian_beam` render state is set, the vanilla `renderBeam`
       12-vertex twisted prism (two crossed inner-radius `0.2` strips + a `0.282` twisting top cap, spun
       by `rot = attackTime · 0.05 · -1.5`, tinted by the `colorScale = attackScale²` ramp) is drawn in a

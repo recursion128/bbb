@@ -2471,6 +2471,101 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
 }
 
 #[test]
+fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
+    // Vanilla `Guardian.aiStep` eases `clientSideSpikesAnimation` (spawn `0`): in water toward `1`
+    // while idle (by `0.06`, spikes extend) or toward `0` while moving (by `0.25`, spikes retract);
+    // out of water it randomizes — deferred, so the value is HELD. `GuardianRenderState.spikesAnimation`
+    // lerps it, and `setupAnim` turns it into `withdrawal = (1 - it) · 0.55`.
+    const VANILLA_ENTITY_TYPE_GUARDIAN_ID: i32 = 63;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+    const AIR_BLOCK_STATE_ID: i32 = 0;
+
+    let spikes = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 80)
+            .unwrap()
+            .guardian_spikes_animation
+    };
+
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 80,
+        uuid: default_entity_uuid(),
+        entity_type_id: VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 8.5,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 99,
+    });
+    let fill = |store: &mut WorldStore, block_state_id: i32| {
+        for y in 1..=4 {
+            assert!(store.apply_block_update(ProtocolBlockUpdate {
+                pos: ProtocolBlockPos { x: 8, y, z: 8 },
+                block_state_id,
+            }));
+        }
+    };
+
+    // An unticked guardian projects the fully-extended rest pose (withdrawal `0` ⇒ spikesAnimation 1).
+    assert_eq!(spikes(&store), 1.0);
+
+    // In water + idle: from the spawn `0` the spikes ease UP toward `1` by `0.06` — first tick `0.06`.
+    fill(&mut store, SOURCE_WATER_BLOCK_STATE_ID);
+    store.advance_entity_client_animations(1);
+    assert!(
+        (spikes(&store) - 0.06).abs() < 1.0e-5,
+        "in-water idle eases the spikes toward 1 by 0.06: {}",
+        spikes(&store)
+    );
+    // They keep climbing while idle.
+    store.advance_entity_client_animations(9);
+    let extended = spikes(&store);
+    assert!(
+        extended > 0.06 && extended < 1.0,
+        "the idle spikes keep extending toward 1: {extended}"
+    );
+
+    // Flag the guardian moving (synced `DATA_ID_MOVING`, idx 16): in water the spikes now RETRACT,
+    // easing toward `0` by `0.25` — one tick gives `0.75 · extended`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![protocol_bool_data(16, true)],
+    }));
+    store.advance_entity_client_animations(1);
+    let retracting = spikes(&store);
+    assert!(
+        (retracting - extended * 0.75).abs() < 1.0e-5,
+        "in-water moving retracts the spikes toward 0 by 0.25: {retracting} vs {extended}"
+    );
+
+    // Out of water (drain the column): vanilla randomizes, which is deferred, so the value is HELD at
+    // the last frame regardless of the still-set moving flag.
+    fill(&mut store, AIR_BLOCK_STATE_ID);
+    store.advance_entity_client_animations(1);
+    assert!(
+        (spikes(&store) - retracting).abs() < 1.0e-5,
+        "out of water the spikes hold their last value (random flicker deferred): {} vs {retracting}",
+        spikes(&store)
+    );
+}
+
+#[test]
 fn entity_model_sources_project_guardian_attack_beam() {
     // Vanilla `GuardianRenderer.extractRenderState`: a guardian whose synced `DATA_ID_ATTACK_TARGET`
     // (idx 17) names a live target projects the world eye→target vector and the ramping attack timing;

@@ -754,6 +754,12 @@ pub struct EntityModelSourceState {
     /// unticked guardian and every non-guardian entity.
     #[serde(default)]
     pub guardian_tail_animation: f32,
+    /// Vanilla `GuardianRenderState.spikesAnimation` (`Guardian.getSpikesAnimation` lerped): the
+    /// spike-withdrawal phase `GuardianModel.setupAnim` turns into `withdrawal = (1 - it) · 0.55`,
+    /// the per-spike inset. `1.0` (withdrawal `0`, fully extended) for an unticked guardian and every
+    /// non-guardian entity.
+    #[serde(default = "entity_model_source_default_scale")]
+    pub guardian_spikes_animation: f32,
     /// Vanilla `ChickenRenderState.flap` (`Chicken.flap` lerped): the wing-flap
     /// phase `ChickenModel.setupAnim` feeds to `(sin(flap) + 1) * flapSpeed`. `0.0`
     /// for an unticked/still chicken and every non-chicken entity.

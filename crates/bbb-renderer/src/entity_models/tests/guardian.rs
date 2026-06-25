@@ -176,6 +176,47 @@ fn guardian_spikes_pulse_with_age() {
 }
 
 #[test]
+fn guardian_spikes_retract_with_the_withdrawal() {
+    // Vanilla `getSpikeOffset = 1 + cos(age·1.5+i)·0.01 - withdrawal`, where
+    // `withdrawal = (1 - spikesAnimation) · 0.55`. At `spikesAnimation = 1` the withdrawal is `0`
+    // (fully extended = bind); a smaller value pulls the whole spike crown in toward the body by
+    // exactly `withdrawal · SPIKE_{X,Y,Z}` along each axis, leaving the rotation untouched.
+    for i in 0..GUARDIAN_SPIKE_X.len() {
+        let extended = guardian_spike_pose(i, 0.0, 0.0);
+        let withdrawn = guardian_spike_pose(i, 0.0, 0.55);
+        assert!(
+            (withdrawn.offset[0] - (extended.offset[0] - GUARDIAN_SPIKE_X[i] * 0.55)).abs()
+                < 1.0e-4
+        );
+        assert!(
+            (withdrawn.offset[1] - (extended.offset[1] - GUARDIAN_SPIKE_Y[i] * 0.55)).abs()
+                < 1.0e-4
+        );
+        assert!(
+            (withdrawn.offset[2] - (extended.offset[2] - GUARDIAN_SPIKE_Z[i] * 0.55)).abs()
+                < 1.0e-4
+        );
+        assert_eq!(withdrawn.rotation, extended.rotation);
+    }
+
+    // Mesh: `spikesAnimation = 1.0` (withdrawal `0`) is the fully-extended bind pose (the default); a
+    // swimming guardian (`spikesAnimation = 0.0`) retracts the spikes, changing the mesh.
+    let base = EntityModelInstance::guardian(997, [0.0, 64.0, 0.0], 0.0, false);
+    let extended = entity_model_mesh(&[base.with_guardian_spikes_animation(1.0)]);
+    assert_eq!(
+        extended.vertices,
+        entity_model_mesh(&[base]).vertices,
+        "spikesAnimation 1.0 is the fully-extended bind pose (the default)"
+    );
+    let retracted = entity_model_mesh(&[base.with_guardian_spikes_animation(0.0)]);
+    assert_eq!(extended.vertices.len(), retracted.vertices.len());
+    assert_ne!(
+        extended.vertices, retracted.vertices,
+        "a swimming guardian retracts its spikes"
+    );
+}
+
+#[test]
 fn guardian_whole_body_turns_with_the_look() {
     // Vanilla `GuardianModel.setupAnim` sets `head.yRot/xRot` from the plain look, and every part
     // (body shell, spikes, eye, tail) hangs off `head`, so the whole guardian rotates with the look.

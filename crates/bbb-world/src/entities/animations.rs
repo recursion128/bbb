@@ -360,6 +360,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guardian_tail: Option<GuardianTailAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guardian_spikes: Option<GuardianSpikesAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guardian_attack: Option<GuardianAttackAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
@@ -1420,6 +1422,50 @@ impl GuardianTailAnimationState {
     fn tail_animation(&self, partial_tick: f32) -> f32 {
         self.previous_tail_animation
             + (self.tail_animation - self.previous_tail_animation) * partial_tick
+    }
+}
+
+/// Canonical client-side guardian spike-withdrawal accumulator, mirroring vanilla
+/// `Guardian.clientSideSpikesAnimation`/`clientSideSpikesAnimationO` (both `0.0` at spawn). Each
+/// client tick saves the previous value (the lerp endpoint), then IN WATER eases `spikes_animation`
+/// toward `0` while `isMoving()` (the spikes retract as it swims) by `0.25` or toward `1` while idle
+/// (the spikes fully extend) by `0.06`. Vanilla OUT OF WATER instead sets it to a fresh
+/// `random.nextFloat()` every tick; that flicker is not seeded on the client, so it is deferred (held
+/// at the last value) rather than faked — a guardian out of water is a flopping/dying edge case.
+/// `getSpikesAnimation` lerps the pair, which `GuardianModel.setupAnim` turns into
+/// `withdrawal = (1 - spikesAnimation) · 0.55`, the per-spike inset subtracted from each spike offset.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct GuardianSpikesAnimationState {
+    /// Vanilla `Guardian.clientSideSpikesAnimation` (the eased withdrawal phase, `0..=1`).
+    #[serde(default)]
+    pub spikes_animation: f32,
+    /// Vanilla `Guardian.clientSideSpikesAnimationO` (the previous-tick phase, the lerp endpoint).
+    #[serde(default)]
+    pub previous_spikes_animation: f32,
+}
+
+impl GuardianSpikesAnimationState {
+    /// Advances one client tick of `Guardian.aiStep`'s spike-withdrawal accumulator: save the lerp
+    /// endpoint, then ease toward `0` (moving) / `1` (idle) in water. Out of water vanilla randomizes
+    /// it each tick (`random.nextFloat()`) — not reconstructable, so the value is held steady.
+    fn advance_client_tick(&mut self, in_water: bool, is_moving: bool) {
+        self.previous_spikes_animation = self.spikes_animation;
+        if !in_water {
+            // Deferred: vanilla `clientSideSpikesAnimation = random.nextFloat()` flickers the spikes
+            // with an unseeded client RNG. Hold the last value rather than fake the randomness.
+        } else if is_moving {
+            self.spikes_animation += (0.0 - self.spikes_animation) * 0.25;
+        } else {
+            self.spikes_animation += (1.0 - self.spikes_animation) * 0.06;
+        }
+    }
+
+    /// Vanilla `GuardianRenderer.extractRenderState`: `state.spikesAnimation =
+    /// entity.getSpikesAnimation(partialTicks) = Mth.lerp(partialTick, clientSideSpikesAnimationO,
+    /// clientSideSpikesAnimation)`.
+    fn spikes_animation(&self, partial_tick: f32) -> f32 {
+        self.previous_spikes_animation
+            + (self.spikes_animation - self.previous_spikes_animation) * partial_tick
     }
 }
 
@@ -3063,6 +3109,15 @@ impl EntityClientAnimationState {
             .map_or(0.0, |tail| tail.tail_animation(partial_tick))
     }
 
+    /// Vanilla `GuardianRenderState.spikesAnimation` (`Guardian.getSpikesAnimation(partialTick)`,
+    /// partial-lerped): the spike-withdrawal phase `GuardianModel.setupAnim` turns into
+    /// `withdrawal = (1 - spikesAnimation) · 0.55`. Returns `1.0` (withdrawal `0`, the fully-extended
+    /// rest pose) for every non-guardian entity and an unticked guardian.
+    pub fn guardian_spikes_animation(&self, partial_tick: f32) -> f32 {
+        self.guardian_spikes
+            .map_or(1.0, |spikes| spikes.spikes_animation(partial_tick))
+    }
+
     pub(crate) fn advance_client_tick(
         &mut self,
         entity_type_id: i32,
@@ -3254,6 +3309,11 @@ impl EntityClientAnimationState {
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
                 self.guardian_tail
                     .get_or_insert_with(GuardianTailAnimationState::default)
+                    .advance_client_tick(in_water, is_moving);
+                // The same `aiStep` eases the spike-withdrawal accumulator (retract while swimming,
+                // extend while idle); out of water it would randomize, which is deferred.
+                self.guardian_spikes
+                    .get_or_insert_with(GuardianSpikesAnimationState::default)
                     .advance_client_tick(in_water, is_moving);
                 // The same `aiStep` ramps `clientSideAttackTime` while a target is locked.
                 self.guardian_attack
