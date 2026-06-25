@@ -643,6 +643,17 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
     );
 }
 
+/// Vanilla `DrownedModel.setupAnim` `THROW_TRIDENT` override: after the held-out zombie arms, the main
+/// (right) arm raises the trident straight overhead to throw (`rightArm.xRot = rightArm.xRot * 0.5 - π`,
+/// `rightArm.yRot = 0`). Only the main arm is posed (`getMainArm() == arm`); left-handed mobs are not
+/// projected, so this always poses the right arm. The swim-amount override (which would fold the arm back
+/// while swimming) is deferred along with the drowned swim animation.
+fn apply_drowned_throw_trident(root: &mut ModelPart) {
+    let right = root.child_mut("right_arm");
+    right.pose.rotation[0] = right.pose.rotation[0] * 0.5 - std::f32::consts::PI;
+    right.pose.rotation[1] = 0.0;
+}
+
 /// Mutable zombie model, mirroring vanilla `ZombieModel` (an `AbstractZombieModel` over `HumanoidModel`).
 /// The unified tree is built for the selected `baby` layout with the vanilla child names. `setup_anim`
 /// runs the shared [`apply_zombie_family_anim`].
@@ -675,7 +686,8 @@ impl EntityModel for ZombieModel {
 /// Mutable zombie-variant model, mirroring vanilla `HuskRenderer`/`DrownedRenderer`/
 /// `ZombieVillagerRenderer` — all of which inherit `ZombieModel.setupAnim`. The unified tree is
 /// selected by `family`/`baby`: the husk and drowned reuse the plain zombie body, the zombie villager
-/// builds its own robed tree; `setup_anim` runs the shared [`apply_zombie_family_anim`]. The per-family
+/// builds its own robed tree; `setup_anim` runs the shared [`apply_zombie_family_anim`], then an aggressive
+/// trident-holding drowned raises the trident to throw ([`apply_drowned_throw_trident`]). The per-family
 /// root scale (husk) and the colored recolor / textured texture are supplied by the caller; the drowned
 /// swim/outer layer and the profession overlays defer.
 pub(in crate::entity_models) struct ZombieVariantModel {
@@ -703,5 +715,10 @@ impl EntityModel for ZombieVariantModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         apply_zombie_family_anim(&mut self.root, instance);
+        // Vanilla `DrownedModel.setupAnim` raises the trident to throw after the held-out zombie arms.
+        // Only the drowned sets this flag (the husk / zombie villager never throw).
+        if instance.render_state.drowned_throw_trident {
+            apply_drowned_throw_trident(&mut self.root);
+        }
     }
 }

@@ -443,6 +443,26 @@ fn entity_main_hand_holds_bow(
     item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
 }
 
+/// Whether the entity's main-hand item is a trident (vanilla `DrownedRenderer.getArmPose`'s
+/// `item.is(Items.TRIDENT)`), driving the drowned's `THROW_TRIDENT` raised-arm pose. Resolved through the
+/// item registry, so it needs the runtime; `false` without it or for any non-trident / empty hand.
+fn entity_main_hand_holds_trident(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, false) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:trident")
+}
+
 /// Whether the entity's main-hand item is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)`),
 /// driving the pillager's `CROSSBOW_HOLD` arm pose. Resolved through the item registry, so it needs the
 /// runtime; `false` without it or for any non-crossbow / empty hand.
@@ -612,6 +632,18 @@ fn entity_model_instance(
                 family: IllagerModelFamily::Pillager
             }
         ) && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id);
+    // Vanilla `DrownedRenderer.getArmPose`: a drowned in its main hand holding a trident while aggressive
+    // (`getMainArm() == arm && isAggressive() && item.is(Items.TRIDENT)`) raises the trident overhead to
+    // throw it. `isAggressive` is already projected (the drowned is in the zombie model family); resolve
+    // the held item just for the drowned.
+    let drowned_throw_trident = matches!(
+        kind,
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Drowned,
+            ..
+        }
+    ) && source.is_aggressive
+        && entity_main_hand_holds_trident(world, item_runtime, source.entity_id);
     // Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinAi.isLovedItem(getOffhandItem())`): a regular
     // piglin holding a piglin-loved item in its OFFHAND admires it (head tilts down, the off arm lifts the
     // item). Second-highest priority (below DANCING, above ATTACKING / CROSSBOW), so it suppresses those.
@@ -736,6 +768,7 @@ fn entity_model_instance(
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
+        .with_drowned_throw_trident(drowned_throw_trident)
         .with_is_charging_crossbow(pillager_is_charging_crossbow(
             source.entity_type_id,
             &source.data_values,
@@ -3747,6 +3780,38 @@ mod tests {
             .render_state
             .piglin_crossbow_hold;
         assert!(!crossbow_hold);
+    }
+
+    #[test]
+    fn entity_model_instances_drowned_throw_trident_needs_a_resolved_held_item() {
+        // The THROW_TRIDENT pose needs the held item resolved through the item registry to confirm a
+        // trident; without an item runtime it can never raise the trident, so the projection defaults off
+        // even for an aggressive drowned.
+        const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
+        const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+        const MOB_FLAG_AGGRESSIVE: i8 = 4;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            230,
+            VANILLA_ENTITY_TYPE_DROWNED_ID,
+            [3.0, 64.0, -8.0],
+        ));
+        // Aggressive (so only the missing item runtime, not the flag, gates the pose off).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 230,
+            values: vec![protocol_byte_data(
+                VANILLA_MOB_FLAGS_DATA_ID,
+                MOB_FLAG_AGGRESSIVE
+            )],
+        }));
+        let throwing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 230)
+            .unwrap()
+            .render_state
+            .drowned_throw_trident;
+        assert!(!throwing);
     }
 
     #[test]

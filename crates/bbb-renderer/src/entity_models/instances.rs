@@ -278,6 +278,11 @@ entity_render_state! {
     /// (`AnimationUtils.animateCrossbowHold`) along the head look. `false` for every non-pillager entity
     /// and for a pillager whose main hand is not a crossbow.
     (with_main_hand_holds_crossbow) main_hand_holds_crossbow: bool = false;
+    /// Vanilla `DrownedRenderer.getArmPose` `THROW_TRIDENT`: a drowned holding a trident in its main hand
+    /// while aggressive raises the arm overhead to throw (`DrownedModel.setupAnim` sets the main arm
+    /// `xRot = xRot*0.5 - π`, `yRot = 0` after the held-out zombie arms). `false` for every other entity,
+    /// a calm drowned, and a drowned not holding a trident.
+    (with_drowned_throw_trident) drowned_throw_trident: bool = false;
     /// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17):
     /// `Pillager.getArmPose` returns `CROSSBOW_CHARGE` instead of `CROSSBOW_HOLD` while drawing. The
     /// charge pose itself (the pull-back animation, which needs `ticksUsingItem`) is deferred, so this
@@ -1779,6 +1784,7 @@ mod tests {
                 is_aggressive: false,
                 main_hand_holds_bow: false,
                 main_hand_holds_crossbow: false,
+                drowned_throw_trident: false,
                 is_charging_crossbow: false,
                 enderman_carrying: false,
                 enderman_creepy: false,

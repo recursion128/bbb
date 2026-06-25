@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn zombie_texture_refs_match_vanilla_renderers() {
@@ -295,6 +295,57 @@ fn aggressive_zombie_poses_its_arms_differently() {
     assert_ne!(
         calm.vertices, aggressive.vertices,
         "the aggressive flag raises the arms, changing the mesh"
+    );
+}
+
+#[test]
+fn drowned_raises_its_trident_to_throw() {
+    use std::f32::consts::PI;
+    // Vanilla `DrownedModel.setupAnim` THROW_TRIDENT: after the held-out zombie arms, the main (right)
+    // arm raises the trident overhead (`rightArm.xRot = rightArm.xRot * 0.5 - π`, `rightArm.yRot = 0`).
+    let drowned = |throwing: bool| {
+        EntityModelInstance::zombie_variant(
+            38,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Drowned,
+            false,
+        )
+        .with_is_aggressive(true)
+        .with_age_in_ticks(9.0)
+        .with_drowned_throw_trident(throwing)
+    };
+
+    let mut not_throwing = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, false);
+    not_throwing.prepare(&drowned(false));
+    let held_out_x = not_throwing.root_mut().child_mut("right_arm").pose.rotation[0];
+
+    let mut throwing = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, false);
+    throwing.prepare(&drowned(true));
+    let right = throwing.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (held_out_x * 0.5 - PI)).abs() < 1.0e-6,
+        "the throw raises the right arm overhead off the held-out drop: {} vs {}",
+        right.rotation[0],
+        held_out_x * 0.5 - PI
+    );
+    assert!(
+        right.rotation[1].abs() < 1.0e-6,
+        "the throwing arm faces forward (yRot = 0): {}",
+        right.rotation[1]
+    );
+    // The raised arm points up-and-back (xRot near -π), well off the held-out forward drop.
+    assert!(
+        right.rotation[0] < -2.0,
+        "the trident is raised overhead: {}",
+        right.rotation[0]
+    );
+
+    // The throw visibly changes the mesh versus an aggressive drowned not throwing.
+    assert_ne!(
+        entity_model_mesh(&[drowned(false)]).vertices,
+        entity_model_mesh(&[drowned(true)]).vertices,
+        "a throwing drowned no longer holds the plain held-out arms"
     );
 }
 

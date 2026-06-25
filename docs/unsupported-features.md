@@ -1456,9 +1456,14 @@ When an agent does any of the following, update this file in the same slice:
       forwards to `BabyDrownedModel.createBodyLayer` (= `BabyZombieModel`) UVs over
       `textures/entity/zombie/drowned_baby.png`, with official PNG atlas
       upload/bind/sample and the head-look / leg-swing animation on both render
-      paths plus the held-out `animateZombieArms` resting arms (the `DrownedOuterLayer`,
-      the `setupRotations` / `setupAnim` swim re-pose that needs `swimAmount`, and the
-      trident throw arm pose that needs a held item stay deferred); zombie
+      paths plus the held-out `animateZombieArms` resting arms and the `THROW_TRIDENT`
+      raised-arm pose (`DrownedRenderer.getArmPose`: `getMainArm() == arm && isAggressive()
+      && item.is(Items.TRIDENT)` → `DrownedModel.setupAnim` raises the main right arm
+      `xRot = xRot*0.5 - π`, `yRot = 0` after the held-out arms; projected as
+      `drowned_throw_trident` from the synced aggressive flag + the resolved main-hand
+      trident) (the `DrownedOuterLayer` and the `setupRotations` / `setupAnim` swim re-pose
+      that needs `swimAmount` — which would fold the raised arm back while swimming — stay
+      deferred); zombie
       villagers share that texture-backed render path through `ZombieVillagerModel
       extends HumanoidModel`: the adult layer emits the vanilla 26.1
       `ZombieVillagerModel.createBodyLayer()` UVs over
@@ -1488,7 +1493,7 @@ When an agent does any of the following, update this file in the same slice:
       non-zombified families) arm counter-swing on both render paths (the zombified
       piglin keeps its held-out `animateZombieArms` arms deferred);
       `DrownedOuterLayer`, drowned swim
-      rotation, trident throw arm pose, zombie villager type/profession/level
+      rotation, zombie villager type/profession/level
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
       layers, and held items remain unsupported; the piglin
@@ -1498,7 +1503,9 @@ When an agent does any of the following, update this file in the same slice:
       held-out arms, the `Mob.isAggressive` arm-raise, and the
       `animateZombieArms` melee swing over the projected `attack_anim` — only the
       inherited `setupAttackAnimation` body twist / arm-anchor reposition and the
-      STAB swing-type skip stay deferred for the zombie family);
+      STAB swing-type skip stay deferred for the zombie family); the drowned
+      `THROW_TRIDENT` raised-arm pose IS implemented (see the drowned note above —
+      only the swim re-pose stays deferred);
       the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head
       parts now apply the vanilla `HumanoidModel.setupAnim` head-look yaw/pitch
