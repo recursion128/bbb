@@ -474,6 +474,23 @@ pub(in crate::entity_models) fn apply_humanoid_block_pose(
     arm.pose.rotation[1] = y_base + y_clamp;
 }
 
+/// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `THROW_TRIDENT` use-item arm pose: while a player
+/// charges a trident throw, the holding arm raises the trident straight overhead — `xRot = arm.xRot · 0.5 −
+/// π`, `yRot = 0`. Like the brush/item poses this READS the arm's current pitch and halves it (the folded-in
+/// idle bob rides along — the shared posed-arm bob convention). This is the same pose the drowned reaches
+/// (`apply_drowned_throw_trident`, hard-coded to the main arm), generalized to either hand for the player's
+/// use-item path. Applied before the crouch block so the crouch `arm.xRot += 0.4` still lands on top.
+pub(in crate::entity_models) fn apply_humanoid_throw_trident_pose(
+    root: &mut ModelPart,
+    off_hand: bool,
+) {
+    use std::f32::consts::PI;
+    let arm_name = if off_hand { "left_arm" } else { "right_arm" };
+    let arm = root.child_mut(arm_name);
+    arm.pose.rotation[0] = arm.pose.rotation[0] * 0.5 - PI;
+    arm.pose.rotation[1] = 0.0;
+}
+
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
 fn progress(t: f32, a: f32, b: f32) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)

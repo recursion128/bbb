@@ -803,9 +803,13 @@ When an agent does any of the following, update this file in the same slice:
     `DataComponents.BLOCKS_ATTACKS` item — detected by the resolved `minecraft:shield` id, since the component
     is a prototype default not in the network patch) the holding arm tucks the shield forward along the head
     look — `xRot = arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)`, `yRot = (right ? −π/6 :
-    π/6) + clamp(head.yRot, −π/6, π/6)` — applied before the crouch block. The remaining
+    π/6) + clamp(head.yRot, −π/6, π/6)` — applied before the crouch block. The `THROW_TRIDENT` use-item arm
+    pose IS now implemented too (`apply_humanoid_throw_trident_pose`, the same `poseRightArm`/`poseLeftArm`
+    `THROW_TRIDENT` case the drowned reaches via aggression): while a player charges a trident throw
+    (`isUsingItem` + the using hand holds a trident, `TridentItem.getUseAnimation() == TRIDENT`) the holding
+    arm raises the trident straight overhead — `xRot = arm.xRot · 0.5 − π`, `yRot = 0`. The remaining
     use-item arm poses on the same dispatch (the using-item routes that also resolve to
-    `ITEM` — `EAT`/`DRINK` — and the `BOW_AND_ARROW`/`CROSSBOW`/`THROW_TRIDENT` draw poses, a non-shield
+    `ITEM` — `EAT`/`DRINK` — and the two-handed `BOW_AND_ARROW`/`CROSSBOW` draw poses, a non-shield
     datapack `BLOCKS_ATTACKS` item, the off-arm `EMPTY` reset, and the
     `affectsOffhandPose` / `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
     off-hand spear/charged crossbow while the main hand draws a two-handed item) stay deferred. The

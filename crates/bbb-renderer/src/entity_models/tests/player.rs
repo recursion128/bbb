@@ -742,6 +742,50 @@ fn player_raising_a_shield_tucks_the_arm_along_the_head_look() {
 }
 
 #[test]
+fn player_charging_a_trident_raises_the_arm_overhead() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `THROW_TRIDENT`: the holding arm raises the trident
+    // straight overhead — `xRot = arm.xRot · 0.5 − π`, `yRot = 0`. At rest (age 0) the arm pitch is `0`, so
+    // it lands at exactly `−π`.
+    let base =
+        EntityModelInstance::player(960, [0.0, 64.0, 0.0], 0.0, false).with_head_look(20.0, -10.0);
+
+    let mut main = PlayerModel::new(false);
+    main.prepare(&base.with_player_throwing_trident(true));
+    let right = main.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-PI)).abs() < 1e-6,
+        "the right arm raises to −π: {}",
+        right.rotation[0]
+    );
+    assert_eq!(
+        right.rotation[1], 0.0,
+        "the THROW_TRIDENT pose zeroes the arm yaw"
+    );
+
+    // An idle player keeps its much higher arm pitch — charging the throw visibly raises the arm overhead.
+    let mut idle = PlayerModel::new(false);
+    idle.prepare(&base);
+    assert!(
+        idle.root_mut().child_mut("right_arm").pose.rotation[0] > -PI + 0.5,
+        "an idle player does not raise the arm overhead"
+    );
+
+    // Off-hand charging raises the LEFT arm instead.
+    let mut off = PlayerModel::new(false);
+    off.prepare(
+        &base
+            .with_player_throwing_trident(true)
+            .with_use_item_off_hand(true),
+    );
+    assert!(
+        (off.root_mut().child_mut("left_arm").pose.rotation[0] - (-PI)).abs() < 1e-6,
+        "the off hand raises the left arm overhead"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

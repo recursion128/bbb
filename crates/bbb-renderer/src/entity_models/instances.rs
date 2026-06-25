@@ -315,6 +315,12 @@ entity_render_state! {
     /// Applied to the [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not
     /// raising a shield — only `PlayerModel` consumes it.
     (with_player_blocking) player_blocking: bool = false;
+    /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` use-item arm pose `THROW_TRIDENT`: while a player
+    /// charges a trident throw (`isUsingItem` + the using hand holds a trident) the holding arm raises the
+    /// trident straight overhead — `xRot = arm.xRot · 0.5 − π`, `yRot = 0`. Applied to the
+    /// [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not charging a trident —
+    /// only `PlayerModel` consumes it (the drowned reaches the same pose via its own aggression path).
+    (with_player_throwing_trident) player_throwing_trident: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1848,6 +1854,7 @@ mod tests {
                 player_main_hand_item_pose: false,
                 player_off_hand_item_pose: false,
                 player_blocking: false,
+                player_throwing_trident: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,

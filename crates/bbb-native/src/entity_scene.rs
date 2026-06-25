@@ -443,18 +443,21 @@ fn entity_main_hand_holds_bow(
     item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
 }
 
-/// Whether the entity's main-hand item is a trident (vanilla `DrownedRenderer.getArmPose`'s
-/// `item.is(Items.TRIDENT)`), driving the drowned's `THROW_TRIDENT` raised-arm pose. Resolved through the
-/// item registry, so it needs the runtime; `false` without it or for any non-trident / empty hand.
-fn entity_main_hand_holds_trident(
+/// Whether the item in the given hand is a trident (vanilla `Items.TRIDENT`). Drives the drowned's
+/// `THROW_TRIDENT` raised-arm pose (`DrownedRenderer.getArmPose`'s `item.is(Items.TRIDENT)`, main hand) and
+/// the player's use-item `THROW_TRIDENT` charge pose (`TridentItem.getUseAnimation() == TRIDENT`, either
+/// hand). Resolved through the item registry, so it needs the runtime; `false` without it or for any
+/// non-trident / empty hand.
+fn entity_hand_holds_trident(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
+    off_hand: bool,
 ) -> bool {
     let Some(item_runtime) = item_runtime else {
         return false;
     };
-    let Some(stack) = world.held_item(entity_id, false) else {
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
         return false;
     };
     let Some(item_id) = stack.item_id else {
@@ -823,6 +826,18 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         );
+    // Vanilla `HumanoidModel.setupAnim` use-item arm pose `THROW_TRIDENT`: while a player charges a trident
+    // throw (`isUsingItem` + the using hand holds a trident, whose `TridentItem.getUseAnimation()` is
+    // `TRIDENT`), the holding arm raises the trident straight overhead. Same `poseRightArm`/`poseLeftArm`
+    // case the drowned reaches via aggression, here driven by the player use-item path.
+    let player_throwing_trident = matches!(kind, EntityModelKind::Player { .. })
+        && source.is_using_item
+        && entity_hand_holds_trident(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        );
     // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM` arm pose (`HumanoidModel.poseRightArm` ITEM case):
     // a player holding a generic item in its main hand lowers and halves the arm swing. This is the `ITEM`
     // branch reached after the special-pose checks fail, gated here to the "not using an item" case — the
@@ -869,7 +884,7 @@ fn entity_model_instance(
             ..
         }
     ) && source.is_aggressive
-        && entity_main_hand_holds_trident(world, item_runtime, source.entity_id);
+        && entity_hand_holds_trident(world, item_runtime, source.entity_id, false);
     // Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinAi.isLovedItem(getOffhandItem())`): a regular
     // piglin holding a piglin-loved item in its OFFHAND admires it (head tilts down, the off arm lifts the
     // item). Second-highest priority (below DANCING, above ATTACKING / CROSSBOW), so it suppresses those.
@@ -1014,6 +1029,7 @@ fn entity_model_instance(
         .with_player_tooting_horn(player_tooting_horn)
         .with_player_brushing(player_brushing)
         .with_player_blocking(player_blocking)
+        .with_player_throwing_trident(player_throwing_trident)
         .with_player_main_hand_item_pose(player_main_hand_item_pose)
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_use_item_off_hand(source.use_item_off_hand)
@@ -4258,6 +4274,36 @@ mod tests {
             .render_state
             .player_blocking;
         assert!(!blocking);
+    }
+
+    #[test]
+    fn entity_model_instances_throw_trident_pose_needs_a_resolved_trident() {
+        // The THROW_TRIDENT use-item pose needs the using-hand item resolved through the item registry to
+        // confirm a trident; without an item runtime it can never resolve, so the projection defaults off
+        // even for a player flagged as using an item.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            254,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [5.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 254,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING
+            )],
+        }));
+        let throwing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 254)
+            .unwrap()
+            .render_state
+            .player_throwing_trident;
+        assert!(!throwing);
     }
 
     #[test]
