@@ -2731,6 +2731,21 @@ fn hud_inventory_background_layer(
     }
 }
 
+/// The `minecraft:trim_material` registry keys by holder id (registration
+/// order), projected from the world's synced dynamic registry so trimmed-armor
+/// icons select their trim model (vanilla `TrimMaterialProperty`).
+fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world
+        .registry_content("minecraft:trim_material")
+        .map(|registry| {
+            registry
+                .entries
+                .iter()
+                .map(|entry| entry.id.clone())
+                .collect()
+        })
+}
+
 fn hud_item_icon_for_stack(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -2739,10 +2754,12 @@ fn hud_item_icon_for_stack(
     using_item: bool,
     partial_tick: f32,
 ) -> Option<HudItemIcon> {
-    let icon = item_runtime?.icon_for_stack_with_bundle_selected_item_and_using_item(
+    let trim_material_keys = world_trim_material_keys(world);
+    let icon = item_runtime?.icon_for_stack_with_context(
         item,
         local_selected_bundle_item_index,
         using_item,
+        trim_material_keys.as_deref(),
     )?;
     Some(HudItemIcon {
         layers: icon

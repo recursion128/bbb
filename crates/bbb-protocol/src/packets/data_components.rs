@@ -76,6 +76,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
     #[serde(default)]
+    pub armor_trim_material_id: Option<i32>,
+    #[serde(default)]
     pub map_id: Option<i32>,
     #[serde(default)]
     pub map_post_processing: Option<MapPostProcessingSummary>,
@@ -305,6 +307,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.charged_projectiles_items =
                     decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
             }
+            56 => {
+                summary.armor_trim_material_id = decode_armor_trim(decoder)?;
+            }
             50 => {
                 summary.bundle_contents_items =
                     decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
@@ -451,7 +456,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
             let _ = decode_written_book_content(decoder)?;
         }
         // trim.
-        56 => decode_armor_trim(decoder)?,
+        56 => {
+            decode_armor_trim(decoder)?;
+        }
         // entity_data and block_entity_data.
         58 | 60 => decode_typed_entity_data(decoder)?,
         // instrument, trim material, jukebox playable, break sound, painting variant.
@@ -984,9 +991,26 @@ fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_armor_trim(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_trim_material_holder(decoder)?;
-    decode_trim_pattern_holder(decoder)
+fn decode_armor_trim(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+    let material_id = decode_trim_material_holder_id(decoder)?;
+    decode_trim_pattern_holder(decoder)?;
+    Ok(material_id)
+}
+
+/// Decodes the `ArmorTrim.material()` holder, returning the registry reference id
+/// (`holder_id - 1`) so the `minecraft:trim_material` select can project it
+/// through the dynamic registry, or `None` for an inline (direct) material.
+fn decode_trim_material_holder_id(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+    let id = decoder.read_var_i32()?;
+    if id < 0 {
+        return Err(ProtocolError::NegativeLength(id));
+    }
+    if id == 0 {
+        decode_direct_trim_material(decoder)?;
+        Ok(None)
+    } else {
+        Ok(Some(id - 1))
+    }
 }
 
 fn decode_typed_entity_data(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2172,6 +2196,7 @@ mod tests {
                     component_patch: DataComponentPatchSummary::default(),
                 }],
                 bundle_contents_item_count: Some(1),
+                armor_trim_material_id: Some(1),
                 ..DataComponentPatchSummary::default()
             }
         );

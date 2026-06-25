@@ -154,6 +154,9 @@ pub(super) enum SelectProperty {
     /// `minecraft:charge_type` — `Charge.get`, matched against the crossbow's
     /// charged-projectile contents.
     ChargeType,
+    /// `minecraft:trim_material` — `TrimMaterialProperty.get`, matched against
+    /// the armor trim material's registry key.
+    TrimMaterial,
 }
 
 /// Vanilla `CrossbowItem.ChargeType` — the value of the `minecraft:charge_type`
@@ -183,6 +186,7 @@ impl CrossbowChargeType {
 fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
     match property.property_type.as_str() {
         "minecraft:charge_type" => Some(SelectProperty::ChargeType),
+        "minecraft:trim_material" => Some(SelectProperty::TrimMaterial),
         _ => None,
     }
 }
@@ -298,33 +302,30 @@ pub(super) enum ItemIconModel {
     Composite(Vec<ItemIconModel>),
 }
 
+/// The per-stack inputs the GUI icon resolver projects from. Constant across one
+/// item-model tree (a nested bundle template rebuilds its own context), so the
+/// recursion threads it unchanged.
+#[derive(Clone, Copy)]
+pub(super) struct IconResolveContext<'a> {
+    pub component_patch: Option<&'a DataComponentPatchSummary>,
+    pub default_max_damage: Option<i32>,
+    pub bundle_selected_item_index: Option<i32>,
+    pub using_item: bool,
+    pub crossbow_charge: CrossbowChargeType,
+    /// `minecraft:trim_material` registry keys by holder id (the dynamic
+    /// registry, projected from `bbb-world` at the call site).
+    pub trim_material_keys: Option<&'a [String]>,
+}
+
 impl ItemIconModel {
-    pub(super) fn icon_layers(
-        &self,
-        component_patch: Option<&DataComponentPatchSummary>,
-        default_max_damage: Option<i32>,
-        bundle_selected_item_index: Option<i32>,
-        using_item: bool,
-        crossbow_charge: CrossbowChargeType,
-    ) -> Vec<ItemIconTextureLayer> {
+    pub(super) fn icon_layers(&self, ctx: IconResolveContext<'_>) -> Vec<ItemIconTextureLayer> {
         let mut no_bundle_selected_item = || Vec::new();
-        self.icon_layers_with_bundle_resolver(
-            component_patch,
-            default_max_damage,
-            bundle_selected_item_index,
-            using_item,
-            crossbow_charge,
-            &mut no_bundle_selected_item,
-        )
+        self.icon_layers_with_bundle_resolver(ctx, &mut no_bundle_selected_item)
     }
 
     pub(super) fn icon_layers_with_bundle_resolver(
         &self,
-        component_patch: Option<&DataComponentPatchSummary>,
-        default_max_damage: Option<i32>,
-        bundle_selected_item_index: Option<i32>,
-        using_item: bool,
-        crossbow_charge: CrossbowChargeType,
+        ctx: IconResolveContext<'_>,
         resolve_bundle_selected_item: &mut impl FnMut() -> Vec<ItemIconTextureLayer>,
     ) -> Vec<ItemIconTextureLayer> {
         match self {
@@ -339,45 +340,38 @@ impl ItemIconModel {
                 let branch = match property.kind() {
                     ItemModelPropertyKind::Broken
                         if item_stack_next_damage_will_break(
-                            component_patch,
-                            default_max_damage,
+                            ctx.component_patch,
+                            ctx.default_max_damage,
                         ) =>
                     {
                         on_true
                     }
                     ItemModelPropertyKind::Damaged
-                        if item_stack_is_damaged(component_patch, default_max_damage) =>
+                        if item_stack_is_damaged(ctx.component_patch, ctx.default_max_damage) =>
                     {
                         on_true
                     }
                     ItemModelPropertyKind::HasComponent
                         if item_stack_has_component(
                             property,
-                            component_patch,
-                            default_max_damage,
+                            ctx.component_patch,
+                            ctx.default_max_damage,
                         ) =>
                     {
                         on_true
                     }
                     ItemModelPropertyKind::BundleHasSelectedItem
                         if item_stack_has_selected_bundle_item(
-                            component_patch,
-                            bundle_selected_item_index,
+                            ctx.component_patch,
+                            ctx.bundle_selected_item_index,
                         ) =>
                     {
                         on_true
                     }
-                    ItemModelPropertyKind::UsingItem if using_item => on_true,
+                    ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
                     _ => on_false,
                 };
-                branch.icon_layers_with_bundle_resolver(
-                    component_patch,
-                    default_max_damage,
-                    bundle_selected_item_index,
-                    using_item,
-                    crossbow_charge,
-                    resolve_bundle_selected_item,
-                )
+                branch.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
             }
             Self::RangeDispatch {
                 property,
@@ -385,7 +379,7 @@ impl ItemIconModel {
                 entries,
                 fallback,
             } => {
-                let value = property.value(component_patch, default_max_damage) * scale;
+                let value = property.value(ctx.component_patch, ctx.default_max_damage) * scale;
                 let selected = if value.is_nan() {
                     fallback.as_ref()
                 } else {
@@ -394,48 +388,36 @@ impl ItemIconModel {
                         None => fallback.as_ref(),
                     }
                 };
-                selected.icon_layers_with_bundle_resolver(
-                    component_patch,
-                    default_max_damage,
-                    bundle_selected_item_index,
-                    using_item,
-                    crossbow_charge,
-                    resolve_bundle_selected_item,
-                )
+                selected.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
             }
             Self::Select {
                 property,
                 cases,
                 fallback,
             } => {
-                let selected_when = match property {
-                    SelectProperty::ChargeType => crossbow_charge.when_name(),
+                let selected_when: Option<&str> = match property {
+                    SelectProperty::ChargeType => Some(ctx.crossbow_charge.when_name()),
+                    SelectProperty::TrimMaterial => ctx
+                        .component_patch
+                        .and_then(|patch| patch.armor_trim_material_id)
+                        .and_then(|id| usize::try_from(id).ok())
+                        .and_then(|id| ctx.trim_material_keys.and_then(|keys| keys.get(id)))
+                        .map(String::as_str),
                 };
                 let selected = cases
                     .iter()
-                    .find(|(when, _)| when.iter().any(|value| value == selected_when))
+                    .find(|(when, _)| {
+                        selected_when
+                            .is_some_and(|value| when.iter().any(|candidate| candidate == value))
+                    })
                     .map(|(_, model)| model.as_ref())
                     .unwrap_or(fallback.as_ref());
-                selected.icon_layers_with_bundle_resolver(
-                    component_patch,
-                    default_max_damage,
-                    bundle_selected_item_index,
-                    using_item,
-                    crossbow_charge,
-                    resolve_bundle_selected_item,
-                )
+                selected.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
             }
             Self::Composite(models) => models
                 .iter()
                 .flat_map(|model| {
-                    model.icon_layers_with_bundle_resolver(
-                        component_patch,
-                        default_max_damage,
-                        bundle_selected_item_index,
-                        using_item,
-                        crossbow_charge,
-                        resolve_bundle_selected_item,
-                    )
+                    model.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
                 })
                 .collect(),
         }

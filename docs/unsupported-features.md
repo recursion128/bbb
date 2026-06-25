@@ -3078,20 +3078,21 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:bundle/fullness` and `minecraft:count` (stack count +
       max-stack-size context)
   - Wire the remaining value-aware `select` properties onto the same resolver:
-    - `minecraft:trim_material` (all armor) — needs the `minecraft:trim`
-      material holder decoded plus a `bbb-world` → icon-resolver trim-material
-      registry id→key projection
     - `minecraft:block_state`, `minecraft:context_dimension`,
       `minecraft:local_time`, `minecraft:context_entity_type`,
       `minecraft:main_hand`, `minecraft:custom_model_data` (string)
+  - Project `minecraft:trim_material` onto the dropped-item billboard and
+    item-frame surfaces too (currently only the GUI icon path receives the
+    trim-material registry keys; dropped/frame paths pass `None`).
   - Each plugs into the existing value-aware `RangeDispatch` / `Select`
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
   - `bbb-protocol` now decodes the `minecraft:custom_model_data` `floats` list
-    (`CustomModelDataFloats`, bit-exact `Eq`) alongside the colors list, and the
+    (`CustomModelDataFloats`, bit-exact `Eq`) alongside the colors list, the
     `minecraft:charged_projectiles` item templates (`charged_projectiles_items`),
-    so the `CustomModelDataProperty.getFloat(index)` and `Charge.get` inputs are
-    preserved on the wire.
+    and the `minecraft:trim` material holder reference id
+    (`armor_trim_material_id`), so the `CustomModelDataProperty.getFloat(index)`,
+    `Charge.get`, and `TrimMaterialProperty.get` inputs are preserved on the wire.
   - `bbb-native` resolves `minecraft:range_dispatch` item models with the exact
     vanilla `RangeSelectItemModel.update` selection:
     - `value = property.get(...) * scale`
@@ -3111,16 +3112,23 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
+    - `minecraft:trim_material` — `TrimMaterialProperty.get`, projecting the
+      armor trim material holder id through the `minecraft:trim_material` dynamic
+      registry (`bbb-world` registry keys threaded into the GUI icon resolver) to
+      the material key (e.g. `minecraft:quartz`) matched against each case
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
+  - The trim-material registry keys are projected into the GUI icon path
+    (`hud_item_icon_for_stack`); the dropped-item billboard and item-frame paths
+    still pass `None`, so a dropped/framed trimmed-armor icon falls back to the
+    untrimmed model (documented follow-up).
   - The remaining numeric properties (`compass`, `time`, `cooldown`,
     `crossbow/pull`, `use_cycle`, `use_duration`, `bundle/fullness`, `count`) and
-    the remaining select properties (`trim_material`, `block_state`,
-    `context_dimension`, `local_time`, `context_entity_type`, `main_hand`,
-    `custom_model_data` string) still collapse to the fallback/first entry
-    because their value needs ambient `ClientLevel` / `ItemOwner` / use-tick /
-    registry context the GUI icon resolver does not yet receive. This is the
-    documented follow-up.
+    the remaining select properties (`block_state`, `context_dimension`,
+    `local_time`, `context_entity_type`, `main_hand`, `custom_model_data` string)
+    still collapse to the fallback/first entry because their value needs ambient
+    `ClientLevel` / `ItemOwner` / use-tick / registry context the GUI icon
+    resolver does not yet receive. This is the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

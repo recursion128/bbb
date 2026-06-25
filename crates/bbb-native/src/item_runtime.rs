@@ -26,7 +26,7 @@ mod icon_model;
 
 use icon_model::{
     contains_runtime_condition, item_icon_model_ref_for_definition, CrossbowChargeType,
-    ItemIconModel, ItemIconModelRef,
+    IconResolveContext, ItemIconModel, ItemIconModelRef,
 };
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
@@ -591,7 +591,14 @@ impl NativeItemRuntime {
                 .get(item_id)
                 .and_then(|model| {
                     model
-                        .icon_layers(None, None, None, false, CrossbowChargeType::None)
+                        .icon_layers(IconResolveContext {
+                            component_patch: None,
+                            default_max_damage: None,
+                            bundle_selected_item_index: None,
+                            using_item: false,
+                            crossbow_charge: CrossbowChargeType::None,
+                            trim_material_keys: None,
+                        })
                         .into_iter()
                         .next()
                 })
@@ -708,19 +715,33 @@ impl NativeItemRuntime {
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_context(stack, bundle_selected_item_index, using_item, None)
+    }
+
+    /// Resolves a stack's icon with the `minecraft:trim_material` registry keys
+    /// (the dynamic registry, projected from `bbb-world`) so trimmed-armor icons
+    /// select their trim model. Callers without that registry pass `None`.
+    pub(crate) fn icon_for_stack_with_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        trim_material_keys: Option<&[String]>,
+    ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         self.icon_for_resource_id(
             item_id,
             Some(&stack.component_patch),
             bundle_selected_item_index,
             using_item,
+            trim_material_keys,
         )
     }
 
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, None, None, false)
+        self.icon_for_resource_id(item_id, None, None, false, None)
     }
 
     fn icon_for_resource_id(
@@ -729,24 +750,24 @@ impl NativeItemRuntime {
         component_patch: Option<&DataComponentPatchSummary>,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        trim_material_keys: Option<&[String]>,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
             .as_ref()
             .and_then(|registry| registry.max_damage(item_id));
+        let context = IconResolveContext {
+            component_patch,
+            default_max_damage,
+            bundle_selected_item_index,
+            using_item,
+            crossbow_charge: self.crossbow_charge_for(component_patch),
+            trim_material_keys,
+        };
         let layers = self
             .item_icon_models
             .get(item_id)
-            .map(|model| {
-                self.icon_layers_for_model(
-                    model,
-                    component_patch,
-                    default_max_damage,
-                    bundle_selected_item_index,
-                    using_item,
-                    0,
-                )
-            })
+            .map(|model| self.icon_layers_for_model(model, context, 0))
             .unwrap_or_else(|| self.fallback_icon_texture_layers());
         let layers = layers
             .into_iter()
@@ -765,27 +786,15 @@ impl NativeItemRuntime {
     fn icon_layers_for_model(
         &self,
         model: &ItemIconModel,
-        component_patch: Option<&DataComponentPatchSummary>,
-        default_max_damage: Option<i32>,
-        bundle_selected_item_index: Option<i32>,
-        using_item: bool,
+        context: IconResolveContext<'_>,
         depth: usize,
     ) -> Vec<ItemIconTextureLayer> {
         if depth >= ITEM_ICON_RECURSION_LIMIT {
             return Vec::new();
         }
-        let crossbow_charge = self.crossbow_charge_for(component_patch);
-        let mut resolve_bundle_selected_item = || {
-            self.bundle_selected_item_layers(component_patch, bundle_selected_item_index, depth + 1)
-        };
-        model.icon_layers_with_bundle_resolver(
-            component_patch,
-            default_max_damage,
-            bundle_selected_item_index,
-            using_item,
-            crossbow_charge,
-            &mut resolve_bundle_selected_item,
-        )
+        let mut resolve_bundle_selected_item =
+            || self.bundle_selected_item_layers(context, depth + 1);
+        model.icon_layers_with_bundle_resolver(context, &mut resolve_bundle_selected_item)
     }
 
     /// Vanilla `Charge.get`: `ROCKET` when any charged projectile is a
@@ -816,28 +825,31 @@ impl NativeItemRuntime {
 
     fn bundle_selected_item_layers(
         &self,
-        component_patch: Option<&DataComponentPatchSummary>,
-        bundle_selected_item_index: Option<i32>,
+        context: IconResolveContext<'_>,
         depth: usize,
     ) -> Vec<ItemIconTextureLayer> {
-        let Some(selected_item_index) = bundle_selected_item_index.filter(|index| *index >= 0)
+        let Some(selected_item_index) = context
+            .bundle_selected_item_index
+            .filter(|index| *index >= 0)
         else {
             return Vec::new();
         };
         let Ok(selected_item_index) = usize::try_from(selected_item_index) else {
             return Vec::new();
         };
-        let Some(template) =
-            component_patch.and_then(|patch| patch.bundle_contents_items.get(selected_item_index))
+        let Some(template) = context
+            .component_patch
+            .and_then(|patch| patch.bundle_contents_items.get(selected_item_index))
         else {
             return Vec::new();
         };
-        self.item_template_layers(template, depth)
+        self.item_template_layers(template, context.trim_material_keys, depth)
     }
 
     fn item_template_layers(
         &self,
         template: &ItemStackTemplateSummary,
+        trim_material_keys: Option<&[String]>,
         depth: usize,
     ) -> Vec<ItemIconTextureLayer> {
         let Some(item_id) = self
@@ -851,19 +863,18 @@ impl NativeItemRuntime {
             .registry
             .as_ref()
             .and_then(|registry| registry.max_damage(item_id));
+        let context = IconResolveContext {
+            component_patch: Some(&template.component_patch),
+            default_max_damage,
+            bundle_selected_item_index: None,
+            using_item: false,
+            crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
+            trim_material_keys,
+        };
         let layers = self
             .item_icon_models
             .get(item_id)
-            .map(|model| {
-                self.icon_layers_for_model(
-                    model,
-                    Some(&template.component_patch),
-                    default_max_damage,
-                    None,
-                    false,
-                    depth,
-                )
-            })
+            .map(|model| self.icon_layers_for_model(model, context, depth))
             .unwrap_or_else(|| self.fallback_icon_texture_layers());
         resolve_item_icon_texture_layer_tints(layers, Some(&template.component_patch))
     }
@@ -2229,6 +2240,63 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_trim_material_select() {
+        let root = unique_temp_dir("item-runtime-trim-material");
+        write_trim_material_select_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        // Trim-material registry keys by holder id (registration order).
+        let trim_keys = [
+            "minecraft:quartz".to_string(),
+            "minecraft:iron".to_string(),
+            "minecraft:diamond".to_string(),
+        ];
+        let trimmed = |material_id: Option<i32>| ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                armor_trim_material_id: material_id,
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        let selected = |stack: &ItemStackSummary| {
+            runtime
+                .icon_for_stack_with_context(stack, None, false, Some(&trim_keys))
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+
+        // No trim component → no match → fallback (plain chestplate).
+        assert_eq!(selected(&trimmed(None)), uv("iron_chestplate"));
+        // Holder id 0 → "minecraft:quartz" → quartz trim model.
+        assert_eq!(
+            selected(&trimmed(Some(0))),
+            uv("iron_chestplate_quartz_trim")
+        );
+        // Holder id 2 → "minecraft:diamond" → diamond trim model.
+        assert_eq!(
+            selected(&trimmed(Some(2))),
+            uv("iron_chestplate_diamond_trim")
+        );
+        // Holder id 1 → "minecraft:iron" (no case) → fallback.
+        assert_eq!(selected(&trimmed(Some(1))), uv("iron_chestplate"));
+        // Without the registry keys (no world context) → fallback.
+        assert_eq!(
+            runtime.icon_for_stack(&trimmed(Some(0))).unwrap().layers[0].uv,
+            uv("iron_chestplate")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_charge_type_select() {
         let root = unique_temp_dir("item-runtime-charge-type");
         write_charge_type_select_fixture(&root);
@@ -2672,6 +2740,43 @@ mod tests {
         );
         write_flat_item_model_and_texture(&assets, "compass", &[40, 120, 80, 255]);
         write_flat_item_model_and_texture(&assets, "compass_lodestone", &[120, 40, 80, 255]);
+    }
+
+    fn write_trim_material_select_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "iron_chestplate");
+        write_json(
+            &assets.join("items").join("iron_chestplate.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:trim_material",
+                    "cases": [
+                        {
+                            "when": "minecraft:quartz",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/iron_chestplate_quartz_trim" }
+                        },
+                        {
+                            "when": "minecraft:diamond",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/iron_chestplate_diamond_trim" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/iron_chestplate" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "iron_chestplate", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(
+            &assets,
+            "iron_chestplate_quartz_trim",
+            &[200, 200, 190, 255],
+        );
+        write_flat_item_model_and_texture(
+            &assets,
+            "iron_chestplate_diamond_trim",
+            &[120, 200, 210, 255],
+        );
     }
 
     fn write_charge_type_select_fixture(root: &Path) {
