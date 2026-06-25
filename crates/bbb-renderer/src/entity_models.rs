@@ -42,7 +42,7 @@ pub(super) use gpu::{
     EntityModelMeshGpu, EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu,
     EntityModelTexturedMeshGpu,
 };
-pub use held_item::player_hand_attach_transform;
+pub use held_item::humanoid_hand_attach_transform;
 pub use instances::*;
 use keyframe::*;
 #[cfg(test)]

@@ -3,9 +3,9 @@ mod runtime;
 mod selection;
 mod transforms;
 
-pub(super) use runtime::entity_model_colored_runtime_mesh;
 #[cfg(test)]
 pub(super) use runtime::entity_model_mesh;
+pub(super) use runtime::{entity_model_colored_runtime_mesh, zombie_variant_root_transform};
 #[cfg(test)]
 pub(super) use runtime::{
     humanoid_arm_swing_parts, humanoid_limb_swing_parts, quadruped_leg_x_rotations,

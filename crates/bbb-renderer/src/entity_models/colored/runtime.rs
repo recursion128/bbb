@@ -389,7 +389,7 @@ fn zombie_variant_color(family: ZombieVariantModelFamily) -> [f32; 4] {
 /// The model→world transform for a zombie variant. Only the adult husk is scaled (vanilla
 /// `huskScale` 1.0625, a `MeshTransformer.scaling` baked by `HuskRenderer`); the baby husk, the
 /// drowned, and the zombie villager render at the unscaled humanoid root.
-fn zombie_variant_root_transform(
+pub(in crate::entity_models) fn zombie_variant_root_transform(
     instance: EntityModelInstance,
     family: ZombieVariantModelFamily,
     baby: bool,

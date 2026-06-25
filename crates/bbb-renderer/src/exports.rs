@@ -1,6 +1,6 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
-pub use crate::entity_models::player_hand_attach_transform;
+pub use crate::entity_models::humanoid_hand_attach_transform;
 pub use crate::entity_models::{
     allay_entity_texture_refs, armadillo_entity_texture_refs, armor_stand_entity_texture_refs,
     arrow_entity_texture_refs, axolotl_entity_texture_refs, bat_entity_texture_refs,

@@ -833,17 +833,27 @@ When an agent does any of the following, update this file in the same slice:
         ones back-to-front, jittered by a faithful Java LCG seeded on the item
         id). These entities are excluded from the billboard path; thrown-item
         projectiles keep their billboard.
-      - second consumer DONE (held items, players, third-person, main hand):
-        a player carrying an item in the main hand renders it as a 3D model
-        attached to the posed right-arm bone. The renderer exposes the hand
-        world transform via `player_hand_attach_transform` (`entity_models/
-        held_item.rs`): vanilla `ItemInHandLayer` + `HumanoidModel.translateToHand`
-        = `root.translateAndRotate · arm.translateAndRotate · rotX(-90°) ·
-        rotY(180°) · T((left?-1:1), 2, -10)/16` (built on a new
-        `ModelPart::child_attach_transform`). Native `held_item_models` resolves
+      - second consumer DONE (held items): a humanoid carrying an item renders
+        it as a 3D model attached to the posed arm bone, for both hands. The
+        renderer exposes the hand world transform via
+        `humanoid_hand_attach_transform` (`entity_models/held_item.rs`): vanilla
+        `ItemInHandLayer` + `HumanoidModel.translateToHand` =
+        `root.translateAndRotate · arm.translateAndRotate · rotX(-90°) ·
+        rotY(180°) · T((left?-1:1), 2, -10)/16` (built on
+        `ModelPart::try_child_attach_transform`). It dispatches over the
+        weapon-holding adult humanoid families — players, zombies (+husk /
+        drowned / zombie-villager), skeletons (+stray / bogged / wither),
+        piglins (+brute / zombified), and illagers — posing each family's own
+        model + root transform and reading its `right_arm` / `left_arm` bone
+        (degrading to no item if a family lacks a standard arm). Baby humanoids
+        are deferred (different offsets + baby-scaled pose). The off-hand item
+        attaches to the left arm and uses the item's `thirdperson_lefthand`
+        transform with vanilla's left-hand fix (`display_matrix` negates
+        `translation.x`, `rotation.y`, `rotation.z`). Native `held_item_models`
+        iterates every entity instance and resolves
         the held stack to the same block/flat quads as the dropped path and
-        applies the item's own retained `THIRD_PERSON_RIGHT_HAND` display
-        transform (see per-item display transforms below), so a held sword angles
+        applies the item's own retained third-person display transform for that
+        hand (see per-item display transforms below), so a held sword angles
         on `item/handheld`'s `[0,-90,55]`/`[0,4,0.5]/16` scale `0.85`, a block
         tilts on `block/block`'s `[75,45,0]`/`[0,2.5,0]/16` scale `0.375`, and a
         generated item lies flat on `item/generated`'s `[0,3,1]/16` scale `0.55`,
@@ -858,9 +868,10 @@ When an agent does any of the following, update this file in the same slice:
         default as the no-model fallback. This unblocks the frame `fixed` and GUI
         `gui` contexts for the next consumers.
       - remaining slices: the other two consumers (item frames / armor-stand,
-        HUD 3D icons); held-item refinements (off-hand — needs the left-hand
-        display mirror; humanoid MOBS — the renderer hand transform is
-        player-only; first-person viewmodel). The dropped-item `ground` path
+        HUD 3D icons); held-item refinements (baby humanoids; first-person
+        viewmodel; family-specific combat arm poses — bow-aim / crossbow /
+        spear — which are deferred entity-side state). The dropped-item `ground`
+        path
         still uses the default block/generated GROUND transform + seating lift
         (custom per-item ground transforms not yet applied). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked

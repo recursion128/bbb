@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh, player_hand_attach_transform,
+    bake_generated_item_quads, bake_item_model_mesh, humanoid_hand_attach_transform,
     EntityModelInstance, ItemModelMesh, ItemModelQuad,
 };
 use bbb_world::WorldStore;
@@ -187,8 +187,9 @@ pub(crate) struct HeldItemModels {
     pub flat_meshes: Vec<ItemModelMesh>,
 }
 
-/// Bakes the third-person main- and off-hand held items for every player entity that holds one (vanilla
-/// `ItemInHandLayer`). The hand attach transform comes from the renderer's posed player model; native
+/// Bakes the third-person main- and off-hand held items for every humanoid entity that holds one
+/// (players and the weapon-holding mobs — zombies, skeletons, piglins, illagers; vanilla
+/// `ItemInHandLayer`). The hand attach transform comes from the renderer's posed humanoid model; native
 /// resolves the item to quads (block or flat) and applies the item's third-person display transform.
 pub(crate) fn held_item_models(
     instances: &[EntityModelInstance],
@@ -255,7 +256,7 @@ fn bake_held_hand(
     // The off hand is the left arm (default right-handed main arm); the left arm gets the left-hand
     // display mirror.
     let left_arm = off_hand;
-    let Some(hand) = player_hand_attach_transform(instance, left_arm) else {
+    let Some(hand) = humanoid_hand_attach_transform(instance, left_arm) else {
         return;
     };
 
