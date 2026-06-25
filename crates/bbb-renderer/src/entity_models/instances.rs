@@ -481,6 +481,11 @@ entity_render_state! {
     /// `false` for every other entity (the piglin brute and zombified piglin never dance) and an idle
     /// piglin.
     (with_piglin_dancing) piglin_dancing: bool = false;
+    /// Vanilla `Piglin.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, holding in the
+    /// right arm): a regular piglin holding a charged crossbow (not dancing, not mid-draw) levels it along
+    /// the head look — the right (holding) arm raises the crossbow and the left (shooting) arm reaches the
+    /// trigger. `false` for every other entity, a charging/dancing piglin, and an empty-handed piglin.
+    (with_piglin_crossbow_hold) piglin_crossbow_hold: bool = false;
     /// Vanilla `PandaRenderState.isUnhappy` (`Panda.getUnhappyCounter() > 0`): an unhappy panda whose
     /// `PandaModel.setupAnim` shakes its head (`yRot = zRot = 0.35·sin(0.6·ageInTicks)`) and paddles its
     /// front legs (`xRot = ∓0.75·sin(0.3·ageInTicks)`). `false` for every other entity and a content panda.
@@ -1805,6 +1810,7 @@ mod tests {
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,
+                piglin_crossbow_hold: false,
                 panda_unhappy: false,
                 panda_sneezing: false,
                 panda_sneeze_time: 0,

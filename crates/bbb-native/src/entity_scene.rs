@@ -237,6 +237,10 @@ const RAIDER_IS_CELEBRATING_DATA_ID: u8 = 16;
 /// first accessor after `Mob.DATA_MOB_FLAGS_ID` (15) — then `DATA_BABY_ID` (17) and
 /// `DATA_IS_CHARGING_CROSSBOW` (18). `Piglin.getArmPose` returns `DANCING` (top priority) while true.
 const PIGLIN_IS_DANCING_DATA_ID: u8 = 19;
+/// Vanilla `Piglin.DATA_IS_CHARGING_CROSSBOW` data id (18) — see [`PIGLIN_IS_DANCING_DATA_ID`] for the
+/// piglin accessor chain. `Piglin.getArmPose` returns `CROSSBOW_CHARGE` (whose pull-back pose needs the
+/// deferred use-tick state) while true, suppressing the `CROSSBOW_HOLD` level-the-crossbow pose.
+const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
 // `ArmorStand extends LivingEntity` directly — it is NOT a `Mob`, so there is no
 // `Mob.DATA_MOB_FLAGS_ID` (15); `ArmorStand.DATA_CLIENT_FLAGS` is the first accessor after
 // `LivingEntity` (0-14) and lands at 15, with the six pose rotations following at 16-21.
@@ -459,6 +463,40 @@ fn entity_main_hand_holds_crossbow(
     item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
 }
 
+/// Whether the entity's main-hand item is a *charged* crossbow (vanilla
+/// `isHolding(Items.CROSSBOW) && CrossbowItem.isCharged(getWeaponItem())`), driving the piglin's
+/// `CROSSBOW_HOLD` arm pose. `CrossbowItem.isCharged` is the held crossbow's `minecraft:charged_projectiles`
+/// component being non-empty (decoded into the held stack's component patch). Resolved through the item
+/// registry; `false` without it or for any non-crossbow / empty / un-charged hand.
+fn entity_main_hand_holds_charged_crossbow(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, false) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
+        && !stack.component_patch.charged_projectiles_items.is_empty()
+}
+
+/// Vanilla `Piglin.isChargingCrossbow()` (the synced `DATA_IS_CHARGING_CROSSBOW` boolean, id 18): the
+/// piglin is drawing its crossbow, so `getArmPose` returns `CROSSBOW_CHARGE` rather than `CROSSBOW_HOLD`.
+/// Only the regular piglin defines that accessor, so the projection is gated to its type.
+fn piglin_is_charging_crossbow(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
+        && entity_data_bool(values, PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID, false)
+}
+
 /// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17): the
 /// pillager is drawing its crossbow, so `getArmPose` returns `CROSSBOW_CHARGE` rather than
 /// `CROSSBOW_HOLD`. Only the pillager defines that accessor, so the projection is gated to its type.
@@ -531,6 +569,20 @@ fn entity_model_instance(
                 family: IllagerModelFamily::Pillager
             }
         ) && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id);
+    // Vanilla `Piglin.getArmPose` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow, not
+    // dancing (top priority) and not mid-draw (`CROSSBOW_CHARGE`, whose pull-back pose is deferred).
+    // The higher-priority `ADMIRING_ITEM` / `ATTACKING_WITH_MELEE_WEAPON` poses require a non-crossbow
+    // main-hand item, so a charged-crossbow hand excludes them. Resolve the held item just for the piglin.
+    let piglin_crossbow_hold =
+        matches!(
+            kind,
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                ..
+            }
+        ) && entity_main_hand_holds_charged_crossbow(world, item_runtime, source.entity_id)
+            && !piglin_is_charging_crossbow(source.entity_type_id, &source.data_values)
+            && !piglin_is_dancing(source.entity_type_id, &source.data_values);
     // Vanilla `Goat.getRammingXHeadRot()`: the world-projected `lowerHeadTick` ram counter scaled by the
     // adult/baby max head pitch. Resolved here because the baby flag lives in the goat kind.
     let goat_ramming_x_head_rot = match kind {
@@ -679,6 +731,7 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
+        .with_piglin_crossbow_hold(piglin_crossbow_hold)
         .with_panda_unhappy(panda_is_unhappy(source.entity_type_id, &source.data_values))
         .with_panda_sneezing(panda_is_sneezing(
             source.entity_type_id,
@@ -3575,6 +3628,48 @@ mod tests {
             values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
         }));
         assert!(!dancing(&world, 181));
+    }
+
+    #[test]
+    fn piglin_is_charging_crossbow_is_gated_to_the_regular_piglin() {
+        // Vanilla Piglin.DATA_IS_CHARGING_CROSSBOW (BOOLEAN id 18): getArmPose returns CROSSBOW_CHARGE
+        // (deferred pull-back) while true, suppressing CROSSBOW_HOLD. Only the regular piglin defines the
+        // accessor, so the projection is type-gated.
+        let charging = vec![protocol_bool_data(
+            PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+            true,
+        )];
+        assert!(piglin_is_charging_crossbow(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            &charging
+        ));
+        assert!(!piglin_is_charging_crossbow(
+            VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+            &charging
+        ));
+        assert!(!piglin_is_charging_crossbow(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            &[]
+        ));
+    }
+
+    #[test]
+    fn entity_model_instances_piglin_crossbow_hold_needs_a_resolved_held_item() {
+        // The CROSSBOW_HOLD pose needs the held item resolved through the item registry to confirm a
+        // charged crossbow; without an item runtime it can never level, so the projection defaults off.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            182,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [3.0, 64.0, -3.0],
+        ));
+        let crossbow_hold = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 182)
+            .unwrap()
+            .render_state
+            .piglin_crossbow_hold;
+        assert!(!crossbow_hold);
     }
 
     #[test]

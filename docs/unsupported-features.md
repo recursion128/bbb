@@ -547,8 +547,9 @@ When an agent does any of the following, update this file in the same slice:
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
     `setupAnim` runs `super.setupAnim` (the inherited legs and arms) before swaying only
     the ears. The adult/baby piglin and the brute keep the inherited arm counter-swing in
-    their default state (`PiglinModel` overrides the arms only in its `DANCING` — implemented,
-    see the piglin dance note below — and its deferred attack/crossbow/admire poses), so the
+    their default state (`PiglinModel` overrides the arms in its `DANCING` and `CROSSBOW_HOLD`
+    poses — both implemented, see the piglin dance/crossbow note below — and its deferred
+    attack/admire/crossbow-charge poses), so the
     arm swing is implemented for them too; the
     zombified piglin instead overwrites the arms with `AnimationUtils.animateZombieArms`
     (the deferred held-out zombie pose), so only its legs swing. The illager family
@@ -575,7 +576,14 @@ When an agent does any of the following, update this file in the same slice:
     `holdingInRightArm`: right (holding) arm `xRot = -π/2 + head.xRot + 0.1`,
     `yRot = -0.3 + head.yRot`; left (shooting) arm `xRot = -1.5 + head.xRot`,
     `yRot = 0.6 + head.yRot` — overwriting the walk swing on both render paths (the held
-    crossbow mesh rides the leveled hand). The illusioner `BOW_AND_ARROW` draw is also
+    crossbow mesh rides the leveled hand). The regular piglin reuses the SAME shared
+    `animateCrossbowHold` pose (`Piglin.getArmPose` → `CROSSBOW_HOLD`): a piglin holding a
+    *charged* crossbow (`isHolding(CROSSBOW) && CrossbowItem.isCharged(weaponItem)` — the
+    main-hand item resolved to `minecraft:crossbow` with a non-empty decoded
+    `minecraft:charged_projectiles` component), not dancing (top priority) and not drawing
+    (`DATA_IS_CHARGING_CROSSBOW`, data id `18`, gated to the regular piglin — whose
+    `CROSSBOW_CHARGE` pull-back needs the deferred use-tick state), levels the crossbow. The
+    illusioner `BOW_AND_ARROW` draw is also
     projected (`Illusioner.getArmPose`: `!casting && isAggressive` → BOW_AND_ARROW): the
     uncrossed arms aim the bow along the head look with the illager bracing the off hand —
     right arm `xRot = -π/2 + head.xRot`, `yRot = -0.1 + head.yRot`; left arm

@@ -309,6 +309,30 @@ pub(in crate::entity_models) fn apply_humanoid_attack_animation(
     attack_arm.pose.rotation[2] += (attack_anim * PI).sin() * -0.4;
 }
 
+/// Vanilla `AnimationUtils.animateCrossbowHold(rightArm, leftArm, head, holdingInRightArm = true)`: the
+/// right (holding) arm levels the crossbow along the head look (`yRot = -0.3 + head.yRot`,
+/// `xRot = -π/2 + head.xRot + 0.1`) while the left (shooting) arm reaches across to the trigger
+/// (`yRot = 0.6 + head.yRot`, `xRot = -1.5 + head.xRot`). Vanilla sets these absolutely after the walk
+/// swing (which zeroed `zRot`), so the roll is preserved. Shared by every humanoid that levels a crossbow
+/// (pillager, piglin). `head_yaw_degrees` / `head_pitch_degrees` are the net head look (vanilla
+/// `head.yRot` / `head.xRot`).
+pub(in crate::entity_models) fn apply_crossbow_hold_pose(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+) {
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let right = root.child_mut("right_arm");
+    right.pose.rotation = [
+        -std::f32::consts::FRAC_PI_2 + head_pitch + 0.1,
+        -0.3 + head_yaw,
+        right.pose.rotation[2],
+    ];
+    let left = root.child_mut("left_arm");
+    left.pose.rotation = [-1.5 + head_pitch, 0.6 + head_yaw, left.pose.rotation[2]];
+}
+
 /// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose applied to a humanoid model
 /// root by name: the body (`body`) leans forward and drops, the head (`head`) drops with it, the arms
 /// (`right_arm`/`left_arm`) tilt forward and ride down, and the legs (`right_leg`/`left_leg`) tuck back.

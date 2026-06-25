@@ -1,6 +1,7 @@
 use super::{
-    apply_half_amplitude_leg_swing, apply_head_look, humanoid_arm_bob_pose,
-    humanoid_arm_swing_pose, PartPose, ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
+    apply_crossbow_hold_pose, apply_half_amplitude_leg_swing, apply_head_look,
+    humanoid_arm_bob_pose, humanoid_arm_swing_pose, PartPose, ILLAGER_HAT_COLOR, ILLAGER_ROBE,
+    PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -332,29 +333,6 @@ fn apply_illager_weapon_swing_down(root: &mut ModelPart, attack_anim: f32, age_i
     }
 }
 
-/// Vanilla `IllagerModel.setupAnim` `CROSSBOW_HOLD` arm pose (`AnimationUtils.animateCrossbowHold` with
-/// `holdingInRightArm = true`): the right (holding) arm levels the crossbow along the head look
-/// (`yRot = -0.3 + head.yRot`, `xRot = -π/2 + head.xRot + 0.1`) while the left (shooting) arm reaches
-/// across to the trigger (`yRot = 0.6 + head.yRot`, `xRot = -1.5 + head.xRot`). Vanilla sets these
-/// absolutely after the walk swing (which zeroed `zRot`), so the roll is preserved from the swing.
-/// `head_yaw_degrees` / `head_pitch_degrees` are the net head look (vanilla `head.yRot` / `head.xRot`).
-fn apply_illager_crossbow_hold(
-    root: &mut ModelPart,
-    head_yaw_degrees: f32,
-    head_pitch_degrees: f32,
-) {
-    let head_yaw = head_yaw_degrees.to_radians();
-    let head_pitch = head_pitch_degrees.to_radians();
-    let right = root.child_mut("right_arm");
-    right.pose.rotation = [
-        -std::f32::consts::FRAC_PI_2 + head_pitch + 0.1,
-        -0.3 + head_yaw,
-        right.pose.rotation[2],
-    ];
-    let left = root.child_mut("left_arm");
-    left.pose.rotation = [-1.5 + head_pitch, 0.6 + head_yaw, left.pose.rotation[2]];
-}
-
 /// Whether a pillager levels its crossbow this frame (vanilla `Pillager.getArmPose` returning
 /// `CROSSBOW_HOLD`): it holds a crossbow and is not mid-draw (`isChargingCrossbow()`, whose distinct
 /// `CROSSBOW_CHARGE` pull-back pose is deferred).
@@ -496,7 +474,7 @@ impl EntityModel for IllagerModel {
                 // A pillager holding its crossbow levels it along the head look, overwriting the walk
                 // swing (vanilla `CROSSBOW_HOLD`). The charge pull-back pose is deferred.
                 if illager_is_holding_crossbow(instance) {
-                    apply_illager_crossbow_hold(
+                    apply_crossbow_hold_pose(
                         &mut self.root,
                         render_state.head_yaw,
                         render_state.head_pitch,

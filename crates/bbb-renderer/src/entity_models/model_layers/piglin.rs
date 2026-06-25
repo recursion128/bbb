@@ -1,6 +1,6 @@
 use super::{
-    apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_walk, piglin_ear_flap_pose,
-    PartPose, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    apply_crossbow_hold_pose, apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_walk,
+    piglin_ear_flap_pose, PartPose, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -508,9 +508,10 @@ fn apply_piglin_dance(root: &mut ModelPart, age_in_ticks: f32) {
 /// on `head`) and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk`]) — except the
 /// zombified piglin keeps its arms at rest (the held-out `animateZombieArms` pose defers), so it swings
 /// only the legs ([`apply_humanoid_leg_swing_named`]); then it always flaps the two ears
-/// ([`piglin_ear_flap_pose`], head children). A dancing regular piglin then runs the `DANCING` pose
-/// ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the
-/// attack/crossbow/admire arm poses and held items defer.
+/// ([`piglin_ear_flap_pose`], head children). A regular piglin holding a charged crossbow then levels it
+/// ([`apply_crossbow_hold_pose`], the `CROSSBOW_HOLD` pose), and a dancing regular piglin runs the
+/// `DANCING` pose ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the
+/// attack/admire/crossbow-charge arm poses and held items defer.
 pub(in crate::entity_models) struct PiglinModel {
     root: ModelPart,
     family: PiglinModelFamily,
@@ -575,6 +576,17 @@ impl EntityModel for PiglinModel {
             limb_swing,
             limb_swing_amount,
         );
+        // Vanilla `PiglinModel.setupAnim` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow
+        // levels it along the head look, overwriting the walk arm swing. Mutually exclusive with DANCING
+        // (the projection gates it off while dancing/charging), and applied before the dance block so a
+        // dancing piglin (higher priority) still wins.
+        if render_state.piglin_crossbow_hold {
+            apply_crossbow_hold_pose(
+                &mut self.root,
+                render_state.head_yaw,
+                render_state.head_pitch,
+            );
+        }
         // Vanilla `PiglinModel.setupAnim` DANCING runs after the inherited walk + ear flap, overwriting
         // the ear/arm rotations and bobbing the head/body. Only the regular piglin dances (the
         // projection gates `piglin_dancing` to it; the brute and zombified piglin never set it).

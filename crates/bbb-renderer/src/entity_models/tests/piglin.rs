@@ -754,6 +754,63 @@ fn dancing_piglin_raises_its_arms_and_bobs() {
     );
 }
 
+#[test]
+fn piglin_holds_its_crossbow_level_with_the_head_look() {
+    use std::f32::consts::FRAC_PI_2;
+    // Vanilla `PiglinModel.setupAnim` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`,
+    // `holdingInRightArm = true`, the same pose as the pillager): a regular piglin holding a charged
+    // crossbow levels it along the head look — right (holding) arm `xRot = -π/2 + head.xRot + 0.1`,
+    // `yRot = -0.3 + head.yRot`; left (shooting) arm `xRot = -1.5 + head.xRot`, `yRot = 0.6 + head.yRot`.
+    let yaw = 25.0_f32;
+    let pitch = -15.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let pitch_rad = pitch.to_radians();
+
+    let holding =
+        EntityModelInstance::piglin(96, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_head_look(yaw, pitch)
+            .with_piglin_crossbow_hold(true);
+    let mut model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    model.prepare(&holding);
+
+    let right = model.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-FRAC_PI_2 + pitch_rad + 0.1)).abs() < 1.0e-6,
+        "right (holding) arm levels the crossbow: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (-0.3 + yaw_rad)).abs() < 1.0e-6,
+        "right arm yaws -0.3 off the head: {}",
+        right.rotation[1]
+    );
+    let left = model.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (-1.5 + pitch_rad)).abs() < 1.0e-6,
+        "left (shooting) arm reaches across: {}",
+        left.rotation[0]
+    );
+    assert!(
+        (left.rotation[1] - (0.6 + yaw_rad)).abs() < 1.0e-6,
+        "left arm yaws 0.6 off the head: {}",
+        left.rotation[1]
+    );
+
+    // An idle piglin (no crossbow hold) keeps the walk swing — its arms are nowhere near the level pose.
+    let idle =
+        EntityModelInstance::piglin(96, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_head_look(yaw, pitch);
+    let mut idle_model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    idle_model.prepare(&idle);
+    assert!(
+        (idle_model.root_mut().child_mut("right_arm").pose.rotation[0]
+            - (-FRAC_PI_2 + pitch_rad + 0.1))
+            .abs()
+            > 1.0,
+        "an idle piglin does not level a crossbow"
+    );
+}
+
 fn piglin_texture_images() -> Vec<EntityModelTextureImage> {
     piglin_entity_texture_refs()
         .iter()
