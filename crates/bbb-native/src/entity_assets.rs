@@ -368,6 +368,8 @@ mod tests {
                 "textures/entity/bee/bee.png",
                 "textures/entity/bee/bee_baby.png",
                 "textures/entity/breeze/breeze.png",
+                "textures/entity/breeze/breeze_eyes.png",
+                "textures/entity/breeze/breeze_wind.png",
                 "textures/entity/dolphin/dolphin.png",
                 "textures/entity/dolphin/dolphin_baby.png",
                 "textures/entity/fish/tropical_a_pattern_1.png",

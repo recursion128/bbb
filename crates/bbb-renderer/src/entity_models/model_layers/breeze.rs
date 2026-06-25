@@ -4,7 +4,8 @@ use super::{
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::keyframe::{
-    keyframe_animated_pose, keyframe_elapsed_seconds, sample_bone_offsets, scale_vec,
+    keyframe_animated_pose, keyframe_elapsed_seconds, sample_bone_offsets,
+    sample_bone_offsets_with_scale, scale_vec,
 };
 
 const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
@@ -92,10 +93,110 @@ pub(in crate::entity_models) const BREEZE_ROD_3_POSE: PartPose = PartPose {
     rotation: [0.3927, 0.0, 0.0],
 };
 
-// Vanilla 26.1 `BreezeAnimation.IDLE` (length 2.0s, looping), restricted to the base body layer's
-// bones. The head bobs on a CATMULLROM position spline; the rods spin a full `1080°` of yaw per
-// cycle (LINEAR) while bobbing on a LINEAR position spline. The `wind_top` / `wind_mid` channels
-// drive the deferred wind layer and are omitted here.
+// Vanilla 26.1 `BreezeModel.createWindLayer` (atlas 128×128): the swirling translucent wind body, a
+// SEPARATE scrolling `breeze_wind.png` layer ([`BreezeWindModel`]) retaining only the `wind_body`
+// pivot → `wind_bottom` → `wind_mid` → `wind_top` chain (the base body's 32×32 `head`/`rods` are a
+// different layer). Each tier nests three concentric shells of decreasing radius. The colored debug
+// path approximates the translucent blue with `BREEZE_SLATE`; no `CubeDeformation`, so each
+// `uv_size` matches its box `size`, and `texOffs` is normalized against the 128×128 wind atlas.
+pub(in crate::entity_models) const BREEZE_WIND_BOTTOM: [ModelCube; 1] = [ModelCube::new(
+    [-2.5, -7.0, -2.5],
+    [5.0, 7.0, 5.0],
+    BREEZE_SLATE,
+    [5.0, 7.0, 5.0],
+    [1.0, 83.0],
+    false,
+)];
+pub(in crate::entity_models) const BREEZE_WIND_MID: [ModelCube; 3] = [
+    ModelCube::new(
+        [-6.0, -6.0, -6.0],
+        [12.0, 6.0, 12.0],
+        BREEZE_SLATE,
+        [12.0, 6.0, 12.0],
+        [74.0, 28.0],
+        false,
+    ),
+    ModelCube::new(
+        [-4.0, -6.0, -4.0],
+        [8.0, 6.0, 8.0],
+        BREEZE_SLATE,
+        [8.0, 6.0, 8.0],
+        [78.0, 32.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.5, -6.0, -2.5],
+        [5.0, 6.0, 5.0],
+        BREEZE_SLATE,
+        [5.0, 6.0, 5.0],
+        [49.0, 71.0],
+        false,
+    ),
+];
+pub(in crate::entity_models) const BREEZE_WIND_TOP: [ModelCube; 3] = [
+    ModelCube::new(
+        [-9.0, -8.0, -9.0],
+        [18.0, 8.0, 18.0],
+        BREEZE_SLATE,
+        [18.0, 8.0, 18.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-6.0, -8.0, -6.0],
+        [12.0, 8.0, 12.0],
+        BREEZE_SLATE,
+        [12.0, 8.0, 12.0],
+        [6.0, 6.0],
+        false,
+    ),
+    ModelCube::new(
+        [-2.5, -8.0, -2.5],
+        [5.0, 8.0, 5.0],
+        BREEZE_SLATE,
+        [5.0, 8.0, 5.0],
+        [105.0, 57.0],
+        false,
+    ),
+];
+
+pub(in crate::entity_models) const BREEZE_WIND_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 0.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const BREEZE_WIND_BOTTOM_POSE: PartPose = PartPose {
+    offset: [0.0, 24.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const BREEZE_WIND_MID_POSE: PartPose = PartPose {
+    offset: [0.0, -7.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const BREEZE_WIND_TOP_POSE: PartPose = PartPose {
+    offset: [0.0, -6.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+
+// Vanilla 26.1 `BreezeAnimation.IDLE` (length 2.0s, looping). The head bobs on a CATMULLROM position
+// spline; the rods spin a full `1080°` of yaw per cycle (LINEAR) while bobbing on a LINEAR position
+// spline. The `wind_top` / `wind_mid` pivots sway on their own LINEAR position splines; those bones
+// live only in the deferred wind layer ([`BreezeWindModel`]), so the base body's `apply_breeze_anim`
+// (which samples `body`/`head`/`rods`) ignores them while the wind layer picks them up.
+const BREEZE_IDLE_WIND_TOP_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.5, 0.0, 0.0), Linear),
+    keyframe(0.25, pos_vec(0.5, 0.0, -0.5), Linear),
+    keyframe(0.75, pos_vec(-0.5, 0.0, -0.5), Linear),
+    keyframe(1.25, pos_vec(-0.5, 0.0, 0.5), Linear),
+    keyframe(1.75, pos_vec(0.5, 0.0, 0.5), Linear),
+    keyframe(2.0, pos_vec(0.5, 0.0, 0.0), Linear),
+];
+const BREEZE_IDLE_WIND_MID_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.5, 0.0, -0.5), Linear),
+    keyframe(0.5, pos_vec(-0.5, 0.0, -0.5), Linear),
+    keyframe(1.0, pos_vec(-0.5, 0.0, 0.5), Linear),
+    keyframe(1.5, pos_vec(0.5, 0.0, 0.5), Linear),
+    keyframe(2.0, pos_vec(0.5, 0.0, -0.5), Linear),
+];
 const BREEZE_IDLE_HEAD_POS: [Keyframe; 3] = [
     keyframe(0.0, pos_vec(0.0, 0.0, 0.0), CatmullRom),
     keyframe(1.0, pos_vec(0.0, 1.0, 0.0), CatmullRom),
@@ -111,7 +212,21 @@ const BREEZE_IDLE_RODS_POS: [Keyframe; 3] = [
     keyframe(2.0, pos_vec(0.0, 0.0, 0.0), Linear),
 ];
 
-const BREEZE_IDLE_BONES: [BoneAnimation; 2] = [
+const BREEZE_IDLE_BONES: [BoneAnimation; 4] = [
+    BoneAnimation {
+        bone: "wind_top",
+        channels: &[AnimationChannel {
+            target: AnimationTarget::Position,
+            keyframes: &BREEZE_IDLE_WIND_TOP_POS,
+        }],
+    },
+    BoneAnimation {
+        bone: "wind_mid",
+        channels: &[AnimationChannel {
+            target: AnimationTarget::Position,
+            keyframes: &BREEZE_IDLE_WIND_MID_POS,
+        }],
+    },
     BoneAnimation {
         bone: "head",
         channels: &[AnimationChannel {
@@ -652,5 +767,107 @@ impl EntityModel for BreezeModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         apply_breeze_anim(&mut self.root, instance);
+    }
+}
+
+/// Applies the vanilla `BreezeModel.setupAnim` stack to the SEPARATE wind layer's bones
+/// (`wind_body`/`wind_bottom`/`wind_mid`/`wind_top`): the looping `IDLE` (the `wind_top` / `wind_mid`
+/// pivots sway on their LINEAR position splines; `wind_bottom` / `wind_body` have no idle channel)
+/// plus the pose-driven action one-shots `SHOOT`/`SLIDE`/`SLIDE_BACK`/`INHALE`/`JUMP`, each ADDED on
+/// top in vanilla `setupAnim` order over its projected elapsed seconds. The actions carry the wind
+/// pivots' rotation/position swirls and the `JUMP`/`INHALE` `wind_body` / `wind_bottom` `SCALE`
+/// pulses, folded onto the part's reset `[1, 1, 1]` scale (vanilla `ModelPart.offsetScale`). The
+/// actions' `body`/`head`/`rods` channels target the base body layer's parts and are skipped here.
+fn apply_breeze_wind_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
+    let idle_seconds =
+        keyframe_elapsed_seconds(&BREEZE_IDLE, instance.render_state.age_in_ticks * 0.05);
+    let actions: [(&AnimationDefinition, f32); 5] = [
+        (&BREEZE_SHOOT, instance.render_state.breeze_shoot_seconds),
+        (&BREEZE_SLIDE, instance.render_state.breeze_slide_seconds),
+        (
+            &BREEZE_SLIDE_BACK,
+            instance.render_state.breeze_slide_back_seconds,
+        ),
+        (&BREEZE_INHALE, instance.render_state.breeze_inhale_seconds),
+        (&BREEZE_JUMP, instance.render_state.breeze_long_jump_seconds),
+    ];
+    // Each bone: bind + the looping idle offset + every active action offset/scale, added in order.
+    // The idle carries no `wind_body` / `wind_bottom` channel (identity offset), and no wind bone has
+    // an idle scale channel, so the idle leaves the scale at the reset `[1, 1, 1]`.
+    let apply = |part: &mut ModelPart, bind: PartPose, bone: &str| {
+        let (idle_pos, idle_rot) = sample_bone_offsets(&BREEZE_IDLE, bone, idle_seconds, 1.0);
+        part.pose = keyframe_animated_pose(bind, idle_pos, idle_rot);
+        for (definition, seconds) in actions {
+            if seconds < 0.0 {
+                continue;
+            }
+            let sample = keyframe_elapsed_seconds(definition, seconds);
+            let (position, rotation, scale_offset) =
+                sample_bone_offsets_with_scale(definition, bone, sample, 1.0);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+            part.scale = [
+                part.scale[0] + scale_offset[0],
+                part.scale[1] + scale_offset[1],
+                part.scale[2] + scale_offset[2],
+            ];
+        }
+    };
+
+    let wind_body = root.child_mut("wind_body");
+    apply(wind_body, BREEZE_WIND_BODY_POSE, "wind_body");
+    let wind_bottom = wind_body.child_mut("wind_bottom");
+    apply(wind_bottom, BREEZE_WIND_BOTTOM_POSE, "wind_bottom");
+    let wind_mid = wind_bottom.child_mut("wind_mid");
+    apply(wind_mid, BREEZE_WIND_MID_POSE, "wind_mid");
+    let wind_top = wind_mid.child_mut("wind_top");
+    apply(wind_top, BREEZE_WIND_TOP_POSE, "wind_top");
+}
+
+/// Mutable breeze WIND model, mirroring vanilla `BreezeModel.createWindLayer` / `BreezeWindLayer`: a
+/// synthetic root holds the `wind_body` pivot → `wind_bottom` → `wind_mid` → `wind_top` shell chain
+/// (atlas 128×128, `breeze_wind.png`). It is a SEPARATE model from the base body so the two layers can
+/// carry different atlas sizes; `setup_anim` runs [`apply_breeze_wind_anim`] (idle sway + the
+/// pose-driven action swirls/pulses). It is rendered only on the textured scrolling-overlay path
+/// (vanilla `RenderTypes.breezeWind`, the U coordinate scrolled by `ageInTicks · 0.02`); the colored
+/// debug path keeps the base body only.
+pub(in crate::entity_models) struct BreezeWindModel {
+    root: ModelPart,
+}
+
+impl BreezeWindModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        let wind_top = ModelPart::leaf(BREEZE_WIND_TOP_POSE, BREEZE_WIND_TOP.to_vec());
+        let wind_mid = ModelPart::new(
+            BREEZE_WIND_MID_POSE,
+            BREEZE_WIND_MID.to_vec(),
+            vec![("wind_top", wind_top)],
+        );
+        let wind_bottom = ModelPart::new(
+            BREEZE_WIND_BOTTOM_POSE,
+            BREEZE_WIND_BOTTOM.to_vec(),
+            vec![("wind_mid", wind_mid)],
+        );
+        let wind_body = ModelPart::new(
+            BREEZE_WIND_BODY_POSE,
+            Vec::new(),
+            vec![("wind_bottom", wind_bottom)],
+        );
+        Self {
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("wind_body", wind_body)]),
+        }
+    }
+}
+
+impl EntityModel for BreezeWindModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_breeze_wind_anim(&mut self.root, instance);
     }
 }

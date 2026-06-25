@@ -284,6 +284,21 @@ pub(in crate::entity_models) const BREEZE_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/breeze/breeze.png",
         size: [32, 32],
     };
+// Vanilla `BreezeEyesLayer`: the always-on emissive eye glow (`breeze_eyes.png`, re-rendering the
+// model in the eyes render type; the texture is transparent except at the head's eye UVs).
+pub(in crate::entity_models) const BREEZE_EYES_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/breeze/breeze_eyes.png",
+        size: [32, 32],
+    };
+// Vanilla `BreezeWindLayer`: the swirling translucent wind body (`breeze_wind.png`, a 128×128 atlas —
+// the `createWindLayer` retains only `wind_body`), drawn with the `breezeWind` render type whose U
+// coordinate scrolls by `ageInTicks · 0.02`.
+pub(in crate::entity_models) const BREEZE_WIND_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/breeze/breeze_wind.png",
+        size: [128, 128],
+    };
 
 // Vanilla `DolphinRenderer` textures (adult and baby share the same 64×64 geometry).
 pub(in crate::entity_models) const DOLPHIN_TEXTURE_REF: EntityModelTextureRef =
@@ -781,7 +796,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 302] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 304] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1055,6 +1070,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     BEE_TEXTURE_REF,
     BEE_BABY_TEXTURE_REF,
     BREEZE_TEXTURE_REF,
+    BREEZE_EYES_TEXTURE_REF,
+    BREEZE_WIND_TEXTURE_REF,
     DOLPHIN_TEXTURE_REF,
     DOLPHIN_BABY_TEXTURE_REF,
     TROPICAL_FISH_KOB_PATTERN_TEXTURE_REF,
@@ -1171,8 +1188,11 @@ pub fn bee_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BEE_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const BREEZE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [BREEZE_TEXTURE_REF];
+pub(in crate::entity_models) const BREEZE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    BREEZE_TEXTURE_REF,
+    BREEZE_EYES_TEXTURE_REF,
+    BREEZE_WIND_TEXTURE_REF,
+];
 
 pub fn breeze_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BREEZE_ENTITY_TEXTURE_REFS

@@ -19,13 +19,13 @@ use super::{
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        armor_layer_tint, armor_slot_texture, CamelModel, CreeperModel, HoglinModel,
-        HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
-        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
+        armor_layer_tint, armor_slot_texture, BreezeWindModel, CamelModel, CreeperModel,
+        HoglinModel, HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel, SheepFurModel,
+        SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
         TropicalFishModel, TropicalFishPatternModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, CREEPER_ARMOR_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF,
+        ZombieVariantModel, BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
+        STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -232,6 +232,10 @@ pub(super) fn entity_model_textured_meshes(
         // `handled`.
         emit_charged_creeper_energy_swirl(&mut meshes, *instance, atlas);
         emit_wither_energy_swirl(&mut meshes, *instance, atlas);
+        // The breeze's swirling wind body is a translucent scrolling overlay (vanilla `BreezeWindLayer`)
+        // layered on top of the base body (already emitted by the shared dispatch), so it likewise runs
+        // regardless of `handled`.
+        emit_breeze_wind_scroll_model(&mut meshes, *instance, atlas);
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
@@ -411,6 +415,41 @@ fn emit_wind_charge_scroll_model(
     // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
     // float modulo is `rem_euclid`. V does not scroll.
     let u_offset = (instance.render_state.age_in_ticks * 0.03).rem_euclid(1.0);
+    append_scrolled_textured_mesh(&mut meshes.scroll, &scratch, entry.uv, [u_offset, 0.0]);
+}
+
+/// The breeze's swirling wind body (vanilla `BreezeWindLayer`): the SEPARATE [`BreezeWindModel`] (the
+/// `wind_body` shell chain on the 128×128 `breeze_wind.png`) rendered with the `breezeWind` render
+/// type, whose texture matrix scrolls the U coordinate by `xOffset(ageInTicks) % 1 = (ageInTicks ·
+/// 0.02) % 1` (V fixed at `0`). Like the wind charge, we render the wind model once with the normal
+/// atlas UVs into a scratch mesh — its `setup_anim` applies the same idle sway + action swirls/pulses
+/// as the base body so the two layers move together — then fold it into the translucent scrolling
+/// overlay mesh, baking the per-instance U offset and carrying the atlas sub-rect for the shader wrap.
+fn emit_breeze_wind_scroll_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::Breeze) {
+        return;
+    }
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, BREEZE_WIND_TEXTURE_REF) else {
+        return;
+    };
+    let transform = entity_model_root_transform(instance);
+    let mut model = BreezeWindModel::new();
+    model.prepare(&instance);
+    let mut scratch = EntityModelTexturedMesh::new();
+    model.root().render_textured(
+        &mut scratch,
+        transform,
+        BREEZE_WIND_TEXTURE_REF,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+    );
+    // Vanilla `BreezeWindLayer.xOffset(t) = t · 0.02`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
+    // float modulo is `rem_euclid`. V does not scroll.
+    let u_offset = (instance.render_state.age_in_ticks * 0.02).rem_euclid(1.0);
     append_scrolled_textured_mesh(&mut meshes.scroll, &scratch, entry.uv, [u_offset, 0.0]);
 }
 

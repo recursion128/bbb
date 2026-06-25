@@ -1903,9 +1903,23 @@ When an agent does any of the following, update this file in the same slice:
       base body layer's `body`/`head`/`rods` bones (the actions' `wind_*` channels target the deferred
       wind layer's parts, which are absent, so they are skipped). The non-looping actions clamp past
       their length to the final frame (world + renderer tests pin the pose state machine including the
-      slideBack transition, the five definitions, and each action re-posing the body model). The
-      swirling `breeze_wind.png` wind layer (its own translucent geometry) and the emissive
-      `breeze_eyes.png` eyes remain unsupported
+      slideBack transition, the five definitions, and each action re-posing the body model). The two
+      overlay layers are now reproduced too. The emissive eyes (vanilla `BreezeEyesLayer`) are an
+      always-on second textured pass re-rendering the base body with the `breeze_eyes.png` reference in
+      the eyes (emissive) render type — transparent except at the head's eye UVs — mirroring the
+      creaking eyes pass but ungated. The swirling wind body (vanilla `BreezeWindLayer`) is a SEPARATE
+      `BreezeWindModel` (vanilla `createWindLayer`, atlas 128×128) — the `wind_body` pivot → `wind_bottom`
+      → `wind_mid` → `wind_top` shell chain, three concentric shells per tier — rendered into the
+      translucent scrolling-overlay mesh with the `breeze_wind.png` reference, its U coordinate scrolled
+      by `ageInTicks · 0.02` (vanilla `RenderTypes.breezeWind`), exactly like the wind charge folds into
+      the same scroll pass. Its `setup_anim` applies the same idle (the `wind_top`/`wind_mid` LINEAR
+      position sways, now transcribed into `BreezeAnimation.IDLE`) plus the action one-shots' `wind_*`
+      rotation/position swirls and the `JUMP`/`INHALE` `wind_body`/`wind_bottom` `SCALE` pulses (folded
+      onto the reset scale, vanilla `ModelPart.offsetScale`), so the wind body moves with the base body.
+      The colored debug path keeps the base body only, consistent with every other scrolling overlay
+      (the energy swirls, the guardian beam). Renderer tests pin the wind geometry, the eyes pass, and
+      the wind body folding into the scroll mesh and U-scrolling past the looped idle. Breeze is now
+      fully aligned with vanilla 26.1
     - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
       `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to
       the new `EntityModelKind::Dolphin { baby }`, keyed off the synced `AgeableMob.DATA_BABY_ID`
