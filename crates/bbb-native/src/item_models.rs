@@ -165,7 +165,7 @@ const GENERATED_THIRD_PERSON_FALLBACK: BlockModelDisplayTransform = BlockModelDi
 /// already holds translation in world units (the model JSON's 1/16 value pre-multiplied) and per-axis
 /// scale, so no further normalization is applied here. `left_hand` is vanilla's left-hand fix: it negates
 /// `translation.x`, `rotation.y`, and `rotation.z` so an item mirrors correctly into the left arm.
-fn display_matrix(display: &BlockModelDisplayTransform, left_hand: bool) -> Mat4 {
+pub(crate) fn display_matrix(display: &BlockModelDisplayTransform, left_hand: bool) -> Mat4 {
     let sign = if left_hand { -1.0 } else { 1.0 };
     let translation = Vec3::new(
         display.translation[0] * sign,

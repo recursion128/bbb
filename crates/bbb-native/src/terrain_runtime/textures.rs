@@ -7,7 +7,7 @@ use bbb_pack::{
     PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
-    TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
+    TerrainBox, TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
     TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
 };
 
@@ -395,6 +395,105 @@ impl TerrainTextureState {
             tint,
             &self.atlas,
         ))
+    }
+
+    /// The 3D item-frame border (vanilla `block/item_frame` / `block/glow_item_frame`, parent
+    /// `block/template_item_frame`): four `birch_planks` wood bars plus a `back` panel showing the
+    /// `item_frame` / `glow_item_frame` texture, baked over the blocks atlas into item-model quads in
+    /// `0..=16` model space. The back panel's `15.5` depth is rounded to `15` so all five elements bake
+    /// through the integer-box path (a `0.03`-block difference on the wall-side backing). The map-frame
+    /// border (`template_item_frame_map`, a full back) is not yet distinguished.
+    pub(crate) fn item_frame_border_quads(&self, glow: bool) -> Vec<bbb_renderer::ItemModelQuad> {
+        let wood = self.texture_index("minecraft:block/birch_planks");
+        let back = self.texture_index(if glow {
+            "minecraft:block/glow_item_frame"
+        } else {
+            "minecraft:block/item_frame"
+        });
+        // FACES order: Down, Up, North, South, West, East.
+        let boxes = vec![
+            // Back panel (rounded 15.5 -> 15): north + south faces, the `back` texture.
+            frame_border_box(
+                [3, 3, 15],
+                [13, 13, 16],
+                [false, false, true, true, false, false],
+                [
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                    [3, 3, 13, 13],
+                    [3, 3, 13, 13],
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                ],
+                [back; 6],
+            ),
+            // Bottom wood bar.
+            frame_border_box(
+                [2, 2, 15],
+                [14, 3, 16],
+                [true; 6],
+                [
+                    [2, 0, 14, 1],
+                    [2, 15, 14, 16],
+                    [2, 13, 14, 14],
+                    [2, 13, 14, 14],
+                    [15, 13, 16, 14],
+                    [0, 13, 1, 14],
+                ],
+                [wood; 6],
+            ),
+            // Top wood bar.
+            frame_border_box(
+                [2, 13, 15],
+                [14, 14, 16],
+                [true; 6],
+                [
+                    [2, 0, 14, 1],
+                    [2, 15, 14, 16],
+                    [2, 2, 14, 3],
+                    [2, 2, 14, 3],
+                    [15, 2, 16, 3],
+                    [0, 2, 1, 3],
+                ],
+                [wood; 6],
+            ),
+            // Left wood bar (no up/down faces).
+            frame_border_box(
+                [2, 3, 15],
+                [3, 13, 16],
+                [false, false, true, true, true, true],
+                [
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                    [13, 3, 14, 13],
+                    [2, 3, 3, 13],
+                    [15, 3, 16, 13],
+                    [0, 3, 1, 13],
+                ],
+                [wood; 6],
+            ),
+            // Right wood bar (no up/down faces).
+            frame_border_box(
+                [13, 3, 15],
+                [14, 13, 16],
+                [false, false, true, true, true, true],
+                [
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                    [2, 3, 3, 13],
+                    [13, 3, 14, 13],
+                    [15, 3, 16, 13],
+                    [0, 3, 1, 13],
+                ],
+                [wood; 6],
+            ),
+        ];
+        bbb_renderer::terrain::bake_block_item_quads(
+            &TerrainRenderShape::Boxes(boxes),
+            [self.fallback_index; 6],
+            [TerrainTint::WHITE; 6],
+            &self.atlas,
+        )
     }
 
     fn face_texture_indices(&self, face_textures: &BlockFaceTextures) -> [u32; 6] {
@@ -1043,6 +1142,30 @@ fn model_face_to_terrain_face(face: BlockModelFace) -> TerrainFace {
 
 fn all_terrain_face_cull() -> [Option<TerrainFace>; 6] {
     TerrainFace::ALL.map(Some)
+}
+
+/// One element of the item-frame border model: an opaque, shaded, unculled box whose present faces map
+/// their `0..=16` UV crop into the named atlas texture.
+fn frame_border_box(
+    from: [u8; 3],
+    to: [u8; 3],
+    face_present: [bool; 6],
+    face_uvs: [[u8; 4]; 6],
+    texture_indices: [u32; 6],
+) -> TerrainBox {
+    TerrainBox {
+        from,
+        to,
+        face_present,
+        face_uvs,
+        face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
+        face_light_emission: [0; 6],
+        face_cull: [None; 6],
+        texture_indices,
+        tint: [TerrainTint::WHITE; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
+    }
 }
 
 #[cfg(test)]

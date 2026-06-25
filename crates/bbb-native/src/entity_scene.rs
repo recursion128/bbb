@@ -948,9 +948,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
-        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => {
-            placeholder("todo_glow_item_frame_bounds", 0.75, 0.75, 0.0625)
-        }
+        // Item frames render via the 3D item-model pass (border + framed item, native `item_frames`),
+        // not the entity-model scene.
+        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => EntityModelKind::Squid {
             glow: true,
             baby: ageable_baby(data_values),
@@ -961,9 +961,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
         }
-        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID => {
-            placeholder("todo_item_frame_bounds", 0.75, 0.75, 0.0625)
-        }
+        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => EntityModelKind::LeashKnot,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => {
             placeholder("todo_lightning_bolt_bounds", 0.5, 2.0, 0.5)

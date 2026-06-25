@@ -39,6 +39,7 @@ use crate::{
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
     item_entities::item_entity_billboards_from_world,
+    item_frames::item_frame_models,
     item_models::{dropped_item_models, held_item_models},
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
@@ -411,10 +412,14 @@ pub(crate) fn pump_network_and_terrain(
         entity_model_instances_from_world_at_partial_tick(world, entity_partial_tick);
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
+    // Item frames render their wooden border + framed item into the same two atlas draws.
+    let item_frame_models = item_frame_models(world, item_runtime, terrain_textures);
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(held_item_models.block_meshes);
+    block_item_meshes.extend(item_frame_models.block_meshes);
     let mut flat_item_meshes = dropped_item_models.flat_meshes;
     flat_item_meshes.extend(held_item_models.flat_meshes);
+    flat_item_meshes.extend(item_frame_models.flat_meshes);
     renderer.set_block_item_model_meshes(block_item_meshes);
     renderer.set_flat_item_model_meshes(flat_item_meshes);
     renderer.set_entity_model_instances(entity_instances);

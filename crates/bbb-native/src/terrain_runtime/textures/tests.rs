@@ -930,3 +930,27 @@ fn block_model_box_with_face_texture(
         face_force_translucent: [false; 6],
     }
 }
+
+#[test]
+fn item_frame_border_bakes_the_five_template_elements() {
+    // Vanilla `block/template_item_frame`: a back panel (north + south faces) plus four wood bars —
+    // the bottom and top bars show all six faces, the left and right bars omit their up/down faces.
+    // 2 + 6 + 6 + 4 + 4 = 22 quads. The whole border sits in the back `0..=16` slab (z >= 15).
+    let textures = TerrainTextureState::default();
+    let quads = textures.item_frame_border_quads(false);
+    assert_eq!(quads.len(), 22);
+    assert!(quads
+        .iter()
+        .all(|quad| quad.corners.iter().all(|corner| corner[2] >= 15.0 - 1e-6)));
+    // The bars span the full 2..=14 frame footprint in X and Y.
+    let min_x = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[0]))
+        .fold(f32::INFINITY, f32::min);
+    let max_x = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[0]))
+        .fold(f32::NEG_INFINITY, f32::max);
+    assert_eq!(min_x, 2.0);
+    assert_eq!(max_x, 14.0);
+}

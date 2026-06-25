@@ -1,0 +1,164 @@
+//! Item-frame 3D models: renders item-frame / glow-item-frame entities as the wooden border model plus
+//! the framed item (vanilla `ItemFrameRenderer`), baked into the renderer's item-model pass. The border
+//! comes from the blocks-atlas `block/item_frame` model (`terrain_runtime`); the framed item resolves to
+//! block or flat quads exactly like dropped / held items and uses its `FIXED` display transform. The
+//! frame's facing wall orients the whole model; the `0..=7` item rotation spins the item in-plane. Filled
+//! maps (the full-frame map render) are deferred — a map frame shows only its border.
+
+use std::collections::BTreeMap;
+
+use bbb_pack::BlockModelDisplayContext;
+use bbb_renderer::{bake_generated_item_quads, bake_item_model_mesh, ItemModelMesh, ItemModelQuad};
+use bbb_world::{ItemFrameFacing, WorldStore};
+use glam::{Mat4, Vec3};
+
+use crate::item_models::display_matrix;
+use crate::item_runtime::NativeItemRuntime;
+use crate::terrain_runtime::TerrainTextureState;
+
+/// Vanilla `ItemFrameRenderer` pushes the framed item `0.4375` out of the (visible) frame surface toward
+/// the viewer before scaling and rotating it (`0.5` for an invisible frame, which bbb does not model).
+const ITEM_FRAME_ITEM_DEPTH: f32 = 0.4375;
+
+/// The baked item-frame meshes for this frame, split by atlas (the border + block items sample the blocks
+/// atlas; flat items sample the item atlas).
+pub(crate) struct ItemFrameModels {
+    pub block_meshes: Vec<ItemModelMesh>,
+    pub flat_meshes: Vec<ItemModelMesh>,
+}
+
+/// Bakes every item-frame / glow-item-frame entity into its wooden border plus framed item (vanilla
+/// `ItemFrameRenderer.submit`): the frame center positions it, the facing wall orients it
+/// (`Rx(xRot)·Ry(yRot)`), the border is centered (`T(-0.5)`), and the item is pushed out, spun by its
+/// `0..=7` rotation, scaled `0.5`, and placed by its `FIXED` display transform. Empty frames show only the
+/// border; map frames skip the (deferred) full-frame map.
+pub(crate) fn item_frame_models(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+) -> ItemFrameModels {
+    let mut block_meshes = Vec::new();
+    let mut flat_meshes = Vec::new();
+
+    for state in world.item_frame_render_states() {
+        let center = Vec3::new(
+            state.center.x as f32,
+            state.center.y as f32,
+            state.center.z as f32,
+        );
+        let (x_rot, y_rot) = frame_face_rotation(state.facing);
+        let base = Mat4::from_translation(center)
+            * Mat4::from_rotation_x(x_rot.to_radians())
+            * Mat4::from_rotation_y(y_rot.to_radians());
+
+        // Wooden border (always, even for an empty frame).
+        let border = terrain_textures.item_frame_border_quads(state.glow);
+        if !border.is_empty() {
+            let border_transform = base * Mat4::from_translation(Vec3::splat(-0.5));
+            block_meshes.push(bake_item_model_mesh(&border, border_transform));
+        }
+
+        // Framed item (deferred for filled maps, which render the full-frame map instead).
+        let Some(item_runtime) = item_runtime else {
+            continue;
+        };
+        if state.has_map {
+            continue;
+        }
+        let Some(stack) = state.item.as_ref() else {
+            continue;
+        };
+        let Some(item_id) = stack.item_id else {
+            continue;
+        };
+
+        let fixed = item_runtime
+            .item_display_transform(item_id, BlockModelDisplayContext::Fixed)
+            .unwrap_or_default();
+        let item_transform = base
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, ITEM_FRAME_ITEM_DEPTH))
+            * Mat4::from_rotation_z((state.rotation as f32 * 360.0 / 8.0).to_radians())
+            * Mat4::from_scale(Vec3::splat(0.5))
+            * display_matrix(&fixed, false);
+
+        // Block path.
+        if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
+            if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
+                if !quads.is_empty() {
+                    block_meshes.push(bake_item_model_mesh(&quads, item_transform));
+                    continue;
+                }
+            }
+        }
+
+        // Flat path.
+        let mut quads: Vec<ItemModelQuad> = Vec::new();
+        for layer in item_runtime.generated_item_layers_for_stack(stack) {
+            quads.extend(bake_generated_item_quads(
+                &layer.mask,
+                layer.rect,
+                layer.tint,
+            ));
+        }
+        if quads.is_empty() {
+            continue;
+        }
+        flat_meshes.push(bake_item_model_mesh(&quads, item_transform));
+    }
+
+    ItemFrameModels {
+        block_meshes,
+        flat_meshes,
+    }
+}
+
+/// The `(xRot, yRot)` in degrees that orients the frame model to its facing wall (vanilla
+/// `ItemFrameRenderer.submit`): horizontal walls rotate about Y by `180 - direction.toYRot()`, vertical
+/// walls tilt about X by `-90 * axisDirection.step` with `yRot = 180`.
+fn frame_face_rotation(facing: ItemFrameFacing) -> (f32, f32) {
+    match facing {
+        ItemFrameFacing::Up => (-90.0, 180.0),
+        ItemFrameFacing::Down => (90.0, 180.0),
+        // 180 - toYRot(): North 180, South 0, West 90, East 270.
+        ItemFrameFacing::North => (0.0, 0.0),
+        ItemFrameFacing::South => (0.0, 180.0),
+        ItemFrameFacing::West => (0.0, 90.0),
+        ItemFrameFacing::East => (0.0, -90.0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn horizontal_and_vertical_facings_map_to_vanilla_rotations() {
+        assert_eq!(frame_face_rotation(ItemFrameFacing::North), (0.0, 0.0));
+        assert_eq!(frame_face_rotation(ItemFrameFacing::South), (0.0, 180.0));
+        assert_eq!(frame_face_rotation(ItemFrameFacing::West), (0.0, 90.0));
+        assert_eq!(frame_face_rotation(ItemFrameFacing::East), (0.0, -90.0));
+        assert_eq!(frame_face_rotation(ItemFrameFacing::Up), (-90.0, 180.0));
+        assert_eq!(frame_face_rotation(ItemFrameFacing::Down), (90.0, 180.0));
+    }
+
+    #[test]
+    fn item_rotation_spins_in_the_frame_plane_about_its_center() {
+        // The `0..=7` rotation is a Z spin in the frame's local plane; the model center (0.5,0.5,0.5)
+        // stays on the frame's local Z axis (no in-plane translation) for any rotation.
+        let base = Mat4::IDENTITY;
+        let fixed = bbb_pack::BlockModelDisplayTransform::default();
+        for rotation in 0..8u8 {
+            let transform = base
+                * Mat4::from_translation(Vec3::new(0.0, 0.0, ITEM_FRAME_ITEM_DEPTH))
+                * Mat4::from_rotation_z((rotation as f32 * 360.0 / 8.0).to_radians())
+                * Mat4::from_scale(Vec3::splat(0.5))
+                * display_matrix(&fixed, false);
+            let center = transform.transform_point3(Vec3::splat(0.5));
+            assert!(
+                center.x.abs() < 1e-6 && center.y.abs() < 1e-6,
+                "rotation {rotation} kept the item centered on Z, got {center:?}"
+            );
+            assert!((center.z - ITEM_FRAME_ITEM_DEPTH).abs() < 1e-6);
+        }
+    }
+}
