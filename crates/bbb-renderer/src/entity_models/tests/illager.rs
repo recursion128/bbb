@@ -313,8 +313,8 @@ fn pillager_holds_its_crossbow_level_with_the_head_look() {
         left.pose.rotation[1]
     );
 
-    // Charging suppresses the hold (`CROSSBOW_CHARGE`'s pull-back pose is deferred), so the arms keep
-    // the walk swing — at rest, far from the hold pitch.
+    // Charging takes the higher-priority `CROSSBOW_CHARGE` pull-back pose instead of the level hold:
+    // the right (holding) arm braces (`xRot = -0.97079635`, not the hold's `-π/2 + pitch + 0.1`).
     let charging = holding.with_is_charging_crossbow(true);
     let mut charging_model = IllagerModel::new(&charging, IllagerModelFamily::Pillager);
     charging_model.prepare(&charging);
@@ -324,10 +324,68 @@ fn pillager_holds_its_crossbow_level_with_the_head_look() {
             .child_mut("right_arm")
             .pose
             .rotation[0]
-            - (-FRAC_PI_2 + pitch_rad + 0.1))
+            - (-0.97079635))
             .abs()
-            > 1.0,
-        "a charging pillager does not level the crossbow"
+            < 1e-6,
+        "a charging pillager braces the crossbow to draw, not the level hold"
+    );
+}
+
+#[test]
+fn pillager_pulls_its_crossbow_back_while_charging() {
+    use std::f32::consts::FRAC_PI_2;
+    // Vanilla `AnimationUtils.animateCrossbowCharge` (`holdingInRightArm = true`): the right (holding)
+    // arm braces (`yRot = -0.8`, `xRot = -0.97079635`); the left (pulling) arm draws the string back as
+    // `ticksUsingItem / maxChargeDuration` (= 25) climbs — `yRot` lerps `0.4 → 0.85`, `xRot` lerps
+    // `-0.97079635 → -π/2`.
+    const HOLD_X: f32 = -0.97079635;
+    let charge = |ticks: f32| {
+        let instance =
+            EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
+                .with_is_charging_crossbow(true)
+                .with_illager_crossbow_charge_ticks(ticks);
+        let mut model = IllagerModel::new(&instance, IllagerModelFamily::Pillager);
+        model.prepare(&instance);
+        let right = model.root_mut().child_mut("right_arm").pose;
+        let left = model.root_mut().child_mut("left_arm").pose;
+        (right, left)
+    };
+
+    // At the start of the draw (ticks 0) the pulling arm sits at the brace.
+    let (right0, left0) = charge(0.0);
+    assert!(
+        (right0.rotation[1] - (-0.8)).abs() < 1e-6 && (right0.rotation[0] - HOLD_X).abs() < 1e-6,
+        "the holding arm braces: {:?}",
+        right0.rotation
+    );
+    assert!(
+        (left0.rotation[1] - 0.4).abs() < 1e-6 && (left0.rotation[0] - HOLD_X).abs() < 1e-6,
+        "the pulling arm starts at the brace: {:?}",
+        left0.rotation
+    );
+
+    // Fully drawn (ticks ≥ 25) the pulling arm reaches the far draw.
+    let (_right_full, left_full) = charge(25.0);
+    assert!(
+        (left_full.rotation[1] - 0.85).abs() < 1e-6
+            && (left_full.rotation[0] - (-FRAC_PI_2)).abs() < 1e-6,
+        "the pulling arm reaches full draw: {:?}",
+        left_full.rotation
+    );
+
+    // Mid-draw is strictly between the two (the string is being pulled back).
+    let (_right_mid, left_mid) = charge(12.5);
+    assert!(
+        left_mid.rotation[1] > 0.4 && left_mid.rotation[1] < 0.85,
+        "mid-draw the pulling arm is partway back: {}",
+        left_mid.rotation[1]
+    );
+    // Past the max the draw clamps (no overshoot).
+    let (_r, left_over) = charge(40.0);
+    assert!(
+        (left_over.rotation[1] - 0.85).abs() < 1e-6,
+        "over-charge clamps to full draw: {}",
+        left_over.rotation[1]
     );
 }
 
@@ -335,7 +393,7 @@ fn pillager_holds_its_crossbow_level_with_the_head_look() {
 fn pillager_crossbow_hold_reposes_only_the_arms() {
     // End-to-end through the dispatch: a pillager holding its crossbow re-poses the two arm cubes
     // ([144, 192), per `pillager_swings_its_arms_when_walking`) while the head/body/legs ([0, 144))
-    // stay byte-identical, and charging falls back to the resting arms (the charge pose is deferred).
+    // stay byte-identical, and charging re-poses only the arms too (the distinct CROSSBOW_CHARGE draw).
     let base =
         EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
             .with_head_look(15.0, -10.0);
@@ -354,10 +412,22 @@ fn pillager_crossbow_hold_reposes_only_the_arms() {
     );
     let charging = entity_model_mesh(&[base
         .with_main_hand_holds_crossbow(true)
-        .with_is_charging_crossbow(true)]);
+        .with_is_charging_crossbow(true)
+        .with_illager_crossbow_charge_ticks(12.0)]);
     assert_eq!(
-        rest.vertices, charging.vertices,
-        "a charging pillager keeps the resting arms (charge pose deferred)"
+        rest.vertices[0..144],
+        charging.vertices[0..144],
+        "the head, body and legs do not move during the crossbow draw"
+    );
+    assert_ne!(
+        rest.vertices[144..192],
+        charging.vertices[144..192],
+        "a charging pillager pulls the crossbow back with its arms"
+    );
+    assert_ne!(
+        holding.vertices[144..192],
+        charging.vertices[144..192],
+        "the charge draw pose differs from the level hold pose"
     );
 }
 

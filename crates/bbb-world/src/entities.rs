@@ -810,6 +810,12 @@ pub struct EntityModelSourceState {
     /// every other entity.
     #[serde(default)]
     pub allay_spinning_progress: f32,
+    /// Vanilla `IllagerRenderState.ticksUsingItem` for the pillager `CROSSBOW_CHARGE` draw — the
+    /// reconstructed `getTicksUsingItem()` (ticks since the synced charging flag rose, + partial). The
+    /// `animateCrossbowCharge` pose lerps `ticksUsingItem / maxChargeDuration` over it. `0.0` for a
+    /// pillager that is not charging and every other entity.
+    #[serde(default)]
+    pub pillager_crossbow_charge_ticks: f32,
     /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the
     /// `0..1` eased blend `AdultAxolotlModel.setupPlayDeadAnimation` scales the limp-on-its-side pose
     /// by. `0.0` (awake) for every other entity.

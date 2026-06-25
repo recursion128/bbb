@@ -773,6 +773,7 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
+        .with_illager_crossbow_charge_ticks(source.pillager_crossbow_charge_ticks)
         .with_enderman_carrying(source.enderman_carrying)
         .with_enderman_creepy(source.enderman_creepy)
         .with_bat_resting(source.bat_resting)

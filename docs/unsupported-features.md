@@ -576,7 +576,15 @@ When an agent does any of the following, update this file in the same slice:
     `holdingInRightArm`: right (holding) arm `xRot = -π/2 + head.xRot + 0.1`,
     `yRot = -0.3 + head.yRot`; left (shooting) arm `xRot = -1.5 + head.xRot`,
     `yRot = 0.6 + head.yRot` — overwriting the walk swing on both render paths (the held
-    crossbow mesh rides the leveled hand). The regular piglin reuses the SAME shared
+    crossbow mesh rides the leveled hand). The pillager `CROSSBOW_CHARGE` pull-back draw is
+    now projected too: while the synced `IS_CHARGING_CROSSBOW` flag is set, a per-tick
+    use-item counter (`CrossbowChargeAnimationState`, the client reconstruction of
+    `LivingEntity.getTicksUsingItem()` — it counts up while drawing and resets to `0` the
+    moment the flag clears) feeds `AnimationUtils.animateCrossbowCharge(right, left,
+    maxChargeDuration = floor(1.25·20) = 25, ticksUsingItem, holdingInRightArm = true)`: the
+    right (holding) arm sits at `yRot = -0.8`, `xRot = -0.97079635`; the left (pulling) arm
+    lerps `yRot 0.4 → 0.85` and `xRot -0.97079635 → -π/2` across the draw (clamped at full
+    charge), overwriting the level hold pose on both render paths. The regular piglin reuses the SAME shared
     `animateCrossbowHold` pose (`Piglin.getArmPose` → `CROSSBOW_HOLD`): a piglin holding a
     *charged* crossbow (`isHolding(CROSSBOW) && CrossbowItem.isCharged(weaponItem)` — the
     main-hand item resolved to `minecraft:crossbow` with a non-empty decoded
@@ -618,8 +626,7 @@ When an agent does any of the following, update this file in the same slice:
     sin((1-(1-t)²)·π)·0.4`, the left arm trails (`xRot = cos(age·0.19)·0.5 + sin(t·π)·1.2 -
     …·0.4`), both yawing apart `±π/20` with the shared `bobArms` roll — and `IllagerModel` is not a
     `HumanoidModel`, so there is no body twist (no `setupAttackAnimation`). The empty-hand
-    `animateZombieArms` ATTACKING branch (no illager uses it), the pillager `CROSSBOW_CHARGE`
-    pull-back (which needs `ticksUsingItem`/`maxCrossbowChargeDuration`), and the riding sit
+    `animateZombieArms` ATTACKING branch (no illager uses it) and the riding sit
     pose stay deferred. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
     `emit_villager_family_textured_passes` textured for the villager/wandering-trader, plus
@@ -758,10 +765,10 @@ When an agent does any of the following, update this file in the same slice:
     below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose (the
     `PiglinModel` `DANCING`, `CROSSBOW_HOLD`, `ATTACKING_WITH_MELEE_WEAPON`, and `ADMIRING_ITEM` poses
     and the `AbstractPiglinModel` ear flap are implemented for the piglin/brute — see below), the `IllagerModel`
-    pillager `CROSSBOW_CHARGE` override and riding sit
+    riding sit
     pose (the default walk arm swing is implemented for the pillager, and the
     evoker/illusioner spellcasting raise, the illusioner `BOW_AND_ARROW`, the pillager
-    `CROSSBOW_HOLD`, the evoker/vindicator `CELEBRATING`, and the vindicator `ATTACKING`
+    `CROSSBOW_HOLD` and `CROSSBOW_CHARGE`, the evoker/vindicator `CELEBRATING`, and the vindicator `ATTACKING`
     axe swing poses are implemented — see the
     illager note above), the `VillagerModel` unhappy
     head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
@@ -1070,7 +1077,7 @@ When an agent does any of the following, update this file in the same slice:
         the shared `apply_humanoid_attack_animation` to the zombie/skeleton/illager/
         vindicator models is now just per-model wiring.
       - remaining slices: held-item refinements (first-person viewmodel; the
-        crossbow `CROSSBOW_CHARGE` pull-back / spear poses; the attack swing on the
+        piglin `CROSSBOW_CHARGE` pull-back / spear poses; the attack swing on the
         non-player humanoid models); the small armor stand's
         held items (needs the part-scale path the small mesh's baked-in
         `BABY_TRANSFORMER` skips). Item lighting

@@ -7676,6 +7676,69 @@ fn allay_dancing_flag_drives_the_dance_spin_state() {
 }
 
 #[test]
+fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
+    const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
+    const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_PILLAGER_ID,
+    ));
+
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 77)
+            .unwrap()
+    };
+    let set_charging = |store: &mut WorldStore, charging: bool| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 77,
+            values: vec![ProtocolEntityDataValue {
+                data_id: PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(charging),
+            }],
+        }));
+    };
+
+    // A pillager that has never drawn its crossbow projects zero use-item ticks.
+    assert_eq!(source(&store, 1.0).pillager_crossbow_charge_ticks, 0.0);
+    store.advance_entity_client_animations(3);
+    assert_eq!(source(&store, 1.0).pillager_crossbow_charge_ticks, 0.0);
+
+    // Vanilla `LivingEntity` reconstructs `getTicksUsingItem()` as a per-tick count that rises while the
+    // crossbow draw (use-item) is active; the renderer reads `getTicksUsingItem(partialTicks)`.
+    set_charging(&mut store, true);
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        source(&store, 0.0).pillager_crossbow_charge_ticks,
+        1.0,
+        "one tick of charging counts as one use-item tick"
+    );
+    // The partial tick adds the in-between fraction, matching `getTicksUsingItem(partialTicks)`.
+    assert_eq!(source(&store, 0.5).pillager_crossbow_charge_ticks, 1.5);
+
+    store.advance_entity_client_animations(9);
+    assert_eq!(
+        source(&store, 0.0).pillager_crossbow_charge_ticks,
+        10.0,
+        "the counter keeps climbing while the draw is held"
+    );
+
+    // Clearing the charging flag resets the counter to zero (the draw stopped).
+    set_charging(&mut store, false);
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        source(&store, 1.0).pillager_crossbow_charge_ticks,
+        0.0,
+        "releasing the crossbow resets the use-item counter"
+    );
+}
+
+#[test]
 fn axolotl_playing_dead_flag_drives_the_eased_factor() {
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;

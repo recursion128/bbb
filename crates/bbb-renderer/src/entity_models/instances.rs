@@ -284,10 +284,15 @@ entity_render_state! {
     /// a calm drowned, and a drowned not holding a trident.
     (with_drowned_throw_trident) drowned_throw_trident: bool = false;
     /// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17):
-    /// `Pillager.getArmPose` returns `CROSSBOW_CHARGE` instead of `CROSSBOW_HOLD` while drawing. The
-    /// charge pose itself (the pull-back animation, which needs `ticksUsingItem`) is deferred, so this
-    /// only suppresses the hold pose during the draw. `false` for every non-pillager entity.
+    /// `Pillager.getArmPose` returns `CROSSBOW_CHARGE` instead of `CROSSBOW_HOLD` while drawing, so the
+    /// pillager pulls the crossbow back ([`illager_crossbow_charge_ticks`](Self::illager_crossbow_charge_ticks)
+    /// drives the draw). `false` for every non-pillager entity.
     (with_is_charging_crossbow) is_charging_crossbow: bool = false;
+    /// Vanilla `IllagerRenderState.ticksUsingItem` for the pillager `CROSSBOW_CHARGE` draw — the
+    /// reconstructed `getTicksUsingItem()`. `AnimationUtils.animateCrossbowCharge` lerps the pulling arm
+    /// from rest to full draw over `ticksUsingItem / maxChargeDuration`. `0.0` for a pillager not charging
+    /// and every other entity (only read while [`is_charging_crossbow`](Self::is_charging_crossbow)).
+    (with_illager_crossbow_charge_ticks) illager_crossbow_charge_ticks: f32 = 0.0;
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
     /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
     /// ±0.05`). `false` for every other entity.
@@ -1786,6 +1791,7 @@ mod tests {
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,
                 is_charging_crossbow: false,
+                illager_crossbow_charge_ticks: 0.0,
                 enderman_carrying: false,
                 enderman_creepy: false,
                 bat_resting: false,

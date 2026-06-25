@@ -1,11 +1,16 @@
 use super::{
-    apply_crossbow_hold_pose, apply_half_amplitude_leg_swing, apply_head_look,
-    apply_humanoid_weapon_swing_down, humanoid_arm_swing_pose, PartPose, ILLAGER_HAT_COLOR,
-    ILLAGER_ROBE, PART_POSE_ZERO,
+    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_half_amplitude_leg_swing,
+    apply_head_look, apply_humanoid_weapon_swing_down, humanoid_arm_swing_pose, PartPose,
+    ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+
+/// Vanilla `CrossbowItem.getChargeDuration` without a Quick Charge enchant: `floor(1.25 · 20) = 25`
+/// ticks. The pillager's `animateCrossbowCharge` lerps over this; the rare Quick Charge enchant (which
+/// shortens it) is not projected, a minor draw-speed simplification.
+const PILLAGER_CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
 
 pub(in crate::entity_models) const MODEL_LAYER_EVOKER: &str = "minecraft:evoker#main";
 pub(in crate::entity_models) const MODEL_LAYER_ILLUSIONER: &str = "minecraft:illusioner#main";
@@ -304,8 +309,8 @@ fn apply_illager_bow_aim(root: &mut ModelPart, head_yaw_degrees: f32, head_pitch
 }
 
 /// Whether a pillager levels its crossbow this frame (vanilla `Pillager.getArmPose` returning
-/// `CROSSBOW_HOLD`): it holds a crossbow and is not mid-draw (`isChargingCrossbow()`, whose distinct
-/// `CROSSBOW_CHARGE` pull-back pose is deferred).
+/// `CROSSBOW_HOLD`): it holds a crossbow and is not mid-draw (`isChargingCrossbow()`, which instead
+/// takes the higher-priority `CROSSBOW_CHARGE` pull-back pose).
 fn illager_is_holding_crossbow(instance: &EntityModelInstance) -> bool {
     instance.render_state.main_hand_holds_crossbow && !instance.render_state.is_charging_crossbow
 }
@@ -313,8 +318,8 @@ fn illager_is_holding_crossbow(instance: &EntityModelInstance) -> bool {
 /// The resolved illager arm pose for a frame, mirroring each family's vanilla `getArmPose()` for the
 /// poses bbb renders. `Crossed` shows the static folded `arms` part; every other pose uses the uncrossed
 /// separate arms. An aggressive vindicator now chops (`Attacking`) and an aggressive illusioner draws its
-/// bow (`BowAndArrow`) — `is_aggressive` is projected for both. The pillager `CROSSBOW_CHARGE` draw (needs
-/// `ticksUsingItem`) is deferred, so a charging pillager keeps the `Swing`/`CrossbowHold` arms.
+/// bow (`BowAndArrow`) — `is_aggressive` is projected for both. A charging pillager pulls its crossbow
+/// back (the `Swing` layout's `CROSSBOW_CHARGE` sub-pose, driven by the projected draw ticks).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum IllagerArmPose {
     /// Folded `arms` part — vanilla `CROSSED` (idle evoker/vindicator/illusioner).
@@ -389,11 +394,12 @@ fn resolve_illager_arm_pose(
 /// [`IllagerArmPose`] with the vanilla `IllagerModel` child names. `setup_anim` looks the head
 /// ([`apply_head_look`] on `head`) and swings the legs at the villager-family half amplitude
 /// ([`apply_half_amplitude_leg_swing`]), then applies the resolved arm pose: the pillager swings its
-/// separate arms ([`humanoid_arm_swing_pose`]) and levels a held crossbow ([`apply_illager_crossbow_hold`]);
+/// separate arms ([`humanoid_arm_swing_pose`]) and either pulls back a charging crossbow
+/// ([`apply_crossbow_charge_pose`]) or levels a held one ([`apply_crossbow_hold_pose`]);
 /// a casting evoker/illusioner raises the `SPELLCASTING` arms ([`illager_spellcast_arm_pose`]); an
 /// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); an aggressive vindicator chops its axe
 /// ([`apply_humanoid_weapon_swing_down`]); a celebrating evoker/vindicator dances
-/// ([`illager_celebrate_arm_pose`]). The pillager `CROSSBOW_CHARGE` draw and the riding sit pose defer.
+/// ([`illager_celebrate_arm_pose`]). The riding sit pose defers.
 pub(in crate::entity_models) struct IllagerModel {
     root: ModelPart,
     pose: IllagerArmPose,
@@ -441,9 +447,17 @@ impl EntityModel for IllagerModel {
                     let arm = self.root.child_mut(name);
                     arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
                 }
-                // A pillager holding its crossbow levels it along the head look, overwriting the walk
-                // swing (vanilla `CROSSBOW_HOLD`). The charge pull-back pose is deferred.
-                if illager_is_holding_crossbow(instance) {
+                // Vanilla `Pillager.getArmPose`: `CROSSBOW_CHARGE` (drawing) takes priority over
+                // `CROSSBOW_HOLD` (holding a level crossbow). A charging pillager pulls the crossbow back
+                // ([`apply_crossbow_charge_pose`] over the projected draw ticks), overwriting the walk
+                // swing; otherwise a held crossbow levels along the head look.
+                if render_state.is_charging_crossbow {
+                    apply_crossbow_charge_pose(
+                        &mut self.root,
+                        PILLAGER_CROSSBOW_CHARGE_DURATION_TICKS,
+                        render_state.illager_crossbow_charge_ticks,
+                    );
+                } else if illager_is_holding_crossbow(instance) {
                     apply_crossbow_hold_pose(
                         &mut self.root,
                         render_state.head_yaw,

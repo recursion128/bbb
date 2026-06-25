@@ -369,6 +369,30 @@ pub(in crate::entity_models) fn apply_crossbow_hold_pose(
     left.pose.rotation = [-1.5 + head_pitch, 0.6 + head_yaw, left.pose.rotation[2]];
 }
 
+/// Vanilla `AnimationUtils.animateCrossbowCharge(rightArm, leftArm, maxChargeDuration, ticksUsingItem,
+/// holdingInRightArm = true)`: the right (holding) arm braces the crossbow (`yRot = -0.8`,
+/// `xRot = -0.97079635`) while the left (pulling) arm draws the string back over the charge — its `xRot`
+/// lerps `-0.97079635 → -π/2` and its `yRot` lerps `0.4 → 0.85` as `ticksUsingItem / maxChargeDuration`
+/// climbs `0 → 1` (clamped). Shared by every humanoid that draws a crossbow (the pillager, and the piglin
+/// once wired). `max_charge_duration` is the vanilla `CrossbowItem.getChargeDuration` (25 ticks without a
+/// Quick Charge enchant — the rare enchant is not projected, a minor draw-speed simplification).
+pub(in crate::entity_models) fn apply_crossbow_charge_pose(
+    root: &mut ModelPart,
+    max_charge_duration: f32,
+    ticks_using_item: f32,
+) {
+    const HOLD_X_ROT: f32 = -0.97079635;
+    let lerp_alpha = (ticks_using_item.clamp(0.0, max_charge_duration)) / max_charge_duration;
+    {
+        let right = root.child_mut("right_arm");
+        right.pose.rotation[1] = -0.8;
+        right.pose.rotation[0] = HOLD_X_ROT;
+    }
+    let left = root.child_mut("left_arm");
+    left.pose.rotation[1] = 0.4 + (0.85 - 0.4) * lerp_alpha;
+    left.pose.rotation[0] = HOLD_X_ROT + (-std::f32::consts::FRAC_PI_2 - HOLD_X_ROT) * lerp_alpha;
+}
+
 /// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose applied to a humanoid model
 /// root by name: the body (`body`) leans forward and drops, the head (`head`) drops with it, the arms
 /// (`right_arm`/`left_arm`) tilt forward and ride down, and the legs (`right_leg`/`left_leg`) tuck back.

@@ -119,6 +119,7 @@ const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
+const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
 const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
 const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
 /// Vanilla `Rabbit.handleEntityEvent`: event `1` (`spawnSprintParticle`) also seeds the client-side
@@ -145,6 +146,11 @@ const ALLAY_DANCING_DATA_ID: u8 = 16;
 /// own accessor `DASH`; `LAST_POSE_CHANGE_TICK` follows at 20). `Camel.setupAnimationStates` reads
 /// `isDashing()` to gate the looping dash gallop.
 const CAMEL_DASH_DATA_ID: u8 = 19;
+/// Vanilla `Pillager.IS_CHARGING_CROSSBOW`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 17
+/// (Entity 0–7, LivingEntity 8–14, Mob 15, `Raider.IS_CELEBRATING` 16, then `Pillager`'s first own
+/// accessor). While set, the pillager is drawing its crossbow, and the client reconstructs
+/// `getTicksUsingItem` by counting ticks since the flag rose (the using-item flag rises with it).
+const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -360,6 +366,8 @@ pub struct EntityClientAnimationState {
     pub evoker_fangs: Option<EvokerFangsAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub allay_dance: Option<AllayDanceAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crossbow_charge: Option<CrossbowChargeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub axolotl: Option<AxolotlAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1193,6 +1201,41 @@ impl AllayDanceAnimationState {
         (self.spinning_animation_ticks0
             + (self.spinning_animation_ticks - self.spinning_animation_ticks0) * partial_tick)
             / 15.0
+    }
+}
+
+/// Canonical client-side `getTicksUsingItem` counter for a crossbow draw, reconstructing the value the
+/// `CROSSBOW_CHARGE` pose needs. Vanilla syncs only the binary `isChargingCrossbow()` flag (the using-item
+/// flag rises with it), so the client recovers the elapsed draw ticks by counting up while the flag is set
+/// (`LivingEntity` reconstructs `useItemRemaining = useDuration` when the flag rises, then decrements it
+/// each tick — `getTicksUsingItem() = useDuration - useItemRemaining` is exactly this count). The counter
+/// resets to `0` the moment charging stops.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct CrossbowChargeAnimationState {
+    /// Ticks elapsed since the crossbow draw began (vanilla `getTicksUsingItem()`).
+    #[serde(default)]
+    pub ticks: f32,
+}
+
+impl CrossbowChargeAnimationState {
+    /// Advances one client tick: count up while charging, reset to `0` otherwise.
+    fn advance_client_tick(&mut self, is_charging: bool) {
+        self.ticks = if is_charging { self.ticks + 1.0 } else { 0.0 };
+    }
+
+    /// Whether the draw has fully stopped (counter back to `0`), so the state can be dropped.
+    fn is_settled(&self) -> bool {
+        self.ticks == 0.0
+    }
+
+    /// Vanilla `LivingEntity.getTicksUsingItem(partialTicks)` = `getTicksUsingItem() + partialTicks` while
+    /// using; `0` once the draw stops (the counter is `0`).
+    fn ticks_using_item(&self, partial_tick: f32) -> f32 {
+        if self.ticks > 0.0 {
+            self.ticks + partial_tick
+        } else {
+            0.0
+        }
     }
 }
 
@@ -2920,6 +2963,14 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.spinning_progress(partial_tick))
     }
 
+    /// Vanilla `IllagerRenderState.ticksUsingItem` (`getTicksUsingItem(partialTicks)`) for the pillager's
+    /// `CROSSBOW_CHARGE` draw, reconstructed from the charge counter. `0.0` for a pillager that is not
+    /// charging and every other entity.
+    pub fn crossbow_charge_ticks_using_item(&self, partial_tick: f32) -> f32 {
+        self.crossbow_charge
+            .map_or(0.0, |state| state.ticks_using_item(partial_tick))
+    }
+
     /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the
     /// `0..1` eased blend into `AdultAxolotlModel.setupPlayDeadAnimation`. `0.0` for an awake axolotl
     /// and every other entity.
@@ -3290,6 +3341,10 @@ impl EntityClientAnimationState {
         // metadata in the tick loop ([`creaking_is_tearing_down`]). `false` for entities that do not
         // consume it.
         creaking_is_tearing_down: bool,
+        // The synced `Pillager.IS_CHARGING_CROSSBOW` boolean (`isChargingCrossbow()`), read from the
+        // entity metadata in the tick loop ([`pillager_is_charging_crossbow`]). `false` for entities that
+        // do not consume it.
+        pillager_is_charging_crossbow: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -3490,6 +3545,20 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(AllayDanceAnimationState::default)
                     .advance_client_tick(allay_is_dancing);
             }
+            VANILLA_ENTITY_TYPE_PILLAGER_ID => {
+                // Vanilla `Pillager` `CROSSBOW_CHARGE`: while `isChargingCrossbow()` is set, count up the
+                // draw ticks (the client's `getTicksUsingItem` reconstruction) for `animateCrossbowCharge`;
+                // reset to 0 once it stops. Only spin up the state while charging (or already counting).
+                if pillager_is_charging_crossbow || self.crossbow_charge.is_some() {
+                    let charge = self
+                        .crossbow_charge
+                        .get_or_insert_with(CrossbowChargeAnimationState::default);
+                    charge.advance_client_tick(pillager_is_charging_crossbow);
+                    if charge.is_settled() {
+                        self.crossbow_charge = None;
+                    }
+                }
+            }
             VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
                 // Vanilla `Axolotl.tickAdultAnimations`: the play-dead / in-water / on-ground state
                 // machine drives three `BinaryAnimator`s plus the moving animator.
@@ -3590,6 +3659,14 @@ pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
 /// `19` is not this boolean) fall back to `false`.
 pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, CAMEL_DASH_DATA_ID, false)
+}
+
+/// Vanilla `Pillager.isChargingCrossbow()` (`entityData.get(IS_CHARGING_CROSSBOW)`): the synced boolean
+/// that drives the `CROSSBOW_CHARGE` draw — the client counts ticks since it rose for `getTicksUsingItem`.
+/// Read straight from the entity metadata in the tick loop; non-pillagers (whose synced slot `17` is not
+/// this boolean — e.g. the spellcaster illagers' `DATA_SPELL_CASTING_ID` byte) fall back to `false`.
+pub(crate) fn pillager_is_charging_crossbow(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID, false)
 }
 
 /// Vanilla `Allay.isDancing()` (`entityData.get(DATA_DANCING)`): the synced boolean that drives the
