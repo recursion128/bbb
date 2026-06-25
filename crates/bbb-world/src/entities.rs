@@ -198,6 +198,33 @@ pub struct ItemEntityStackState {
     pub stack: ProtocolItemStackSummary,
 }
 
+/// The wall the front of an item frame faces (vanilla `ItemFrame.getDirection`). Drives the frame's
+/// render orientation: horizontal facings rotate the frame about Y, vertical facings tilt it about X.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ItemFrameFacing {
+    Down,
+    Up,
+    North,
+    South,
+    West,
+    East,
+}
+
+/// Everything needed to render one item-frame entity (vanilla `ItemFrameRenderState`): the resolved
+/// wall-mounted center, the facing wall, the `0..=7` item rotation, whether it is a glow frame, the
+/// framed item (`None` for an empty frame), and whether that item is a filled map (which vanilla renders
+/// as a full-frame map rather than a `0.5`-scaled item).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ItemFrameRenderState {
+    pub entity_id: i32,
+    pub center: EntityVec3,
+    pub facing: ItemFrameFacing,
+    pub rotation: u8,
+    pub glow: bool,
+    pub item: Option<ProtocolItemStackSummary>,
+    pub has_map: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityState {
     pub id: i32,
@@ -1039,6 +1066,12 @@ impl WorldStore {
 
     pub fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
         self.entities.item_entity_stacks()
+    }
+
+    /// The render state of every item-frame / glow-item-frame entity (center, facing, item rotation,
+    /// glow flag, framed item, map flag). Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
+    pub fn item_frame_render_states(&self) -> Vec<ItemFrameRenderState> {
+        self.entities.item_frame_render_states()
     }
 
     /// The item a humanoid entity holds in its main (`off_hand = false`) or off hand, or `None` for an

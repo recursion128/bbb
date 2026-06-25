@@ -1,6 +1,6 @@
 use bbb_protocol::packets::{EntityDataValue, EntityDataValueKind, ItemStackSummary};
 
-use crate::entities::EntityVec3;
+use crate::entities::{EntityVec3, ItemFrameFacing};
 
 use super::{
     entity_data_direction, vanilla_direction_from_3d_data, EntityPickBoundsState, VanillaAxis,
@@ -9,6 +9,7 @@ use super::{
 
 const HANGING_DATA_DIRECTION_ID: u8 = 8;
 const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
+const ITEM_FRAME_DATA_ROTATION_ID: u8 = 10;
 const PAINTING_DATA_VARIANT_ID: u8 = 9;
 const ITEM_FRAME_DEPTH: f32 = 0.0625;
 const ITEM_FRAME_DEFAULT_SIZE: f32 = 0.75;
@@ -122,6 +123,54 @@ fn hanging_direction(add_entity_data: i32, data_values: &[EntityDataValue]) -> V
         .unwrap_or_else(|| vanilla_direction_from_3d_data(add_entity_data))
 }
 
+/// The wall the item frame faces (vanilla `ItemFrame.getDirection`), from the synched direction or the
+/// spawn-packet `data` fallback.
+pub(crate) fn item_frame_facing(
+    add_entity_data: i32,
+    data_values: &[EntityDataValue],
+) -> ItemFrameFacing {
+    match hanging_direction(add_entity_data, data_values) {
+        VanillaDirection::Down => ItemFrameFacing::Down,
+        VanillaDirection::Up => ItemFrameFacing::Up,
+        VanillaDirection::North => ItemFrameFacing::North,
+        VanillaDirection::South => ItemFrameFacing::South,
+        VanillaDirection::West => ItemFrameFacing::West,
+        VanillaDirection::East => ItemFrameFacing::East,
+    }
+}
+
+/// The `0..=7` item rotation in the frame (vanilla `ItemFrame.getRotation`, `DATA_ROTATION % 8`), or `0`
+/// when the entity has not sent the rotation datum.
+pub(crate) fn item_frame_rotation(data_values: &[EntityDataValue]) -> u8 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == ITEM_FRAME_DATA_ROTATION_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Int(rotation) => Some(rotation.rem_euclid(8) as u8),
+            _ => None,
+        })
+        .unwrap_or(0)
+}
+
+/// The non-empty item displayed in the frame (vanilla `ItemFrame.getItem`, the `DATA_ITEM` datum), or
+/// `None` for an empty frame.
+pub(crate) fn item_frame_item(data_values: &[EntityDataValue]) -> Option<&ItemStackSummary> {
+    data_values
+        .iter()
+        .find(|value| value.data_id == ITEM_FRAME_DATA_ITEM_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::ItemStack(item) if item.item_id.is_some() && item.count > 0 => {
+                Some(item)
+            }
+            _ => None,
+        })
+}
+
+/// Whether the frame holds a filled map (vanilla renders it as a full-frame map).
+pub(crate) fn item_frame_holds_map(data_values: &[EntityDataValue]) -> bool {
+    item_frame_has_framed_map(data_values)
+}
+
 fn item_frame_has_framed_map(data_values: &[EntityDataValue]) -> bool {
     data_values
         .iter()
@@ -229,3 +278,99 @@ const PAINTING_VARIANT_SIZES: &[(f32, f32)] = &[
     (3.0, 3.0), // tides
     (3.0, 3.0), // dennis
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_protocol::packets::DataComponentPatchSummary;
+
+    fn datum(data_id: u8, value: EntityDataValueKind) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 0,
+            value,
+        }
+    }
+
+    fn item(item_id: Option<i32>, count: i32, map: bool) -> ItemStackSummary {
+        let mut component_patch = DataComponentPatchSummary::default();
+        if map {
+            component_patch.added_type_ids = vec![MAP_ID_DATA_COMPONENT_TYPE_ID];
+        }
+        ItemStackSummary {
+            item_id,
+            count,
+            component_patch,
+        }
+    }
+
+    #[test]
+    fn rotation_reads_datum_and_wraps_mod_8() {
+        assert_eq!(
+            item_frame_rotation(&[datum(
+                ITEM_FRAME_DATA_ROTATION_ID,
+                EntityDataValueKind::Int(5)
+            )]),
+            5
+        );
+        // Vanilla `ItemFrame.getRotation` wraps `% 8`.
+        assert_eq!(
+            item_frame_rotation(&[datum(
+                ITEM_FRAME_DATA_ROTATION_ID,
+                EntityDataValueKind::Int(11)
+            )]),
+            3
+        );
+        // A missing datum defaults to 0.
+        assert_eq!(item_frame_rotation(&[]), 0);
+    }
+
+    #[test]
+    fn facing_reads_direction_then_falls_back_to_spawn_data() {
+        // The synched direction wins (3 = south in the 3D data encoding).
+        assert_eq!(
+            item_frame_facing(
+                0,
+                &[datum(
+                    HANGING_DATA_DIRECTION_ID,
+                    EntityDataValueKind::Direction(3)
+                )]
+            ),
+            ItemFrameFacing::South
+        );
+        // Without the datum, the spawn-packet `data` fallback is used (2 = north).
+        assert_eq!(item_frame_facing(2, &[]), ItemFrameFacing::North);
+    }
+
+    #[test]
+    fn item_returns_only_non_empty_stacks() {
+        assert_eq!(
+            item_frame_item(&[datum(
+                ITEM_FRAME_DATA_ITEM_ID,
+                EntityDataValueKind::ItemStack(item(Some(1), 1, false))
+            )]),
+            Some(&item(Some(1), 1, false))
+        );
+        // An empty stack (no id / zero count) is treated as no item.
+        assert_eq!(
+            item_frame_item(&[datum(
+                ITEM_FRAME_DATA_ITEM_ID,
+                EntityDataValueKind::ItemStack(ItemStackSummary::empty())
+            )]),
+            None
+        );
+        assert_eq!(item_frame_item(&[]), None);
+    }
+
+    #[test]
+    fn holds_map_detects_the_map_id_component() {
+        assert!(item_frame_holds_map(&[datum(
+            ITEM_FRAME_DATA_ITEM_ID,
+            EntityDataValueKind::ItemStack(item(Some(2), 1, true))
+        )]));
+        assert!(!item_frame_holds_map(&[datum(
+            ITEM_FRAME_DATA_ITEM_ID,
+            EntityDataValueKind::ItemStack(item(Some(2), 1, false))
+        )]));
+    }
+}

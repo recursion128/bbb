@@ -17,20 +17,23 @@ use super::{
     EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash,
     EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
     EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
-    ItemEntityStackState, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
+    ItemEntityStackState, ItemFrameRenderState, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     entity_animation_uses_in_water, guardian_attack_duration, guardian_attack_target_id,
     guardian_is_moving, is_guardian_entity_type, warden_heartbeat_delay,
 };
 use crate::entities::dimensions::{
-    entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
-    vanilla_is_vex, vanilla_is_wither, vanilla_living_entity_type,
-    vanilla_pick_bounds_for_entity_data, vanilla_render_scale, vanilla_zombie_model_family,
-    ENTITY_DATA_POSE_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
+    item_frame_rotation, vanilla_client_position_for_entity_data,
+    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
+    vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
+    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data, vanilla_render_scale,
+    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
+    VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -972,6 +975,40 @@ impl EntityStore {
 
     pub(crate) fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
         self.item_stacks_for_entity_types(&[VANILLA_ENTITY_TYPE_ITEM_ID])
+    }
+
+    /// The render state of every item-frame / glow-item-frame entity: its resolved wall center, the
+    /// facing wall, the `0..=7` item rotation, the glow flag, the framed item, and whether that item is a
+    /// filled map. Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
+    pub(crate) fn item_frame_render_states(&self) -> Vec<ItemFrameRenderState> {
+        let mut frames = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if !ITEM_FRAME_ENTITY_TYPE_IDS.contains(&identity.entity_type_id) {
+                continue;
+            }
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
+                continue;
+            };
+            frames.push(ItemFrameRenderState {
+                entity_id: identity.id,
+                center: transform.position,
+                facing: item_frame_facing(identity.data, &metadata.data_values),
+                rotation: item_frame_rotation(&metadata.data_values),
+                glow: identity.entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+                item: item_frame_item(&metadata.data_values).cloned(),
+                has_map: item_frame_holds_map(&metadata.data_values),
+            });
+        }
+        frames
     }
 
     /// The item a humanoid entity holds in its main (`off_hand = false`) or off hand (vanilla

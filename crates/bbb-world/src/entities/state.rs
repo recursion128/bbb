@@ -5,6 +5,6 @@ pub use crate::entities::{
     EnderDragonAnimationState, EntityCameraPoseState, EntityClientAnimationState,
     EntityModelSourceState, EntityPickTargetState, EntityState, EntityStatusProbeState,
     EntityTransformState, EntityVec3, GuardianBeamSource, HurtingProjectileState,
-    ItemEntityStackState, PolarBearStandingAnimationState, ProjectilePowerUpdateState,
-    VehicleMoveReport,
+    ItemEntityStackState, ItemFrameFacing, ItemFrameRenderState, PolarBearStandingAnimationState,
+    ProjectilePowerUpdateState, VehicleMoveReport,
 };
