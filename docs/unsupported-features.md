@@ -1744,20 +1744,27 @@ When an agent does any of the following, update this file in the same slice:
       `CubeDeformation(-0.2)`), with the two arms (`texOffs(23, 0)`/`texOffs(23, 6)`, 1×4×2
       inset by `CubeDeformation(-0.01)`) and the two zero-thickness `0×5×8` wings
       (`texOffs(16, 14)`, neither mirrored) parented under the body so the body tilt carries
-      them; the non-dancing `AllayModel.setupAnim` idle / flying pose (head look `yRot`/`xRot`,
+      them; the `AllayModel.setupAnim` idle / flying pose (head look `yRot`/`xRot`,
       arm idle roll `±(0.43633232 - cos(ageInTicks · 9° + 3π/2) · π · 0.075 · (1 -
       flyingFactor))`, wings flapping `yRot = ±π/4 ∓ (cos(ageInTicks · 20° + walkPos) · π ·
       0.15 + walkSpeed)` and pitched `0.43633232 · (1 - flyingFactor)`, body tilt
       `flyingFactor · π/4`, and the vertical root bob `23.5 + cos(ageInTicks · 9°) · 0.25 · (1
       - flyingFactor)` with `flyingFactor = min(walkSpeed / 0.3, 1)`), driven by the projected
       head yaw/pitch, walk animation, and `age_in_ticks`, under the standard
-      `LivingEntityRenderer.setupRotations`. The textured base layer draws the
-      `textures/entity/allay/allay.png` atlas reference into the translucent mesh
+      `LivingEntityRenderer.setupRotations`. The dance pose IS now driven: while the synced
+      `DATA_DANCING` flag is set the head-look is replaced by the dance head tilt (`head.yRot =
+      cos(danceSpeed) · 30° · (1 - spinningProgress)`, `head.zRot = cos(danceSpeed) · 14° · (1 -
+      spinningProgress)`) and the body sway (`root.zRot = cos(danceSpeed) · 16° · (1 -
+      spinningProgress)`, `danceSpeed = ageInTicks · 8° + walkSpeed`), whirling the whole root
+      `root.yRot = 4π · spinningProgress` during the `isSpinning` sub-window
+      (`dancingAnimationTicks % 55 < 15`); the world client tick reconstructs the
+      `dancingAnimationTicks` / `spinningAnimationTicks` accumulators from the `DATA_DANCING`
+      rising edge and projects `isDancing` / `isSpinning` / `spinningProgress`. The textured base
+      layer draws the `textures/entity/allay/allay.png` atlas reference into the translucent mesh
       (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
-      hierarchy as the colored path. The dance pose (`isDancing`/`isSpinning`,
-      `spinningProgress`), the held-item arm poses (`holdingAnimationProgress` scaling the arm
-      roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch and
-      held item), and the constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and
+      hierarchy as the colored path. The held-item arm poses (`holdingAnimationProgress` scaling
+      the arm roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch
+      and held item) and the constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and
       overlay remain unsupported
     - strider entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `129` to the real `AdultStriderModel` /

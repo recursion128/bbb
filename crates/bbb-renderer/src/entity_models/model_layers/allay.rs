@@ -167,16 +167,23 @@ pub(in crate::entity_models) fn allay_arm_idle_bob_amount(
             * idle_bob_factor
 }
 
+/// Vanilla `AllayModel.setupAnim` dance phase: `danceSpeed = ageInTicks·8° + walkAnimationSpeed`
+/// (radians). The shared cosine of this phase drives the body sway (`16°`), the head Y-tilt
+/// (`30°`), and the head Z-tilt (`14°`).
+fn allay_dance_speed(age_in_ticks: f32, walk_animation_speed: f32) -> f32 {
+    age_in_ticks * 8.0_f32.to_radians() + walk_animation_speed
+}
+
 /// The allay `root` part's bind pose (vanilla `(0, 23.5, 0)`); the idle bob animates its `y`.
 const ALLAY_ROOT_POSE: PartPose = PartPose {
     offset: [0.0, ALLAY_ROOT_BASE_Y, 0.0],
     rotation: [0.0, 0.0, 0.0],
 };
 
-/// Applies the vanilla `AllayModel.setupAnim` idle/flying pose to the unified tree: the `root` bob,
-/// the head look, the body flying tilt, the arm idle bob, and the wing flap. The dance pose and the
-/// held-item arms are deferred entity-side state, so this is the non-dancing, empty-handed pose. Every
-/// value is set absolutely each frame, reproducing the hand-walked emit exactly.
+/// Applies the vanilla `AllayModel.setupAnim` pose to the unified tree: the `root` bob, the head
+/// look (or the dance head tilt + body sway/spin), the body flying tilt, the arm idle bob, and the
+/// wing flap. The held-item arms are deferred entity-side state, so this is the empty-handed pose.
+/// Every value is set absolutely each frame, reproducing the hand-walked emit exactly.
 fn apply_allay_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let age = instance.render_state.age_in_ticks;
     let walk_pos = instance.render_state.walk_animation_pos;
@@ -187,9 +194,36 @@ fn apply_allay_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let wing_x = allay_wing_rest_x_rot(walk_speed);
     let flap = allay_wing_flap_amount(age, walk_pos, walk_speed);
 
+    let is_dancing = instance.render_state.allay_dancing;
+    let is_spinning = instance.render_state.allay_spinning;
+    let spin_progress = instance.render_state.allay_spinning_progress;
+
     let allay_root = root.child_mut("root");
     allay_root.pose.offset[1] = allay_root_y(age, walk_speed);
-    allay_root.child_mut("head").pose.rotation = [head_pitch, head_yaw, 0.0];
+    if is_dancing {
+        // Vanilla dance pose: the body sways (`root.zRot`) and the head tilts in Y/Z, all
+        // cross-faded into a full `4π·spinningProgress` body spin (`root.yRot`) by the spin
+        // blend. The head pitch/look is dropped while dancing (vanilla leaves `head.xRot` at
+        // its reset bind pose), and `root.yRot` only spins during the `isSpinning` sub-window.
+        let dance_cos = allay_dance_speed(age, walk_speed).cos();
+        let dance_frequency = dance_cos * 16.0_f32.to_radians();
+        let head_tilt_y = dance_cos * 30.0_f32.to_radians();
+        let head_tilt_z = dance_cos * 14.0_f32.to_radians();
+        let root_y_rot = if is_spinning {
+            4.0 * std::f32::consts::PI * spin_progress
+        } else {
+            0.0
+        };
+        allay_root.pose.rotation = [0.0, root_y_rot, dance_frequency * (1.0 - spin_progress)];
+        allay_root.child_mut("head").pose.rotation = [
+            0.0,
+            head_tilt_y * (1.0 - spin_progress),
+            head_tilt_z * (1.0 - spin_progress),
+        ];
+    } else {
+        allay_root.pose.rotation = [0.0, 0.0, 0.0];
+        allay_root.child_mut("head").pose.rotation = [head_pitch, head_yaw, 0.0];
+    }
 
     let body = allay_root.child_mut("body");
     body.pose.rotation = [allay_body_x_rot(walk_speed), 0.0, 0.0];

@@ -579,6 +579,18 @@ entity_render_state! {
     /// `biteProgress == 0`). `0.0` (hidden) for an un-attacked fang and every other
     /// entity.
     (with_evoker_fangs_bite_progress) evoker_fangs_bite_progress: f32 = 0.0;
+    /// Vanilla `AllayModel.setupAnim`: `true` while the allay's synced `DATA_DANCING`
+    /// flag is set, gating the dance pose (head tilt + body sway/spin) over the normal
+    /// head-look. `false` for a non-dancing allay and every other entity.
+    (with_allay_dancing) allay_dancing: bool = false;
+    /// Vanilla `AllayModel`: `true` during the spin sub-window of the dance
+    /// (`danceAnimation % 55 < 15`), selecting the `4π * progress` body spin
+    /// (`root.yRot`). `false` otherwise and for every non-allay entity.
+    (with_allay_spinning) allay_spinning: bool = false;
+    /// Vanilla `AllayModel`: the `0..1` lerped spin blend (`spinningAnimation / 15`)
+    /// that cross-fades the body sway (`root.zRot`/`head` tilt scaled by `1 - progress`)
+    /// into the spin. `0.0` for a non-spinning allay and every other entity.
+    (with_allay_spinning_progress) allay_spinning_progress: f32 = 0.0;
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(Mth.sin(lerp(oFlap, flap)) + 1) * lerp(oFlapSpeed, flapSpeed)`): the combined
     /// wing-flap angle `ParrotModel.setupAnim` writes to the wings (`leftWing.zRot =
@@ -1742,6 +1754,9 @@ mod tests {
                 chicken_flap_speed: 0.0,
                 slime_squish: 0.0,
                 evoker_fangs_bite_progress: 0.0,
+                allay_dancing: false,
+                allay_spinning: false,
+                allay_spinning_progress: 0.0,
                 parrot_flap_angle: 0.0,
                 in_water: false,
                 on_ground: false,

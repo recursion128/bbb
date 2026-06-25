@@ -106,6 +106,12 @@ const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
 const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
+const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
+/// Vanilla `Allay.DATA_DANCING`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 16 (Entity
+/// 0–7, LivingEntity 8–14, Mob 15, then `Allay`'s first own accessor `DATA_DANCING`; the allay is a
+/// `PathfinderMob`, not an `AgeableMob`, so there is no baby slot). `Allay.tick` advances the dance /
+/// spin accumulators while `isDancing()`.
+const ALLAY_DANCING_DATA_ID: u8 = 16;
 /// Vanilla `Camel.DASH`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 19 (Entity 0–7,
 /// LivingEntity 8–14, Mob 15, AgeableMob 16–17, `AbstractHorse.DATA_ID_FLAGS` 18, then Camel's first
 /// own accessor `DASH`; `LAST_POSE_CHANGE_TICK` follows at 20). `Camel.setupAnimationStates` reads
@@ -293,6 +299,8 @@ pub struct EntityClientAnimationState {
     pub slime: Option<SlimeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub evoker_fangs: Option<EvokerFangsAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allay_dance: Option<AllayDanceAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parrot_flap: Option<ParrotFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -934,6 +942,66 @@ pub struct SlimeAnimationState {
     /// Vanilla `Slime.wasOnGround` (field initializer `false`).
     #[serde(default)]
     pub was_on_ground: bool,
+}
+
+/// Canonical client-side allay dance/spin accumulators, mirroring vanilla `Allay`
+/// (`dancingAnimationTicks` / `spinningAnimationTicks` / `spinningAnimationTicks0`). While the synced
+/// `DATA_DANCING` boolean is set, `Allay.tick` increments the dance counter, drives the spin counter
+/// up while `isSpinning()` (the first 15 ticks of each 55-tick dance cycle) and down otherwise
+/// (clamped `0..=15`), and saves the previous spin counter for the partial-tick lerp. `AllayModel`
+/// turns them into the body spin (`root.yRot = 4π·spinningProgress`) and the head/body sway. The
+/// counters reset to `0` the moment dancing stops.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct AllayDanceAnimationState {
+    /// Vanilla `Allay.dancingAnimationTicks`.
+    #[serde(default)]
+    pub dancing_animation_ticks: f32,
+    /// Vanilla `Allay.spinningAnimationTicks`.
+    #[serde(default)]
+    pub spinning_animation_ticks: f32,
+    /// Vanilla `Allay.spinningAnimationTicks0` (the previous-tick spin counter, the lerp endpoint).
+    #[serde(default)]
+    pub spinning_animation_ticks0: f32,
+}
+
+impl AllayDanceAnimationState {
+    /// Advances one client tick of `Allay.tick`'s dance/spin accumulators.
+    fn advance_client_tick(&mut self, is_dancing: bool) {
+        if is_dancing {
+            self.dancing_animation_ticks += 1.0;
+            self.spinning_animation_ticks0 = self.spinning_animation_ticks;
+            if self.is_spinning() {
+                self.spinning_animation_ticks += 1.0;
+            } else {
+                self.spinning_animation_ticks -= 1.0;
+            }
+            self.spinning_animation_ticks = self.spinning_animation_ticks.clamp(0.0, 15.0);
+        } else {
+            self.dancing_animation_ticks = 0.0;
+            self.spinning_animation_ticks = 0.0;
+            self.spinning_animation_ticks0 = 0.0;
+        }
+    }
+
+    /// Vanilla `Allay.isDancing()` reconstructed from the accumulator: the dance counter only advances
+    /// while the synced `DATA_DANCING` flag is set, so a non-zero counter means the allay is dancing.
+    fn is_dancing(&self) -> bool {
+        self.dancing_animation_ticks > 0.0
+    }
+
+    /// Vanilla `Allay.isSpinning()`: `(dancingAnimationTicks % 55) < 15` — the allay spins for the
+    /// first 15 ticks of each 55-tick dance cycle.
+    fn is_spinning(&self) -> bool {
+        self.dancing_animation_ticks % 55.0 < 15.0
+    }
+
+    /// Vanilla `Allay.getSpinningProgress(partialTick)`: `lerp(partialTick, spinningTicks0,
+    /// spinningTicks) / 15`, the `0..1` spin ramp.
+    fn spinning_progress(&self, partial_tick: f32) -> f32 {
+        (self.spinning_animation_ticks0
+            + (self.spinning_animation_ticks - self.spinning_animation_ticks0) * partial_tick)
+            / 15.0
+    }
 }
 
 /// Canonical client-side evoker-fangs attack animation, mirroring vanilla `EvokerFangs`
@@ -2279,6 +2347,27 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `AllayRenderState.isDancing` (`Allay.isDancing()`): gates `AllayModel.setupAnim`'s dance
+    /// branch (the body spin and head/body sway) against the plain head-look branch. `false` for every
+    /// non-allay entity and an allay that is not dancing.
+    pub fn allay_is_dancing(&self) -> bool {
+        self.allay_dance.is_some_and(|state| state.is_dancing())
+    }
+
+    /// Vanilla `AllayRenderState.isSpinning` (`Allay.isSpinning()`): whether the allay is in the
+    /// spinning phase of its dance (the body whirls `4π·spinningProgress`). `false` otherwise.
+    pub fn allay_is_spinning(&self) -> bool {
+        self.allay_dance
+            .is_some_and(|state| state.is_dancing() && state.is_spinning())
+    }
+
+    /// Vanilla `AllayRenderState.spinningProgress` (`Allay.getSpinningProgress(partialTick)`): the
+    /// `0..1` spin ramp blending the body spin in and out. `0.0` when the allay is not dancing.
+    pub fn allay_spinning_progress(&self, partial_tick: f32) -> f32 {
+        self.allay_dance
+            .map_or(0.0, |state| state.spinning_progress(partial_tick))
+    }
+
     /// The sniffer's active `Sniffer.State` animation (vanilla `Sniffer.onSyncedDataUpdated`'s
     /// one-shot `AnimationState`s) projected for `SnifferModel.setupAnim`: the `(state ordinal,
     /// elapsed seconds)` of the running triggered keyframe, or `(-1, -1.0)` when the sniffer is
@@ -2538,6 +2627,9 @@ impl EntityClientAnimationState {
         // The synced `Camel.DASH` boolean (`isDashing()`), read from the entity metadata in the tick
         // loop ([`camel_is_dashing`]). `false` for entities that do not consume it.
         camel_is_dashing: bool,
+        // The synced `Allay.DATA_DANCING` boolean (`isDancing()`), read from the entity metadata in the
+        // tick loop ([`allay_is_dancing`]). `false` for entities that do not consume it.
+        allay_is_dancing: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -2704,6 +2796,13 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
                     .animate_when(camel_is_dashing, self.age_ticks);
             }
+            VANILLA_ENTITY_TYPE_ALLAY_ID => {
+                // Vanilla `Allay.tick`: while the synced `DATA_DANCING` flag is set, advance the dance
+                // and spin counters; otherwise reset them. The counters drive `AllayModel`'s body spin.
+                self.allay_dance
+                    .get_or_insert_with(AllayDanceAnimationState::default)
+                    .advance_client_tick(allay_is_dancing);
+            }
             VANILLA_ENTITY_TYPE_CHICKEN_ID => self
                 .chicken_flap
                 .get_or_insert_with(ChickenFlapAnimationState::default)
@@ -2778,6 +2877,13 @@ pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
 /// `19` is not this boolean) fall back to `false`.
 pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, CAMEL_DASH_DATA_ID, false)
+}
+
+/// Vanilla `Allay.isDancing()` (`entityData.get(DATA_DANCING)`): the synced boolean that drives the
+/// dance/spin accumulators. Read straight from the entity metadata in the tick loop; non-allays (whose
+/// synced slot `16` is not this boolean) fall back to `false`.
+pub(crate) fn allay_is_dancing(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, ALLAY_DANCING_DATA_ID, false)
 }
 
 /// Vanilla `Warden.getHeartBeatDelay()` = `40 - floor(clamp(clientAngerLevel /

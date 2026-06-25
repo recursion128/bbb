@@ -718,6 +718,9 @@ fn entity_model_instance(
         .with_chicken_flap_speed(source.chicken_flap_speed)
         .with_slime_squish(source.slime_squish)
         .with_evoker_fangs_bite_progress(source.evoker_fangs_bite_progress)
+        .with_allay_dancing(source.allay_dancing)
+        .with_allay_spinning(source.allay_spinning)
+        .with_allay_spinning_progress(source.allay_spinning_progress)
         .with_parrot_flap_angle(source.parrot_flap_angle)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
@@ -2788,6 +2791,54 @@ mod tests {
         assert!(
             progress >= 0.0,
             "the projected dash timer drives CamelModel.setupAnim: {progress}"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_allay_dance_from_world() {
+        const ALLAY_DANCING_DATA_ID: u8 = 16;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            96,
+            VANILLA_ENTITY_TYPE_ALLAY_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let dance = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+                .iter()
+                .find(|instance| instance.entity_id == 96)
+                .map(|instance| {
+                    (
+                        instance.render_state.allay_dancing,
+                        instance.render_state.allay_spinning,
+                        instance.render_state.allay_spinning_progress,
+                    )
+                })
+        };
+
+        // A non-dancing allay projects the inert dance state (head-look pose, no spin).
+        assert_eq!(dance(&world), Some((false, false, 0.0)));
+
+        // Vanilla `Allay.tick`: the synced `DATA_DANCING` flag opens the dance, and the spin
+        // sub-window state flows through EntityModelSourceState into the renderer EntityRenderState
+        // (`AllayModel.setupAnim` dance branch: body spin/sway + head tilt).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 96,
+            values: vec![protocol_bool_data(ALLAY_DANCING_DATA_ID, true)],
+        }));
+        world.advance_entity_client_animations(1);
+        let (dancing, spinning, progress) =
+            dance(&world).expect("the dancing allay projects an instance");
+        assert!(
+            dancing,
+            "the synced flag drives AllayModel.setupAnim's dance branch"
+        );
+        assert!(spinning, "the dance opens in the spin sub-window");
+        assert!(
+            progress > 0.0,
+            "the projected spin ramp drives the body spin: {progress}"
         );
     }
 

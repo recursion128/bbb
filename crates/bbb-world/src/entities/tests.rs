@@ -7224,6 +7224,92 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
 }
 
 #[test]
+fn allay_dancing_flag_drives_the_dance_spin_state() {
+    const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
+    const ALLAY_DANCING_DATA_ID: u8 = 16;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        91,
+        VANILLA_ENTITY_TYPE_ALLAY_ID,
+    ));
+
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 91)
+            .unwrap()
+    };
+    let set_dancing = |store: &mut WorldStore, dancing: bool| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 91,
+            values: vec![ProtocolEntityDataValue {
+                data_id: ALLAY_DANCING_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(dancing),
+            }],
+        }));
+    };
+
+    // A non-dancing allay projects the inert dance state.
+    let resting = source(&store, 1.0);
+    assert!(!resting.allay_dancing);
+    assert!(!resting.allay_spinning);
+    assert_eq!(resting.allay_spinning_progress, 0.0);
+    store.advance_entity_client_animations(3);
+    assert!(!source(&store, 1.0).allay_dancing);
+
+    // Vanilla `Allay.tick` (client): while DATA_DANCING is set, `dancingAnimationTicks` climbs and
+    // the first 15 ticks of each 55-tick loop are the spin sub-window (`spinningAnimationTicks`
+    // ramping 0->15, `spinningProgress` 0->1).
+    set_dancing(&mut store, true);
+    store.advance_entity_client_animations(1);
+    let after_one = source(&store, 1.0);
+    assert!(
+        after_one.allay_dancing,
+        "the synced flag marks the allay dancing"
+    );
+    assert!(
+        after_one.allay_spinning,
+        "the dance opens in the spin sub-window"
+    );
+    assert!(after_one.allay_spinning_progress > 0.0);
+
+    // Ten ticks into the spin window the progress has climbed further.
+    store.advance_entity_client_animations(9);
+    let after_ten = source(&store, 1.0);
+    assert!(
+        after_ten.allay_spinning_progress > after_one.allay_spinning_progress,
+        "the spin ramp climbs: {} -> {}",
+        after_one.allay_spinning_progress,
+        after_ten.allay_spinning_progress
+    );
+
+    // Past the 15-tick spin window the allay is still dancing but no longer spinning, and the spin
+    // progress unwinds back toward 0 (`spinningAnimationTicks` decrements once `isSpinning` is false).
+    store.advance_entity_client_animations(10);
+    let after_twenty = source(&store, 1.0);
+    assert!(after_twenty.allay_dancing);
+    assert!(
+        !after_twenty.allay_spinning,
+        "the spin sub-window has closed"
+    );
+    assert!(
+        after_twenty.allay_spinning_progress < after_ten.allay_spinning_progress,
+        "the spin ramp unwinds once spinning stops"
+    );
+
+    // Clearing the flag resets the dance entirely.
+    set_dancing(&mut store, false);
+    store.advance_entity_client_animations(1);
+    let stopped = source(&store, 1.0);
+    assert!(!stopped.allay_dancing);
+    assert!(!stopped.allay_spinning);
+    assert_eq!(stopped.allay_spinning_progress, 0.0);
+}
+
+#[test]
 fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
     const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
     const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;

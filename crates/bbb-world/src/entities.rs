@@ -726,6 +726,21 @@ pub struct EntityModelSourceState {
     /// fang and every other entity.
     #[serde(default)]
     pub evoker_fangs_bite_progress: f32,
+    /// Vanilla `AllayModel.setupAnim`: `true` while the allay's synced `DATA_DANCING`
+    /// flag is set, gating the dance pose (head tilt + body sway/spin) over the normal
+    /// head-look. `false` for a non-dancing allay and every other entity.
+    #[serde(default)]
+    pub allay_dancing: bool,
+    /// Vanilla `AllayModel`: `true` during the spin sub-window of the dance
+    /// (`danceAnimation % 55 < 15`), selecting the `4π * progress` body spin. `false`
+    /// otherwise and for every non-allay entity.
+    #[serde(default)]
+    pub allay_spinning: bool,
+    /// Vanilla `AllayModel`: the `0..1` lerped spin blend (`spinningAnimation / 15`)
+    /// that cross-fades the body sway into the spin. `0.0` for a non-spinning allay and
+    /// every other entity.
+    #[serde(default)]
+    pub allay_spinning_progress: f32,
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(sin(lerp(flap)) + 1) * lerp(flapSpeed)`): the combined wing-flap angle
     /// `ParrotModel.setupAnim` feeds to the wing `zRot` (`±(0.0873 + flapAngle)`) and

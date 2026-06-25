@@ -23,7 +23,7 @@ use super::{
     VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
-    camel_is_dashing, entity_animation_uses_in_water, guardian_attack_duration,
+    allay_is_dancing, camel_is_dashing, entity_animation_uses_in_water, guardian_attack_duration,
     guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type, warden_heartbeat_delay,
 };
 use crate::entities::dimensions::{
@@ -846,6 +846,15 @@ impl EntityStore {
             evoker_fangs_bite_progress: client_animations
                 .animations
                 .evoker_fangs_bite_progress(partial_ticks),
+            // Vanilla `AllayModel.setupAnim`: the dance state driven by the synced
+            // `DATA_DANCING` flag. `dancing` gates the dance pose, `spinning` selects
+            // the spin sub-pose, and `spinning_progress` is the `0..1` lerped spin
+            // blend. All inert (`false`/`0.0`) for every non-allay entity.
+            allay_dancing: client_animations.animations.allay_is_dancing(),
+            allay_spinning: client_animations.animations.allay_is_spinning(),
+            allay_spinning_progress: client_animations
+                .animations
+                .allay_spinning_progress(partial_ticks),
             // Vanilla `ParrotRenderer.extractRenderState`: the lerped, combined
             // wing-flap angle. `0.0` for every non-parrot entity (only the parrot is
             // given a flap animation state).
@@ -1372,6 +1381,7 @@ impl EntityStore {
                 let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
                 let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
+                let allay_is_dancing = allay_is_dancing(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1383,6 +1393,7 @@ impl EntityStore {
                     warden_heartbeat_delay,
                     guardian_attack_target_id,
                     camel_is_dashing,
+                    allay_is_dancing,
                 );
             }
         }

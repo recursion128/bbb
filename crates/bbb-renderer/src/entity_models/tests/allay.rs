@@ -162,6 +162,34 @@ fn allay_flying_pose_differs_from_idle() {
 }
 
 #[test]
+fn allay_dance_pose_differs_from_idle_and_spins() {
+    // A dancing allay (`DATA_DANCING`) replaces the head-look with the dance head tilt + body sway
+    // (`AllayModel.setupAnim` dance branch); entering the spin sub-window whirls the whole root by
+    // `4π·spinningProgress`. Same age for all three so only the dance state differs.
+    let base = EntityModelInstance::allay(804, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(7.0);
+    let idle = entity_model_mesh(&[base]);
+
+    // Swaying (dancing, not yet spinning): the body sways and the head tilts away from the idle pose.
+    let swaying = entity_model_mesh(&[base.with_allay_dancing(true)]);
+    assert_eq!(idle.vertices.len(), swaying.vertices.len());
+    assert_ne!(
+        idle.vertices, swaying.vertices,
+        "the dance sways the body and tilts the head"
+    );
+
+    // Spinning: the same dance frame inside the spin sub-window whirls the root by `4π·0.25 = π`.
+    let spinning = entity_model_mesh(&[base
+        .with_allay_dancing(true)
+        .with_allay_spinning(true)
+        .with_allay_spinning_progress(0.25)]);
+    assert_eq!(swaying.vertices.len(), spinning.vertices.len());
+    assert_ne!(
+        swaying.vertices, spinning.vertices,
+        "the spin whirls the whole model"
+    );
+}
+
+#[test]
 fn allay_texture_ref_matches_vanilla_renderer() {
     let kind = EntityModelKind::Allay;
     assert_eq!(kind.model_key(), "allay");
