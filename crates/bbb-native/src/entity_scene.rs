@@ -223,6 +223,11 @@ const ARMADILLO_STATE_SCARED_ID: i32 = 2;
 /// id, the first `SpellcasterIllager` accessor after `Raider.IS_CELEBRATING` (16). The byte is
 /// `> 0` while `isCastingSpell()`.
 const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
+/// Vanilla `Pillager.IS_CHARGING_CROSSBOW` data id (17): the boolean set while the pillager draws its
+/// crossbow, the first `Pillager` accessor after `Raider.IS_CELEBRATING` (16) — the same slot the
+/// spellcaster illagers use for `DATA_SPELL_CASTING_ID`, since each illager subclass adds its own
+/// accessor in that position. `getArmPose` returns `CROSSBOW_CHARGE` while true, else `CROSSBOW_HOLD`.
+const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 // `ArmorStand extends LivingEntity` directly — it is NOT a `Mob`, so there is no
 // `Mob.DATA_MOB_FLAGS_ID` (15); `ArmorStand.DATA_CLIENT_FLAGS` is the first accessor after
 // `LivingEntity` (0-14) and lands at 15, with the six pose rotations following at 16-21.
@@ -418,6 +423,37 @@ fn entity_main_hand_holds_bow(
     item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
 }
 
+/// Whether the entity's main-hand item is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)`),
+/// driving the pillager's `CROSSBOW_HOLD` arm pose. Resolved through the item registry, so it needs the
+/// runtime; `false` without it or for any non-crossbow / empty hand.
+fn entity_main_hand_holds_crossbow(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, false) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
+}
+
+/// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17): the
+/// pillager is drawing its crossbow, so `getArmPose` returns `CROSSBOW_CHARGE` rather than
+/// `CROSSBOW_HOLD`. Only the pillager defines that accessor, so the projection is gated to its type.
+fn pillager_is_charging_crossbow(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PILLAGER_ID
+        && entity_data_bool(values, PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID, false)
+}
+
 fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
     SelectionBox {
         min: [
@@ -471,6 +507,14 @@ fn entity_model_instance(
             kind,
             EntityModelKind::Skeleton | EntityModelKind::SkeletonVariant { .. }
         ) && entity_main_hand_holds_bow(world, item_runtime, source.entity_id);
+    // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
+    let main_hand_holds_crossbow =
+        matches!(
+            kind,
+            EntityModelKind::Illager {
+                family: IllagerModelFamily::Pillager
+            }
+        ) && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id);
     let head_eat = sheep_head_eat_pose(
         source.entity_type_id,
         source.sheep_eat_animation_tick,
@@ -540,6 +584,11 @@ fn entity_model_instance(
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
+        .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
+        .with_is_charging_crossbow(pillager_is_charging_crossbow(
+            source.entity_type_id,
+            &source.data_values,
+        ))
         .with_enderman_carrying(source.enderman_carrying)
         .with_enderman_creepy(source.enderman_creepy)
         .with_bat_resting(source.bat_resting)
@@ -3030,6 +3079,57 @@ mod tests {
             values: vec![protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true)],
         }));
         assert!(!has_egg(&world, 142));
+    }
+
+    #[test]
+    fn entity_model_instances_project_pillager_charging_crossbow() {
+        // Vanilla Pillager.IS_CHARGING_CROSSBOW (BOOLEAN data id 17, after Raider.IS_CELEBRATING 16)
+        // and Pillager.getArmPose: a charging pillager renders CROSSBOW_CHARGE, suppressing the
+        // CROSSBOW_HOLD pose. The evoker reuses data id 17 for DATA_SPELL_CASTING_ID, so the
+        // projection must be gated to the pillager type.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            160,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            161,
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            [2.0, 64.0, -2.0],
+        ));
+
+        let charging = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .is_charging_crossbow
+        };
+
+        // A pillager without the flag is not charging.
+        assert!(!charging(&world, 160));
+
+        // Setting IS_CHARGING_CROSSBOW (data id 17) projects the charge state.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 160,
+            values: vec![protocol_bool_data(
+                PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+                true
+            )],
+        }));
+        assert!(charging(&world, 160));
+
+        // The same data id 17 on an evoker (its spell-casting byte slot) does NOT project charging.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 161,
+            values: vec![protocol_bool_data(
+                PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+                true
+            )],
+        }));
+        assert!(!charging(&world, 161));
     }
 
     #[test]

@@ -260,6 +260,36 @@ pub(in crate::entity_models) fn illager_spellcast_arm_pose(
     }
 }
 
+/// Vanilla `IllagerModel.setupAnim` `CROSSBOW_HOLD` arm pose (`AnimationUtils.animateCrossbowHold` with
+/// `holdingInRightArm = true`): the right (holding) arm levels the crossbow along the head look
+/// (`yRot = -0.3 + head.yRot`, `xRot = -π/2 + head.xRot + 0.1`) while the left (shooting) arm reaches
+/// across to the trigger (`yRot = 0.6 + head.yRot`, `xRot = -1.5 + head.xRot`). Vanilla sets these
+/// absolutely after the walk swing (which zeroed `zRot`), so the roll is preserved from the swing.
+/// `head_yaw_degrees` / `head_pitch_degrees` are the net head look (vanilla `head.yRot` / `head.xRot`).
+fn apply_illager_crossbow_hold(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+) {
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let right = root.child_mut("right_arm");
+    right.pose.rotation = [
+        -std::f32::consts::FRAC_PI_2 + head_pitch + 0.1,
+        -0.3 + head_yaw,
+        right.pose.rotation[2],
+    ];
+    let left = root.child_mut("left_arm");
+    left.pose.rotation = [-1.5 + head_pitch, 0.6 + head_yaw, left.pose.rotation[2]];
+}
+
+/// Whether a pillager levels its crossbow this frame (vanilla `Pillager.getArmPose` returning
+/// `CROSSBOW_HOLD`): it holds a crossbow and is not mid-draw (`isChargingCrossbow()`, whose distinct
+/// `CROSSBOW_CHARGE` pull-back pose is deferred).
+fn illager_is_holding_crossbow(instance: &EntityModelInstance) -> bool {
+    instance.render_state.main_hand_holds_crossbow && !instance.render_state.is_charging_crossbow
+}
+
 /// Whether an illager is mid spell-cast — only the evoker and illusioner cast, and only then do they
 /// swap from the static crossed `arms` layout to the uncrossed separate-arm layout.
 fn illager_is_spellcasting(instance: &EntityModelInstance, family: IllagerModelFamily) -> bool {
@@ -276,8 +306,9 @@ fn illager_is_spellcasting(instance: &EntityModelInstance, family: IllagerModelF
 /// the legs at the villager-family half amplitude ([`apply_half_amplitude_leg_swing`]); the
 /// pillager additionally swings its separate arms at the `HumanoidModel` amplitude
 /// ([`humanoid_arm_swing_pose`] on `right_arm`/`left_arm`), while a spellcasting evoker/illusioner
-/// instead raises both arms into the `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). The
-/// attack/bow/crossbow/celebrate arm overrides and the riding sit pose defer.
+/// instead raises both arms into the `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). A pillager
+/// holding a crossbow levels it into the `CROSSBOW_HOLD` pose ([`apply_illager_crossbow_hold`]). The
+/// attack/bow/crossbow-charge/celebrate arm overrides and the riding sit pose defer.
 pub(in crate::entity_models) struct IllagerModel {
     root: ModelPart,
     family: IllagerModelFamily,
@@ -331,6 +362,15 @@ impl EntityModel for IllagerModel {
             for name in ["right_arm", "left_arm"] {
                 let arm = self.root.child_mut(name);
                 arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+            }
+            // A pillager holding its crossbow levels it along the head look, overwriting the walk swing
+            // (vanilla `IllagerModel.setupAnim` `CROSSBOW_HOLD`). The charge pull-back pose is deferred.
+            if illager_is_holding_crossbow(instance) {
+                apply_illager_crossbow_hold(
+                    &mut self.root,
+                    render_state.head_yaw,
+                    render_state.head_pitch,
+                );
             }
         }
     }

@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn illager_model_parts_match_vanilla_26_1_body_layer() {
@@ -264,6 +264,100 @@ fn pillager_swings_its_arms_when_walking() {
         rest.vertices[144..192],
         still.vertices[144..192],
         "a standing pillager's arms are inert"
+    );
+}
+
+#[test]
+fn pillager_holds_its_crossbow_level_with_the_head_look() {
+    use std::f32::consts::FRAC_PI_2;
+    // Vanilla `IllagerModel.setupAnim` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`,
+    // `holdingInRightArm = true`): the right (holding) arm levels the crossbow along the head look
+    // (`xRot = -π/2 + head.xRot + 0.1`, `yRot = -0.3 + head.yRot`), the left (shooting) arm reaches
+    // across (`xRot = -1.5 + head.xRot`, `yRot = 0.6 + head.yRot`); the walk swing zeroed `zRot`.
+    let yaw = 25.0_f32;
+    let pitch = -15.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let pitch_rad = pitch.to_radians();
+
+    let holding =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
+            .with_head_look(yaw, pitch)
+            .with_main_hand_holds_crossbow(true);
+    let mut model = IllagerModel::new(&holding, IllagerModelFamily::Pillager);
+    model.prepare(&holding);
+
+    let right = model.root_mut().child_mut("right_arm");
+    assert!(
+        (right.pose.rotation[0] - (-FRAC_PI_2 + pitch_rad + 0.1)).abs() < 1e-6,
+        "right (holding) arm levels the crossbow: {}",
+        right.pose.rotation[0]
+    );
+    assert!(
+        (right.pose.rotation[1] - (-0.3 + yaw_rad)).abs() < 1e-6,
+        "right arm yaws -0.3 off the head: {}",
+        right.pose.rotation[1]
+    );
+    assert!(
+        right.pose.rotation[2].abs() < 1e-6,
+        "zRot preserved at 0 from the swing"
+    );
+    let left = model.root_mut().child_mut("left_arm");
+    assert!(
+        (left.pose.rotation[0] - (-1.5 + pitch_rad)).abs() < 1e-6,
+        "left (shooting) arm reaches across: {}",
+        left.pose.rotation[0]
+    );
+    assert!(
+        (left.pose.rotation[1] - (0.6 + yaw_rad)).abs() < 1e-6,
+        "left arm yaws 0.6 off the head: {}",
+        left.pose.rotation[1]
+    );
+
+    // Charging suppresses the hold (`CROSSBOW_CHARGE`'s pull-back pose is deferred), so the arms keep
+    // the walk swing — at rest, far from the hold pitch.
+    let charging = holding.with_is_charging_crossbow(true);
+    let mut charging_model = IllagerModel::new(&charging, IllagerModelFamily::Pillager);
+    charging_model.prepare(&charging);
+    assert!(
+        (charging_model
+            .root_mut()
+            .child_mut("right_arm")
+            .pose
+            .rotation[0]
+            - (-FRAC_PI_2 + pitch_rad + 0.1))
+            .abs()
+            > 1.0,
+        "a charging pillager does not level the crossbow"
+    );
+}
+
+#[test]
+fn pillager_crossbow_hold_reposes_only_the_arms() {
+    // End-to-end through the dispatch: a pillager holding its crossbow re-poses the two arm cubes
+    // ([144, 192), per `pillager_swings_its_arms_when_walking`) while the head/body/legs ([0, 144))
+    // stay byte-identical, and charging falls back to the resting arms (the charge pose is deferred).
+    let base =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
+            .with_head_look(15.0, -10.0);
+    let rest = entity_model_mesh(&[base]);
+    let holding = entity_model_mesh(&[base.with_main_hand_holds_crossbow(true)]);
+    assert_eq!(rest.vertices.len(), 192);
+    assert_eq!(
+        rest.vertices[0..144],
+        holding.vertices[0..144],
+        "the head, body and legs do not hold the crossbow"
+    );
+    assert_ne!(
+        rest.vertices[144..192],
+        holding.vertices[144..192],
+        "both arms level the crossbow"
+    );
+    let charging = entity_model_mesh(&[base
+        .with_main_hand_holds_crossbow(true)
+        .with_is_charging_crossbow(true)]);
+    assert_eq!(
+        rest.vertices, charging.vertices,
+        "a charging pillager keeps the resting arms (charge pose deferred)"
     );
 }
 

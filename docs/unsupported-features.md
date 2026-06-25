@@ -560,7 +560,17 @@ When an agent does any of the following, update this file in the same slice:
     `17`, gated to the evoker/illusioner) swaps those two to the uncrossed layout (hiding the
     crossed `arms` part, the illusioner keeping its hat) and raises both separate arms —
     `xRot = cos(ageInTicks · 0.6662) · 0.25`, `zRot = ±3π/4`, holding the bind offset
-    `x = ∓5` — on both render paths. The villager family
+    `x = ∓5` — on both render paths. The pillager `CROSSBOW_HOLD` arm pose is also
+    projected: a pillager holding a crossbow (`main_hand_holds_crossbow`, the main-hand
+    item resolved to `minecraft:crossbow`) that is not drawing (`!is_charging_crossbow`,
+    the synced `IS_CHARGING_CROSSBOW` boolean, data id `17`, gated to the pillager type)
+    levels the weapon along the head look — `AnimationUtils.animateCrossbowHold`,
+    `holdingInRightArm`: right (holding) arm `xRot = -π/2 + head.xRot + 0.1`,
+    `yRot = -0.3 + head.yRot`; left (shooting) arm `xRot = -1.5 + head.xRot`,
+    `yRot = 0.6 + head.yRot` — overwriting the walk swing on both render paths (the held
+    crossbow mesh rides the leveled hand). The `CROSSBOW_CHARGE` pull-back pose (which
+    needs the projected `ticksUsingItem`/`maxCrossbowChargeDuration`) and the
+    attack/bow/celebrate overrides and riding sit pose stay deferred. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
     `emit_villager_family_textured_passes` textured for the villager/wandering-trader, plus
     the witch's own `emit_witch_model`/`emit_witch_textured_model` that add the idle nose bob)

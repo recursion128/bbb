@@ -236,6 +236,16 @@ entity_render_state! {
     /// `BOW_AND_ARROW`, so `SkeletonModel` aims both arms forward along the head look. `false` for every
     /// non-skeleton entity and for a skeleton not holding a bow.
     (with_main_hand_holds_bow) main_hand_holds_bow: bool = false;
+    /// Vanilla `Pillager.isHolding(Items.CROSSBOW)`: with [`is_charging_crossbow`](Self::is_charging_crossbow)
+    /// `false`, `Pillager.getArmPose` returns `CROSSBOW_HOLD`, so `IllagerModel` levels the crossbow
+    /// (`AnimationUtils.animateCrossbowHold`) along the head look. `false` for every non-pillager entity
+    /// and for a pillager whose main hand is not a crossbow.
+    (with_main_hand_holds_crossbow) main_hand_holds_crossbow: bool = false;
+    /// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17):
+    /// `Pillager.getArmPose` returns `CROSSBOW_CHARGE` instead of `CROSSBOW_HOLD` while drawing. The
+    /// charge pose itself (the pull-back animation, which needs `ticksUsingItem`) is deferred, so this
+    /// only suppresses the hold pose during the draw. `false` for every non-pillager entity.
+    (with_is_charging_crossbow) is_charging_crossbow: bool = false;
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
     /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
     /// ±0.05`). `false` for every other entity.
@@ -1577,6 +1587,8 @@ mod tests {
                 age_in_ticks: 0.0,
                 is_aggressive: false,
                 main_hand_holds_bow: false,
+                main_hand_holds_crossbow: false,
+                is_charging_crossbow: false,
                 enderman_carrying: false,
                 enderman_creepy: false,
                 bat_resting: false,
