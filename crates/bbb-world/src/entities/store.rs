@@ -23,8 +23,8 @@ use super::{
     VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
-    entity_animation_uses_in_water, guardian_attack_duration, guardian_attack_target_id,
-    guardian_is_moving, is_guardian_entity_type, warden_heartbeat_delay,
+    camel_is_dashing, entity_animation_uses_in_water, guardian_attack_duration,
+    guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type, warden_heartbeat_delay,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
@@ -689,6 +689,12 @@ impl EntityStore {
             frog_swim_idle_seconds: client_animations
                 .animations
                 .frog_swim_idle_seconds(partial_ticks),
+            // Vanilla `Camel.dashAnimationState`: the elapsed seconds since the dash started (the
+            // synced `DASH` boolean rising edge), or `-1.0` for a non-dashing camel and every other
+            // entity (only the camel is given a dash animation state).
+            camel_dash_seconds: client_animations
+                .animations
+                .camel_dash_seconds(partial_ticks),
             sniffer_animation_id,
             sniffer_animation_seconds,
             // Vanilla `Armadillo.shouldHideInShell` + the rollUp/rollOut transition timers: the
@@ -1365,6 +1371,7 @@ impl EntityStore {
                 let is_moving = guardian_is_moving(&metadata.data_values);
                 let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
                 let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
+                let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1375,6 +1382,7 @@ impl EntityStore {
                     is_moving,
                     warden_heartbeat_delay,
                     guardian_attack_target_id,
+                    camel_is_dashing,
                 );
             }
         }

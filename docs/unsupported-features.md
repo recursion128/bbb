@@ -333,8 +333,8 @@ When an agent does any of the following, update this file in the same slice:
       baby horse `getTailXRotOffset = −π/2` also overrides the layer rest angle and
       `ageScale = 0.5`), colored path; the baby donkey/mule nested legs and forced
       head pitch, the camel's dash-entangled gait (the colored and textured
-      `CAMEL_WALK` / `CAMEL_BABY_WALK` and the sit-down / seated / stand-up transitions are now
-      reproduced; only `CAMEL_DASH`/`CAMEL_IDLE` stay deferred), and the tail's `ageInTicks` yRot
+      `CAMEL_WALK` / `CAMEL_BABY_WALK`, the sit-down / seated / stand-up transitions, and the looping
+      `CAMEL_DASH` gallop are now reproduced; only `CAMEL_IDLE` stays deferred), and the tail's `ageInTicks` yRot
       wag stay deferred). The remaining
       slices consume them
       in the other model families' `setupAnim` (fish; other birds; etc., plus
@@ -697,8 +697,10 @@ When an agent does any of the following, update this file in the same slice:
     (1) the
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
-    `Camel`/`Frog` gate on pose/jump/dash animation states the client does not yet
-    track), so their limb swing is left at rest rather than approximated; (2) the base
+    `Camel`/`Frog` gate on pose animation states the client does not fully track yet —
+    the camel dash and frog jump/swim-idle/croak triggered animations ARE now driven, but
+    the camel idle and frog tongue remain deferred), so the distance→speed walk input is
+    left at the base mapping rather than the override; (2) the base
     `HumanoidModel.setupAnim` arm swing is implemented for the player, the skeleton
     family, and the non-zombified piglin family
     (`humanoid_arm_swing_pose`/`humanoid_arm_swing_parts`, arms at `[2, 3]`, the

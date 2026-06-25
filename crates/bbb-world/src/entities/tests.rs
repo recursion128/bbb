@@ -7163,6 +7163,67 @@ fn evoker_fangs_attack_event_drives_the_bite_progress_ramp() {
 }
 
 #[test]
+fn camel_dash_flag_drives_the_dash_animation_timer() {
+    const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
+    const CAMEL_DASH_DATA_ID: u8 = 19;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        90,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+
+    let dash_seconds = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 90)
+            .unwrap()
+            .camel_dash_seconds
+    };
+    let set_dashing = |store: &mut WorldStore, dashing: bool| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 90,
+            values: vec![ProtocolEntityDataValue {
+                data_id: CAMEL_DASH_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(dashing),
+            }],
+        }));
+    };
+
+    // A non-dashing camel projects the stopped-animation sentinel.
+    assert_eq!(dash_seconds(&store, 1.0), -1.0);
+    store.advance_entity_client_animations(3);
+    assert_eq!(dash_seconds(&store, 1.0), -1.0);
+
+    // Vanilla `Camel.setupAnimationStates`: the synced DASH rising edge starts `dashAnimationState`,
+    // and the elapsed seconds climb from there (1 tick = 0.05 s).
+    set_dashing(&mut store, true);
+    store.advance_entity_client_animations(1);
+    let after_one = dash_seconds(&store, 1.0);
+    assert!(
+        after_one >= 0.0,
+        "a dashing camel starts the dash timer: {after_one}"
+    );
+    store.advance_entity_client_animations(2);
+    let after_three = dash_seconds(&store, 1.0);
+    assert!(
+        after_three > after_one,
+        "the dash timer keeps climbing: {after_one} -> {after_three}"
+    );
+
+    // Clearing the DASH flag stops the animation (back to the sentinel).
+    set_dashing(&mut store, false);
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        dash_seconds(&store, 1.0),
+        -1.0,
+        "clearing DASH stops the dash animation"
+    );
+}
+
+#[test]
 fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
     const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
     const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;

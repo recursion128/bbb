@@ -702,3 +702,45 @@ fn camel_texture_images() -> Vec<EntityModelTextureImage> {
         })
         .collect()
 }
+
+#[test]
+fn camel_dash_seconds_add_the_gallop_pose() {
+    use crate::entity_models::model::EntityModel;
+
+    // Vanilla `CamelModel.setupAnim` applies `CAMEL_DASH` ADDITIVELY over the walk pose. With the camel
+    // at rest (no walk speed), the dash offsets are the only motion: the ears flare a constant ±67.5°
+    // yaw and the body pitches up a constant 5° (both Linear, so the sample at any time is exact).
+    let base =
+        EntityModelInstance::camel(700, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+
+    let mut resting = CamelModel::new(CamelModelFamily::Camel, false);
+    resting.prepare(&base);
+    let rest_left_ear_yaw = resting
+        .root_mut()
+        .child_mut("body")
+        .child_mut("head")
+        .child_mut("left_ear")
+        .pose
+        .rotation[1];
+    let rest_body_pitch = resting.root_mut().child_mut("body").pose.rotation[0];
+
+    let mut dashing = CamelModel::new(CamelModelFamily::Camel, false);
+    dashing.prepare(&base.with_camel_dash_seconds(0.0));
+    let dash_left_ear_yaw = dashing
+        .root_mut()
+        .child_mut("body")
+        .child_mut("head")
+        .child_mut("left_ear")
+        .pose
+        .rotation[1];
+    let dash_body_pitch = dashing.root_mut().child_mut("body").pose.rotation[0];
+
+    assert!(
+        (dash_left_ear_yaw - rest_left_ear_yaw - (-67.5_f32).to_radians()).abs() < 1.0e-5,
+        "dash flares the left ear by -67.5° yaw: {rest_left_ear_yaw} -> {dash_left_ear_yaw}"
+    );
+    assert!(
+        (dash_body_pitch - rest_body_pitch - 5.0_f32.to_radians()).abs() < 1.0e-5,
+        "dash pitches the body up 5°: {rest_body_pitch} -> {dash_body_pitch}"
+    );
+}

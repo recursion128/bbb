@@ -300,9 +300,15 @@ entity_render_state! {
     /// driven by `Camel.setupAnimationStates()` while the camel is NOT visually sitting but still in
     /// the stand-up pose transition (`isInPoseTransition() && getPoseTime() >= 0`). Its elapsed is
     /// `getPoseTime`. `CamelModel.setupAnim` applies `standupAnimation.apply(...)` ADDITIVELY;
-    /// `-1.0` for every other entity and a camel that is not standing up. (`dash` and `idle` stay
-    /// deferred; see `docs/unsupported-features.md`.)
+    /// `-1.0` for every other entity and a camel that is not standing up. (`idle` stays deferred;
+    /// see `docs/unsupported-features.md`.)
     (with_camel_standup_seconds) camel_standup_seconds: f32 = -1.0;
+    /// Vanilla `Camel.dashAnimationState` elapsed seconds (the looping 0.5 s `CAMEL_DASH`), driven by
+    /// `Camel.setupAnimationStates()`'s `dashAnimationState.animateWhen(isDashing(), tickCount)` — the
+    /// synced `DASH` boolean rising edge starts it. `CamelModel.setupAnim` applies
+    /// `dashAnimation.apply(...)` ADDITIVELY (last, over the walk pose). `-1.0` (the stopped-animation
+    /// sentinel) for every other entity and a camel that is not dashing.
+    (with_camel_dash_seconds) camel_dash_seconds: f32 = -1.0;
     /// Vanilla frog croak timing (`FrogRenderState.croakAnimationState` driven by the synced
     /// `Pose.CROAKING`): the elapsed seconds since the croak started, projected for
     /// `FrogModel.setupAnim`, which shows the `croaking_body` pouch (`croakAnimationState.isStarted`)
@@ -1678,6 +1684,7 @@ mod tests {
                 camel_sit_seconds: -1.0,
                 camel_sit_pose_seconds: -1.0,
                 camel_standup_seconds: -1.0,
+                camel_dash_seconds: -1.0,
                 frog_croak_seconds: -1.0,
                 frog_jump_seconds: -1.0,
                 frog_swim_idle_seconds: -1.0,

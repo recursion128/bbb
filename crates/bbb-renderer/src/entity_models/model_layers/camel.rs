@@ -945,6 +945,145 @@ pub(in crate::entity_models) const CAMEL_STANDUP: AnimationDefinition = Animatio
     bones: &CAMEL_STANDUP_BONES,
 };
 
+// ----- `CamelAnimation.CAMEL_DASH` (the gallop; length 0.5s, LOOPING) -----
+//
+// All channels are ROTATION. The `body` and the two ears hold a constant offset (two Linear
+// keyframes); the `head`, `tail`, and four legs swing across 5 CatmullRom keyframes. Applied
+// ADDITIVELY (last, over the walk pose) while the camel is dashing.
+
+const CAMEL_DASH_BODY_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(5.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(5.0, 0.0, 0.0), LINEAR),
+];
+const CAMEL_DASH_TAIL_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(67.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.125, degree_vec(112.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(67.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(112.5, 0.0, 0.0), CATMULLROM),
+    keyframe(0.5, degree_vec(67.5, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_DASH_HEAD_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.5, degree_vec(10.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_DASH_RIGHT_FRONT_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(44.97272, 1.76749, -1.76833), CATMULLROM),
+    keyframe(0.125, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(44.97272, 1.76749, -1.76833), CATMULLROM),
+    keyframe(0.375, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.5, degree_vec(44.97272, 1.76749, -1.76833), CATMULLROM),
+];
+const CAMEL_DASH_LEFT_FRONT_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.125, degree_vec(44.97272, -1.76749, 1.76833), CATMULLROM),
+    keyframe(0.25, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(44.97272, -1.76749, 1.76833), CATMULLROM),
+    keyframe(0.5, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_DASH_LEFT_HIND_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.125, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.5, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_DASH_RIGHT_HIND_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.125, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.375, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.5, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_DASH_LEFT_EAR_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(0.0, -67.5, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, -67.5, 0.0), LINEAR),
+];
+const CAMEL_DASH_RIGHT_EAR_ROT: [Keyframe; 2] = [
+    keyframe(0.0, degree_vec(0.0, 67.5, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 67.5, 0.0), LINEAR),
+];
+
+const CAMEL_DASH_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_DASH_BODY_ROT)];
+const CAMEL_DASH_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_DASH_TAIL_ROT)];
+const CAMEL_DASH_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_DASH_HEAD_ROT)];
+const CAMEL_DASH_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&CAMEL_DASH_RIGHT_FRONT_LEG_ROT)];
+const CAMEL_DASH_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&CAMEL_DASH_LEFT_FRONT_LEG_ROT)];
+const CAMEL_DASH_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&CAMEL_DASH_LEFT_HIND_LEG_ROT)];
+const CAMEL_DASH_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&CAMEL_DASH_RIGHT_HIND_LEG_ROT)];
+const CAMEL_DASH_LEFT_EAR_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_DASH_LEFT_EAR_ROT)];
+const CAMEL_DASH_RIGHT_EAR_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_DASH_RIGHT_EAR_ROT)];
+
+const CAMEL_DASH_BONES_ANIM: [BoneAnimation; 9] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &CAMEL_DASH_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &CAMEL_DASH_TAIL_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &CAMEL_DASH_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &CAMEL_DASH_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &CAMEL_DASH_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &CAMEL_DASH_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &CAMEL_DASH_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_ear",
+        channels: &CAMEL_DASH_LEFT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_ear",
+        channels: &CAMEL_DASH_RIGHT_EAR_CHANNELS,
+    },
+];
+
+/// Vanilla `CamelAnimation.CAMEL_DASH`: the looping 0.5 s gallop, sampled by `CamelModel.setupAnim`
+/// via `dashAnimation.apply(dashAnimationState, ageInTicks)` while the camel is dashing. All channels
+/// are ROTATION; the `body` and ears hold a constant Linear offset, the head/tail/legs swing on
+/// CatmullRom. The renderer applies it ADDITIVELY (last, over the walk pose) while
+/// `camel_dash_seconds >= 0`.
+pub(in crate::entity_models) const CAMEL_DASH: AnimationDefinition = AnimationDefinition {
+    length_seconds: 0.5,
+    looping: true,
+    bones: &CAMEL_DASH_BONES_ANIM,
+};
+
+/// The nine bones `CAMEL_DASH` animates (every bone except the whole-model `root`), in vanilla
+/// `addAnimation` order. `setup_anim` walks these to add the dash pose onto the walk pose.
+const CAMEL_DASH_BONES: [&str; 9] = [
+    "body",
+    "tail",
+    "head",
+    "right_front_leg",
+    "left_front_leg",
+    "left_hind_leg",
+    "right_hind_leg",
+    "left_ear",
+    "right_ear",
+];
+
 /// The camel sit/stand bones positioned by the body/leg/head/tail keyframes (the `body` and `head`
 /// are handled specially in `setup_anim`; these are the remaining swing bones). The two ears are not
 /// animated by the sit/stand transitions, only by the walk.
@@ -1251,6 +1390,30 @@ impl EntityModel for CamelModel {
             }
             .child_mut(bone);
             part.pose = keyframe_animated_pose(part.pose, sit_pos, sit_rot);
+        }
+
+        // Vanilla `CamelModel.setupAnim` applies `dashAnimation.apply(dashAnimationState, ageInTicks)`
+        // LAST, after the walk and sit/stand poses. The looping `CAMEL_DASH` gallop is ADDED onto every
+        // animated bone (all nine — body, head, ears, tail, four legs) while the camel is dashing
+        // (`camel_dash_seconds >= 0`); otherwise it is skipped. A looping def wraps its sample time.
+        let dash_seconds = instance.render_state.camel_dash_seconds;
+        if dash_seconds >= 0.0 {
+            let elapsed = keyframe_elapsed_seconds(&CAMEL_DASH, dash_seconds);
+            for bone in CAMEL_DASH_BONES {
+                let (dash_pos, dash_rot) = sample_bone_offsets(&CAMEL_DASH, bone, elapsed, 1.0);
+                let part = match bone {
+                    "body" => self.root.child_mut("body"),
+                    "head" => self.root.child_mut("body").child_mut("head"),
+                    "left_ear" | "right_ear" => self
+                        .root
+                        .child_mut("body")
+                        .child_mut("head")
+                        .child_mut(bone),
+                    "tail" => self.root.child_mut("body").child_mut("tail"),
+                    _ => self.root.child_mut(bone),
+                };
+                part.pose = keyframe_animated_pose(part.pose, dash_pos, dash_rot);
+            }
         }
     }
 }

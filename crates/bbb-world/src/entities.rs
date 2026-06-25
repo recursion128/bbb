@@ -409,6 +409,13 @@ pub struct EntityModelSourceState {
     /// keyframe is applied) for a frog that is dry or moving and every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub frog_swim_idle_seconds: f32,
+    /// Vanilla camel dash timing (`CamelRenderState.dashAnimationState`, the triggered `AnimationState`
+    /// `Camel.setupAnimationStates` drives via `animateWhen(isDashing(), tickCount)`): the elapsed
+    /// seconds since the dash started, which `CamelModel.setupAnim` uses to sample the looping
+    /// `CamelAnimation.CAMEL_DASH` gallop. Projected only for the camel and `-1.0` (the
+    /// stopped-animation sentinel) for a non-dashing camel and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub camel_dash_seconds: f32,
     /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
     /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered
     /// keyframe is playing (`FEELING_HAPPY`/`SCENTING`/`SNIFFING`/`DIGGING`/`RISING`), which

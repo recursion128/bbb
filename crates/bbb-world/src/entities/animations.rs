@@ -106,6 +106,11 @@ const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
 const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
+/// Vanilla `Camel.DASH`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 19 (Entity 0–7,
+/// LivingEntity 8–14, Mob 15, AgeableMob 16–17, `AbstractHorse.DATA_ID_FLAGS` 18, then Camel's first
+/// own accessor `DASH`; `LAST_POSE_CHANGE_TICK` follows at 20). `Camel.setupAnimationStates` reads
+/// `isDashing()` to gate the looping dash gallop.
+const CAMEL_DASH_DATA_ID: u8 = 19;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -245,6 +250,11 @@ pub struct EntityClientAnimationState {
     pub frog_jump: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_swim_idle: Option<KeyframeAnimationState>,
+    /// Vanilla `Camel.dashAnimationState`, started on the synced `DASH` boolean rising edge
+    /// (`animateWhen(isDashing(), tickCount)`) and projected as the elapsed seconds the renderer feeds
+    /// to the looping `CAMEL_DASH` gallop.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub camel_dash: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2260,6 +2270,15 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `Camel.dashAnimationState` elapsed seconds (the looping `CAMEL_DASH` gallop), exposed
+    /// for `CamelModel.setupAnim`. Returns `-1.0` (the stopped-animation sentinel) for every non-camel
+    /// entity and a camel that is not dashing.
+    pub fn camel_dash_seconds(&self, partial_tick: f32) -> f32 {
+        self.camel_dash
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
     /// The sniffer's active `Sniffer.State` animation (vanilla `Sniffer.onSyncedDataUpdated`'s
     /// one-shot `AnimationState`s) projected for `SnifferModel.setupAnim`: the `(state ordinal,
     /// elapsed seconds)` of the running triggered keyframe, or `(-1, -1.0)` when the sniffer is
@@ -2516,6 +2535,9 @@ impl EntityClientAnimationState {
         // metadata in the tick loop ([`guardian_attack_target_id`]). `0` (no target) for entities that
         // do not consume it.
         guardian_attack_target_id: i32,
+        // The synced `Camel.DASH` boolean (`isDashing()`), read from the entity metadata in the tick
+        // loop ([`camel_is_dashing`]). `false` for entities that do not consume it.
+        camel_is_dashing: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -2672,6 +2694,16 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
                     .animate_when(in_water && !walk_is_moving, self.age_ticks);
             }
+            VANILLA_ENTITY_TYPE_CAMEL_ID => {
+                // Vanilla `Camel.setupAnimationStates`: `dashAnimationState.animateWhen(isDashing(),
+                // tickCount)` — the synced `DASH` boolean starts the looping gallop on its rising edge.
+                // (Vanilla also `stop()`s it while visually sitting, but a sitting camel never has DASH
+                // set, so gating purely on the flag is equivalent. The camel's sit/stand poses are
+                // derived separately in the native layer from `LAST_POSE_CHANGE_TICK`.)
+                self.camel_dash
+                    .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
+                    .animate_when(camel_is_dashing, self.age_ticks);
+            }
             VANILLA_ENTITY_TYPE_CHICKEN_ID => self
                 .chicken_flap
                 .get_or_insert_with(ChickenFlapAnimationState::default)
@@ -2739,6 +2771,13 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
 /// `false`). Read straight from the entity metadata in the tick loop.
 pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, GUARDIAN_MOVING_DATA_ID, false)
+}
+
+/// Vanilla `Camel.isDashing()` (`entityData.get(DASH)`): the synced boolean that gates the looping
+/// dash gallop. Read straight from the entity metadata in the tick loop; non-camels (whose synced slot
+/// `19` is not this boolean) fall back to `false`.
+pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, CAMEL_DASH_DATA_ID, false)
 }
 
 /// Vanilla `Warden.getHeartBeatDelay()` = `40 - floor(clamp(clientAngerLevel /

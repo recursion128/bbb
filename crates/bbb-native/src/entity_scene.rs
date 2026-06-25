@@ -644,6 +644,7 @@ fn entity_model_instance(
         .with_camel_sit_seconds(camel_sit.sit_seconds)
         .with_camel_sit_pose_seconds(camel_sit.sit_pose_seconds)
         .with_camel_standup_seconds(camel_sit.standup_seconds)
+        .with_camel_dash_seconds(source.camel_dash_seconds)
         .with_vex_charging(source.vex_charging)
         .with_wither_invulnerable_ticks(source.wither_invulnerable_ticks)
         .with_wither_powered(wither_powered(source.entity_type_id, &source.data_values))
@@ -2751,6 +2752,42 @@ mod tests {
         assert!(
             progress > 0.0,
             "the projected bite ramp drives EvokerFangsModel.setupAnim: {progress}"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_camel_dash_seconds_from_world() {
+        const CAMEL_DASH_DATA_ID: u8 = 19;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            99,
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let dash = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+                .iter()
+                .find(|instance| instance.entity_id == 99)
+                .map(|instance| instance.render_state.camel_dash_seconds)
+        };
+
+        // A non-dashing camel projects the stopped-animation sentinel.
+        assert_eq!(dash(&world), Some(-1.0));
+
+        // Vanilla `Camel.setupAnimationStates`: the synced `DASH` boolean starts `dashAnimationState`,
+        // and the elapsed seconds flow through EntityModelSourceState into the renderer EntityRenderState
+        // (`CamelModel.setupAnim` looping `CAMEL_DASH` gallop).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 99,
+            values: vec![protocol_bool_data(CAMEL_DASH_DATA_ID, true)],
+        }));
+        world.advance_entity_client_animations(2);
+        let progress = dash(&world).expect("the dashing camel projects an instance");
+        assert!(
+            progress >= 0.0,
+            "the projected dash timer drives CamelModel.setupAnim: {progress}"
         );
     }
 
