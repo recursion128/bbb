@@ -585,6 +585,8 @@ fn entity_model_instance(
         .with_on_ground(source.on_ground)
         .with_is_moving(source.is_moving)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
+        .with_attack_anim(source.attack_anim)
+        .with_attack_arm_off_hand(source.attack_arm_off_hand)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)

@@ -223,6 +223,15 @@ entity_render_state! {
     /// (`0.0..=1.0`) that scales the sway in `setupAnim`. `0.0` for a standing
     /// entity, leaving the model in its rest pose.
     () walk_animation_speed: f32 = 0.0;
+    /// Vanilla `HumanoidRenderState.attackTime` (`LivingEntity.getAttackAnim(partialTick)`): the
+    /// lerped `0..1` melee swing progress that `HumanoidModel.setupAttackAnimation` turns into the
+    /// body twist + arm whack (the off arm tracked via [`attack_arm_off_hand`](Self::attack_arm_off_hand)).
+    /// `0.0` for an entity that is not mid-swing, leaving the arms on their walk/idle pose.
+    (with_attack_anim) attack_anim: f32 = 0.0;
+    /// Vanilla `HumanoidRenderState.attackArm` (`LivingEntity.swingingArm`): whether the active swing
+    /// is the off (left) hand. `false` for a main-hand swing (the common case) and every entity that
+    /// is not mid-swing.
+    (with_attack_arm_off_hand) attack_arm_off_hand: bool = false;
     /// Vanilla `EntityRenderState.ageInTicks` (`entity.tickCount + partialTick`): the
     /// lerped per-frame age that drives continuous idle animations (e.g. the
     /// `AbstractPiglinModel` ear flap). `0.0` until the entity scene projects it.
@@ -1590,6 +1599,8 @@ mod tests {
                 scale: 1.0,
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,
+                attack_anim: 0.0,
+                attack_arm_off_hand: false,
                 age_in_ticks: 0.0,
                 is_aggressive: false,
                 main_hand_holds_bow: false,

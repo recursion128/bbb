@@ -785,6 +785,11 @@ impl EntityStore {
             walk_animation_speed: client_animations
                 .animations
                 .walk_animation_speed(partial_ticks),
+            // Vanilla `HumanoidRenderState.attackTime`/`attackArm`
+            // (`LivingEntity.getAttackAnim(partialTick)` + `swingingArm`): the lerped melee swing
+            // progress and which arm swings. `0.0` for an entity that is not mid-swing.
+            attack_anim: client_animations.animations.attack_anim(partial_ticks),
+            attack_arm_off_hand: client_animations.animations.attack_arm_off_hand(),
             // Vanilla `SquidRenderer.extractRenderState`: the lerped tentacle flex
             // angle and body pitch/roll. `0.0` for every non-squid entity (only the
             // squid/glow squid is given a squid animation state).
@@ -1254,6 +1259,15 @@ impl EntityStore {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
         animations.animations.trigger_hurt();
+        Some(())
+    }
+
+    /// Arms the melee swing for `id` (vanilla `LivingEntity.swing`), triggered by the
+    /// `ClientboundAnimate` packet's main-hand (`off_hand = false`) / off-hand actions.
+    pub(crate) fn trigger_client_animation_swing(&mut self, id: i32, off_hand: bool) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        animations.animations.trigger_swing(off_hand);
         Some(())
     }
 

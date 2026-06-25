@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 /// The wide-player limb rest poses, for the desc-level arm-swing/bob reference-formula tests (the
 /// player now builds a named tree, so it has no `*_PARTS` desc const). Right arm `x = -5`, left arm
@@ -331,6 +331,68 @@ fn player_textured_mesh_applies_head_look() {
         assert_ne!(resting.vertices, yawed.vertices, "slim={slim}");
         assert_ne!(yawed.vertices, pitched.vertices, "slim={slim}");
     }
+}
+
+#[test]
+fn player_attack_swing_twists_body_and_whacks_the_swinging_arm() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.setupAttackAnimation` (WHACK), at attackTime `t` with head pitch `p`:
+    // the body twists `yRot = sin(sqrt(t) · 2π) · 0.2`, the arm anchors swing around it, and the
+    // attacking arm whacks down. `setupAttackAnimation` runs last, so it accumulates onto the idle pose.
+    let t = 0.4_f32;
+    let pitch = -10.0_f32;
+    let body_yrot = (t.sqrt() * PI * 2.0).sin() * 0.2;
+    let base =
+        EntityModelInstance::player(900, [0.0, 64.0, 0.0], 0.0, false).with_head_look(0.0, pitch);
+
+    // Baseline: a non-swinging player keeps the body untwisted and the arms on the idle pose.
+    let mut resting = PlayerModel::new(false);
+    resting.prepare(&base);
+    let resting_right_xrot = resting.root_mut().child_mut("right_arm").pose.rotation[0];
+    let resting_left_xrot = resting.root_mut().child_mut("left_arm").pose.rotation[0];
+    assert_eq!(resting.root_mut().child_mut("body").pose.rotation[1], 0.0);
+
+    // Main-hand swing twists the body and whacks the RIGHT arm.
+    let mut main = PlayerModel::new(false);
+    main.prepare(&base.with_attack_anim(t));
+    assert!(
+        (main.root_mut().child_mut("body").pose.rotation[1] - body_yrot).abs() < 1e-6,
+        "the body twists with the swing"
+    );
+    let right = main.root_mut().child_mut("right_arm");
+    // The arm anchor swings around the twisting body (vanilla `rightArm.x/z`), overwriting the bind.
+    assert!((right.pose.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1e-6);
+    assert!((right.pose.offset[2] - body_yrot.sin() * 5.0).abs() < 1e-6);
+    // The whack drives the right arm well forward of its idle pitch.
+    assert!(
+        right.pose.rotation[0] < resting_right_xrot - 0.8,
+        "the main hand whacks down: {} vs resting {resting_right_xrot}",
+        right.pose.rotation[0]
+    );
+    // The off (left) arm is not whacked — only the shared body twist adds to its xRot.
+    let main_left_xrot = main.root_mut().child_mut("left_arm").pose.rotation[0];
+    assert!(
+        (main_left_xrot - (resting_left_xrot + body_yrot)).abs() < 1e-6,
+        "the idle off arm only picks up the body twist on xRot"
+    );
+
+    // Off-hand swing negates the body twist and whacks the LEFT arm instead.
+    let mut off = PlayerModel::new(false);
+    off.prepare(&base.with_attack_anim(t).with_attack_arm_off_hand(true));
+    assert!(
+        (off.root_mut().child_mut("body").pose.rotation[1] - (-body_yrot)).abs() < 1e-6,
+        "the off-hand swing negates the body twist"
+    );
+    assert!(
+        off.root_mut().child_mut("left_arm").pose.rotation[0] < resting_left_xrot - 0.8,
+        "the off hand whacks the left arm"
+    );
+    // The idle right arm in an off-hand swing is not whacked on its pitch (only yRot picks up the twist).
+    assert!(
+        (off.root_mut().child_mut("right_arm").pose.rotation[0] - resting_right_xrot).abs() < 1e-6,
+        "the idle main arm keeps its pitch during an off-hand swing"
+    );
 }
 
 #[test]

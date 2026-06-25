@@ -254,6 +254,61 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
     }
 }
 
+/// Vanilla `HumanoidModel.setupAttackAnimation` (the default WHACK melee swing): driven by the
+/// projected `attack_anim` (`LivingEntity.getAttackAnim(partialTick)`, `0..1`), it twists the body,
+/// swings both arm anchors around it, then whacks the attacking arm down across the swing. The body
+/// `yRot` is `sin(sqrt(attackTime) · 2π) · 0.2` (negated for the off arm); each arm's anchor is
+/// repositioned to `x = ∓cos(bodyYRot) · 5 · ageScale`, `z = ±sin(bodyYRot) · 5 · ageScale` and gains
+/// `yRot += bodyYRot` (the left arm also `xRot += bodyYRot`); then the attacking arm
+/// (`attack_arm_off_hand` → left) gets `xRot -= sin(outQuart(t) · π) · 1.2 + sin(t · π) · -(headXRot -
+/// 0.7) · 0.75`, `yRot += bodyYRot · 2`, `zRot += sin(t · π) · -0.4`. `head_pitch_degrees` is the head
+/// look pitch (vanilla `head.xRot`); `age_scale` is the model scale (`1.0` adult). A no-op at
+/// `attack_anim <= 0`. Runs LAST — after the walk swing / arm pose — accumulating onto their rotations
+/// and overwriting the arm anchor offsets. The per-item STAB / NONE swing types are deferred.
+pub(in crate::entity_models) fn apply_humanoid_attack_animation(
+    root: &mut ModelPart,
+    attack_anim: f32,
+    attack_arm_off_hand: bool,
+    head_pitch_degrees: f32,
+    age_scale: f32,
+) {
+    if attack_anim <= 0.0 {
+        return;
+    }
+    use std::f32::consts::PI;
+    let mut body_yrot = (attack_anim.sqrt() * PI * 2.0).sin() * 0.2;
+    if attack_arm_off_hand {
+        body_yrot = -body_yrot;
+    }
+    root.child_mut("body").pose.rotation[1] = body_yrot;
+    {
+        let right = root.child_mut("right_arm");
+        right.pose.offset[0] = -body_yrot.cos() * 5.0 * age_scale;
+        right.pose.offset[2] = body_yrot.sin() * 5.0 * age_scale;
+        right.pose.rotation[1] += body_yrot;
+    }
+    {
+        let left = root.child_mut("left_arm");
+        left.pose.offset[0] = body_yrot.cos() * 5.0 * age_scale;
+        left.pose.offset[2] = -body_yrot.sin() * 5.0 * age_scale;
+        left.pose.rotation[1] += body_yrot;
+        left.pose.rotation[0] += body_yrot;
+    }
+    // WHACK: the attacking arm raises (`outQuart`-eased) and chops down across the swing.
+    let swing = 1.0 - (1.0 - attack_anim).powi(4); // Ease.outQuart
+    let raise = (swing * PI).sin();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let head_term = (attack_anim * PI).sin() * -(head_pitch - 0.7) * 0.75;
+    let attack_arm = root.child_mut(if attack_arm_off_hand {
+        "left_arm"
+    } else {
+        "right_arm"
+    });
+    attack_arm.pose.rotation[0] -= raise * 1.2 + head_term;
+    attack_arm.pose.rotation[1] += body_yrot * 2.0;
+    attack_arm.pose.rotation[2] += (attack_anim * PI).sin() * -0.4;
+}
+
 /// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose applied to a humanoid model
 /// root by name: the body (`body`) leans forward and drops, the head (`head`) drops with it, the arms
 /// (`right_arm`/`left_arm`) tilt forward and ride down, and the legs (`right_leg`/`left_leg`) tuck back.

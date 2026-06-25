@@ -8,6 +8,11 @@ use crate::WorldStore;
 
 use super::movement::entity_vec3;
 
+/// Vanilla `ClientboundAnimatePacket.SWING_MAIN_HAND` action id: the entity swings its main hand.
+const SWING_MAIN_HAND_ACTION: u8 = 0;
+/// Vanilla `ClientboundAnimatePacket.SWING_OFF_HAND` action id: the entity swings its off hand.
+const SWING_OFF_HAND_ACTION: u8 = 3;
+
 impl WorldStore {
     pub fn apply_entity_animation(&mut self, packet: ProtocolEntityAnimation) -> bool {
         self.counters.entity_animation_updates_received += 1;
@@ -20,6 +25,13 @@ impl WorldStore {
             self.counters.entity_animation_updates_ignored += 1;
             return false;
         };
+        // Vanilla `ClientboundAnimatePacket`: action `0` swings the main hand, `3` the off hand
+        // (`ClientPacketListener.handleAnimate` → `LivingEntity.swing`). Both arm the melee swing.
+        if packet.action == SWING_MAIN_HAND_ACTION || packet.action == SWING_OFF_HAND_ACTION {
+            let _ = self
+                .entities
+                .trigger_client_animation_swing(packet.id, packet.action == SWING_OFF_HAND_ACTION);
+        }
         self.counters.entity_animation_updates_applied += 1;
         true
     }

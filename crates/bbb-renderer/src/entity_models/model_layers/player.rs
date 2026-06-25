@@ -1,6 +1,6 @@
 use super::{
-    apply_head_look, apply_humanoid_crouch_named, apply_humanoid_walk, PartPose, PART_POSE_ZERO,
-    PLAYER_BLUE,
+    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_crouch_named,
+    apply_humanoid_walk, PartPose, PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -256,8 +256,9 @@ fn player_tree(slim: bool) -> ModelPart {
 /// built for the `slim`/wide arm model with the vanilla child names; each of the six base parts (head,
 /// body, arms, legs) carries one skin overlay child (hat/jacket/sleeve/pants). `setup_anim` looks the
 /// head, runs the inherited `HumanoidModel` walk swing + idle arm bob ([`apply_humanoid_walk`]),
-/// then the crouch sneaking pose ([`apply_humanoid_crouch_named`]). The held-item/attack arm poses,
-/// swim, and the elytra defer.
+/// the crouch sneaking pose ([`apply_humanoid_crouch_named`]), then the melee swing
+/// ([`apply_humanoid_attack_animation`], vanilla `setupAttackAnimation`). The held-item arm pose, the
+/// per-item swing types (STAB / NONE), swim, and the elytra defer.
 pub(in crate::entity_models) struct PlayerModel {
     root: ModelPart,
 }
@@ -316,5 +317,15 @@ impl EntityModel for PlayerModel {
         if render_state.is_crouching {
             apply_humanoid_crouch_named(&mut self.root);
         }
+        // Vanilla `HumanoidModel.setupAnim` runs `setupAttackAnimation` last (after the pose / crouch):
+        // a swinging player twists the body and whacks the attacking arm down. The player is always
+        // adult (`ageScale = 1.0`).
+        apply_humanoid_attack_animation(
+            &mut self.root,
+            render_state.attack_anim,
+            render_state.attack_arm_off_hand,
+            render_state.head_pitch,
+            1.0,
+        );
     }
 }

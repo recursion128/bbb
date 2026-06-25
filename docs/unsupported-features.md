@@ -592,7 +592,19 @@ When an agent does any of the following, update this file in the same slice:
     (`emit_player_model` colored and `emit_player_textured_model` — remote players, wide
     and slim) consumes the `HumanoidModel` legs unchanged (`PlayerModel.setupAnim` only
     toggles part visibility before `super.setupAnim`; the pants children ride the leg
-    parts and the visibility-filtered part array keeps the legs at `[4, 5]`). The
+    parts and the visibility-filtered part array keeps the legs at `[4, 5]`). The player
+    also runs the **melee attack swing** (`HumanoidModel.setupAttackAnimation`, the default
+    WHACK): the `ClientboundAnimate` packet (action `0` main / `3` off hand) arms a 6-tick
+    `LivingEntity.swing` ramp — a new client-tick `AttackSwingAnimationState` advancing
+    `attackAnim` exactly as `updateSwingTime` — projected as `attack_anim`
+    (`getAttackAnim(partialTick)`, the partial-lerp) + `attack_arm_off_hand`. `setupAnim`
+    applies it last (after the walk swing / crouch), via the shared
+    [`apply_humanoid_attack_animation`]: the body twists `yRot = sin(sqrt(t)·2π)·0.2` (off arm
+    negated), both arm anchors swing around it (`x = ∓cos · 5`, `z = ±sin · 5`), and the
+    attacking arm whacks down (`xRot -= sin(outQuart(t)·π)·1.2 + sin(t·π)·-(headXRot-0.7)·0.75`,
+    `yRot += bodyYRot·2`, `zRot += sin(t·π)·-0.4`). Extending the same helper to the other
+    humanoid models (zombie/skeleton/illager/vindicator), the per-item swing duration, and the
+    STAB / NONE swing types are deferred (every swing is the default 6-tick whack). The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
@@ -971,9 +983,14 @@ When an agent does any of the following, update this file in the same slice:
         comes for free: the held-item attach reads the same posed model, so the
         bow in the right hand rises to the horizontal aim with the arm (no extra
         wiring).
+      - melee attack swing DONE for the player (`HumanoidModel.setupAttackAnimation`
+        WHACK): the swing timer is now projected (`attack_anim`/`attack_arm_off_hand`
+        from the `ClientboundAnimate` packet, see the player entry above), so extending
+        the shared `apply_humanoid_attack_animation` to the zombie/skeleton/illager/
+        vindicator models is now just per-model wiring.
       - remaining slices: held-item refinements (first-person viewmodel; the
-        remaining combat arm poses — crossbow / spear / the `SkeletonModel` melee
-        swing, which needs the projected `attackTime`); the small armor stand's
+        crossbow `CROSSBOW_CHARGE` pull-back / spear poses; the attack swing on the
+        non-player humanoid models); the small armor stand's
         held items (needs the part-scale path the small mesh's baked-in
         `BABY_TRANSFORMER` skips). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked

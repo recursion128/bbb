@@ -124,6 +124,12 @@ const FOX_MAX_CROUCH_AMOUNT: f32 = 5.0;
 /// Vanilla `LivingEntity.hurtDuration`: the hurt animation (and red damage
 /// overlay) runs for 10 client ticks after a hurt animation or damage event.
 const HURT_ANIMATION_DURATION: i32 = 10;
+/// Vanilla `LivingEntity.getCurrentSwingDuration()` default: the melee swing ramps
+/// `attackAnim` from `0` to `1` over this many client ticks (`getSwingAnimation()
+/// .duration()`, `6` for the empty hand and the common items). The per-item swing
+/// duration and the dig-speed / mining-fatigue modifiers are deferred, so the swing
+/// always runs the default `6`-tick whack.
+const ATTACK_SWING_DURATION: i32 = 6;
 /// Vanilla `LivingEntity.DATA_HEALTH_ID` synced metadata id: `Entity` defines
 /// ids `0..=7`, then `LivingEntity` adds the flags byte (8) and the health float
 /// (9). `LivingEntity.isDeadOrDying` is `getHealth() <= 0`.
@@ -209,6 +215,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_swing: Option<AttackSwingAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub death: Option<DeathAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creeper_swell: Option<CreeperSwellAnimationState>,
@@ -254,6 +262,28 @@ pub struct CreeperSwellAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HurtAnimationState {
     pub hurt_time: i32,
+}
+
+/// Canonical client-side melee-swing animation, mirroring vanilla `LivingEntity`'s
+/// `swingTime`/`attackAnim`/`oAttackAnim`. The `ClientboundAnimate` packet (action `0`
+/// main hand / `3` off hand) calls `swing()` ([`EntityClientAnimationState::trigger_swing`]),
+/// which arms a [`ATTACK_SWING_DURATION`]-tick ramp; `updateSwingTime` advances it each
+/// client tick and the renderer projects `getAttackAnim(partialTick)` into
+/// `HumanoidModel.setupAttackAnimation`'s body twist + arm whack. `oAttackAnim` is kept for
+/// the partial-tick lerp.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct AttackSwingAnimationState {
+    /// Vanilla `LivingEntity.swinging`: a swing is currently playing.
+    pub swinging: bool,
+    /// Vanilla `LivingEntity.swingTime`: the integer tick counter, `-1` for the tick
+    /// just after `swing()` before the first `updateSwingTime`.
+    pub swing_time: i32,
+    /// Vanilla `LivingEntity.attackAnim`: `swingTime / duration`, the current-tick value.
+    pub attack_anim: f32,
+    /// Vanilla `LivingEntity.oAttackAnim`: the previous-tick `attackAnim`, the lerp start.
+    pub prev_attack_anim: f32,
+    /// Whether the swing is the off hand (left arm); vanilla `swingingArm`.
+    pub off_hand: bool,
 }
 
 /// Canonical client-side death animation counter, mirroring vanilla
@@ -1869,6 +1899,42 @@ impl EntityClientAnimationState {
             || self.death.is_some_and(|state| state.death_time > 0)
     }
 
+    /// Arms a melee swing, mirroring vanilla `LivingEntity.swing(hand)`: a swing only
+    /// (re)starts when none is playing, the current one is past halfway, or the counter is
+    /// the fresh `-1` — so a rapid re-swing during the first half is ignored (the in-flight
+    /// swing keeps ramping). `off_hand` selects the left arm (`ClientboundAnimate` action `3`).
+    pub(crate) fn trigger_swing(&mut self, off_hand: bool) {
+        let state = self.attack_swing.get_or_insert(AttackSwingAnimationState {
+            swinging: false,
+            swing_time: 0,
+            attack_anim: 0.0,
+            prev_attack_anim: 0.0,
+            off_hand,
+        });
+        if !state.swinging || state.swing_time >= ATTACK_SWING_DURATION / 2 || state.swing_time < 0
+        {
+            state.swing_time = -1;
+            state.swinging = true;
+            state.off_hand = off_hand;
+        }
+    }
+
+    /// Vanilla `LivingEntity.getAttackAnim(partialTick)` = `oAttackAnim + (attackAnim -
+    /// oAttackAnim) * partialTick`: the lerped `0..1` melee swing progress
+    /// `HumanoidModel.setupAttackAnimation` feeds the body twist + arm whack. `0.0` for an
+    /// entity that is not mid-swing (and every entity that never swung).
+    pub fn attack_anim(&self, partial_tick: f32) -> f32 {
+        self.attack_swing.map_or(0.0, |s| {
+            s.prev_attack_anim + (s.attack_anim - s.prev_attack_anim) * partial_tick
+        })
+    }
+
+    /// Whether the active swing is the off (left) hand, vanilla `swingingArm == OFF_HAND`.
+    /// `false` for a main-hand swing and every non-swinging entity.
+    pub fn attack_arm_off_hand(&self) -> bool {
+        self.attack_swing.is_some_and(|s| s.off_hand)
+    }
+
     /// Vanilla `LivingEntityRenderState.deathTime`: `entity.deathTime > 0 ?
     /// entity.deathTime + partialTick : 0`, projected for the renderer death
     /// tip-over (`LivingEntityRenderer.setupRotations`). Returns `0.0` for a
@@ -2007,6 +2073,25 @@ impl EntityClientAnimationState {
         // synced health), so this also runs outside the per-type match.
         if let Some(death) = self.death.as_mut() {
             death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
+        }
+        // Vanilla `LivingEntity` (`oAttackAnim = attackAnim` at tick start, then
+        // `updateSwingTime`): the melee swing ramps for every living entity, so it runs
+        // outside the per-type match. The state is dropped once the swing has fully decayed.
+        if let Some(swing) = self.attack_swing.as_mut() {
+            swing.prev_attack_anim = swing.attack_anim;
+            if swing.swinging {
+                swing.swing_time += 1;
+                if swing.swing_time >= ATTACK_SWING_DURATION {
+                    swing.swing_time = 0;
+                    swing.swinging = false;
+                }
+            } else {
+                swing.swing_time = 0;
+            }
+            swing.attack_anim = swing.swing_time as f32 / ATTACK_SWING_DURATION as f32;
+            if !swing.swinging && swing.attack_anim == 0.0 && swing.prev_attack_anim == 0.0 {
+                self.attack_swing = None;
+            }
         }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_CREEPER_ID => {

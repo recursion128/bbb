@@ -638,6 +638,15 @@ pub struct EntityModelSourceState {
     /// every non-living entity.
     #[serde(default)]
     pub walk_animation_speed: f32,
+    /// Vanilla `HumanoidRenderState.attackTime` (`LivingEntity.getAttackAnim(partialTick)`):
+    /// the lerped `0..1` melee swing progress `HumanoidModel.setupAttackAnimation` feeds the
+    /// body twist + arm whack. `0.0` for an entity that is not mid-swing.
+    #[serde(default)]
+    pub attack_anim: f32,
+    /// Vanilla `HumanoidRenderState.attackArm` (`LivingEntity.swingingArm`): whether the active
+    /// swing is the off (left) hand. `false` for a main-hand swing and every non-swinging entity.
+    #[serde(default)]
+    pub attack_arm_off_hand: bool,
     /// Vanilla `SquidRenderState.tentacleAngle` (`Squid.tentacleAngle` lerped):
     /// the tentacle flex angle `SquidModel.setupAnim` writes to every tentacle's
     /// `xRot`. `0.0` for a floating squid at rest and every non-squid entity.
