@@ -3063,13 +3063,13 @@ When an agent does any of the following, update this file in the same slice:
     - evaluates `minecraft:bundle/has_selected_item`
     - resolves `minecraft:bundle/selected_item` from the selected template
 
-### Item Model Range-Dispatch Projection
+### Item Model Range-Dispatch And Select Projection
 
 - Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 - Status: `partial`
 - Next action:
-  - Thread the ambient-context numeric properties through the icon resolver as
-    that state becomes available to the GUI icon path:
+  - Thread the ambient-context numeric `range_dispatch` properties through the
+    icon resolver as that state becomes available to the GUI icon path:
     - `minecraft:compass` (needle direction to spawn/lodestone target)
     - `minecraft:time` (daytime / moon-phase clock dial, with the wobbler)
     - `minecraft:cooldown` (item cooldown group progress)
@@ -3077,33 +3077,50 @@ When an agent does any of the following, update this file in the same slice:
       (local `using_item` use-tick state)
     - `minecraft:bundle/fullness` and `minecraft:count` (stack count +
       max-stack-size context)
-  - Each plugs into the existing value-aware `RangeDispatch` resolver by adding
-    a value provider; no new selection machinery is required.
+  - Wire the remaining value-aware `select` properties onto the same resolver:
+    - `minecraft:trim_material` (all armor) — needs the `minecraft:trim`
+      material holder decoded plus a `bbb-world` → icon-resolver trim-material
+      registry id→key projection
+    - `minecraft:block_state`, `minecraft:context_dimension`,
+      `minecraft:local_time`, `minecraft:context_entity_type`,
+      `minecraft:main_hand`, `minecraft:custom_model_data` (string)
+  - Each plugs into the existing value-aware `RangeDispatch` / `Select`
+    resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
   - `bbb-protocol` now decodes the `minecraft:custom_model_data` `floats` list
-    (`CustomModelDataFloats`, bit-exact `Eq`) alongside the colors list, so the
-    `CustomModelDataProperty.getFloat(index)` input is preserved on the wire.
+    (`CustomModelDataFloats`, bit-exact `Eq`) alongside the colors list, and the
+    `minecraft:charged_projectiles` item templates (`charged_projectiles_items`),
+    so the `CustomModelDataProperty.getFloat(index)` and `Charge.get` inputs are
+    preserved on the wire.
   - `bbb-native` resolves `minecraft:range_dispatch` item models with the exact
     vanilla `RangeSelectItemModel.update` selection:
     - `value = property.get(...) * scale`
     - `NaN` selects the fallback
     - `lastIndexLessOrEqual` over thresholds sorted ascending (inclusive
       `<=`; `-1` selects the fallback)
-  - The context-free numeric properties are projected from the item stack with
-    vanilla math:
+  - `bbb-native` resolves value-aware `minecraft:select` item models by matching
+    the projected property value against each case's `when` values (vanilla
+    `SelectItemModel`), falling back when no case matches.
+  - The context-free properties are projected from the item stack with vanilla
+    math:
     - `minecraft:damage` — `Damage.get` (`damage / max_damage` normalized, or
       `clamp(damage, 0, max_damage)`), reading the component patch over the item
       prototype `max_damage` default
     - `minecraft:custom_model_data` — `CustomModelDataProperty.get`
       (`floats[index]`, or `0.0` when absent)
-  - A value-aware `RangeDispatch` is treated as a runtime condition so it is
-    resolved per stack rather than collapsed at model-build time.
+    - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
+      projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
+      else `NONE`), using the native item registry to identify the projectile
+  - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
+    it is resolved per stack rather than collapsed at model-build time.
   - The remaining numeric properties (`compass`, `time`, `cooldown`,
-    `crossbow/pull`, `use_cycle`, `use_duration`, `bundle/fullness`, `count`)
-    still collapse to the fallback/first entry because their value needs
-    ambient `ClientLevel` / `ItemOwner` / use-tick state the GUI icon resolver
-    does not yet receive. This matches vanilla's `0.0`/null-owner fallback for
-    those properties only incidentally and is the documented follow-up.
+    `crossbow/pull`, `use_cycle`, `use_duration`, `bundle/fullness`, `count`) and
+    the remaining select properties (`trim_material`, `block_state`,
+    `context_dimension`, `local_time`, `context_entity_type`, `main_hand`,
+    `custom_model_data` string) still collapse to the fallback/first entry
+    because their value needs ambient `ClientLevel` / `ItemOwner` / use-tick /
+    registry context the GUI icon resolver does not yet receive. This is the
+    documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

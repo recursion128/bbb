@@ -25,8 +25,11 @@ use bbb_world::{
 mod icon_model;
 
 use icon_model::{
-    contains_runtime_condition, item_icon_model_ref_for_definition, ItemIconModel, ItemIconModelRef,
+    contains_runtime_condition, item_icon_model_ref_for_definition, CrossbowChargeType,
+    ItemIconModel, ItemIconModelRef,
 };
+
+const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
 const ITEM_GENERATED_MAX_LAYERS: usize = 5;
@@ -588,7 +591,7 @@ impl NativeItemRuntime {
                 .get(item_id)
                 .and_then(|model| {
                     model
-                        .icon_layers(None, None, None, false)
+                        .icon_layers(None, None, None, false, CrossbowChargeType::None)
                         .into_iter()
                         .next()
                 })
@@ -771,6 +774,7 @@ impl NativeItemRuntime {
         if depth >= ITEM_ICON_RECURSION_LIMIT {
             return Vec::new();
         }
+        let crossbow_charge = self.crossbow_charge_for(component_patch);
         let mut resolve_bundle_selected_item = || {
             self.bundle_selected_item_layers(component_patch, bundle_selected_item_index, depth + 1)
         };
@@ -779,8 +783,35 @@ impl NativeItemRuntime {
             default_max_damage,
             bundle_selected_item_index,
             using_item,
+            crossbow_charge,
             &mut resolve_bundle_selected_item,
         )
+    }
+
+    /// Vanilla `Charge.get`: `ROCKET` when any charged projectile is a
+    /// `minecraft:firework_rocket`, `ARROW` when charged with anything else,
+    /// else `NONE`. Projects the stack's `charged_projectiles` component.
+    fn crossbow_charge_for(
+        &self,
+        component_patch: Option<&DataComponentPatchSummary>,
+    ) -> CrossbowChargeType {
+        let Some(patch) = component_patch else {
+            return CrossbowChargeType::None;
+        };
+        if patch.charged_projectiles_items.is_empty() {
+            return CrossbowChargeType::None;
+        }
+        let is_rocket = patch.charged_projectiles_items.iter().any(|template| {
+            self.registry
+                .as_ref()
+                .and_then(|registry| registry.resource_id(template.item_id))
+                == Some(FIREWORK_ROCKET_ITEM_ID)
+        });
+        if is_rocket {
+            CrossbowChargeType::Rocket
+        } else {
+            CrossbowChargeType::Arrow
+        }
     }
 
     fn bundle_selected_item_layers(
@@ -2198,6 +2229,51 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_charge_type_select() {
+        let root = unique_temp_dir("item-runtime-charge-type");
+        write_charge_type_select_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        // A charged-projectiles template list with one entry of the given item id.
+        let charged = |item_id: i32| ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                charged_projectiles_items: vec![ItemStackTemplateSummary {
+                    item_id,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        let selected =
+            |stack: &ItemStackSummary| runtime.icon_for_stack(stack).unwrap().layers[0].uv;
+
+        // Empty crossbow → NONE → no matching case → fallback (plain crossbow).
+        assert_eq!(
+            selected(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }),
+            uv("crossbow")
+        );
+        // Charged with an arrow (item 2) → ARROW → "arrow" case.
+        assert_eq!(selected(&charged(2)), uv("crossbow_arrow"));
+        // Charged with a firework_rocket (item 1) → ROCKET → "rocket" case.
+        assert_eq!(selected(&charged(1)), uv("crossbow_firework"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_value_aware_range_dispatch() {
         let root = unique_temp_dir("item-runtime-range-dispatch");
         write_value_aware_range_dispatch_fixture(&root);
@@ -2596,6 +2672,36 @@ mod tests {
         );
         write_flat_item_model_and_texture(&assets, "compass", &[40, 120, 80, 255]);
         write_flat_item_model_and_texture(&assets, "compass_lodestone", &[120, 40, 80, 255]);
+    }
+
+    fn write_charge_type_select_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        // Item 0 = crossbow, item 1 = firework_rocket, item 2 = arrow.
+        write_item_registry_source(root, &["crossbow", "firework_rocket", "arrow"]);
+        write_json(
+            &assets.join("items").join("crossbow.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:charge_type",
+                    "cases": [
+                        {
+                            "when": "arrow",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_arrow" }
+                        },
+                        {
+                            "when": "rocket",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_firework" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/crossbow" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "crossbow", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_arrow", &[80, 120, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_firework", &[120, 40, 80, 255]);
     }
 
     fn write_value_aware_range_dispatch_fixture(root: &Path) {

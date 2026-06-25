@@ -41,6 +41,12 @@ pub(super) enum ItemIconModelRef {
         entries: Vec<(f32, Box<ItemIconModelRef>)>,
         fallback: Box<ItemIconModelRef>,
     },
+    Select {
+        property: SelectProperty,
+        /// `(when values, model)` cases in declaration order.
+        cases: Vec<(Vec<String>, Box<ItemIconModelRef>)>,
+        fallback: Box<ItemIconModelRef>,
+    },
     Composite(Vec<ItemIconModelRef>),
 }
 
@@ -138,6 +144,59 @@ fn last_range_entry_at_or_below(
     selected
 }
 
+/// The subset of vanilla `SelectItemModelProperty` whose value is a pure
+/// projection of the item stack (resolvable from the GUI icon context). The rest
+/// (`trim_material`, `block_state`, `local_time`, `context_dimension`,
+/// `context_entity_type`, `main_hand`, `custom_model_data` string) need
+/// registry/world/owner context and keep the build-time collapse.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) enum SelectProperty {
+    /// `minecraft:charge_type` — `Charge.get`, matched against the crossbow's
+    /// charged-projectile contents.
+    ChargeType,
+}
+
+/// Vanilla `CrossbowItem.ChargeType` — the value of the `minecraft:charge_type`
+/// select property, projected from the item's `charged_projectiles` component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(super) enum CrossbowChargeType {
+    #[default]
+    None,
+    Arrow,
+    Rocket,
+}
+
+impl CrossbowChargeType {
+    /// The serialized name (`CrossbowItem.ChargeType.CODEC`) matched against a
+    /// select case's `when` values.
+    fn when_name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Arrow => "arrow",
+            Self::Rocket => "rocket",
+        }
+    }
+}
+
+/// Builds a [`SelectProperty`] for the value-aware select properties, or `None`
+/// for the context-needing ones (which keep the build-time collapse).
+fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
+    match property.property_type.as_str() {
+        "minecraft:charge_type" => Some(SelectProperty::ChargeType),
+        _ => None,
+    }
+}
+
+/// Collects the string `when` values of a select case (vanilla `when` may be a
+/// single value or a list; non-string values are ignored for the string-keyed
+/// properties handled at runtime).
+fn select_case_when_strings(case: &SelectCase) -> Vec<String> {
+    case.when
+        .iter()
+        .filter_map(|value| value.as_str().map(str::to_string))
+        .collect()
+}
+
 impl ItemIconModelRef {
     pub(super) fn is_empty(&self) -> bool {
         match self {
@@ -150,6 +209,9 @@ impl ItemIconModelRef {
             Self::RangeDispatch {
                 entries, fallback, ..
             } => entries.iter().all(|(_, model)| model.is_empty()) && fallback.is_empty(),
+            Self::Select {
+                cases, fallback, ..
+            } => cases.iter().all(|(_, model)| model.is_empty()) && fallback.is_empty(),
             Self::Composite(models) => models.iter().all(Self::is_empty),
         }
     }
@@ -190,6 +252,18 @@ impl ItemIconModelRef {
                     .collect(),
                 fallback: Box::new(fallback.into_indexed(textures)),
             },
+            Self::Select {
+                property,
+                cases,
+                fallback,
+            } => ItemIconModel::Select {
+                property,
+                cases: cases
+                    .into_iter()
+                    .map(|(when, model)| (when, Box::new(model.into_indexed(textures))))
+                    .collect(),
+                fallback: Box::new(fallback.into_indexed(textures)),
+            },
             Self::Composite(models) => ItemIconModel::Composite(
                 models
                     .into_iter()
@@ -216,6 +290,11 @@ pub(super) enum ItemIconModel {
         entries: Vec<(f32, Box<ItemIconModel>)>,
         fallback: Box<ItemIconModel>,
     },
+    Select {
+        property: SelectProperty,
+        cases: Vec<(Vec<String>, Box<ItemIconModel>)>,
+        fallback: Box<ItemIconModel>,
+    },
     Composite(Vec<ItemIconModel>),
 }
 
@@ -226,6 +305,7 @@ impl ItemIconModel {
         default_max_damage: Option<i32>,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        crossbow_charge: CrossbowChargeType,
     ) -> Vec<ItemIconTextureLayer> {
         let mut no_bundle_selected_item = || Vec::new();
         self.icon_layers_with_bundle_resolver(
@@ -233,6 +313,7 @@ impl ItemIconModel {
             default_max_damage,
             bundle_selected_item_index,
             using_item,
+            crossbow_charge,
             &mut no_bundle_selected_item,
         )
     }
@@ -243,6 +324,7 @@ impl ItemIconModel {
         default_max_damage: Option<i32>,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        crossbow_charge: CrossbowChargeType,
         resolve_bundle_selected_item: &mut impl FnMut() -> Vec<ItemIconTextureLayer>,
     ) -> Vec<ItemIconTextureLayer> {
         match self {
@@ -293,6 +375,7 @@ impl ItemIconModel {
                     default_max_damage,
                     bundle_selected_item_index,
                     using_item,
+                    crossbow_charge,
                     resolve_bundle_selected_item,
                 )
             }
@@ -316,6 +399,29 @@ impl ItemIconModel {
                     default_max_damage,
                     bundle_selected_item_index,
                     using_item,
+                    crossbow_charge,
+                    resolve_bundle_selected_item,
+                )
+            }
+            Self::Select {
+                property,
+                cases,
+                fallback,
+            } => {
+                let selected_when = match property {
+                    SelectProperty::ChargeType => crossbow_charge.when_name(),
+                };
+                let selected = cases
+                    .iter()
+                    .find(|(when, _)| when.iter().any(|value| value == selected_when))
+                    .map(|(_, model)| model.as_ref())
+                    .unwrap_or(fallback.as_ref());
+                selected.icon_layers_with_bundle_resolver(
+                    component_patch,
+                    default_max_damage,
+                    bundle_selected_item_index,
+                    using_item,
+                    crossbow_charge,
                     resolve_bundle_selected_item,
                 )
             }
@@ -327,6 +433,7 @@ impl ItemIconModel {
                         default_max_damage,
                         bundle_selected_item_index,
                         using_item,
+                        crossbow_charge,
                         resolve_bundle_selected_item,
                     )
                 })
@@ -375,8 +482,9 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
             fallback,
             ..
         } => {
-            selected_icon_select_model(property, cases, fallback.as_deref())
-                .is_some_and(contains_runtime_condition)
+            select_property_for(property).is_some()
+                || selected_icon_select_model(property, cases, fallback.as_deref())
+                    .is_some_and(contains_runtime_condition)
                 || cases
                     .iter()
                     .any(|case| contains_runtime_condition(&case.model))
@@ -496,11 +604,55 @@ pub(super) fn item_icon_model_ref_for_definition(
             cases,
             fallback,
             ..
-        } => selected_icon_select_model(property, cases, fallback.as_deref())
-            .map(|model| {
-                item_icon_model_ref_for_definition(model, cuboid_models, model_tints, colormaps)
-            })
-            .unwrap_or(ItemIconModelRef::Empty),
+        } => {
+            if let Some(resolved_property) = select_property_for(property) {
+                let resolved_cases: Vec<(Vec<String>, Box<ItemIconModelRef>)> = cases
+                    .iter()
+                    .map(|case| {
+                        (
+                            select_case_when_strings(case),
+                            Box::new(item_icon_model_ref_for_definition(
+                                &case.model,
+                                cuboid_models,
+                                model_tints,
+                                colormaps,
+                            )),
+                        )
+                    })
+                    .collect();
+                let fallback = fallback
+                    .as_deref()
+                    .map(|model| {
+                        item_icon_model_ref_for_definition(
+                            model,
+                            cuboid_models,
+                            model_tints,
+                            colormaps,
+                        )
+                    })
+                    .unwrap_or(ItemIconModelRef::Empty);
+                ItemIconModelRef::Select {
+                    property: resolved_property,
+                    cases: resolved_cases,
+                    fallback: Box::new(fallback),
+                }
+            } else {
+                // Context-needing select properties (trim_material/block_state/
+                // local_time/context_dimension/main_hand/...) collapse to the
+                // resolved single case since their value needs registry/world/
+                // owner context not available to the GUI icon resolver.
+                selected_icon_select_model(property, cases, fallback.as_deref())
+                    .map(|model| {
+                        item_icon_model_ref_for_definition(
+                            model,
+                            cuboid_models,
+                            model_tints,
+                            colormaps,
+                        )
+                    })
+                    .unwrap_or(ItemIconModelRef::Empty)
+            }
+        }
         ItemModelDefinition::Composite { models, .. } => ItemIconModelRef::Composite(
             models
                 .iter()

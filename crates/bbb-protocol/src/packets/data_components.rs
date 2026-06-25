@@ -68,6 +68,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
     #[serde(default)]
+    pub charged_projectiles_items: Vec<ItemStackTemplateSummary>,
+    #[serde(default)]
     pub bundle_contents_items: Vec<ItemStackTemplateSummary>,
     #[serde(default)]
     pub bundle_contents_item_count: Option<usize>,
@@ -298,6 +300,10 @@ fn decode_typed_data_component_patch_summary(
             }
             45 => {
                 summary.map_color = Some(decoder.read_i32()?);
+            }
+            49 => {
+                summary.charged_projectiles_items =
+                    decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
             }
             50 => {
                 summary.bundle_contents_items =
@@ -2148,6 +2154,18 @@ mod tests {
                     pages: vec!["Page".to_string()],
                     resolved: true,
                 }),
+                charged_projectiles_items: vec![
+                    ItemStackTemplateSummary {
+                        item_id: 50,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                    ItemStackTemplateSummary {
+                        item_id: 51,
+                        count: 2,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                ],
                 bundle_contents_items: vec![ItemStackTemplateSummary {
                     item_id: 52,
                     count: 3,
