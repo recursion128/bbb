@@ -658,8 +658,19 @@ When an agent does any of the following, update this file in the same slice:
     `IllagerModel` `swingWeaponDown` axe pose, and the piglin/brute reuse that same
     `swingWeaponDown` for their `ATTACKING_WITH_MELEE_WEAPON` pose (see the piglin note above); the
     default `HumanoidModel` body-twist whack for a non-`ATTACKING` piglin (empty hand / non-tool
-    item), the per-item swing duration, and the STAB / NONE swing types are deferred (every swing is
-    the default 6-tick whack). The
+    item) and the per-item swing duration are deferred (every swing is the default 6-tick whack). The
+    `STAB` swing type IS implemented for the player: a remote player whose main-hand item is one of the
+    seven spears (`wooden`/`stone`/`copper`/`iron`/`golden`/`diamond`/`netherite_spear`, whose item
+    prototype sets `SWING_ANIMATION = STAB` via `Item.Properties.spear(...)`) lunges with
+    `SpearAnimations.thirdPersonAttackHand` instead of the whack — the shared body twist + arm anchors
+    run, then the attacking arm's pitch drives `xRot += (90·inOutSine(progress(t,0,0.05)) −
+    120·inQuad(progress(t,0.05,0.2)) + 30·inOutExpo(progress(t,0.4,1.0)))·π/180` (the prologue's
+    body-twist additions on the arm rotations are undone, so the off arm keeps its resting pitch). The
+    STAB default lives on the item prototype (not the network component patch), so it is detected by the
+    resolved item id (gated to the player kind; a datapack-overridden `SWING_ANIMATION` on a non-spear
+    item, the `NONE` swing type, and the STAB pose on non-player humanoids — which use their own arm
+    poses — stay deferred). The per-tick `thirdPersonHandUse` hold sway (`KINETIC_WEAPON`/`ticksUsingItem`)
+    also stays deferred. The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
@@ -1077,13 +1088,14 @@ When an agent does any of the following, update this file in the same slice:
         bow in the right hand rises to the horizontal aim with the arm (no extra
         wiring).
       - melee attack swing DONE for the player (`HumanoidModel.setupAttackAnimation`
-        WHACK): the swing timer is now projected (`attack_anim`/`attack_arm_off_hand`
-        from the `ClientboundAnimate` packet, see the player entry above), so extending
-        the shared `apply_humanoid_attack_animation` to the zombie/skeleton/illager/
-        vindicator models is now just per-model wiring.
+        WHACK + the spear `STAB` lunge): the swing timer is now projected
+        (`attack_anim`/`attack_arm_off_hand` from the `ClientboundAnimate` packet, see
+        the player entry above), so extending the shared
+        `apply_humanoid_attack_animation`/`apply_humanoid_stab_attack_animation` to the
+        zombie/skeleton/illager/vindicator models is now just per-model wiring.
       - remaining slices: held-item refinements (first-person viewmodel; the
-        spear / trident STAB swing poses; the attack swing on the
-        non-player humanoid models); the small armor stand's
+        STAB swing pose on non-player humanoid models; the `NONE` swing type; the
+        attack swing on the non-player humanoid models); the small armor stand's
         held items (needs the part-scale path the small mesh's baked-in
         `BABY_TRANSFORMER` skips). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked

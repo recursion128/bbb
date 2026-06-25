@@ -396,6 +396,81 @@ fn player_attack_swing_twists_body_and_whacks_the_swinging_arm() {
 }
 
 #[test]
+fn player_with_a_spear_lunges_instead_of_whacking() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.setupAttackAnimation` `STAB` (`SpearAnimations.thirdPersonAttackHand`): the
+    // shared body twist + arm anchors run, but the attacking arm LUNGES on its pitch
+    // (`xRot += (90·prepare − 120·attack + 30·retract)·π/180`) instead of whacking, and the body-twist
+    // contributions on the arm rotations are undone (the off arm keeps its resting pitch).
+    let t = 0.1_f32;
+    let body_yrot = (t.sqrt() * PI * 2.0).sin() * 0.2;
+    let progress = |t: f32, a: f32, b: f32| ((t - a) / (b - a)).clamp(0.0, 1.0);
+    let in_out_sine = |x: f32| -((PI * x).cos() - 1.0) / 2.0;
+    let in_out_expo = |x: f32| {
+        if x < 0.5 {
+            if x == 0.0 {
+                0.0
+            } else {
+                2.0_f32.powf(20.0 * x - 10.0) / 2.0
+            }
+        } else if x == 1.0 {
+            1.0
+        } else {
+            (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
+        }
+    };
+    let stab = {
+        let prepare = in_out_sine(progress(t, 0.0, 0.05));
+        let attack = progress(t, 0.05, 0.2).powi(2);
+        let retract = in_out_expo(progress(t, 0.4, 1.0));
+        (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians()
+    };
+
+    let base =
+        EntityModelInstance::player(905, [0.0, 64.0, 0.0], 0.0, false).with_head_look(0.0, -10.0);
+    let mut resting = PlayerModel::new(false);
+    resting.prepare(&base);
+    let resting_right_xrot = resting.root_mut().child_mut("right_arm").pose.rotation[0];
+    let resting_left_xrot = resting.root_mut().child_mut("left_arm").pose.rotation[0];
+
+    // A spear-swing twists the body the same way the whack does, but lunges the right arm.
+    let spear = base.with_attack_anim(t).with_main_hand_swing_is_stab(true);
+    let mut model = PlayerModel::new(false);
+    model.prepare(&spear);
+    assert!(
+        (model.root_mut().child_mut("body").pose.rotation[1] - body_yrot).abs() < 1e-6,
+        "the body still twists with the swing"
+    );
+    let right = model.root_mut().child_mut("right_arm");
+    let right_offset0 = right.pose.offset[0];
+    let right_xrot = right.pose.rotation[0];
+    assert!((right_offset0 - (-body_yrot.cos() * 5.0)).abs() < 1e-6);
+    assert!(
+        (right_xrot - (resting_right_xrot + stab)).abs() < 1e-6,
+        "the main arm lunges by the stab term: {right_xrot} vs {}",
+        resting_right_xrot + stab
+    );
+
+    // Unlike the whack, the stab undoes the prologue's body-twist add on the off arm's pitch — it stays
+    // at its resting pitch.
+    let left_xrot = model.root_mut().child_mut("left_arm").pose.rotation[0];
+    assert!(
+        (left_xrot - resting_left_xrot).abs() < 1e-6,
+        "the off arm keeps its resting pitch during a stab (no body-twist add)"
+    );
+
+    // The same swing time with a non-spear (WHACK) drives a visibly different attacking-arm pitch.
+    let mut whack = PlayerModel::new(false);
+    whack.prepare(&base.with_attack_anim(t));
+    let whack_right_xrot = whack.root_mut().child_mut("right_arm").pose.rotation[0];
+    assert!(
+        (whack_right_xrot - right_xrot).abs() > 0.3,
+        "the spear lunge differs from the whack chop: stab {right_xrot} vs whack {whack_right_xrot}"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

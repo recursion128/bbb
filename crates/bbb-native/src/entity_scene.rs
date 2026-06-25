@@ -463,6 +463,41 @@ fn entity_main_hand_holds_trident(
     item_runtime.item_resource_id(item_id) == Some("minecraft:trident")
 }
 
+/// Whether the entity's main-hand item is a spear — one of the seven tool-material spears whose item
+/// prototype sets `DataComponents.SWING_ANIMATION` to `SwingAnimationType.STAB` in `Item.Properties.spear(...)`.
+/// A spear's melee swing uses the `STAB` `SpearAnimations.thirdPersonAttackHand` pose instead of the default
+/// `WHACK`. That STAB default lives on the item PROTOTYPE (not the network component patch), so it is detected
+/// by the resolved item id rather than a component-presence check (a datapack explicitly overriding
+/// `SWING_ANIMATION` on a non-spear item is a deferred edge case). Resolved through the item registry; `false`
+/// without it or for any non-spear / empty hand.
+fn entity_main_hand_holds_spear(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, false) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    matches!(
+        item_runtime.item_resource_id(item_id),
+        Some(
+            "minecraft:wooden_spear"
+                | "minecraft:stone_spear"
+                | "minecraft:copper_spear"
+                | "minecraft:iron_spear"
+                | "minecraft:golden_spear"
+                | "minecraft:diamond_spear"
+                | "minecraft:netherite_spear"
+        )
+    )
+}
+
 /// Whether the entity's main-hand item is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)`),
 /// driving the pillager's `CROSSBOW_HOLD` arm pose. Resolved through the item registry, so it needs the
 /// runtime; `false` without it or for any non-crossbow / empty hand.
@@ -624,6 +659,12 @@ fn entity_model_instance(
             kind,
             EntityModelKind::Skeleton | EntityModelKind::SkeletonVariant { .. }
         ) && entity_main_hand_holds_bow(world, item_runtime, source.entity_id);
+    // Vanilla `HumanoidModel.setupAttackAnimation` switches on the held item's `SWING_ANIMATION` type: a
+    // spear swings with the `STAB` `SpearAnimations.thirdPersonAttackHand` pose instead of the default
+    // `WHACK`. Only `PlayerModel` consumes the shared attack helper (the skeleton/zombie/illager melee
+    // models use their own arm poses), so resolve the spear just for the player kind.
+    let main_hand_swing_is_stab = matches!(kind, EntityModelKind::Player { .. })
+        && entity_main_hand_holds_spear(world, item_runtime, source.entity_id);
     // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
     let main_hand_holds_crossbow =
         matches!(
@@ -783,6 +824,7 @@ fn entity_model_instance(
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
+        .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_drowned_throw_trident(drowned_throw_trident)
         .with_is_charging_crossbow(pillager_is_charging_crossbow(
@@ -3882,6 +3924,27 @@ mod tests {
             .render_state
             .drowned_throw_trident;
         assert!(!throwing);
+    }
+
+    #[test]
+    fn entity_model_instances_stab_swing_needs_a_resolved_spear() {
+        // The STAB swing type needs the held item resolved through the item registry to confirm a spear
+        // (the STAB default lives on the item prototype, not the network patch); without an item runtime
+        // it can never resolve, so the projection defaults off and the player keeps the WHACK swing. Gated
+        // to the player kind, so a non-player entity never gets it either.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            240,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -9.0],
+        ));
+        let stab = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 240)
+            .unwrap()
+            .render_state
+            .main_hand_swing_is_stab;
+        assert!(!stab);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 use super::{
     apply_head_look, apply_humanoid_attack_animation, apply_humanoid_crouch_named,
-    apply_humanoid_walk, PartPose, PART_POSE_ZERO, PLAYER_BLUE,
+    apply_humanoid_stab_attack_animation, apply_humanoid_walk, PartPose, PART_POSE_ZERO,
+    PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -318,14 +319,23 @@ impl EntityModel for PlayerModel {
             apply_humanoid_crouch_named(&mut self.root);
         }
         // Vanilla `HumanoidModel.setupAnim` runs `setupAttackAnimation` last (after the pose / crouch):
-        // a swinging player twists the body and whacks the attacking arm down. The player is always
-        // adult (`ageScale = 1.0`).
-        apply_humanoid_attack_animation(
-            &mut self.root,
-            render_state.attack_anim,
-            render_state.attack_arm_off_hand,
-            render_state.head_pitch,
-            1.0,
-        );
+        // a swinging player twists the body and drives the attacking arm. The player is always adult
+        // (`ageScale = 1.0`). A held spear lunges (`STAB`); everything else chops (`WHACK`).
+        if render_state.main_hand_swing_is_stab {
+            apply_humanoid_stab_attack_animation(
+                &mut self.root,
+                render_state.attack_anim,
+                render_state.attack_arm_off_hand,
+                1.0,
+            );
+        } else {
+            apply_humanoid_attack_animation(
+                &mut self.root,
+                render_state.attack_anim,
+                render_state.attack_arm_off_hand,
+                render_state.head_pitch,
+                1.0,
+            );
+        }
     }
 }

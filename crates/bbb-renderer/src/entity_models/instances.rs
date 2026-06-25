@@ -273,6 +273,11 @@ entity_render_state! {
     /// `BOW_AND_ARROW`, so `SkeletonModel` aims both arms forward along the head look. `false` for every
     /// non-skeleton entity and for a skeleton not holding a bow.
     (with_main_hand_holds_bow) main_hand_holds_bow: bool = false;
+    /// Vanilla `HumanoidRenderState.swingAnimationType == STAB` (`ItemStack.getSwingAnimation().type()`):
+    /// a held spear makes `HumanoidModel.setupAttackAnimation` run `SpearAnimations.thirdPersonAttackHand`
+    /// (the lunge/retract stab) instead of the default `WHACK` arm chop. `false` for every entity not
+    /// holding a spear — only `PlayerModel` consumes it (the default `WHACK` covers every other case).
+    (with_main_hand_swing_is_stab) main_hand_swing_is_stab: bool = false;
     /// Vanilla `Pillager.isHolding(Items.CROSSBOW)`: with [`is_charging_crossbow`](Self::is_charging_crossbow)
     /// `false`, `Pillager.getArmPose` returns `CROSSBOW_HOLD`, so `IllagerModel` levels the crossbow
     /// (`AnimationUtils.animateCrossbowHold`) along the head look. `false` for every non-pillager entity
@@ -1795,6 +1800,7 @@ mod tests {
                 age_in_ticks: 0.0,
                 is_aggressive: false,
                 main_hand_holds_bow: false,
+                main_hand_swing_is_stab: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,
                 is_charging_crossbow: false,

@@ -309,6 +309,80 @@ pub(in crate::entity_models) fn apply_humanoid_attack_animation(
     attack_arm.pose.rotation[2] += (attack_anim * PI).sin() * -0.4;
 }
 
+/// Vanilla `HumanoidModel.setupAttackAnimation` `STAB` branch (`SpearAnimations.thirdPersonAttackHand`): a
+/// spear lunges instead of chopping. The shared prologue (the `WHACK` body twist + arm-anchor reposition,
+/// see [`apply_humanoid_attack_animation`]) runs first; the stab then *undoes* the prologue's
+/// `arm.yRot += body.yRot` / `leftArm.xRot += body.yRot` additions (they cancel exactly), leaving the arm
+/// rotations free of the twist, and drives the attacking arm's pitch through a lunge:
+/// `xRot += (90·prepare − 120·attack + 30·retract)·π/180`, where `prepare = inOutSine(progress(t, 0, 0.05))`,
+/// `attack = inQuad(progress(t, 0.05, 0.2))`, `retract = inOutExpo(progress(t, 0.4, 1.0))` and
+/// `progress(t, a, b) = clamp((t − a)/(b − a), 0, 1)`. `t = attack_anim`. The per-tick `thirdPersonHandUse`
+/// hold sway (`KINETIC_WEAPON`/`ticksUsingItem`) is a separate path and stays deferred.
+pub(in crate::entity_models) fn apply_humanoid_stab_attack_animation(
+    root: &mut ModelPart,
+    attack_anim: f32,
+    attack_arm_off_hand: bool,
+    age_scale: f32,
+) {
+    if attack_anim <= 0.0 {
+        return;
+    }
+    use std::f32::consts::PI;
+    let mut body_yrot = (attack_anim.sqrt() * PI * 2.0).sin() * 0.2;
+    if attack_arm_off_hand {
+        body_yrot = -body_yrot;
+    }
+    root.child_mut("body").pose.rotation[1] = body_yrot;
+    // The shared prologue repositions the arm anchors (`x = ∓cos·5`, `z = ±sin·5`). The prologue's
+    // `arm.yRot += body.yRot` (both arms) and `leftArm.xRot += body.yRot` additions are immediately undone
+    // by `thirdPersonAttackHand`, so they net to zero and are omitted here.
+    {
+        let right = root.child_mut("right_arm");
+        right.pose.offset[0] = -body_yrot.cos() * 5.0 * age_scale;
+        right.pose.offset[2] = body_yrot.sin() * 5.0 * age_scale;
+    }
+    {
+        let left = root.child_mut("left_arm");
+        left.pose.offset[0] = body_yrot.cos() * 5.0 * age_scale;
+        left.pose.offset[2] = -body_yrot.sin() * 5.0 * age_scale;
+    }
+    let prepare = ease_in_out_sine(progress(attack_anim, 0.0, 0.05));
+    let attack = progress(attack_anim, 0.05, 0.2).powi(2); // Ease.inQuad
+    let retract = ease_in_out_expo(progress(attack_anim, 0.4, 1.0));
+    let attack_arm = root.child_mut(if attack_arm_off_hand {
+        "left_arm"
+    } else {
+        "right_arm"
+    });
+    attack_arm.pose.rotation[0] += (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians();
+}
+
+/// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
+fn progress(t: f32, a: f32, b: f32) -> f32 {
+    ((t - a) / (b - a)).clamp(0.0, 1.0)
+}
+
+/// Vanilla `Ease.inOutSine`: `-(cos(π·x) − 1) / 2`.
+fn ease_in_out_sine(x: f32) -> f32 {
+    -((std::f32::consts::PI * x).cos() - 1.0) / 2.0
+}
+
+/// Vanilla `Ease.inOutExpo`: an exponential ease that snaps through the midpoint, with the `x == 0`/`x == 1`
+/// endpoints pinned to `0`/`1` (the `pow` would otherwise miss them by a hair).
+fn ease_in_out_expo(x: f32) -> f32 {
+    if x < 0.5 {
+        if x == 0.0 {
+            0.0
+        } else {
+            2.0_f32.powf(20.0 * x - 10.0) / 2.0
+        }
+    } else if x == 1.0 {
+        1.0
+    } else {
+        (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
+    }
+}
+
 /// Vanilla `AnimationUtils.swingWeaponDown(rightArm, leftArm, mainArm = RIGHT, attackTime, ageInTicks)`:
 /// the main (right) arm raises overhead (`xRot = -1.8849558` + a `cos(age·0.09)·0.15` idle wobble) and
 /// chops down with the attack (`+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`), the off (left) arm trails
