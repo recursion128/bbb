@@ -56,6 +56,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub attack_range: Option<AttackRangeSummary>,
     #[serde(default)]
+    pub custom_model_data_floats: CustomModelDataFloats,
+    #[serde(default)]
     pub custom_model_data_colors: Vec<i32>,
     #[serde(default)]
     pub dyed_color: Option<i32>,
@@ -79,6 +81,41 @@ pub struct DataComponentPatchSummary {
     pub writable_book_pages: Vec<String>,
     #[serde(default)]
     pub written_book: Option<WrittenBookContentSummary>,
+}
+
+/// The `floats` list of a `minecraft:custom_model_data` component, preserved so
+/// the `minecraft:custom_model_data` range-dispatch item-model property can read
+/// `CustomModelData.getFloat(index)` during icon resolution. Equality is bit-exact
+/// (mirroring [`AttackRangeSummary`]) so the enclosing summary can keep deriving `Eq`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct CustomModelDataFloats(pub Vec<f32>);
+
+impl PartialEq for CustomModelDataFloats {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.len() == other.0.len()
+            && self
+                .0
+                .iter()
+                .zip(&other.0)
+                .all(|(left, right)| left.to_bits() == right.to_bits())
+    }
+}
+
+impl Eq for CustomModelDataFloats {}
+
+impl From<Vec<f32>> for CustomModelDataFloats {
+    fn from(values: Vec<f32>) -> Self {
+        Self(values)
+    }
+}
+
+impl std::ops::Deref for CustomModelDataFloats {
+    type Target = [f32];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -252,7 +289,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
             }
             17 => {
-                summary.custom_model_data_colors = decode_custom_model_data(decoder)?;
+                let (floats, colors) = decode_custom_model_data(decoder)?;
+                summary.custom_model_data_floats = floats.into();
+                summary.custom_model_data_colors = colors;
             }
             44 => {
                 summary.dyed_color = Some(decoder.read_i32()?);
@@ -353,7 +392,7 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         16 => decode_attribute_modifiers(decoder)?,
         // custom_model_data: floats, flags, strings, colors.
         17 => {
-            decode_custom_model_data(decoder)?;
+            let _ = decode_custom_model_data(decoder)?;
         }
         // tooltip_display: bool + collection of data component type ids.
         18 => decode_tooltip_display(decoder)?,
@@ -665,10 +704,11 @@ fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<()> {
     }
 }
 
-fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
-    let floats = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    for _ in 0..floats {
-        decoder.read_f32()?;
+fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<(Vec<f32>, Vec<i32>)> {
+    let float_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut float_values = Vec::with_capacity(float_count);
+    for _ in 0..float_count {
+        float_values.push(decoder.read_f32()?);
     }
 
     let flags = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
@@ -687,7 +727,7 @@ fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
         color_values.push(decoder.read_i32()?);
     }
 
-    Ok(color_values)
+    Ok((float_values, color_values))
 }
 
 fn decode_use_effects(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1617,6 +1657,7 @@ mod tests {
                         level: 1,
                     },
                 ],
+                custom_model_data_floats: vec![1.0, 2.5].into(),
                 custom_model_data_colors: vec![0x112233, 0x445566],
                 lore: vec!["Line one".to_string(), "Line two".to_string()],
                 ..DataComponentPatchSummary::default()

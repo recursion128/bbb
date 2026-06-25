@@ -2198,6 +2198,70 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_value_aware_range_dispatch() {
+        let root = unique_temp_dir("item-runtime-range-dispatch");
+        write_value_aware_range_dispatch_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let damage_stack = |damage: Option<i32>, max_damage: Option<i32>| ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                damage,
+                max_damage,
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        let selected =
+            |stack: &ItemStackSummary| runtime.icon_for_stack(stack).unwrap().layers[0].uv;
+
+        // damage 50/100 = 0.5 lands exactly on the 0.5 threshold (vanilla
+        // `lastIndexLessOrEqual` is inclusive), proving sort + boundary.
+        assert_eq!(
+            selected(&damage_stack(Some(50), Some(100))),
+            uv("damage_half")
+        );
+        // damage 95/100 = 0.95 reaches the top entry.
+        assert_eq!(
+            selected(&damage_stack(Some(95), Some(100))),
+            uv("damage_low")
+        );
+        // damage 40/100 = 0.4 precedes the first threshold (0.5) → fallback (-1).
+        assert_eq!(
+            selected(&damage_stack(Some(40), Some(100))),
+            uv("damage_fallback")
+        );
+        // No max_damage → 0/0 = NaN → fallback.
+        assert_eq!(selected(&damage_stack(None, None)), uv("damage_fallback"));
+
+        let cmd_stack = |floats: Vec<f32>| ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                custom_model_data_floats: floats.into(),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        // floats[1] = 0.5, scale 2.0 → 1.0 lands on the 1.0 threshold; floats[0]
+        // is ignored (index 1), proving index handling, scale, and boundary.
+        assert_eq!(selected(&cmd_stack(vec![9.0, 0.5])), uv("cmd_1"));
+        // floats[1] = 2.0 * 2.0 = 4.0 reaches the 3.0 entry.
+        assert_eq!(selected(&cmd_stack(vec![9.0, 2.0])), uv("cmd_3"));
+        // Missing index 1 → 0.0 → the 0.0 entry.
+        assert_eq!(selected(&cmd_stack(vec![9.0])), uv("cmd_0"));
+        // No custom_model_data at all → 0.0 → the 0.0 entry.
+        assert_eq!(selected(&cmd_stack(Vec::new())), uv("cmd_0"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_selects_bundle_icon_from_local_selected_item() {
         let root = unique_temp_dir("item-runtime-bundle-selected");
         write_bundle_selected_item_fixture(&root);
@@ -2532,6 +2596,68 @@ mod tests {
         );
         write_flat_item_model_and_texture(&assets, "compass", &[40, 120, 80, 255]);
         write_flat_item_model_and_texture(&assets, "compass_lodestone", &[120, 40, 80, 255]);
+    }
+
+    fn write_value_aware_range_dispatch_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["damage_dispatch", "cmd_dispatch"]);
+        // `minecraft:damage` (normalize default true). Entries listed out of
+        // threshold order to prove the resolver sorts before selecting.
+        write_json(
+            &assets.join("items").join("damage_dispatch.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:range_dispatch",
+                    "property": "minecraft:damage",
+                    "entries": [
+                        {
+                            "threshold": 0.9,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/damage_low" }
+                        },
+                        {
+                            "threshold": 0.5,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/damage_half" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/damage_fallback" }
+                }
+            }"#,
+        );
+        // `minecraft:custom_model_data` index 1, scale 2.0 (value = floats[1] * 2).
+        write_json(
+            &assets.join("items").join("cmd_dispatch.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:range_dispatch",
+                    "property": "minecraft:custom_model_data",
+                    "index": 1,
+                    "scale": 2.0,
+                    "entries": [
+                        {
+                            "threshold": 3.0,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/cmd_3" }
+                        },
+                        {
+                            "threshold": 0.0,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/cmd_0" }
+                        },
+                        {
+                            "threshold": 1.0,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/cmd_1" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/cmd_fallback" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "damage_half", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "damage_low", &[120, 80, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "damage_fallback", &[80, 120, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_0", &[10, 20, 30, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_1", &[40, 50, 60, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_3", &[70, 80, 90, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_fallback", &[100, 110, 120, 255]);
     }
 
     fn write_bundle_selected_item_fixture(root: &Path) {

@@ -9,8 +9,8 @@ use crate::{
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
-    AttackRangeSummary, DataComponentPatchSummary, ItemEnchantmentSummary, ItemRaritySummary,
-    ItemStackTemplateSummary, MapPostProcessingSummary, UseEffectsSummary,
+    AttackRangeSummary, CustomModelDataFloats, DataComponentPatchSummary, ItemEnchantmentSummary,
+    ItemRaritySummary, ItemStackTemplateSummary, MapPostProcessingSummary, UseEffectsSummary,
     WrittenBookContentSummary,
 };
 

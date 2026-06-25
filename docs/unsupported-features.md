@@ -3063,6 +3063,48 @@ When an agent does any of the following, update this file in the same slice:
     - evaluates `minecraft:bundle/has_selected_item`
     - resolves `minecraft:bundle/selected_item` from the selected template
 
+### Item Model Range-Dispatch Projection
+
+- Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
+- Status: `partial`
+- Next action:
+  - Thread the ambient-context numeric properties through the icon resolver as
+    that state becomes available to the GUI icon path:
+    - `minecraft:compass` (needle direction to spawn/lodestone target)
+    - `minecraft:time` (daytime / moon-phase clock dial, with the wobbler)
+    - `minecraft:cooldown` (item cooldown group progress)
+    - `minecraft:crossbow/pull`, `minecraft:use_duration`, `minecraft:use_cycle`
+      (local `using_item` use-tick state)
+    - `minecraft:bundle/fullness` and `minecraft:count` (stack count +
+      max-stack-size context)
+  - Each plugs into the existing value-aware `RangeDispatch` resolver by adding
+    a value provider; no new selection machinery is required.
+- Evidence / boundary:
+  - `bbb-protocol` now decodes the `minecraft:custom_model_data` `floats` list
+    (`CustomModelDataFloats`, bit-exact `Eq`) alongside the colors list, so the
+    `CustomModelDataProperty.getFloat(index)` input is preserved on the wire.
+  - `bbb-native` resolves `minecraft:range_dispatch` item models with the exact
+    vanilla `RangeSelectItemModel.update` selection:
+    - `value = property.get(...) * scale`
+    - `NaN` selects the fallback
+    - `lastIndexLessOrEqual` over thresholds sorted ascending (inclusive
+      `<=`; `-1` selects the fallback)
+  - The context-free numeric properties are projected from the item stack with
+    vanilla math:
+    - `minecraft:damage` — `Damage.get` (`damage / max_damage` normalized, or
+      `clamp(damage, 0, max_damage)`), reading the component patch over the item
+      prototype `max_damage` default
+    - `minecraft:custom_model_data` — `CustomModelDataProperty.get`
+      (`floats[index]`, or `0.0` when absent)
+  - A value-aware `RangeDispatch` is treated as a runtime condition so it is
+    resolved per stack rather than collapsed at model-build time.
+  - The remaining numeric properties (`compass`, `time`, `cooldown`,
+    `crossbow/pull`, `use_cycle`, `use_duration`, `bundle/fullness`, `count`)
+    still collapse to the fallback/first entry because their value needs
+    ambient `ClientLevel` / `ItemOwner` / use-tick state the GUI icon resolver
+    does not yet receive. This matches vanilla's `0.0`/null-owner fallback for
+    those properties only incidentally and is the documented follow-up.
+
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 
 - Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`

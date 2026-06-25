@@ -34,7 +34,108 @@ pub(super) enum ItemIconModelRef {
         on_true: Box<ItemIconModelRef>,
         on_false: Box<ItemIconModelRef>,
     },
+    RangeDispatch {
+        property: RangeDispatchProperty,
+        scale: f32,
+        /// Entries sorted ascending by threshold, mirroring vanilla `bake`.
+        entries: Vec<(f32, Box<ItemIconModelRef>)>,
+        fallback: Box<ItemIconModelRef>,
+    },
     Composite(Vec<ItemIconModelRef>),
+}
+
+/// The subset of vanilla `RangeSelectItemModelProperty` whose value is a pure
+/// projection of the item stack (id + count + component patch) and so resolvable
+/// from the GUI icon context without a `ClientLevel`/`ItemOwner`. The remaining
+/// numeric properties (`compass`, `time`, `cooldown`, `crossbow/pull`,
+/// `use_cycle`, `use_duration`) need ambient state and keep the value-blind
+/// fallback collapse until that context is threaded.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) enum RangeDispatchProperty {
+    /// `minecraft:damage` — `Damage.get`.
+    Damage { normalize: bool },
+    /// `minecraft:custom_model_data` — `CustomModelDataProperty.get`.
+    CustomModelData { index: usize },
+}
+
+impl RangeDispatchProperty {
+    /// Vanilla `RangeSelectItemModelProperty.get(item, level, owner, seed)` for
+    /// the context-free properties.
+    fn value(
+        &self,
+        component_patch: Option<&DataComponentPatchSummary>,
+        default_max_damage: Option<i32>,
+    ) -> f32 {
+        match *self {
+            Self::Damage { normalize } => {
+                range_dispatch_damage_value(component_patch, default_max_damage, normalize)
+            }
+            Self::CustomModelData { index } => component_patch
+                .and_then(|patch| patch.custom_model_data_floats.get(index).copied())
+                .unwrap_or(0.0),
+        }
+    }
+}
+
+/// Builds a [`RangeDispatchProperty`] for the value-aware numeric properties, or
+/// `None` for the context-needing ones (which keep the fallback collapse).
+fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDispatchProperty> {
+    match property.property_type.as_str() {
+        "minecraft:damage" => Some(RangeDispatchProperty::Damage {
+            normalize: property
+                .raw()
+                .get("normalize")
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
+        }),
+        "minecraft:custom_model_data" => Some(RangeDispatchProperty::CustomModelData {
+            index: property
+                .raw()
+                .get("index")
+                .and_then(Value::as_u64)
+                .unwrap_or(0) as usize,
+        }),
+        _ => None,
+    }
+}
+
+/// Vanilla `Damage.get`: reads the effective `minecraft:damage` and
+/// `minecraft:max_damage` (component patch over the item prototype default). A
+/// removed component falls back to the prototype value, so no explicit removal
+/// check is needed beyond `Option::or`.
+fn range_dispatch_damage_value(
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+    normalize: bool,
+) -> f32 {
+    let damage = component_patch.and_then(|patch| patch.damage).unwrap_or(0) as f32;
+    let max_damage = component_patch
+        .and_then(|patch| patch.max_damage)
+        .or(default_max_damage)
+        .unwrap_or(0) as f32;
+    if normalize {
+        (damage / max_damage).clamp(0.0, 1.0)
+    } else {
+        damage.clamp(0.0, max_damage)
+    }
+}
+
+/// Vanilla `RangeSelectItemModel.lastIndexLessOrEqual` (linear path — entry
+/// counts are far below the binary-search threshold). Returns the index of the
+/// last threshold `<= needle`, or `None` (vanilla `-1`) when `needle` precedes
+/// every threshold.
+fn last_range_entry_at_or_below(
+    entries: &[(f32, Box<ItemIconModel>)],
+    needle: f32,
+) -> Option<usize> {
+    let mut selected = None;
+    for (index, (threshold, _)) in entries.iter().enumerate() {
+        if *threshold > needle {
+            break;
+        }
+        selected = Some(index);
+    }
+    selected
 }
 
 impl ItemIconModelRef {
@@ -46,6 +147,9 @@ impl ItemIconModelRef {
             Self::Condition {
                 on_true, on_false, ..
             } => on_true.is_empty() && on_false.is_empty(),
+            Self::RangeDispatch {
+                entries, fallback, ..
+            } => entries.iter().all(|(_, model)| model.is_empty()) && fallback.is_empty(),
             Self::Composite(models) => models.iter().all(Self::is_empty),
         }
     }
@@ -72,6 +176,20 @@ impl ItemIconModelRef {
                 on_true: Box::new(on_true.into_indexed(textures)),
                 on_false: Box::new(on_false.into_indexed(textures)),
             },
+            Self::RangeDispatch {
+                property,
+                scale,
+                entries,
+                fallback,
+            } => ItemIconModel::RangeDispatch {
+                property,
+                scale,
+                entries: entries
+                    .into_iter()
+                    .map(|(threshold, model)| (threshold, Box::new(model.into_indexed(textures))))
+                    .collect(),
+                fallback: Box::new(fallback.into_indexed(textures)),
+            },
             Self::Composite(models) => ItemIconModel::Composite(
                 models
                     .into_iter()
@@ -91,6 +209,12 @@ pub(super) enum ItemIconModel {
         property: ItemModelProperty,
         on_true: Box<ItemIconModel>,
         on_false: Box<ItemIconModel>,
+    },
+    RangeDispatch {
+        property: RangeDispatchProperty,
+        scale: f32,
+        entries: Vec<(f32, Box<ItemIconModel>)>,
+        fallback: Box<ItemIconModel>,
     },
     Composite(Vec<ItemIconModel>),
 }
@@ -172,6 +296,29 @@ impl ItemIconModel {
                     resolve_bundle_selected_item,
                 )
             }
+            Self::RangeDispatch {
+                property,
+                scale,
+                entries,
+                fallback,
+            } => {
+                let value = property.value(component_patch, default_max_damage) * scale;
+                let selected = if value.is_nan() {
+                    fallback.as_ref()
+                } else {
+                    match last_range_entry_at_or_below(entries, value) {
+                        Some(index) => entries[index].1.as_ref(),
+                        None => fallback.as_ref(),
+                    }
+                };
+                selected.icon_layers_with_bundle_resolver(
+                    component_patch,
+                    default_max_damage,
+                    bundle_selected_item_index,
+                    using_item,
+                    resolve_bundle_selected_item,
+                )
+            }
             Self::Composite(models) => models
                 .iter()
                 .flat_map(|model| {
@@ -211,11 +358,15 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
                 || contains_runtime_condition(on_false)
         }
         ItemModelDefinition::RangeDispatch {
-            entries, fallback, ..
+            property,
+            entries,
+            fallback,
+            ..
         } => {
-            entries
-                .iter()
-                .any(|entry| contains_runtime_condition(&entry.model))
+            range_dispatch_property_for(property).is_some()
+                || entries
+                    .iter()
+                    .any(|entry| contains_runtime_condition(&entry.model))
                 || fallback.as_deref().is_some_and(contains_runtime_condition)
         }
         ItemModelDefinition::Select {
@@ -282,14 +433,64 @@ pub(super) fn item_icon_model_ref_for_definition(
             }
         }
         ItemModelDefinition::RangeDispatch {
-            entries, fallback, ..
-        } => fallback
-            .as_deref()
-            .or_else(|| entries.first().map(|entry| entry.model.as_ref()))
-            .map(|model| {
-                item_icon_model_ref_for_definition(model, cuboid_models, model_tints, colormaps)
-            })
-            .unwrap_or(ItemIconModelRef::Empty),
+            property,
+            scale,
+            entries,
+            fallback,
+            ..
+        } => {
+            if let Some(resolved_property) = range_dispatch_property_for(property) {
+                let mut resolved_entries: Vec<(f32, Box<ItemIconModelRef>)> = entries
+                    .iter()
+                    .map(|entry| {
+                        (
+                            entry.threshold,
+                            Box::new(item_icon_model_ref_for_definition(
+                                &entry.model,
+                                cuboid_models,
+                                model_tints,
+                                colormaps,
+                            )),
+                        )
+                    })
+                    .collect();
+                resolved_entries.sort_by(|a, b| a.0.total_cmp(&b.0));
+                let fallback = fallback
+                    .as_deref()
+                    .map(|model| {
+                        item_icon_model_ref_for_definition(
+                            model,
+                            cuboid_models,
+                            model_tints,
+                            colormaps,
+                        )
+                    })
+                    .unwrap_or(ItemIconModelRef::Empty);
+                ItemIconModelRef::RangeDispatch {
+                    property: resolved_property,
+                    scale: *scale,
+                    entries: resolved_entries,
+                    fallback: Box::new(fallback),
+                }
+            } else {
+                // Context-needing numeric properties (compass/time/cooldown/
+                // crossbow-pull/use-cycle/use-duration) still collapse to the
+                // fallback (or first entry) since their value needs ambient
+                // state not available to the GUI icon resolver.
+                fallback
+                    .as_deref()
+                    .or_else(|| entries.first().map(|entry| entry.model.as_ref()))
+                    .map(|model| {
+                        item_icon_model_ref_for_definition(
+                            model,
+                            cuboid_models,
+                            model_tints,
+                            colormaps,
+                        )
+                    })
+                    .unwrap_or(ItemIconModelRef::Empty)
+            }
+        }
         ItemModelDefinition::Select {
             property,
             cases,
