@@ -564,7 +564,11 @@ fn entity_model_kind_exposes_stable_model_keys() {
         "wolf_baby"
     );
     assert_eq!(
-        EntityModelKind::Horse { baby: true }.model_key(),
+        EntityModelKind::Horse {
+            baby: true,
+            variant: HorseColorVariant::White
+        }
+        .model_key(),
         "horse_baby"
     );
     assert_eq!(

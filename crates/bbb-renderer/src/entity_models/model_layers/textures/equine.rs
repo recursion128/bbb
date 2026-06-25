@@ -12,6 +12,78 @@ pub(in crate::entity_models) const HORSE_WHITE_BABY_TEXTURE_REF: EntityModelText
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const HORSE_CREAMY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_creamy.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_CREAMY_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_creamy_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_CHESTNUT_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_chestnut.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_CHESTNUT_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_chestnut_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_BROWN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_brown.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_BROWN_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_brown_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_BLACK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_black.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_BLACK_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_black_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_gray.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_GRAY_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_gray_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_DARKBROWN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_darkbrown.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_DARKBROWN_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_darkbrown_baby.png",
+        size: [64, 64],
+    };
+
 pub(in crate::entity_models) const DONKEY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/horse/donkey.png",

@@ -13,7 +13,7 @@ const AVATAR_RENDERER_SCALE: f32 = 0.9375;
 
 pub(in crate::entity_models) const HUSK_SCALE: f32 = 1.0625;
 pub(in crate::entity_models) const GIANT_SCALE: f32 = 6.0;
-pub(super) const HORSE_SCALE: f32 = 1.1;
+pub(in crate::entity_models) const HORSE_SCALE: f32 = 1.1;
 pub(super) const DONKEY_SCALE: f32 = 0.87;
 pub(super) const MULE_SCALE: f32 = 0.92;
 pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;

@@ -201,20 +201,80 @@ fn horse_meshes_use_vanilla_body_layer_geometry() {
 
 #[test]
 fn horse_texture_refs_match_vanilla_renderer_defaults() {
-    assert_eq!(EntityModelKind::Horse { baby: false }.model_key(), "horse");
     assert_eq!(
-        EntityModelKind::Horse { baby: false }.vanilla_texture_ref(),
+        EntityModelKind::Horse {
+            baby: false,
+            variant: HorseColorVariant::White
+        }
+        .model_key(),
+        "horse"
+    );
+    assert_eq!(
+        EntityModelKind::Horse {
+            baby: false,
+            variant: HorseColorVariant::White
+        }
+        .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/horse/horse_white.png",
             size: [64, 64],
         })
     );
+    // Each of the seven coats maps to its `horse_<color>(_baby).png`; the model key stays "horse".
+    for (variant, adult_path, baby_path) in [
+        (
+            HorseColorVariant::Creamy,
+            "textures/entity/horse/horse_creamy.png",
+            "textures/entity/horse/horse_creamy_baby.png",
+        ),
+        (
+            HorseColorVariant::Black,
+            "textures/entity/horse/horse_black.png",
+            "textures/entity/horse/horse_black_baby.png",
+        ),
+        (
+            HorseColorVariant::DarkBrown,
+            "textures/entity/horse/horse_darkbrown.png",
+            "textures/entity/horse/horse_darkbrown_baby.png",
+        ),
+    ] {
+        assert_eq!(
+            EntityModelKind::Horse {
+                baby: false,
+                variant
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: adult_path,
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Horse {
+                baby: true,
+                variant
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: baby_path,
+                size: [64, 64],
+            })
+        );
+    }
     assert_eq!(
-        EntityModelKind::Horse { baby: true }.model_key(),
+        EntityModelKind::Horse {
+            baby: true,
+            variant: HorseColorVariant::White
+        }
+        .model_key(),
         "horse_baby"
     );
     assert_eq!(
-        EntityModelKind::Horse { baby: true }.vanilla_texture_ref(),
+        EntityModelKind::Horse {
+            baby: true,
+            variant: HorseColorVariant::White
+        }
+        .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/horse/horse_white_baby.png",
             size: [64, 64],
@@ -1113,6 +1173,115 @@ fn undead_horse_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn horse_texture_images() -> Vec<EntityModelTextureImage> {
+    horse_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+#[test]
+fn horse_textured_mesh_matches_vanilla_horse_geometry() {
+    // Vanilla `HorseRenderer` renders the shared `HorseModel` / `BabyHorseModel` geometry on the
+    // textured path with a per-coat texture: 12 adult cubes (72 faces / 288 vertices, at the 1.1
+    // `livingHorseScale`) and 10 baby cubes (60 faces / 240 vertices, unscaled). The textured body
+    // occupies exactly the same space as the colored fallback (which applies the same scale), and the
+    // coat variant only changes the sampled atlas region — positions stay identical.
+    let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
+
+    let white_adult = entity_model_textured_mesh(
+        &[EntityModelInstance::horse(
+            160,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(white_adult.cutout_faces, 72);
+    assert_eq!(white_adult.vertices.len(), 288);
+    let colored_adult = entity_model_mesh(&[EntityModelInstance::horse(
+        161,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    )]);
+    let (tex_min, tex_max) = textured_mesh_extents(&white_adult);
+    let (col_min, col_max) = mesh_extents(&colored_adult);
+    assert_close3(tex_min, col_min);
+    assert_close3(tex_max, col_max);
+
+    // Coat variant → same geometry, different atlas sub-rect.
+    let black_adult = entity_model_textured_mesh(
+        &[EntityModelInstance::horse_with_variant(
+            162,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            HorseColorVariant::Black,
+        )],
+        &atlas,
+    );
+    let white_positions: Vec<_> = white_adult.vertices.iter().map(|v| v.position).collect();
+    let black_positions: Vec<_> = black_adult.vertices.iter().map(|v| v.position).collect();
+    assert_eq!(white_positions, black_positions);
+    let white_uvs: Vec<_> = white_adult.vertices.iter().map(|v| v.uv).collect();
+    let black_uvs: Vec<_> = black_adult.vertices.iter().map(|v| v.uv).collect();
+    assert_ne!(white_uvs, black_uvs);
+
+    // The unscaled baby layer occupies the same space as its colored baby fallback.
+    let baby = entity_model_textured_mesh(
+        &[EntityModelInstance::horse_with_variant(
+            163,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            HorseColorVariant::Gray,
+        )],
+        &atlas,
+    );
+    assert_eq!(baby.cutout_faces, 60);
+    assert_eq!(baby.vertices.len(), 240);
+    let colored_baby =
+        entity_model_mesh(&[EntityModelInstance::horse(164, [0.0, 64.0, 0.0], 0.0, true)]);
+    let (baby_min, baby_max) = textured_mesh_extents(&baby);
+    let (colored_baby_min, colored_baby_max) = mesh_extents(&colored_baby);
+    assert_close3(baby_min, colored_baby_min);
+    assert_close3(baby_max, colored_baby_max);
+}
+
+#[test]
+fn horse_colored_runtime_skips_the_texture_backed_horse() {
+    // The living horse now carries vanilla coat UVs, so it renders through the textured path. The
+    // texture-skipping colored runtime emits nothing for it, while the full colored path still emits
+    // the brown fallback geometry.
+    let instances = [
+        EntityModelInstance::horse(165, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::horse(166, [4.0, 64.0, 0.0], 0.0, true),
+    ];
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
+}
+
+#[test]
+fn horse_textured_swings_legs_when_walking() {
+    let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
+    let base = EntityModelInstance::horse(167, [0.0, 64.0, 0.0], 0.0, false);
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(5.0, 1.0)], &atlas);
+    assert_eq!(still.vertices.len(), walking.vertices.len());
+    assert_ne!(
+        still.vertices, walking.vertices,
+        "the walking horse re-poses on the textured path"
+    );
 }
 
 #[test]

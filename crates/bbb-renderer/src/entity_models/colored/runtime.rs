@@ -140,7 +140,13 @@ fn entity_model_mesh_with_options(
                         );
                     }
                 }
-                EntityModelKind::Horse { baby } => emit_horse_model(&mut mesh, *instance, baby),
+                EntityModelKind::Horse { baby, .. } => {
+                    // The living horse now renders through the textured path (per-coat texture); the
+                    // colored emit is the full-mesh fallback only (skipped in the runtime mesh).
+                    if !skip_texture_backed_entities {
+                        emit_horse_model(&mut mesh, *instance, baby);
+                    }
+                }
                 EntityModelKind::Donkey {
                     family,
                     baby,

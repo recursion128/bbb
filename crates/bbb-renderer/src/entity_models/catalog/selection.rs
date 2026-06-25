@@ -199,8 +199,8 @@ impl EntityModelKind {
             Self::Wolf {
                 baby, tame, angry, ..
             } => wolf_model_key(baby, tame, angry),
-            Self::Horse { baby: false } => "horse",
-            Self::Horse { baby: true } => "horse_baby",
+            Self::Horse { baby: false, .. } => "horse",
+            Self::Horse { baby: true, .. } => "horse_baby",
             Self::Donkey {
                 family: DonkeyModelFamily::Donkey,
                 baby: false,
@@ -544,8 +544,7 @@ impl EntityModelKind {
                 variant,
                 ..
             } => Some(wolf_texture_ref(baby, tame, angry, variant)),
-            Self::Horse { baby: false } => Some(HORSE_WHITE_TEXTURE_REF),
-            Self::Horse { baby: true } => Some(HORSE_WHITE_BABY_TEXTURE_REF),
+            Self::Horse { baby, variant } => Some(horse_coat_texture_ref(variant, baby)),
             Self::Donkey {
                 family: DonkeyModelFamily::Donkey,
                 baby: false,
@@ -784,6 +783,31 @@ pub(in crate::entity_models) fn camel_texture_ref(
         (CamelModelFamily::CamelHusk, _) => CAMEL_HUSK_TEXTURE_REF,
         (CamelModelFamily::Camel, false) => CAMEL_TEXTURE_REF,
         (CamelModelFamily::Camel, true) => CAMEL_BABY_TEXTURE_REF,
+    }
+}
+
+/// The living horse's base coat (vanilla `HorseRenderer.LOCATION_BY_VARIANT`, then
+/// `state.isBaby ? variant.baby : variant.adult`): one of seven `horse_<color>(_baby).png` 64×64
+/// textures. The markings overlay is a separate deferred layer.
+pub(in crate::entity_models) fn horse_coat_texture_ref(
+    variant: HorseColorVariant,
+    baby: bool,
+) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (HorseColorVariant::White, false) => HORSE_WHITE_TEXTURE_REF,
+        (HorseColorVariant::White, true) => HORSE_WHITE_BABY_TEXTURE_REF,
+        (HorseColorVariant::Creamy, false) => HORSE_CREAMY_TEXTURE_REF,
+        (HorseColorVariant::Creamy, true) => HORSE_CREAMY_BABY_TEXTURE_REF,
+        (HorseColorVariant::Chestnut, false) => HORSE_CHESTNUT_TEXTURE_REF,
+        (HorseColorVariant::Chestnut, true) => HORSE_CHESTNUT_BABY_TEXTURE_REF,
+        (HorseColorVariant::Brown, false) => HORSE_BROWN_TEXTURE_REF,
+        (HorseColorVariant::Brown, true) => HORSE_BROWN_BABY_TEXTURE_REF,
+        (HorseColorVariant::Black, false) => HORSE_BLACK_TEXTURE_REF,
+        (HorseColorVariant::Black, true) => HORSE_BLACK_BABY_TEXTURE_REF,
+        (HorseColorVariant::Gray, false) => HORSE_GRAY_TEXTURE_REF,
+        (HorseColorVariant::Gray, true) => HORSE_GRAY_BABY_TEXTURE_REF,
+        (HorseColorVariant::DarkBrown, false) => HORSE_DARKBROWN_TEXTURE_REF,
+        (HorseColorVariant::DarkBrown, true) => HORSE_DARKBROWN_BABY_TEXTURE_REF,
     }
 }
 

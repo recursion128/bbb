@@ -1,5 +1,6 @@
 use super::colored::{
     creeper_model_root_transform, wind_charge_model_root_transform, wither_model_root_transform,
+    HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::model::{EntityModel, ModelPart};
@@ -228,6 +229,9 @@ pub(super) fn entity_model_textured_meshes(
                 }
                 EntityModelKind::SkeletonVariant { family } => {
                     emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
+                }
+                EntityModelKind::Horse { baby, .. } => {
+                    emit_horse_textured_model(&mut meshes, *instance, baby, atlas);
                 }
                 EntityModelKind::UndeadHorse { baby, .. } => {
                     emit_undead_horse_textured_model(&mut meshes, *instance, baby, atlas);
@@ -1184,6 +1188,65 @@ fn emit_equine_textured_posed(
         texture,
         uv_rect,
         tint,
+    );
+}
+
+/// The textured living horse base layer. Vanilla `HorseRenderer` renders `HorseModel` with a per-coat
+/// `horse_<color>(_baby).png` base texture (the white-markings overlay `HorseMarkingLayer` is deferred).
+/// The adult body carries the `livingHorseScale` 1.1 mesh-transformer scale (`emit_horse_model`'s
+/// transform); the baby uses the unscaled re-parented layer. The leg swing / head look/bob / tail walk
+/// lift are the shared `AbstractEquineModel.setupAnim` default-branch poses (the same as the undead
+/// horse), driven on the textured path here. The variant only chooses the texture (one `HorseModel`).
+fn emit_horse_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(texture) = instance.kind.vanilla_texture_ref() else {
+        return;
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let (parts, leg_indices, head_parts_index, tail_x_rot_offset, age_scale, transform): (
+        &[TexturedModelPartDesc],
+        [usize; 4],
+        usize,
+        f32,
+        f32,
+        Mat4,
+    ) = if baby {
+        (
+            &BABY_HORSE_PARTS_TEXTURED,
+            [1, 2, 3, 4],
+            5,
+            -std::f32::consts::FRAC_PI_2,
+            0.5,
+            entity_model_root_transform(instance),
+        )
+    } else {
+        (
+            &ADULT_HORSE_PARTS_TEXTURED,
+            [2, 3, 4, 5],
+            1,
+            0.0,
+            1.0,
+            mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
+        )
+    };
+    emit_equine_textured_posed(
+        &mut meshes.cutout,
+        parts,
+        leg_indices,
+        head_parts_index,
+        tail_x_rot_offset,
+        age_scale,
+        transform,
+        texture,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+        instance,
     );
 }
 

@@ -23,7 +23,7 @@ pub(super) use transforms::{
     squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wind_charge_model_root_transform,
     wither_model_root_transform, wither_skeleton_model_root_transform,
-    wither_skull_model_root_transform, GIANT_SCALE, HUSK_SCALE,
+    wither_skull_model_root_transform, GIANT_SCALE, HORSE_SCALE, HUSK_SCALE,
 };
 #[cfg(test)]
 pub(super) use transforms::{death_fall_factor, entity_flip_degrees};

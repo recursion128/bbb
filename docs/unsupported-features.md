@@ -1325,10 +1325,16 @@ When an agent does any of the following, update this file in the same slice:
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
-      `HorseRenderer`, with the adult `ModelLayers.HORSE`
-      `MeshTransformer.scaling(1.1F)` root transform and default
-      `Variant.WHITE` adult/baby texture references recorded from official
-      assets, and the vanilla `AbstractEquineModel.setupAnim` walking leg swing
+      `HorseRenderer`, now rendered on the **textured path** with all seven coat
+      colors: vanilla `HorseRenderer.LOCATION_BY_VARIANT` then
+      `state.isBaby ? variant.baby : variant.adult` picks one of
+      `horse_{white,creamy,chestnut,brown,black,gray,darkbrown}(_baby).png`
+      (64×64) from the synced `Horse.DATA_ID_TYPE_VARIANT & 0xFF` coat color
+      (`Variant.byId`, WRAP), all wired into the entity atlas; the textured body
+      reuses the shared `ADULT_HORSE_PARTS_TEXTURED` / `BABY_HORSE_PARTS_TEXTURED`
+      trees (same as the undead horses) with the adult `ModelLayers.HORSE`
+      `MeshTransformer.scaling(1.1F)` root transform and the unscaled re-parented
+      baby layer, and the vanilla `AbstractEquineModel.setupAnim` walking leg swing
       (the equine gait `cos(pos * 0.6662 + π) * speed` at front amplitude `0.8` /
       hind `0.5`, legs at `[2, 3, 4, 5]` adult / `[1, 2, 3, 4]` on the re-parented
       baby layer), the default-branch neck head look/bob (`head_parts.yRot =
@@ -1337,10 +1343,11 @@ When an agent does any of the following, update this file in the same slice:
       `5` baby horse), and the tail walk lift (`tail.xRot = getTailXRotOffset() + π/6 +
       speed * 0.75`, `tail.y += speed * ageScale`, `tail.z += speed * 2 * ageScale`; the
       baby horse `getTailXRotOffset = −π/2` overrides the layer rest angle and `ageScale =
-      0.5`, the body subtree hand-emitted so the tail child can swing, colored render path);
-      horse variant textures, markings, armor, saddle, the ridden/eat/stand/mouth poses, the
-      tail's `ageInTicks` yRot wag, the in-water leg-frequency scaling, and non-equine
-      horse-fallback model parity remain unsupported
+      0.5`, the body subtree hand-emitted so the tail child can swing) drive both the
+      textured base body and the colored full-mesh fallback; the white-markings overlay
+      (`HorseMarkingLayer`, the `(variant >> 8) & 0xFF` nibble), armor, saddle, the
+      ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and the in-water
+      leg-frequency scaling remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`, including adult `DONKEY_SCALE=0.87F` /

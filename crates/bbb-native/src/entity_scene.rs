@@ -5,12 +5,12 @@ use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
     EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily,
-    IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant,
-    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-    RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose,
-    SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
-    UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
+    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HumanoidModelFamily,
+    IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
+    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
     DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{
@@ -274,6 +274,10 @@ const SALMON_DEFAULT_VARIANT: i32 = 1;
 const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
 const TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
+/// `Horse.DATA_ID_TYPE_VARIANT` data id (19, INT): packs `color | markings << 8`. `Horse` extends
+/// `AbstractHorse` (DATA_ID_FLAGS 18) extends `Animal`/`AgeableMob` (baby 16, age-locked 17), so the
+/// horse's first own accessor is 19. The coat color is `variant & 0xFF`; markings (`>> 8`) deferred.
+const HORSE_VARIANT_DATA_ID: u8 = 19;
 const LLAMA_VARIANT_DATA_ID: u8 = 21;
 const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
@@ -1593,6 +1597,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SHEEP_ID => sheep_model_kind(data_values, entity_age_ticks),
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
             baby: ageable_baby(data_values),
+            variant: horse_color_variant(data_values),
         },
         VANILLA_ENTITY_TYPE_DONKEY_ID => donkey_model_kind(DonkeyModelFamily::Donkey, data_values),
         VANILLA_ENTITY_TYPE_MULE_ID => donkey_model_kind(DonkeyModelFamily::Mule, data_values),
@@ -2498,6 +2503,23 @@ fn undead_horse_model_kind(
     EntityModelKind::UndeadHorse {
         family,
         baby: ageable_baby(values),
+    }
+}
+
+/// The living horse's coat color from synced `Horse.DATA_ID_TYPE_VARIANT` (INT, id 19): vanilla
+/// `Variant.byId(typeVariant & 0xFF)`, where `byId` is `ByIdMap.continuous(WRAP)` so an out-of-range
+/// id wraps modulo the seven colors. The markings nibble (`(typeVariant & 0xFF00) >> 8`) is the
+/// deferred `HorseMarkingLayer`.
+fn horse_color_variant(values: &[bbb_protocol::packets::EntityDataValue]) -> HorseColorVariant {
+    let color = entity_data_int(values, HORSE_VARIANT_DATA_ID, 0) & 0xFF;
+    match color.rem_euclid(7) {
+        0 => HorseColorVariant::White,
+        1 => HorseColorVariant::Creamy,
+        2 => HorseColorVariant::Chestnut,
+        3 => HorseColorVariant::Brown,
+        4 => HorseColorVariant::Black,
+        5 => HorseColorVariant::Gray,
+        _ => HorseColorVariant::DarkBrown,
     }
 }
 
@@ -9167,14 +9189,32 @@ mod tests {
     fn entity_model_kind_uses_exact_models_for_horses() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_HORSE_ID, &[]),
-            EntityModelKind::Horse { baby: false }
+            EntityModelKind::Horse {
+                baby: false,
+                variant: HorseColorVariant::White
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_HORSE_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Horse { baby: true }
+            EntityModelKind::Horse {
+                baby: true,
+                variant: HorseColorVariant::White
+            }
+        );
+        // The coat color reads `DATA_ID_TYPE_VARIANT & 0xFF` (id 19): id 4 = black, and the markings
+        // nibble (`<< 8`) is ignored by the coat selection.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_HORSE_ID,
+                &[protocol_int_data(HORSE_VARIANT_DATA_ID, 4 | (2 << 8))]
+            ),
+            EntityModelKind::Horse {
+                baby: false,
+                variant: HorseColorVariant::Black
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_DONKEY_ID, &[]),

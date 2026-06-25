@@ -1504,7 +1504,22 @@ impl EntityModelInstance {
     }
 
     pub fn horse(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
-        Self::new(entity_id, EntityModelKind::Horse { baby }, position, y_rot)
+        Self::horse_with_variant(entity_id, position, y_rot, baby, HorseColorVariant::White)
+    }
+
+    pub fn horse_with_variant(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        variant: HorseColorVariant,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Horse { baby, variant },
+            position,
+            y_rot,
+        )
     }
 
     pub fn donkey(

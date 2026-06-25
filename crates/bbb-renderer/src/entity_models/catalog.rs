@@ -291,6 +291,7 @@ pub enum EntityModelKind {
     },
     Horse {
         baby: bool,
+        variant: HorseColorVariant,
     },
     Donkey {
         family: DonkeyModelFamily,
@@ -601,6 +602,21 @@ pub enum DonkeyModelFamily {
 pub enum UndeadHorseModelFamily {
     Skeleton,
     Zombie,
+}
+
+/// The living horse's coat color (vanilla `equine.Variant`). `getTextureLocation` picks one of seven
+/// `horse_<color>(_baby).png` base coats; the markings overlay (`HorseMarkingLayer`) is a separate
+/// deferred layer. The shared `HorseModel` geometry is variant-agnostic, so this only chooses the
+/// texture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HorseColorVariant {
+    White,
+    Creamy,
+    Chestnut,
+    Brown,
+    Black,
+    Gray,
+    DarkBrown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
