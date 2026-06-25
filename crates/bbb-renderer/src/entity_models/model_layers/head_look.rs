@@ -357,6 +357,37 @@ pub(in crate::entity_models) fn apply_humanoid_stab_attack_animation(
     attack_arm.pose.rotation[0] += (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians();
 }
 
+/// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `SPYGLASS` use-item arm pose: while a player is
+/// using a spyglass, the holding arm raises it to the eye along the head look. The arm pitch is
+/// `clamp(head.xRot − 1.9198622 − (crouch ? π/12 : 0), −2.4, 3.3)` and the yaw is `head.yRot ∓ π/12`
+/// (right arm `− π/12`, left arm `+ π/12`). Vanilla also SKIPS the idle `bobModelPart` for the spyglass
+/// arm, so this resets the arm roll (`zRot`) to its bind — undoing the bob that `apply_humanoid_walk`
+/// already applied. Vanilla applies this BEFORE the crouch block, so the crouch `arm.xRot += 0.4` still
+/// lands on top; call it before [`apply_humanoid_crouch_named`]. `head_*_degrees` are the head look
+/// (vanilla `head.xRot`/`head.yRot`).
+pub(in crate::entity_models) fn apply_humanoid_spyglass_pose(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+    off_hand: bool,
+    is_crouching: bool,
+) {
+    use std::f32::consts::PI;
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let crouch = if is_crouching { PI / 12.0 } else { 0.0 };
+    let x_rot = (head_pitch - 1.9198622 - crouch).clamp(-2.4, 3.3);
+    let (arm_name, y_rot) = if off_hand {
+        ("left_arm", head_yaw + PI / 12.0)
+    } else {
+        ("right_arm", head_yaw - PI / 12.0)
+    };
+    let arm = root.child_mut(arm_name);
+    arm.pose.rotation[0] = x_rot;
+    arm.pose.rotation[1] = y_rot;
+    arm.pose.rotation[2] = 0.0;
+}
+
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
 fn progress(t: f32, a: f32, b: f32) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)

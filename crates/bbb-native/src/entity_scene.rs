@@ -498,6 +498,28 @@ fn entity_main_hand_holds_spear(
     )
 }
 
+/// Whether the item in the given hand is a spyglass (vanilla `ItemStack.getUseAnimation() ==
+/// ItemUseAnimation.SPYGLASS`, which only `minecraft:spyglass` returns). While the entity is using it,
+/// `HumanoidModel.poseRightArm`/`poseLeftArm` raise that arm to hold the spyglass to the eye. Resolved
+/// through the item registry; `false` without it or for any other / empty hand.
+fn entity_hand_holds_spyglass(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:spyglass")
+}
+
 /// Whether the entity's main-hand item is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)`),
 /// driving the pillager's `CROSSBOW_HOLD` arm pose. Resolved through the item registry, so it needs the
 /// runtime; `false` without it or for any non-crossbow / empty hand.
@@ -665,6 +687,17 @@ fn entity_model_instance(
     // models use their own arm poses), so resolve the spear just for the player kind.
     let main_hand_swing_is_stab = matches!(kind, EntityModelKind::Player { .. })
         && entity_main_hand_holds_spear(world, item_runtime, source.entity_id);
+    // Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`: while a player is using a spyglass
+    // (`isUsingItem` + the using hand holds a spyglass), the holding arm raises it to the eye. Only
+    // `PlayerModel` consumes the use-item poses, so resolve the using-hand item just for the player kind.
+    let player_using_spyglass = matches!(kind, EntityModelKind::Player { .. })
+        && source.is_using_item
+        && entity_hand_holds_spyglass(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        );
     // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
     let main_hand_holds_crossbow =
         matches!(
@@ -825,6 +858,8 @@ fn entity_model_instance(
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
+        .with_player_using_spyglass(player_using_spyglass)
+        .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_drowned_throw_trident(drowned_throw_trident)
         .with_is_charging_crossbow(pillager_is_charging_crossbow(
@@ -3945,6 +3980,37 @@ mod tests {
             .render_state
             .main_hand_swing_is_stab;
         assert!(!stab);
+    }
+
+    #[test]
+    fn entity_model_instances_spyglass_pose_needs_a_resolved_spyglass() {
+        // The SPYGLASS use-item pose needs the using-hand item resolved through the item registry to
+        // confirm a spyglass; without an item runtime it can never resolve, so the projection defaults
+        // off even for a player flagged as using an item.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            250,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -10.0],
+        ));
+        // Flag the player as using an item (so only the missing runtime, not the flag, gates the pose off).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 250,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING
+            )],
+        }));
+        let spyglass = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 250)
+            .unwrap()
+            .render_state
+            .player_using_spyglass;
+        assert!(!spyglass);
     }
 
     #[test]

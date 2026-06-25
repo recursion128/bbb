@@ -769,8 +769,16 @@ When an agent does any of the following, update this file in the same slice:
     enderman now composes the bob too: its `enderman_arm_swing_pose` applies the swing AND
     the bob, then halves+clamps only `xRot` (`[-0.4, 0.4]`) the vanilla way, leaving the
     bob's `zRot` to survive the clamp so the long arms gently splay (even the resting mesh's
-    X extent widens to `±0.5494`). Only the `SPYGLASS`-pose skip (needs a held spyglass)
-    stays deferred. The
+    X extent widens to `±0.5494`). The `SPYGLASS`-pose bob skip IS now honored for the player:
+    a player using a spyglass (`isUsingItem` + the using hand holds `minecraft:spyglass`) raises the
+    holding arm to the eye via `apply_humanoid_spyglass_pose` (`HumanoidModel.poseRightArm`/`poseLeftArm`
+    `SPYGLASS`): the arm pitch is `clamp(head.xRot − 1.9198622 − (crouch?π/12), −2.4, 3.3)`, the yaw is
+    `head.yRot ∓ π/12`, and the arm `zRot` resets to its bind so the idle bob is skipped on that arm only;
+    it is applied before the crouch block so the crouch `arm.xRot += 0.4` still lands on top. The using
+    hand is read from the synced `DATA_LIVING_ENTITY_FLAGS` byte (id `8`, bit `1` = isUsingItem, bit `2` =
+    off hand). The other use-item arm poses on the same dispatch (`TOOT_HORN`, `BRUSH`, the generic
+    `ITEM`/`BLOCK` hold poses, and the off-arm `EMPTY`/`ITEM` pose + the `affectsOffhandPose`/`isTwoHanded`
+    routing) stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —

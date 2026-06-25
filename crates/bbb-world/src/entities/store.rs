@@ -57,6 +57,14 @@ const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
 /// (`LivingEntity.isAutoSpinAttack`).
 const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
 
+/// Vanilla `LivingEntity.LIVING_ENTITY_FLAG_IS_USING` (1): the `DATA_LIVING_ENTITY_FLAGS` bit set while
+/// the entity is actively using an item (`LivingEntity.isUsingItem`).
+const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+/// Vanilla `LivingEntity.LIVING_ENTITY_FLAG_OFF_HAND` (2): the `DATA_LIVING_ENTITY_FLAGS` bit selecting
+/// the off hand as the one using the item (`LivingEntity.getUsedItemHand`).
+const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
+
 /// Vanilla `Mob.DATA_MOB_FLAGS_ID` data id (15): the byte holding the no-AI /
 /// left-handed / aggressive flags.
 const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
@@ -624,6 +632,17 @@ impl EntityStore {
                 .unwrap_or(0)
                 & LIVING_ENTITY_FLAG_SPIN_ATTACK
                 != 0;
+        // Vanilla `LivingEntity.isUsingItem` (`DATA_LIVING_ENTITY_FLAGS & 1`) + `getUsedItemHand`
+        // (`& 2` → off hand): the use-item arm poses (spyglass / horn / brush) read both. Non-living
+        // entities have no flags byte, so they never count as using an item.
+        let living_entity_flags = vanilla_living_entity_type(identity.entity_type_id)
+            .then(|| {
+                self.metadata_byte(id, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID, 0)
+                    .unwrap_or(0)
+            })
+            .unwrap_or(0);
+        let is_using_item = living_entity_flags & LIVING_ENTITY_FLAG_IS_USING != 0;
+        let use_item_off_hand = living_entity_flags & LIVING_ENTITY_FLAG_OFF_HAND != 0;
         // Vanilla `LivingEntityRenderer.isEntityUpsideDown`: a non-player living
         // entity whose custom name is `Dinnerbone`/`Grumm`. The player variant
         // (`AvatarRenderer.isPlayerUpsideDown`) keys off the GameProfile name and
@@ -748,6 +767,8 @@ impl EntityStore {
             wither_invulnerable_ticks,
             is_crouching,
             is_auto_spin_attack,
+            is_using_item,
+            use_item_off_hand,
             is_upside_down,
             bounding_box_height,
             is_sleeping,

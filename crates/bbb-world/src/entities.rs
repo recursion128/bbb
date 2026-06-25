@@ -532,6 +532,16 @@ pub struct EntityModelSourceState {
     /// entities and any living entity that is not spinning.
     #[serde(default)]
     pub is_auto_spin_attack: bool,
+    /// Vanilla `LivingEntity.isUsingItem()` (`DATA_LIVING_ENTITY_FLAGS & 1`): a living entity actively
+    /// using/holding-right-click an item, which drives `HumanoidModel.setupAnim`'s use-item arm poses
+    /// (spyglass to the eye, horn to the mouth, …). `false` for non-living entities and any not using.
+    #[serde(default)]
+    pub is_using_item: bool,
+    /// Vanilla `LivingEntity.getUsedItemHand()` (`DATA_LIVING_ENTITY_FLAGS & 2` → off hand): which hand
+    /// holds the item being used, so the renderer poses the correct arm. Only meaningful while
+    /// [`is_using_item`](Self::is_using_item); `false` (main hand) otherwise.
+    #[serde(default)]
+    pub use_item_off_hand: bool,
     /// Vanilla `LivingEntityRenderState.isUpsideDown`
     /// (`LivingEntityRenderer.isEntityUpsideDown`): a living entity (other than a
     /// player) whose custom name is the `Dinnerbone`/`Grumm` easter egg, which the

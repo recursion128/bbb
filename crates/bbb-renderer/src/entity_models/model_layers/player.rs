@@ -1,7 +1,7 @@
 use super::{
     apply_head_look, apply_humanoid_attack_animation, apply_humanoid_crouch_named,
-    apply_humanoid_stab_attack_animation, apply_humanoid_walk, PartPose, PART_POSE_ZERO,
-    PLAYER_BLUE,
+    apply_humanoid_spyglass_pose, apply_humanoid_stab_attack_animation, apply_humanoid_walk,
+    PartPose, PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -315,6 +315,17 @@ impl EntityModel for PlayerModel {
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
         );
+        // Vanilla `HumanoidModel.setupAnim` poses the using arm (here SPYGLASS) BEFORE the crouch block,
+        // so the crouch `arm.xRot += 0.4` still lands on top of the raised arm.
+        if render_state.player_using_spyglass {
+            apply_humanoid_spyglass_pose(
+                &mut self.root,
+                render_state.head_yaw,
+                render_state.head_pitch,
+                render_state.use_item_off_hand,
+                render_state.is_crouching,
+            );
+        }
         if render_state.is_crouching {
             apply_humanoid_crouch_named(&mut self.root);
         }

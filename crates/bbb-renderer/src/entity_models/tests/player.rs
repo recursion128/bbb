@@ -471,6 +471,73 @@ fn player_with_a_spear_lunges_instead_of_whacking() {
 }
 
 #[test]
+fn player_using_a_spyglass_raises_it_to_the_eye() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `SPYGLASS`: the holding arm raises along the
+    // head look — `xRot = clamp(head.xRot − 1.9198622 − (crouch?π/12), −2.4, 3.3)`, `yRot = head.yRot ∓
+    // π/12` — and skips the idle bob (`zRot` back to bind). Applied before crouch, so a crouching player's
+    // `arm.xRot += 0.4` still lands on top.
+    let yaw = 20.0_f32;
+    let pitch = -10.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let pitch_rad = pitch.to_radians();
+    let base =
+        EntityModelInstance::player(920, [0.0, 64.0, 0.0], 0.0, false).with_head_look(yaw, pitch);
+
+    // Main-hand spyglass raises the RIGHT arm and removes its bob roll.
+    let mut main = PlayerModel::new(false);
+    main.prepare(&base.with_player_using_spyglass(true));
+    let right = main.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (pitch_rad - 1.9198622).clamp(-2.4, 3.3)).abs() < 1e-6,
+        "the right arm pitches up to the eye: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (yaw_rad - PI / 12.0)).abs() < 1e-6,
+        "the right arm yaws −π/12 off the head: {}",
+        right.rotation[1]
+    );
+    assert_eq!(
+        right.rotation[2], 0.0,
+        "the spyglass arm skips the idle bob"
+    );
+
+    // Off-hand spyglass raises the LEFT arm with the mirrored yaw.
+    let mut off = PlayerModel::new(false);
+    off.prepare(
+        &base
+            .with_player_using_spyglass(true)
+            .with_use_item_off_hand(true),
+    );
+    let left = off.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (pitch_rad - 1.9198622).clamp(-2.4, 3.3)).abs() < 1e-6,
+        "the left arm pitches up to the eye: {}",
+        left.rotation[0]
+    );
+    assert!(
+        (left.rotation[1] - (yaw_rad + PI / 12.0)).abs() < 1e-6,
+        "the left arm yaws +π/12 off the head"
+    );
+
+    // Crouching adds the crouch term to the clamp AND the crouch block's +0.4 on top (pose runs first).
+    let mut crouch = PlayerModel::new(false);
+    crouch.prepare(
+        &base
+            .with_player_using_spyglass(true)
+            .with_is_crouching(true),
+    );
+    let crouch_right_x = crouch.root_mut().child_mut("right_arm").pose.rotation[0];
+    let expected = (pitch_rad - 1.9198622 - PI / 12.0).clamp(-2.4, 3.3) + 0.4;
+    assert!(
+        (crouch_right_x - expected).abs() < 1e-6,
+        "a crouching spyglass arm clamps with the crouch term, then gains +0.4: {crouch_right_x} vs {expected}"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

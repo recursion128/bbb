@@ -278,6 +278,16 @@ entity_render_state! {
     /// (the lunge/retract stab) instead of the default `WHACK` arm chop. `false` for every entity not
     /// holding a spear — only `PlayerModel` consumes it (the default `WHACK` covers every other case).
     (with_main_hand_swing_is_stab) main_hand_swing_is_stab: bool = false;
+    /// Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`
+    /// (`ItemStack.getUseAnimation() == SPYGLASS`): a player using a spyglass raises the holding arm to
+    /// the eye (`xRot = clamp(head.xRot − 1.9198622 − crouch?π/12, −2.4, 3.3)`, `yRot = head.yRot ∓ π/12`)
+    /// and that arm skips the idle bob. Applied to the [`use_item_off_hand`](Self::use_item_off_hand) arm.
+    /// `false` for every entity not using a spyglass — only `PlayerModel` consumes it.
+    (with_player_using_spyglass) player_using_spyglass: bool = false;
+    /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
+    /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
+    /// not using an off-hand item.
+    (with_use_item_off_hand) use_item_off_hand: bool = false;
     /// Vanilla `Pillager.isHolding(Items.CROSSBOW)`: with [`is_charging_crossbow`](Self::is_charging_crossbow)
     /// `false`, `Pillager.getArmPose` returns `CROSSBOW_HOLD`, so `IllagerModel` levels the crossbow
     /// (`AnimationUtils.animateCrossbowHold`) along the head look. `false` for every non-pillager entity
@@ -1801,6 +1811,8 @@ mod tests {
                 is_aggressive: false,
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,
+                player_using_spyglass: false,
+                use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,
                 is_charging_crossbow: false,

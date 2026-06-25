@@ -1450,6 +1450,71 @@ fn entity_model_sources_project_auto_spin_attack_flag() {
 }
 
 #[test]
+fn entity_model_sources_project_using_item_flags() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    // Vanilla LivingEntity flags: IS_USING = bit 1, OFF_HAND = bit 2, SPIN_ATTACK = bit 4.
+    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+    const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
+    const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
+
+    let using = |store: &WorldStore, id: i32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (source.is_using_item, source.use_item_off_hand)
+    };
+    let set_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![living_entity_flags_data(flags)],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    // No flags → not using.
+    assert_eq!(using(&store, 80), (false, false));
+
+    // Using the main hand sets IS_USING but not the off-hand bit (detected alongside other flags).
+    assert!(set_flags(
+        &mut store,
+        80,
+        LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_SPIN_ATTACK,
+    ));
+    assert_eq!(using(&store, 80), (true, false));
+
+    // Using the off hand sets both bits.
+    assert!(set_flags(
+        &mut store,
+        80,
+        LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
+    ));
+    assert_eq!(using(&store, 80), (true, true));
+
+    // Clearing the using bit stops it (a stray off-hand bit alone is not "using").
+    assert!(set_flags(&mut store, 80, LIVING_ENTITY_FLAG_OFF_HAND));
+    assert_eq!(using(&store, 80), (false, true));
+
+    // A non-living entity (boat) never reads the flags byte.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(set_flags(
+        &mut store,
+        81,
+        LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
+    ));
+    assert_eq!(using(&store, 81), (false, false));
+}
+
+#[test]
 fn entity_model_sources_project_aggressive_for_zombie_model_family() {
     const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
