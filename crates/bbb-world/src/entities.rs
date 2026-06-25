@@ -741,6 +741,26 @@ pub struct EntityModelSourceState {
     /// every other entity.
     #[serde(default)]
     pub allay_spinning_progress: f32,
+    /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the
+    /// `0..1` eased blend `AdultAxolotlModel.setupPlayDeadAnimation` scales the limp-on-its-side pose
+    /// by. `0.0` (awake) for every other entity.
+    #[serde(default)]
+    pub axolotl_playing_dead_factor: f32,
+    /// Vanilla `AxolotlRenderState.inWaterFactor` (`Axolotl.inWaterAnimator.getFactor`): the `0..1`
+    /// eased blend gating the swimming and water-hovering sub-animations. `0.0` (out of water) for
+    /// every other entity.
+    #[serde(default)]
+    pub axolotl_in_water_factor: f32,
+    /// Vanilla `AxolotlRenderState.onGroundFactor` (`Axolotl.onGroundAnimator.getFactor`): the `0..1`
+    /// eased blend gating the ground-crawling and lay-still sub-animations. `0.0` for every other
+    /// entity.
+    #[serde(default)]
+    pub axolotl_on_ground_factor: f32,
+    /// Vanilla `AxolotlRenderState.movingFactor` (`Axolotl.movingAnimator.getFactor`): the `0..1`
+    /// eased blend separating the moving sub-animations (swim, crawl) from the still ones and gating
+    /// the mirror-leg copy. `0.0` (still) for every other entity.
+    #[serde(default)]
+    pub axolotl_moving_factor: f32,
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(sin(lerp(flap)) + 1) * lerp(flapSpeed)`): the combined wing-flap angle
     /// `ParrotModel.setupAnim` feeds to the wing `zRot` (`±(0.0873 + flapAngle)`) and

@@ -23,8 +23,9 @@ use super::{
     VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
-    allay_is_dancing, camel_is_dashing, entity_animation_uses_in_water, guardian_attack_duration,
-    guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type, warden_heartbeat_delay,
+    allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, entity_animation_uses_in_water,
+    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    is_guardian_entity_type, warden_heartbeat_delay,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
@@ -855,6 +856,22 @@ impl EntityStore {
             allay_spinning_progress: client_animations
                 .animations
                 .allay_spinning_progress(partial_ticks),
+            // Vanilla `AxolotlRenderer.extractRenderState`: the four `BinaryAnimator` factors
+            // (`Axolotl.{playingDead,inWater,onGround,moving}Animator.getFactor`) that
+            // `AdultAxolotlModel.setupAnim` blends into its swim / hover / crawl / lay-still /
+            // play-dead sub-animations. All `0.0` for every non-axolotl entity.
+            axolotl_playing_dead_factor: client_animations
+                .animations
+                .axolotl_playing_dead_factor(partial_ticks),
+            axolotl_in_water_factor: client_animations
+                .animations
+                .axolotl_in_water_factor(partial_ticks),
+            axolotl_on_ground_factor: client_animations
+                .animations
+                .axolotl_on_ground_factor(partial_ticks),
+            axolotl_moving_factor: client_animations
+                .animations
+                .axolotl_moving_factor(partial_ticks),
             // Vanilla `ParrotRenderer.extractRenderState`: the lerped, combined
             // wing-flap angle. `0.0` for every non-parrot entity (only the parrot is
             // given a flap animation state).
@@ -1382,6 +1399,7 @@ impl EntityStore {
                 let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 let allay_is_dancing = allay_is_dancing(&metadata.data_values);
+                let axolotl_is_playing_dead = axolotl_is_playing_dead(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1394,6 +1412,7 @@ impl EntityStore {
                     guardian_attack_target_id,
                     camel_is_dashing,
                     allay_is_dancing,
+                    axolotl_is_playing_dead,
                 );
             }
         }

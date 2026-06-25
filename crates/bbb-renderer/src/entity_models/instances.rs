@@ -591,6 +591,22 @@ entity_render_state! {
     /// that cross-fades the body sway (`root.zRot`/`head` tilt scaled by `1 - progress`)
     /// into the spin. `0.0` for a non-spinning allay and every other entity.
     (with_allay_spinning_progress) allay_spinning_progress: f32 = 0.0;
+    /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the
+    /// `0..1` eased blend `AdultAxolotlModel.setupPlayDeadAnimation` scales its limp-on-its-side pose
+    /// by. `0.0` (awake) for every non-axolotl entity.
+    (with_axolotl_playing_dead_factor) axolotl_playing_dead_factor: f32 = 0.0;
+    /// Vanilla `AxolotlRenderState.inWaterFactor` (`Axolotl.inWaterAnimator.getFactor`): the `0..1`
+    /// eased blend gating `setupSwimmingAnimation` / `setupWaterHoveringAnimation`. `0.0` (out of
+    /// water) for every non-axolotl entity.
+    (with_axolotl_in_water_factor) axolotl_in_water_factor: f32 = 0.0;
+    /// Vanilla `AxolotlRenderState.onGroundFactor` (`Axolotl.onGroundAnimator.getFactor`): the `0..1`
+    /// eased blend gating `setupGroundCrawlingAnimation` / `setupLayStillOnGroundAnimation`. `0.0`
+    /// for every non-axolotl entity.
+    (with_axolotl_on_ground_factor) axolotl_on_ground_factor: f32 = 0.0;
+    /// Vanilla `AxolotlRenderState.movingFactor` (`Axolotl.movingAnimator.getFactor`): the `0..1`
+    /// eased blend separating the moving sub-animations (swim, crawl) from the still ones (hover,
+    /// lay-still) and gating `applyMirrorLegRotations`. `0.0` (still) for every non-axolotl entity.
+    (with_axolotl_moving_factor) axolotl_moving_factor: f32 = 0.0;
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(Mth.sin(lerp(oFlap, flap)) + 1) * lerp(oFlapSpeed, flapSpeed)`): the combined
     /// wing-flap angle `ParrotModel.setupAnim` writes to the wings (`leftWing.zRot =
@@ -1757,6 +1773,10 @@ mod tests {
                 allay_dancing: false,
                 allay_spinning: false,
                 allay_spinning_progress: 0.0,
+                axolotl_playing_dead_factor: 0.0,
+                axolotl_in_water_factor: 0.0,
+                axolotl_on_ground_factor: 0.0,
+                axolotl_moving_factor: 0.0,
                 parrot_flap_angle: 0.0,
                 in_water: false,
                 on_ground: false,

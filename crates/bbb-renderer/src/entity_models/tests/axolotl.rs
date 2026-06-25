@@ -149,8 +149,8 @@ fn axolotl_adult_body_turns_toward_the_look_yaw() {
         "the adult body turns with the look yaw"
     );
 
-    // The pitch feeds only the deferred swimming sways (line 77 uses `yRot` alone), so a pure-pitch
-    // look leaves the body at rest.
+    // The pitch feeds only the swimming sub-animation's body tilt, which is gated off here (the
+    // in-water / moving factors default to 0), so a pure-pitch look leaves the body at rest.
     let adult_pitched = entity_model_mesh(&[EntityModelInstance::axolotl(
         84,
         [0.0, 64.0, 0.0],
@@ -183,6 +183,49 @@ fn axolotl_adult_body_turns_toward_the_look_yaw() {
     assert_eq!(
         baby_rest.vertices, baby_looked.vertices,
         "the baby axolotl ignores the look"
+    );
+}
+
+#[test]
+fn axolotl_procedural_sub_animations_pose_the_body() {
+    // Vanilla `AdultAxolotlModel.setupAnim` blends five factor-gated sub-animations. With every
+    // factor 0 the body is at rest; raising a factor poses it. Same age for all so only the factor
+    // differs.
+    let base =
+        EntityModelInstance::axolotl(90, [0.0, 64.0, 0.0], 0.0, false, AxolotlModelVariant::Lucy)
+            .with_age_in_ticks(7.0);
+    let rest = entity_model_mesh(&[base]);
+
+    // Swimming (moving + in water): the body gallops and the legs splay back.
+    let swimming = entity_model_mesh(&[base
+        .with_axolotl_in_water_factor(1.0)
+        .with_axolotl_moving_factor(1.0)]);
+    assert_eq!(rest.vertices.len(), swimming.vertices.len());
+    assert_ne!(rest.vertices, swimming.vertices, "swimming poses the body");
+
+    // Water hovering (still + in water): the `notMoving·inWater` branch, distinct from swimming.
+    let hovering = entity_model_mesh(&[base.with_axolotl_in_water_factor(1.0)]);
+    assert_ne!(
+        swimming.vertices, hovering.vertices,
+        "hovering differs from the swimming gallop"
+    );
+
+    // Play dead: the body rolls onto its side (`body.zRot += 0.35`), independent of water/ground.
+    let play_dead = entity_model_mesh(&[base.with_axolotl_playing_dead_factor(1.0)]);
+    assert_ne!(
+        rest.vertices, play_dead.vertices,
+        "play-dead rolls the body"
+    );
+
+    // Crawling (moving + on ground) differs from lay-still (still + on ground); the latter also
+    // mirrors the left legs onto the right (`mirroredLegsFactor = 1 - min(onGround, moving)`).
+    let crawling = entity_model_mesh(&[base
+        .with_axolotl_on_ground_factor(1.0)
+        .with_axolotl_moving_factor(1.0)]);
+    let lay_still = entity_model_mesh(&[base.with_axolotl_on_ground_factor(1.0)]);
+    assert_ne!(
+        crawling.vertices, lay_still.vertices,
+        "crawling differs from the lay-still rest"
     );
 }
 

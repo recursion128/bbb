@@ -7310,6 +7310,66 @@ fn allay_dancing_flag_drives_the_dance_spin_state() {
 }
 
 #[test]
+fn axolotl_playing_dead_flag_drives_the_eased_factor() {
+    const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
+    const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+    ));
+
+    let factor = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 92)
+            .unwrap()
+            .axolotl_playing_dead_factor
+    };
+    let set_playing_dead = |store: &mut WorldStore, dead: bool| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 92,
+            values: vec![ProtocolEntityDataValue {
+                data_id: AXOLOTL_PLAYING_DEAD_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(dead),
+            }],
+        }));
+    };
+
+    // An awake axolotl projects no play-dead blend.
+    assert_eq!(factor(&store, 1.0), 0.0);
+
+    // Vanilla `Axolotl.playingDeadAnimator` (`BinaryAnimator(10, IN_OUT_SINE)`): the synced
+    // `DATA_PLAYING_DEAD` flag eases the factor from 0 to a full 1.0 over the animator's 10 ticks.
+    set_playing_dead(&mut store, true);
+    store.advance_entity_client_animations(1);
+    let after_one = factor(&store, 1.0);
+    assert!(
+        after_one > 0.0 && after_one < 1.0,
+        "the play-dead factor eases up: {after_one}"
+    );
+    store.advance_entity_client_animations(9);
+    assert!(
+        (factor(&store, 1.0) - 1.0).abs() < 1.0e-6,
+        "the factor saturates at 1.0 after the 10-tick animator length"
+    );
+
+    // Clearing the flag eases the factor back down to 0 over the next 10 ticks.
+    set_playing_dead(&mut store, false);
+    store.advance_entity_client_animations(1);
+    let easing_down = factor(&store, 1.0);
+    assert!(
+        easing_down < 1.0,
+        "the factor eases back down once awake: {easing_down}"
+    );
+    store.advance_entity_client_animations(10);
+    assert_eq!(factor(&store, 1.0), 0.0, "fully awake again");
+}
+
+#[test]
 fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
     const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
     const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;

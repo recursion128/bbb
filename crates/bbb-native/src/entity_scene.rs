@@ -721,6 +721,10 @@ fn entity_model_instance(
         .with_allay_dancing(source.allay_dancing)
         .with_allay_spinning(source.allay_spinning)
         .with_allay_spinning_progress(source.allay_spinning_progress)
+        .with_axolotl_playing_dead_factor(source.axolotl_playing_dead_factor)
+        .with_axolotl_in_water_factor(source.axolotl_in_water_factor)
+        .with_axolotl_on_ground_factor(source.axolotl_on_ground_factor)
+        .with_axolotl_moving_factor(source.axolotl_moving_factor)
         .with_parrot_flap_angle(source.parrot_flap_angle)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
@@ -2791,6 +2795,42 @@ mod tests {
         assert!(
             progress >= 0.0,
             "the projected dash timer drives CamelModel.setupAnim: {progress}"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_axolotl_play_dead_from_world() {
+        const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            95,
+            VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let play_dead = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+                .iter()
+                .find(|instance| instance.entity_id == 95)
+                .map(|instance| instance.render_state.axolotl_playing_dead_factor)
+        };
+
+        // An awake axolotl projects no play-dead blend.
+        assert_eq!(play_dead(&world), Some(0.0));
+
+        // Vanilla `Axolotl.playingDeadAnimator`: the synced `DATA_PLAYING_DEAD` flag eases the
+        // factor up, flowing through EntityModelSourceState into the renderer EntityRenderState
+        // (`AdultAxolotlModel.setupPlayDeadAnimation` limp-on-its-side pose).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 95,
+            values: vec![protocol_bool_data(AXOLOTL_PLAYING_DEAD_DATA_ID, true)],
+        }));
+        world.advance_entity_client_animations(3);
+        let factor = play_dead(&world).expect("the play-dead axolotl projects an instance");
+        assert!(
+            factor > 0.0,
+            "the projected play-dead factor drives AdultAxolotlModel.setupAnim: {factor}"
         );
     }
 

@@ -2183,12 +2183,17 @@ When an agent does any of the following, update this file in the same slice:
       side frills), the four 3×5×0 leg planes (right/left legs at the -2/-1 origins), and the 0×5×12 tail
       fin — eleven cubes; the baby (atlas 32×32) wraps the body under a `root` bone at (0, 24, 0), with a
       4×2×6 trunk, four 3×0×1 horizontal leg planes (the right hind leg a doubly-rotated pivot/cube pair),
-      a 0×3×8 tail, a 6×3×4 head, and the three gill planes — eleven cubes. The adult body yaw look is
-      reproduced: `AdultAxolotlModel.setupAnim` unconditionally turns the root body toward the look target
-      (`body.yRot += yRot·π/180`) off the projected `head_yaw`, before the factor-blended procedural sways.
-      The rest of `setupAnim` is deferred: the adult swimming / water-hovering / ground-crawling / lay-still
-      procedural sways, the baby swim / walk / idle keyframe animations, the play-dead pose, and the
-      mirror-leg copy.
+      a 0×3×8 tail, a 6×3×4 head, and the three gill planes — eleven cubes. The full adult
+      `AdultAxolotlModel.setupAnim` IS reproduced: the body yaw look (`body.yRot += yRot·π/180`) plus all
+      five factor-blended procedural sub-animations — swimming (moving in water), water-hovering (still in
+      water), ground-crawling (moving on ground), lay-still (still on ground), and play-dead — and the
+      mirror-leg copy. The four blend factors come from the world client-tick `BinaryAnimator(10,
+      IN_OUT_SINE)` accumulators (`playingDead` / `inWater` / `onGround` / `moving`), reconstructed from the
+      synced `DATA_PLAYING_DEAD` (id 19), the per-tick `isInWater()`, `onGround()`, and
+      `walkAnimation.isMoving()` (OR'd with a synced rotation change) exactly as
+      `Axolotl.tickAdultAnimations` selects its mutually-exclusive `PLAYING_DEAD → IN_WATER → ON_GROUND →
+      IN_AIR` state. The baby swim / walk / idle keyframe animations stay deferred (vanilla
+      `BabyAxolotlModel` is a separate keyframe model).
       The five `Axolotl.Variant` color variants (lucy / wild / gold / cyan / blue, each with adult and baby
       textures) are now bound on the textured path: the native scene reads `DATA_VARIANT` (18, int) and
       `Axolotl.Variant.byId` selects the colour, crossed with the age, matching

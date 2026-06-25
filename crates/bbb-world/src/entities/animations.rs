@@ -107,6 +107,15 @@ const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
+const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
+/// Vanilla `Axolotl.DATA_PLAYING_DEAD`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 19
+/// (Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17, then `Axolotl`'s first own accessor
+/// `DATA_VARIANT` 18, `DATA_PLAYING_DEAD` 19, `FROM_BUCKET` 20). `Axolotl.tickAdultAnimations` reads
+/// `isPlayingDead()` to drive the play-dead state animator.
+const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
+/// Vanilla `Axolotl`'s four animators are each `BinaryAnimator(10, IN_OUT_SINE)`, so every factor
+/// eases between 0 and 1 over ten ticks.
+const AXOLOTL_ANIMATOR_LENGTH: i32 = 10;
 /// Vanilla `Allay.DATA_DANCING`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 16 (Entity
 /// 0–7, LivingEntity 8–14, Mob 15, then `Allay`'s first own accessor `DATA_DANCING`; the allay is a
 /// `PathfinderMob`, not an `AgeableMob`, so there is no baby slot). `Allay.tick` advances the dance /
@@ -301,6 +310,8 @@ pub struct EntityClientAnimationState {
     pub evoker_fangs: Option<EvokerFangsAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub allay_dance: Option<AllayDanceAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub axolotl: Option<AxolotlAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parrot_flap: Option<ParrotFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1001,6 +1012,122 @@ impl AllayDanceAnimationState {
         (self.spinning_animation_ticks0
             + (self.spinning_animation_ticks - self.spinning_animation_ticks0) * partial_tick)
             / 15.0
+    }
+}
+
+/// Vanilla `Ease.inOutSine`: `-(cos(π·x) - 1) / 2`, the easing every axolotl `BinaryAnimator` uses.
+fn ease_in_out_sine(x: f32) -> f32 {
+    -((std::f32::consts::PI * x).cos() - 1.0) / 2.0
+}
+
+/// Vanilla `net.minecraft.util.BinaryAnimator`: a tick counter that climbs toward `length` while a
+/// boolean is active and falls back toward `0` while it is not, exposing an eased `0..1` factor. The
+/// `animationLength`/`easing` are supplied by the caller (the axolotl uses `10` / `IN_OUT_SINE` for
+/// all four of its animators), so this state stores only the live and previous tick counts.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+struct BinaryAnimator {
+    #[serde(default)]
+    ticks: i32,
+    #[serde(default)]
+    ticks_old: i32,
+}
+
+impl BinaryAnimator {
+    /// Vanilla `BinaryAnimator.tick(active)`: snapshot the old count, then climb toward `length`
+    /// (active) or fall toward `0` (inactive) by one.
+    fn tick(&mut self, active: bool, length: i32) {
+        self.ticks_old = self.ticks;
+        if active {
+            if self.ticks < length {
+                self.ticks += 1;
+            }
+        } else if self.ticks > 0 {
+            self.ticks -= 1;
+        }
+    }
+
+    /// Vanilla `BinaryAnimator.getFactor(partialTicks)`: `easing(lerp(partial, ticksOld, ticks) /
+    /// length)`. The axolotl's easing is `IN_OUT_SINE`.
+    fn factor(&self, partial_tick: f32, length: i32) -> f32 {
+        let raw = (self.ticks_old as f32 + (self.ticks - self.ticks_old) as f32 * partial_tick)
+            / length as f32;
+        ease_in_out_sine(raw)
+    }
+}
+
+/// Canonical client-side axolotl animation, mirroring vanilla `Axolotl.tickAdultAnimations`. Four
+/// `BinaryAnimator`s ease the play-dead / in-water / on-ground / moving factors that
+/// `AdultAxolotlModel.setupAnim` blends into its swimming, water-hovering, ground-crawling,
+/// lay-still, and play-dead sub-animations. The mutually-exclusive `playingDead → inWater →
+/// onGround → inAir` state machine feeds the first three; `moving` is fed `walkAnimation.isMoving()`
+/// OR a body/head rotation change (tracked here, since the synced rotation is the only source).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct AxolotlAnimationState {
+    #[serde(default)]
+    playing_dead: BinaryAnimator,
+    #[serde(default)]
+    in_water: BinaryAnimator,
+    #[serde(default)]
+    on_ground: BinaryAnimator,
+    #[serde(default)]
+    moving: BinaryAnimator,
+    #[serde(default)]
+    prev_x_rot: f32,
+    #[serde(default)]
+    prev_y_rot: f32,
+    #[serde(default)]
+    has_prev_rotation: bool,
+}
+
+impl AxolotlAnimationState {
+    /// Advances one client tick of `Axolotl.tickAdultAnimations`: derive the mutually-exclusive
+    /// animation state, then tick the four animators. `walk_is_moving` is the prior tick's
+    /// `walkAnimation.isMoving()` (the walk animation is advanced after the per-type match, matching
+    /// vanilla's `baseTick`-before-`aiStep` order); the rotation change OR mirrors `getXRot() !=
+    /// xRotO || getYRot() != yRotO`.
+    fn advance_client_tick(
+        &mut self,
+        is_playing_dead: bool,
+        is_in_water: bool,
+        on_ground: bool,
+        walk_is_moving: bool,
+        x_rot: f32,
+        y_rot: f32,
+    ) {
+        let rotation_changed =
+            self.has_prev_rotation && (x_rot != self.prev_x_rot || y_rot != self.prev_y_rot);
+        self.prev_x_rot = x_rot;
+        self.prev_y_rot = y_rot;
+        self.has_prev_rotation = true;
+        let is_moving = walk_is_moving || rotation_changed;
+        // Vanilla `Axolotl.AxolotlAnimationState`: PLAYING_DEAD → IN_WATER → ON_GROUND → IN_AIR,
+        // first match wins, so the three state animators are mutually exclusive.
+        let state_playing_dead = is_playing_dead;
+        let state_in_water = !is_playing_dead && is_in_water;
+        let state_on_ground = !is_playing_dead && !is_in_water && on_ground;
+        self.playing_dead
+            .tick(state_playing_dead, AXOLOTL_ANIMATOR_LENGTH);
+        self.in_water.tick(state_in_water, AXOLOTL_ANIMATOR_LENGTH);
+        self.on_ground
+            .tick(state_on_ground, AXOLOTL_ANIMATOR_LENGTH);
+        self.moving.tick(is_moving, AXOLOTL_ANIMATOR_LENGTH);
+    }
+
+    fn playing_dead_factor(&self, partial_tick: f32) -> f32 {
+        self.playing_dead
+            .factor(partial_tick, AXOLOTL_ANIMATOR_LENGTH)
+    }
+
+    fn in_water_factor(&self, partial_tick: f32) -> f32 {
+        self.in_water.factor(partial_tick, AXOLOTL_ANIMATOR_LENGTH)
+    }
+
+    fn on_ground_factor(&self, partial_tick: f32) -> f32 {
+        self.on_ground.factor(partial_tick, AXOLOTL_ANIMATOR_LENGTH)
+    }
+
+    fn moving_factor(&self, partial_tick: f32) -> f32 {
+        self.moving.factor(partial_tick, AXOLOTL_ANIMATOR_LENGTH)
     }
 }
 
@@ -2368,6 +2495,38 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.spinning_progress(partial_tick))
     }
 
+    /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the
+    /// `0..1` eased blend into `AdultAxolotlModel.setupPlayDeadAnimation`. `0.0` for an awake axolotl
+    /// and every other entity.
+    pub fn axolotl_playing_dead_factor(&self, partial_tick: f32) -> f32 {
+        self.axolotl
+            .map_or(0.0, |state| state.playing_dead_factor(partial_tick))
+    }
+
+    /// Vanilla `AxolotlRenderState.inWaterFactor` (`Axolotl.inWaterAnimator.getFactor`): the `0..1`
+    /// eased blend gating the swimming / water-hovering sub-animations. `0.0` for a grounded axolotl
+    /// and every other entity.
+    pub fn axolotl_in_water_factor(&self, partial_tick: f32) -> f32 {
+        self.axolotl
+            .map_or(0.0, |state| state.in_water_factor(partial_tick))
+    }
+
+    /// Vanilla `AxolotlRenderState.onGroundFactor` (`Axolotl.onGroundAnimator.getFactor`): the `0..1`
+    /// eased blend gating the ground-crawling / lay-still sub-animations. `0.0` for a swimming axolotl
+    /// and every other entity.
+    pub fn axolotl_on_ground_factor(&self, partial_tick: f32) -> f32 {
+        self.axolotl
+            .map_or(0.0, |state| state.on_ground_factor(partial_tick))
+    }
+
+    /// Vanilla `AxolotlRenderState.movingFactor` (`Axolotl.movingAnimator.getFactor`): the `0..1`
+    /// eased blend separating the moving sub-animations (swim, crawl) from the still ones (hover,
+    /// lay-still) and gating the mirror-leg copy. `0.0` for a still axolotl and every other entity.
+    pub fn axolotl_moving_factor(&self, partial_tick: f32) -> f32 {
+        self.axolotl
+            .map_or(0.0, |state| state.moving_factor(partial_tick))
+    }
+
     /// The sniffer's active `Sniffer.State` animation (vanilla `Sniffer.onSyncedDataUpdated`'s
     /// one-shot `AnimationState`s) projected for `SnifferModel.setupAnim`: the `(state ordinal,
     /// elapsed seconds)` of the running triggered keyframe, or `(-1, -1.0)` when the sniffer is
@@ -2630,6 +2789,10 @@ impl EntityClientAnimationState {
         // The synced `Allay.DATA_DANCING` boolean (`isDancing()`), read from the entity metadata in the
         // tick loop ([`allay_is_dancing`]). `false` for entities that do not consume it.
         allay_is_dancing: bool,
+        // The synced `Axolotl.DATA_PLAYING_DEAD` boolean (`isPlayingDead()`), read from the entity
+        // metadata in the tick loop ([`axolotl_is_playing_dead`]). `false` for entities that do not
+        // consume it.
+        axolotl_is_playing_dead: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -2803,6 +2966,24 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(AllayDanceAnimationState::default)
                     .advance_client_tick(allay_is_dancing);
             }
+            VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
+                // Vanilla `Axolotl.tickAdultAnimations`: the play-dead / in-water / on-ground state
+                // machine drives three `BinaryAnimator`s plus the moving animator.
+                // `walkAnimation.isMoving()` reads the PRIOR tick's limb swing (the walk animation is
+                // advanced after this match, mirroring vanilla's `baseTick`-before-`aiStep` order),
+                // OR'd with a body/head rotation change.
+                let walk_is_moving = self.walk_animation.is_some_and(|walk| walk.is_moving());
+                self.axolotl
+                    .get_or_insert_with(AxolotlAnimationState::default)
+                    .advance_client_tick(
+                        axolotl_is_playing_dead,
+                        in_water,
+                        transform.on_ground.unwrap_or(false),
+                        walk_is_moving,
+                        transform.x_rot,
+                        transform.y_rot,
+                    );
+            }
             VANILLA_ENTITY_TYPE_CHICKEN_ID => self
                 .chicken_flap
                 .get_or_insert_with(ChickenFlapAnimationState::default)
@@ -2863,6 +3044,7 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
         VANILLA_ENTITY_TYPE_GUARDIAN_ID
             | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
             | VANILLA_ENTITY_TYPE_FROG_ID
+            | VANILLA_ENTITY_TYPE_AXOLOTL_ID
     )
 }
 
@@ -2884,6 +3066,13 @@ pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
 /// synced slot `16` is not this boolean) fall back to `false`.
 pub(crate) fn allay_is_dancing(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, ALLAY_DANCING_DATA_ID, false)
+}
+
+/// Vanilla `Axolotl.isPlayingDead()` (`entityData.get(DATA_PLAYING_DEAD)`): the synced boolean that
+/// selects the `PLAYING_DEAD` animation state. Read straight from the entity metadata in the tick
+/// loop; non-axolotls (whose synced slot `19` is not this boolean) fall back to `false`.
+pub(crate) fn axolotl_is_playing_dead(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, AXOLOTL_PLAYING_DEAD_DATA_ID, false)
 }
 
 /// Vanilla `Warden.getHeartBeatDelay()` = `40 - floor(clamp(clientAngerLevel /
