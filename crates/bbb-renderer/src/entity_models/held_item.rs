@@ -212,11 +212,12 @@ mod tests {
             aiming.y > resting.y + 0.2,
             "aimed hand {aiming:?} rises above the resting hand {resting:?}"
         );
-        // A skeleton missing either flag keeps the resting hand (the pose is gated on both).
-        let half = humanoid_hand_attach_transform(&skeleton.with_is_aggressive(true), false)
-            .unwrap()
-            .transform_point3(Vec3::ZERO);
-        assert_eq!(half, resting);
+        // The bow aim is gated on both flags: a holstered bow with no aggression keeps the resting hand.
+        let holstered =
+            humanoid_hand_attach_transform(&skeleton.with_main_hand_holds_bow(true), false)
+                .unwrap()
+                .transform_point3(Vec3::ZERO);
+        assert_eq!(holstered, resting);
     }
 
     #[test]

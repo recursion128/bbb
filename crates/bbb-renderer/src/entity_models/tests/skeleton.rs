@@ -1153,9 +1153,10 @@ fn skeleton_model_aims_both_arms_for_bow_and_arrow() {
         left.pose.rotation[1]
     );
 
-    // The pose is gated on BOTH flags: a bow held without aggression (not drawing) and aggression
-    // without a bow (a melee skeleton) both keep the idle arms, which rest near xRot 0 — far from
-    // the ~-1.7 rad aim pitch.
+    // The BOW aim is gated on BOTH flags: a bow held without aggression keeps the idle arms, while an
+    // aggressive skeleton without a bow melees instead (raised arms — see the melee test). Neither
+    // splays the off arm to the bow-aim `0.1 + yaw + 0.4`, the aim's signature.
+    let bow_left_yrot = 0.1 + yaw_rad + 0.4;
     for not_aiming in [
         EntityModelInstance::skeleton(811, [0.0, 64.0, 0.0], 0.0)
             .with_head_look(yaw, pitch)
@@ -1167,10 +1168,55 @@ fn skeleton_model_aims_both_arms_for_bow_and_arrow() {
         let mut idle = SkeletonModel::new(None);
         idle.prepare(&not_aiming);
         assert!(
-            (idle.root_mut().child_mut("right_arm").pose.rotation[0] - aim_pitch).abs() > 1.0,
-            "a skeleton missing either flag does not raise the bow"
+            (idle.root_mut().child_mut("left_arm").pose.rotation[1] - bow_left_yrot).abs() > 0.1,
+            "a skeleton missing either flag does not draw the bow"
         );
     }
+}
+
+#[test]
+fn aggressive_skeleton_without_a_bow_raises_and_chops_its_arms() {
+    use std::f32::consts::FRAC_PI_2;
+    // Vanilla `SkeletonModel.setupAnim` (`isAggressive && !isHoldingBow`): both arms raise to `-π/2`
+    // and chop with `attackTime`, the right arm yawing in (`yRot = -(0.1 - sin(tπ)·0.6)`) and the left
+    // out, then take the idle bob. At rest (`attack_anim = 0`) the arms hold the raised melee-ready pose.
+    let melee = EntityModelInstance::skeleton(820, [0.0, 64.0, 0.0], 0.0).with_is_aggressive(true);
+    let mut model = SkeletonModel::new(None);
+    model.prepare(&melee);
+    let right = model.root_mut().child_mut("right_arm");
+    assert!(
+        (right.pose.rotation[0] - (-FRAC_PI_2)).abs() < 1e-6,
+        "right arm raised to -π/2: {}",
+        right.pose.rotation[0]
+    );
+    assert!((right.pose.rotation[1] - (-0.1)).abs() < 1e-6);
+    let left = model.root_mut().child_mut("left_arm");
+    assert!((left.pose.rotation[0] - (-FRAC_PI_2)).abs() < 1e-6);
+    assert!((left.pose.rotation[1] - 0.1).abs() < 1e-6);
+
+    // A swing chops the arms further down (xRot more negative than the raised rest pose).
+    let mut swinging = SkeletonModel::new(None);
+    swinging.prepare(&melee.with_attack_anim(0.5));
+    assert!(
+        swinging.root_mut().child_mut("right_arm").pose.rotation[0] < -FRAC_PI_2 - 0.5,
+        "the arms chop down during the swing"
+    );
+
+    // A bow-aiming skeleton (aggressive + bow) aims instead — its off arm splays 0.4 (yRot 0.5), not 0.1.
+    let mut aiming = SkeletonModel::new(None);
+    aiming.prepare(&melee.with_main_hand_holds_bow(true));
+    assert!(
+        (aiming.root_mut().child_mut("left_arm").pose.rotation[1] - 0.5).abs() < 1e-6,
+        "a bow skeleton aims (off arm splayed 0.4), not melees"
+    );
+
+    // A calm skeleton melees neither — its arms hang on the idle pose, not raised to -π/2.
+    let mut calm = SkeletonModel::new(None);
+    calm.prepare(&EntityModelInstance::skeleton(821, [0.0, 64.0, 0.0], 0.0));
+    assert!(
+        calm.root_mut().child_mut("right_arm").pose.rotation[0].abs() < 0.5,
+        "a calm skeleton's arms hang"
+    );
 }
 
 #[test]
@@ -1203,12 +1249,25 @@ fn skeleton_bow_aim_moves_only_the_arms_in_the_textured_mesh() {
         "the legs do not aim"
     );
 
-    // Either flag alone leaves the resting pose.
-    assert_eq!(
-        resting.vertices,
-        entity_model_textured_mesh(&[base.with_is_aggressive(true)], &atlas).vertices,
-        "aggression without a bow does not aim"
+    // Aggression without a bow melees instead — it re-poses the arms ([72, 120)) but not the
+    // head/body or legs (a different pose from the bow aim; see the melee test).
+    let meleeing = entity_model_textured_mesh(&[base.with_is_aggressive(true)], &atlas);
+    assert_ne!(
+        resting.vertices[72..120],
+        meleeing.vertices[72..120],
+        "a melee skeleton raises its arms"
     );
+    assert_eq!(
+        resting.vertices[0..72],
+        meleeing.vertices[0..72],
+        "the melee leaves the head and body"
+    );
+    assert_eq!(
+        resting.vertices[120..168],
+        meleeing.vertices[120..168],
+        "the melee leaves the legs"
+    );
+    // A holstered bow with no aggression neither aims nor melees.
     assert_eq!(
         resting.vertices,
         entity_model_textured_mesh(&[base.with_main_hand_holds_bow(true)], &atlas).vertices,

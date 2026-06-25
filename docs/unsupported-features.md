@@ -687,14 +687,17 @@ When an agent does any of the following, update this file in the same slice:
     spyglass) and the enderman's halve/clamp composition of the bob stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, with the synced `Mob.isAggressive`
-    arm-raise, is implemented, see the zombie-arms note below; the skeleton melee swing
-    (`isAggressive && !isHoldingBow`) and bow-aiming
-    `ArmPose`, the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
+    arm-raise, is implemented, see the zombie-arms note below; the skeleton `BOW_AND_ARROW`
+    aim and the melee swing (`isAggressive && !isHoldingBow`, the raised-and-chopping arms
+    driven by the projected `attack_anim`) are both implemented — see the skeleton note
+    below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
     `PiglinModel` dance/attack/crossbow/admire poses (the `AbstractPiglinModel` ear flap is
     implemented for every piglin/zombified-piglin subclass — see below), the `IllagerModel`
-    attack/bow/crossbow/celebrate arm-pose overrides and riding sit pose (the default walk
-    arm swing is implemented for the pillager, and the evoker/illusioner spellcasting arm
-    raise is implemented — see the illager note above), the `VillagerModel` unhappy
+    vindicator `ATTACKING` swing and pillager `CROSSBOW_CHARGE` overrides and riding sit
+    pose (the default walk arm swing is implemented for the pillager, and the
+    evoker/illusioner spellcasting raise, the illusioner `BOW_AND_ARROW`, the pillager
+    `CROSSBOW_HOLD`, and the evoker/vindicator `CELEBRATING` poses are implemented — see the
+    illager note above), the `VillagerModel` unhappy
     head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
     implemented — see below), the `GoatModel` ramming head
     tilt, the `HoglinModel` headbutt head tilt (the `EndermanModel`
@@ -1442,9 +1445,11 @@ When an agent does any of the following, update this file in the same slice:
       driven by the projected `is_aggressive` + `main_hand_holds_bow` render
       state and applied to the base body and the Stray/Bogged clothing overlay
       alike (the held bow mesh tracks the aimed hand through the shared posed
-      model); skeleton-family armor, the `SkeletonModel` melee arm swing
-      (`isAggressive && !isHoldingBow`, needs the projected `attackTime`), and
-      lighting remain unsupported
+      model), and the melee swing `ArmPose` — vanilla `SkeletonModel.setupAnim`'s
+      `isAggressive && !isHoldingBow` raising both arms to `-π/2` and chopping with
+      the projected `attack_anim` (the right arm yawing in, the left out), over the
+      shared `setupAttackAnimation` body twist, on the base body and the clothing
+      overlay alike; skeleton-family armor and lighting remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,
