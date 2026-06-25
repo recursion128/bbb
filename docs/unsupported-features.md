@@ -838,9 +838,10 @@ When an agent does any of the following, update this file in the same slice:
     hand's `ITEM`. The remaining
     use-item arm poses on the same dispatch (the
     mirrored off-hand bow/trident/crossbow draw + off-hand `CROSSBOW_HOLD`, a non-shield
-    datapack `BLOCKS_ATTACKS` item, the off-arm `EMPTY` reset, and the
-    `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
-    off-hand spear/charged crossbow while the main hand draws a two-handed item) stay deferred. The
+    datapack `BLOCKS_ATTACKS` item, and the off-arm `EMPTY` reset — a near-no-op since at rest the off arm's
+    `yRot` is already `0`) stay deferred. (The `getArmPose` `isTwoHanded`-forces-off-hand-to-`ITEM` branch
+    needs no implementation: every `isTwoHanded` pose is also `affectsOffhandPose`, so `setupAnim` always
+    SKIPS the forced arm's `poseArm` and the forced value is never rendered.) The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —
