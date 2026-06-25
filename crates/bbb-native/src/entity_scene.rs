@@ -617,24 +617,46 @@ fn entity_hand_holds_shield(
     item_runtime.item_resource_id(item_id) == Some("minecraft:shield")
 }
 
-/// Whether the entity's main-hand item is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)`),
-/// driving the pillager's `CROSSBOW_HOLD` arm pose. Resolved through the item registry, so it needs the
-/// runtime; `false` without it or for any non-crossbow / empty hand.
-fn entity_main_hand_holds_crossbow(
+/// Whether the item in the given hand is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)` for the
+/// pillager's `CROSSBOW_HOLD`/`CROSSBOW_CHARGE`; also the player's crossbow use poses). Resolved through the
+/// item registry, so it needs the runtime; `false` without it or for any non-crossbow / empty hand.
+fn entity_hand_holds_crossbow(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
+    off_hand: bool,
 ) -> bool {
     let Some(item_runtime) = item_runtime else {
         return false;
     };
-    let Some(stack) = world.held_item(entity_id, false) else {
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
         return false;
     };
     let Some(item_id) = stack.item_id else {
         return false;
     };
     item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
+}
+
+/// Whether the item in the given hand routes to a SPECIAL `getArmPose` (not the `ITEM` fallback) when used:
+/// the use-animation poses `BOW_AND_ARROW` (bow), `CROSSBOW_CHARGE` (crossbow), `THROW_TRIDENT` (trident),
+/// `BLOCK` (shield), `SPYGLASS`, `TOOT_HORN` (goat horn), `BRUSH`. While the entity uses one of these in this
+/// hand, that hand gets its dedicated pose instead of `ITEM`; any OTHER used item (food/potion -> `EAT`/
+/// `DRINK`, or any plain item) falls through to `ITEM`. Resolved through the item registry; `false` without
+/// it or for an empty / non-special hand.
+fn entity_hand_holds_special_use_item(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+) -> bool {
+    entity_hand_holds_bow(world, item_runtime, entity_id, off_hand)
+        || entity_hand_holds_crossbow(world, item_runtime, entity_id, off_hand)
+        || entity_hand_holds_trident(world, item_runtime, entity_id, off_hand)
+        || entity_hand_holds_shield(world, item_runtime, entity_id, off_hand)
+        || entity_hand_holds_spyglass(world, item_runtime, entity_id, off_hand)
+        || entity_hand_holds_goat_horn(world, item_runtime, entity_id, off_hand)
+        || entity_hand_holds_brush(world, item_runtime, entity_id, off_hand)
 }
 
 /// Whether the item in the given hand is a *charged* crossbow (vanilla
@@ -880,7 +902,7 @@ fn entity_model_instance(
     let player_charging_crossbow = matches!(kind, EntityModelKind::Player { .. })
         && source.is_using_item
         && !source.use_item_off_hand
-        && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id)
+        && entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false)
         && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
     // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, the same one
     // the pillager levels): a player holding a CHARGED main-hand crossbow while not mid-swing (`!swinging &&
@@ -891,42 +913,54 @@ fn entity_model_instance(
     let player_crossbow_hold = matches!(kind, EntityModelKind::Player { .. })
         && !source.is_swinging
         && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
-    // Vanilla `HumanoidModel.setupAnim` dispatch (lines 245-257): when the main hand uses an
-    // `affectsOffhandPose` item (the two-handed draws — `BOW_AND_ARROW` / `THROW_TRIDENT` / `CROSSBOW_CHARGE`
-    // / `CROSSBOW_HOLD`, which bbb poses for the player except the deferred player CROSSBOW_HOLD),
-    // `poseLeftArm` is SKIPPED, so the off hand gets NO pose. Suppress the off-hand `ITEM` fallback in that
-    // case (the off arm keeps its bow/trident/crossbow-set or walk pose). `SPYGLASS`/`TOOT_HORN`/`BRUSH`/
-    // `BLOCK` do NOT affect the off-hand pose, so they leave the off-hand `ITEM` fallback intact.
+    // Vanilla `HumanoidModel.setupAnim` dispatch (lines 245-257): when a hand uses an `affectsOffhandPose`
+    // item (the two-handed draws — `BOW_AND_ARROW` / `THROW_TRIDENT` / `CROSSBOW_CHARGE` / `CROSSBOW_HOLD`),
+    // the OPPOSITE arm's `poseArm` is SKIPPED, so the opposite hand gets NO pose. Compute it per using-hand to
+    // suppress the opposite hand's `ITEM` fallback (the opposite arm keeps its draw-set or walk pose).
+    // `SPYGLASS`/`TOOT_HORN`/`BRUSH`/`BLOCK` are NOT `affectsOffhandPose`, so they leave the opposite `ITEM`
+    // intact. (The `affectsOffhandPose` use items bbb poses are exactly the bow / trident / crossbow draws.)
     let main_hand_use_affects_offhand = source.is_using_item
         && !source.use_item_off_hand
         && (entity_hand_holds_bow(world, item_runtime, source.entity_id, false)
             || entity_hand_holds_trident(world, item_runtime, source.entity_id, false)
-            || entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id));
+            || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false));
+    let off_hand_use_affects_offhand = source.is_using_item
+        && source.use_item_off_hand
+        && (entity_hand_holds_bow(world, item_runtime, source.entity_id, true)
+            || entity_hand_holds_trident(world, item_runtime, source.entity_id, true)
+            || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, true));
+    // Whether a hand is the using hand holding a SPECIAL-pose item (so it gets its dedicated pose, NOT the
+    // `ITEM` fallback). Any OTHER used item (food/potion -> `EAT`/`DRINK`, or a plain tool) falls through to
+    // `ITEM`, so a player eating/drinking still shows the lowered `ITEM` arm.
+    let main_hand_use_is_special = source.is_using_item
+        && !source.use_item_off_hand
+        && entity_hand_holds_special_use_item(world, item_runtime, source.entity_id, false);
+    let off_hand_use_is_special = source.is_using_item
+        && source.use_item_off_hand
+        && entity_hand_holds_special_use_item(world, item_runtime, source.entity_id, true);
     // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM` arm pose (`HumanoidModel.poseRightArm` ITEM case):
-    // a player holding a generic item in its main hand lowers and halves the arm swing. This is the `ITEM`
-    // branch reached after the special-pose checks fail, gated here to the "not using an item" case — the
-    // dominant "holding a tool/block/weapon" scenario. The using-an-item routes (`EAT`/`DRINK` -> `ITEM`,
-    // `BOW`/`CROSSBOW` draw -> their own poses) stay deferred. Spears (-> `SPEAR`) and charged crossbows
-    // (-> `CROSSBOW_HOLD`) are excluded so their dedicated poses win; a non-charged crossbow or a held (not
-    // drawn) bow correctly falls through to `ITEM`. Only `PlayerModel` consumes it (`HumanoidMobRenderer`
-    // never returns `ITEM`).
+    // a player holding a generic main-hand item lowers and halves the arm swing — the `ITEM` branch reached
+    // after the special-pose checks fail. Fires whether or not using, EXCEPT when this hand is using a special
+    // item (`main_hand_use_is_special` -> its own pose) or the OFF hand draws an `affectsOffhandPose` item
+    // (`off_hand_use_affects_offhand` -> vanilla skips this arm's `poseArm`). Spears (-> `SPEAR`) and charged
+    // crossbows (-> `CROSSBOW_HOLD`) are excluded so their dedicated poses win; a non-charged crossbow or a
+    // held (not drawn) bow correctly falls through to `ITEM`. Only `PlayerModel` consumes it.
     let player_main_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
-        && !source.is_using_item
+        && !main_hand_use_is_special
+        && !off_hand_use_affects_offhand
         && entity_main_hand_non_empty(world, source.entity_id)
         && !entity_hand_holds_spear(world, item_runtime, source.entity_id, false)
         && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
     // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM` arm pose, posed onto the OFF (left)
     // arm by `HumanoidModel.poseLeftArm`: a player holding a plain off-hand item (shield/totem/block/food)
-    // lowers and halves that arm just like the main hand. Gated to the player kind and a non-empty off hand,
-    // suppressed only when the player is using the OFF hand specifically (`is_using_item && use_item_off_hand`,
-    // which routes to the off-hand use poses — spyglass/horn/brush; using the MAIN hand leaves the off hand on
-    // its `ITEM` fallback). Excludes off-hand spears (-> `SPEAR`) and charged crossbows (-> `CROSSBOW_HOLD`).
-    // Also suppressed when the main hand draws an `affectsOffhandPose` item (`main_hand_use_affects_offhand`,
-    // the bow / trident), since vanilla skips `poseLeftArm` entirely there. The `isTwoHanded`-main-hand
-    // override (which would instead FORCE a non-empty off hand to `ITEM`) stays deferred — it only diverges
-    // for an off-hand spear / charged crossbow while the main hand draws a two-handed item.
+    // lowers and halves that arm. Mirror of the main-hand gate: fires whether or not using, EXCEPT when the
+    // OFF hand uses a special item (`off_hand_use_is_special`) or the MAIN hand draws an `affectsOffhandPose`
+    // item (`main_hand_use_affects_offhand` -> vanilla skips `poseLeftArm`). Excludes off-hand spears and
+    // charged crossbows. The `isTwoHanded`-main-hand override (which would FORCE a non-empty off hand to
+    // `ITEM`) stays deferred — it only diverges for an off-hand spear / charged crossbow while the main hand
+    // draws a two-handed item.
     let player_off_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
-        && !(source.is_using_item && source.use_item_off_hand)
+        && !off_hand_use_is_special
         && !main_hand_use_affects_offhand
         && entity_offhand_non_empty(world, source.entity_id)
         && !entity_hand_holds_spear(world, item_runtime, source.entity_id, true)
@@ -938,7 +972,7 @@ fn entity_model_instance(
             EntityModelKind::Illager {
                 family: IllagerModelFamily::Pillager
             }
-        ) && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id);
+        ) && entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false);
     // Vanilla `DrownedRenderer.getArmPose`: a drowned in its main hand holding a trident while aggressive
     // (`getMainArm() == arm && isAggressive() && item.is(Items.TRIDENT)`) raises the trident overhead to
     // throw it. `isAggressive` is already projected (the drowned is in the zombie model family); resolve
@@ -4503,7 +4537,10 @@ mod tests {
         ));
         assert!(!posing(&world, 261));
 
-        // A player USING the held item routes through the use-item poses, not the held-item ITEM fallback.
+        // A player USING a NON-special main-hand item (here a plain item — `EAT`/`DRINK` or any tool) still
+        // falls through to the `ITEM` fallback (vanilla `getArmPose` only special-cases bow/crossbow/trident/
+        // shield/spyglass/horn/brush; everything else -> `ITEM`). A SPECIAL using item would suppress it, but
+        // that needs the item runtime to resolve, so the no-runtime case treats any using item as non-special.
         world.apply_add_entity(protocol_add_entity(
             262,
             VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -4517,7 +4554,7 @@ mod tests {
                 LIVING_ENTITY_FLAG_IS_USING
             )],
         }));
-        assert!(!posing(&world, 262));
+        assert!(posing(&world, 262));
 
         // A non-player mob holding an item never returns ITEM (`HumanoidMobRenderer.getArmPose`).
         world.apply_add_entity(protocol_add_entity(
@@ -4577,7 +4614,9 @@ mod tests {
         ));
         assert!(!posing(&world, 271));
 
-        // USING the off-hand item routes through the off-hand use poses, not the ITEM fallback.
+        // USING a NON-special off-hand item (here a plain item — `EAT`/`DRINK`) still falls through to the
+        // off-hand `ITEM` fallback (only a special off-hand use item would route to its own pose, which needs
+        // the runtime to resolve; the no-runtime case treats any using item as non-special).
         world.apply_add_entity(protocol_add_entity(
             272,
             VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -4591,7 +4630,7 @@ mod tests {
                 LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND
             )],
         }));
-        assert!(!posing(&world, 272));
+        assert!(posing(&world, 272));
 
         // USING the MAIN hand leaves the off hand on its ITEM fallback (the off hand is not the using hand).
         world.apply_add_entity(protocol_add_entity(

@@ -828,9 +828,15 @@ When an agent does any of the following, update this file in the same slice:
     crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look,
     setting both arms. The `swinging` boolean is now projected (`LivingEntity.swinging`, off the attack-swing
     state) so the swing wins as in vanilla, and the pose runs after the ITEM blocks so it overwrites the
-    off-hand `ITEM` exactly as vanilla's `poseRightArm`-runs-last does for this case. The remaining
-    use-item arm poses on the same dispatch (the using-item routes that also resolve to
-    `ITEM` — `EAT`/`DRINK` — the
+    off-hand `ITEM` exactly as vanilla's `poseRightArm`-runs-last does for this case. The `EAT`/`DRINK`
+    (and any using-non-special) route to `ITEM` IS now handled too: the `ITEM` gate no longer keys off
+    `!isUsingItem` but off "this hand is NOT using a special-pose item" (`main_hand_use_is_special` /
+    `off_hand_use_is_special` over the bow/crossbow/trident/shield/spyglass/horn/brush set), so a player
+    eating food, drinking a potion, or using any plain item correctly shows the lowered `ITEM` arm. The
+    `affectsOffhandPose` skip is now symmetric (`main_hand_use_affects_offhand` /
+    `off_hand_use_affects_offhand`), so an `affectsOffhandPose` draw in either hand suppresses the OPPOSITE
+    hand's `ITEM`. The remaining
+    use-item arm poses on the same dispatch (the
     mirrored off-hand bow/trident/crossbow draw + off-hand `CROSSBOW_HOLD`, a non-shield
     datapack `BLOCKS_ATTACKS` item, the off-arm `EMPTY` reset, and the
     `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
