@@ -232,6 +232,11 @@ const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
 const RAIDER_IS_CELEBRATING_DATA_ID: u8 = 16;
+/// Vanilla `Piglin.DATA_IS_DANCING` data id (19): the boolean set while a piglin dances by a soul
+/// campfire. The piglin's accessors follow `AbstractPiglin.DATA_IMMUNE_TO_ZOMBIFICATION` (16) — the
+/// first accessor after `Mob.DATA_MOB_FLAGS_ID` (15) — then `DATA_BABY_ID` (17) and
+/// `DATA_IS_CHARGING_CROSSBOW` (18). `Piglin.getArmPose` returns `DANCING` (top priority) while true.
+const PIGLIN_IS_DANCING_DATA_ID: u8 = 19;
 // `ArmorStand extends LivingEntity` directly — it is NOT a `Mob`, so there is no
 // `Mob.DATA_MOB_FLAGS_ID` (15); `ArmorStand.DATA_CLIENT_FLAGS` is the first accessor after
 // `LivingEntity` (0-14) and lands at 15, with the six pose rotations following at 16-21.
@@ -649,6 +654,10 @@ fn entity_model_instance(
             &source.data_values,
         ))
         .with_illager_celebrating(illager_celebrating(
+            source.entity_type_id,
+            &source.data_values,
+        ))
+        .with_piglin_dancing(piglin_is_dancing(
             source.entity_type_id,
             &source.data_values,
         ))
@@ -1592,6 +1601,18 @@ fn illager_celebrating(
     (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_VINDICATOR_ID)
         && entity_data_bool(values, RAIDER_IS_CELEBRATING_DATA_ID, false)
+}
+
+/// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean, id 19): drives the piglin's
+/// `DANCING` arm pose (the soul-campfire celebration — swaying ears, raised arms, bobbing head/body).
+/// Only `Piglin.getArmPose` returns `DANCING`; the piglin brute and zombified piglin never dance, so the
+/// projection is gated to the regular piglin type.
+fn piglin_is_dancing(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
+        && entity_data_bool(values, PIGLIN_IS_DANCING_DATA_ID, false)
 }
 
 /// Vanilla `TurtleRenderState.hasEgg = !isBaby() && Turtle.hasEgg()` (the synced `HAS_EGG`
@@ -3205,6 +3226,51 @@ mod tests {
             values: vec![protocol_bool_data(RAIDER_IS_CELEBRATING_DATA_ID, true)],
         }));
         assert!(!celebrating(&world, 172));
+    }
+
+    #[test]
+    fn entity_model_instances_project_piglin_dancing() {
+        // Vanilla Piglin.isDancing() (BOOLEAN data id 19) and Piglin.getArmPose → DANCING: a regular
+        // piglin dances by a soul campfire. The brute and zombified piglin never return DANCING, so the
+        // projection is gated to the regular piglin type.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            180,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            181,
+            VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+            [2.0, 64.0, -3.0],
+        ));
+
+        let dancing = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .piglin_dancing
+        };
+
+        // No flag → not dancing.
+        assert!(!dancing(&world, 180));
+
+        // Piglin.DATA_IS_DANCING (data id 19) projects the dance for the regular piglin.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 180,
+            values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
+        }));
+        assert!(dancing(&world, 180));
+
+        // The same data id on a piglin brute does NOT project dancing (the brute never dances; that id
+        // is not even defined on it).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 181,
+            values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
+        }));
+        assert!(!dancing(&world, 181));
     }
 
     #[test]

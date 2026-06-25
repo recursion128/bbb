@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn piglin_model_parts_match_vanilla_26_1_body_layers() {
@@ -674,6 +674,83 @@ fn piglin_textured_mesh_matches_colored_geometry_and_animates() {
     assert_ne!(
         piglin_rest.vertices, piglin_walk.vertices,
         "the textured piglin swings its arms/legs when walking"
+    );
+}
+
+#[test]
+fn dancing_piglin_raises_its_arms_and_bobs() {
+    use std::f32::consts::PI;
+
+    // Vanilla `PiglinModel.setupAnim` DANCING (`Piglin.isDancing()` → DATA_IS_DANCING): the head/body
+    // bob, both arms raise overhead (`rightArm.zRot = (70 + cos(dancePos·40)·10)°`, the left mirrored)
+    // and wag with `ageInTicks`, and the ears sway. `dancePos = ageInTicks / 60`. We compare a dancing
+    // model to an idle one at the same age so the bob is read as the delta over the shared bind pose.
+    let deg = PI / 180.0;
+    let age = 48.0_f32;
+    let dance_pos = age / 60.0;
+    let bob = (dance_pos * 40.0).sin();
+
+    let base =
+        EntityModelInstance::piglin(91, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_age_in_ticks(age);
+    let mut idle = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    idle.prepare(&base);
+    let mut dancing = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    dancing.prepare(&base.with_piglin_dancing(true));
+
+    // Both arms raise overhead, the left mirroring the right's `zRot`.
+    let right_zrot = deg * (70.0 + (dance_pos * 40.0).cos() * 10.0);
+    let danced_right = dancing.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (danced_right.rotation[2] - right_zrot).abs() < 1.0e-6,
+        "the right arm raises to ~80°: {}",
+        danced_right.rotation[2]
+    );
+    let danced_left_zrot = dancing.root_mut().child_mut("left_arm").pose.rotation[2];
+    assert!(
+        (danced_left_zrot + right_zrot).abs() < 1.0e-6,
+        "the left arm mirrors the right: {danced_left_zrot}"
+    );
+
+    // The bob offsets add onto the bind pose (read as the dancing − idle delta).
+    let idle_head = idle.root_mut().child_mut("head").pose.offset;
+    let danced_head = dancing.root_mut().child_mut("head").pose.offset;
+    assert!((danced_head[0] - idle_head[0] - (dance_pos * 10.0).sin()).abs() < 1.0e-6);
+    assert!((danced_head[1] - idle_head[1] - (bob + 0.4)).abs() < 1.0e-6);
+
+    let idle_ry = idle.root_mut().child_mut("right_arm").pose.offset[1];
+    let danced_ry = dancing.root_mut().child_mut("right_arm").pose.offset[1];
+    assert!((danced_ry - idle_ry - (bob * 0.5 - 0.5)).abs() < 1.0e-6);
+    let idle_ly = idle.root_mut().child_mut("left_arm").pose.offset[1];
+    let danced_ly = dancing.root_mut().child_mut("left_arm").pose.offset[1];
+    assert!((danced_ly - idle_ly - (bob * 0.5 + 0.5)).abs() < 1.0e-6);
+    let idle_by = idle.root_mut().child_mut("body").pose.offset[1];
+    let danced_by = dancing.root_mut().child_mut("body").pose.offset[1];
+    assert!((danced_by - idle_by - bob * 0.35).abs() < 1.0e-6);
+
+    // The dance overwrites the idle ear flap with its own sway.
+    let danced_right_ear = dancing
+        .root_mut()
+        .child_mut("head")
+        .child_mut("right_ear")
+        .pose
+        .rotation[2];
+    assert!(
+        (danced_right_ear - (PI / 6.0 + deg * (dance_pos * 30.0).sin() * 10.0)).abs() < 1.0e-6,
+        "the right ear sways with the dance: {danced_right_ear}"
+    );
+
+    // The full mesh visibly changes, and advancing the dance keeps animating it.
+    let dancing_mesh = entity_model_mesh(&[base.with_piglin_dancing(true)]);
+    assert_ne!(
+        entity_model_mesh(&[base]).vertices,
+        dancing_mesh.vertices,
+        "a dancing piglin no longer stands idle"
+    );
+    let later = entity_model_mesh(&[base.with_piglin_dancing(true).with_age_in_ticks(age + 7.0)]);
+    assert_ne!(
+        dancing_mesh.vertices, later.vertices,
+        "the dance keeps wagging as ageInTicks advances"
     );
 }
 

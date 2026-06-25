@@ -541,8 +541,9 @@ When an agent does any of the following, update this file in the same slice:
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
     `setupAnim` runs `super.setupAnim` (the inherited legs and arms) before swaying only
     the ears. The adult/baby piglin and the brute keep the inherited arm counter-swing in
-    their default state (`PiglinModel` overrides the arms only in its deferred dance/
-    attack/crossbow/admire poses), so the arm swing is implemented for them too; the
+    their default state (`PiglinModel` overrides the arms only in its `DANCING` — implemented,
+    see the piglin dance note below — and its deferred attack/crossbow/admire poses), so the
+    arm swing is implemented for them too; the
     zombified piglin instead overwrites the arms with `AnimationUtils.animateZombieArms`
     (the deferred held-out zombie pose), so only its legs swing. The illager family
     (`emit_illager_model`
@@ -702,8 +703,8 @@ When an agent does any of the following, update this file in the same slice:
     aim and the melee swing (`isAggressive && !isHoldingBow`, the raised-and-chopping arms
     driven by the projected `attack_anim`) are both implemented — see the skeleton note
     below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
-    `PiglinModel` dance/attack/crossbow/admire poses (the `AbstractPiglinModel` ear flap is
-    implemented for every piglin/zombified-piglin subclass — see below), the `IllagerModel`
+    `PiglinModel` attack/crossbow/admire poses (the `DANCING` pose and the
+    `AbstractPiglinModel` ear flap are implemented for the piglin — see below), the `IllagerModel`
     pillager `CROSSBOW_CHARGE` override and riding sit
     pose (the default walk arm swing is implemented for the pillager, and the
     evoker/illusioner spellcasting raise, the illusioner `BOW_AND_ARROW`, the pillager
@@ -734,6 +735,17 @@ When an agent does any of the following, update this file in the same slice:
     brute) or `5°` (baby). The ears are `&'static` head children, so the head subtree is
     hand-emitted with the flapped ears (colored path; piglins have no textured path); because
     the `±0.08` baseline and `ageInTicks` advance every frame, the ears never sit still.
+    The regular piglin's `PiglinModel.setupAnim` `DANCING` pose (`Piglin.isDancing()`, the synced
+    `DATA_IS_DANCING` boolean id `19`, projected as `piglin_dancing` and gated to the piglin type —
+    the brute and zombified piglin never dance) is implemented (`apply_piglin_dance`): over
+    `dancePos = ageInTicks / 60` it overwrites the ear sway (`±π/6 ∓ trig(dancePos·30)·10°`), bobs
+    the head (`x += sin(dancePos·10)`, `y += sin(dancePos·40) + 0.4`) and body (`y +=
+    sin(dancePos·40)·0.35`), and raises both arms overhead wagging (`rightArm.zRot = (70° +
+    cos(dancePos·40)·10°)`, the left mirrored, `y += sin(dancePos·40)·0.5 ∓ 0.5`), running after the
+    inherited walk + ear flap on the reset bind pose. The `PiglinArmPose` `ATTACKING_WITH_MELEE_WEAPON`
+    (the `swingWeaponDown` axe chop, needs `attackTime` + a `DataComponents.TOOL` main-hand check),
+    `CROSSBOW_HOLD`/`CROSSBOW_CHARGE` (need the held crossbow + charge state), and `ADMIRING_ITEM`
+    (needs the loved off-hand item) poses stay deferred.
     The same `ageInTicks` projection drives the continuous `WitchModel.setupAnim` idle nose
     bob (`witch_nose_bob_pose`): `speed = 0.01 * (entityId % 10)`, `nose.xRot =
     sin(ageInTicks * speed) * 4.5°`, `nose.zRot = cos(ageInTicks * speed) * 2.5°`, both SET
@@ -1435,8 +1447,9 @@ When an agent does any of the following, update this file in the same slice:
       `animateZombieArms` resting pose on its two arm parts; the non-zombified piglin
       family (adult/baby piglin and brute) instead applies the inherited arm
       counter-swing (the zombified piglin's arms keep the deferred
-      `animateZombieArms` held-out pose, and the `AbstractPiglinModel` ear sway and
-      `PiglinModel` override arm poses stay deferred)
+      `animateZombieArms` held-out pose; the `AbstractPiglinModel` ear sway and the
+      regular piglin's `PiglinModel` `DANCING` pose are implemented, while the
+      `PiglinModel` attack/crossbow/admire arm poses stay deferred)
     - base skeleton, stray, parched, wither skeleton, and bogged entities as
       renderer-owned vanilla 26.1 skeleton-family geometry from
       `SkeletonModel.createBodyLayer()`,

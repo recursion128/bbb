@@ -430,6 +430,12 @@ entity_render_state! {
     /// `xRot = cos(ageInTicks · 0.6662) · 0.05`). `false` for every other entity and for an idle illager
     /// (which shows the static CROSSED arms).
     (with_illager_celebrating) illager_celebrating: bool = false;
+    /// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean): a piglin dancing by a soul
+    /// campfire, whose `PiglinModel.setupAnim` returns the `DANCING` arm pose — the ears sway, the head
+    /// and body bob, and both arms raise overhead (`zRot = ±(70° + cos·10°)`) wagging with `ageInTicks`.
+    /// `false` for every other entity (the piglin brute and zombified piglin never dance) and an idle
+    /// piglin.
+    (with_piglin_dancing) piglin_dancing: bool = false;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -1644,6 +1650,7 @@ mod tests {
                 feet_armor_dye: None,
                 illager_spellcasting: false,
                 illager_celebrating: false,
+                piglin_dancing: false,
                 is_crouching: false,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,

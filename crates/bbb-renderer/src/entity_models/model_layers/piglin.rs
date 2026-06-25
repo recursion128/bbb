@@ -467,14 +467,50 @@ fn piglin_tree(baby_layout: bool) -> ModelPart {
     ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
 }
 
+/// Vanilla `PiglinModel.setupAnim`'s `DANCING` branch (the soul-campfire celebration): the ears sway
+/// (`±π/6 ∓ trig(dancePos·30)·10°`, overwriting the idle flap), the head bobs side-to-side and up
+/// (`x += sin(dancePos·10)`, `y += sin(dancePos·40) + 0.4`), both arms raise overhead and wag
+/// (`rightArm.zRot = (70° + cos(dancePos·40)·10°)`, the left mirrored, `y += sin(dancePos·40)·0.5 ∓ 0.5`),
+/// and the body bounces (`y += sin(dancePos·40)·0.35`). `dancePos = ageInTicks / 60`. Runs after the
+/// inherited walk + ear flap, overwriting the ear/arm rotations and adding the bob offsets onto the
+/// reset bind pose.
+fn apply_piglin_dance(root: &mut ModelPart, age_in_ticks: f32) {
+    use std::f32::consts::PI;
+    let dance_pos = age_in_ticks / 60.0;
+    let deg = PI / 180.0;
+    let bob = (dance_pos * 40.0).sin();
+    {
+        let head = root.child_mut("head");
+        head.child_mut("right_ear").pose.rotation[2] =
+            PI / 6.0 + deg * (dance_pos * 30.0).sin() * 10.0;
+        head.child_mut("left_ear").pose.rotation[2] =
+            -PI / 6.0 - deg * (dance_pos * 30.0).cos() * 10.0;
+        head.pose.offset[0] += (dance_pos * 10.0).sin();
+        head.pose.offset[1] += bob + 0.4;
+    }
+    let right_arm_zrot = deg * (70.0 + (dance_pos * 40.0).cos() * 10.0);
+    {
+        let right_arm = root.child_mut("right_arm");
+        right_arm.pose.rotation[2] = right_arm_zrot;
+        right_arm.pose.offset[1] += bob * 0.5 - 0.5;
+    }
+    {
+        let left_arm = root.child_mut("left_arm");
+        left_arm.pose.rotation[2] = -right_arm_zrot;
+        left_arm.pose.offset[1] += bob * 0.5 + 0.5;
+    }
+    root.child_mut("body").pose.offset[1] += bob * 0.35;
+}
+
 /// Mutable piglin model, mirroring vanilla `AbstractPiglinModel extends HumanoidModel` (the piglin,
 /// piglin brute, and zombified piglin). The unified tree is built for the `family`/`baby` layout with
 /// the vanilla child names. `setup_anim` runs `super.setupAnim` — the head look ([`apply_head_look`]
 /// on `head`) and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk`]) — except the
 /// zombified piglin keeps its arms at rest (the held-out `animateZombieArms` pose defers), so it swings
 /// only the legs ([`apply_humanoid_leg_swing_named`]); then it always flaps the two ears
-/// ([`piglin_ear_flap_pose`], head children). The family recolor/texture is supplied by the caller; the
-/// dance/attack/crossbow/admire arm poses and held items defer.
+/// ([`piglin_ear_flap_pose`], head children). A dancing regular piglin then runs the `DANCING` pose
+/// ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the
+/// attack/crossbow/admire arm poses and held items defer.
 pub(in crate::entity_models) struct PiglinModel {
     root: ModelPart,
     family: PiglinModelFamily,
@@ -539,5 +575,11 @@ impl EntityModel for PiglinModel {
             limb_swing,
             limb_swing_amount,
         );
+        // Vanilla `PiglinModel.setupAnim` DANCING runs after the inherited walk + ear flap, overwriting
+        // the ear/arm rotations and bobbing the head/body. Only the regular piglin dances (the
+        // projection gates `piglin_dancing` to it; the brute and zombified piglin never set it).
+        if render_state.piglin_dancing {
+            apply_piglin_dance(&mut self.root, age_in_ticks);
+        }
     }
 }
