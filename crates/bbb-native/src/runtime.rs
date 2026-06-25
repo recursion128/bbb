@@ -388,6 +388,7 @@ pub(crate) fn pump_network_and_terrain(
     renderer.set_hud_inventory_screen(hud_inventory_screen_with_local_state(
         world,
         item_runtime,
+        terrain_textures,
         input.inventory_hovered_slot(),
         InventoryHudLocalState {
             stonecutter_recipe_scroll_row: Some(input.stonecutter_recipe_scroll_row()),
@@ -533,42 +534,45 @@ fn hotbar_item_icons(
     icons
 }
 
+/// The 3D inventory-icon model for a stack, when the item is a block (vanilla 3D inventory item
+/// rendering): its block model quads (atlas-absolute over the blocks atlas) plus its `gui` display
+/// transform. `None` for an empty stack or a flat / generated item (which keeps its 2D sprite). Shared
+/// by every GUI consumer (hotbar + inventory-screen slots + floating items).
+fn block_item_3d_model(
+    item: &bbb_protocol::packets::ItemStackSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+) -> Option<HudBlockItemModel> {
+    let item_runtime = item_runtime?;
+    let item_id = item.item_id?;
+    let resource_id = item_runtime.item_resource_id(item_id)?;
+    let quads = terrain_textures.block_item_quads(resource_id, &BTreeMap::new())?;
+    if quads.is_empty() {
+        return None;
+    }
+    let gui = item_runtime
+        .item_display_transform(item_id, bbb_pack::BlockModelDisplayContext::Gui)
+        .unwrap_or_default();
+    Some(HudBlockItemModel {
+        quads,
+        gui_display: crate::item_models::display_matrix(&gui, false),
+    })
+}
+
 /// The hotbar's 3D block items (vanilla inventory item rendering): for each slot holding a block item,
-/// its block model quads (over the blocks atlas) plus its `gui` display transform, so the renderer draws
-/// it as a 3D icon instead of the flat 2D sprite. `None` for empty slots and flat items (which keep the
-/// 2D sprite drawn by the HUD layer).
+/// its [`block_item_3d_model`], so the renderer draws it as a 3D icon instead of the flat 2D sprite.
+/// `None` for empty slots and flat items (which keep the 2D sprite drawn by the HUD layer).
 fn hotbar_block_item_models(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
 ) -> Vec<Option<HudBlockItemModel>> {
     let mut models: Vec<Option<HudBlockItemModel>> = (0..HUD_HOTBAR_SLOTS).map(|_| None).collect();
-    let Some(item_runtime) = item_runtime else {
-        return models;
-    };
     for (slot, item) in world.inventory().hotbar_item_states().iter().enumerate() {
         if slot >= HUD_HOTBAR_SLOTS {
             break;
         }
-        let Some(item_id) = item.item.item_id else {
-            continue;
-        };
-        let Some(resource_id) = item_runtime.item_resource_id(item_id) else {
-            continue;
-        };
-        let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) else {
-            continue;
-        };
-        if quads.is_empty() {
-            continue;
-        }
-        let gui = item_runtime
-            .item_display_transform(item_id, bbb_pack::BlockModelDisplayContext::Gui)
-            .unwrap_or_default();
-        models[slot] = Some(HudBlockItemModel {
-            quads,
-            gui_display: crate::item_models::display_matrix(&gui, false),
-        });
+        models[slot] = block_item_3d_model(&item.item, item_runtime, terrain_textures);
     }
     models
 }
@@ -592,6 +596,9 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || input.sign_editor_is_active_or_pending(world)
 }
 
+/// Test helper: the inventory screen with default local state and no resident terrain atlas (so block
+/// items resolve no 3D model — the tests assert the 2D icon / layout path).
+#[cfg(test)]
 fn hud_inventory_screen(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -601,6 +608,7 @@ fn hud_inventory_screen(
     hud_inventory_screen_with_local_state(
         world,
         item_runtime,
+        &TerrainTextureState::default(),
         hovered_slot_id,
         InventoryHudLocalState::default(),
         partial_tick,
@@ -610,6 +618,7 @@ fn hud_inventory_screen(
 fn hud_inventory_screen_with_local_state(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     hovered_slot_id: Option<i16>,
     local_state: InventoryHudLocalState,
     partial_tick: f32,
@@ -649,6 +658,9 @@ fn hud_inventory_screen_with_local_state(
                         partial_tick,
                     )
                 }),
+                block_model: inventory_slot.and_then(|slot| {
+                    block_item_3d_model(&slot.item, item_runtime, terrain_textures)
+                }),
             }
         })
         .collect();
@@ -666,6 +678,7 @@ fn hud_inventory_screen_with_local_state(
         floating_items: hud_inventory_floating_items(
             world,
             item_runtime,
+            terrain_textures,
             layout.background,
             local_state.stonecutter_recipe_scroll_row,
             partial_tick,
@@ -989,17 +1002,19 @@ fn hud_inventory_tooltip(
 fn hud_inventory_floating_items(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     background: InventoryScreenBackground,
     stonecutter_recipe_scroll_row: Option<i32>,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
     match background {
         InventoryScreenBackground::Merchant => {
-            hud_merchant_trade_items(world, item_runtime, partial_tick)
+            hud_merchant_trade_items(world, item_runtime, terrain_textures, partial_tick)
         }
         InventoryScreenBackground::Stonecutter => hud_stonecutter_recipe_items(
             world,
             item_runtime,
+            terrain_textures,
             stonecutter_recipe_scroll_row.unwrap_or_default(),
             partial_tick,
         ),
@@ -1471,6 +1486,7 @@ fn mount_armor_slot_texture(kind: MountArmorSlotKind) -> HudInventoryBackgroundT
 fn hud_merchant_trade_items(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
     let Some(offers) = merchant_offers_state(world) else {
@@ -1489,6 +1505,7 @@ fn hud_merchant_trade_items(
         push_merchant_trade_item(
             world,
             item_runtime,
+            terrain_textures,
             partial_tick,
             &mut items,
             MERCHANT_TRADE_COST_A_X,
@@ -1499,6 +1516,7 @@ fn hud_merchant_trade_items(
             push_merchant_trade_item(
                 world,
                 item_runtime,
+                terrain_textures,
                 partial_tick,
                 &mut items,
                 MERCHANT_TRADE_COST_B_X,
@@ -1509,6 +1527,7 @@ fn hud_merchant_trade_items(
         push_merchant_trade_item(
             world,
             item_runtime,
+            terrain_textures,
             partial_tick,
             &mut items,
             MERCHANT_TRADE_RESULT_X,
@@ -1522,6 +1541,7 @@ fn hud_merchant_trade_items(
 fn push_merchant_trade_item(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     partial_tick: f32,
     items: &mut Vec<HudInventoryItem>,
     x: i32,
@@ -1531,13 +1551,20 @@ fn push_merchant_trade_item(
     if let Some(icon) =
         hud_item_icon_for_stack(world, item_runtime, &item, None, false, partial_tick)
     {
-        items.push(HudInventoryItem { x, y, icon });
+        let block_model = block_item_3d_model(&item, item_runtime, terrain_textures);
+        items.push(HudInventoryItem {
+            x,
+            y,
+            icon,
+            block_model,
+        });
     }
 }
 
 fn hud_stonecutter_recipe_items(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
     scroll_row: i32,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
@@ -1551,10 +1578,12 @@ fn hud_stonecutter_recipe_items(
             false,
             partial_tick,
         ) {
+            let block_model = block_item_3d_model(&option.stack, item_runtime, terrain_textures);
             items.push(HudInventoryItem {
                 x: option.x,
                 y: option.y,
                 icon,
+                block_model,
             });
         }
     }

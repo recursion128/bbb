@@ -1,6 +1,7 @@
 use anyhow::Result;
 use winit::dpi::PhysicalSize;
 
+use crate::item_models::HudBlockItemModel;
 use crate::Renderer;
 
 mod gpu;
@@ -242,6 +243,10 @@ pub struct HudInventorySlot {
     /// Slot y position relative to the centered inventory screen origin.
     pub y: i32,
     pub icon: Option<HudItemIcon>,
+    /// The slot's 3D block-item model (vanilla 3D inventory icon), when the item is a block. Drawn in
+    /// the GUI item pass at the slot's pixel rect; when present, the 2D `icon`'s flat sprite layers are
+    /// suppressed (the 3D model replaces them) while its count / durability overlays still draw.
+    pub block_model: Option<HudBlockItemModel>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -251,6 +256,9 @@ pub struct HudInventoryItem {
     /// Item icon y position relative to the centered inventory screen origin.
     pub y: i32,
     pub icon: HudItemIcon,
+    /// The item's 3D block-item model (vanilla 3D inventory icon), when it is a block. See
+    /// [`HudInventorySlot::block_model`].
+    pub block_model: Option<HudBlockItemModel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1462,6 +1470,30 @@ impl Renderer {
                 mesh.append_quads(&model.quads, placement * model.gui_display);
             }
         }
+        // The open inventory screen's block items (container slots + the cursor / floating item) render as
+        // 3D icons in the same pass, seated in their slot pixel rects.
+        if let Some(screen) = &self.hud_inventory_screen {
+            let mut append = |model: &HudBlockItemModel, x: i32, y: i32| {
+                let placement = gui_item_slot_placement(inventory_slot_item_hud_rect(
+                    surface_size,
+                    screen.width,
+                    screen.height,
+                    x,
+                    y,
+                ));
+                mesh.append_quads(&model.quads, placement * model.gui_display);
+            };
+            for slot in &screen.slots {
+                if let Some(model) = &slot.block_model {
+                    append(model, slot.x, slot.y);
+                }
+            }
+            for item in &screen.floating_items {
+                if let Some(model) = &item.block_model {
+                    append(model, item.x, item.y);
+                }
+            }
+        }
         mesh
     }
 
@@ -1508,6 +1540,10 @@ impl Renderer {
             for (slot, icon) in self.hud_hotbar_item_icons.iter().enumerate() {
                 if let Some(icon) = icon {
                     let item_rect = hotbar_item_hud_rect(surface_size, slot);
+                    let renders_as_3d_block = self
+                        .hud_hotbar_block_item_models
+                        .get(slot)
+                        .is_some_and(Option::is_some);
                     push_hud_item_icon(
                         &mut vertices,
                         &mut commands,
@@ -1518,6 +1554,7 @@ impl Renderer {
                         surface_size,
                         item_rect,
                         icon,
+                        renders_as_3d_block,
                     );
                 }
             }
@@ -1681,6 +1718,7 @@ impl Renderer {
                             surface_size,
                             item_rect,
                             icon,
+                            slot.block_model.is_some(),
                         );
                     }
                 }
@@ -1702,6 +1740,7 @@ impl Renderer {
                         surface_size,
                         item_rect,
                         &item.icon,
+                        item.block_model.is_some(),
                     );
                 }
             }
@@ -2052,17 +2091,23 @@ fn push_hud_item_icon<'a>(
     surface_size: PhysicalSize<u32>,
     item_rect: HudRect,
     icon: &HudItemIcon,
+    // When the slot also renders a 3D block model (in the GUI item pass), its 2D sprite layers are the
+    // flat block-texture stand-in that the 3D icon replaces — skip them, but keep the count / durability
+    // / cooldown overlays, which the 3D pass does not draw.
+    skip_layers: bool,
 ) {
-    for layer in &icon.layers {
-        push_hud_draw_with_uv_and_tint(
-            vertices,
-            commands,
-            item_atlas,
-            surface_size,
-            item_rect,
-            layer.uv,
-            layer.tint,
-        );
+    if !skip_layers {
+        for layer in &icon.layers {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                item_atlas,
+                surface_size,
+                item_rect,
+                layer.uv,
+                layer.tint,
+            );
+        }
     }
     push_hud_item_durability_bar(
         vertices,
@@ -2463,6 +2508,7 @@ fn sanitize_hud_inventory_slot(slot: HudInventorySlot) -> HudInventorySlot {
         x: slot.x,
         y: slot.y,
         icon: slot.icon.and_then(sanitize_hud_item_icon),
+        block_model: slot.block_model.filter(hud_block_item_model_is_renderable),
     }
 }
 
@@ -2471,7 +2517,13 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
         x: item.x,
         y: item.y,
         icon: sanitize_hud_item_icon(item.icon)?,
+        block_model: item.block_model.filter(hud_block_item_model_is_renderable),
     })
+}
+
+/// A 3D block-item icon is only worth carrying when it has geometry to draw.
+fn hud_block_item_model_is_renderable(model: &HudBlockItemModel) -> bool {
+    !model.quads.is_empty()
 }
 
 fn sanitize_hud_inventory_text_label(
@@ -3038,6 +3090,7 @@ mod tests {
                         durability_bar: Some(HudItemDurabilityBar::new(99, [-1.0, 0.5, 1.5])),
                         cooldown_progress: Some(1.5),
                     }),
+                    block_model: None,
                 },
                 HudInventorySlot {
                     slot_id: 6,
@@ -3055,12 +3108,14 @@ mod tests {
                         durability_bar: None,
                         cooldown_progress: Some(f32::INFINITY),
                     }),
+                    block_model: None,
                 },
                 HudInventorySlot {
                     slot_id: 7,
                     x: 44,
                     y: 84,
                     icon: None,
+                    block_model: None,
                 },
             ],
             floating_items: Vec::new(),
@@ -3206,6 +3261,7 @@ mod tests {
                         durability_bar: Some(HudItemDurabilityBar::new(99, [0.25, 2.0, -1.0])),
                         cooldown_progress: Some(1.5),
                     },
+                    block_model: None,
                 },
                 HudInventoryItem {
                     x: 51,
@@ -3222,6 +3278,7 @@ mod tests {
                         durability_bar: None,
                         cooldown_progress: None,
                     },
+                    block_model: None,
                 },
             ],
             hovered_slot_id: None,
@@ -3247,5 +3304,51 @@ mod tests {
                 cooldown_progress: Some(1.0),
             }
         );
+    }
+
+    #[test]
+    fn sanitize_inventory_keeps_renderable_block_models_and_drops_empty_ones() {
+        let quad = crate::item_models::ItemModelQuad {
+            corners: [[0.0, 0.0, 0.0]; 4],
+            uvs: [[0.0, 0.0]; 4],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            shade: 1.0,
+        };
+        let model = |quads: Vec<crate::item_models::ItemModelQuad>| HudBlockItemModel {
+            quads,
+            gui_display: glam::Mat4::IDENTITY,
+        };
+
+        // A slot whose block model has geometry keeps it; one with no quads drops it (None).
+        let kept = sanitize_hud_inventory_slot(HudInventorySlot {
+            slot_id: 1,
+            x: 0,
+            y: 0,
+            icon: None,
+            block_model: Some(model(vec![quad])),
+        });
+        assert!(kept.block_model.is_some());
+
+        let dropped = sanitize_hud_inventory_slot(HudInventorySlot {
+            slot_id: 2,
+            x: 0,
+            y: 0,
+            icon: None,
+            block_model: Some(model(Vec::new())),
+        });
+        assert!(dropped.block_model.is_none());
+
+        // The same filtering applies to floating (cursor / preview) items.
+        let floating = sanitize_hud_inventory_item(HudInventoryItem {
+            x: 0,
+            y: 0,
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+            block_model: Some(model(vec![quad])),
+        })
+        .unwrap();
+        assert!(floating.block_model.is_some());
     }
 }

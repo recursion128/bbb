@@ -900,9 +900,21 @@ When an agent does any of the following, update this file in the same slice:
         display transform centers and tilts it. Verified end-to-end by a headless
         llvmpipe readback test (`hud_block_item_renders_visible_pixels_in_its_slot`)
         that renders a block icon and asserts visible non-background pixels in the
-        slot. Flat / generated items keep their 2D sprite (no 3D model).
-      - remaining slices: inventory-screen (non-hotbar) 3D block icons reuse the
-        same pass once their slot rects are produced; held-item refinements (baby
+        slot. Flat / generated items keep their 2D sprite (no 3D model). The 2D
+        HUD layer's flat block-texture stand-in is suppressed for any slot that
+        renders a 3D model (`push_hud_item_icon`'s `skip_layers`), keeping the
+        count / durability / cooldown overlays the 3D pass doesn't draw — so the
+        flat square no longer peeks out behind the iso block's silhouette.
+      - inventory-screen 3D block icons DONE: the same pass also renders the open
+        inventory / container screen's block items as 3D — every container slot
+        plus the floating merchant-trade and stonecutter-recipe preview items.
+        `HudInventorySlot` / `HudInventoryItem` carry an optional `block_model`;
+        the native `hud_inventory_screen_with_local_state` (+ merchant / stonecutter
+        floating producers) resolve it via the shared `block_item_3d_model`, and
+        `collect_hud_block_item_mesh` bakes each at `inventory_slot_item_hud_rect`.
+        The cursor-carried item is whatever the container slots hold, so it is
+        covered too.
+      - remaining slices: held-item refinements (baby
         humanoids; first-person viewmodel; family-specific combat arm poses —
         bow-aim / crossbow / spear — deferred entity-side state); armor-stand held
         items. The dropped-item `ground` path still uses the default

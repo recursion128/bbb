@@ -1259,6 +1259,7 @@ fn hud_inventory_screen_projects_local_beacon_effect_selection() {
     let screen = hud_inventory_screen_with_local_state(
         &world,
         None,
+        &TerrainTextureState::default(),
         None,
         InventoryHudLocalState {
             beacon_effect_selection: Some((
@@ -1402,6 +1403,7 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
     let screen = hud_inventory_screen_with_local_state(
         &world,
         None,
+        &TerrainTextureState::default(),
         None,
         InventoryHudLocalState {
             anvil_rename_text: Some("Sharp Pick".to_string()),
@@ -2422,6 +2424,7 @@ fn hud_inventory_screen_projects_loom_pattern_grid_and_scroller() {
     let screen = hud_inventory_screen_with_local_state(
         &world,
         None,
+        &TerrainTextureState::default(),
         None,
         InventoryHudLocalState {
             loom_pattern_scroll_row: Some(2),
@@ -3009,6 +3012,7 @@ fn hud_inventory_screen_projects_stonecutter_recipe_buttons_and_scroller() {
     let screen = hud_inventory_screen_with_local_state(
         &world,
         None,
+        &TerrainTextureState::default(),
         None,
         InventoryHudLocalState {
             stonecutter_recipe_scroll_row: Some(1),
