@@ -65,7 +65,7 @@ impl EntityModelKind {
             Self::Blaze => "blaze",
             Self::Endermite => "endermite",
             Self::Silverfish => "silverfish",
-            Self::Vex => "vex",
+            Self::Vex { .. } => "vex",
             Self::Allay => "allay",
             Self::Strider { baby: false, .. } => "strider",
             Self::Strider { baby: true, .. } => "strider_baby",
@@ -426,7 +426,11 @@ impl EntityModelKind {
                 ..
             } => Some(feline_texture_ref(cat, baby, cat_variant)),
             Self::Mooshroom { baby, variant } => Some(mooshroom_texture_ref(baby, variant)),
-            Self::Vex => Some(VEX_TEXTURE_REF),
+            Self::Vex { charging } => Some(if charging {
+                VEX_CHARGING_TEXTURE_REF
+            } else {
+                VEX_TEXTURE_REF
+            }),
             Self::Allay => Some(ALLAY_TEXTURE_REF),
             Self::Strider { baby, cold } => Some(strider_texture_ref(baby, cold)),
             Self::Turtle { baby: false } => Some(TURTLE_TEXTURE_REF),

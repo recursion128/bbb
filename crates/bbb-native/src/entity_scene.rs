@@ -336,6 +336,10 @@ const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 // Vanilla Ghast.DATA_IS_CHARGING (16, BOOLEAN): `Ghast extends Mob` directly (NOT AgeableMob), so its
 // first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16, no baby/age-locked slots.
 const GHAST_IS_CHARGING_DATA_ID: u8 = 16;
+// Vanilla Vex.DATA_FLAGS_ID (16, BYTE): `Vex extends Monster extends PathfinderMob extends Mob`, so its
+// first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16. `isCharging` is bit 1.
+const VEX_FLAGS_DATA_ID: u8 = 16;
+const VEX_FLAG_IS_CHARGING: i8 = 1;
 // Vanilla Arrow.ID_EFFECT_COLOR (11, INT): `Arrow extends AbstractArrow extends Projectile extends
 // Entity`, so after Entity (0-7) come the three AbstractArrow accessors ID_FLAGS (8) / PIERCE_LEVEL
 // (9) / IN_GROUND (10), then Arrow's own potion color. `getColor() > 0` marks a tipped arrow.
@@ -1798,7 +1802,10 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TURTLE_ID => EntityModelKind::Turtle {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex,
+        VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex {
+            charging: (entity_data_byte(data_values, VEX_FLAGS_DATA_ID, 0) & VEX_FLAG_IS_CHARGING)
+                != 0,
+        },
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
@@ -6785,12 +6792,17 @@ mod tests {
 
     #[test]
     fn entity_model_kind_maps_vex_to_real_model() {
-        // The vex was a placeholder render box; it now resolves to the real `VexModel`. Its
-        // idle wing flap / arm bob / head look read the projected age and look angles; the
-        // charging pose is deferred entity-side state.
+        // The vex resolves to the real `VexModel`. Its idle wing flap / arm bob / head look read the
+        // projected age and look angles. `Vex.DATA_FLAGS_ID` (16, BYTE) bit 1 (`isCharging`) projects
+        // to `charging`, which vanilla `VexRenderer.getTextureLocation` swaps to `vex_charging.png`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_VEX_ID, &[]),
-            EntityModelKind::Vex
+            EntityModelKind::Vex { charging: false }
+        );
+        let charging_values = vec![protocol_byte_data(VEX_FLAGS_DATA_ID, VEX_FLAG_IS_CHARGING)];
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_VEX_ID, &charging_values),
+            EntityModelKind::Vex { charging: true }
         );
     }
 

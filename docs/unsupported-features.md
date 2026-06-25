@@ -1897,11 +1897,13 @@ When an agent does any of the following, update this file in the same slice:
       id `16`, gated to the vex type by `vanilla_is_vex` → `vex_charging`) levels the body
       (`xRot = 0`) and runs `setArmsCharging`'s both-hands-empty branch — both arms pitch to
       `xRot = -1.2217305`, yaw to `±π/12`, and roll to `∓0.47123888 ∓ bob` — on both render
-      paths. The textured base layer draws the `textures/entity/illager/vex.png` atlas reference
-      into the translucent mesh (`RenderTypes::entityTranslucent`), hand-emitted through the same
-      animated body→arm/wing hierarchy as the colored path. The `isCharging` texture swap to
-      `vex_charging.png`, the held-item charging arm variant (`xRot = π·7/6` per hand, which
-      needs held-item presence projected — equipment is world-level only today) remain
+      paths. The textured base layer draws into the translucent mesh
+      (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
+      hierarchy as the colored path, and the `isCharging` texture swap IS now applied
+      (`VexRenderer.getTextureLocation`: `EntityModelKind::Vex { charging }` selects
+      `textures/entity/illager/vex_charging.png` over `vex.png`, the same 32×32 model, driven by the
+      already-projected `charging` bit). The held-item charging arm variant (`xRot = π·7/6` per hand,
+      which needs held-item presence projected — equipment is world-level only today) remains
       unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
       (`entity_light_coords` forces the packed block light to 15 for the vex type). Lighting and overlay
       remain unsupported

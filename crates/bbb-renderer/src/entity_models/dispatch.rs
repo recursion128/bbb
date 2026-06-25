@@ -40,7 +40,7 @@ use super::model_layers::{
     ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BREEZE_EYES_TEXTURE_REF,
     BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF,
     FELINE_CAT_SCALE, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
-    TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_TEXTURE_REF,
+    TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -354,13 +354,17 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 [1.0, 1.0, 1.0, 1.0],
             )],
         ),
-        EntityModelKind::Vex => sink.model(
+        EntityModelKind::Vex { charging } => sink.model(
             VexModel::new(),
             entity_model_root_transform(*instance),
             instance,
             &[EntityModelLayerPass::base(
                 EntityModelLayerRenderType::Translucent,
-                VEX_TEXTURE_REF,
+                if charging {
+                    VEX_CHARGING_TEXTURE_REF
+                } else {
+                    VEX_TEXTURE_REF
+                },
                 [1.0, 1.0, 1.0, 1.0],
             )],
         ),

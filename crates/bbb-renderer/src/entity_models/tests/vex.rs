@@ -164,12 +164,24 @@ fn vex_wings_and_arms_animate_with_age() {
 
 #[test]
 fn vex_texture_ref_matches_vanilla_renderer() {
-    let kind = EntityModelKind::Vex;
-    assert_eq!(kind.model_key(), "vex");
+    // Vanilla `VexRenderer.getTextureLocation`: `isCharging ? vex_charging.png : vex.png`, same
+    // `VexModel`. `model_key` stays charging-agnostic (one geometry).
+    let idle = EntityModelKind::Vex { charging: false };
+    assert_eq!(idle.model_key(), "vex");
     assert_eq!(
-        kind.vanilla_texture_ref(),
+        idle.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/illager/vex.png",
+            size: [32, 32],
+        })
+    );
+
+    let charging = EntityModelKind::Vex { charging: true };
+    assert_eq!(charging.model_key(), "vex");
+    assert_eq!(
+        charging.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/illager/vex_charging.png",
             size: [32, 32],
         })
     );
@@ -204,6 +216,50 @@ fn vex_textured_mesh_uses_vanilla_geometry_and_animates() {
     // The wings flap and the arms bob as the age advances.
     let flapping = entity_model_textured_meshes(&[base.with_age_in_ticks(7.0)], &atlas);
     assert_ne!(meshes.translucent.vertices, flapping.translucent.vertices);
+}
+
+#[test]
+fn vex_charging_dispatch_swaps_to_the_charging_texture() {
+    // Vanilla `VexRenderer.getTextureLocation`: the charging vex draws `vex_charging.png` over the
+    // same `VexModel`, so the geometry is byte-identical and only the sampled atlas region (the UVs)
+    // changes. Build an atlas with distinct pixels for the two textures so the swap is observable.
+    let images = [VEX_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![(index * 40) as u8; len])
+        })
+        .collect::<Vec<_>>();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    let idle = EntityModelInstance::vex(960, [0.0, 64.0, 0.0], 0.0);
+    let charging = EntityModelInstance::new(
+        961,
+        EntityModelKind::Vex { charging: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let idle_mesh = entity_model_textured_meshes(&[idle], &atlas);
+    let charging_mesh = entity_model_textured_meshes(&[charging], &atlas);
+
+    // Same translucent geometry (identical positions), different sampled region (UVs differ).
+    assert_eq!(
+        idle_mesh.translucent.vertices.len(),
+        charging_mesh.translucent.vertices.len()
+    );
+    assert!(idle_mesh
+        .translucent
+        .vertices
+        .iter()
+        .zip(&charging_mesh.translucent.vertices)
+        .all(|(a, b)| a.position == b.position));
+    assert!(idle_mesh
+        .translucent
+        .vertices
+        .iter()
+        .zip(&charging_mesh.translucent.vertices)
+        .any(|(a, b)| a.uv != b.uv));
 }
 
 fn vex_texture_images() -> Vec<EntityModelTextureImage> {

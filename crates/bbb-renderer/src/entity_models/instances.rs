@@ -1046,7 +1046,12 @@ impl EntityModelInstance {
     }
 
     pub fn vex(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Vex, position, y_rot)
+        Self::new(
+            entity_id,
+            EntityModelKind::Vex { charging: false },
+            position,
+            y_rot,
+        )
     }
 
     pub fn allay(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

@@ -48,9 +48,13 @@ pub enum EntityModelKind {
     Endermite,
     Silverfish,
     /// Vex (`VexModel`, `VexRenderer`). The idle wing flap, arm bob, head look, and body
-    /// tilt read `EntityRenderState.age_in_ticks` and the head yaw/pitch. The charging
-    /// pose (`isCharging`) and held-item arm poses are deferred entity-side state.
-    Vex,
+    /// tilt read `EntityRenderState.age_in_ticks` and the head yaw/pitch. `charging`
+    /// (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`) swaps the texture to
+    /// `vex_charging.png` (vanilla `VexRenderer.getTextureLocation`); held-item arm poses
+    /// stay deferred entity-side state.
+    Vex {
+        charging: bool,
+    },
     /// Allay (`AllayModel`, `AllayRenderer`). The idle/flying wing flap, arm bob, head look,
     /// body tilt, and vertical bob read `EntityRenderState.age_in_ticks`, the walk
     /// animation, and the head yaw/pitch. The dance pose (`isDancing`/`isSpinning`) and

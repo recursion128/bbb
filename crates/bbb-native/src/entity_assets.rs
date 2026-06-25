@@ -413,6 +413,7 @@ mod tests {
                 "textures/entity/fish/tropical_a.png",
                 "textures/entity/fish/tropical_b.png",
                 "textures/entity/illager/vex.png",
+                "textures/entity/illager/vex_charging.png",
                 "textures/entity/allay/allay.png",
                 "textures/entity/strider/strider.png",
                 "textures/entity/strider/strider_baby.png",

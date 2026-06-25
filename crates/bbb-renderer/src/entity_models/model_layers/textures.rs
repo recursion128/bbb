@@ -213,12 +213,19 @@ pub fn ravager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &RAVAGER_ENTITY_TEXTURE_REFS
 }
 
-// Vanilla `VexRenderer` non-charging texture. The `vex_charging.png` swap and the constant
-// full-bright `getBlockLightLevel` glow are deferred.
+// Vanilla `VexRenderer.getTextureLocation` textures: the idle `vex.png` and the `vex_charging.png`
+// swap while the vex charges an attack (`isCharging`). The constant full-bright `getBlockLightLevel`
+// glow is deferred lighting.
 pub(in crate::entity_models) const VEX_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/illager/vex.png",
     size: [32, 32],
 };
+
+pub(in crate::entity_models) const VEX_CHARGING_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/illager/vex_charging.png",
+        size: [32, 32],
+    };
 
 // Vanilla `AllayRenderer` texture. The constant full-bright `getBlockLightLevel` glow is
 // deferred lighting.
@@ -1113,7 +1120,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 366] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 367] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1432,6 +1439,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     TROPICAL_FISH_SMALL_TEXTURE_REF,
     TROPICAL_FISH_LARGE_TEXTURE_REF,
     VEX_TEXTURE_REF,
+    VEX_CHARGING_TEXTURE_REF,
     ALLAY_TEXTURE_REF,
     STRIDER_TEXTURE_REF,
     STRIDER_BABY_TEXTURE_REF,
