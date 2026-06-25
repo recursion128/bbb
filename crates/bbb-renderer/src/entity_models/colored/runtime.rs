@@ -151,7 +151,14 @@ fn entity_model_mesh_with_options(
                     family,
                     baby,
                     has_chest,
-                } => emit_donkey_model(&mut mesh, *instance, family, baby, has_chest),
+                } => {
+                    // The adult donkey/mule now renders through the textured path; the colored emit is
+                    // the full-mesh fallback only. The baby donkey/mule (a deferred textured mesh)
+                    // always emits colored.
+                    if baby || !skip_texture_backed_entities {
+                        emit_donkey_model(&mut mesh, *instance, family, baby, has_chest);
+                    }
+                }
                 EntityModelKind::UndeadHorse { family, baby } => {
                     // The skeleton/zombie horse now renders through the textured path; the colored
                     // emit is the full-mesh fallback only (skipped in the texture-backed runtime mesh).

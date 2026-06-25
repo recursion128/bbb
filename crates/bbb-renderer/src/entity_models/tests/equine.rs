@@ -1341,6 +1341,115 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
     assert_ne!(base_uvs, overlay_uvs);
 }
 
+fn donkey_texture_images() -> Vec<EntityModelTextureImage> {
+    donkey_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+#[test]
+fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
+    // Vanilla `DonkeyModel` / `MuleModel` reuse `AbstractEquineModel.createBodyMesh` + `modifyMesh`
+    // (donkey ears + side chests), so the adult donkey/mule render on the textured path: 12 cubes
+    // (72 faces / 288 vertices) without chest, 14 (84 / 336) with. The textured body occupies the same
+    // space as the colored fallback (same 0.87 donkey scale), and the mule shares the geometry at the
+    // larger 0.92 scale. The baby donkey/mule stays colored (deferred), exercised separately.
+    let (atlas, _) = build_entity_model_texture_atlas(&donkey_texture_images()).unwrap();
+
+    let donkey = entity_model_textured_mesh(
+        &[EntityModelInstance::donkey(
+            160,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(donkey.cutout_faces, 72);
+    assert_eq!(donkey.vertices.len(), 288);
+    let colored = entity_model_mesh(&[EntityModelInstance::donkey(
+        161,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Donkey,
+        false,
+        false,
+    )]);
+    let (t_min, t_max) = textured_mesh_extents(&donkey);
+    let (c_min, c_max) = mesh_extents(&colored);
+    assert_close3(t_min, c_min);
+    assert_close3(t_max, c_max);
+
+    // The two side chests add 12 faces (2 boxes × 6).
+    let with_chest = entity_model_textured_mesh(
+        &[EntityModelInstance::donkey(
+            162,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            true,
+        )],
+        &atlas,
+    );
+    assert_eq!(with_chest.cutout_faces, 84);
+    assert_eq!(with_chest.vertices.len(), 336);
+
+    // The mule shares the geometry at the larger 0.92 scale (vs donkey 0.87) and a different texture.
+    let mule = entity_model_textured_mesh(
+        &[EntityModelInstance::donkey(
+            163,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            false,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(mule.cutout_faces, 72);
+    let (_, mule_max) = textured_mesh_extents(&mule);
+    assert!(
+        mule_max[1] > t_max[1],
+        "the mule renders at the larger 0.92 scale"
+    );
+}
+
+#[test]
+fn donkey_colored_runtime_skips_adult_keeps_baby() {
+    // The ADULT donkey/mule now renders through the textured path (the runtime colored mesh emits
+    // nothing for it), while the BABY donkey/mule's bespoke re-parented mesh stays on the colored path.
+    let adult = [EntityModelInstance::donkey(
+        170,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Donkey,
+        false,
+        false,
+    )];
+    assert!(!entity_model_mesh(&adult).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&adult)
+        .vertices
+        .is_empty());
+
+    let baby = [EntityModelInstance::donkey(
+        171,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Donkey,
+        true,
+        false,
+    )];
+    assert!(!entity_model_colored_runtime_mesh(&baby).vertices.is_empty());
+}
+
 #[test]
 fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
     // Vanilla `UndeadHorseRenderer extends HorseRenderer`, so the skeleton/zombie horses render the

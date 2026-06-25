@@ -1353,20 +1353,27 @@ When an agent does any of the following, update this file in the same slice:
       leg-frequency scaling remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
-      `DonkeyRenderer`, including adult `DONKEY_SCALE=0.87F` /
-      `MULE_SCALE=0.92F` root scaling, metadata-driven adult chest visibility,
-      the empty baby chest children from `BabyDonkeyModel.createBabyLayer()`,
-      and official adult/baby donkey/mule texture references recorded from
-      assets, and the adult `AbstractEquineModel.setupAnim` walking leg swing (the
-      equine gait, legs at `[2, 3, 4, 5]`), the adult default-branch neck head
-      look/bob (`head_parts` at `1`, the same yaw-clamp/pitch/walk-bob as the horse,
-      since the adult `DonkeyModel` only adds chest visibility over the base
+      `DonkeyRenderer`. The ADULT donkey/mule now renders on the **textured
+      path** with the official `donkey` / `mule` 64×64 textures wired into the
+      entity atlas and selected per family/age: the textured trees reuse the
+      shared horse `createBodyMesh` textured cubes 1:1 and add only the bigger
+      donkey ears (`texOffs(0,12)`, replacing the horse ears) and the two side
+      chest boxes (`texOffs(26,21)`, shown when `hasChest`), at the
+      `DONKEY_SCALE=0.87F` / `MULE_SCALE=0.92F` mesh-transformer scale, with the
+      adult `AbstractEquineModel.setupAnim` walking leg swing (the equine gait,
+      legs at `[2, 3, 4, 5]`), the adult default-branch neck head look/bob
+      (`head_parts` at `1`, the same yaw-clamp/pitch/walk-bob as the horse, since
+      the adult `DonkeyModel` only adds chest visibility over the base
       `setupAnim`), and the adult tail walk lift (the same `getTailXRotOffset = 0`,
-      `ageScale = 1` formula as the horse, the tail child swung with the chest children
-      kept in place when present, colored path); the baby donkey/mule leg swing, head look,
-      and tail (its legs are re-parented under the body and `BabyDonkeyModel.setupAnim`
-      forces `xRot = -30°`), saddle equipment layer, the ridden/eat/stand/mouth poses, the
-      tail's `ageInTicks` yRot wag, lighting, and GPU texture binding remain unsupported
+      `ageScale = 1` formula as the horse, the tail child swung with the chest
+      children kept in place when present) driving both the textured base body and
+      the colored full-mesh fallback. The BABY donkey/mule (its legs re-parented
+      under the body, the empty baby chest children from
+      `BabyDonkeyModel.createBabyLayer()`, and `BabyDonkeyModel.setupAnim` forcing
+      `xRot = -30°`) stays on the colored path — its bespoke re-parented mesh is a
+      deferred textured transcription; the baby leg swing / head look / tail, saddle
+      equipment layer, the ridden/eat/stand/mouth poses, the tail's `ageInTicks`
+      yRot wag, and lighting remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on

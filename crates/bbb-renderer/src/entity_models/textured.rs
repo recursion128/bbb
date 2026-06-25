@@ -8,10 +8,11 @@ use super::{
     catalog::horse_markings_texture_ref,
     catalog::squid_texture_ref,
     catalog::{
-        CamelModelFamily, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, HoglinModelFamily,
-        HorseMarkings, LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
-        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
+        CamelModelFamily, DonkeyModelFamily, EntityDyeColor, EntityModelKind,
+        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
+        EntityModelUvRect, HoglinModelFamily, HorseMarkings, LlamaVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -28,7 +29,8 @@ use super::{
         CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, PiglinModel,
         PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
         SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, WindChargeModel,
-        WitherModel, ZombieModel, ZombieVariantModel, ADULT_HORSE_PARTS_TEXTURED,
+        WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
         GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
         STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
@@ -233,6 +235,13 @@ pub(super) fn entity_model_textured_meshes(
                 }
                 EntityModelKind::Horse { baby, markings, .. } => {
                     emit_horse_textured_model(&mut meshes, *instance, baby, markings, atlas);
+                }
+                EntityModelKind::Donkey {
+                    family,
+                    baby: false,
+                    has_chest,
+                } => {
+                    emit_donkey_textured_model(&mut meshes, *instance, family, has_chest, atlas);
                 }
                 EntityModelKind::UndeadHorse { baby, .. } => {
                     emit_undead_horse_textured_model(&mut meshes, *instance, baby, atlas);
@@ -1189,6 +1198,52 @@ fn emit_equine_textured_posed(
         texture,
         uv_rect,
         tint,
+    );
+}
+
+/// The textured adult donkey / mule base layer. Vanilla `DonkeyModel` is the shared
+/// `AbstractEquineModel.createBodyMesh` with `modifyMesh` (bigger ears replacing the horse ears, plus the
+/// two side chest boxes shown when `hasChest`), on the 64×64 `donkey.png` / `mule.png` at the
+/// `DonkeyModel.DONKEY_SCALE` 0.87 / `MULE_SCALE` 0.92 mesh-transformer scale. It takes the same equine
+/// leg swing / head look/bob / tail walk lift as the horse (`AbstractEquineModel.setupAnim`), so it rides
+/// `emit_equine_textured_posed`. The baby donkey/mule (a distinct re-parented `BabyDonkeyModel` mesh that
+/// also forces `xRot = -30°`) stays on the colored path — its bespoke geometry is a deferred transcription.
+fn emit_donkey_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    family: DonkeyModelFamily,
+    has_chest: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(texture) = instance.kind.vanilla_texture_ref() else {
+        return;
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let parts: &[TexturedModelPartDesc] = if has_chest {
+        &ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED
+    } else {
+        &ADULT_DONKEY_PARTS_TEXTURED
+    };
+    // `DonkeyModel.DONKEY_SCALE` / `MULE_SCALE` mesh-transformer scaling (mirrors the colored
+    // `donkey_model_scale`).
+    let scale = match family {
+        DonkeyModelFamily::Donkey => 0.87,
+        DonkeyModelFamily::Mule => 0.92,
+    };
+    emit_equine_textured_posed(
+        &mut meshes.cutout,
+        parts,
+        [2, 3, 4, 5],
+        1,
+        0.0,
+        1.0,
+        mesh_transformer_scaled_model_root_transform(instance, scale),
+        texture,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+        instance,
     );
 }
 
