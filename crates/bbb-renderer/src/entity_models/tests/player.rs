@@ -696,6 +696,52 @@ fn player_holding_an_off_hand_item_lowers_the_left_arm() {
 }
 
 #[test]
+fn player_raising_a_shield_tucks_the_arm_along_the_head_look() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.poseBlockingArm` `BLOCK`: the raising arm tucks the shield forward —
+    // `xRot = arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)`,
+    // `yRot = (right ? −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)`. With a head look of `(yaw 10°, pitch −10°)`
+    // both clamps pass through, and at rest (age 0) the arm pitch is `0`.
+    let yaw = 10.0_f32.to_radians();
+    let pitch = (-10.0_f32).to_radians();
+    let base =
+        EntityModelInstance::player(950, [0.0, 64.0, 0.0], 0.0, false).with_head_look(10.0, -10.0);
+
+    let mut main = PlayerModel::new(false);
+    main.prepare(&base.with_player_blocking(true));
+    let right = main.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-0.9424779 + pitch)).abs() < 1e-5,
+        "the right arm pitch tucks to −0.9424779 + head.xRot: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (-PI / 6.0 + yaw)).abs() < 1e-5,
+        "the right arm yaws −π/6 + head.yRot: {}",
+        right.rotation[1]
+    );
+
+    // An idle (non-blocking) player keeps its much higher arm pitch — the shield visibly tucks the arm down.
+    let mut idle = PlayerModel::new(false);
+    idle.prepare(&base);
+    assert!(
+        idle.root_mut().child_mut("right_arm").pose.rotation[0] > -0.9424779 + pitch + 0.3,
+        "an idle player does not tuck the arm"
+    );
+
+    // Off-hand blocking tucks the LEFT arm instead, with the +π/6 base yaw.
+    let mut off = PlayerModel::new(false);
+    off.prepare(&base.with_player_blocking(true).with_use_item_off_hand(true));
+    let left = off.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[1] - (PI / 6.0 + yaw)).abs() < 1e-5,
+        "the off hand yaws +π/6 + head.yRot: {}",
+        left.rotation[1]
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

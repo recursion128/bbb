@@ -445,6 +445,35 @@ pub(in crate::entity_models) fn apply_humanoid_item_hold_pose(
     arm.pose.rotation[1] = 0.0;
 }
 
+/// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `BLOCK` use-item arm pose (`poseBlockingArm`): while a
+/// player is raising a shield (`isUsingItem` + the using hand holds an item whose use-animation is `BLOCK`,
+/// i.e. carries `DataComponents.BLOCKS_ATTACKS` — the shield), the holding arm tucks the shield forward along
+/// the head look. The arm pitch is `arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)` and the
+/// yaw is `(right ? −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)` (vanilla's `±30°` in radians). Like the brush
+/// pose this READS the arm's current pitch and halves it (the folded-in idle bob rides along — the shared
+/// posed-arm bob convention); the bob roll (`zRot`) is kept (vanilla applies the bob after `poseArm` and does
+/// NOT skip it for BLOCK). Applied before the crouch block so the crouch `arm.xRot += 0.4` still lands on top.
+pub(in crate::entity_models) fn apply_humanoid_block_pose(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+    off_hand: bool,
+) {
+    use std::f32::consts::PI;
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let x_clamp = head_pitch.clamp(-PI * 4.0 / 9.0, 0.43633232);
+    let y_clamp = head_yaw.clamp(-PI / 6.0, PI / 6.0);
+    let (arm_name, y_base) = if off_hand {
+        ("left_arm", PI / 6.0)
+    } else {
+        ("right_arm", -PI / 6.0)
+    };
+    let arm = root.child_mut(arm_name);
+    arm.pose.rotation[0] = arm.pose.rotation[0] * 0.5 - 0.9424779 + x_clamp;
+    arm.pose.rotation[1] = y_base + y_clamp;
+}
+
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
 fn progress(t: f32, a: f32, b: f32) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)

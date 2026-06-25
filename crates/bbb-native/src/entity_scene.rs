@@ -565,6 +565,32 @@ fn entity_hand_holds_brush(
     item_runtime.item_resource_id(item_id) == Some("minecraft:brush")
 }
 
+/// Whether the item in the given hand has the `BLOCK` use-animation (vanilla `ItemStack.getUseAnimation() ==
+/// ItemUseAnimation.BLOCK`, returned by `Item.getUseAnimation` for an item carrying
+/// `DataComponents.BLOCKS_ATTACKS` — the shield). While the entity raises it,
+/// `HumanoidModel.poseRightArm`/`poseLeftArm` `poseBlockingArm` tucks that arm's shield forward. The
+/// `blocks_attacks` component is a prototype default on `minecraft:shield` (not part of the network
+/// component patch), so it is detected by the resolved item id, mirroring the brush/spyglass checks (a
+/// datapack item granted `blocks_attacks` over the wire is a deferred edge). Resolved through the item
+/// registry; `false` without it or for any other / empty hand.
+fn entity_hand_holds_shield(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:shield")
+}
+
 /// Whether the entity's main-hand item is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)`),
 /// driving the pillager's `CROSSBOW_HOLD` arm pose. Resolved through the item registry, so it needs the
 /// runtime; `false` without it or for any non-crossbow / empty hand.
@@ -786,6 +812,17 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         );
+    // Vanilla `HumanoidModel.setupAnim` use-item arm pose `BLOCK` (`poseBlockingArm`): while a player raises
+    // a shield (`isUsingItem` + the using hand holds a `BLOCKS_ATTACKS` item, i.e. the shield), the holding
+    // arm tucks the shield forward along the head look.
+    let player_blocking = matches!(kind, EntityModelKind::Player { .. })
+        && source.is_using_item
+        && entity_hand_holds_shield(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        );
     // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM` arm pose (`HumanoidModel.poseRightArm` ITEM case):
     // a player holding a generic item in its main hand lowers and halves the arm swing. This is the `ITEM`
     // branch reached after the special-pose checks fail, gated here to the "not using an item" case — the
@@ -976,6 +1013,7 @@ fn entity_model_instance(
         .with_player_using_spyglass(player_using_spyglass)
         .with_player_tooting_horn(player_tooting_horn)
         .with_player_brushing(player_brushing)
+        .with_player_blocking(player_blocking)
         .with_player_main_hand_item_pose(player_main_hand_item_pose)
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_use_item_off_hand(source.use_item_off_hand)
@@ -4190,6 +4228,36 @@ mod tests {
             .render_state
             .player_brushing;
         assert!(!brushing);
+    }
+
+    #[test]
+    fn entity_model_instances_block_pose_needs_a_resolved_shield() {
+        // The BLOCK use-item pose needs the using-hand item resolved through the item registry to confirm a
+        // `BLOCKS_ATTACKS` item (the shield); without an item runtime it can never resolve, so the projection
+        // defaults off even for a player flagged as using an item.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            253,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [4.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 253,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING
+            )],
+        }));
+        let blocking = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 253)
+            .unwrap()
+            .render_state
+            .player_blocking;
+        assert!(!blocking);
     }
 
     #[test]

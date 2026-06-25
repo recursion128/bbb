@@ -797,9 +797,16 @@ When an agent does any of the following, update this file in the same slice:
     `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback → `HumanoidModel.poseLeftArm` ITEM case): a player
     holding a plain off-hand item (shield/totem/block/food) lowers/halves the left arm, gated to a non-empty
     off hand and suppressed only when the OFF hand is the using hand (its use poses win; using the MAIN hand
-    leaves the off hand on `ITEM`), excluding off-hand spears/charged crossbows. The remaining
-    use-item arm poses on the same dispatch (the `BLOCK` hold pose, the using-item routes that also resolve to
-    `ITEM` — `EAT`/`DRINK` — and the `BOW_AND_ARROW`/`CROSSBOW` draw poses, the off-arm `EMPTY` reset, and the
+    leaves the off hand on `ITEM`), excluding off-hand spears/charged crossbows. The `BLOCK` use-item arm
+    pose IS now implemented too (`apply_humanoid_block_pose`, `HumanoidModel.poseRightArm`/`poseLeftArm`
+    `BLOCK` → `poseBlockingArm`): while a player raises a shield (`isUsingItem` + the using hand holds a
+    `DataComponents.BLOCKS_ATTACKS` item — detected by the resolved `minecraft:shield` id, since the component
+    is a prototype default not in the network patch) the holding arm tucks the shield forward along the head
+    look — `xRot = arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)`, `yRot = (right ? −π/6 :
+    π/6) + clamp(head.yRot, −π/6, π/6)` — applied before the crouch block. The remaining
+    use-item arm poses on the same dispatch (the using-item routes that also resolve to
+    `ITEM` — `EAT`/`DRINK` — and the `BOW_AND_ARROW`/`CROSSBOW`/`THROW_TRIDENT` draw poses, a non-shield
+    datapack `BLOCKS_ATTACKS` item, the off-arm `EMPTY` reset, and the
     `affectsOffhandPose` / `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
     off-hand spear/charged crossbow while the main hand draws a two-handed item) stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out

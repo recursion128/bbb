@@ -308,6 +308,13 @@ entity_render_state! {
     /// plain item in the off hand — only `PlayerModel` consumes it, and only when not using that hand and the
     /// item is not a spear (`SPEAR`) or charged crossbow (`CROSSBOW_HOLD`).
     (with_player_off_hand_item_pose) player_off_hand_item_pose: bool = false;
+    /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` use-item arm pose `BLOCK` (`poseBlockingArm`):
+    /// while a player raises a shield (`isUsingItem` + the using hand holds a `BLOCKS_ATTACKS` item) the
+    /// holding arm tucks the shield forward along the head look — `xRot = arm.xRot · 0.5 − 0.9424779 +
+    /// clamp(head.xRot, −4π/9, 0.43633232)`, `yRot = (right ? −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)`.
+    /// Applied to the [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not
+    /// raising a shield — only `PlayerModel` consumes it.
+    (with_player_blocking) player_blocking: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1840,6 +1847,7 @@ mod tests {
                 player_brushing: false,
                 player_main_hand_item_pose: false,
                 player_off_hand_item_pose: false,
+                player_blocking: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,
