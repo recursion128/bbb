@@ -151,6 +151,20 @@ impl ModelPart {
             .unwrap_or_else(|| panic!("model part has no child named `{name}`"))
     }
 
+    /// The posed transform that reaches a named direct child's frame from this part's parent frame:
+    /// `self.local_transform() · child.local_transform()` — vanilla `translateToHand`'s
+    /// `root.translateAndRotate · arm.translateAndRotate`. Used to attach a held item to a posed arm.
+    /// Panics if the child does not exist.
+    pub(in crate::entity_models) fn child_attach_transform(&self, name: &str) -> Mat4 {
+        let child = self
+            .children
+            .iter()
+            .find(|(child_name, _)| *child_name == name)
+            .map(|(_, child)| child)
+            .unwrap_or_else(|| panic!("model part has no child named `{name}`"));
+        self.local_transform() * child.local_transform()
+    }
+
     /// Copies the posed transform of each named direct child from `source` onto this part's same-named
     /// direct child — vanilla `HumanoidModel.copyPropertiesTo`. Used to drape an armor-layer overlay
     /// tree on the host humanoid model's already-posed limbs (head, body, arms, legs) so the armor

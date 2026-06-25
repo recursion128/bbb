@@ -3,6 +3,7 @@ mod colored;
 mod dispatch;
 mod geometry;
 mod gpu;
+mod held_item;
 mod instances;
 mod keyframe;
 mod model;
@@ -41,6 +42,7 @@ pub(super) use gpu::{
     EntityModelMeshGpu, EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu,
     EntityModelTexturedMeshGpu,
 };
+pub use held_item::player_hand_attach_transform;
 pub use instances::*;
 use keyframe::*;
 #[cfg(test)]
