@@ -661,7 +661,7 @@ fn max_light(left: TerrainLight, right: TerrainLight) -> TerrainLight {
     }
 }
 
-fn cardinal_shade(enabled: bool, face: TerrainFace) -> f32 {
+pub(super) fn cardinal_shade(enabled: bool, face: TerrainFace) -> f32 {
     if !enabled {
         return 1.0;
     }
@@ -673,7 +673,7 @@ fn cardinal_shade(enabled: bool, face: TerrainFace) -> f32 {
     }
 }
 
-fn face_from_normal(normal: [f32; 3]) -> TerrainFace {
+pub(super) fn face_from_normal(normal: [f32; 3]) -> TerrainFace {
     let [x, y, z] = normal;
     let abs_x = x.abs();
     let abs_y = y.abs();

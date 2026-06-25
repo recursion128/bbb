@@ -460,6 +460,21 @@ pub fn build_opaque_chunk_mesh(snapshot: &TerrainChunkSnapshot) -> TerrainMesh {
         .unwrap_or_default()
 }
 
+/// Bakes a block's render shape into standalone item-model quads (the block-item path of the item-model
+/// renderer). `texture_indices` / `tint` are the per-face atlas data the native `block_render_data`
+/// produces alongside `shape`; the returned [`crate::ItemModelQuad`]s carry vanilla `0..=16` corners and
+/// atlas-absolute UVs, ready for [`crate::bake_item_model_mesh`] under a display/world transform. Every
+/// present face renders (no chunk culling / lighting); foliage `Cross` shapes are never items and bake
+/// empty.
+pub fn bake_block_item_quads(
+    shape: &TerrainRenderShape,
+    texture_indices: [u32; 6],
+    tint: [TerrainTint; 6],
+    atlas: &TerrainTextureAtlas,
+) -> Vec<crate::ItemModelQuad> {
+    mesh::bake_block_item_quads(shape, texture_indices, tint, atlas)
+}
+
 pub fn build_opaque_terrain_meshes(snapshots: &[TerrainChunkSnapshot]) -> Vec<TerrainMesh> {
     let atlas = TerrainTextureAtlas::unit();
     build_opaque_terrain_meshes_with_atlas(snapshots, &atlas)
