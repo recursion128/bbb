@@ -1359,18 +1359,23 @@ When an agent does any of the following, update this file in the same slice:
       tail's `ageInTicks` yRot wag, lighting, and GPU texture binding remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
-      `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, including the
-      unscaled `ModelLayers.SKELETON_HORSE` / `ZOMBIE_HORSE` adult layers,
-      shared baby horse layer, official adult/baby skeleton/zombie horse
-      texture references recorded from assets, and the shared
-      `AbstractEquineModel.setupAnim` walking leg swing (the equine gait, legs at
-      `[2, 3, 4, 5]` adult / `[1, 2, 3, 4]` baby), the default-branch neck head
-      look/bob (`head_parts` at `1` adult / `5` baby horse, the same yaw-clamp/pitch/
-      walk-bob as the horse it reuses), and the tail walk lift (the same formula as the
-      horse, including the baby `getTailXRotOffset = −π/2` / `ageScale = 0.5` override,
-      colored path); undead horse body-armor layer, saddle layer, the
-      ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, lighting, and GPU
-      texture binding remain unsupported
+      `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on
+      the **textured path** (`UndeadHorseRenderer extends HorseRenderer`) with the
+      official `horse_skeleton` / `horse_skeleton_baby` / `horse_zombie` /
+      `horse_zombie_baby` 64×64 textures wired into the entity atlas and selected
+      per `(family, baby)`; the textured trees mirror the colored
+      `ADULT_HORSE_PARTS` / `BABY_HORSE_PARTS` geometry 1:1 (identical deformed
+      `min`/`size`, the per-cube `uv_size`/`tex`/`mirror` from
+      `createBodyMesh` / `createBabyMesh`, mane/upper-mouth, mirrored adult left
+      legs), and the shared `AbstractEquineModel.setupAnim` walking leg swing (the
+      equine gait, legs at `[2, 3, 4, 5]` adult / `[1, 2, 3, 4]` baby), the
+      default-branch neck head look/bob (`head_parts` at `1` adult / `5` baby
+      horse, the same yaw-clamp/pitch/walk-bob as the horse it reuses), and the
+      tail walk lift (the same formula as the horse, including the baby
+      `getTailXRotOffset = −π/2` / `ageScale = 0.5` override) all drive both the
+      textured base body and the colored full-mesh fallback; undead horse
+      body-armor layer, saddle layer, the ridden/eat/stand/mouth poses, the tail's
+      `ageInTicks` yRot wag, and lighting remain unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
       `CamelHuskRenderer`, including `ModelLayers.CAMEL` / `CAMEL_BABY` (the camel

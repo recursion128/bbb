@@ -267,6 +267,37 @@ pub(super) fn emit_model_part_with_color(
     emit_model_parts_with_color(mesh, part.children, transform, color);
 }
 
+/// Textured counterpart of [`emit_model_parts`]: walks a [`TexturedModelPartDesc`] tree, emitting each
+/// cube via [`emit_textured_model_cube`] (honouring its per-cube `mirror`/`uv_size`/`tex`) under the
+/// accumulated pose transform, against one shared `texture`/`uv_rect`/`tint`.
+pub(super) fn emit_textured_model_parts(
+    mesh: &mut EntityModelTexturedMesh,
+    parts: &[TexturedModelPartDesc],
+    parent_transform: Mat4,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+) {
+    for part in parts {
+        emit_textured_model_part(mesh, part, parent_transform, texture, uv_rect, tint);
+    }
+}
+
+pub(super) fn emit_textured_model_part(
+    mesh: &mut EntityModelTexturedMesh,
+    part: &TexturedModelPartDesc,
+    parent_transform: Mat4,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+) {
+    let transform = parent_transform * part_pose_transform(part.pose);
+    for cube in part.cubes {
+        emit_textured_model_cube(mesh, transform, *cube, texture, uv_rect, tint);
+    }
+    emit_textured_model_parts(mesh, part.children, transform, texture, uv_rect, tint);
+}
+
 pub(super) fn emit_model_cube_with_color(
     mesh: &mut EntityModelMesh,
     transform: Mat4,

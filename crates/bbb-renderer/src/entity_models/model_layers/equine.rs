@@ -1,4 +1,7 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, DONKEY_GRAY, HORSE_BROWN, PART_POSE_ZERO};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    DONKEY_GRAY, HORSE_BROWN, PART_POSE_ZERO,
+};
 
 pub(in crate::entity_models) const ADULT_HORSE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-5.05, -8.05, -17.05],
@@ -322,6 +325,343 @@ pub(in crate::entity_models) const BABY_HORSE_PARTS: [ModelPartDesc; 6] = [
         },
         cubes: &BABY_HORSE_NECK,
         children: &BABY_HORSE_HEAD_PARTS_CHILDREN,
+    },
+];
+
+// Textured undead-horse (skeleton / zombie horse) geometry. Vanilla `HorseModel` is shared by the
+// living and undead horses, so these trees mirror the colored `ADULT_HORSE_PARTS` / `BABY_HORSE_PARTS`
+// 1:1 — identical (deformed) `min`/`size` and poses (the poses are referenced from the colored consts
+// to keep the two paths in lockstep) — and only add the per-cube `uv_size`/`tex`/`mirror` from
+// `AbstractEquineModel.createBodyMesh` / `BabyHorseModel.createBabyMesh`. `uv_size` is the RAW
+// `addBox` size (pre-deformation); the body (deform `0.05`) and ears (deform `−0.001`) therefore carry
+// a `uv_size` that differs from their deformed `size`. The horse texture is 64×64.
+pub(in crate::entity_models) const ADULT_HORSE_BODY_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-5.05, -8.05, -17.05],
+        size: [10.1, 10.1, 22.1],
+        uv_size: [10.0, 10.0, 22.0],
+        tex: [0.0, 32.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_TAIL_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, 0.0, 0.0],
+        size: [3.0, 14.0, 4.0],
+        uv_size: [3.0, 14.0, 4.0],
+        tex: [42.0, 36.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_BODY_CHILDREN_TEXTURED: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: ADULT_HORSE_BODY_CHILDREN[0].pose,
+        cubes: &ADULT_HORSE_TAIL_TEXTURED,
+        children: &[],
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_NECK_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.05, -6.0, -2.0],
+        size: [4.0, 12.0, 7.0],
+        uv_size: [4.0, 12.0, 7.0],
+        tex: [0.0, 35.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_HEAD_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, -11.0, -2.0],
+        size: [6.0, 5.0, 7.0],
+        uv_size: [6.0, 5.0, 7.0],
+        tex: [0.0, 13.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_EAR_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [0.551, -12.999, 4.001],
+        size: [1.998, 2.998, 0.998],
+        uv_size: [2.0, 3.0, 1.0],
+        tex: [19.0, 16.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_RIGHT_EAR_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.549, -12.999, 4.001],
+        size: [1.998, 2.998, 0.998],
+        uv_size: [2.0, 3.0, 1.0],
+        tex: [19.0, 16.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_HEAD_CHILDREN_TEXTURED: [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_EAR_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_RIGHT_EAR_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_MANE_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -11.0, 5.01],
+        size: [2.0, 16.0, 2.0],
+        uv_size: [2.0, 16.0, 2.0],
+        tex: [56.0, 36.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_UPPER_MOUTH_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -11.0, -7.0],
+        size: [4.0, 5.0, 5.0],
+        uv_size: [4.0, 5.0, 5.0],
+        tex: [0.0, 25.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 3] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_HEAD_TEXTURED,
+        children: &ADULT_HORSE_HEAD_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_MANE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_UPPER_MOUTH_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_LEFT_HIND_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, -1.01, -1.0],
+        size: [4.0, 11.0, 4.0],
+        uv_size: [4.0, 11.0, 4.0],
+        tex: [48.0, 21.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_RIGHT_HIND_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -1.01, -1.0],
+        size: [4.0, 11.0, 4.0],
+        uv_size: [4.0, 11.0, 4.0],
+        tex: [48.0, 21.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_LEFT_FRONT_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, -1.01, -1.9],
+        size: [4.0, 11.0, 4.0],
+        uv_size: [4.0, 11.0, 4.0],
+        tex: [48.0, 21.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const ADULT_HORSE_RIGHT_FRONT_LEG_TEXTURED: [TexturedModelCubeDesc;
+    1] = [TexturedModelCubeDesc {
+    min: [-1.0, -1.01, -1.9],
+    size: [4.0, 11.0, 4.0],
+    uv_size: [4.0, 11.0, 4.0],
+    tex: [48.0, 21.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const ADULT_HORSE_PARTS_TEXTURED: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[0].pose,
+        cubes: &ADULT_HORSE_BODY_TEXTURED,
+        children: &ADULT_HORSE_BODY_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[1].pose,
+        cubes: &ADULT_HORSE_NECK_TEXTURED,
+        children: &ADULT_HORSE_HEAD_PARTS_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[2].pose,
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[3].pose,
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[4].pose,
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[5].pose,
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const BABY_HORSE_BODY_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, -3.5, -7.0],
+        size: [8.0, 7.0, 14.0],
+        uv_size: [8.0, 7.0, 14.0],
+        tex: [0.0, 13.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_TAIL_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -1.5, -1.0],
+        size: [3.0, 3.0, 8.0],
+        uv_size: [3.0, 3.0, 8.0],
+        tex: [24.0, 34.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_BODY_CHILDREN_TEXTURED: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: BABY_HORSE_BODY_CHILDREN[0].pose,
+        cubes: &BABY_HORSE_TAIL_TEXTURED,
+        children: &[],
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_LEFT_HIND_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -1.0, -1.5],
+        size: [3.0, 9.0, 3.0],
+        uv_size: [3.0, 9.0, 3.0],
+        tex: [12.0, 46.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_RIGHT_HIND_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -1.0, -1.5],
+        size: [3.0, 9.0, 3.0],
+        uv_size: [3.0, 9.0, 3.0],
+        tex: [0.0, 46.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_LEFT_FRONT_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -1.0, -1.5],
+        size: [3.0, 9.0, 3.0],
+        uv_size: [3.0, 9.0, 3.0],
+        tex: [12.0, 34.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_RIGHT_FRONT_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.5, -1.0, -1.5],
+        size: [3.0, 9.0, 3.0],
+        uv_size: [3.0, 9.0, 3.0],
+        tex: [0.0, 34.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_NECK_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -6.0, -2.0],
+        size: [4.0, 8.0, 4.0],
+        uv_size: [4.0, 8.0, 4.0],
+        tex: [30.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_HEAD_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, -3.9484, -6.705],
+        size: [6.0, 4.0, 9.0],
+        uv_size: [6.0, 4.0, 9.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_LEFT_EAR_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.5, -0.8],
+        size: [2.0, 3.0, 1.0],
+        uv_size: [2.0, 3.0, 1.0],
+        tex: [0.0, 4.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_RIGHT_EAR_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, -2.5, -0.5],
+        size: [2.0, 3.0, 1.0],
+        uv_size: [2.0, 3.0, 1.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_HORSE_HEAD_CHILDREN_TEXTURED: [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_HEAD_CHILDREN[0].pose,
+        cubes: &BABY_HORSE_LEFT_EAR_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_HEAD_CHILDREN[1].pose,
+        cubes: &BABY_HORSE_RIGHT_EAR_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const BABY_HORSE_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
+    pose: BABY_HORSE_HEAD_PARTS_CHILDREN[0].pose,
+    cubes: &BABY_HORSE_HEAD_TEXTURED,
+    children: &BABY_HORSE_HEAD_CHILDREN_TEXTURED,
+}];
+
+pub(in crate::entity_models) const BABY_HORSE_PARTS_TEXTURED: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_PARTS[0].pose,
+        cubes: &BABY_HORSE_BODY_TEXTURED,
+        children: &BABY_HORSE_BODY_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_PARTS[1].pose,
+        cubes: &BABY_HORSE_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_PARTS[2].pose,
+        cubes: &BABY_HORSE_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_PARTS[3].pose,
+        cubes: &BABY_HORSE_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_PARTS[4].pose,
+        cubes: &BABY_HORSE_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_HORSE_PARTS[5].pose,
+        cubes: &BABY_HORSE_NECK_TEXTURED,
+        children: &BABY_HORSE_HEAD_PARTS_CHILDREN_TEXTURED,
     },
 ];
 

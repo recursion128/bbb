@@ -291,10 +291,11 @@ pub use textures::{
     silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
     sniffer_entity_texture_refs, spider_entity_texture_refs, squid_entity_texture_refs,
     strider_entity_texture_refs, tadpole_entity_texture_refs, trident_entity_texture_refs,
-    tropical_fish_entity_texture_refs, turtle_entity_texture_refs, vex_entity_texture_refs,
-    villager_entity_texture_refs, warden_entity_texture_refs, wind_charge_entity_texture_refs,
-    witch_entity_texture_refs, wither_entity_texture_refs, wither_skull_entity_texture_refs,
-    wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
+    tropical_fish_entity_texture_refs, turtle_entity_texture_refs,
+    undead_horse_entity_texture_refs, vex_entity_texture_refs, villager_entity_texture_refs,
+    warden_entity_texture_refs, wind_charge_entity_texture_refs, witch_entity_texture_refs,
+    wither_entity_texture_refs, wither_skull_entity_texture_refs, wolf_entity_texture_refs,
+    zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
 };
 pub(super) use trident::*;
 pub(super) use tropical_fish::*;

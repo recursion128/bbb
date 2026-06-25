@@ -1103,3 +1103,135 @@ fn equine_leg_swing_pose_slows_the_paddle_in_water() {
         ADULT_HORSE_PARTS[4].pose
     );
 }
+
+fn undead_horse_texture_images() -> Vec<EntityModelTextureImage> {
+    undead_horse_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+#[test]
+fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
+    // Vanilla `UndeadHorseRenderer extends HorseRenderer`, so the skeleton/zombie horses render the
+    // shared `HorseModel` / `BabyHorseModel` geometry on the textured path: 12 adult cubes (72 faces /
+    // 288 vertices) and 10 baby cubes (60 faces / 240 vertices). The textured body occupies exactly the
+    // same space as the colored fallback — the adult extents match the colored mesh's vanilla-pinned
+    // bounds (mirroring the left legs reorders vertices but keeps the bounding box) — so only the
+    // texture, not a per-cube color, differs.
+    let (atlas, _) = build_entity_model_texture_atlas(&undead_horse_texture_images()).unwrap();
+
+    let skeleton_adult = entity_model_textured_mesh(
+        &[EntityModelInstance::undead_horse(
+            170,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(skeleton_adult.cutout_faces, 72);
+    assert_eq!(skeleton_adult.vertices.len(), 288);
+    assert_eq!(skeleton_adult.indices.len(), 432);
+    let (adult_min, adult_max) = textured_mesh_extents(&skeleton_adult);
+    assert_close3(adult_min, [-0.31562507, 64.001625, -1.0915062]);
+    assert_close3(adult_max, [0.31562507, 66.11081, 1.4726361]);
+
+    // Same geometry, different family → identical vertex positions but a different atlas sub-rect
+    // (proving the per-family texture is routed through the emit via `vanilla_texture_ref`).
+    let zombie_adult = entity_model_textured_mesh(
+        &[EntityModelInstance::undead_horse(
+            171,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Zombie,
+            false,
+        )],
+        &atlas,
+    );
+    let skeleton_positions: Vec<_> = skeleton_adult.vertices.iter().map(|v| v.position).collect();
+    let zombie_positions: Vec<_> = zombie_adult.vertices.iter().map(|v| v.position).collect();
+    assert_eq!(skeleton_positions, zombie_positions);
+    let skeleton_uvs: Vec<_> = skeleton_adult.vertices.iter().map(|v| v.uv).collect();
+    let zombie_uvs: Vec<_> = zombie_adult.vertices.iter().map(|v| v.uv).collect();
+    assert_ne!(skeleton_uvs, zombie_uvs);
+
+    // The baby re-parented layout (`BabyHorseModel.createBabyLayer`) renders on the textured path with
+    // the same bounds as its colored fallback.
+    let zombie_baby = entity_model_textured_mesh(
+        &[EntityModelInstance::undead_horse(
+            172,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Zombie,
+            true,
+        )],
+        &atlas,
+    );
+    assert_eq!(zombie_baby.cutout_faces, 60);
+    assert_eq!(zombie_baby.vertices.len(), 240);
+    let colored_baby = entity_model_mesh(&[EntityModelInstance::undead_horse(
+        173,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Zombie,
+        true,
+    )]);
+    let (baby_min, baby_max) = textured_mesh_extents(&zombie_baby);
+    let (colored_baby_min, colored_baby_max) = mesh_extents(&colored_baby);
+    assert_close3(baby_min, colored_baby_min);
+    assert_close3(baby_max, colored_baby_max);
+}
+
+#[test]
+fn undead_horse_colored_runtime_skips_the_texture_backed_horse() {
+    // The skeleton/zombie horse now carries vanilla texture UVs, so it renders through the textured
+    // path. The texture-skipping colored runtime emits nothing for it (adult or baby), while the full
+    // colored path still emits the fallback geometry.
+    let instances = [
+        EntityModelInstance::undead_horse(
+            180,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            false,
+        ),
+        EntityModelInstance::undead_horse(
+            181,
+            [4.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Zombie,
+            true,
+        ),
+    ];
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
+}
+
+#[test]
+fn undead_horse_textured_swings_legs_when_walking() {
+    // The undead horse reuses `HorseModel.setupAnim`, so the textured path swings the legs and lifts
+    // the tail with the gait: a still horse matches the rest pose, a walking one differs.
+    let (atlas, _) = build_entity_model_texture_atlas(&undead_horse_texture_images()).unwrap();
+    let base = EntityModelInstance::undead_horse(
+        190,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Skeleton,
+        false,
+    );
+    let still = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 0.0)], &atlas);
+    let walking = entity_model_textured_mesh(&[base.with_walk_animation(5.0, 1.0)], &atlas);
+    assert_eq!(still.vertices.len(), walking.vertices.len());
+    assert_ne!(
+        still.vertices, walking.vertices,
+        "the walking undead horse re-poses on the textured path"
+    );
+}

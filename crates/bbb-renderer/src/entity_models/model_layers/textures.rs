@@ -1120,7 +1120,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 369] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 373] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1421,6 +1421,10 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     CHEST_BOAT_PALE_OAK_TEXTURE_REF,
     BOAT_SPRUCE_TEXTURE_REF,
     CHEST_BOAT_SPRUCE_TEXTURE_REF,
+    SKELETON_HORSE_TEXTURE_REF,
+    SKELETON_HORSE_BABY_TEXTURE_REF,
+    ZOMBIE_HORSE_TEXTURE_REF,
+    ZOMBIE_HORSE_BABY_TEXTURE_REF,
     LLAMA_CREAMY_TEXTURE_REF,
     LLAMA_CREAMY_BABY_TEXTURE_REF,
     LLAMA_WHITE_TEXTURE_REF,
@@ -1636,6 +1640,17 @@ pub(in crate::entity_models) const LLAMA_ENTITY_TEXTURE_REFS: [EntityModelTextur
 
 pub fn llama_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &LLAMA_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const UNDEAD_HORSE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
+    SKELETON_HORSE_TEXTURE_REF,
+    SKELETON_HORSE_BABY_TEXTURE_REF,
+    ZOMBIE_HORSE_TEXTURE_REF,
+    ZOMBIE_HORSE_BABY_TEXTURE_REF,
+];
+
+pub fn undead_horse_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &UNDEAD_HORSE_ENTITY_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const CAMEL_TEXTURE_REF: EntityModelTextureRef =

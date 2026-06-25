@@ -7,24 +7,28 @@ use super::{
     catalog::squid_texture_ref,
     catalog::{
         CamelModelFamily, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, HoglinModelFamily, LlamaVariant,
-        PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, HoglinModelFamily,
+        LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
-        append_scrolled_textured_mesh, fill_entity_textured_light, fill_entity_textured_overlay,
+        append_scrolled_textured_mesh, emit_textured_model_cube, emit_textured_model_parts,
+        fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
         EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
+        TexturedModelPartDesc,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        armor_layer_tint, armor_slot_texture, BreezeWindModel, CamelModel, CreeperModel,
-        DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel,
-        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
+        armor_layer_tint, armor_slot_texture, equine_head_look_pose, equine_leg_swing_pose,
+        equine_tail_swing_pose, head_look_at_rest, limb_swing_at_rest, BreezeWindModel, CamelModel,
+        CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, PiglinModel,
+        PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
         SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, WindChargeModel,
-        WitherModel, ZombieModel, ZombieVariantModel, BREEZE_WIND_TEXTURE_REF,
-        CREEPER_ARMOR_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
+        WitherModel, ZombieModel, ZombieVariantModel, ADULT_HORSE_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
         STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
@@ -224,6 +228,9 @@ pub(super) fn entity_model_textured_meshes(
                 }
                 EntityModelKind::SkeletonVariant { family } => {
                     emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
+                }
+                EntityModelKind::UndeadHorse { baby, .. } => {
+                    emit_undead_horse_textured_model(&mut meshes, *instance, baby, atlas);
                 }
                 _ => {}
             }
@@ -1097,6 +1104,139 @@ fn emit_sheep_textured_model(
             );
         }
     }
+}
+
+/// The body part index in every equine layer, and the tail's child index under the body. The body is
+/// always first; the tail is its first child. (Single source of truth lives in `colored::mounts`; these
+/// mirror it for the textured path and are pinned identical by the textured-vs-colored rest test.)
+const EQUINE_BODY_PART_INDEX: usize = 0;
+const EQUINE_TAIL_CHILD_INDEX: usize = 0;
+
+/// Textured counterpart of `colored::mounts::emit_equine_posed`: applies the vanilla
+/// `AbstractEquineModel.setupAnim` default-branch poses — the walking leg swing on the four parts at
+/// `leg_indices`, the head look/bob on the `head_parts` (neck) at `head_parts_index`, and the tail walk
+/// lift (`tail_x_rot_offset` = `getTailXRotOffset()`, `age_scale` = `getAgeScale()`) on the body's tail
+/// child — to a [`TexturedModelPartDesc`] tree, emitting into `mesh` against one `texture`/`uv_rect`/
+/// `tint`. The static tree is walked unchanged only when the gait, head look, and tail are all at rest;
+/// otherwise the body subtree is hand-emitted so the `&'static` tail child can take the swung pose. The
+/// pose math is shared with the colored path (the `equine_*_pose` helpers are geometry-agnostic), so the
+/// two paths stay in lockstep.
+#[allow(clippy::too_many_arguments)]
+fn emit_equine_textured_posed(
+    mesh: &mut EntityModelTexturedMesh,
+    parts: &[TexturedModelPartDesc],
+    leg_indices: [usize; 4],
+    head_parts_index: usize,
+    tail_x_rot_offset: f32,
+    age_scale: f32,
+    transform: Mat4,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+    instance: EntityModelInstance,
+) {
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let in_water = instance.render_state.in_water;
+    let head_yaw = instance.render_state.head_yaw;
+    let head_pitch = instance.render_state.head_pitch;
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+
+    let tail_rest = parts[EQUINE_BODY_PART_INDEX].children[EQUINE_TAIL_CHILD_INDEX].pose;
+    let posed_tail =
+        equine_tail_swing_pose(tail_rest, tail_x_rot_offset, limb_swing_amount, age_scale);
+    let tail_resting = posed_tail == tail_rest;
+
+    if legs_resting && head_look_at_rest(head_yaw, head_pitch) && tail_resting {
+        emit_textured_model_parts(mesh, parts, transform, texture, uv_rect, tint);
+        return;
+    }
+
+    let mut posed = parts.to_vec();
+    if !legs_resting {
+        for index in leg_indices {
+            posed[index].pose =
+                equine_leg_swing_pose(posed[index].pose, limb_swing, limb_swing_amount, in_water);
+        }
+    }
+    posed[head_parts_index].pose = equine_head_look_pose(
+        posed[head_parts_index].pose,
+        head_yaw,
+        head_pitch,
+        limb_swing,
+        limb_swing_amount,
+    );
+
+    // Hand-emit the body subtree so the tail (a `&'static` child) can take the swung pose, then the
+    // remaining parts (neck + legs) in depth-first order via the `[1..]` slice.
+    let body = &posed[EQUINE_BODY_PART_INDEX];
+    let body_transform = transform * part_pose_transform(body.pose);
+    let mut body_children = body.children.to_vec();
+    body_children[EQUINE_TAIL_CHILD_INDEX].pose = posed_tail;
+    for &cube in body.cubes {
+        emit_textured_model_cube(mesh, body_transform, cube, texture, uv_rect, tint);
+    }
+    emit_textured_model_parts(mesh, &body_children, body_transform, texture, uv_rect, tint);
+    emit_textured_model_parts(
+        mesh,
+        &posed[EQUINE_BODY_PART_INDEX + 1..],
+        transform,
+        texture,
+        uv_rect,
+        tint,
+    );
+}
+
+/// The textured skeleton / zombie horse base layer. Vanilla `UndeadHorseRenderer extends
+/// HorseRenderer`, so the undead horses reuse `HorseModel`; the textured body takes the same equine leg
+/// swing, head look/bob, and tail walk lift as the colored fallback ([`emit_undead_horse_model`]). Only
+/// the texture differs — the tint is white (the `horse_skeleton` / `horse_zombie` texture, not a per-cube
+/// color, carries the look). The adult layer uses `HorseModel.createBodyLayer` (legs `[2, 3, 4, 5]`,
+/// neck `1`, `getTailXRotOffset = 0`, `ageScale = 1`); the baby uses `BabyHorseModel.createBabyLayer`,
+/// which re-parents the parts (legs `[1, 2, 3, 4]`, neck `5`) and overrides `getTailXRotOffset = −π/2`,
+/// `ageScale = 0.5`. The ridden/eat/stand poses and the tail's `ageInTicks` yRot wag are deferred.
+fn emit_undead_horse_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(texture) = instance.kind.vanilla_texture_ref() else {
+        return;
+    };
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let (parts, leg_indices, head_parts_index, tail_x_rot_offset, age_scale): (
+        &[TexturedModelPartDesc],
+        [usize; 4],
+        usize,
+        f32,
+        f32,
+    ) = if baby {
+        (
+            &BABY_HORSE_PARTS_TEXTURED,
+            [1, 2, 3, 4],
+            5,
+            -std::f32::consts::FRAC_PI_2,
+            0.5,
+        )
+    } else {
+        (&ADULT_HORSE_PARTS_TEXTURED, [2, 3, 4, 5], 1, 0.0, 1.0)
+    };
+    emit_equine_textured_posed(
+        &mut meshes.cutout,
+        parts,
+        leg_indices,
+        head_parts_index,
+        tail_x_rot_offset,
+        age_scale,
+        entity_model_root_transform(instance),
+        texture,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+        instance,
+    );
 }
 
 fn emit_skeleton_textured_model(
