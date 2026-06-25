@@ -760,6 +760,20 @@ pub struct EntityModelSourceState {
     /// non-guardian entity.
     #[serde(default = "entity_model_source_default_scale")]
     pub guardian_spikes_animation: f32,
+    /// Vanilla `Breeze`'s pose-driven action one-shots, each the elapsed seconds since it started
+    /// (`Breeze.shoot`/`slide`/`slideBack`/`inhale`/`longJump`, sampled by `BreezeModel.setupAnim`),
+    /// or `-1.0` (stopped) for a breeze not in that action and every non-breeze entity. The
+    /// non-looping actions clamp past their length to the final frame.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub breeze_shoot_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub breeze_slide_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub breeze_slide_back_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub breeze_inhale_seconds: f32,
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub breeze_long_jump_seconds: f32,
     /// Vanilla `ChickenRenderState.flap` (`Chicken.flap` lerped): the wing-flap
     /// phase `ChickenModel.setupAnim` feeds to `(sin(flap) + 1) * flapSpeed`. `0.0`
     /// for an unticked/still chicken and every non-chicken entity.

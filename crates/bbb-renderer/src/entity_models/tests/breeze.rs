@@ -73,6 +73,91 @@ fn breeze_idle_animates_and_loops() {
 }
 
 #[test]
+fn breeze_action_animations_match_vanilla_definitions() {
+    let total_keyframes = |def: &AnimationDefinition| -> usize {
+        def.bones
+            .iter()
+            .flat_map(|bone| bone.channels.iter())
+            .map(|channel| channel.keyframes.len())
+            .sum()
+    };
+
+    // Vanilla `BreezeAnimation.SHOOT`: 1.125s, NOT looping, 6 bones (body/head/rods + 3 wind), 43
+    // keyframes. The head pitches `-12.5°` at the draw (t=0.25).
+    assert_eq!(BREEZE_SHOOT.length_seconds, 1.125);
+    assert!(!BREEZE_SHOOT.looping);
+    assert_eq!(BREEZE_SHOOT.bones.len(), 6);
+    assert_eq!(total_keyframes(&BREEZE_SHOOT), 43);
+    let (_, head_rot) = sample_bone_offsets(&BREEZE_SHOOT, "head", 0.25, 1.0);
+    assert!((head_rot[0] - (-12.5_f32).to_radians()).abs() < 1.0e-5);
+
+    // Vanilla `BreezeAnimation.JUMP` / `INHALE`: 0.5s / 2.0s, NOT looping, 7 bones each, 26 keyframes.
+    assert_eq!(BREEZE_JUMP.length_seconds, 0.5);
+    assert!(!BREEZE_JUMP.looping);
+    assert_eq!(BREEZE_JUMP.bones.len(), 7);
+    assert_eq!(total_keyframes(&BREEZE_JUMP), 26);
+    assert_eq!(BREEZE_INHALE.length_seconds, 2.0);
+    assert!(!BREEZE_INHALE.looping);
+    assert_eq!(BREEZE_INHALE.bones.len(), 7);
+    assert_eq!(total_keyframes(&BREEZE_INHALE), 26);
+
+    // Vanilla `SLIDE` / `SLIDE_BACK`: 0.2s / 0.1s, NOT looping, 3 bones, 6 keyframes. The `body` pivot
+    // slides back `posVec(0, 0, -6)` (z) over SLIDE and returns to the neutral pose over SLIDE_BACK.
+    assert_eq!(BREEZE_SLIDE.length_seconds, 0.2);
+    assert!(!BREEZE_SLIDE.looping);
+    assert_eq!(BREEZE_SLIDE.bones.len(), 3);
+    assert_eq!(total_keyframes(&BREEZE_SLIDE), 6);
+    let (slide_body, _) = sample_bone_offsets(&BREEZE_SLIDE, "body", 0.2, 1.0);
+    assert!((slide_body[2] - -6.0).abs() < 1.0e-5);
+    assert_eq!(BREEZE_SLIDE_BACK.length_seconds, 0.1);
+    assert!(!BREEZE_SLIDE_BACK.looping);
+    assert_eq!(BREEZE_SLIDE_BACK.bones.len(), 3);
+    assert_eq!(total_keyframes(&BREEZE_SLIDE_BACK), 6);
+    let (back_body, _) = sample_bone_offsets(&BREEZE_SLIDE_BACK, "body", 0.1, 1.0);
+    assert!(
+        back_body[2].abs() < 1.0e-5,
+        "slideBack ends at the neutral pose"
+    );
+}
+
+#[test]
+fn breeze_actions_re_pose_the_body_model() {
+    // Each pose-driven action, applied over its projected elapsed seconds, re-poses the base body
+    // layer's bones (body/head/rods) off the idle pose; the `-1.0` stopped sentinel leaves the idle
+    // pose untouched. The body model has 120 vertices (head [0, 48), rods [48, 120)).
+    let base = EntityModelInstance::breeze(952, [0.0, 64.0, 0.0], 0.0);
+    let idle = entity_model_mesh(&[base]);
+
+    for (label, instance) in [
+        ("shoot", base.with_breeze_shoot_seconds(0.25)),
+        ("slide", base.with_breeze_slide_seconds(0.1)),
+        ("slide_back", base.with_breeze_slide_back_seconds(0.05)),
+        ("inhale", base.with_breeze_inhale_seconds(1.0)),
+        ("long_jump", base.with_breeze_long_jump_seconds(0.25)),
+    ] {
+        let posed = entity_model_mesh(&[instance]);
+        assert_eq!(idle.vertices.len(), posed.vertices.len());
+        assert_ne!(
+            idle.vertices, posed.vertices,
+            "the {label} action re-poses the body model"
+        );
+    }
+
+    // The `-1.0` sentinel applies no action — the mesh stays at the idle pose.
+    assert_eq!(
+        idle.vertices,
+        entity_model_mesh(&[base
+            .with_breeze_shoot_seconds(-1.0)
+            .with_breeze_slide_seconds(-1.0)
+            .with_breeze_slide_back_seconds(-1.0)
+            .with_breeze_inhale_seconds(-1.0)
+            .with_breeze_long_jump_seconds(-1.0)])
+        .vertices,
+        "the stopped sentinels leave the idle pose"
+    );
+}
+
+#[test]
 fn breeze_texture_ref_matches_vanilla_renderer() {
     let kind = EntityModelKind::Breeze;
     assert_eq!(kind.model_key(), "breeze");

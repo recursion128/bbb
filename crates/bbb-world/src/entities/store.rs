@@ -872,6 +872,24 @@ impl EntityStore {
             guardian_spikes_animation: client_animations
                 .animations
                 .guardian_spikes_animation(partial_ticks),
+            // Vanilla `Breeze`'s pose-driven action one-shots (shoot/slide/slideBack/inhale/longJump):
+            // the elapsed seconds since each started, or `-1.0` when stopped (only the breeze is given
+            // a breeze animation state).
+            breeze_shoot_seconds: client_animations
+                .animations
+                .breeze_shoot_seconds(partial_ticks),
+            breeze_slide_seconds: client_animations
+                .animations
+                .breeze_slide_seconds(partial_ticks),
+            breeze_slide_back_seconds: client_animations
+                .animations
+                .breeze_slide_back_seconds(partial_ticks),
+            breeze_inhale_seconds: client_animations
+                .animations
+                .breeze_inhale_seconds(partial_ticks),
+            breeze_long_jump_seconds: client_animations
+                .animations
+                .breeze_long_jump_seconds(partial_ticks),
             // Vanilla `ChickenRenderer.extractRenderState`: the lerped wing-flap
             // phase and amplitude. `0.0` for every non-chicken entity (only the
             // chicken is given a flap animation state).

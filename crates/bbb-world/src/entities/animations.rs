@@ -54,6 +54,13 @@ const VANILLA_POSE_USING_TONGUE_ID: i32 = 9;
 /// that `Frog.onSyncedDataUpdated` reads to start/stop `jumpAnimationState` (`pose == LONG_JUMPING`
 /// starts it, otherwise stops it).
 const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
+const VANILLA_ENTITY_TYPE_BREEZE_ID: i32 = 17;
+/// Vanilla `Pose.SLIDING`/`SHOOTING`/`INHALING` ordinals (`Pose.SLIDING(15, …)`, `SHOOTING(16, …)`,
+/// `INHALING(17, …)`), the synced `DATA_POSE` int values that `Breeze.onSyncedDataUpdated` reads to
+/// `startIfStopped` the matching action one-shot, and `LONG_JUMPING(6)` for the jump.
+const VANILLA_POSE_SLIDING_ID: i32 = 15;
+const VANILLA_POSE_SHOOTING_ID: i32 = 16;
+const VANILLA_POSE_INHALING_ID: i32 = 17;
 const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
 /// Vanilla `Sniffer.DATA_STATE`, the synced `EntityDataSerializers.SNIFFER_STATE` accessor serialized
 /// as the `Sniffer.State` ordinal VarInt. The accessor sits at id 18 (Entity 0–7, LivingEntity 8–14,
@@ -363,6 +370,8 @@ pub struct EntityClientAnimationState {
     pub guardian_spikes: Option<GuardianSpikesAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guardian_attack: Option<GuardianAttackAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub breeze: Option<BreezeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
 }
@@ -1469,6 +1478,69 @@ impl GuardianSpikesAnimationState {
     }
 }
 
+/// The "not in a triggered pose" sentinel for [`BreezeAnimationState::prev_pose`]: no synced
+/// `DATA_POSE` has been observed yet, so the first pose is treated as a fresh transition.
+const BREEZE_POSE_UNSET: i32 = -1;
+
+/// Canonical client-side breeze action animations, mirroring vanilla `Breeze`'s pose-driven
+/// `shoot`/`slide`/`slideBack`/`inhale`/`longJump` `AnimationState`s (the looping `idle` stays
+/// renderer-side, free-running off `ageInTicks`). `Breeze.onSyncedDataUpdated(DATA_POSE)` runs
+/// `resetAnimations()` then `startIfStopped`s the new pose's one-shot, and `Breeze.tick` starts
+/// `longJump` while `Pose.LONG_JUMPING` and, when LEAVING `Pose.SLIDING`, starts `slideBack` and stops
+/// `slide`. Collapsed: each pose-gated one-shot runs exactly while its pose holds (`animate_when(pose
+/// == X)`, the reset handling the stop-on-leave), and the falling edge of `Pose.SLIDING` fires the
+/// brief `slideBack` return (a one-shot that ends at the neutral pose, so it holds harmlessly).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BreezeAnimationState {
+    /// The last synced `DATA_POSE` ordinal observed, so the falling edge of `Pose.SLIDING` can fire
+    /// `slideBack`.
+    pub prev_pose: i32,
+    /// Vanilla `Breeze.shoot` (the 1.125s `SHOOT`), active while `Pose.SHOOTING`.
+    pub shoot: KeyframeAnimationState,
+    /// Vanilla `Breeze.slide` (the 0.2s `SLIDE`), active while `Pose.SLIDING`.
+    pub slide: KeyframeAnimationState,
+    /// Vanilla `Breeze.slideBack` (the 0.1s `SLIDE_BACK` return), fired on leaving `Pose.SLIDING`.
+    pub slide_back: KeyframeAnimationState,
+    /// Vanilla `Breeze.inhale` (the 2.0s `INHALE`), active while `Pose.INHALING`.
+    pub inhale: KeyframeAnimationState,
+    /// Vanilla `Breeze.longJump` (the 0.5s `JUMP`), active while `Pose.LONG_JUMPING`.
+    pub long_jump: KeyframeAnimationState,
+}
+
+impl Default for BreezeAnimationState {
+    fn default() -> Self {
+        Self {
+            prev_pose: BREEZE_POSE_UNSET,
+            shoot: KeyframeAnimationState::default(),
+            slide: KeyframeAnimationState::default(),
+            slide_back: KeyframeAnimationState::default(),
+            inhale: KeyframeAnimationState::default(),
+            long_jump: KeyframeAnimationState::default(),
+        }
+    }
+}
+
+impl BreezeAnimationState {
+    /// Vanilla `Breeze.onSyncedDataUpdated(DATA_POSE)` + `Breeze.tick`, collapsed: gate each one-shot
+    /// on its pose (`animate_when`, which `startIfStopped`s on the rising edge and stops on the leave
+    /// — vanilla's `resetAnimations` + per-tick `startIfStopped`), and fire `slideBack` on the falling
+    /// edge of `Pose.SLIDING`.
+    fn set_pose(&mut self, pose_id: i32, age_ticks: u32) {
+        if self.prev_pose == VANILLA_POSE_SLIDING_ID && pose_id != VANILLA_POSE_SLIDING_ID {
+            self.slide_back.start_age = Some(age_ticks);
+        }
+        self.prev_pose = pose_id;
+        self.shoot
+            .animate_when(pose_id == VANILLA_POSE_SHOOTING_ID, age_ticks);
+        self.inhale
+            .animate_when(pose_id == VANILLA_POSE_INHALING_ID, age_ticks);
+        self.slide
+            .animate_when(pose_id == VANILLA_POSE_SLIDING_ID, age_ticks);
+        self.long_jump
+            .animate_when(pose_id == VANILLA_POSE_LONG_JUMPING_ID, age_ticks);
+    }
+}
+
 /// Canonical client-side guardian attack-beam counter, mirroring vanilla `Guardian.clientSideAttackTime`.
 /// Each client tick `Guardian.aiStep` increments it (capped at `getAttackDuration()`) while the synced
 /// `DATA_ID_ATTACK_TARGET` names a live target, and `onSyncedDataUpdated(DATA_ID_ATTACK_TARGET)` resets it
@@ -2337,6 +2409,16 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(WardenCombatAnimationState::default)
                     .set_pose(pose_id, self.age_ticks);
             }
+            VANILLA_ENTITY_TYPE_BREEZE_ID => {
+                // Vanilla `Breeze.onSyncedDataUpdated(DATA_POSE)` + `Breeze.tick`: the synced pose
+                // drives the shoot/inhale/slide/longJump one-shots (active while their pose holds) and
+                // the slideBack return (on leaving SLIDING). The breeze's `tick` runs client-side for
+                // remote entities, so the synced pose drives all of them directly.
+                let pose_id = entity_data_pose(data_values);
+                self.breeze
+                    .get_or_insert_with(BreezeAnimationState::default)
+                    .set_pose(pose_id, self.age_ticks);
+            }
             VANILLA_ENTITY_TYPE_SNIFFER_ID => {
                 // Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: the synced state (id 18) selects
                 // the one mutually-exclusive `AnimationState` to start, and a state change
@@ -3116,6 +3198,58 @@ impl EntityClientAnimationState {
     pub fn guardian_spikes_animation(&self, partial_tick: f32) -> f32 {
         self.guardian_spikes
             .map_or(1.0, |spikes| spikes.spikes_animation(partial_tick))
+    }
+
+    /// The breeze shoot's elapsed seconds since `Pose.SHOOTING` started (vanilla `Breeze.shoot`),
+    /// projected for the renderer `BreezeModel.setupAnim` `shootAnimation.apply`. Returns `-1.0` (the
+    /// stopped-animation sentinel) for a non-shooting breeze and every other entity; a non-negative
+    /// value clamps past the 1.125s length to its final frame (the action one-shots do not loop).
+    pub fn breeze_shoot_seconds(&self, partial_tick: f32) -> f32 {
+        self.breeze
+            .and_then(|state| state.shoot.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The breeze slide's elapsed seconds since `Pose.SLIDING` started (vanilla `Breeze.slide`).
+    /// Returns `-1.0` (stopped) for a non-sliding breeze and every other entity; clamps past 0.2s.
+    pub fn breeze_slide_seconds(&self, partial_tick: f32) -> f32 {
+        self.breeze
+            .and_then(|state| state.slide.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The breeze slideBack's elapsed seconds since it last LEFT `Pose.SLIDING` (vanilla
+    /// `Breeze.slideBack`, the 0.1s return that ends at the neutral pose). Returns `-1.0` (stopped) for
+    /// a breeze that has never slid and every other entity; clamps past 0.1s to its neutral final frame.
+    pub fn breeze_slide_back_seconds(&self, partial_tick: f32) -> f32 {
+        self.breeze
+            .and_then(|state| {
+                state
+                    .slide_back
+                    .elapsed_seconds(self.age_ticks, partial_tick)
+            })
+            .unwrap_or(-1.0)
+    }
+
+    /// The breeze inhale's elapsed seconds since `Pose.INHALING` started (vanilla `Breeze.inhale`).
+    /// Returns `-1.0` (stopped) for a non-inhaling breeze and every other entity; clamps past 2.0s.
+    pub fn breeze_inhale_seconds(&self, partial_tick: f32) -> f32 {
+        self.breeze
+            .and_then(|state| state.inhale.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The breeze long-jump's elapsed seconds since `Pose.LONG_JUMPING` started (vanilla
+    /// `Breeze.longJump`). Returns `-1.0` (stopped) for a non-jumping breeze and every other entity;
+    /// clamps past 0.5s.
+    pub fn breeze_long_jump_seconds(&self, partial_tick: f32) -> f32 {
+        self.breeze
+            .and_then(|state| {
+                state
+                    .long_jump
+                    .elapsed_seconds(self.age_ticks, partial_tick)
+            })
+            .unwrap_or(-1.0)
     }
 
     pub(crate) fn advance_client_tick(

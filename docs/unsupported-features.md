@@ -1894,8 +1894,18 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/breeze/breeze.png` atlas reference into the translucent mesh (vanilla
       `BreezeModel` uses `RenderTypes::entityTranslucent`), hand-emitted through the same animated
       hierarchy as the colored path (which approximates the translucent wind body with a single
-      representative slate). The swirling `breeze_wind.png` wind layer, the emissive
-      `breeze_eyes.png` eyes, and the shoot/slide/inhale/jump action animations remain unsupported
+      representative slate). The pose-driven action animations are now reproduced too: the synced
+      `DATA_POSE` (id 6) drives the `SHOOT` (1.125s, `Pose.SHOOTING`), `INHALE` (2.0s, `INHALING`),
+      `SLIDE` (0.2s, `SLIDING`), and `JUMP` (0.5s, `LONG_JUMPING`) one-shots — each `animateWhen(pose
+      == X)` the vanilla way (`onSyncedDataUpdated` `resetAnimations` + `startIfStopped`) — plus the
+      `SLIDE_BACK` (0.1s) return fired on the falling edge of `Pose.SLIDING`, all projected as elapsed
+      seconds (`-1.0` stopped) and applied additively over the idle in vanilla `setupAnim` order to the
+      base body layer's `body`/`head`/`rods` bones (the actions' `wind_*` channels target the deferred
+      wind layer's parts, which are absent, so they are skipped). The non-looping actions clamp past
+      their length to the final frame (world + renderer tests pin the pose state machine including the
+      slideBack transition, the five definitions, and each action re-posing the body model). The
+      swirling `breeze_wind.png` wind layer (its own translucent geometry) and the emissive
+      `breeze_eyes.png` eyes remain unsupported
     - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
       `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to
       the new `EntityModelKind::Dolphin { baby }`, keyed off the synced `AgeableMob.DATA_BABY_ID`

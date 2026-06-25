@@ -7923,6 +7923,97 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
 }
 
 #[test]
+fn breeze_pose_drives_the_action_animations() {
+    // Vanilla `Breeze.onSyncedDataUpdated(DATA_POSE)` + `tick`: the synced pose starts/stops the
+    // shoot/inhale/slide/longJump one-shots (active while their pose holds), and LEAVING `Pose.SLIDING`
+    // fires the brief `slideBack`. Each is projected as the elapsed seconds since it started, `-1.0`
+    // when stopped. The looping idle is renderer-side and not projected.
+    const VANILLA_ENTITY_TYPE_BREEZE_ID: i32 = 17;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const POSE_STANDING: i32 = 0;
+    const POSE_LONG_JUMPING: i32 = 6;
+    const POSE_SLIDING: i32 = 15;
+    const POSE_SHOOTING: i32 = 16;
+    const POSE_INHALING: i32 = 17;
+
+    let actions = |store: &WorldStore, id: i32| {
+        let s = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (
+            s.breeze_shoot_seconds,
+            s.breeze_slide_seconds,
+            s.breeze_slide_back_seconds,
+            s.breeze_inhale_seconds,
+            s.breeze_long_jump_seconds,
+        )
+    };
+    let set_pose = |store: &mut WorldStore, id: i32, pose: i32| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_pose_data(6, pose)],
+        }));
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        60,
+        VANILLA_ENTITY_TYPE_BREEZE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        61,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    // A resting breeze projects the stopped sentinel for every action.
+    assert_eq!(actions(&store, 60), (-1.0, -1.0, -1.0, -1.0, -1.0));
+
+    // `Pose.SHOOTING` starts the shoot at the current age (elapsed begins at 0, advancing 1/20 per
+    // tick); the others stay stopped.
+    set_pose(&mut store, 60, POSE_SHOOTING);
+    assert_eq!(actions(&store, 60), (0.0, -1.0, -1.0, -1.0, -1.0));
+    store.advance_entity_client_animations(5);
+    assert!((actions(&store, 60).0 - 0.25).abs() < 1.0e-6);
+    // Leaving SHOOTING stops the shoot (it is not a SLIDING leave, so no slideBack).
+    set_pose(&mut store, 60, POSE_STANDING);
+    assert_eq!(actions(&store, 60), (-1.0, -1.0, -1.0, -1.0, -1.0));
+
+    // `Pose.SLIDING` starts the slide; LEAVING it stops the slide AND fires `slideBack` at the leave.
+    set_pose(&mut store, 60, POSE_SLIDING);
+    assert_eq!(actions(&store, 60).1, 0.0, "slide starts on SLIDING");
+    store.advance_entity_client_animations(2);
+    assert!((actions(&store, 60).1 - 0.1).abs() < 1.0e-6);
+    set_pose(&mut store, 60, POSE_STANDING);
+    let (shoot, slide, slide_back, _, _) = actions(&store, 60);
+    assert_eq!(shoot, -1.0);
+    assert_eq!(slide, -1.0, "leaving SLIDING stops the slide");
+    assert_eq!(
+        slide_back, 0.0,
+        "leaving SLIDING fires slideBack at the leave"
+    );
+    store.advance_entity_client_animations(3);
+    assert!(
+        (actions(&store, 60).2 - 0.15).abs() < 1.0e-6,
+        "the slideBack return advances"
+    );
+
+    // `Pose.INHALING` starts the inhale; switching to `Pose.LONG_JUMPING` stops it and starts longJump.
+    set_pose(&mut store, 60, POSE_INHALING);
+    assert_eq!(actions(&store, 60).3, 0.0, "inhale starts on INHALING");
+    set_pose(&mut store, 60, POSE_LONG_JUMPING);
+    let (_, _, _, inhale, long_jump) = actions(&store, 60);
+    assert_eq!(inhale, -1.0, "leaving INHALING stops the inhale");
+    assert_eq!(long_jump, 0.0, "LONG_JUMPING starts the jump");
+
+    // A non-breeze never gets a breeze state: every action stays stopped regardless of the pose.
+    set_pose(&mut store, 61, POSE_SHOOTING);
+    store.advance_entity_client_animations(2);
+    assert_eq!(actions(&store, 61), (-1.0, -1.0, -1.0, -1.0, -1.0));
+}
+
+#[test]
 fn warden_tendril_event_drives_client_animation_pulse() {
     const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

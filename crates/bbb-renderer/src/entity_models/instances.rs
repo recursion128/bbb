@@ -594,6 +594,15 @@ entity_render_state! {
     /// (spikes retract while swimming, extend while idle). `1.0` (withdrawal `0`, fully extended) for
     /// an unticked guardian and every non-guardian entity.
     (with_guardian_spikes_animation) guardian_spikes_animation: f32 = 1.0;
+    /// Vanilla `Breeze`'s pose-driven action one-shots (elapsed seconds since each started, sampled by
+    /// `BreezeModel.setupAnim` over the projected pose), applied additively to the body/head/rods. The
+    /// non-looping actions clamp past their length to the final frame. `-1.0` (stopped) for a breeze
+    /// not in that action and every non-breeze entity.
+    (with_breeze_shoot_seconds) breeze_shoot_seconds: f32 = -1.0;
+    (with_breeze_slide_seconds) breeze_slide_seconds: f32 = -1.0;
+    (with_breeze_slide_back_seconds) breeze_slide_back_seconds: f32 = -1.0;
+    (with_breeze_inhale_seconds) breeze_inhale_seconds: f32 = -1.0;
+    (with_breeze_long_jump_seconds) breeze_long_jump_seconds: f32 = -1.0;
     /// Vanilla `GuardianRenderer` attack beam (`GuardianRenderState.attackTargetPosition` present): a
     /// guardian firing its beam, carrying the world-space eye→target vector, eye height, lerped
     /// `clientSideAttackTime`, and attack scale. `None` (no beam) for a guardian with no active attack
@@ -1819,6 +1828,11 @@ mod tests {
                 squid_z_body_rot: 0.0,
                 guardian_tail_animation: 0.0,
                 guardian_spikes_animation: 1.0,
+                breeze_shoot_seconds: -1.0,
+                breeze_slide_seconds: -1.0,
+                breeze_slide_back_seconds: -1.0,
+                breeze_inhale_seconds: -1.0,
+                breeze_long_jump_seconds: -1.0,
                 guardian_beam: None,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
