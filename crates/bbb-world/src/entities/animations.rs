@@ -46,6 +46,10 @@ const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 /// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
 /// CROAKING, tickCount)`).
 const VANILLA_POSE_CROAKING_ID: i32 = 8;
+/// Vanilla `Pose.USING_TONGUE` ordinal (`Pose.USING_TONGUE(9, …)`), the synced `DATA_POSE` int value
+/// that `Frog.onSyncedDataUpdated` reads to start/stop `tongueAnimationState` (`pose == USING_TONGUE`
+/// starts it, otherwise stops it).
+const VANILLA_POSE_USING_TONGUE_ID: i32 = 9;
 /// Vanilla `Pose.LONG_JUMPING` ordinal (`Pose.LONG_JUMPING(6, …)`), the synced `DATA_POSE` int value
 /// that `Frog.onSyncedDataUpdated` reads to start/stop `jumpAnimationState` (`pose == LONG_JUMPING`
 /// starts it, otherwise stops it).
@@ -261,6 +265,8 @@ pub struct EntityClientAnimationState {
     pub fox: Option<FoxAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_croak: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frog_tongue: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_jump: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2074,6 +2080,17 @@ impl EntityClientAnimationState {
                         start_age: Some(self.age_ticks),
                     });
                 }
+                // Vanilla `Frog.onSyncedDataUpdated`: `tongueAnimationState` is started on the synced
+                // `Pose.USING_TONGUE` and stopped otherwise — the same rising-edge pattern as the
+                // croak, driving the `FROG_TONGUE` keyframe (head dip + the tongue's z-scale lash).
+                let using_tongue = pose == VANILLA_POSE_USING_TONGUE_ID;
+                if let Some(tongue) = self.frog_tongue.as_mut() {
+                    tongue.animate_when(using_tongue, self.age_ticks);
+                } else if using_tongue {
+                    self.frog_tongue = Some(KeyframeAnimationState {
+                        start_age: Some(self.age_ticks),
+                    });
+                }
                 let jumping = pose == VANILLA_POSE_LONG_JUMPING_ID;
                 if let Some(jump) = self.frog_jump.as_mut() {
                     jump.animate_when(jumping, self.age_ticks);
@@ -2436,6 +2453,17 @@ impl EntityClientAnimationState {
     /// a non-negative value by the 3.0s length before sampling.
     pub fn frog_croak_seconds(&self, partial_tick: f32) -> f32 {
         self.frog_croak
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The frog tongue's elapsed seconds since `Pose.USING_TONGUE` started (vanilla
+    /// `tongueAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for
+    /// `FrogModel.setupAnim`. Returns `-1.0` (the stopped-animation sentinel) for a frog that is not
+    /// using its tongue and every other entity, so the renderer applies no `FROG_TONGUE` keyframe;
+    /// the renderer wraps a non-negative value by the 0.5s length before sampling.
+    pub fn frog_tongue_seconds(&self, partial_tick: f32) -> f32 {
+        self.frog_tongue
             .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
             .unwrap_or(-1.0)
     }

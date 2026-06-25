@@ -621,6 +621,7 @@ fn entity_model_instance(
         .with_bee_has_stinger(source.bee_has_stinger)
         .with_bee_roll_amount(source.bee_roll_amount)
         .with_frog_croak_seconds(source.frog_croak_seconds)
+        .with_frog_tongue_seconds(source.frog_tongue_seconds)
         .with_frog_jump_seconds(source.frog_jump_seconds)
         .with_frog_swim_idle_seconds(source.frog_swim_idle_seconds)
         .with_sniffer_animation_id(source.sniffer_animation_id)

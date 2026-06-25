@@ -698,8 +698,8 @@ When an agent does any of the following, update this file in the same slice:
     `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings (and
     `Camel`/`Frog` gate on pose animation states the client does not fully track yet —
-    the camel dash and frog jump/swim-idle/croak triggered animations ARE now driven, but
-    the camel idle and frog tongue remain deferred), so the distance→speed walk input is
+    the camel dash and frog jump/swim-idle/croak/tongue triggered animations ARE now driven, but
+    the camel idle remains deferred), so the distance→speed walk input is
     left at the base mapping rather than the override; (2) the base
     `HumanoidModel.setupAnim` arm swing is implemented for the player, the skeleton
     family, and the non-zombified piglin family
@@ -2002,14 +2002,21 @@ When an agent does any of the following, update this file in the same slice:
       `FrogModel.setupAnim` applies `FROG_IDLE_WATER` (3.0 s, looping, all-CATMULLROM) LAST (after the
       walk/swim, jump, and croak) — the `body` dips `-10°`, the two arms splay `±22.5°→±45°` z and sink
       `-0.5` y, and the two legs swing out and sink `-1` y, folded additively onto the walk pose. The
-      tongue (needs `DATA_TONGUE_TARGET_ID` prey targeting) stays deferred, as do the moving in-water
-      swim cycle (`FROG_SWIM` via `applyWalk(..., 1.0, 2.5)` while `isSwimming`) and the ground walk
-      cycle's own un-projected limb-swing (`Frog.updateWalkAnimation`). The textured path now binds
-      the three `FrogVariant` temperature textures (`frog_temperate`/`frog_warm`/`frog_cold.png`):
-      the native scene reads `DATA_VARIANT_ID` (18, `Holder<FrogVariant>`) and resolves the registry
-      id against the synced `minecraft:frog_variant` registry (static `FrogVariants.bootstrap`
-      fallback temperate=0/warm=1/cold=2), so `FrogRenderer.getTextureLocation`'s per-variant asset
-      is matched; only the tongue prey-targeting and the moving swim/walk limb-swing stay deferred
+      `FROG_TONGUE` lash (0.5 s, NOT looping) is reproduced the same way: the client `frog_tongue`
+      `KeyframeAnimationState` is started/stopped by the synced `Pose.USING_TONGUE` (id 9) exactly like
+      the croak (id 8), projecting the elapsed seconds (or the `-1.0` sentinel); `FrogModel.setupAnim`
+      then dips the `head` `-60°` xRot and lashes the `tongue` part forward via a z-SCALE to 5×
+      (`scaleVec(0.5, 1, 5)`), with the vanilla quirk that the head SCALE channel uses `degreeVec`
+      (a tiny `~0.0174` scale offset) transcribed exactly. The cross-entity prey-targeting that visually
+      aims the tongue at the eaten entity (`DATA_TONGUE_TARGET_ID`) is NOT part of the model animation
+      and stays deferred, as do the moving in-water swim cycle (`FROG_SWIM` via `applyWalk(..., 1.0,
+      2.5)` while `isSwimming`) and the ground walk cycle's own un-projected limb-swing
+      (`Frog.updateWalkAnimation`). The textured path now binds the three `FrogVariant` temperature
+      textures (`frog_temperate`/`frog_warm`/`frog_cold.png`): the native scene reads `DATA_VARIANT_ID`
+      (18, `Holder<FrogVariant>`) and resolves the registry id against the synced
+      `minecraft:frog_variant` registry (static `FrogVariants.bootstrap` fallback
+      temperate=0/warm=1/cold=2), so `FrogRenderer.getTextureLocation`'s per-variant asset is matched;
+      only the tongue prey-targeting and the moving swim/walk limb-swing stay deferred
     - creaking entities as renderer-owned vanilla 26.1 `CreakingModel.createBodyLayer()` geometry
       on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id
       `31` to the new `EntityModelKind::Creaking`, replacing the former placeholder box. The static

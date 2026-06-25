@@ -316,6 +316,13 @@ entity_render_state! {
     /// (the sentinel for a stopped `croakAnimationState`) for every other entity and for a
     /// non-croaking frog, so the pouch stays hidden and no keyframe is applied.
     (with_frog_croak_seconds) frog_croak_seconds: f32 = -1.0;
+    /// Vanilla frog tongue timing (`FrogRenderState.tongueAnimationState` driven by the synced
+    /// `Pose.USING_TONGUE`): the elapsed seconds since the tongue lash started, projected for
+    /// `FrogModel.setupAnim`, which dips the head and z-scales the `tongue` part forward by sampling
+    /// the triggered `FrogAnimation.FROG_TONGUE` ROTATION/SCALE animation. `-1.0` (the sentinel for a
+    /// stopped `tongueAnimationState`) for every other entity and a frog not using its tongue, so no
+    /// keyframe is applied.
+    (with_frog_tongue_seconds) frog_tongue_seconds: f32 = -1.0;
     /// Vanilla frog jump timing (`FrogRenderState.jumpAnimationState` driven by the synced
     /// `Pose.LONG_JUMPING`): the elapsed seconds since the long-jump started, projected for
     /// `FrogModel.setupAnim`, which samples the triggered `FrogAnimation.FROG_JUMP` POSITION/ROTATION
@@ -1714,6 +1721,7 @@ mod tests {
                 camel_standup_seconds: -1.0,
                 camel_dash_seconds: -1.0,
                 frog_croak_seconds: -1.0,
+                frog_tongue_seconds: -1.0,
                 frog_jump_seconds: -1.0,
                 frog_swim_idle_seconds: -1.0,
                 sniffer_animation_id: -1,

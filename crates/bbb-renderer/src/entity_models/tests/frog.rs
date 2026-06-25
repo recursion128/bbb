@@ -248,6 +248,73 @@ fn frog_croak_shows_and_poses_the_pouch_off_the_hidden_bind_pose() {
 }
 
 #[test]
+fn frog_tongue_animation_matches_vanilla_definition() {
+    // Vanilla `FrogAnimation.FROG_TONGUE`: 0.5s, NOT looping, two bones — `head` (ROTATION 4kf +
+    // SCALE 4kf) and `tongue` (ROTATION 4kf + SCALE 3kf).
+    assert_eq!(FROG_TONGUE.length_seconds, 0.5);
+    assert!(!FROG_TONGUE.looping);
+    assert_eq!(FROG_TONGUE.bones.len(), 2);
+    assert_eq!(FROG_TONGUE.bones[0].bone, "head");
+    assert_eq!(FROG_TONGUE.bones[1].bone, "tongue");
+
+    // At the `0.1667` keyframe the tongue lashes forward (`scaleVec(0.5, 1, 5)` ⇒ x squashes to 0.5,
+    // z extends to 5×).
+    let (_, _, lash) = sample_bone_offsets_with_scale(&FROG_TONGUE, "tongue", 0.1667, 1.0);
+    let lashed = keyframe_animated_scale(lash);
+    assert!(
+        (lashed[0] - 0.5).abs() < 1.0e-4,
+        "x squashes to 0.5: {lashed:?}"
+    );
+    assert!(
+        (lashed[2] - 5.0).abs() < 1.0e-4,
+        "z extends to 5: {lashed:?}"
+    );
+
+    // Mid-lash the head dips to `-60°` xRot (`degreeVec`).
+    let (_, head_rot, _) = sample_bone_offsets_with_scale(&FROG_TONGUE, "head", 0.25, 1.0);
+    assert!(
+        (head_rot[0] - (-60.0_f32).to_radians()).abs() < 1.0e-4,
+        "the head dips: {head_rot:?}"
+    );
+}
+
+#[test]
+fn frog_tongue_lashes_the_head_and_tongue_off_the_rest_pose() {
+    // A non-tongue-using frog (`-1.0` sentinel) holds the head/tongue at the bind pose.
+    let resting = entity_model_mesh(&[EntityModelInstance::frog(
+        954,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )]);
+
+    // Mid-lash, the head dips and the tongue extends forward, re-posing those parts (no cubes
+    // added/removed — the tongue is one of the 15 base cubes).
+    let lashing = entity_model_mesh(&[EntityModelInstance::frog(
+        955,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_tongue_seconds(0.1667)]);
+    assert_eq!(resting.vertices.len(), lashing.vertices.len());
+    assert_ne!(
+        resting.vertices, lashing.vertices,
+        "the head dips and the tongue lashes forward"
+    );
+
+    // An explicit `-1.0` (the not-using-tongue sentinel) equals the rest mesh.
+    let cleared = entity_model_mesh(&[EntityModelInstance::frog(
+        956,
+        [0.0, 64.0, 0.0],
+        0.0,
+        FrogModelVariant::Temperate,
+    )
+    .with_frog_tongue_seconds(-1.0)]);
+    assert_eq!(cleared.vertices, resting.vertices);
+}
+
+#[test]
 fn frog_jump_animation_matches_vanilla_definition() {
     // Vanilla `FrogAnimation.FROG_JUMP`: 0.5s, NOT looping, five bones (body, the two arms, the two
     // legs), each with a ROTATION and a POSITION channel of two constant keyframes (10 channels, 20

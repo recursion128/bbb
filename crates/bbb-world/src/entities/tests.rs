@@ -3057,6 +3057,54 @@ fn entity_model_sources_project_frog_croak_seconds() {
 }
 
 #[test]
+fn entity_model_sources_project_frog_tongue_seconds() {
+    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
+    // Vanilla `Pose.USING_TONGUE(9, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated`
+    // starts `tongueAnimationState` when the pose becomes USING_TONGUE and stops it otherwise.
+    const VANILLA_POSE_STANDING_ID: i32 = 0;
+    const VANILLA_POSE_USING_TONGUE_ID: i32 = 9;
+    let tongue = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 55)
+            .unwrap()
+            .frog_tongue_seconds
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        55,
+        VANILLA_ENTITY_TYPE_FROG_ID,
+    ));
+
+    // A frog not in `Pose.USING_TONGUE` projects the `-1.0` stopped sentinel (no lash).
+    assert_eq!(tongue(&store, 1.0), -1.0);
+
+    // Entering `Pose.USING_TONGUE` starts the timer at the current age: vanilla `(ageInTicks -
+    // startTick) / 20`, so the elapsed seconds begin at `0` (plus the partial tick).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_USING_TONGUE_ID)],
+    }));
+    assert!((tongue(&store, 0.0) - 0.0).abs() < 1.0e-6);
+    assert!((tongue(&store, 0.5) - 0.025).abs() < 1.0e-6);
+
+    // Each client tick advances the elapsed seconds by `1 / 20 = 0.05`.
+    store.advance_entity_client_animations(1);
+    assert!((tongue(&store, 0.0) - 0.05).abs() < 1.0e-6);
+    store.advance_entity_client_animations(4);
+    assert!((tongue(&store, 0.0) - 0.25).abs() < 1.0e-6);
+
+    // Leaving `Pose.USING_TONGUE` stops the animation, returning the `-1.0` sentinel.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_STANDING_ID)],
+    }));
+    assert_eq!(tongue(&store, 1.0), -1.0);
+}
+
+#[test]
 fn entity_model_sources_project_frog_jump_seconds() {
     const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     // Vanilla `Pose.LONG_JUMPING(6, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated`

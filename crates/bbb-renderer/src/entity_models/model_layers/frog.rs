@@ -13,11 +13,13 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // chain), the `croaking_body` pouch, the tongue, and the two arms (with their hands). The looping
 // The looping `FrogAnimation.FROG_WALK` cycle ([`FROG_WALK`]), the triggered `FROG_CROAK` pouch
 // ([`FROG_CROAK`], gated on `frog_croak_seconds >= 0`), the `FROG_JUMP` long-jump hold pose
-// ([`FROG_JUMP`], gated on `frog_jump_seconds >= 0`), and the looping in-water `FROG_IDLE_WATER`
-// hover ([`FROG_IDLE_WATER`], gated on `frog_swim_idle_seconds >= 0`) are all reproduced. Only the
-// tongue-flick keyframe animation stays deferred — it needs the synced `DATA_TONGUE_TARGET_ID` prey
-// target — so a still, dry, non-croaking, non-jumping frog renders at the walk-sampled pose. The
-// three frog texture variants share this geometry on the wired texture-backed path.
+// ([`FROG_JUMP`], gated on `frog_jump_seconds >= 0`), the looping in-water `FROG_IDLE_WATER`
+// hover ([`FROG_IDLE_WATER`], gated on `frog_swim_idle_seconds >= 0`), and the triggered
+// `FROG_TONGUE` lash ([`FROG_TONGUE`], gated on `frog_tongue_seconds >= 0`) are all reproduced — so a
+// still, dry, idle frog renders at the walk-sampled pose. Only the cross-entity prey-targeting that
+// visually aims the tongue at the eaten entity (`DATA_TONGUE_TARGET_ID`) stays deferred; it is not
+// part of the `FrogModel` animation. The three frog texture variants share this geometry on the
+// wired texture-backed path.
 
 // `body`: the `texOffs(3,1)` 7×3×9 box plus the `texOffs(23,22)` 7×0×9 underside plane.
 pub(in crate::entity_models) const FROG_BODY_CUBES: [ModelCube; 2] = [
@@ -537,6 +539,66 @@ pub(in crate::entity_models) const FROG_CROAK: AnimationDefinition = AnimationDe
     bones: &FROG_CROAK_BONES,
 };
 
+// ----- `FrogAnimation.FROG_TONGUE` (length 0.5s, NOT looping). The `head` dips down (-60° xRot) for
+// the lash and back; the `tongue` rocks (-18° xRot) and lashes forward via a z-SCALE to 5×
+// (`scaleVec(0.5, 1, 5)`) then retracts. All keyframes LINEAR. NOTE the vanilla quirk: the `head`
+// SCALE channel uses `degreeVec` (not `scaleVec`), so the head gains a tiny `~0.0174` scale offset
+// for the whole lash (`degreeVec(1,1,1) = (π/180, …)`) — transcribed exactly. -----
+
+const FROG_TONGUE_HEAD_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.0833, degree_vec(-60.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, degree_vec(-60.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const FROG_TONGUE_HEAD_SCALE: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(0.0833, degree_vec(0.998, 1.0, 1.0), LINEAR),
+    keyframe(0.4167, degree_vec(0.998, 1.0, 1.0), LINEAR),
+    keyframe(0.5, degree_vec(1.0, 1.0, 1.0), LINEAR),
+];
+const FROG_TONGUE_TONGUE_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.0833, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, degree_vec(-18.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const FROG_TONGUE_TONGUE_SCALE: [Keyframe; 3] = [
+    keyframe(0.0833, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(0.1667, scale_vec(0.5, 1.0, 5.0), LINEAR),
+    keyframe(0.4167, scale_vec(1.0, 1.0, 1.0), LINEAR),
+];
+
+const FROG_TONGUE_HEAD_CHANNELS: [AnimationChannel; 2] = [
+    rot(&FROG_TONGUE_HEAD_ROT),
+    scale_channel(&FROG_TONGUE_HEAD_SCALE),
+];
+const FROG_TONGUE_TONGUE_CHANNELS: [AnimationChannel; 2] = [
+    rot(&FROG_TONGUE_TONGUE_ROT),
+    scale_channel(&FROG_TONGUE_TONGUE_SCALE),
+];
+const FROG_TONGUE_BONES: [BoneAnimation; 2] = [
+    BoneAnimation {
+        bone: "head",
+        channels: &FROG_TONGUE_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tongue",
+        channels: &FROG_TONGUE_TONGUE_CHANNELS,
+    },
+];
+
+/// Vanilla `FrogAnimation.FROG_TONGUE`: the triggered 0.5s tongue-lash (NOT looping), sampled by
+/// `FrogModel.setupAnim` via `tongueAnimation.apply(tongueAnimationState, ageInTicks)` while the frog
+/// is in `Pose.USING_TONGUE`. The renderer applies it only when the projected `frog_tongue_seconds >=
+/// 0`. The head dips and the `tongue` part scales forward; the cross-entity prey-targeting that aims
+/// the tongue at the eaten entity is NOT part of the model animation and is not reproduced.
+pub(in crate::entity_models) const FROG_TONGUE: AnimationDefinition = AnimationDefinition {
+    length_seconds: 0.5,
+    looping: false,
+    bones: &FROG_TONGUE_BONES,
+};
+
 // ----- `FrogAnimation.FROG_JUMP` (length 0.5s, NOT looping). A static long-jump hold pose: every
 // channel holds one value across both `0.0` and `0.5` keyframes (LINEAR). The `body` tips back
 // `-22.5°`; the two arms tuck back `-56.14°` and lift `+1` y; the two legs cock `45°`. `posVec`
@@ -815,6 +877,24 @@ impl EntityModel for FrogModel {
         // hidden at its collapsed bind pose.
         let croak_seconds = instance.render_state.frog_croak_seconds;
 
+        // Vanilla `FrogModel.setupAnim` also runs `tongueAnimation.apply(tongueAnimationState,
+        // ageInTicks)`. The projected `frog_tongue_seconds` carries the elapsed seconds since the
+        // `Pose.USING_TONGUE` lash started, or `-1` when the frog is not using its tongue. While
+        // active, the `FROG_TONGUE` ROTATION/SCALE channels dip the `head` and lash the `tongue`
+        // forward (a z-scale); otherwise the head and tongue hold their bind pose. (Additive offsets,
+        // like the other one-shots, so the apply order vs vanilla does not matter.)
+        let tongue_seconds = instance.render_state.frog_tongue_seconds;
+        let tongue_apply = |part: &mut ModelPart, bone: &str| {
+            if tongue_seconds < 0.0 {
+                return;
+            }
+            let elapsed = keyframe_elapsed_seconds(&FROG_TONGUE, tongue_seconds);
+            let (position, rotation, scale_offset) =
+                sample_bone_offsets_with_scale(&FROG_TONGUE, bone, elapsed, 1.0);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+            part.scale = keyframe_animated_scale(scale_offset);
+        };
+
         let frog_root = self.root.child_mut("root");
         {
             let body = frog_root.child_mut("body");
@@ -845,6 +925,11 @@ impl EntityModel for FrogModel {
             } else {
                 croaking_body.visible = false;
             }
+
+            // The `head` dips and the `tongue` lashes during `Pose.USING_TONGUE`; both hold the bind
+            // pose otherwise (the frog model applies no head look).
+            tongue_apply(body.child_mut("head"), "head");
+            tongue_apply(body.child_mut("tongue"), "tongue");
         }
         {
             let left_leg = frog_root.child_mut("left_leg");

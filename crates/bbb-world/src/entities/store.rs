@@ -678,6 +678,12 @@ impl EntityStore {
             frog_croak_seconds: client_animations
                 .animations
                 .frog_croak_seconds(partial_ticks),
+            // Vanilla `Frog.tongueAnimationState`: the elapsed seconds since `Pose.USING_TONGUE`
+            // started, or `-1.0` for a frog not using its tongue (only the frog is given a tongue
+            // animation state).
+            frog_tongue_seconds: client_animations
+                .animations
+                .frog_tongue_seconds(partial_ticks),
             // Vanilla `Frog.jumpAnimationState`: the elapsed seconds since `Pose.LONG_JUMPING`
             // started, or `-1.0` for a non-jumping frog (only the frog is given a jump animation
             // state).

@@ -394,6 +394,14 @@ pub struct EntityModelSourceState {
     /// entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub frog_croak_seconds: f32,
+    /// Vanilla frog tongue timing (`FrogRenderState.tongueAnimationState`, the triggered
+    /// `AnimationState` started/stopped by the synced `Pose.USING_TONGUE`): the elapsed seconds since
+    /// the tongue lash started, which `FrogModel.setupAnim` uses to dip the head and z-scale the
+    /// `tongue` part forward (the `FrogAnimation.FROG_TONGUE` animation). Projected only for the frog
+    /// and `-1.0` (the stopped-animation sentinel, so no keyframe is applied) for a frog not using its
+    /// tongue and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub frog_tongue_seconds: f32,
     /// Vanilla frog jump timing (`FrogRenderState.jumpAnimationState`, the triggered `AnimationState`
     /// started/stopped by the synced `Pose.LONG_JUMPING`): the elapsed seconds since the long-jump
     /// started, which `FrogModel.setupAnim` uses to sample the `FrogAnimation.FROG_JUMP` animation.
