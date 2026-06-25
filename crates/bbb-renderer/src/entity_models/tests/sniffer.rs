@@ -162,6 +162,54 @@ fn sniffer_walk_moves_the_limbs_and_composes_with_the_look() {
 }
 
 #[test]
+fn sniffer_search_walk_animation_matches_vanilla_definition() {
+    // Vanilla `SnifferAnimation.SNIFFER_SNIFF_SEARCH`: 2.0 s looping, the same ten walk bones plus a
+    // `nose` SCALE channel — eleven bones, 120 keyframes total.
+    assert_eq!(SNIFFER_SNIFF_SEARCH.length_seconds, 2.0);
+    assert!(SNIFFER_SNIFF_SEARCH.looping);
+    assert_eq!(SNIFFER_SNIFF_SEARCH.bones.len(), 11);
+    assert_eq!(SNIFFER_SNIFF_SEARCH.bones[10].bone, "nose");
+    let keyframes: usize = SNIFFER_SNIFF_SEARCH
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 120);
+
+    // The body pitches to `degreeVec(2.5, 0, 0)` at t=0.
+    let (_, body_rot) = sample_bone_offsets(&SNIFFER_SNIFF_SEARCH, "body", 0.0, 1.0);
+    assert!((body_rot[0] - 2.5_f32.to_radians()).abs() < 1.0e-5);
+
+    // The nose puffs: at its t=0.4583 keyframe `scaleVec(1, 2.5, 1)` ⇒ y-scale 2.5.
+    let (_, _, nose_scale) =
+        sample_bone_offsets_with_scale(&SNIFFER_SNIFF_SEARCH, "nose", 0.4583, 1.0);
+    let puffed = keyframe_animated_scale(nose_scale);
+    assert!(
+        (puffed[1] - 2.5).abs() < 1.0e-3,
+        "the nose puffs in y: {puffed:?}"
+    );
+}
+
+#[test]
+fn sniffer_searching_swaps_in_the_search_walk() {
+    // A searching sniffer (DATA_STATE == SEARCHING) samples SNIFFER_SNIFF_SEARCH in place of the base
+    // walk, so it poses differently from a non-searching walker at the same walk phase, and the nose
+    // puffs. Same vertex count (no cubes added/removed).
+    let walking = entity_model_mesh(&[
+        EntityModelInstance::sniffer(935, [0.0, 64.0, 0.0], 0.0).with_walk_animation(5.0, 1.0)
+    ]);
+    let searching = entity_model_mesh(&[EntityModelInstance::sniffer(936, [0.0, 64.0, 0.0], 0.0)
+        .with_walk_animation(5.0, 1.0)
+        .with_sniffer_is_searching(true)]);
+    assert_eq!(walking.vertices.len(), searching.vertices.len());
+    assert_ne!(
+        walking.vertices, searching.vertices,
+        "the search-walk poses the body/legs/nose differently from the base walk"
+    );
+}
+
+#[test]
 fn sniffer_state_animations_match_vanilla_definitions() {
     // Vanilla `SnifferAnimation` lengths / looping flags for the one-shots `SnifferModel.setupAnim`
     // applies from the synced state.

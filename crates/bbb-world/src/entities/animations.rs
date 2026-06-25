@@ -67,6 +67,7 @@ const SNIFFER_STATE_IDLING_ID: i32 = 0;
 const SNIFFER_STATE_FEELING_HAPPY_ID: i32 = 1;
 const SNIFFER_STATE_SCENTING_ID: i32 = 2;
 const SNIFFER_STATE_SNIFFING_ID: i32 = 3;
+const SNIFFER_STATE_SEARCHING_ID: i32 = 4;
 const SNIFFER_STATE_DIGGING_ID: i32 = 5;
 const SNIFFER_STATE_RISING_ID: i32 = 6;
 const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
@@ -493,6 +494,13 @@ impl SnifferAnimationState {
         }
         self.state_id = state_id;
         self.keyframe.start_age = sniffer_animated_state(state_id).map(|_| age_ticks);
+    }
+
+    /// Vanilla `Sniffer.isSearching()` (`getState() == SEARCHING`): whether the synced `DATA_STATE`
+    /// is `SEARCHING`, which `SnifferModel.setupAnim` uses to swap the base walk for the looping
+    /// `SNIFFER_SNIFF_SEARCH` search-walk.
+    fn is_searching(self) -> bool {
+        self.state_id == SNIFFER_STATE_SEARCHING_ID
     }
 
     /// The active state's elapsed seconds for the renderer (`-1.0` when no triggered animation is
@@ -2564,6 +2572,13 @@ impl EntityClientAnimationState {
         self.sniffer.map_or((-1, -1.0), |state| {
             state.animation(self.age_ticks, partial_tick)
         })
+    }
+
+    /// Vanilla `SnifferRenderState.isSearching` (`Sniffer.isSearching()`): whether the sniffer's
+    /// synced `DATA_STATE` is `SEARCHING`, gating `SnifferModel.setupAnim`'s swap of the base walk for
+    /// the looping `SNIFFER_SNIFF_SEARCH` search-walk. `false` for every other state and entity.
+    pub fn sniffer_is_searching(&self) -> bool {
+        self.sniffer.is_some_and(|state| state.is_searching())
     }
 
     /// Vanilla `Armadillo.shouldHideInShell()` projected for the renderer `isHidingInShell` shell-ball

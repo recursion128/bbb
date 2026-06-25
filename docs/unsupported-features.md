@@ -2066,9 +2066,12 @@ When an agent does any of the following, update this file in the same slice:
       layer the one-shot over the walk: DIGGING(5)→`SNIFFER_DIG` (8 s), SNIFFING(3)→`SNIFFER_LONGSNIFF`
       (1 s), RISING(6)→`SNIFFER_STAND_UP` (3 s), FEELING_HAPPY(1)→`SNIFFER_HAPPY` (2 s looping),
       SCENTING(2)→`SNIFFER_SNIFFSNIFF` (8 s looping); a state change restarts the timer from 0. The
-      remaining `SnifferModel.setupAnim` is deferred: the search-walk variant (`SNIFFER_SNIFF_SEARCH`,
-      gated on the un-synced `isSearching`/`walkAnimationPos`) and the baby-transform
-      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`). The base texture is now bound on the textured path
+      `SNIFFER_SNIFF_SEARCH` search-walk variant IS now reproduced: `Sniffer.isSearching()` (the synced
+      `DATA_STATE == SEARCHING`, projected as `sniffer_is_searching` — the "un-synced" label was wrong;
+      it is the same enum the one-shots read) swaps the looping 2.0 s `SNIFFER_SNIFF_SEARCH` in for the
+      base `SNIFFER_WALK` under the same `applyWalk(..., 9, 100)`, adding a head-down shift and a `nose`
+      SCALE puff over the eleven animated bones. Only the baby-transform
+      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`) stays deferred. The base texture is now bound on the textured path
       (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture
       side. The colored debug path stays as a fallback (it approximates the body with one brown tint
       and the nose pad with a pink tint)

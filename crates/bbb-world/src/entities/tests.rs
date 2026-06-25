@@ -3175,6 +3175,14 @@ fn entity_model_sources_project_sniffer_state_animation() {
             source.sniffer_animation_seconds,
         )
     };
+    let is_searching = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 119)
+            .unwrap()
+            .sniffer_is_searching
+    };
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -3182,8 +3190,9 @@ fn entity_model_sources_project_sniffer_state_animation() {
         VANILLA_ENTITY_TYPE_SNIFFER_ID,
     ));
 
-    // An idling sniffer projects the `(-1, -1.0)` no-animation sentinel.
+    // An idling sniffer projects the `(-1, -1.0)` no-animation sentinel and is not searching.
     assert_eq!(animation(&store, 1.0), (-1, -1.0));
+    assert!(!is_searching(&store));
 
     // Entering `DIGGING` starts the dig one-shot at the current age: the id is the `DIGGING` ordinal
     // and the elapsed seconds begin at `0` (plus the partial tick), advancing `1 / 20` per tick.
@@ -3216,7 +3225,7 @@ fn entity_model_sources_project_sniffer_state_animation() {
     assert_eq!(animation(&store, 0.0), (SNIFFER_STATE_SNIFFING_ID, 0.0));
 
     // `SEARCHING` carries no one-shot (it drives the looping search-walk), so it clears to the
-    // no-animation sentinel.
+    // no-animation sentinel — but `sniffer_is_searching` flips true to swap in the search-walk.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
         values: vec![protocol_enum_data(
@@ -3226,8 +3235,9 @@ fn entity_model_sources_project_sniffer_state_animation() {
         )],
     }));
     assert_eq!(animation(&store, 1.0), (-1, -1.0));
+    assert!(is_searching(&store));
 
-    // Returning to `IDLING` likewise stays cleared.
+    // Returning to `IDLING` likewise stays cleared and is no longer searching.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
         values: vec![protocol_enum_data(
@@ -3237,6 +3247,7 @@ fn entity_model_sources_project_sniffer_state_animation() {
         )],
     }));
     assert_eq!(animation(&store, 1.0), (-1, -1.0));
+    assert!(!is_searching(&store));
 }
 
 #[test]

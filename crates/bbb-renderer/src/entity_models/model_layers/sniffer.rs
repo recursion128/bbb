@@ -12,14 +12,15 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // part at `offset(0, 5, 0)` parenting the body and the six legs; `body` parents the head, which
 // parents the two ears, the nose, and the lower beak. `setupAnim` sets `head.xRot/yRot` from the
 // plain look (reproduced through the projected look angles, the head's ear/nose/beak children
-// inheriting the turn), then applies a walk: while NOT searching it samples the looping
-// `SnifferAnimation.SNIFFER_WALK` ([`SNIFFER_WALK`]) via `applyWalk(..., 9, 100)`, rocking the body,
-// the head (the walk pitch ADDS onto the look), the two ears, and the six legs. It then layers the
-// active synced-`DATA_STATE` one-shot over the walk: DIGGING→[`SNIFFER_DIG`], SNIFFING→
-// [`SNIFFER_LONGSNIFF`], RISING→[`SNIFFER_STAND_UP`], FEELING_HAPPY→[`SNIFFER_HAPPY`], SCENTING→
-// [`SNIFFER_SNIFFSNIFF`] (driven by the projected `sniffer_animation_id`/`_seconds`). The search-walk
-// variant (`SNIFFER_SNIFF_SEARCH`, gated on the un-synced `isSearching`) and the baby-transform stay
-// deferred.
+// inheriting the turn), then applies a walk via `applyWalk(..., 9, 100)`: while NOT searching it
+// samples the looping `SnifferAnimation.SNIFFER_WALK` ([`SNIFFER_WALK`]); while `isSearching` (the
+// synced `DATA_STATE == SEARCHING`, projected as `sniffer_is_searching`) it swaps in the looping
+// `SNIFFER_SNIFF_SEARCH` ([`SNIFFER_SNIFF_SEARCH`]) search-walk, which adds a head-down shift and a
+// `nose` SCALE puff. Either rocks the body, the head (the walk pitch ADDS onto the look), the two
+// ears, and the six legs. It then layers the active synced-`DATA_STATE` one-shot over the walk:
+// DIGGING→[`SNIFFER_DIG`], SNIFFING→[`SNIFFER_LONGSNIFF`], RISING→[`SNIFFER_STAND_UP`],
+// FEELING_HAPPY→[`SNIFFER_HAPPY`], SCENTING→[`SNIFFER_SNIFFSNIFF`] (driven by the projected
+// `sniffer_animation_id`/`_seconds`). Only the baby-transform stays deferred.
 
 // `body`: the 25×29×40 trunk (texOffs(62,68)), a 25×24×40 inner block inflated by
 // `CubeDeformation(0.5)` (geometry `min -= 0.5`, `size += 1`, texOffs(62,0), un-inflated `uv_size`
@@ -547,6 +548,260 @@ pub(in crate::entity_models) const SNIFFER_WALK: AnimationDefinition = Animation
 /// the sample time, `WALK_ANIMATION_SCALE_FACTOR` the amplitude).
 pub(in crate::entity_models) const SNIFFER_WALK_SPEED_FACTOR: f32 = 9.0;
 pub(in crate::entity_models) const SNIFFER_WALK_SCALE_FACTOR: f32 = 100.0;
+
+// ----- `SnifferAnimation.SNIFFER_SNIFF_SEARCH` (length 2.0s, looping) -----
+//
+// `SnifferModel.setupAnim` samples it (while `isSearching`) IN PLACE OF the base `SNIFFER_WALK`, via
+// the same `applyWalk(walkAnimationPos, walkAnimationSpeed, 9.0, 100.0)`. It animates the same ten
+// walk bones (the six legs, body, head, two ears) plus a `nose` SCALE channel (the snout puffs as
+// the sniffer searches the ground). The `nose` SCALE keyframes use CatmullRom.
+
+const SNIFFER_SEARCH_RIGHT_FRONT_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_RIGHT_FRONT_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 3.0), LINEAR),
+    keyframe(0.75, pos_vec(0.0, 4.0, -1.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1667, pos_vec(0.0, 0.0, -1.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 0.0, 3.0), LINEAR),
+];
+const SNIFFER_SEARCH_RIGHT_MID_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(-7.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.3333, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.75, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(-7.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_RIGHT_MID_LEG_POS: [Keyframe; 7] = [
+    keyframe(0.0, pos_vec(0.0, 2.67, -0.67), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.3333, pos_vec(0.0, 0.0, -2.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, 0.0, 2.0), LINEAR),
+    keyframe(1.1667, pos_vec(0.0, 0.0, 3.0), LINEAR),
+    keyframe(1.9167, pos_vec(0.0, 4.0, -1.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 2.67, -0.67), LINEAR),
+];
+const SNIFFER_SEARCH_RIGHT_HIND_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(25.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1667, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5833, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(1.75, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_RIGHT_HIND_LEG_POS: [Keyframe; 7] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(0.5833, pos_vec(0.0, 0.0, 2.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, 2.22, 0.78), LINEAR),
+    keyframe(1.3333, pos_vec(0.0, 4.0, -1.0), LINEAR),
+    keyframe(1.5833, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.75, pos_vec(0.0, 0.0, -2.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 0.0, -0.5), LINEAR),
+];
+const SNIFFER_SEARCH_LEFT_FRONT_LEG_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5833, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_LEFT_FRONT_LEG_POS: [Keyframe; 5] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, 0.0, -1.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, 0.0, 3.0), LINEAR),
+    keyframe(1.75, pos_vec(0.0, 4.0, -1.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_LEFT_MID_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1667, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(1.3333, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_LEFT_MID_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 2.0), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, 0.0, 3.0), LINEAR),
+    keyframe(0.9167, pos_vec(0.0, 4.0, -1.0), LINEAR),
+    keyframe(1.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.3333, pos_vec(0.0, 0.0, -2.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 0.0, 2.0), LINEAR),
+];
+const SNIFFER_SEARCH_LEFT_HIND_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(25.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5833, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(25.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_LEFT_HIND_LEG_POS: [Keyframe; 7] = [
+    keyframe(0.0, pos_vec(0.0, 2.22, 0.78), LINEAR),
+    keyframe(0.3333, pos_vec(0.0, 4.0, -1.0), LINEAR),
+    keyframe(0.5833, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, pos_vec(0.0, 0.0, -2.0), LINEAR),
+    keyframe(1.0, pos_vec(0.0, 0.0, -0.5), LINEAR),
+    keyframe(1.5833, pos_vec(0.0, 0.0, 2.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 2.22, 0.78), LINEAR),
+];
+const SNIFFER_SEARCH_BODY_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(2.5, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(1.25, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(2.5, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_HEAD_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(33.61503, 11.46526, 9.803), LINEAR),
+    keyframe(0.875, degree_vec(34.71128, 17.67415, 14.15251), LINEAR),
+    keyframe(1.125, degree_vec(37.21128, -17.67415, -14.15251), LINEAR),
+    keyframe(1.875, degree_vec(38.30529, -21.62827, -17.40292), LINEAR),
+    keyframe(2.0, degree_vec(35.0, 0.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_HEAD_POS: [Keyframe; 2] = [
+    keyframe(0.0, pos_vec(0.0, -2.0, 0.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, -2.0, 0.0), LINEAR),
+];
+const SNIFFER_SEARCH_LEFT_EAR_ROT: [Keyframe; 9] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, -2.5), LINEAR),
+    keyframe(0.25, degree_vec(0.0, 0.0, -15.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, -2.5), LINEAR),
+    keyframe(0.75, degree_vec(0.0, 0.0, -15.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, -2.5), LINEAR),
+    keyframe(1.25, degree_vec(0.0, 0.0, -15.0), LINEAR),
+    keyframe(1.5, degree_vec(0.0, 0.0, -2.5), LINEAR),
+    keyframe(1.75, degree_vec(0.0, 0.0, -15.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, -2.5), LINEAR),
+];
+const SNIFFER_SEARCH_RIGHT_EAR_ROT: [Keyframe; 9] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 2.5), LINEAR),
+    keyframe(0.25, degree_vec(0.0, 0.0, 15.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 2.5), LINEAR),
+    keyframe(0.75, degree_vec(0.0, 0.0, 15.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 2.5), LINEAR),
+    keyframe(1.25, degree_vec(0.0, 0.0, 15.0), LINEAR),
+    keyframe(1.5, degree_vec(0.0, 0.0, 2.5), LINEAR),
+    keyframe(1.75, degree_vec(0.0, 0.0, 15.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, 2.5), LINEAR),
+];
+const SNIFFER_SEARCH_NOSE_SCALE: [Keyframe; 16] = [
+    keyframe(0.0, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(0.0833, scale_vec(1.0, 1.5, 1.0), CATMULLROM),
+    keyframe(0.2083, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(0.375, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(0.4583, scale_vec(1.0, 2.5, 1.0), CATMULLROM),
+    keyframe(0.625, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(0.8333, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(0.9167, scale_vec(1.0, 2.5, 1.0), CATMULLROM),
+    keyframe(1.0833, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(1.2917, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(1.3333, scale_vec(1.0, 2.5, 1.0), CATMULLROM),
+    keyframe(1.5, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(1.625, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(1.6667, scale_vec(1.0, 3.5, 1.0), CATMULLROM),
+    keyframe(1.8333, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+    keyframe(2.0, scale_vec(1.0, 1.0, 1.0), CATMULLROM),
+];
+
+const SNIFFER_SEARCH_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&SNIFFER_SEARCH_RIGHT_FRONT_LEG_ROT),
+    pos(&SNIFFER_SEARCH_RIGHT_FRONT_LEG_POS),
+];
+const SNIFFER_SEARCH_RIGHT_MID_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&SNIFFER_SEARCH_RIGHT_MID_LEG_ROT),
+    pos(&SNIFFER_SEARCH_RIGHT_MID_LEG_POS),
+];
+const SNIFFER_SEARCH_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&SNIFFER_SEARCH_RIGHT_HIND_LEG_ROT),
+    pos(&SNIFFER_SEARCH_RIGHT_HIND_LEG_POS),
+];
+const SNIFFER_SEARCH_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&SNIFFER_SEARCH_LEFT_FRONT_LEG_ROT),
+    pos(&SNIFFER_SEARCH_LEFT_FRONT_LEG_POS),
+];
+const SNIFFER_SEARCH_LEFT_MID_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&SNIFFER_SEARCH_LEFT_MID_LEG_ROT),
+    pos(&SNIFFER_SEARCH_LEFT_MID_LEG_POS),
+];
+const SNIFFER_SEARCH_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&SNIFFER_SEARCH_LEFT_HIND_LEG_ROT),
+    pos(&SNIFFER_SEARCH_LEFT_HIND_LEG_POS),
+];
+const SNIFFER_SEARCH_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&SNIFFER_SEARCH_BODY_ROT)];
+const SNIFFER_SEARCH_HEAD_CHANNELS: [AnimationChannel; 2] =
+    [rot(&SNIFFER_SEARCH_HEAD_ROT), pos(&SNIFFER_SEARCH_HEAD_POS)];
+const SNIFFER_SEARCH_LEFT_EAR_CHANNELS: [AnimationChannel; 1] = [rot(&SNIFFER_SEARCH_LEFT_EAR_ROT)];
+const SNIFFER_SEARCH_RIGHT_EAR_CHANNELS: [AnimationChannel; 1] =
+    [rot(&SNIFFER_SEARCH_RIGHT_EAR_ROT)];
+const SNIFFER_SEARCH_NOSE_CHANNELS: [AnimationChannel; 1] =
+    [scale_channel(&SNIFFER_SEARCH_NOSE_SCALE)];
+
+const SNIFFER_SEARCH_BONES: [BoneAnimation; 11] = [
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &SNIFFER_SEARCH_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_mid_leg",
+        channels: &SNIFFER_SEARCH_RIGHT_MID_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &SNIFFER_SEARCH_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &SNIFFER_SEARCH_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_mid_leg",
+        channels: &SNIFFER_SEARCH_LEFT_MID_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &SNIFFER_SEARCH_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "body",
+        channels: &SNIFFER_SEARCH_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &SNIFFER_SEARCH_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_ear",
+        channels: &SNIFFER_SEARCH_LEFT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_ear",
+        channels: &SNIFFER_SEARCH_RIGHT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "nose",
+        channels: &SNIFFER_SEARCH_NOSE_CHANNELS,
+    },
+];
+
+/// Vanilla `SnifferAnimation.SNIFFER_SNIFF_SEARCH`: the looping 2.0s search-walk, sampled by
+/// `SnifferModel.setupAnim` (in place of `SNIFFER_WALK` while `isSearching`) via the same
+/// `applyWalk(..., 9.0, 100.0)`. It animates the same ten walk bones plus the `nose` SCALE puff.
+pub(in crate::entity_models) const SNIFFER_SNIFF_SEARCH: AnimationDefinition =
+    AnimationDefinition {
+        length_seconds: 2.0,
+        looping: true,
+        bones: &SNIFFER_SEARCH_BONES,
+    };
 
 // ----- The synced-state one-shot keyframe animations applied by `SnifferModel.setupAnim`:
 // `digAnimation`(DIGGING) / `longSniffAnimation`(SNIFFING) / `standUpAnimation`(RISING) /
@@ -1123,17 +1378,24 @@ impl EntityModel for SnifferModel {
         // Vanilla then `apply`s the active synced-state one-shot (dig/long-sniff/stand-up/happy/
         // sniff-sniff), whose offsets ADD onto the already-walk-posed parts (and onto the look for the
         // head). The projected `sniffer_animation_id` selects the def and `_seconds` the sample time.
+        // While `isSearching`, vanilla swaps the base walk for the looping `SNIFFER_SNIFF_SEARCH`
+        // search-walk (same `applyWalk` factors); it adds a head-down shift and a `nose` SCALE puff.
         let head_pitch = instance.render_state.head_pitch.to_radians();
         let head_yaw = instance.render_state.head_yaw.to_radians();
+        let walk_def: &AnimationDefinition = if instance.render_state.sniffer_is_searching {
+            &SNIFFER_SNIFF_SEARCH
+        } else {
+            &SNIFFER_WALK
+        };
         let (seconds, scale) = keyframe_walk_sample(
-            &SNIFFER_WALK,
+            walk_def,
             instance.render_state.walk_animation_pos,
             instance.render_state.walk_animation_speed,
             SNIFFER_WALK_SPEED_FACTOR,
             SNIFFER_WALK_SCALE_FACTOR,
         );
         let animate = |part: &mut ModelPart, bone: &str| {
-            let (position, rotation) = sample_bone_offsets(&SNIFFER_WALK, bone, seconds, scale);
+            let (position, rotation) = sample_bone_offsets(walk_def, bone, seconds, scale);
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 
@@ -1166,7 +1428,12 @@ impl EntityModel for SnifferModel {
             apply_one_shot(body, "body");
 
             let head = body.child_mut("head");
-            let (_, head_walk_rot) = sample_bone_offsets(&SNIFFER_WALK, "head", seconds, scale);
+            // The search-walk also shifts the head (a POSITION channel); the base walk has none, so
+            // this adds nothing while not searching. Apply the position, then compose the look with
+            // the walk rotation.
+            let (head_walk_pos, head_walk_rot) =
+                sample_bone_offsets(walk_def, "head", seconds, scale);
+            head.pose = keyframe_animated_pose(head.pose, head_walk_pos, [0.0, 0.0, 0.0]);
             head.pose.rotation = [
                 head_pitch + head_walk_rot[0],
                 head_yaw + head_walk_rot[1],
@@ -1182,7 +1449,16 @@ impl EntityModel for SnifferModel {
                 animate(head.child_mut(ear), ear);
                 apply_one_shot(head.child_mut(ear), ear);
             }
-            apply_one_shot(head.child_mut("nose"), "nose");
+            // The nose puffs via the search-walk's SCALE channel (the base walk has no nose channel,
+            // so this is identity while not searching); the one-shot long-sniff/sniff-sniff puff
+            // layers on after (searching carries no one-shot, so the two never both scale the nose).
+            {
+                let nose = head.child_mut("nose");
+                let (_, _, nose_walk_scale) =
+                    sample_bone_offsets_with_scale(walk_def, "nose", seconds, scale);
+                nose.scale = keyframe_animated_scale(nose_walk_scale);
+                apply_one_shot(nose, "nose");
+            }
         }
         for bone_name in [
             "right_front_leg",

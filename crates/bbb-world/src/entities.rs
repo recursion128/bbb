@@ -437,6 +437,12 @@ pub struct EntityModelSourceState {
     /// is running.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub sniffer_animation_seconds: f32,
+    /// Vanilla `SnifferRenderState.isSearching` (`Sniffer.isSearching()`, the synced `DATA_STATE` ==
+    /// `SEARCHING`): gates `SnifferModel.setupAnim`'s swap of the base `SNIFFER_WALK` for the looping
+    /// `SNIFFER_SNIFF_SEARCH` search-walk. `false` for every non-searching sniffer and every other
+    /// entity.
+    #[serde(default)]
+    pub sniffer_is_searching: bool,
     /// Vanilla `Armadillo.shouldHideInShell()` (`ArmadilloRenderState.isHidingInShell`, the synced
     /// `ARMADILLO_STATE` gated on the client `inStateTicks`): `true` for the steady SCARED ball and
     /// for the ROLLING/UNROLLING transition windows (rolling hides after tick 5, unrolling un-hides at

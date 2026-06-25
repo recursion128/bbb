@@ -348,6 +348,10 @@ entity_render_state! {
     /// `SnifferModel.setupAnim`. `-1.0` (the stopped-animation sentinel) for every other entity and
     /// for an idling/searching sniffer.
     (with_sniffer_animation_seconds) sniffer_animation_seconds: f32 = -1.0;
+    /// Vanilla `SnifferRenderState.isSearching` (`Sniffer.isSearching()`, synced `DATA_STATE` ==
+    /// `SEARCHING`): swaps the base `SNIFFER_WALK` for the looping `SNIFFER_SNIFF_SEARCH` search-walk
+    /// in `SnifferModel.setupAnim`. `false` for every non-searching sniffer and every other entity.
+    (with_sniffer_is_searching) sniffer_is_searching: bool = false;
     /// Vanilla `ArmadilloRenderState.isHidingInShell` (`Armadillo.shouldHideInShell()`): the synced
     /// `ARMADILLO_STATE` gated on the client `inStateTicks` — `true` for the steady SCARED ball and
     /// for the ROLLING/UNROLLING transition windows. `ArmadilloModel.setupAnim` renders the shell ball
@@ -1726,6 +1730,7 @@ mod tests {
                 frog_swim_idle_seconds: -1.0,
                 sniffer_animation_id: -1,
                 sniffer_animation_seconds: -1.0,
+                sniffer_is_searching: false,
                 armadillo_is_hiding_in_shell: false,
                 armadillo_roll_up_seconds: -1.0,
                 armadillo_roll_out_seconds: -1.0,

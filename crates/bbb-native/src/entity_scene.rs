@@ -626,6 +626,7 @@ fn entity_model_instance(
         .with_frog_swim_idle_seconds(source.frog_swim_idle_seconds)
         .with_sniffer_animation_id(source.sniffer_animation_id)
         .with_sniffer_animation_seconds(source.sniffer_animation_seconds)
+        .with_sniffer_is_searching(source.sniffer_is_searching)
         .with_armadillo_is_hiding_in_shell(source.armadillo_is_hiding_in_shell)
         .with_armadillo_roll_up_seconds(source.armadillo_roll_up_seconds)
         .with_armadillo_roll_out_seconds(source.armadillo_roll_out_seconds)

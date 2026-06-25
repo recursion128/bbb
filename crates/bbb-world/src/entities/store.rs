@@ -704,6 +704,10 @@ impl EntityStore {
                 .camel_dash_seconds(partial_ticks),
             sniffer_animation_id,
             sniffer_animation_seconds,
+            // Vanilla `Sniffer.isSearching()`: gates the renderer's swap of the base walk for the
+            // looping `SNIFFER_SNIFF_SEARCH` search-walk. `false` for every non-searching sniffer and
+            // every other entity.
+            sniffer_is_searching: client_animations.animations.sniffer_is_searching(),
             // Vanilla `Armadillo.shouldHideInShell` + the rollUp/rollOut transition timers: the
             // shell-ball hide window and the curl-in / un-curl elapsed seconds. `false`/`-1.0` for
             // every non-armadillo (only the armadillo is given a roll animation state).
