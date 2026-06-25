@@ -833,13 +833,28 @@ When an agent does any of the following, update this file in the same slice:
         ones back-to-front, jittered by a faithful Java LCG seeded on the item
         id). These entities are excluded from the billboard path; thrown-item
         projectiles keep their billboard.
-      - remaining slices: the other three consumers (held items, item frames /
-        armor-stand, HUD 3D icons), and their display transforms (gui/fixed/
-        firstperson/thirdperson/head; only `ground` is wired, with the default
-        block + generated transforms — custom per-item display transforms are
-        not yet retained). Item lighting context (GUI front-lit vs world
-        diffuse) is an open point — the baked `shade` currently uses the terrain
-        cardinal `Direction.getShade` for both block- and generated-items.
+      - second consumer DONE (held items, players, third-person, main hand):
+        a player carrying an item in the main hand renders it as a 3D model
+        attached to the posed right-arm bone. The renderer exposes the hand
+        world transform via `player_hand_attach_transform` (`entity_models/
+        held_item.rs`): vanilla `ItemInHandLayer` + `HumanoidModel.translateToHand`
+        = `root.translateAndRotate · arm.translateAndRotate · rotX(-90°) ·
+        rotY(180°) · T((left?-1:1), 2, -10)/16` (built on a new
+        `ModelPart::child_attach_transform`). Native `held_item_models` resolves
+        the held stack to the same block/flat quads as the dropped path and
+        applies the item's `THIRD_PERSON_RIGHT_HAND` display transform (block
+        `[75,45,0]`/`[0,2.5,0]/16` scale `0.375`; generated `[0,0,0]`/`[0,3,1]/16`
+        scale `0.55`), merging into the same two atlas draws.
+      - remaining slices: the other two consumers (item frames / armor-stand,
+        HUD 3D icons); held-item refinements (off-hand — needs the left-hand
+        display mirror; handheld-tool third-person transform; humanoid MOBS —
+        the renderer hand transform is player-only; first-person viewmodel); and
+        per-item custom display transforms (gui/fixed/firstperson/head; only
+        `ground` + the default block/generated `thirdperson` are wired — pack
+        parses `BlockModelDisplayTransforms` but native item_runtime drops it).
+        Item lighting context (GUI front-lit vs world diffuse) is an open point —
+        the baked `shade` currently uses the terrain cardinal
+        `Direction.getShade` for both block- and generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried
