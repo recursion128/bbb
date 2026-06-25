@@ -36,8 +36,8 @@ pub use crate::entity_models::{
     PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily,
     RabbitModelVariant, SalmonModelSize, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
     SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{

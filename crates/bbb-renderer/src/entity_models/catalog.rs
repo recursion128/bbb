@@ -281,6 +281,7 @@ pub enum EntityModelKind {
         tame: bool,
         angry: bool,
         collar_color: Option<EntityDyeColor>,
+        variant: WolfModelVariant,
     },
     Horse {
         baby: bool,
@@ -882,6 +883,23 @@ impl EntityDyeColor {
             1.0,
         ]
     }
+}
+
+/// Vanilla `WolfVariant` (the synced `Wolf.DATA_VARIANT_ID` registry holder): the nine registered
+/// biome wolf coats, sharing one `WolfModel` and differing only by texture. Each variant supplies a
+/// wild/tame/angry × adult/baby texture set (`WolfVariants.register`). `Pale` is the vanilla
+/// `WolfVariants.DEFAULT`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WolfModelVariant {
+    Pale,
+    Spotted,
+    Snowy,
+    Black,
+    Ashen,
+    Rusty,
+    Woods,
+    Chestnut,
+    Striped,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

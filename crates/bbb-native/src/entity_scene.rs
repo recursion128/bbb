@@ -10,7 +10,7 @@ use bbb_renderer::{
     PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
     SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
     SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
@@ -354,6 +354,10 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
+/// `Wolf.DATA_VARIANT_ID` data id (23): the synced `Holder<WolfVariant>` registry id, defined right
+/// after `DATA_ANGER_END_TIME` (22) and before `DATA_SOUND_VARIANT_ID` (24). `WolfRenderer` keys the
+/// base texture on the resolved variant.
+const WOLF_VARIANT_DATA_ID: u8 = 23;
 /// `Bee.DATA_FLAGS_ID` data id (18, BYTE): the bee flags byte, the first `Bee`-own accessor
 /// (`AgeableMob` consumes 16 baby + 17 age-locked, so `Bee` starts at 18).
 const BEE_FLAGS_DATA_ID: u8 = 18;
@@ -408,6 +412,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let pig_variants = world.registry_content("minecraft:pig_variant");
     let frog_variants = world.registry_content("minecraft:frog_variant");
     let cat_variants = world.registry_content("minecraft:cat_variant");
+    let wolf_variants = world.registry_content("minecraft:wolf_variant");
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick)
@@ -427,6 +432,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
                 pig_variants,
                 frog_variants,
                 cat_variants,
+                wolf_variants,
             )
         })
         .collect()
@@ -806,6 +812,7 @@ fn entity_model_instance(
     pig_variants: Option<&RegistryContentState>,
     frog_variants: Option<&RegistryContentState>,
     cat_variants: Option<&RegistryContentState>,
+    wolf_variants: Option<&RegistryContentState>,
 ) -> Option<EntityModelInstance> {
     let mut kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
@@ -817,6 +824,7 @@ fn entity_model_instance(
         pig_variants,
         frog_variants,
         cat_variants,
+        wolf_variants,
     );
     // Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`: the
     // shell-ball swap is gated on the client `inStateTicks`, which `entity_model_kind` (data-only)
@@ -1436,7 +1444,16 @@ fn entity_model_kind(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    entity_model_kind_with_registries(entity_type_id, data_values, None, None, None, None, None)
+    entity_model_kind_with_registries(
+        entity_type_id,
+        data_values,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
 }
 
 fn entity_model_kind_with_registries(
@@ -1447,6 +1464,7 @@ fn entity_model_kind_with_registries(
     pig_variants: Option<&RegistryContentState>,
     frog_variants: Option<&RegistryContentState>,
     cat_variants: Option<&RegistryContentState>,
+    wolf_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     entity_model_kind_with_time_and_registries(
         entity_type_id,
@@ -1458,6 +1476,7 @@ fn entity_model_kind_with_registries(
         pig_variants,
         frog_variants,
         cat_variants,
+        wolf_variants,
     )
 }
 
@@ -1471,6 +1490,7 @@ fn entity_model_kind_with_time_and_registries(
     pig_variants: Option<&RegistryContentState>,
     frog_variants: Option<&RegistryContentState>,
     cat_variants: Option<&RegistryContentState>,
+    wolf_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, chicken_variants),
@@ -1582,7 +1602,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => zombie_nautilus_model_kind(),
-        VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
+        VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time, wolf_variants),
         VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
         VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true, cat_variants),
         VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false, cat_variants),
@@ -2043,6 +2063,7 @@ fn player_model_kind(
 fn wolf_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
+    wolf_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
     let tame =
         (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_TAME_FLAG) != 0;
@@ -2057,6 +2078,81 @@ fn wolf_model_kind(
                 WOLF_DEFAULT_COLLAR_COLOR_ID,
             ))
         }),
+        variant: wolf_model_variant(values, wolf_variants),
+    }
+}
+
+/// Vanilla `WolfRenderer`: resolve the synced `Wolf.DATA_VARIANT_ID` registry holder to the renderer
+/// variant. Mirrors [`cat_model_variant`] — prefer the dynamic `wolf_variant` registry order the
+/// server sent, falling back to the static vanilla registration order, and to `Pale` (the vanilla
+/// `WolfVariants.DEFAULT`) when no holder is present.
+fn wolf_model_variant(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> WolfModelVariant {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == WOLF_VARIANT_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::WolfVariant,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .map(|id| {
+            if let Some(registry) = variants {
+                wolf_variant_from_registry_id(registry, id).unwrap_or(WolfModelVariant::Pale)
+            } else {
+                wolf_variant_from_vanilla_registry_id(id)
+            }
+        })
+        .unwrap_or(WolfModelVariant::Pale)
+}
+
+fn wolf_variant_from_registry_id(
+    registry: &RegistryContentState,
+    registry_id: i32,
+) -> Option<WolfModelVariant> {
+    if registry_id < 0 {
+        return None;
+    }
+    registry
+        .entries
+        .get(registry_id as usize)
+        .and_then(|entry| wolf_variant_from_entry_id(entry.id.as_str()))
+}
+
+fn wolf_variant_from_entry_id(id: &str) -> Option<WolfModelVariant> {
+    match id {
+        "minecraft:pale" => Some(WolfModelVariant::Pale),
+        "minecraft:spotted" => Some(WolfModelVariant::Spotted),
+        "minecraft:snowy" => Some(WolfModelVariant::Snowy),
+        "minecraft:black" => Some(WolfModelVariant::Black),
+        "minecraft:ashen" => Some(WolfModelVariant::Ashen),
+        "minecraft:rusty" => Some(WolfModelVariant::Rusty),
+        "minecraft:woods" => Some(WolfModelVariant::Woods),
+        "minecraft:chestnut" => Some(WolfModelVariant::Chestnut),
+        "minecraft:striped" => Some(WolfModelVariant::Striped),
+        _ => None,
+    }
+}
+
+// Vanilla `WolfVariants.bootstrap` registers pale/spotted/snowy/black/ashen/rusty/woods/chestnut/
+// striped in that order, so the static fallback ids (used before the dynamic `wolf_variant` registry
+// arrives) are 0..=8. The vanilla default is PALE.
+fn wolf_variant_from_vanilla_registry_id(registry_id: i32) -> WolfModelVariant {
+    match registry_id {
+        1 => WolfModelVariant::Spotted,
+        2 => WolfModelVariant::Snowy,
+        3 => WolfModelVariant::Black,
+        4 => WolfModelVariant::Ashen,
+        5 => WolfModelVariant::Rusty,
+        6 => WolfModelVariant::Woods,
+        7 => WolfModelVariant::Chestnut,
+        8 => WolfModelVariant::Striped,
+        _ => WolfModelVariant::Pale,
     }
 }
 
@@ -5909,7 +6005,8 @@ mod tests {
                 None,
                 None,
                 None,
-                None
+                None,
+                None,
             ),
             EntityModelKind::Chicken {
                 variant: ChickenModelVariant::Temperate,
@@ -6016,7 +6113,8 @@ mod tests {
                 Some(cow_registry),
                 None,
                 None,
-                None
+                None,
+                None,
             ),
             EntityModelKind::Cow {
                 variant: CowModelVariant::Temperate,
@@ -6123,7 +6221,8 @@ mod tests {
                 None,
                 Some(pig_registry),
                 None,
-                None
+                None,
+                None,
             ),
             EntityModelKind::Pig {
                 variant: PigModelVariant::Temperate,
@@ -6738,6 +6837,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Bee {
                 baby: false,
@@ -6753,6 +6853,7 @@ mod tests {
                 &[protocol_long_data(BEE_ANGER_END_TIME_DATA_ID, 100)],
                 0.0,
                 10,
+                None,
                 None,
                 None,
                 None,
@@ -7343,6 +7444,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Sheep {
                 baby: false,
@@ -7366,6 +7468,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Sheep {
                 baby: false,
@@ -7384,6 +7487,7 @@ mod tests {
                 )],
                 25.0,
                 0,
+                None,
                 None,
                 None,
                 None,
@@ -8123,6 +8227,7 @@ mod tests {
                 tame: false,
                 angry: false,
                 collar_color: None,
+                variant: WolfModelVariant::Pale,
             }
         );
         assert_eq!(
@@ -8135,6 +8240,7 @@ mod tests {
                 tame: false,
                 angry: false,
                 collar_color: None,
+                variant: WolfModelVariant::Pale,
             }
         );
         assert_eq!(
@@ -8150,6 +8256,7 @@ mod tests {
                 tame: true,
                 angry: false,
                 collar_color: Some(EntityDyeColor::Red),
+                variant: WolfModelVariant::Pale,
             }
         );
         assert_eq!(
@@ -8165,6 +8272,7 @@ mod tests {
                 tame: true,
                 angry: false,
                 collar_color: Some(EntityDyeColor::Blue),
+                variant: WolfModelVariant::Pale,
             }
         );
         assert_eq!(
@@ -8181,6 +8289,7 @@ mod tests {
                 tame: true,
                 angry: false,
                 collar_color: Some(EntityDyeColor::Blue),
+                variant: WolfModelVariant::Pale,
             }
         );
         assert_eq!(
@@ -8193,6 +8302,7 @@ mod tests {
                 tame: false,
                 angry: false,
                 collar_color: None,
+                variant: WolfModelVariant::Pale,
             }
         );
         // The adult cat, ocelot, and fox render through their dedicated models (cat = the shared
@@ -8352,6 +8462,72 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_kind_projects_wolf_variant_from_registry_and_fallback() {
+        // Vanilla `WolfRenderer` keys the texture on the synced `Wolf.DATA_VARIANT_ID` (index 23)
+        // registry holder. The dynamic `wolf_variant` registry order the server sent wins; without it
+        // the static `WolfVariants.bootstrap` order is the fallback. The default is `Pale`.
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            "minecraft:wolf_variant",
+            0,
+            vec![
+                RegistryPacketEntry::stub("minecraft:striped"),
+                RegistryPacketEntry::stub("minecraft:ashen"),
+                RegistryPacketEntry::stub("minecraft:woods"),
+            ],
+        );
+        let wolf_registry = world.registry_content("minecraft:wolf_variant").unwrap();
+
+        // Registry id 1 → the second entry the server declared (`ashen`).
+        assert_eq!(
+            entity_model_kind_with_registries(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[protocol_wolf_variant_data(1)],
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(wolf_registry),
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: false,
+                collar_color: None,
+                variant: WolfModelVariant::Ashen,
+            }
+        );
+
+        // No dynamic registry → the static vanilla order: id 3 is `black`.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[protocol_wolf_variant_data(3)]
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: false,
+                collar_color: None,
+                variant: WolfModelVariant::Black,
+            }
+        );
+
+        // No variant holder at all → the vanilla `WolfVariants.DEFAULT` (`Pale`).
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WOLF_ID, &[]),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: false,
+                collar_color: None,
+                variant: WolfModelVariant::Pale,
+            }
+        );
+    }
+
+    #[test]
     fn entity_model_kind_uses_vanilla_cat_variant_metadata() {
         // Without the dynamic `cat_variant` registry the bootstrap order (tabby=0..all_black=10) is
         // the static fallback; the vanilla default is BLACK. The ocelot has no breed.
@@ -8472,7 +8648,8 @@ mod tests {
                 None,
                 None,
                 None,
-                Some(cat_registry)
+                Some(cat_registry),
+                None,
             ),
             EntityModelKind::Feline {
                 cat: true,
@@ -8546,12 +8723,14 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Wolf {
                 baby: false,
                 tame: false,
                 angry: true,
                 collar_color: None,
+                variant: WolfModelVariant::Pale,
             }
         );
         assert_eq!(
@@ -8565,12 +8744,14 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Wolf {
                 baby: false,
                 tame: false,
                 angry: false,
                 collar_color: None,
+                variant: WolfModelVariant::Pale,
             }
         );
         assert_eq!(
@@ -8587,12 +8768,14 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
             ),
             EntityModelKind::Wolf {
                 baby: false,
                 tame: true,
                 angry: true,
                 collar_color: Some(EntityDyeColor::Red),
+                variant: WolfModelVariant::Pale,
             }
         );
     }
@@ -9478,6 +9661,18 @@ mod tests {
             serializer_id: 21,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CatVariant,
+                id,
+            },
+        }
+    }
+
+    fn protocol_wolf_variant_data(id: i32) -> EntityDataValue {
+        // Vanilla `EntityDataSerializers.WOLF_VARIANT` is serializer id 25.
+        EntityDataValue {
+            data_id: WOLF_VARIANT_DATA_ID,
+            serializer_id: 25,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::WolfVariant,
                 id,
             },
         }

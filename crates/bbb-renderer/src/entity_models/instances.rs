@@ -1487,6 +1487,7 @@ impl EntityModelInstance {
                 tame,
                 angry,
                 collar_color: tame.then_some(collar_color).flatten(),
+                variant: WolfModelVariant::Pale,
             },
             position,
             y_rot,
@@ -1805,6 +1806,7 @@ mod tests {
                 tame: false,
                 angry: false,
                 collar_color: None,
+                variant: WolfModelVariant::Pale,
             }
         );
 

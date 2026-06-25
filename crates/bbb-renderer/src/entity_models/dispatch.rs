@@ -306,11 +306,12 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             tame,
             angry,
             collar_color,
+            variant,
         } => sink.model(
             WolfModel::new(baby, angry),
             entity_model_root_transform(*instance),
             instance,
-            &wolf_textured_layer_passes(baby, tame, angry, collar_color),
+            &wolf_textured_layer_passes(baby, tame, angry, collar_color, variant),
         ),
         EntityModelKind::Boat { family, chest } => sink.model(
             BoatModel::new(family, chest),

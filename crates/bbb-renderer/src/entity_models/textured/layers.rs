@@ -8,6 +8,7 @@ use super::super::{
         IllagerModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
         PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
         SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
+        WolfModelVariant,
     },
     model_layers::*,
 };
@@ -1283,6 +1284,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
     tame: bool,
     angry: bool,
     collar_color: Option<EntityDyeColor>,
+    variant: WolfModelVariant,
 ) -> Vec<EntityModelLayerPass> {
     let model_layer = if baby {
         MODEL_LAYER_WOLF_BABY
@@ -1294,7 +1296,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
         kind: EntityModelLayerKind::WolfBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
-        texture: wolf_texture_ref(baby, tame, angry),
+        texture: wolf_texture_ref(baby, tame, angry, variant),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
