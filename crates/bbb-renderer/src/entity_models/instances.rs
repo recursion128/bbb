@@ -328,6 +328,14 @@ entity_render_state! {
     /// fallback is suppressed in the projection). `false` for every entity not drawing a bow — only
     /// `PlayerModel` consumes it; the off-hand bow draw stays deferred.
     (with_player_drawing_bow) player_drawing_bow: bool = false;
+    /// Vanilla `HumanoidModel.poseRightArm` use-item arm pose `CROSSBOW_CHARGE` (`AnimationUtils
+    /// .animateCrossbowCharge`): while a player draws an uncharged main-hand crossbow, the right arm braces
+    /// the crossbow and the left arm pulls the string back over the draw, lerping by
+    /// [`crossbow_charge_ticks`](Self::crossbow_charge_ticks) `/ 25`. Reuses the same pose helper as the
+    /// pillager/piglin. `false` for every entity not drawing a crossbow — only `PlayerModel` consumes it on
+    /// this flag (the pillager/piglin route through their own `is_charging_crossbow`); the off-hand draw
+    /// stays deferred.
+    (with_player_charging_crossbow) player_charging_crossbow: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1863,6 +1871,7 @@ mod tests {
                 player_blocking: false,
                 player_throwing_trident: false,
                 player_drawing_bow: false,
+                player_charging_crossbow: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,

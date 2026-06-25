@@ -26,8 +26,8 @@ use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
     creaking_is_tearing_down, entity_animation_uses_in_water, guardian_attack_duration,
     guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type,
-    piglin_is_charging_crossbow, pillager_is_charging_crossbow, warden_heartbeat_delay,
-    VANILLA_ENTITY_TYPE_CREAKING_ID,
+    piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
+    warden_heartbeat_delay, VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
@@ -1498,6 +1498,7 @@ impl EntityStore {
                     pillager_is_charging_crossbow(&metadata.data_values);
                 let piglin_is_charging_crossbow =
                     piglin_is_charging_crossbow(&metadata.data_values);
+                let player_is_using_item = player_is_using_item(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1514,6 +1515,7 @@ impl EntityStore {
                     creaking_is_tearing_down,
                     pillager_is_charging_crossbow,
                     piglin_is_charging_crossbow,
+                    player_is_using_item,
                 );
             }
         }

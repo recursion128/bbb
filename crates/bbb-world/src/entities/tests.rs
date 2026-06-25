@@ -7854,6 +7854,62 @@ fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
 }
 
 #[test]
+fn player_using_item_flag_drives_the_shared_use_item_tick_counter() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        79,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 79)
+            .unwrap()
+    };
+    let set_using = |store: &mut WorldStore, using: bool| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 79,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(if using {
+                    LIVING_ENTITY_FLAG_IS_USING
+                } else {
+                    0
+                }),
+            }],
+        }));
+    };
+
+    // Vanilla `getTicksUsingItem()` is item-agnostic, so the player drives the SAME draw counter off its
+    // `isUsingItem` bit (`DATA_LIVING_ENTITY_FLAGS & 1`); the native layer applies the crossbow pose only
+    // when the using item is an uncharged crossbow.
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
+    store.advance_entity_client_animations(2);
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
+
+    set_using(&mut store, true);
+    store.advance_entity_client_animations(3);
+    assert_eq!(
+        source(&store, 0.0).crossbow_charge_ticks,
+        3.0,
+        "three ticks of using an item count as three use-item ticks"
+    );
+    assert_eq!(source(&store, 0.5).crossbow_charge_ticks, 3.5);
+
+    // Stopping the use resets the shared counter (the draw stopped).
+    set_using(&mut store, false);
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
+}
+
+#[test]
 fn axolotl_playing_dead_flag_drives_the_eased_factor() {
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;

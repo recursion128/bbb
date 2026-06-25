@@ -833,6 +833,53 @@ fn player_drawing_a_bow_raises_both_arms_along_the_head_look() {
 }
 
 #[test]
+fn player_charging_a_crossbow_braces_and_draws_the_string() {
+    use std::f32::consts::FRAC_PI_2;
+
+    // Vanilla `AnimationUtils.animateCrossbowCharge` (right-handed): the right arm braces the crossbow
+    // (`yRot = −0.8`, `xRot = −0.97079635`) while the left arm pulls the string back, lerping its `xRot`
+    // `−0.97079635 → −π/2` and `yRot` `0.4 → 0.85` over `ticksUsingItem / 25`. At half draw (12.5 / 25 =
+    // 0.5) the left arm is halfway through that lerp. Reuses the same helper as the pillager/piglin.
+    const HOLD_X: f32 = -0.97079635;
+    let base = EntityModelInstance::player(980, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(15.0, -10.0)
+        .with_crossbow_charge_ticks(12.5);
+
+    let mut drawing = PlayerModel::new(false);
+    drawing.prepare(&base.with_player_charging_crossbow(true));
+    let right = drawing.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[1] - (-0.8)).abs() < 1e-6,
+        "the right arm braces at yRot −0.8: {}",
+        right.rotation[1]
+    );
+    assert!(
+        (right.rotation[0] - HOLD_X).abs() < 1e-6,
+        "the right arm braces at xRot −0.97079635: {}",
+        right.rotation[0]
+    );
+    let left = drawing.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[1] - (0.4 + (0.85 - 0.4) * 0.5)).abs() < 1e-6,
+        "the left arm yaws halfway through the draw: {}",
+        left.rotation[1]
+    );
+    assert!(
+        (left.rotation[0] - (HOLD_X + (-FRAC_PI_2 - HOLD_X) * 0.5)).abs() < 1e-6,
+        "the left arm pitches halfway through the string pull: {}",
+        left.rotation[0]
+    );
+
+    // A non-charging player does not brace — the right arm keeps its (much higher) idle pitch.
+    let mut idle = PlayerModel::new(false);
+    idle.prepare(&base);
+    assert!(
+        idle.root_mut().child_mut("right_arm").pose.rotation[1] > -0.8 + 0.3,
+        "an idle player does not brace the crossbow"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

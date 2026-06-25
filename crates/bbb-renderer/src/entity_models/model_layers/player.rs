@@ -1,9 +1,10 @@
 use super::{
-    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_block_pose,
-    apply_humanoid_bow_pose, apply_humanoid_brush_pose, apply_humanoid_crouch_named,
-    apply_humanoid_item_hold_pose, apply_humanoid_spyglass_pose,
+    apply_crossbow_charge_pose, apply_head_look, apply_humanoid_attack_animation,
+    apply_humanoid_block_pose, apply_humanoid_bow_pose, apply_humanoid_brush_pose,
+    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose, apply_humanoid_spyglass_pose,
     apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
-    apply_humanoid_toot_horn_pose, apply_humanoid_walk, PartPose, PART_POSE_ZERO, PLAYER_BLUE,
+    apply_humanoid_toot_horn_pose, apply_humanoid_walk, PartPose, CROSSBOW_CHARGE_DURATION_TICKS,
+    PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -358,6 +359,17 @@ impl EntityModel for PlayerModel {
                 &mut self.root,
                 render_state.head_yaw,
                 render_state.head_pitch,
+            );
+        }
+        // Vanilla `HumanoidModel.poseRightArm` `CROSSBOW_CHARGE` (`AnimationUtils.animateCrossbowCharge`):
+        // drawing a main-hand crossbow braces the right arm and pulls the string back with the left over the
+        // draw ticks. Two-handed + affectsOffhandPose (off-hand ITEM suppressed in the projection); reuses the
+        // shared pillager/piglin pose helper.
+        if render_state.player_charging_crossbow {
+            apply_crossbow_charge_pose(
+                &mut self.root,
+                CROSSBOW_CHARGE_DURATION_TICKS,
+                render_state.crossbow_charge_ticks,
             );
         }
         // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM`: a player holding a plain main-hand item lowers

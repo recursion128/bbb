@@ -812,12 +812,20 @@ When an agent does any of the following, update this file in the same slice:
     `BOW_AND_ARROW`): while a player draws a main-hand bow (`isUsingItem` + the using hand holds a bow,
     `BowItem.getUseAnimation() == BOW`) BOTH arms raise along the head look — `rightArm.xRot = leftArm.xRot =
     −π/2 + head.xRot`, `rightArm.yRot = −0.1 + head.yRot`, `leftArm.yRot = 0.1 + head.yRot + 0.4`. Because
-    `BOW_AND_ARROW`/`THROW_TRIDENT` are `affectsOffhandPose=true`, vanilla's `setupAnim` SKIPS `poseLeftArm`
-    when the main hand draws them, so the projection now suppresses the off-hand `ITEM` fallback during a
-    main-hand bow/trident draw (`main_hand_use_affects_offhand`) to match. The remaining
+    `BOW_AND_ARROW`/`THROW_TRIDENT`/`CROSSBOW_CHARGE` are `affectsOffhandPose=true`, vanilla's `setupAnim`
+    SKIPS `poseLeftArm` when the main hand draws them, so the projection now suppresses the off-hand `ITEM`
+    fallback during a main-hand bow/trident/crossbow draw (`main_hand_use_affects_offhand`) to match. The
+    two-handed `CROSSBOW_CHARGE` draw IS now implemented too (`apply_crossbow_charge_pose`, the same
+    `AnimationUtils.animateCrossbowCharge` the pillager/piglin use): while a player draws an uncharged
+    main-hand crossbow (`isUsingItem` + main hand holds a crossbow, `CrossbowItem.getUseAnimation() ==
+    CROSSBOW`, excluding an already-charged one — that is `CROSSBOW_HOLD`, deferred for the player) the right
+    arm braces and the left pulls the string back over `crossbow_charge_ticks / 25`. The draw counter is the
+    shared `getTicksUsingItem` reconstruction, now advanced for the player off its `isUsingItem` bit in the
+    world tick loop (`getTicksUsingItem` is item-agnostic, so the same counter serves; the native layer gates
+    the pose to the crossbow). The remaining
     use-item arm poses on the same dispatch (the using-item routes that also resolve to
-    `ITEM` — `EAT`/`DRINK` — the two-handed `CROSSBOW_CHARGE` draw (the per-tick `animateCrossbowCharge`), the
-    mirrored off-hand bow/trident draw, a non-shield
+    `ITEM` — `EAT`/`DRINK` — the player `CROSSBOW_HOLD` (a held charged crossbow), the
+    mirrored off-hand bow/trident/crossbow draw, a non-shield
     datapack `BLOCKS_ATTACKS` item, the off-arm `EMPTY` reset, and the
     `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
     off-hand spear/charged crossbow while the main hand draws a two-handed item) stay deferred. The

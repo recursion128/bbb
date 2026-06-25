@@ -121,6 +121,7 @@ const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
 const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
+const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
 const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
 /// Vanilla `Rabbit.handleEntityEvent`: event `1` (`spawnSprintParticle`) also seeds the client-side
@@ -3370,6 +3371,11 @@ impl EntityClientAnimationState {
         // entity metadata in the tick loop ([`piglin_is_charging_crossbow`]). `false` for entities that
         // do not consume it.
         piglin_is_charging_crossbow: bool,
+        // The synced `LivingEntity` `isUsingItem()` bit (`DATA_LIVING_ENTITY_FLAGS & 1`), read from the
+        // entity metadata in the tick loop ([`player_is_using_item`]). Drives the player's shared
+        // crossbow-draw counter (the item-agnostic `getTicksUsingItem` reconstruction). `false` for
+        // entities that do not consume it.
+        player_is_using_item: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -3581,6 +3587,12 @@ impl EntityClientAnimationState {
                 // `animateCrossbowCharge`, so it shares the draw counter — only the synced flag's id differs.
                 self.advance_crossbow_charge(piglin_is_charging_crossbow);
             }
+            VANILLA_ENTITY_TYPE_PLAYER_ID => {
+                // Vanilla player `CROSSBOW_CHARGE`: `animateCrossbowCharge` reads `getTicksUsingItem()`, which
+                // is item-agnostic, so the same shared draw counter is advanced off the player's `isUsingItem`
+                // bit. The native layer applies the pose only when the using item is an uncharged crossbow.
+                self.advance_crossbow_charge(player_is_using_item);
+            }
             VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
                 // Vanilla `Axolotl.tickAdultAnimations`: the play-dead / in-water / on-ground state
                 // machine drives three `BinaryAnimator`s plus the moving animator.
@@ -3697,6 +3709,18 @@ pub(crate) fn pillager_is_charging_crossbow(data_values: &[EntityDataValue]) -> 
 /// `advance_client_tick` keeps non-piglins (whose slot 18 holds something else) off this counter.
 pub(crate) fn piglin_is_charging_crossbow(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID, false)
+}
+
+/// Vanilla `LivingEntity.isUsingItem()` (`DATA_LIVING_ENTITY_FLAGS & 1`, synced byte id `8`): true while the
+/// entity holds right-click on a usable item. For the player this drives the shared crossbow-draw counter
+/// (the client's `getTicksUsingItem` reconstruction, which is item-agnostic in vanilla); the native layer
+/// then applies the `CROSSBOW_CHARGE` pose only when the using item is actually an uncharged crossbow. Read
+/// straight from the entity metadata in the tick loop; the type gate in `advance_client_tick` keeps this on
+/// the player.
+pub(crate) fn player_is_using_item(data_values: &[EntityDataValue]) -> bool {
+    const LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+    entity_data_byte(data_values, LIVING_ENTITY_FLAGS_DATA_ID, 0) & LIVING_ENTITY_FLAG_IS_USING != 0
 }
 
 /// Vanilla `Allay.isDancing()` (`entityData.get(DATA_DANCING)`): the synced boolean that drives the
