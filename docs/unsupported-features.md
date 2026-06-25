@@ -920,15 +920,22 @@ When an agent does any of the following, update this file in the same slice:
         `collect_hud_block_item_mesh` bakes each at `inventory_slot_item_hud_rect`.
         The cursor-carried item is whatever the container slots hold, so it is
         covered too.
+      - dropped-item GROUND transform now per-item: each dropped item uses its own
+        retained `ground` display transform (custom rotation / scale / offset),
+        falling back to the vanilla `block/block` or `item/generated` default. The
+        ground-seating lift is computed per-model from the rendered bounds —
+        vanilla `minOffsetY = -modelBoundingBox.minY + 1/16` over the baked quads
+        under the ground matrix — and the same bounds drive the cluster layout
+        (`getZsize()`), so a custom transform or a non-full-height sprite seats and
+        clusters exactly as vanilla (replacing the old hardcoded
+        block=0 / flat=0.1875 lift, which the new path reproduces for defaults).
       - remaining slices: held-item refinements (first-person viewmodel;
         family-specific combat arm poses — bow-aim / crossbow / spear — deferred
         entity-side state); armor-stand held items (uses the scale-based
-        `BABY_TRANSFORMER`, so it needs the part-scale path baby mobs avoid). The
-        dropped-item `ground` path still uses the default
-        block/generated GROUND transform + seating lift (custom per-item ground
-        transforms not yet applied). Item lighting context (GUI front-lit vs world
-        diffuse) is an open point — the baked `shade` currently uses the terrain
-        cardinal `Direction.getShade` for both block- and generated-items.
+        `BABY_TRANSFORMER`, so it needs the part-scale path baby mobs avoid). Item
+        lighting context (GUI front-lit vs world diffuse) is an open point — the
+        baked `shade` currently uses the terrain cardinal `Direction.getShade` for
+        both block- and generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried

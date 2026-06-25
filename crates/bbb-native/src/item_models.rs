@@ -19,34 +19,26 @@ use glam::{Mat4, Vec3};
 use crate::item_runtime::NativeItemRuntime;
 use crate::terrain_runtime::TerrainTextureState;
 
-/// Vanilla GROUND display transform for a block item (`minecraft:block/block`): translation `[0, 3, 0]`
-/// in 1/16 units, scale `0.25`. A centered unit cube under it seats just above the ground, so no extra
-/// lift is needed.
-const BLOCK_GROUND: GroundTransform = GroundTransform {
-    translation_y: 3.0 / 16.0,
-    scale: 0.25,
-    min_offset_y: 0.0,
+/// Fallback GROUND display transform for a block item (`minecraft:block/block`): rotation `0`,
+/// translation `[0, 3, 0]`/16, scale `0.25`. Used only when the item's own `ground` transform was not
+/// retained; otherwise the item's retained per-model ground transform drives the seating.
+const BLOCK_GROUND_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, 0.0, 0.0],
+    translation: [0.0, 3.0 / 16.0, 0.0],
+    scale: [0.25, 0.25, 0.25],
 };
 
-/// Vanilla GROUND display transform for a flat item (`minecraft:item/generated`): translation `[0, 2, 0]`
-/// in 1/16 units, scale `0.5`. The `0.5`-scaled, centered slab's bottom sits at `-0.125`, so vanilla's
-/// `minOffsetY = -minY + 1/16` lifts it by `0.1875` to rest on the ground.
-const FLAT_GROUND: GroundTransform = GroundTransform {
-    translation_y: 2.0 / 16.0,
-    scale: 0.5,
-    min_offset_y: 0.1875,
+/// Fallback GROUND display transform for a flat item (`minecraft:item/generated`): rotation `0`,
+/// translation `[0, 2, 0]`/16, scale `0.5`.
+const GENERATED_GROUND_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, 0.0, 0.0],
+    translation: [0.0, 2.0 / 16.0, 0.0],
+    scale: [0.5, 0.5, 0.5],
 };
 
 /// Vanilla `FLAT_ITEM_DEPTH_THRESHOLD` / `ITEM_MIN_HOVER_HEIGHT`: a rendered model thinner than this in Z
 /// is stacked back-to-front; a thicker one is scattered in 3D.
 const FLAT_ITEM_DEPTH_THRESHOLD: f32 = 0.0625;
-
-/// A model's GROUND display transform plus vanilla's ground-seating lift (`minOffsetY`).
-struct GroundTransform {
-    translation_y: f32,
-    scale: f32,
-    min_offset_y: f32,
-}
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -92,6 +84,14 @@ pub(crate) fn dropped_item_models(
         // items (the ones that show more than one copy) are undamaged, so the protocol id matches.
         let seed = item_id as i64;
 
+        // The item's own retained GROUND display transform (custom ground rotation / scale / offset for
+        // items that define one); falls back to the vanilla `block/block` or `item/generated` default.
+        let ground = |fallback| {
+            item_runtime
+                .item_display_transform(item_id, BlockModelDisplayContext::Ground)
+                .unwrap_or(fallback)
+        };
+
         // Block path: the item is a block with 3D item geometry.
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
@@ -101,7 +101,7 @@ pub(crate) fn dropped_item_models(
                         position,
                         age_ticks,
                         state.entity_id,
-                        &BLOCK_GROUND,
+                        &ground(BLOCK_GROUND_FALLBACK),
                         count,
                         seed,
                     ));
@@ -128,7 +128,7 @@ pub(crate) fn dropped_item_models(
             position,
             age_ticks,
             state.entity_id,
-            &FLAT_GROUND,
+            &ground(GENERATED_GROUND_FALLBACK),
             count,
             seed,
         ));
@@ -309,19 +309,24 @@ fn rendered_amount(stack_count: i32) -> usize {
     }
 }
 
-/// Bakes the cluster of copies for one dropped item into a single mesh.
+/// Bakes the cluster of copies for one dropped item into a single mesh. `ground` is the item's GROUND
+/// display transform; the seating lift and cluster layout are derived from the resulting model bounds,
+/// exactly as vanilla derives them from `modelBoundingBox`.
 fn stacked_item_mesh(
     quads: &[ItemModelQuad],
     position: [f32; 3],
     age_ticks: f32,
     entity_id: i32,
-    ground: &GroundTransform,
+    ground: &BlockModelDisplayTransform,
     count: usize,
     seed: i64,
 ) -> ItemModelMesh {
-    let base = base_transform(position, age_ticks, entity_id, ground.min_offset_y);
-    let ground_matrix = ground_matrix(ground);
-    let depth = model_depth(quads, ground.scale);
+    let ground_matrix = display_matrix(ground, false);
+    // Vanilla `ItemEntityRenderer.submit`: `minOffsetY = -modelBoundingBox.minY + 1/16` seats the
+    // rendered model on the ground; `getZsize()` picks the cluster layout (3D scatter vs back-to-front).
+    let (min_y, depth) = ground_model_bounds(quads, ground_matrix);
+    let min_offset_y = -min_y + 1.0 / 16.0;
+    let base = base_transform(position, age_ticks, entity_id, min_offset_y);
     let mut mesh = ItemModelMesh::new();
     append_cluster(&mut mesh, quads, base, ground_matrix, count, seed, depth);
     mesh
@@ -341,28 +346,26 @@ fn base_transform(position: [f32; 3], age_ticks: f32, entity_id: i32, min_offset
     )) * Mat4::from_rotation_y(spin)
 }
 
-/// The GROUND display transform about the model center: `T(t) · S · T(-0.5)` (vanilla `ItemTransform.apply`).
-fn ground_matrix(ground: &GroundTransform) -> Mat4 {
-    Mat4::from_translation(Vec3::new(0.0, ground.translation_y, 0.0))
-        * Mat4::from_scale(Vec3::splat(ground.scale))
-        * Mat4::from_translation(Vec3::splat(-0.5))
-}
-
-/// The rendered Z thickness of a model (vanilla `modelBoundingBox.getZsize()`): the quad corners' Z
-/// extent in `0..16` model space, normalized to the unit cube and scaled by the display transform.
-fn model_depth(quads: &[ItemModelQuad], scale: f32) -> f32 {
+/// The rendered model's floor and Z thickness (vanilla `modelBoundingBox.minY` / `getZsize()`): each quad
+/// corner normalized to the unit cube (`/16`) and pushed through the GROUND display matrix, reduced to the
+/// minimum world Y and the Z extent. The full display matrix (rotation + per-axis scale + offset) is
+/// applied, so a custom ground transform seats and clusters exactly as vanilla's `modelBoundingBox` does.
+fn ground_model_bounds(quads: &[ItemModelQuad], ground_matrix: Mat4) -> (f32, f32) {
+    let mut min_y = f32::INFINITY;
     let mut min_z = f32::INFINITY;
     let mut max_z = f32::NEG_INFINITY;
     for quad in quads {
         for corner in quad.corners {
-            min_z = min_z.min(corner[2]);
-            max_z = max_z.max(corner[2]);
+            let point = ground_matrix.transform_point3(Vec3::from_array(corner) / 16.0);
+            min_y = min_y.min(point.y);
+            min_z = min_z.min(point.z);
+            max_z = max_z.max(point.z);
         }
     }
-    if max_z < min_z {
-        return 0.0;
+    if !min_y.is_finite() {
+        return (0.0, 0.0);
     }
-    (max_z - min_z) / 16.0 * scale
+    (min_y, max_z - min_z)
 }
 
 /// Vanilla `ItemEntityRenderer.submitMultipleFromCount`: bake `count` copies of the model. A model
@@ -464,11 +467,30 @@ mod tests {
         }]
     }
 
+    fn generated_slab_quads() -> Vec<ItemModelQuad> {
+        // A generated-item slab: full 0..16 in X/Y, thin Z 7.5..8.5 (the extruded sprite face).
+        vec![ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 7.5],
+                [16.0, 0.0, 7.5],
+                [16.0, 16.0, 8.5],
+                [0.0, 16.0, 8.5],
+            ],
+            uvs: [[0.0, 0.0]; 4],
+            tint: [1.0; 4],
+            shade: 1.0,
+        }]
+    }
+
     #[test]
     fn block_ground_transform_seats_a_unit_block_just_above_the_entity_origin() {
         // The 0.25-scaled block centered then lifted +3/16 sits at y in [0.0625, 0.3125], plus the bob.
-        let transform = base_transform([0.0, 64.0, 0.0], 0.0, 0, BLOCK_GROUND.min_offset_y)
-            * ground_matrix(&BLOCK_GROUND);
+        let ground_matrix = display_matrix(&BLOCK_GROUND_FALLBACK, false);
+        let (min_y, _) = ground_model_bounds(&unit_block_quads(), ground_matrix);
+        let min_offset_y = -min_y + 1.0 / 16.0;
+        // A full unit block already rests on the ground under the default transform (no extra lift).
+        assert!(min_offset_y.abs() < 1e-4, "block needs no lift");
+        let transform = base_transform([0.0, 64.0, 0.0], 0.0, 0, min_offset_y) * ground_matrix;
         let bob = (bob_offset(0)).sin() * 0.1 + 0.1;
         let bottom = transform.transform_point3(Vec3::new(0.0, 0.0, 0.0));
         let top = transform.transform_point3(Vec3::new(1.0, 1.0, 1.0));
@@ -478,13 +500,39 @@ mod tests {
 
     #[test]
     fn flat_ground_transform_lifts_the_slab_to_rest_on_the_ground() {
-        let transform = base_transform([0.0, 64.0, 0.0], 0.0, 0, FLAT_GROUND.min_offset_y)
-            * ground_matrix(&FLAT_GROUND);
+        let ground_matrix = display_matrix(&GENERATED_GROUND_FALLBACK, false);
+        let (min_y, _) = ground_model_bounds(&generated_slab_quads(), ground_matrix);
+        let min_offset_y = -min_y + 1.0 / 16.0;
+        // The 0.5-scaled slab's bottom sits at -0.125, so vanilla lifts it 0.1875 to rest on the ground.
+        assert!((min_offset_y - 0.1875).abs() < 1e-4, "flat lift");
+        let transform = base_transform([0.0, 64.0, 0.0], 0.0, 0, min_offset_y) * ground_matrix;
         let bob = (bob_offset(0)).sin() * 0.1 + 0.1;
         let bottom = transform.transform_point3(Vec3::new(0.0, 0.0, 0.5));
         assert!(
             (bottom.y - (64.0 + bob + 0.0625)).abs() < 1e-4,
             "flat bottom y"
+        );
+    }
+
+    #[test]
+    fn custom_ground_transform_reseats_from_its_own_bounds() {
+        // A ground transform scaling the block to 0.5 (vs the default 0.25) drops its bottom to -0.25,
+        // so vanilla's `-minY + 1/16` lift grows to 0.3125 to keep it resting on the ground — proving the
+        // seating is derived per-model from the actual transform, not a hardcoded constant.
+        let custom = BlockModelDisplayTransform {
+            rotation: [0.0, 0.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [0.5, 0.5, 0.5],
+        };
+        let (min_y, _) = ground_model_bounds(&unit_block_quads(), display_matrix(&custom, false));
+        assert!(
+            (min_y + 0.25).abs() < 1e-4,
+            "0.5-scaled block bottom at -0.25"
+        );
+        let min_offset_y = -min_y + 1.0 / 16.0;
+        assert!(
+            (min_offset_y - 0.3125).abs() < 1e-4,
+            "lift compensates the lower bottom"
         );
     }
 
@@ -503,24 +551,19 @@ mod tests {
     }
 
     #[test]
-    fn model_depth_classifies_block_vs_flat() {
+    fn ground_model_bounds_classify_block_vs_flat_depth() {
         // A cube face spanning Z 0..16, scaled 0.25, is 0.25 deep → scatter branch.
-        let block_depth = model_depth(&unit_block_quads(), BLOCK_GROUND.scale);
+        let (_, block_depth) = ground_model_bounds(
+            &unit_block_quads(),
+            display_matrix(&BLOCK_GROUND_FALLBACK, false),
+        );
         assert!((block_depth - 0.25).abs() < 1e-6);
         assert!(block_depth > FLAT_ITEM_DEPTH_THRESHOLD);
         // A generated slab spans Z 7.5..8.5 (depth 1), scaled 0.5 → 0.03125 deep → stack branch.
-        let slab = vec![ItemModelQuad {
-            corners: [
-                [0.0, 0.0, 7.5],
-                [16.0, 0.0, 7.5],
-                [16.0, 16.0, 8.5],
-                [0.0, 16.0, 8.5],
-            ],
-            uvs: [[0.0, 0.0]; 4],
-            tint: [1.0; 4],
-            shade: 1.0,
-        }];
-        let flat_depth = model_depth(&slab, FLAT_GROUND.scale);
+        let (_, flat_depth) = ground_model_bounds(
+            &generated_slab_quads(),
+            display_matrix(&GENERATED_GROUND_FALLBACK, false),
+        );
         assert!((flat_depth - 0.031_25).abs() < 1e-6);
         assert!(flat_depth <= FLAT_ITEM_DEPTH_THRESHOLD);
     }
@@ -529,8 +572,24 @@ mod tests {
     fn cluster_count_drives_geometry_and_is_non_empty() {
         let quads = unit_block_quads();
         // One copy and four copies both produce geometry; the four-copy mesh holds four times as much.
-        let single = stacked_item_mesh(&quads, [0.0, 0.0, 0.0], 0.0, 0, &BLOCK_GROUND, 1, 7);
-        let cluster = stacked_item_mesh(&quads, [0.0, 0.0, 0.0], 0.0, 0, &BLOCK_GROUND, 4, 7);
+        let single = stacked_item_mesh(
+            &quads,
+            [0.0, 0.0, 0.0],
+            0.0,
+            0,
+            &BLOCK_GROUND_FALLBACK,
+            1,
+            7,
+        );
+        let cluster = stacked_item_mesh(
+            &quads,
+            [0.0, 0.0, 0.0],
+            0.0,
+            0,
+            &BLOCK_GROUND_FALLBACK,
+            4,
+            7,
+        );
         assert!(!single.is_empty());
         assert!(!cluster.is_empty());
     }
