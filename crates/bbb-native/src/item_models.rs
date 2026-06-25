@@ -161,14 +161,21 @@ const GENERATED_THIRD_PERSON_FALLBACK: BlockModelDisplayTransform = BlockModelDi
 };
 
 /// The display transform about the model center: `T(t) · Rxyz · S · T(-0.5)` (vanilla
-/// `ItemTransform.apply`, right hand — no left-hand mirror). `Rxyz` matches joml `rotationXYZ`. The pack's
-/// `BlockModelDisplayTransform` already holds translation in world units (the model JSON's 1/16 value
-/// pre-multiplied) and per-axis scale, so no further normalization is applied here.
-fn display_matrix(display: &BlockModelDisplayTransform) -> Mat4 {
+/// `ItemTransform.apply`). `Rxyz` matches joml `rotationXYZ`. The pack's `BlockModelDisplayTransform`
+/// already holds translation in world units (the model JSON's 1/16 value pre-multiplied) and per-axis
+/// scale, so no further normalization is applied here. `left_hand` is vanilla's left-hand fix: it negates
+/// `translation.x`, `rotation.y`, and `rotation.z` so an item mirrors correctly into the left arm.
+fn display_matrix(display: &BlockModelDisplayTransform, left_hand: bool) -> Mat4 {
+    let sign = if left_hand { -1.0 } else { 1.0 };
+    let translation = Vec3::new(
+        display.translation[0] * sign,
+        display.translation[1],
+        display.translation[2],
+    );
     let rotation = Mat4::from_rotation_x(display.rotation[0].to_radians())
-        * Mat4::from_rotation_y(display.rotation[1].to_radians())
-        * Mat4::from_rotation_z(display.rotation[2].to_radians());
-    Mat4::from_translation(Vec3::from_array(display.translation))
+        * Mat4::from_rotation_y((display.rotation[1] * sign).to_radians())
+        * Mat4::from_rotation_z((display.rotation[2] * sign).to_radians());
+    Mat4::from_translation(translation)
         * rotation
         * Mat4::from_scale(Vec3::from_array(display.scale))
         * Mat4::from_translation(Vec3::splat(-0.5))
@@ -180,7 +187,7 @@ pub(crate) struct HeldItemModels {
     pub flat_meshes: Vec<ItemModelMesh>,
 }
 
-/// Bakes the third-person main-hand held item for every player entity that holds one (vanilla
+/// Bakes the third-person main- and off-hand held items for every player entity that holds one (vanilla
 /// `ItemInHandLayer`). The hand attach transform comes from the renderer's posed player model; native
 /// resolves the item to quads (block or flat) and applies the item's third-person display transform.
 pub(crate) fn held_item_models(
@@ -199,54 +206,95 @@ pub(crate) fn held_item_models(
     };
 
     for instance in instances {
-        let Some(stack) = world.held_item(instance.entity_id, false) else {
-            continue;
-        };
-        let Some(item_id) = stack.item_id else {
-            continue;
-        };
-        let Some(hand) = player_hand_attach_transform(instance, false) else {
-            continue;
-        };
-
-        // The item's own retained third-person right-hand transform (handheld tools angle the model,
-        // blocks tilt it, generated items lay it flat); falls back to the parent-model default per path.
-        let retained = item_runtime
-            .item_display_transform(item_id, BlockModelDisplayContext::ThirdPersonRightHand);
-
-        // Block path.
-        if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
-            if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
-                if !quads.is_empty() {
-                    let display = retained.unwrap_or(BLOCK_THIRD_PERSON_FALLBACK);
-                    let transform = hand * display_matrix(&display);
-                    block_meshes.push(bake_item_model_mesh(&quads, transform));
-                    continue;
-                }
-            }
-        }
-
-        // Flat path.
-        let mut quads: Vec<ItemModelQuad> = Vec::new();
-        for layer in item_runtime.generated_item_layers_for_stack(&stack) {
-            quads.extend(bake_generated_item_quads(
-                &layer.mask,
-                layer.rect,
-                layer.tint,
-            ));
-        }
-        if quads.is_empty() {
-            continue;
-        }
-        let display = retained.unwrap_or(GENERATED_THIRD_PERSON_FALLBACK);
-        let transform = hand * display_matrix(&display);
-        flat_meshes.push(bake_item_model_mesh(&quads, transform));
+        // Vanilla holds the main hand in the right arm and the off hand in the left arm (default main
+        // arm; the off-hand item additionally gets the left-hand display mirror).
+        bake_held_hand(
+            instance,
+            false,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
+        bake_held_hand(
+            instance,
+            true,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
     }
 
     HeldItemModels {
         block_meshes,
         flat_meshes,
     }
+}
+
+/// Bakes one held item (`off_hand` selects the off-hand slot / left arm) onto its arm bone with the
+/// item's own `thirdperson_{left,right}hand` display transform.
+#[allow(clippy::too_many_arguments)]
+fn bake_held_hand(
+    instance: &EntityModelInstance,
+    off_hand: bool,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    let Some(stack) = world.held_item(instance.entity_id, off_hand) else {
+        return;
+    };
+    let Some(item_id) = stack.item_id else {
+        return;
+    };
+    // The off hand is the left arm (default right-handed main arm); the left arm gets the left-hand
+    // display mirror.
+    let left_arm = off_hand;
+    let Some(hand) = player_hand_attach_transform(instance, left_arm) else {
+        return;
+    };
+
+    // The item's own retained third-person transform for this arm (handheld tools angle the model,
+    // blocks tilt it, generated items lay it flat); falls back to the parent-model default per path.
+    let context = if left_arm {
+        BlockModelDisplayContext::ThirdPersonLeftHand
+    } else {
+        BlockModelDisplayContext::ThirdPersonRightHand
+    };
+    let retained = item_runtime.item_display_transform(item_id, context);
+
+    // Block path.
+    if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
+        if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
+            if !quads.is_empty() {
+                let display = retained.unwrap_or(BLOCK_THIRD_PERSON_FALLBACK);
+                let transform = hand * display_matrix(&display, left_arm);
+                block_meshes.push(bake_item_model_mesh(&quads, transform));
+                return;
+            }
+        }
+    }
+
+    // Flat path.
+    let mut quads: Vec<ItemModelQuad> = Vec::new();
+    for layer in item_runtime.generated_item_layers_for_stack(&stack) {
+        quads.extend(bake_generated_item_quads(
+            &layer.mask,
+            layer.rect,
+            layer.tint,
+        ));
+    }
+    if quads.is_empty() {
+        return;
+    }
+    let display = retained.unwrap_or(GENERATED_THIRD_PERSON_FALLBACK);
+    let transform = hand * display_matrix(&display, left_arm);
+    flat_meshes.push(bake_item_model_mesh(&quads, transform));
 }
 
 /// Vanilla `ItemClusterRenderState.getRenderedAmount`: the number of copies rendered for a stack size.
@@ -497,10 +545,35 @@ mod tests {
     fn display_matrix_centers_the_model_at_the_translation() {
         // The display transform is about the model center (`T(-0.5)`), so the unit-cube center
         // (0.5,0.5,0.5) lands exactly at the (world-unit) translation regardless of rotation/scale.
-        let generated =
-            display_matrix(&GENERATED_THIRD_PERSON_FALLBACK).transform_point3(Vec3::splat(0.5));
+        let generated = display_matrix(&GENERATED_THIRD_PERSON_FALLBACK, false)
+            .transform_point3(Vec3::splat(0.5));
         assert!((generated - Vec3::new(0.0, 3.0 / 16.0, 1.0 / 16.0)).length() < 1e-6);
-        let block = display_matrix(&BLOCK_THIRD_PERSON_FALLBACK).transform_point3(Vec3::splat(0.5));
+        let block =
+            display_matrix(&BLOCK_THIRD_PERSON_FALLBACK, false).transform_point3(Vec3::splat(0.5));
         assert!((block - Vec3::new(0.0, 2.5 / 16.0, 0.0)).length() < 1e-6);
+    }
+
+    #[test]
+    fn left_hand_display_mirror_negates_x_translation_and_yz_rotation() {
+        // Vanilla `ItemTransform.apply(applyLeftHandFix=true)` negates translation.x, rotation.y, and
+        // rotation.z. A handheld-style transform with a Y rotation mirrors the model across the X plane.
+        let handheld = BlockModelDisplayTransform {
+            rotation: [0.0, -90.0, 55.0],
+            translation: [1.0 / 16.0, 4.0 / 16.0, 0.5 / 16.0],
+            scale: [0.85, 0.85, 0.85],
+        };
+        let right = display_matrix(&handheld, false);
+        let left = display_matrix(&handheld, true);
+        // The model center sits at the mirrored translation (x negated, y/z unchanged).
+        let right_center = right.transform_point3(Vec3::splat(0.5));
+        let left_center = left.transform_point3(Vec3::splat(0.5));
+        assert!((right_center - Vec3::new(1.0 / 16.0, 4.0 / 16.0, 0.5 / 16.0)).length() < 1e-6);
+        assert!((left_center - Vec3::new(-1.0 / 16.0, 4.0 / 16.0, 0.5 / 16.0)).length() < 1e-6);
+        // The left fix mirrors the rotation across the X plane: `rotationXYZ(rx,-ry,-rz)` =
+        // `M·rotationXYZ(rx,ry,rz)·M` (M = diag(-1,1,1)), so the rotated +X basis direction reflects to
+        // `(x, -y, -z)` of the right-hand one.
+        let right_dir = right.transform_vector3(Vec3::X);
+        let left_dir = left.transform_vector3(Vec3::X);
+        assert!((left_dir - Vec3::new(right_dir.x, -right_dir.y, -right_dir.z)).length() < 1e-6);
     }
 }
