@@ -842,19 +842,30 @@ When an agent does any of the following, update this file in the same slice:
         rotY(180°) · T((left?-1:1), 2, -10)/16` (built on a new
         `ModelPart::child_attach_transform`). Native `held_item_models` resolves
         the held stack to the same block/flat quads as the dropped path and
-        applies the item's `THIRD_PERSON_RIGHT_HAND` display transform (block
-        `[75,45,0]`/`[0,2.5,0]/16` scale `0.375`; generated `[0,0,0]`/`[0,3,1]/16`
-        scale `0.55`), merging into the same two atlas draws.
+        applies the item's own retained `THIRD_PERSON_RIGHT_HAND` display
+        transform (see per-item display transforms below), so a held sword angles
+        on `item/handheld`'s `[0,-90,55]`/`[0,4,0.5]/16` scale `0.85`, a block
+        tilts on `block/block`'s `[75,45,0]`/`[0,2.5,0]/16` scale `0.375`, and a
+        generated item lies flat on `item/generated`'s `[0,3,1]/16` scale `0.55`,
+        merging into the same two atlas draws.
+      - per-item display transforms retained: `NativeItemRuntime` now keeps each
+        item's resolved model `BlockModelDisplayTransforms` (from the first
+        cuboid model, shared across an item's conditional variants) keyed by
+        resource id, exposed as `item_display_transform(protocol_id, context)`.
+        Native `display_matrix` builds the vanilla `ItemTransform.apply` matrix
+        (`T(t)·Rxyz·S·T(-0.5)`, translation already in world units) from any
+        context; held items use `thirdperson_righthand`, with the parent-model
+        default as the no-model fallback. This unblocks the frame `fixed` and GUI
+        `gui` contexts for the next consumers.
       - remaining slices: the other two consumers (item frames / armor-stand,
         HUD 3D icons); held-item refinements (off-hand — needs the left-hand
-        display mirror; handheld-tool third-person transform; humanoid MOBS —
-        the renderer hand transform is player-only; first-person viewmodel); and
-        per-item custom display transforms (gui/fixed/firstperson/head; only
-        `ground` + the default block/generated `thirdperson` are wired — pack
-        parses `BlockModelDisplayTransforms` but native item_runtime drops it).
-        Item lighting context (GUI front-lit vs world diffuse) is an open point —
-        the baked `shade` currently uses the terrain cardinal
-        `Direction.getShade` for both block- and generated-items.
+        display mirror; humanoid MOBS — the renderer hand transform is
+        player-only; first-person viewmodel). The dropped-item `ground` path
+        still uses the default block/generated GROUND transform + seating lift
+        (custom per-item ground transforms not yet applied). Item lighting
+        context (GUI front-lit vs world diffuse) is an open point — the baked
+        `shade` currently uses the terrain cardinal `Direction.getShade` for both
+        block- and generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried

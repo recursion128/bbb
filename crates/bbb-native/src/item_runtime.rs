@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::{Context, Result};
 use bbb_pack::{
-    AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, FreezeImmuneWearableCatalog,
+    AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, BlockModelDisplayContext,
+    BlockModelDisplayTransform, BlockModelDisplayTransforms, FreezeImmuneWearableCatalog,
     FurnaceFuelCatalog, ItemAttackRange as PackItemAttackRange, ItemCuboidModel,
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
@@ -109,6 +110,7 @@ pub(crate) struct NativeItemRuntime {
     powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
     recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
+    item_display_transforms: HashMap<String, BlockModelDisplayTransforms>,
     registry: Option<ItemRegistryCatalog>,
     language: LanguageCatalog,
     textures: ItemTextureState,
@@ -211,6 +213,7 @@ impl NativeItemRuntime {
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
         let mut item_icon_model_refs = HashMap::new();
+        let mut item_display_transforms = HashMap::new();
         let mut missing_model_ids = BTreeSet::new();
         let mut missing_texture_ids = BTreeSet::new();
         let mut resolved_model_count = 0usize;
@@ -218,6 +221,12 @@ impl NativeItemRuntime {
         for (item_id, definition) in item_models.definitions() {
             let models = cuboid_models.models_for_definition(definition);
             resolved_model_count += models.models.len();
+            // Retain the item model's display transforms (the same across its conditional variants,
+            // which share a parent like `item/handheld` / `item/generated` / `block/block`) so held
+            // items, frames, and the GUI can place the 3D model the way vanilla `ItemTransform` does.
+            if let Some(model) = models.models.first() {
+                item_display_transforms.insert(item_id.clone(), model.display_transforms.clone());
+            }
             texture_ids.extend(models.texture_ids());
             let model_tints = model_tints_for_definition(&definition.model);
             let icon_model = if contains_runtime_condition(&definition.model) {
@@ -275,6 +284,7 @@ impl NativeItemRuntime {
             powder_snow_walkable_foot_item_ids,
             recipe_specific_crafting_remainder_item_ids,
             item_icon_models,
+            item_display_transforms,
             registry,
             language,
             textures,
@@ -635,6 +645,19 @@ impl NativeItemRuntime {
     /// map a dropped item to the block of the same id for 3D block-item rendering.
     pub(crate) fn item_resource_id(&self, protocol_id: i32) -> Option<&str> {
         self.registry.as_ref()?.resource_id(protocol_id)
+    }
+
+    /// The item's own model display transform for a context (vanilla `ItemTransform`), retained from the
+    /// resolved item cuboid model. `None` if the item has no registry entry or no resolved model (the
+    /// caller then falls back to the parent-model default). Used to place the 3D model in hand / frame /
+    /// GUI exactly as vanilla's `model.applyTransform`.
+    pub(crate) fn item_display_transform(
+        &self,
+        protocol_id: i32,
+        context: BlockModelDisplayContext,
+    ) -> Option<BlockModelDisplayTransform> {
+        let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
+        Some(self.item_display_transforms.get(item_id)?.get(context))
     }
 
     /// The generated (flat) item layers for a stack — each layer's alpha silhouette, atlas UV rect, and
@@ -1785,6 +1808,64 @@ mod tests {
             .unwrap();
         assert_eq!(stack_icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
         assert_eq!(stack_icon.layers[1].tint, rgb_i32_tint(0x12_34_56));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn item_display_transform_is_retained_per_item() {
+        let root = unique_temp_dir("item-display-transform");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_item_registry_sources(&root);
+        write_json(
+            &assets.join("items").join("test_combo.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/test_sword"
+                }
+            }"#,
+        );
+        // An `item/handheld`-style angled third-person transform on the item's own model.
+        write_json(
+            &assets.join("models").join("item").join("test_sword.json"),
+            r##"{
+                "display": {
+                    "thirdperson_righthand": {
+                        "rotation": [0, -90, 55],
+                        "translation": [0, 4, 0.5],
+                        "scale": [0.85, 0.85, 0.85]
+                    }
+                },
+                "textures": { "layer0": "minecraft:item/test_sword" }
+            }"##,
+        );
+        write_test_rgba_png(
+            &assets.join("textures").join("item").join("test_sword.png"),
+            1,
+            1,
+            &[255, 0, 0, 255],
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let transform = runtime
+            .item_display_transform(0, BlockModelDisplayContext::ThirdPersonRightHand)
+            .unwrap();
+        // Vanilla pre-multiplies the JSON translation by 1/16 (and clamps); rotation stays in degrees.
+        assert_eq!(transform.rotation, [0.0, -90.0, 55.0]);
+        assert_eq!(transform.translation, [0.0, 4.0 / 16.0, 0.5 / 16.0]);
+        assert_eq!(transform.scale, [0.85, 0.85, 0.85]);
+        // A context the model does not override falls back to the identity transform.
+        assert_eq!(
+            runtime.item_display_transform(0, BlockModelDisplayContext::Gui),
+            Some(BlockModelDisplayTransform::default())
+        );
+        // An unregistered protocol id has no retained transform (caller uses a parent-model default).
+        assert_eq!(
+            runtime.item_display_transform(999, BlockModelDisplayContext::ThirdPersonRightHand),
+            None
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }

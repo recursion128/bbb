@@ -8,6 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_mesh, player_hand_attach_transform,
     EntityModelInstance, ItemModelMesh, ItemModelQuad,
@@ -141,45 +142,35 @@ pub(crate) fn dropped_item_models(
     }
 }
 
-/// Vanilla third-person right-hand display transform for a block item (`minecraft:block/block`):
-/// rotation `[75, 45, 0]°`, translation `[0, 2.5, 0]`/16, scale `0.375`.
-const BLOCK_THIRD_PERSON: DisplayTransform = DisplayTransform {
-    rotation_deg: [75.0, 45.0, 0.0],
-    translation: [0.0, 2.5, 0.0],
-    scale: 0.375,
+/// Fallback third-person right-hand display transform for a block item (`minecraft:block/block`):
+/// rotation `[75, 45, 0]°`, translation `[0, 2.5, 0]`/16, scale `0.375`. Used only when the item's own
+/// model transform was not retained (e.g. a missing model).
+const BLOCK_THIRD_PERSON_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [75.0, 45.0, 0.0],
+    translation: [0.0, 2.5 / 16.0, 0.0],
+    scale: [0.375, 0.375, 0.375],
 };
 
-/// Vanilla third-person right-hand display transform for a flat item (`minecraft:item/generated`):
-/// rotation `[0, 0, 0]°`, translation `[0, 3, 1]`/16, scale `0.55`. Handheld tools use a distinct angled
-/// transform; until per-item display transforms are retained, tools fall back to this.
-const GENERATED_THIRD_PERSON: DisplayTransform = DisplayTransform {
-    rotation_deg: [0.0, 0.0, 0.0],
-    translation: [0.0, 3.0, 1.0],
-    scale: 0.55,
+/// Fallback third-person right-hand display transform for a flat item (`minecraft:item/generated`):
+/// rotation `[0, 0, 0]°`, translation `[0, 3, 1]`/16, scale `0.55`. Handheld tools have their own angled
+/// transform (`item/handheld`), retained per-item; this is only the no-model fallback.
+const GENERATED_THIRD_PERSON_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, 0.0, 0.0],
+    translation: [0.0, 3.0 / 16.0, 1.0 / 16.0],
+    scale: [0.55, 0.55, 0.55],
 };
-
-/// A vanilla `ItemTransform` (a display context): Euler rotation in degrees, translation in 1/16 units,
-/// uniform scale.
-struct DisplayTransform {
-    rotation_deg: [f32; 3],
-    translation: [f32; 3],
-    scale: f32,
-}
 
 /// The display transform about the model center: `T(t) · Rxyz · S · T(-0.5)` (vanilla
-/// `ItemTransform.apply`, right hand — no left-hand mirror). `Rxyz` matches joml `rotationXYZ`.
-fn display_matrix(display: &DisplayTransform) -> Mat4 {
-    let translation = Vec3::new(
-        display.translation[0] / 16.0,
-        display.translation[1] / 16.0,
-        display.translation[2] / 16.0,
-    );
-    let rotation = Mat4::from_rotation_x(display.rotation_deg[0].to_radians())
-        * Mat4::from_rotation_y(display.rotation_deg[1].to_radians())
-        * Mat4::from_rotation_z(display.rotation_deg[2].to_radians());
-    Mat4::from_translation(translation)
+/// `ItemTransform.apply`, right hand — no left-hand mirror). `Rxyz` matches joml `rotationXYZ`. The pack's
+/// `BlockModelDisplayTransform` already holds translation in world units (the model JSON's 1/16 value
+/// pre-multiplied) and per-axis scale, so no further normalization is applied here.
+fn display_matrix(display: &BlockModelDisplayTransform) -> Mat4 {
+    let rotation = Mat4::from_rotation_x(display.rotation[0].to_radians())
+        * Mat4::from_rotation_y(display.rotation[1].to_radians())
+        * Mat4::from_rotation_z(display.rotation[2].to_radians());
+    Mat4::from_translation(Vec3::from_array(display.translation))
         * rotation
-        * Mat4::from_scale(Vec3::splat(display.scale))
+        * Mat4::from_scale(Vec3::from_array(display.scale))
         * Mat4::from_translation(Vec3::splat(-0.5))
 }
 
@@ -218,11 +209,17 @@ pub(crate) fn held_item_models(
             continue;
         };
 
+        // The item's own retained third-person right-hand transform (handheld tools angle the model,
+        // blocks tilt it, generated items lay it flat); falls back to the parent-model default per path.
+        let retained = item_runtime
+            .item_display_transform(item_id, BlockModelDisplayContext::ThirdPersonRightHand);
+
         // Block path.
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
-                    let transform = hand * display_matrix(&BLOCK_THIRD_PERSON);
+                    let display = retained.unwrap_or(BLOCK_THIRD_PERSON_FALLBACK);
+                    let transform = hand * display_matrix(&display);
                     block_meshes.push(bake_item_model_mesh(&quads, transform));
                     continue;
                 }
@@ -241,7 +238,8 @@ pub(crate) fn held_item_models(
         if quads.is_empty() {
             continue;
         }
-        let transform = hand * display_matrix(&GENERATED_THIRD_PERSON);
+        let display = retained.unwrap_or(GENERATED_THIRD_PERSON_FALLBACK);
+        let transform = hand * display_matrix(&display);
         flat_meshes.push(bake_item_model_mesh(&quads, transform));
     }
 
@@ -498,10 +496,11 @@ mod tests {
     #[test]
     fn display_matrix_centers_the_model_at_the_translation() {
         // The display transform is about the model center (`T(-0.5)`), so the unit-cube center
-        // (0.5,0.5,0.5) lands exactly at the (1/16-scaled) translation regardless of rotation/scale.
-        let generated = display_matrix(&GENERATED_THIRD_PERSON).transform_point3(Vec3::splat(0.5));
+        // (0.5,0.5,0.5) lands exactly at the (world-unit) translation regardless of rotation/scale.
+        let generated =
+            display_matrix(&GENERATED_THIRD_PERSON_FALLBACK).transform_point3(Vec3::splat(0.5));
         assert!((generated - Vec3::new(0.0, 3.0 / 16.0, 1.0 / 16.0)).length() < 1e-6);
-        let block = display_matrix(&BLOCK_THIRD_PERSON).transform_point3(Vec3::splat(0.5));
+        let block = display_matrix(&BLOCK_THIRD_PERSON_FALLBACK).transform_point3(Vec3::splat(0.5));
         assert!((block - Vec3::new(0.0, 2.5 / 16.0, 0.0)).length() < 1e-6);
     }
 }
