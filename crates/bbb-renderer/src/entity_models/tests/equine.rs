@@ -204,7 +204,8 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
     assert_eq!(
         EntityModelKind::Horse {
             baby: false,
-            variant: HorseColorVariant::White
+            variant: HorseColorVariant::White,
+            markings: HorseMarkings::None
         }
         .model_key(),
         "horse"
@@ -212,7 +213,8 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
     assert_eq!(
         EntityModelKind::Horse {
             baby: false,
-            variant: HorseColorVariant::White
+            variant: HorseColorVariant::White,
+            markings: HorseMarkings::None
         }
         .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
@@ -241,7 +243,8 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
         assert_eq!(
             EntityModelKind::Horse {
                 baby: false,
-                variant
+                variant,
+                markings: HorseMarkings::None
             }
             .vanilla_texture_ref(),
             Some(EntityModelTextureRef {
@@ -252,7 +255,8 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
         assert_eq!(
             EntityModelKind::Horse {
                 baby: true,
-                variant
+                variant,
+                markings: HorseMarkings::None
             }
             .vanilla_texture_ref(),
             Some(EntityModelTextureRef {
@@ -264,7 +268,8 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
     assert_eq!(
         EntityModelKind::Horse {
             baby: true,
-            variant: HorseColorVariant::White
+            variant: HorseColorVariant::White,
+            markings: HorseMarkings::None
         }
         .model_key(),
         "horse_baby"
@@ -272,7 +277,8 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
     assert_eq!(
         EntityModelKind::Horse {
             baby: true,
-            variant: HorseColorVariant::White
+            variant: HorseColorVariant::White,
+            markings: HorseMarkings::None
         }
         .vanilla_texture_ref(),
         Some(EntityModelTextureRef {
@@ -1282,6 +1288,57 @@ fn horse_textured_swings_legs_when_walking() {
         still.vertices, walking.vertices,
         "the walking horse re-poses on the textured path"
     );
+}
+
+#[test]
+fn horse_markings_overlay_layers_a_translucent_white_copy() {
+    // Vanilla `HorseMarkingLayer` draws the white markings as a translucent overlay of the SAME posed
+    // `HorseModel` on top of the base coat, but only when the coat carries markings (`Markings.NONE` →
+    // `INVISIBLE_TEXTURE`, no overlay). The overlay rides the identical pose, so the body's cutout base
+    // and the markings' translucent overlay have the same vertex count and positions.
+    let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
+
+    // A plain (no-markings) horse: only the cutout base, no translucent overlay.
+    let plain = entity_model_textured_meshes(
+        &[EntityModelInstance::horse_with_variant(
+            170,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            HorseColorVariant::White,
+        )],
+        &atlas,
+    );
+    assert_eq!(plain.cutout.vertices.len(), 288);
+    assert!(plain.translucent.vertices.is_empty());
+
+    // A marked horse: the same cutout base PLUS a translucent overlay of identical geometry.
+    let marked = entity_model_textured_meshes(
+        &[EntityModelInstance::horse_full(
+            171,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            HorseColorVariant::White,
+            HorseMarkings::WhiteDots,
+        )],
+        &atlas,
+    );
+    assert_eq!(marked.cutout.vertices.len(), 288);
+    assert_eq!(marked.translucent.cutout_faces, 72);
+    assert_eq!(marked.translucent.vertices.len(), 288);
+    let base_positions: Vec<_> = marked.cutout.vertices.iter().map(|v| v.position).collect();
+    let overlay_positions: Vec<_> = marked
+        .translucent
+        .vertices
+        .iter()
+        .map(|v| v.position)
+        .collect();
+    assert_eq!(base_positions, overlay_positions);
+    // The overlay samples the markings atlas region, not the coat's.
+    let base_uvs: Vec<_> = marked.cutout.vertices.iter().map(|v| v.uv).collect();
+    let overlay_uvs: Vec<_> = marked.translucent.vertices.iter().map(|v| v.uv).collect();
+    assert_ne!(base_uvs, overlay_uvs);
 }
 
 #[test]

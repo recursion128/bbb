@@ -5,9 +5,9 @@ use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
     EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HumanoidModelFamily,
-    IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
-    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+    HumanoidModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant,
+    MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
     SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
     TropicalFishPattern, UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
@@ -1598,6 +1598,7 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
             baby: ageable_baby(data_values),
             variant: horse_color_variant(data_values),
+            markings: horse_markings(data_values),
         },
         VANILLA_ENTITY_TYPE_DONKEY_ID => donkey_model_kind(DonkeyModelFamily::Donkey, data_values),
         VANILLA_ENTITY_TYPE_MULE_ID => donkey_model_kind(DonkeyModelFamily::Mule, data_values),
@@ -2520,6 +2521,20 @@ fn horse_color_variant(values: &[bbb_protocol::packets::EntityDataValue]) -> Hor
         4 => HorseColorVariant::Black,
         5 => HorseColorVariant::Gray,
         _ => HorseColorVariant::DarkBrown,
+    }
+}
+
+/// The living horse's white markings from synced `Horse.DATA_ID_TYPE_VARIANT` (INT, id 19): vanilla
+/// `Markings.byId((typeVariant & 0xFF00) >> 8)`, where `byId` is `ByIdMap.continuous(WRAP)` so an
+/// out-of-range nibble wraps modulo the five markings. `Markings.NONE` draws no overlay.
+fn horse_markings(values: &[bbb_protocol::packets::EntityDataValue]) -> HorseMarkings {
+    let markings = (entity_data_int(values, HORSE_VARIANT_DATA_ID, 0) & 0xFF00) >> 8;
+    match markings.rem_euclid(5) {
+        0 => HorseMarkings::None,
+        1 => HorseMarkings::White,
+        2 => HorseMarkings::WhiteField,
+        3 => HorseMarkings::WhiteDots,
+        _ => HorseMarkings::BlackDots,
     }
 }
 
@@ -9191,7 +9206,8 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_HORSE_ID, &[]),
             EntityModelKind::Horse {
                 baby: false,
-                variant: HorseColorVariant::White
+                variant: HorseColorVariant::White,
+                markings: HorseMarkings::None
             }
         );
         assert_eq!(
@@ -9201,11 +9217,13 @@ mod tests {
             ),
             EntityModelKind::Horse {
                 baby: true,
-                variant: HorseColorVariant::White
+                variant: HorseColorVariant::White,
+                markings: HorseMarkings::None
             }
         );
-        // The coat color reads `DATA_ID_TYPE_VARIANT & 0xFF` (id 19): id 4 = black, and the markings
-        // nibble (`<< 8`) is ignored by the coat selection.
+        // The packed `DATA_ID_TYPE_VARIANT` (id 19) carries the coat color in the low byte
+        // (`& 0xFF`) and the markings in the next nibble (`>> 8`): id `4 | (2 << 8)` = black coat +
+        // white-field markings.
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_HORSE_ID,
@@ -9213,7 +9231,8 @@ mod tests {
             ),
             EntityModelKind::Horse {
                 baby: false,
-                variant: HorseColorVariant::Black
+                variant: HorseColorVariant::Black,
+                markings: HorseMarkings::WhiteField
             }
         );
         assert_eq!(

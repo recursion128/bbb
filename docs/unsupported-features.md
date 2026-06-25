@@ -1344,8 +1344,11 @@ When an agent does any of the following, update this file in the same slice:
       speed * 0.75`, `tail.y += speed * ageScale`, `tail.z += speed * 2 * ageScale`; the
       baby horse `getTailXRotOffset = −π/2` overrides the layer rest angle and `ageScale =
       0.5`, the body subtree hand-emitted so the tail child can swing) drive both the
-      textured base body and the colored full-mesh fallback; the white-markings overlay
-      (`HorseMarkingLayer`, the `(variant >> 8) & 0xFF` nibble), armor, saddle, the
+      textured base body and the colored full-mesh fallback, plus the white-markings
+      overlay (`HorseMarkingLayer`): a translucent `horse_markings_{white,whitefield,
+      whitedots,blackdots}(_baby).png` copy of the same posed model drawn over the coat
+      when the `(DATA_ID_TYPE_VARIANT & 0xFF00) >> 8` markings nibble is non-`NONE`
+      (`Markings.NONE` → `INVISIBLE_TEXTURE`, no overlay); horse armor, saddle, the
       ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and the in-water
       leg-frequency scaling remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby

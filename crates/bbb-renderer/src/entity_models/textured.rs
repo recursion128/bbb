@@ -5,11 +5,12 @@ use super::colored::{
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::model::{EntityModel, ModelPart};
 use super::{
+    catalog::horse_markings_texture_ref,
     catalog::squid_texture_ref,
     catalog::{
         CamelModelFamily, EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, HoglinModelFamily,
-        LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
+        HorseMarkings, LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
         SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
@@ -230,8 +231,8 @@ pub(super) fn entity_model_textured_meshes(
                 EntityModelKind::SkeletonVariant { family } => {
                     emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
                 }
-                EntityModelKind::Horse { baby, .. } => {
-                    emit_horse_textured_model(&mut meshes, *instance, baby, atlas);
+                EntityModelKind::Horse { baby, markings, .. } => {
+                    emit_horse_textured_model(&mut meshes, *instance, baby, markings, atlas);
                 }
                 EntityModelKind::UndeadHorse { baby, .. } => {
                     emit_undead_horse_textured_model(&mut meshes, *instance, baby, atlas);
@@ -1191,16 +1192,19 @@ fn emit_equine_textured_posed(
     );
 }
 
-/// The textured living horse base layer. Vanilla `HorseRenderer` renders `HorseModel` with a per-coat
-/// `horse_<color>(_baby).png` base texture (the white-markings overlay `HorseMarkingLayer` is deferred).
-/// The adult body carries the `livingHorseScale` 1.1 mesh-transformer scale (`emit_horse_model`'s
+/// The textured living horse base layer plus the `HorseMarkingLayer` overlay. Vanilla `HorseRenderer`
+/// renders `HorseModel` with a per-coat `horse_<color>(_baby).png` base texture, then layers the white
+/// markings (`horse_markings_*(_baby).png`, `entityTranslucent`, `order(1)`) on top when the coat has
+/// markings. The adult body carries the `livingHorseScale` 1.1 mesh-transformer scale (`emit_horse_model`'s
 /// transform); the baby uses the unscaled re-parented layer. The leg swing / head look/bob / tail walk
 /// lift are the shared `AbstractEquineModel.setupAnim` default-branch poses (the same as the undead
-/// horse), driven on the textured path here. The variant only chooses the texture (one `HorseModel`).
+/// horse), driven on the textured path here. The variant chooses the base coat, the markings the overlay;
+/// both ride the same `HorseModel` pose, so the overlay tracks the body for free.
 fn emit_horse_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     baby: bool,
+    markings: HorseMarkings,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let Some(texture) = instance.kind.vanilla_texture_ref() else {
@@ -1248,6 +1252,26 @@ fn emit_horse_textured_model(
         [1.0, 1.0, 1.0, 1.0],
         instance,
     );
+    // `HorseMarkingLayer`: a translucent white overlay of the SAME posed model, drawn after the base
+    // when the coat carries markings (`Markings.NONE` → `INVISIBLE_TEXTURE`, skipped). It rides the
+    // identical pose, so re-emitting the same tree into the translucent mesh tracks the body.
+    if let Some(markings_texture) = horse_markings_texture_ref(markings, baby) {
+        if let Some(markings_entry) = entity_model_texture_atlas_entry(atlas, markings_texture) {
+            emit_equine_textured_posed(
+                &mut meshes.translucent,
+                parts,
+                leg_indices,
+                head_parts_index,
+                tail_x_rot_offset,
+                age_scale,
+                transform,
+                markings_texture,
+                markings_entry.uv,
+                [1.0, 1.0, 1.0, 1.0],
+                instance,
+            );
+        }
+    }
 }
 
 /// The textured skeleton / zombie horse base layer. Vanilla `UndeadHorseRenderer extends

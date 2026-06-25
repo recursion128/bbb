@@ -1,9 +1,9 @@
 mod selection;
 
 pub(in crate::entity_models) use selection::{
-    boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref, llama_texture_ref,
-    mooshroom_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
-    squid_texture_ref, wolf_texture_ref,
+    boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
+    horse_markings_texture_ref, llama_texture_ref, mooshroom_texture_ref, pig_texture_ref,
+    player_texture_ref, sheep_wool_render_color, squid_texture_ref, wolf_texture_ref,
 };
 #[cfg(test)]
 pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_wool_layer_color};
@@ -292,6 +292,7 @@ pub enum EntityModelKind {
     Horse {
         baby: bool,
         variant: HorseColorVariant,
+        markings: HorseMarkings,
     },
     Donkey {
         family: DonkeyModelFamily,
@@ -617,6 +618,18 @@ pub enum HorseColorVariant {
     Black,
     Gray,
     DarkBrown,
+}
+
+/// The living horse's white-markings overlay (vanilla `equine.Markings`). `HorseMarkingLayer` draws a
+/// translucent `horse_markings_*(_baby).png` on top of the base coat; `None` maps to vanilla's
+/// `INVISIBLE_TEXTURE` (no overlay). Selected from the `(DATA_ID_TYPE_VARIANT & 0xFF00) >> 8` nibble.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HorseMarkings {
+    None,
+    White,
+    WhiteField,
+    WhiteDots,
+    BlackDots,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

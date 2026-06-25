@@ -1514,9 +1514,31 @@ impl EntityModelInstance {
         baby: bool,
         variant: HorseColorVariant,
     ) -> Self {
+        Self::horse_full(
+            entity_id,
+            position,
+            y_rot,
+            baby,
+            variant,
+            HorseMarkings::None,
+        )
+    }
+
+    pub fn horse_full(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        variant: HorseColorVariant,
+        markings: HorseMarkings,
+    ) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Horse { baby, variant },
+            EntityModelKind::Horse {
+                baby,
+                variant,
+                markings,
+            },
             position,
             y_rot,
         )

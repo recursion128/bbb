@@ -544,7 +544,7 @@ impl EntityModelKind {
                 variant,
                 ..
             } => Some(wolf_texture_ref(baby, tame, angry, variant)),
-            Self::Horse { baby, variant } => Some(horse_coat_texture_ref(variant, baby)),
+            Self::Horse { baby, variant, .. } => Some(horse_coat_texture_ref(variant, baby)),
             Self::Donkey {
                 family: DonkeyModelFamily::Donkey,
                 baby: false,
@@ -809,6 +809,26 @@ pub(in crate::entity_models) fn horse_coat_texture_ref(
         (HorseColorVariant::DarkBrown, false) => HORSE_DARKBROWN_TEXTURE_REF,
         (HorseColorVariant::DarkBrown, true) => HORSE_DARKBROWN_BABY_TEXTURE_REF,
     }
+}
+
+/// The living horse's white-markings overlay texture (vanilla `HorseMarkingLayer.LOCATION_BY_MARKINGS`,
+/// then `state.isBaby ? variant.baby : variant.adult`). `Markings.NONE` maps to vanilla's
+/// `INVISIBLE_TEXTURE` (no overlay), so it returns `None` and the overlay pass is skipped.
+pub(in crate::entity_models) fn horse_markings_texture_ref(
+    markings: HorseMarkings,
+    baby: bool,
+) -> Option<EntityModelTextureRef> {
+    Some(match (markings, baby) {
+        (HorseMarkings::None, _) => return None,
+        (HorseMarkings::White, false) => HORSE_MARKINGS_WHITE_TEXTURE_REF,
+        (HorseMarkings::White, true) => HORSE_MARKINGS_WHITE_BABY_TEXTURE_REF,
+        (HorseMarkings::WhiteField, false) => HORSE_MARKINGS_WHITEFIELD_TEXTURE_REF,
+        (HorseMarkings::WhiteField, true) => HORSE_MARKINGS_WHITEFIELD_BABY_TEXTURE_REF,
+        (HorseMarkings::WhiteDots, false) => HORSE_MARKINGS_WHITEDOTS_TEXTURE_REF,
+        (HorseMarkings::WhiteDots, true) => HORSE_MARKINGS_WHITEDOTS_BABY_TEXTURE_REF,
+        (HorseMarkings::BlackDots, false) => HORSE_MARKINGS_BLACKDOTS_TEXTURE_REF,
+        (HorseMarkings::BlackDots, true) => HORSE_MARKINGS_BLACKDOTS_BABY_TEXTURE_REF,
+    })
 }
 
 const SHEEP_WOOL_COLOR_MODEL_KEYS: [&str; 16] = [

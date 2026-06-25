@@ -84,6 +84,54 @@ pub(in crate::entity_models) const HORSE_DARKBROWN_BABY_TEXTURE_REF: EntityModel
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const HORSE_MARKINGS_WHITE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_markings_white.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_MARKINGS_WHITE_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_markings_white_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_MARKINGS_WHITEFIELD_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_markings_whitefield.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_MARKINGS_WHITEFIELD_BABY_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_markings_whitefield_baby.png",
+    size: [64, 64],
+};
+
+pub(in crate::entity_models) const HORSE_MARKINGS_WHITEDOTS_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_markings_whitedots.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_MARKINGS_WHITEDOTS_BABY_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_markings_whitedots_baby.png",
+    size: [64, 64],
+};
+
+pub(in crate::entity_models) const HORSE_MARKINGS_BLACKDOTS_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/horse/horse_markings_blackdots.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const HORSE_MARKINGS_BLACKDOTS_BABY_TEXTURE_REF:
+    EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_markings_blackdots_baby.png",
+    size: [64, 64],
+};
+
 pub(in crate::entity_models) const DONKEY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/horse/donkey.png",
