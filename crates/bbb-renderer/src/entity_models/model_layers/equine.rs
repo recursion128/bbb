@@ -1157,3 +1157,189 @@ pub(in crate::entity_models) const BABY_DONKEY_PARTS: [ModelPartDesc; 1] = [Mode
     cubes: &BABY_DONKEY_BODY,
     children: &BABY_DONKEY_BODY_CHILDREN,
 }];
+
+// Textured baby donkey / mule. Vanilla `BabyDonkeyModel.createBabyLayer()` (64×64) is a DISTINCT
+// re-parented mesh (legs / head_parts / tail nested UNDER the body), NOT the horse cubes, and its
+// `setupAnim` forces `xRot = −30°` — so it emits STATIC on both paths (the equine gait / head look /
+// tail lift is deferred). The four legs and two ears carry DIFFERENT texOffs (and the right ear is
+// mirrored), so each gets its own textured cube. The tree mirrors the colored `BABY_DONKEY_*`
+// structure 1:1 (identical `min`/`size`, poses referenced from the colored consts). Donkey/mule share
+// the geometry and differ only by texture.
+pub(in crate::entity_models) const BABY_DONKEY_BODY_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-5.0, -3.0, -7.0],
+        size: [8.0, 6.0, 14.0],
+        uv_size: [8.0, 6.0, 14.0],
+        tex: [0.0, 13.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_TAIL_R1_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.5, -1.0, -0.5],
+        size: [3.0, 3.0, 8.0],
+        uv_size: [3.0, 3.0, 8.0],
+        tex: [24.0, 33.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_TAIL_CHILDREN_TEXTURED: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: BABY_DONKEY_TAIL_CHILDREN[0].pose,
+        cubes: &BABY_DONKEY_TAIL_R1_TEXTURED,
+        children: &[],
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_LEFT_HIND_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.5, -1.5, -1.5],
+        size: [3.0, 8.0, 3.0],
+        uv_size: [3.0, 8.0, 3.0],
+        tex: [12.0, 44.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_RIGHT_HIND_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.5, -1.5, -1.5],
+        size: [3.0, 8.0, 3.0],
+        uv_size: [3.0, 8.0, 3.0],
+        tex: [0.0, 44.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_LEFT_FRONT_LEG_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.5, -1.5, -1.5],
+        size: [3.0, 8.0, 3.0],
+        uv_size: [3.0, 8.0, 3.0],
+        tex: [12.0, 33.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_RIGHT_FRONT_LEG_TEXTURED: [TexturedModelCubeDesc;
+    1] = [TexturedModelCubeDesc {
+    min: [-2.5, -1.5, -1.5],
+    size: [3.0, 8.0, 3.0],
+    uv_size: [3.0, 8.0, 3.0],
+    tex: [0.0, 33.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const BABY_DONKEY_NECK_R1_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.0, -6.0, -3.0],
+        size: [4.0, 8.0, 4.0],
+        uv_size: [4.0, 8.0, 4.0],
+        tex: [30.0, 9.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_HEAD_R1_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, -3.6, -8.4],
+        size: [6.0, 4.0, 9.0],
+        uv_size: [6.0, 4.0, 9.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_LEFT_EAR_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -6.5, -0.3],
+        size: [2.0, 7.0, 1.0],
+        uv_size: [2.0, 7.0, 1.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_RIGHT_EAR_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, -6.5, -0.3],
+        size: [2.0, 7.0, 1.0],
+        uv_size: [2.0, 7.0, 1.0],
+        tex: [22.0, 0.0],
+        mirror: true,
+    }];
+
+pub(in crate::entity_models) const BABY_DONKEY_HEAD_CHILDREN_TEXTURED: [TexturedModelPartDesc; 3] = [
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_HEAD_CHILDREN[0].pose,
+        cubes: &BABY_DONKEY_HEAD_R1_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_HEAD_CHILDREN[1].pose,
+        cubes: &BABY_DONKEY_LEFT_EAR_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_HEAD_CHILDREN[2].pose,
+        cubes: &BABY_DONKEY_RIGHT_EAR_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const BABY_DONKEY_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_HEAD_PARTS_CHILDREN[0].pose,
+        cubes: &BABY_DONKEY_NECK_R1_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_HEAD_PARTS_CHILDREN[1].pose,
+        cubes: &[],
+        children: &BABY_DONKEY_HEAD_CHILDREN_TEXTURED,
+    },
+];
+
+pub(in crate::entity_models) const BABY_DONKEY_BODY_CHILDREN_TEXTURED: [TexturedModelPartDesc; 8] = [
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[0].pose,
+        cubes: &[],
+        children: &BABY_DONKEY_TAIL_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[1].pose,
+        cubes: &BABY_DONKEY_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[2].pose,
+        cubes: &BABY_DONKEY_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[3].pose,
+        cubes: &BABY_DONKEY_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[4].pose,
+        cubes: &BABY_DONKEY_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[5].pose,
+        cubes: &[],
+        children: &BABY_DONKEY_HEAD_PARTS_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[6].pose,
+        cubes: &[],
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_DONKEY_BODY_CHILDREN[7].pose,
+        cubes: &[],
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const BABY_DONKEY_PARTS_TEXTURED: [TexturedModelPartDesc; 1] =
+    [TexturedModelPartDesc {
+        pose: BABY_DONKEY_PARTS[0].pose,
+        cubes: &BABY_DONKEY_BODY_TEXTURED,
+        children: &BABY_DONKEY_BODY_CHILDREN_TEXTURED,
+    }];

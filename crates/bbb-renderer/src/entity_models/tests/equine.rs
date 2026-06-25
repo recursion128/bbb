@@ -1423,31 +1423,79 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
 }
 
 #[test]
-fn donkey_colored_runtime_skips_adult_keeps_baby() {
-    // The ADULT donkey/mule now renders through the textured path (the runtime colored mesh emits
-    // nothing for it), while the BABY donkey/mule's bespoke re-parented mesh stays on the colored path.
-    let adult = [EntityModelInstance::donkey(
-        170,
-        [0.0, 64.0, 0.0],
-        0.0,
-        DonkeyModelFamily::Donkey,
-        false,
-        false,
-    )];
-    assert!(!entity_model_mesh(&adult).vertices.is_empty());
-    assert!(entity_model_colored_runtime_mesh(&adult)
-        .vertices
-        .is_empty());
-
-    let baby = [EntityModelInstance::donkey(
-        171,
+fn donkey_textured_baby_matches_vanilla_baby_geometry() {
+    // Vanilla `BabyDonkeyModel.createBabyLayer()` is a distinct re-parented mesh (10 cubes, 60 faces /
+    // 240 vertices), emitted STATIC (its `setupAnim` forces `xRot = -30°`, so no equine posing). The
+    // textured baby occupies the same space as its colored baby fallback (both unscaled), and the empty
+    // chest children make `hasChest` immaterial.
+    let (atlas, _) = build_entity_model_texture_atlas(&donkey_texture_images()).unwrap();
+    let baby = entity_model_textured_mesh(
+        &[EntityModelInstance::donkey(
+            165,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            true,
+            false,
+        )],
+        &atlas,
+    );
+    assert_eq!(baby.cutout_faces, 60);
+    assert_eq!(baby.vertices.len(), 240);
+    let colored = entity_model_mesh(&[EntityModelInstance::donkey(
+        166,
         [0.0, 64.0, 0.0],
         0.0,
         DonkeyModelFamily::Donkey,
         true,
         false,
-    )];
-    assert!(!entity_model_colored_runtime_mesh(&baby).vertices.is_empty());
+    )]);
+    let (t_min, t_max) = textured_mesh_extents(&baby);
+    let (c_min, c_max) = mesh_extents(&colored);
+    assert_close3(t_min, c_min);
+    assert_close3(t_max, c_max);
+
+    // `hasChest` does not change the baby (its chest children are empty).
+    let baby_chest = entity_model_textured_mesh(
+        &[EntityModelInstance::donkey(
+            167,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            true,
+            true,
+        )],
+        &atlas,
+    );
+    assert_eq!(baby_chest.cutout_faces, 60);
+}
+
+#[test]
+fn donkey_colored_runtime_skips_the_texture_backed_donkey() {
+    // The donkey/mule (adult AND baby) now render through the textured path, so the runtime colored
+    // mesh emits nothing for them; the full colored path still emits the fallback geometry.
+    let instances = [
+        EntityModelInstance::donkey(
+            170,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        ),
+        EntityModelInstance::donkey(
+            171,
+            [4.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            true,
+            true,
+        ),
+    ];
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
 }
 
 #[test]

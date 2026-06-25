@@ -31,8 +31,8 @@ use super::{
         SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, WindChargeModel,
         WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CREEPER_ARMOR_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
         STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
@@ -238,10 +238,17 @@ pub(super) fn entity_model_textured_meshes(
                 }
                 EntityModelKind::Donkey {
                     family,
-                    baby: false,
+                    baby,
                     has_chest,
                 } => {
-                    emit_donkey_textured_model(&mut meshes, *instance, family, has_chest, atlas);
+                    emit_donkey_textured_model(
+                        &mut meshes,
+                        *instance,
+                        family,
+                        baby,
+                        has_chest,
+                        atlas,
+                    );
                 }
                 EntityModelKind::UndeadHorse { baby, .. } => {
                     emit_undead_horse_textured_model(&mut meshes, *instance, baby, atlas);
@@ -1201,17 +1208,20 @@ fn emit_equine_textured_posed(
     );
 }
 
-/// The textured adult donkey / mule base layer. Vanilla `DonkeyModel` is the shared
+/// The textured donkey / mule base layer. Vanilla `DonkeyModel` is the shared
 /// `AbstractEquineModel.createBodyMesh` with `modifyMesh` (bigger ears replacing the horse ears, plus the
 /// two side chest boxes shown when `hasChest`), on the 64×64 `donkey.png` / `mule.png` at the
-/// `DonkeyModel.DONKEY_SCALE` 0.87 / `MULE_SCALE` 0.92 mesh-transformer scale. It takes the same equine
-/// leg swing / head look/bob / tail walk lift as the horse (`AbstractEquineModel.setupAnim`), so it rides
-/// `emit_equine_textured_posed`. The baby donkey/mule (a distinct re-parented `BabyDonkeyModel` mesh that
-/// also forces `xRot = -30°`) stays on the colored path — its bespoke geometry is a deferred transcription.
+/// `DonkeyModel.DONKEY_SCALE` 0.87 / `MULE_SCALE` 0.92 mesh-transformer scale. The ADULT takes the same
+/// equine leg swing / head look/bob / tail walk lift as the horse (`AbstractEquineModel.setupAnim`), so
+/// it rides `emit_equine_textured_posed`. The BABY is the distinct re-parented `BabyDonkeyModel` mesh
+/// (legs/head/tail nested under the body) whose `setupAnim` forces `xRot = -30°`, so it emits STATIC
+/// (unscaled, no equine posing — matching the colored baby path); its empty chest children make
+/// `hasChest` immaterial.
 fn emit_donkey_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     family: DonkeyModelFamily,
+    baby: bool,
     has_chest: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
@@ -1221,6 +1231,17 @@ fn emit_donkey_textured_model(
     let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
         return;
     };
+    if baby {
+        emit_textured_model_parts(
+            &mut meshes.cutout,
+            &BABY_DONKEY_PARTS_TEXTURED,
+            entity_model_root_transform(instance),
+            texture,
+            entry.uv,
+            [1.0, 1.0, 1.0, 1.0],
+        );
+        return;
+    }
     let parts: &[TexturedModelPartDesc] = if has_chest {
         &ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED
     } else {

@@ -1367,13 +1367,15 @@ When an agent does any of the following, update this file in the same slice:
       `setupAnim`), and the adult tail walk lift (the same `getTailXRotOffset = 0`,
       `ageScale = 1` formula as the horse, the tail child swung with the chest
       children kept in place when present) driving both the textured base body and
-      the colored full-mesh fallback. The BABY donkey/mule (its legs re-parented
-      under the body, the empty baby chest children from
-      `BabyDonkeyModel.createBabyLayer()`, and `BabyDonkeyModel.setupAnim` forcing
-      `xRot = -30°`) stays on the colored path — its bespoke re-parented mesh is a
-      deferred textured transcription; the baby leg swing / head look / tail, saddle
-      equipment layer, the ridden/eat/stand/mouth poses, the tail's `ageInTicks`
-      yRot wag, and lighting remain unsupported
+      the colored full-mesh fallback. The BABY donkey/mule also renders on the
+      **textured path** now: vanilla `BabyDonkeyModel.createBabyLayer()` is a
+      distinct re-parented mesh (10 cubes nested under the body, with per-leg and
+      per-ear `texOffs` and a mirrored right ear) on the `donkey` / `mule` 64×64
+      textures, emitted STATIC and unscaled — its `setupAnim` forces `xRot = -30°`,
+      so the equine gait/head/tail posing is deferred (matching the colored baby
+      path), and the empty chest children make `hasChest` immaterial. The baby leg
+      swing / head look / tail, saddle equipment layer, the ridden/eat/stand/mouth
+      poses, the tail's `ageInTicks` yRot wag, and lighting remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on
