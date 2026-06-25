@@ -713,6 +713,8 @@ fn entity_model_instance(
         .with_warden_sniff_seconds(source.warden_sniff_seconds)
         .with_warden_attack_seconds(source.warden_attack_seconds)
         .with_warden_sonic_boom_seconds(source.warden_sonic_boom_seconds)
+        .with_warden_emerge_seconds(source.warden_emerge_seconds)
+        .with_warden_dig_seconds(source.warden_dig_seconds)
         .with_squid_tentacle_angle(source.squid_tentacle_angle)
         .with_squid_body_tilt(source.squid_x_body_rot, source.squid_z_body_rot)
         .with_guardian_tail_animation(source.guardian_tail_animation)

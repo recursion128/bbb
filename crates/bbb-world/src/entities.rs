@@ -676,6 +676,16 @@ pub struct EntityModelSourceState {
     /// `-1.0` (stopped) for a non-booming warden and every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub warden_sonic_boom_seconds: f32,
+    /// Vanilla `Warden.emergeAnimationState` elapsed seconds (`Pose.EMERGING`, the 6.68s
+    /// `WARDEN_EMERGE` spawn rise), sampled by `WardenModel.setupAnim`'s `emergeAnimation.apply`.
+    /// `-1.0` (stopped) for a non-emerging warden and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub warden_emerge_seconds: f32,
+    /// Vanilla `Warden.diggingAnimationState` elapsed seconds (`Pose.DIGGING`, the 5.0s
+    /// `WARDEN_DIG` despawn burrow), sampled by `WardenModel.setupAnim`'s `diggingAnimation.apply`.
+    /// `-1.0` (stopped) for a non-digging warden and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub warden_dig_seconds: f32,
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that sways the model's legs/arms. `0.0` for a standing entity, every

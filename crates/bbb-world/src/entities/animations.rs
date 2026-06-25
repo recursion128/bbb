@@ -202,6 +202,14 @@ const VANILLA_POSE_ROARING_ID: i32 = 11;
 /// `Warden.onSyncedDataUpdated` reads to `.start()` the `sniffAnimationState` when
 /// the pose CHANGES to it (the 4.16s `WARDEN_SNIFF` keyframe animation).
 const VANILLA_POSE_SNIFFING_ID: i32 = 12;
+/// Vanilla `Pose.EMERGING` ordinal, the synced `DATA_POSE` int value that
+/// `Warden.onSyncedDataUpdated` reads to `.start()` the `emergeAnimationState` when
+/// the pose CHANGES to it (the 6.68s `WARDEN_EMERGE` spawn keyframe animation).
+const VANILLA_POSE_EMERGING_ID: i32 = 13;
+/// Vanilla `Pose.DIGGING` ordinal, the synced `DATA_POSE` int value that
+/// `Warden.onSyncedDataUpdated` reads to `.start()` the `diggingAnimationState` when
+/// the pose CHANGES to it (the 5.0s `WARDEN_DIG` despawn keyframe animation).
+const VANILLA_POSE_DIGGING_ID: i32 = 14;
 /// Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
 /// `attackAnimationState.start(tickCount)` — the melee attack swing (the 0.33333s
 /// `WARDEN_ATTACK` keyframe animation), which also cancels any running roar.
@@ -811,15 +819,15 @@ pub struct WardenHeartAnimationState {
 /// - **attack** / **sonic_boom** are event-driven: `Warden.handleEntityEvent(4)` stops the roar
 ///   and starts the attack, and `handleEntityEvent(62)` starts the sonic boom.
 ///
-/// Vanilla applies ALL FOUR additively in `WardenModel.setupAnim`, so each timer is projected
+/// Vanilla applies ALL SIX additively in `WardenModel.setupAnim`, so each timer is projected
 /// independently; the renderer applies every active one in the vanilla order (attack, sonic_boom,
-/// [deferred dig/emerge], roar, sniff). The `EMERGING`/`DIGGING` poses are deferred (their large
-/// spawn/despawn tables are not transcribed yet — see `docs/unsupported-features.md`).
+/// dig, emerge, roar, sniff). The `EMERGING`/`DIGGING` poses drive the spawn/despawn one-shots the
+/// same way the roar/sniff poses do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WardenCombatAnimationState {
-    /// The last synced `DATA_POSE` ordinal observed, so a pose CHANGE into ROARING/SNIFFING is a
-    /// rising edge that restarts the matching timer (vanilla `.start(tickCount)` on the
-    /// transition). [`WARDEN_POSE_UNSET`] until the first pose arrives.
+    /// The last synced `DATA_POSE` ordinal observed, so a pose CHANGE into
+    /// ROARING/SNIFFING/EMERGING/DIGGING is a rising edge that restarts the matching timer (vanilla
+    /// `.start(tickCount)` on the transition). [`WARDEN_POSE_UNSET`] until the first pose arrives.
     pub prev_pose: i32,
     /// Vanilla `Warden.roarAnimationState` (the 4.2s `WARDEN_ROAR`), started when the pose changes
     /// to `Pose.ROARING` and stopped by the attack event.
@@ -831,6 +839,12 @@ pub struct WardenCombatAnimationState {
     pub attack: KeyframeAnimationState,
     /// Vanilla `Warden.sonicBoomAnimationState` (the 3.0s `WARDEN_SONIC_BOOM`), started by event `62`.
     pub sonic_boom: KeyframeAnimationState,
+    /// Vanilla `Warden.emergeAnimationState` (the 6.68s `WARDEN_EMERGE` spawn rise), started when
+    /// the pose changes to `Pose.EMERGING`.
+    pub emerge: KeyframeAnimationState,
+    /// Vanilla `Warden.diggingAnimationState` (the 5.0s `WARDEN_DIG` despawn burrow), started when
+    /// the pose changes to `Pose.DIGGING`.
+    pub dig: KeyframeAnimationState,
 }
 
 impl Default for WardenCombatAnimationState {
@@ -841,16 +855,17 @@ impl Default for WardenCombatAnimationState {
             sniff: KeyframeAnimationState { start_age: None },
             attack: KeyframeAnimationState { start_age: None },
             sonic_boom: KeyframeAnimationState { start_age: None },
+            emerge: KeyframeAnimationState { start_age: None },
+            dig: KeyframeAnimationState { start_age: None },
         }
     }
 }
 
 impl WardenCombatAnimationState {
     /// Vanilla `Warden.onSyncedDataUpdated(DATA_POSE)`: the pose-change `switch` that `.start()`s the
-    /// roar/sniff timer when the pose CHANGES to `Pose.ROARING`/`Pose.SNIFFING`. A redundant re-set
-    /// to the same pose is not a transition, so it leaves a running timer alone (vanilla only fires
-    /// on a real `onSyncedDataUpdated` change). `EMERGING`/`DIGGING` are deferred, so they only
-    /// update the tracked pose.
+    /// matching timer when the pose CHANGES to `Pose.ROARING`/`Pose.SNIFFING`/`Pose.EMERGING`/
+    /// `Pose.DIGGING`. A redundant re-set to the same pose is not a transition, so it leaves a
+    /// running timer alone (vanilla only fires on a real `onSyncedDataUpdated` change).
     fn set_pose(&mut self, pose_id: i32, age_ticks: u32) {
         if pose_id == self.prev_pose {
             return;
@@ -859,6 +874,8 @@ impl WardenCombatAnimationState {
         match pose_id {
             VANILLA_POSE_ROARING_ID => self.roar.start_age = Some(age_ticks),
             VANILLA_POSE_SNIFFING_ID => self.sniff.start_age = Some(age_ticks),
+            VANILLA_POSE_EMERGING_ID => self.emerge.start_age = Some(age_ticks),
+            VANILLA_POSE_DIGGING_ID => self.dig.start_age = Some(age_ticks),
             _ => {}
         }
     }
@@ -2110,12 +2127,12 @@ impl EntityClientAnimationState {
             }
             VANILLA_ENTITY_TYPE_WARDEN_ID => {
                 // Vanilla `Warden.onSyncedDataUpdated(DATA_POSE)`: the pose-change `switch` that
-                // `.start()`s the roar/sniff one-shot when the synced `DATA_POSE` CHANGES to
-                // `Pose.ROARING`/`Pose.SNIFFING`. We track the previous pose and restart the timer
-                // only on the transition; vanilla never auto-stops on a pose leave, so the
-                // non-looping keyframe holds its final frame. The warden's `aiStep` runs client-side
-                // for remote entities, so the synced pose drives the pose directly. (`EMERGING`/
-                // `DIGGING` are deferred; the attack/sonic-boom one-shots are event-driven.)
+                // `.start()`s the roar/sniff/emerge/dig one-shot when the synced `DATA_POSE` CHANGES
+                // to `Pose.ROARING`/`Pose.SNIFFING`/`Pose.EMERGING`/`Pose.DIGGING`. We track the
+                // previous pose and restart the timer only on the transition; vanilla never
+                // auto-stops on a pose leave, so the non-looping keyframe holds its final frame. The
+                // warden's `aiStep` runs client-side for remote entities, so the synced pose drives
+                // the pose directly. (The attack/sonic-boom one-shots are event-driven.)
                 let pose_id = entity_data_pose(data_values);
                 self.warden_combat
                     .get_or_insert_with(WardenCombatAnimationState::default)
@@ -2427,6 +2444,26 @@ impl EntityClientAnimationState {
                     .sonic_boom
                     .elapsed_seconds(self.age_ticks, partial_tick)
             })
+            .unwrap_or(-1.0)
+    }
+
+    /// The warden emerge's elapsed seconds since `Pose.EMERGING` started (vanilla
+    /// `emergeAnimationState`), projected for the renderer `WardenModel.setupAnim`
+    /// `emergeAnimation.apply`. Returns `-1.0` (stopped) for a non-emerging warden and every other
+    /// entity; a non-negative value clamps past the 6.68s length to its final frame.
+    pub fn warden_emerge_seconds(&self, partial_tick: f32) -> f32 {
+        self.warden_combat
+            .and_then(|state| state.emerge.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The warden dig's elapsed seconds since `Pose.DIGGING` started (vanilla
+    /// `diggingAnimationState`), projected for the renderer `WardenModel.setupAnim`
+    /// `diggingAnimation.apply`. Returns `-1.0` (stopped) for a non-digging warden and every other
+    /// entity; a non-negative value clamps past the 5.0s length to its final frame.
+    pub fn warden_dig_seconds(&self, partial_tick: f32) -> f32 {
+        self.warden_combat
+            .and_then(|state| state.dig.elapsed_seconds(self.age_ticks, partial_tick))
             .unwrap_or(-1.0)
     }
 

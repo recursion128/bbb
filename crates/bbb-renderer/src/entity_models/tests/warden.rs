@@ -359,6 +359,88 @@ fn warden_combat_animations_re_pose_off_the_bind_pose() {
 }
 
 #[test]
+fn warden_spawn_animations_match_vanilla_definitions() {
+    // Vanilla `WardenAnimation.WARDEN_DIG` / `WARDEN_EMERGE`: the spawn/despawn one-shots (NOT
+    // looping, so they hold their final frame), each animating all six bones (body, head, both arms,
+    // both legs) with ROTATION + POSITION.
+    assert_eq!(WARDEN_DIG.length_seconds, 5.0);
+    assert!(!WARDEN_DIG.looping);
+    assert_eq!(WARDEN_DIG.bones.len(), 6);
+    assert_eq!(WARDEN_EMERGE.length_seconds, 6.68);
+    assert!(!WARDEN_EMERGE.looping);
+    assert_eq!(WARDEN_EMERGE.bones.len(), 6);
+
+    // The emerge opens with the body 63 units underground: `posVec(0, -63, 0)` at its `0.0` keyframe
+    // (`posVec` negates y, so the position offset is `+63`). The legs start there too.
+    let (emerge_body_pos, _) = sample_bone_offsets(&WARDEN_EMERGE, "body", 0.0, 1.0);
+    assert!((emerge_body_pos[1] - 63.0).abs() < 1.0e-4);
+    let (emerge_right_leg_pos, _) = sample_bone_offsets(&WARDEN_EMERGE, "right_leg", 0.0, 1.0);
+    assert!((emerge_right_leg_pos[1] - 63.0).abs() < 1.0e-4);
+
+    // The dig's final body frame is the LINEAR `degreeVec(147.5, 0, 0)` at its `4.5` keyframe (the
+    // warden pitched face-down into the ground).
+    let (_, dig_body_rot) = sample_bone_offsets(&WARDEN_DIG, "body", 4.5, 1.0);
+    assert!((dig_body_rot[0] - 147.5_f32.to_radians()).abs() < 1.0e-4);
+    // The dig also swings the legs (only dig/emerge reach the legs): `right_leg` rears to
+    // `degreeVec(113.27, 0, 0)` across its `0.5..3.3333` hold.
+    let (_, dig_right_leg_rot) = sample_bone_offsets(&WARDEN_DIG, "right_leg", 0.7083, 1.0);
+    assert!((dig_right_leg_rot[0] - 113.27_f32.to_radians()).abs() < 1.0e-4);
+}
+
+#[test]
+fn warden_spawn_animations_re_pose_off_the_bind_pose_including_the_legs() {
+    // A warden with no triggered animation (all `-1.0` sentinels) renders at the look/idle/walk
+    // (here resting) bind pose; the legs occupy vertices `[192, 240)`.
+    let resting = entity_model_mesh(&[EntityModelInstance::warden(970, [0.0, 64.0, 0.0], 0.0)]);
+
+    // The emerge re-poses off the bind pose AND moves the legs (unlike the attack/sonic_boom/roar/
+    // sniff combat one-shots, which carry no leg bone). It re-poses parts, it does not add/hide cubes.
+    let emerging = entity_model_mesh(&[
+        EntityModelInstance::warden(971, [0.0, 64.0, 0.0], 0.0).with_warden_emerge_seconds(1.0)
+    ]);
+    assert_eq!(resting.vertices.len(), emerging.vertices.len());
+    assert_ne!(
+        resting.vertices, emerging.vertices,
+        "the emerging warden leaves the bind pose"
+    );
+    assert_ne!(
+        resting.vertices[192..],
+        emerging.vertices[192..],
+        "the emerge swings the legs (the combat one-shots never do)"
+    );
+
+    // The dig poses differently from the emerge, and also moves the legs.
+    let digging = entity_model_mesh(&[
+        EntityModelInstance::warden(972, [0.0, 64.0, 0.0], 0.0).with_warden_dig_seconds(1.0)
+    ]);
+    assert_ne!(
+        emerging.vertices, digging.vertices,
+        "the dig poses differently from the emerge"
+    );
+    assert_ne!(
+        resting.vertices[192..],
+        digging.vertices[192..],
+        "the dig swings the legs"
+    );
+
+    // Sampling the emerge at a later time advances the rise.
+    let emerging_later =
+        entity_model_mesh(&[
+            EntityModelInstance::warden(973, [0.0, 64.0, 0.0], 0.0).with_warden_emerge_seconds(4.0)
+        ]);
+    assert_ne!(
+        emerging.vertices, emerging_later.vertices,
+        "the emerge advances as its elapsed seconds climb"
+    );
+
+    // The `-1.0` no-animation sentinel leaves the warden at the bind pose.
+    let cleared = entity_model_mesh(&[
+        EntityModelInstance::warden(974, [0.0, 64.0, 0.0], 0.0).with_warden_dig_seconds(-1.0)
+    ]);
+    assert_eq!(cleared.vertices, resting.vertices);
+}
+
+#[test]
 fn warden_textured_render_matches_vanilla_renderer() {
     // The warden binds its base body texture (warden.png, atlas 128×128, whole model), then the five
     // `WardenEmissiveLayer`s as eyes-render-type passes (the eyes pipeline being emissive + alpha-

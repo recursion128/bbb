@@ -815,6 +815,12 @@ impl EntityStore {
             warden_sonic_boom_seconds: client_animations
                 .animations
                 .warden_sonic_boom_seconds(partial_ticks),
+            warden_emerge_seconds: client_animations
+                .animations
+                .warden_emerge_seconds(partial_ticks),
+            warden_dig_seconds: client_animations
+                .animations
+                .warden_dig_seconds(partial_ticks),
             walk_animation_position: client_animations
                 .animations
                 .walk_animation_position(partial_ticks),

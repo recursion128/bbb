@@ -186,6 +186,14 @@ entity_render_state! {
     /// `WARDEN_SONIC_BOOM`), sampled by `WardenModel.setupAnim`. `-1.0` (stopped) for every other
     /// entity and a non-booming warden.
     (with_warden_sonic_boom_seconds) warden_sonic_boom_seconds: f32 = -1.0;
+    /// Vanilla `Warden.emergeAnimationState` elapsed seconds (`Pose.EMERGING`-driven, the 6.68s
+    /// `WARDEN_EMERGE` spawn rise), sampled by `WardenModel.setupAnim`. `-1.0` (stopped) for every
+    /// other entity and a non-emerging warden.
+    (with_warden_emerge_seconds) warden_emerge_seconds: f32 = -1.0;
+    /// Vanilla `Warden.diggingAnimationState` elapsed seconds (`Pose.DIGGING`-driven, the 5.0s
+    /// `WARDEN_DIG` despawn burrow), sampled by `WardenModel.setupAnim`. `-1.0` (stopped) for every
+    /// other entity and a non-digging warden.
+    (with_warden_dig_seconds) warden_dig_seconds: f32 = -1.0;
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
@@ -1701,6 +1709,8 @@ mod tests {
                 warden_sniff_seconds: -1.0,
                 warden_attack_seconds: -1.0,
                 warden_sonic_boom_seconds: -1.0,
+                warden_emerge_seconds: -1.0,
+                warden_dig_seconds: -1.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,

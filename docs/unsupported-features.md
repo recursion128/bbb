@@ -2097,21 +2097,23 @@ When an agent does any of the following, update this file in the same slice:
       `61` and decremented each client tick in `bbb-world`, exposed lerped `/10` like `Warden.getTendrilAnimation`,
       with tests pinning the countdown, the sway formula, and the world→render projection). Four of the
       six triggered combat/threat keyframe animations are now reproduced and applied additively in the
-      vanilla `setupAnim` order (attack → sonic_boom → [deferred dig/emerge] → roar → sniff): the roar
-      (`WARDEN_ROAR`, 4.2s) and sniff (`WARDEN_SNIFF`, 4.16s) are pose-driven — `Warden.onSyncedDataUpdated`
-      `.start()`s the matching one-shot when the synced `DATA_POSE` (id 6) CHANGES to `Pose.ROARING` (11) /
-      `Pose.SNIFFING` (12), tracked via a `prev_pose` on the new `WardenCombatAnimationState`; the attack
-      (`WARDEN_ATTACK`, 0.33333s) and sonic boom (`WARDEN_SONIC_BOOM`, 3.0s) are event-driven —
-      `handleEntityEvent(4)` starts the attack and stops the roar, `handleEntityEvent(62)` starts the boom.
-      Each one-shot is a reusable `KeyframeAnimationState` projected as an independent elapsed-seconds value
-      (`warden_roar/sniff/attack/sonic_boom_seconds`, `-1.0` when stopped); all four are non-looping, so the
-      renderer clamps past the def length to the resting final frame — mirroring vanilla's "hold the last
-      frame" (no auto-stop on pose leave). World tests pin the pose/event transitions and the attack
-      stopping the roar; renderer tests pin the four def lengths/looping flags and that roaring/attacking/
-      booming re-pose vs bind and differently from each other. DEFERRED: the `EMERGING` (13) / `DIGGING` (14)
-      spawn/despawn one-shots (`WARDEN_EMERGE`, 6.68s, ~270 lines; `WARDEN_DIG`, 5.0s, ~180 lines) are large
-      and rarely seen — a clean follow-up; their pose ordinals are tracked but only update `prev_pose`. The
-      base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), together with all five
+      vanilla `setupAnim` order (attack → sonic_boom → dig → emerge → roar → sniff): the roar
+      (`WARDEN_ROAR`, 4.2s), sniff (`WARDEN_SNIFF`, 4.16s), emerge (`WARDEN_EMERGE`, 6.68s, 200 keyframes) and
+      dig (`WARDEN_DIG`, 5.0s, 108 keyframes) are pose-driven — `Warden.onSyncedDataUpdated` `.start()`s the
+      matching one-shot when the synced `DATA_POSE` (id 6) CHANGES to `Pose.ROARING` (11) / `Pose.SNIFFING` (12)
+      / `Pose.EMERGING` (13) / `Pose.DIGGING` (14), tracked via a `prev_pose` on the new
+      `WardenCombatAnimationState`; the attack (`WARDEN_ATTACK`, 0.33333s) and sonic boom (`WARDEN_SONIC_BOOM`,
+      3.0s) are event-driven — `handleEntityEvent(4)` starts the attack and stops the roar,
+      `handleEntityEvent(62)` starts the boom. Each one-shot is a reusable `KeyframeAnimationState` projected
+      as an independent elapsed-seconds value (`warden_roar/sniff/attack/sonic_boom/emerge/dig_seconds`, `-1.0`
+      when stopped); all six are non-looping, so the renderer clamps past the def length to the resting final
+      frame — mirroring vanilla's "hold the last frame" (no auto-stop on pose leave). The emerge/dig
+      spawn/despawn tables (transcribed via the big-table script approach, mixing LINEAR/CATMULLROM) are the
+      only two that animate the legs — `apply_combat` now runs over the legs too, where the other four defs
+      carry no leg bone and add zero. World tests pin the pose/event transitions, the attack stopping the roar,
+      and the emerge→dig pose handoff; renderer tests pin all six def lengths/looping/bone-counts and that
+      roaring/attacking/booming/emerging/digging re-pose vs bind and differently from each other (emerge/dig
+      also moving the legs). The base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), together with all five
       `WardenEmissiveLayer`s as eyes-render-type passes (the eyes pipeline being emissive + alpha-blended, so a
       pass `tint[3]` scales output alpha directly, matching vanilla `entityTranslucentEmissive` — no new
       pipeline). Each overlay is baked by vanilla

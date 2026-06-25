@@ -3428,6 +3428,68 @@ fn entity_model_sources_project_warden_combat_animations() {
 }
 
 #[test]
+fn entity_model_sources_project_warden_emerge_and_dig() {
+    const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
+    // Vanilla `Pose.EMERGING(13)` / `Pose.DIGGING(14)` synced via `DATA_POSE` (id 6); like the
+    // roar/sniff poses, `Warden.onSyncedDataUpdated` `.start()`s the spawn/despawn one-shot when the
+    // pose CHANGES to it. These are the 6.68s `WARDEN_EMERGE` and 5.0s `WARDEN_DIG` keyframes.
+    const VANILLA_POSE_STANDING_ID: i32 = 0;
+    const VANILLA_POSE_EMERGING_ID: i32 = 13;
+    const VANILLA_POSE_DIGGING_ID: i32 = 14;
+    let spawn = |store: &WorldStore, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 142)
+            .unwrap();
+        (source.warden_emerge_seconds, source.warden_dig_seconds)
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        142,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+
+    // A warden in no triggered pose projects the `-1.0` stopped sentinels.
+    assert_eq!(spawn(&store, 1.0), (-1.0, -1.0));
+
+    // Entering `Pose.EMERGING` starts the emerge timer at the current age (elapsed begins at `0`,
+    // plus the partial tick, advancing `1 / 20` per tick). The dig stays stopped.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 142,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_EMERGING_ID)],
+    }));
+    let (emerge, dig) = spawn(&store, 0.0);
+    assert!((emerge - 0.0).abs() < 1.0e-6, "the emerge starts at 0");
+    assert_eq!(dig, -1.0, "the dig is still stopped");
+    assert!(
+        (spawn(&store, 0.5).0 - 0.025).abs() < 1.0e-6,
+        "partial folds in"
+    );
+    store.advance_entity_client_animations(4);
+    assert!((spawn(&store, 0.0).0 - 0.2).abs() < 1.0e-6);
+
+    // Leaving `Pose.EMERGING` does NOT stop the emerge (vanilla never auto-stops on pose leave); the
+    // non-looping keyframe just holds its final frame, so the timer keeps advancing.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 142,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_STANDING_ID)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!((spawn(&store, 0.0).0 - 0.25).abs() < 1.0e-6);
+
+    // Entering `Pose.DIGGING` starts the dig timer; the emerge keeps holding its running timer.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 142,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_DIGGING_ID)],
+    }));
+    let (emerge, dig) = spawn(&store, 0.0);
+    assert!((dig - 0.0).abs() < 1.0e-6, "the dig starts at 0");
+    assert!((emerge - 0.25).abs() < 1.0e-6, "the emerge still holds");
+}
+
+#[test]
 fn entity_model_sources_project_fox_head_roll_and_crouch() {
     const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
     // Vanilla `Fox.DATA_FLAGS_ID` is synced data id 19; `FLAG_CROUCHING` is mask 4 and
