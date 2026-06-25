@@ -99,8 +99,10 @@ const BEE_FLAG_ROLL: i8 = 2;
 /// Vanilla `Fox` entity type id (`EntityType.FOX`).
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
+const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
 const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
 const VANILLA_ENTITY_TYPE_RAVAGER_ID: i32 = 109;
+const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -211,6 +213,10 @@ const RAVAGER_STUN_EVENT_ID: i8 = 39;
 const RAVAGER_ATTACK_TICKS: i32 = 10;
 const RAVAGER_STUN_TICKS: i32 = 40;
 const RAVAGER_ROAR_TICKS: i32 = 20;
+/// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
+/// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
+const HOGLIN_ATTACK_EVENT_ID: i8 = 4;
+const HOGLIN_ATTACK_TICKS: i32 = 10;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -244,6 +250,8 @@ pub struct EntityClientAnimationState {
     pub iron_golem: Option<IronGolemAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ravager: Option<RavagerAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hoglin: Option<HoglinAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -677,6 +685,31 @@ impl RavagerAnimationState {
         } else {
             0.0
         }
+    }
+}
+
+/// Canonical client-side hoglin / zoglin headbutt timer, mirroring vanilla
+/// `Hoglin.attackAnimationRemainingTicks`. Entity event `4` sets it to [`HOGLIN_ATTACK_TICKS`]; each
+/// client tick decrements it toward `0`. `HoglinModel.setupAnim`'s `animateHeadbutt` raises the head
+/// from its rest down-tilt as the timer ramps through its midpoint. Projected as the RAW int (vanilla
+/// `AbstractHoglinRenderer.extractRenderState` does not partial-lerp it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HoglinAnimationState {
+    pub attack_animation_tick: i32,
+}
+
+impl HoglinAnimationState {
+    /// Vanilla `Hoglin.aiStep`: `if attackAnimationRemainingTicks > 0 { attackAnimationRemainingTicks-- }`.
+    fn advance_client_tick(&mut self) {
+        if self.attack_animation_tick > 0 {
+            self.attack_animation_tick -= 1;
+        }
+    }
+
+    /// The headbutt timer has run out, so the state can be dropped (a resting hoglin holds its head at
+    /// the baked rest tilt).
+    fn is_settled(&self) -> bool {
+        self.attack_animation_tick == 0
     }
 }
 
@@ -1910,6 +1943,17 @@ impl EntityClientAnimationState {
             } else {
                 ravager.stunned_tick = RAVAGER_STUN_TICKS;
             }
+        } else if matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_HOGLIN_ID | VANILLA_ENTITY_TYPE_ZOGLIN_ID
+        ) && event_id == HOGLIN_ATTACK_EVENT_ID
+        {
+            // Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event 4 → `attackAnimationRemainingTicks = 10`.
+            self.hoglin
+                .get_or_insert(HoglinAnimationState {
+                    attack_animation_tick: 0,
+                })
+                .attack_animation_tick = HOGLIN_ATTACK_TICKS;
         }
     }
 
@@ -1958,6 +2002,13 @@ impl EntityClientAnimationState {
     pub fn ravager_roar_animation(&self, partial_tick: f32) -> f32 {
         self.ravager
             .map_or(0.0, |state| state.roar_animation(partial_tick))
+    }
+
+    /// Vanilla `HoglinRenderState.attackAnimationRemainingTicks` (the RAW `attackAnimationRemainingTicks`,
+    /// not partial-lerped), exposed for the renderer `HoglinModel.setupAnim` headbutt. `0` when the
+    /// hoglin / zoglin is not mid-headbutt.
+    pub fn hoglin_attack_animation_tick(&self) -> i32 {
+        self.hoglin.map_or(0, |state| state.attack_animation_tick)
     }
 
     /// Vanilla `Warden.getTendrilAnimation(partialTick)`, exposed for the renderer
@@ -2398,6 +2449,14 @@ impl EntityClientAnimationState {
                     ravager.advance_client_tick();
                     if ravager.is_settled() {
                         self.ravager = None;
+                    }
+                }
+            }
+            VANILLA_ENTITY_TYPE_HOGLIN_ID | VANILLA_ENTITY_TYPE_ZOGLIN_ID => {
+                if let Some(hoglin) = self.hoglin.as_mut() {
+                    hoglin.advance_client_tick();
+                    if hoglin.is_settled() {
+                        self.hoglin = None;
                     }
                 }
             }

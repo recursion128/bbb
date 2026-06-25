@@ -474,6 +474,11 @@ entity_render_state! {
     /// attacking), the mouth gapes for the roar (`mouth.xRot = π/2·sin(roar·π/4)`). `0.0` for a ravager
     /// not roaring and every other entity.
     (with_ravager_roar_animation) ravager_roar_animation: f32 = 0.0;
+    /// Vanilla `HoglinRenderState.attackAnimationRemainingTicks` (the RAW `0..10` headbutt timer): while
+    /// active, `HoglinModel.setupAnim`'s `animateHeadbutt` raises the head from its rest down-tilt
+    /// (`head.xRot = lerp(1 - |10 - 2·tick|/10, 0.87266463, -π/9)`, the baby also lifting `head.y`). `0`
+    /// for a hoglin / zoglin not mid-headbutt and every other entity.
+    (with_hoglin_attack_animation_tick) hoglin_attack_animation_tick: i32 = 0;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -1698,6 +1703,7 @@ mod tests {
                 ravager_stunned_ticks_remaining: 0.0,
                 ravager_attack_ticks_remaining: 0.0,
                 ravager_roar_animation: 0.0,
+                hoglin_attack_animation_tick: 0,
                 is_crouching: false,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,

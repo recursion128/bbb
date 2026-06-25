@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn hoglin_adult_cubes_match_vanilla_26_1_body_layer() {
@@ -427,7 +427,8 @@ fn hoglin_family_swings_its_legs_when_walking() {
     // `cos(pos [+ π]) * 1.2 * speed` formula. A standing hoglin is inert; a walking
     // adult lifts its feet and splays its legs along Z; the baby's short legs swing
     // too but the motion stays inside its bounding box. The adult ear sway is covered by
-    // `adult_hoglin_sways_its_ears_when_walking`; the headbutt is deferred. Colored path.
+    // `adult_hoglin_sways_its_ears_when_walking`; the headbutt holds its rest down-tilt here (no attack
+    // timer), so `rest == still`. Colored path.
     for (name, base, adult_size) in [
         (
             "hoglin",
@@ -756,5 +757,71 @@ fn baby_hoglin_sways_its_ears_when_walking() {
         rest.vertices[168..264],
         legs_only.vertices[168..264],
         "baby legs still swing when sin(pos) == 0"
+    );
+}
+
+#[test]
+fn hoglin_headbutt_raises_the_head_from_its_rest_tilt() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HoglinModel.animateHeadbutt`: head.xRot = lerp(1 - |10 - 2·tick|/10, 0.87266463, -π/9).
+    // At rest (tick 0) the factor is 0, so the head holds its baked down-tilt; at the attack midpoint
+    // (tick 5) the factor is 1, so the head rises to -π/9. The baby additionally lifts head.y by
+    // factor·2.5.
+    let rest_tilt = 0.87266463_f32;
+    let base =
+        EntityModelInstance::hoglin(243, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, false);
+
+    // Rest: head holds the down-tilt.
+    let mut resting = HoglinModel::new(false);
+    resting.prepare(&base);
+    let resting_pitch = resting.root_mut().child_mut("head").pose.rotation[0];
+    assert!(
+        (resting_pitch - rest_tilt).abs() < 1.0e-6,
+        "rest tilt: {resting_pitch}"
+    );
+
+    // Peak ram (tick 5 → factor 1): head rises to -π/9.
+    let mut ramming = HoglinModel::new(false);
+    ramming.prepare(&base.with_hoglin_attack_animation_tick(5));
+    let ram_pitch = ramming.root_mut().child_mut("head").pose.rotation[0];
+    assert!(
+        (ram_pitch - (-PI / 9.0)).abs() < 1.0e-6,
+        "peak ram pitch: {ram_pitch}"
+    );
+    assert!(
+        ram_pitch < resting_pitch,
+        "the ram raises the head from its rest tilt"
+    );
+
+    // Mid-ramp (tick 8 → factor = 1 - |10-16|/10 = 0.4): lerp between the two.
+    let mut mid = HoglinModel::new(false);
+    mid.prepare(&base.with_hoglin_attack_animation_tick(8));
+    let mid_pitch = mid.root_mut().child_mut("head").pose.rotation[0];
+    let factor = 1.0 - (10i32 - 2 * 8).abs() as f32 / 10.0;
+    assert!(
+        (mid_pitch - (rest_tilt + factor * (-PI / 9.0 - rest_tilt))).abs() < 1.0e-6,
+        "mid-ramp pitch: {mid_pitch}"
+    );
+
+    // The baby lifts its head (head.y) at the ram peak; the adult does not.
+    let baby_base =
+        EntityModelInstance::hoglin(244, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, true);
+    let mut baby_rest = HoglinModel::new(true);
+    baby_rest.prepare(&baby_base);
+    let baby_rest_y = baby_rest.root_mut().child_mut("head").pose.offset[1];
+    let mut baby_ram = HoglinModel::new(true);
+    baby_ram.prepare(&baby_base.with_hoglin_attack_animation_tick(5));
+    let baby_ram_y = baby_ram.root_mut().child_mut("head").pose.offset[1];
+    assert!(
+        (baby_ram_y - baby_rest_y - 2.5).abs() < 1.0e-6,
+        "the baby lifts its head by 2.5"
+    );
+
+    // The headbutt visibly re-poses the rendered mesh.
+    assert_ne!(
+        entity_model_mesh(&[base]).vertices,
+        entity_model_mesh(&[base.with_hoglin_attack_animation_tick(5)]).vertices,
+        "the headbutt raises the head in the mesh"
     );
 }

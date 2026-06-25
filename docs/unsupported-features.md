@@ -508,7 +508,13 @@ When an agent does any of the following, update this file in the same slice:
     unchanged). Adult and baby hoglin/zoglin ears both sway: vanilla `HoglinModel.setupAnim`
     writes the literal `±2π/9` rest angle, overriding the wider angle baked into
     `BabyHoglinModel`'s layer, so `hoglin_ear_sway_pose` sets (not accumulates) the absolute
-    angle and baby ears are always re-posed. The headbutt head tilt is deferred. The creeper
+    angle and baby ears are always re-posed. The headbutt head ram is implemented too
+    (`apply_hoglin_headbutt`, always applied — at rest it re-sets the baked down-tilt):
+    `Hoglin`/`Zoglin.handleEntityEvent` event `4` sets `attackAnimationRemainingTicks = 10`
+    (projected as the RAW int — vanilla `AbstractHoglinRenderer` does not partial-lerp it),
+    decremented each tick; `animateHeadbutt` SETs `head.xRot = lerp(1 - |10 - 2·tick|/10,
+    0.87266463, -π/9)` (the head rises from its rest down-tilt to `-π/9` at the `tick = 5`
+    peak), and the baby additionally lifts `head.y += factor·2.5`. The creeper
     (`emit_creeper_model` colored and `emit_creeper_textured_model` textured) is a custom
     `EntityModel` too, but its `setupAnim` leg swing is exactly the `QuadrupedModel`
     formula (legs at `[2, 3, 4, 5]`), so it reuses the shared quadruped swing; its
@@ -727,7 +733,7 @@ When an agent does any of the following, update this file in the same slice:
     illager note above), the `VillagerModel` unhappy
     head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
     implemented — see below; the `GoatModel` ramming head
-    tilt is implemented — see the goat note below), the `HoglinModel` headbutt head tilt (the `EndermanModel`
+    tilt is implemented — see the goat note below; the `HoglinModel` headbutt head ram is implemented — see the hoglin note above), (the `EndermanModel`
     carried-block arm pose and creepy head/hat shift are implemented — see the
     enderman note above; the `IronGolemModel`
     attack swing and offer-flower arm pose are implemented — see the iron golem note above), the `HumanoidModel`
@@ -1313,8 +1319,9 @@ When an agent does any of the following, update this file in the same slice:
       `1.2`-amplitude leg swing (legs at `[2, 3, 4, 5]`), and the ear sway for both adults
       and babies (`ear.zRot = ±2π/9 ± speed * sin(pos)`, ears at head children `[0, 1]`, the
       head subtree hand-emitted; the formula sets the absolute `±2π/9`, overriding the wider
-      rest angle of `BabyHoglinModel`'s layer) — all colored and textured; the headbutt
-      attack animation, hoglin converting shake, and lighting remain unsupported
+      rest angle of `BabyHoglinModel`'s layer), and the event-driven headbutt head ram
+      (`apply_hoglin_headbutt`, from entity event 4 — see the hoglin note above) — all
+      colored and textured; the hoglin converting shake and lighting remain unsupported
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official

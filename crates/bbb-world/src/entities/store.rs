@@ -747,6 +747,9 @@ impl EntityStore {
             ravager_roar_animation: client_animations
                 .animations
                 .ravager_roar_animation(partial_ticks),
+            hoglin_attack_animation_tick: client_animations
+                .animations
+                .hoglin_attack_animation_tick(),
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),

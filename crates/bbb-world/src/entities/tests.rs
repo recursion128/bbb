@@ -7026,6 +7026,61 @@ fn ravager_attack_stun_and_roar_timers_advance_together() {
 }
 
 #[test]
+fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
+    const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
+    const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        79,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let attack_tick = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .hoglin_attack_animation_tick
+    };
+
+    // Vanilla Hoglin/Zoglin.handleEntityEvent: event 4 sets attackAnimationRemainingTicks to 10 (the
+    // RAW int, decremented each tick — no partial lerp). Both the hoglin and the zoglin headbutt.
+    for id in [78, 79] {
+        assert_eq!(attack_tick(&store, id), 0);
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: id,
+            event_id: 4,
+        }));
+        assert_eq!(attack_tick(&store, id), 10);
+    }
+    store.advance_entity_client_animations(1);
+    assert_eq!(attack_tick(&store, 78), 9);
+    assert_eq!(attack_tick(&store, 79), 9);
+    store.advance_entity_client_animations(9);
+    assert_eq!(attack_tick(&store, 78), 0);
+    assert_eq!(attack_tick(&store, 79), 0);
+
+    // The attack event on a non-hoglin never starts the headbutt timer.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 80,
+        event_id: 4,
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(attack_tick(&store, 80), 0);
+}
+
+#[test]
 fn warden_tendril_event_drives_client_animation_pulse() {
     const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

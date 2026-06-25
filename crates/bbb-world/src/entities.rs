@@ -572,6 +572,10 @@ pub struct EntityModelSourceState {
     /// roar mouth open. `0.0` when not roaring and for every non-ravager.
     #[serde(default)]
     pub ravager_roar_animation: f32,
+    /// Vanilla `HoglinRenderState.attackAnimationRemainingTicks` (the RAW headbutt timer, from entity
+    /// event 4): the hoglin / zoglin head-down ram. `0` when not mid-headbutt and for every other entity.
+    #[serde(default)]
+    pub hoglin_attack_animation_tick: i32,
     #[serde(default)]
     pub polar_bear_stand_scale: f32,
     /// Stored block+sky light at the entity's light-probe block position,
