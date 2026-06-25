@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn goat_model_parts_match_vanilla_26_1_body_layers() {
@@ -419,4 +419,51 @@ fn goat_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+#[test]
+fn ramming_goat_tilts_its_head_down() {
+    // Vanilla `GoatModel.setupAnim`: `if rammingXHeadRot != 0 { head.xRot = rammingXHeadRot }`, set after
+    // the head look — so a ramming goat's head pitch is the ram tilt (overwriting the look pitch), and a
+    // resting goat keeps its look pitch. The projected `goat_ramming_x_head_rot` already bakes in the
+    // adult/baby max head pitch, so the renderer just SETs it.
+    let tilt = 0.4_f32;
+    let ramming = EntityModelInstance::goat(410, [0.0, 64.0, 0.0], 0.0, false, true, true)
+        .with_head_look(0.0, -20.0)
+        .with_goat_ramming_x_head_rot(tilt);
+    let mut model = GoatModel::new(false, true, true);
+    model.prepare(&ramming);
+    let head_pitch = model.root_mut().child_mut("head").pose.rotation[0];
+    assert!(
+        (head_pitch - tilt).abs() < 1.0e-6,
+        "the ram tilt overwrites the look pitch: {head_pitch}"
+    );
+
+    // A resting goat (no ram) keeps its head-look pitch.
+    let mut resting = GoatModel::new(false, true, true);
+    resting.prepare(
+        &EntityModelInstance::goat(410, [0.0, 64.0, 0.0], 0.0, false, true, true)
+            .with_head_look(0.0, -20.0),
+    );
+    let resting_pitch = resting.root_mut().child_mut("head").pose.rotation[0];
+    assert!(
+        (resting_pitch - (-20.0_f32).to_radians()).abs() < 1.0e-6,
+        "a resting goat keeps its look pitch: {resting_pitch}"
+    );
+
+    // The ram tilt is visible in the rendered mesh (the head re-poses).
+    let ramming_mesh = entity_model_mesh(&[ramming]);
+    let resting_mesh = entity_model_mesh(&[EntityModelInstance::goat(
+        410,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        true,
+    )
+    .with_head_look(0.0, -20.0)]);
+    assert_ne!(
+        ramming_mesh.vertices, resting_mesh.vertices,
+        "the ramming head tilt changes the mesh"
+    );
 }

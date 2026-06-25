@@ -712,8 +712,8 @@ When an agent does any of the following, update this file in the same slice:
     axe swing poses are implemented — see the
     illager note above), the `VillagerModel` unhappy
     head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
-    implemented — see below), the `GoatModel` ramming head
-    tilt, the `HoglinModel` headbutt head tilt (the `EndermanModel`
+    implemented — see below; the `GoatModel` ramming head
+    tilt is implemented — see the goat note below), the `HoglinModel` headbutt head tilt (the `EndermanModel`
     carried-block arm pose and creepy head/hat shift are implemented — see the
     enderman note above), the `IronGolemModel`
     attack swing and offer-flower arm pose, the `HumanoidModel`
@@ -1267,9 +1267,13 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part plus the
       `QuadrupedModel` leg swing (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at
       `[2, 3, 4, 5]` adult / `[0, 1, 2, 3]` baby, colored and textured, with the horn
-      children rotating with the head); screaming goat sounds and the
-      ramming/lowering-head event animation (which would override the head pitch)
-      remain unsupported
+      children rotating with the head) plus the ramming/lowering-head event animation:
+      `Goat.handleEntityEvent` events `58`/`59` toggle `isLoweringHead`, the client `aiStep`
+      advances `lowerHeadTick` (`++` while lowering, `-= 2` otherwise, clamped `[0, 20]`), and
+      `Goat.getRammingXHeadRot()` (`lowerHeadTick/20 · (baby ? 52.5° : 30°) · π/180`, the baby
+      scale resolved in the native layer) drives `GoatModel.setupAnim`'s `if rammingXHeadRot != 0
+      { head.xRot = rammingXHeadRot }` head-down tilt, overwriting the head-look pitch during a
+      ram; only the screaming-goat sounds remain unsupported
     - polar bear entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `PolarBearModel`, `BabyPolarBearModel`, and
       `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /

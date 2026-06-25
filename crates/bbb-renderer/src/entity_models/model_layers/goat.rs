@@ -374,8 +374,8 @@ fn baby_goat_tree() -> ModelPart {
 /// with the vanilla child names for the selected `baby` layout. `setup_anim` looks the head
 /// ([`apply_head_look`] on `head`), swings the four legs ([`apply_quadruped_leg_swing`]), and
 /// toggles each horn (a `head` child) via the [`ModelPart::visible`] flag from the `left_horn`/
-/// `right_horn` flags — vanilla hides the screaming-goat-only horns a polled goat lacks. The ramming
-/// head tilt is a deferred event animation.
+/// `right_horn` flags — vanilla hides the screaming-goat-only horns a polled goat lacks. A ramming goat
+/// then tilts its head down (`goat_ramming_x_head_rot`, the projected `Goat.getRammingXHeadRot()`).
 pub(in crate::entity_models) struct GoatModel {
     root: ModelPart,
     left_horn: bool,
@@ -421,5 +421,10 @@ impl EntityModel for GoatModel {
         let head = self.root.child_mut("head");
         head.child_mut("left_horn").visible = self.left_horn;
         head.child_mut("right_horn").visible = self.right_horn;
+        // Vanilla `GoatModel.setupAnim`: a ramming goat tilts its head down
+        // (`if rammingXHeadRot != 0 { head.xRot = rammingXHeadRot }`), overwriting the head-look pitch.
+        if render_state.goat_ramming_x_head_rot != 0.0 {
+            head.pose.rotation[0] = render_state.goat_ramming_x_head_rot;
+        }
     }
 }

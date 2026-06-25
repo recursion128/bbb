@@ -531,6 +531,14 @@ fn entity_model_instance(
                 family: IllagerModelFamily::Pillager
             }
         ) && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id);
+    // Vanilla `Goat.getRammingXHeadRot()`: the world-projected `lowerHeadTick` ram counter scaled by the
+    // adult/baby max head pitch. Resolved here because the baby flag lives in the goat kind.
+    let goat_ramming_x_head_rot = match kind {
+        EntityModelKind::Goat { baby, .. } => {
+            goat_ramming_x_head_rot(source.goat_lower_head_tick, baby)
+        }
+        _ => 0.0,
+    };
     let head_eat = sheep_head_eat_pose(
         source.entity_type_id,
         source.sheep_eat_animation_tick,
@@ -677,6 +685,7 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
+        .with_goat_ramming_x_head_rot(goat_ramming_x_head_rot)
         .with_turtle_has_egg(turtle_has_egg(source.entity_type_id, &source.data_values))
         .with_turtle_laying_egg(turtle_laying_egg(
             source.entity_type_id,
@@ -1735,6 +1744,15 @@ fn goat_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityM
         left_horn: entity_data_bool(values, GOAT_LEFT_HORN_DATA_ID, true),
         right_horn: entity_data_bool(values, GOAT_RIGHT_HORN_DATA_ID, true),
     }
+}
+
+/// Vanilla `Goat.getRammingXHeadRot()`: `lowerHeadTick / 20 · maxRammingXHeadRot · π/180`, where the max
+/// head pitch is `52.5°` for a baby goat and `30°` for an adult. The world projects the `0..=20` ram
+/// counter (advanced from entity events 58/59); `GoatModel.setupAnim` SETs `head.xRot` to this while
+/// non-zero, overwriting the head-look pitch during a ram.
+fn goat_ramming_x_head_rot(lower_head_tick: i32, baby: bool) -> f32 {
+    let max_degrees = if baby { 52.5 } else { 30.0 };
+    lower_head_tick as f32 / 20.0 * max_degrees * std::f32::consts::PI / 180.0
 }
 
 fn placeholder(name: &'static str, width: f32, height: f32, depth: f32) -> EntityModelKind {
@@ -3372,6 +3390,59 @@ mod tests {
         let calmed = panda(&world);
         assert!(!calmed.panda_unhappy);
         assert!(!calmed.panda_sneezing);
+    }
+
+    #[test]
+    fn entity_model_instances_project_goat_ramming_head_tilt() {
+        use std::f32::consts::PI;
+
+        // Vanilla Goat.getRammingXHeadRot() = lowerHeadTick/20 · (baby ? 52.5 : 30)° · π/180, driven by
+        // the world-projected ram counter (entity events 58/59). The baby max head pitch is steeper.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            200,
+            VANILLA_ENTITY_TYPE_GOAT_ID,
+            [1.0, 64.0, -5.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            201,
+            VANILLA_ENTITY_TYPE_GOAT_ID,
+            [2.0, 64.0, -5.0],
+        ));
+        // Make 201 a baby goat (AgeableMob.DATA_BABY_ID id 16).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 201,
+            values: vec![protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)],
+        }));
+
+        let ramming = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .goat_ramming_x_head_rot
+        };
+
+        // At rest both goats project no head tilt.
+        assert_eq!(ramming(&world, 200), 0.0);
+        assert_eq!(ramming(&world, 201), 0.0);
+
+        // Event 58 begins the ram; after 20 ticks the counter saturates at 20 (full tilt).
+        for id in [200, 201] {
+            assert!(world.apply_entity_event(EntityEvent {
+                entity_id: id,
+                event_id: 58,
+            }));
+        }
+        world.advance_entity_client_animations(20);
+        // Adult: 30° → π/6; baby: 52.5°.
+        assert!((ramming(&world, 200) - PI / 6.0).abs() < 1.0e-5);
+        assert!((ramming(&world, 201) - 52.5_f32.to_radians()).abs() < 1.0e-5);
+        assert!(
+            ramming(&world, 201) > ramming(&world, 200),
+            "the baby tilts its head further"
+        );
     }
 
     #[test]

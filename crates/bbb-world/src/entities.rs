@@ -546,6 +546,11 @@ pub struct EntityModelSourceState {
     pub scale: f32,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
+    /// Vanilla `Goat.lowerHeadTick` (the `0..=20` ram counter, advanced from entity events 58/59): the
+    /// native layer scales it by the adult/baby max head pitch to derive `getRammingXHeadRot`. `0` for a
+    /// goat not ramming and every non-goat.
+    #[serde(default)]
+    pub goat_lower_head_tick: i32,
     #[serde(default)]
     pub polar_bear_stand_scale: f32,
     /// Stored block+sky light at the entity's light-probe block position,

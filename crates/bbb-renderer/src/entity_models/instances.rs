@@ -447,6 +447,11 @@ entity_render_state! {
     /// Vanilla `PandaRenderState.sneezeTime` (`Panda.getSneezeCounter()`, the 0..20 ramp): drives the
     /// sneeze head dip (`head.xRot` falls to `-π/4` over ticks 0..14, then holds). `0` when not sneezing.
     (with_panda_sneeze_time) panda_sneeze_time: i32 = 0;
+    /// Vanilla `GoatRenderState.rammingXHeadRot` (`Goat.getRammingXHeadRot()`): the head-down tilt
+    /// (radians) of a ramming goat, `lowerHeadTick/20 · (baby ? 52.5° : 30°)`. `GoatModel.setupAnim` SETs
+    /// `head.xRot` to it while non-zero, overwriting the head-look pitch. `0.0` for a resting goat and
+    /// every other entity.
+    (with_goat_ramming_x_head_rot) goat_ramming_x_head_rot: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -1665,6 +1670,7 @@ mod tests {
                 panda_unhappy: false,
                 panda_sneezing: false,
                 panda_sneeze_time: 0,
+                goat_ramming_x_head_rot: 0.0,
                 is_crouching: false,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,

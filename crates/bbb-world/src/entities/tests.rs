@@ -6828,6 +6828,68 @@ fn sheep_eat_grass_event_drives_client_animation_tick() {
 }
 
 #[test]
+fn goat_ram_events_drive_the_lower_head_tick_counter() {
+    const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_GOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let lower_head = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .goat_lower_head_tick
+    };
+
+    // Vanilla Goat.handleEntityEvent: event 58 starts lowering the head; the counter then climbs +1 per
+    // client tick (aiStep), clamped at 20.
+    assert_eq!(lower_head(&store, 72), 0);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 72,
+        event_id: 58,
+    }));
+    assert_eq!(lower_head(&store, 72), 0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(lower_head(&store, 72), 1);
+    store.advance_entity_client_animations(19);
+    assert_eq!(lower_head(&store, 72), 20);
+    // It clamps at the 20 cap.
+    store.advance_entity_client_animations(5);
+    assert_eq!(lower_head(&store, 72), 20);
+
+    // Event 59 raises the head; the counter then decays -2 per tick down to 0, after which the state is
+    // dropped (a resting goat projects 0).
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 72,
+        event_id: 59,
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(lower_head(&store, 72), 18);
+    store.advance_entity_client_animations(9);
+    assert_eq!(lower_head(&store, 72), 0);
+    store.advance_entity_client_animations(5);
+    assert_eq!(lower_head(&store, 72), 0);
+
+    // The ram events on a non-goat entity never start the counter.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 73,
+        event_id: 58,
+    }));
+    store.advance_entity_client_animations(3);
+    assert_eq!(lower_head(&store, 73), 0);
+}
+
+#[test]
 fn warden_tendril_event_drives_client_animation_pulse() {
     const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

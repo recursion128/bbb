@@ -98,6 +98,7 @@ const BEE_FLAGS_DATA_ID: u8 = 18;
 const BEE_FLAG_ROLL: i8 = 2;
 /// Vanilla `Fox` entity type id (`EntityType.FOX`).
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
+const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -185,6 +186,13 @@ const WARDEN_POSE_UNSET: i32 = -1;
 /// `tentacleMovement` wraps past `2π`). Without it the client tentacles freeze at
 /// `2π` after the first cycle.
 const SQUID_RESET_MOVEMENT_EVENT_ID: i8 = 19;
+/// Vanilla `Goat.handleEntityEvent`: event `58` sets `isLoweringHead = true` (the goat begins a ram),
+/// event `59` clears it. The client `aiStep` then advances `lowerHeadTick` toward / away from the cap.
+const GOAT_LOWER_HEAD_EVENT_ID: i8 = 58;
+const GOAT_RAISE_HEAD_EVENT_ID: i8 = 59;
+/// Vanilla `Goat.aiStep` clamps `lowerHeadTick` to `[0, 20]`: `++` while lowering, `-= 2` otherwise.
+/// `getRammingXHeadRot` normalises it by this cap.
+const GOAT_LOWER_HEAD_MAX_TICKS: i32 = 20;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -212,6 +220,8 @@ pub struct EntityClientAnimationState {
     pub ender_dragon: Option<EnderDragonAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sheep_eat: Option<SheepEatAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goat_ramming: Option<GoatRammingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -508,6 +518,35 @@ pub struct FoxAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SheepEatAnimationState {
     pub eat_animation_tick: i32,
+}
+
+/// Canonical client-side goat head-lowering ram, mirroring vanilla `Goat.lowerHeadTick` /
+/// `isLoweringHead`. Entity event `58` sets `lowering_head`, event `59` clears it; each client
+/// `aiStep` advances `lower_head_tick` (`++` while lowering, `-= 2` otherwise), clamped to
+/// `[0, GOAT_LOWER_HEAD_MAX_TICKS]`. `Goat.getRammingXHeadRot` normalises it by the cap and scales
+/// by the adult/baby max head pitch, driving the renderer `GoatModel.setupAnim` head tilt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GoatRammingAnimationState {
+    pub lowering_head: bool,
+    pub lower_head_tick: i32,
+}
+
+impl GoatRammingAnimationState {
+    /// Vanilla `Goat.aiStep`: `lowerHeadTick++` while lowering, else `lowerHeadTick -= 2`, clamped.
+    fn advance_client_tick(&mut self) {
+        if self.lowering_head {
+            self.lower_head_tick += 1;
+        } else {
+            self.lower_head_tick -= 2;
+        }
+        self.lower_head_tick = self.lower_head_tick.clamp(0, GOAT_LOWER_HEAD_MAX_TICKS);
+    }
+
+    /// The ram has fully relaxed: not lowering and the counter has decayed back to `0`, so the state
+    /// can be dropped (a resting goat projects no head tilt).
+    fn is_settled(&self) -> bool {
+        !self.lowering_head && self.lower_head_tick == 0
+    }
 }
 
 /// Canonical client-side warden tendril animation, mirroring vanilla
@@ -1689,6 +1728,21 @@ impl EntityClientAnimationState {
             if let Some(squid) = self.squid.as_mut() {
                 squid.reset_movement();
             }
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID
+            && matches!(
+                event_id,
+                GOAT_LOWER_HEAD_EVENT_ID | GOAT_RAISE_HEAD_EVENT_ID
+            )
+        {
+            // Vanilla `Goat.handleEntityEvent`: event 58 → `isLoweringHead = true`, 59 → `false`. The
+            // `aiStep` counter advances from there; an idle goat with no state is created on the first
+            // lower so its `lowerHeadTick` can climb (a raise event before any state is a no-op rest).
+            self.goat_ramming
+                .get_or_insert(GoatRammingAnimationState {
+                    lowering_head: false,
+                    lower_head_tick: 0,
+                })
+                .lowering_head = event_id == GOAT_LOWER_HEAD_EVENT_ID;
         }
     }
 
@@ -1696,6 +1750,13 @@ impl EntityClientAnimationState {
     /// projection. Returns `0` when the sheep is not currently eating.
     pub fn sheep_eat_animation_tick(&self) -> i32 {
         self.sheep_eat.map_or(0, |state| state.eat_animation_tick)
+    }
+
+    /// Vanilla `Goat.lowerHeadTick` (the `0..=20` ram counter), exposed for the native layer to derive
+    /// `getRammingXHeadRot` (which scales it by the adult/baby max head pitch). Returns `0` when the
+    /// goat is not ramming. No partial-tick lerp: vanilla `getRammingXHeadRot` reads the raw int.
+    pub fn goat_lower_head_tick(&self) -> i32 {
+        self.goat_ramming.map_or(0, |state| state.lower_head_tick)
     }
 
     /// Vanilla `Warden.getTendrilAnimation(partialTick)`, exposed for the renderer
@@ -2112,6 +2173,14 @@ impl EntityClientAnimationState {
                     eat.advance_client_tick();
                     if eat.eat_animation_tick == 0 {
                         self.sheep_eat = None;
+                    }
+                }
+            }
+            VANILLA_ENTITY_TYPE_GOAT_ID => {
+                if let Some(ramming) = self.goat_ramming.as_mut() {
+                    ramming.advance_client_tick();
+                    if ramming.is_settled() {
+                        self.goat_ramming = None;
                     }
                 }
             }
