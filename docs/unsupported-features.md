@@ -864,16 +864,31 @@ When an agent does any of the following, update this file in the same slice:
         resource id, exposed as `item_display_transform(protocol_id, context)`.
         Native `display_matrix` builds the vanilla `ItemTransform.apply` matrix
         (`T(t)·Rxyz·S·T(-0.5)`, translation already in world units) from any
-        context; held items use `thirdperson_righthand`, with the parent-model
-        default as the no-model fallback. This unblocks the frame `fixed` and GUI
-        `gui` contexts for the next consumers.
-      - remaining slices: the other two consumers (item frames / armor-stand,
-        HUD 3D icons); held-item refinements (baby humanoids; first-person
-        viewmodel; family-specific combat arm poses — bow-aim / crossbow /
-        spear — which are deferred entity-side state). The dropped-item `ground`
-        path
-        still uses the default block/generated GROUND transform + seating lift
-        (custom per-item ground transforms not yet applied). Item lighting
+        context; held items use `thirdperson_righthand`, frames use `fixed`, with
+        the parent-model default as the no-model fallback.
+      - third consumer DONE (item frames): every item-frame / glow-item-frame
+        entity renders as the 3D wooden border plus the framed item (vanilla
+        `ItemFrameRenderer`), replacing the placeholder bounds box (now
+        `NoRender`). `WorldStore::item_frame_render_states` exposes each frame's
+        wall-mounted center, facing wall, `0..=7` item rotation, glow flag,
+        framed item, and map flag (from `DATA_DIRECTION` / `DATA_ITEM` /
+        `DATA_ROTATION`). Native `item_frames` bakes the border by transcribing
+        `block/template_item_frame` (four `birch_planks` bars + the
+        `item_frame` / `glow_item_frame` back panel) into the blocks atlas via
+        the existing `Boxes` item-bake path, and the framed item to block/flat
+        quads with its `FIXED` display transform. The facing wall orients the
+        model (`Rx(xRot)·Ry(yRot)`), the item is pushed `0.4375` out and spun by
+        its rotation at scale `0.5`. Deferred: the filled-map full-frame render
+        (a map frame shows only its border) and the `0.5`-vs-`0.4375` invisible
+        offset; the back panel's `15.5` depth is rounded to `15`.
+      - remaining slices: the last consumer (HUD 3D inventory icons — block
+        items still draw as flat 2D sprites; needs a GUI orthographic 3D pass +
+        depth, the existing item-model pipeline is hard-bound to the world
+        camera); held-item refinements (baby humanoids; first-person viewmodel;
+        family-specific combat arm poses — bow-aim / crossbow / spear — deferred
+        entity-side state); armor-stand held items. The dropped-item `ground`
+        path still uses the default block/generated GROUND transform + seating
+        lift (custom per-item ground transforms not yet applied). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
         `shade` currently uses the terrain cardinal `Direction.getShade` for both
         block- and generated-items.
