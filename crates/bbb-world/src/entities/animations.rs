@@ -40,7 +40,7 @@ const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
 /// pose/jump/dash animation states the client does not yet track, so their limb
 /// swing is deferred rather than approximated with the base mapping.
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
-const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
+pub(crate) const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
 const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 /// Vanilla `Pose.CROAKING` ordinal (`Pose.CROAKING(8, …)`), the synced `DATA_POSE` int value that
 /// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
@@ -267,6 +267,23 @@ const HOGLIN_ATTACK_TICKS: i32 = 10;
 const EVOKER_FANGS_ATTACK_EVENT_ID: i8 = 4;
 const EVOKER_FANGS_LIFE_TICKS: i32 = 22;
 
+/// Vanilla `Creaking.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 15` (the
+/// lunge), event `66` sets `invulnerabilityAnimationRemainingTicks = 8` (the heart-bound stagger).
+/// Both decrement each client tick in `aiStep`, and `setupAnimationStates` `animateWhen`s the
+/// matching keyframe one-shot on `ticks > 0`.
+const CREAKING_ATTACK_EVENT_ID: i8 = 4;
+const CREAKING_INVULNERABLE_EVENT_ID: i8 = 66;
+const CREAKING_ATTACK_DURATION: i32 = 15;
+const CREAKING_INVULNERABLE_DURATION: i32 = 8;
+/// Vanilla `Creaking.CAN_MOVE`, the first own synced accessor after `Entity` (`0..=7`),
+/// `LivingEntity` (`8..=14`) and `Mob` (`15`) — a `Boolean`, default `true`. `setupAnim` gates the
+/// looping walk on it (a frozen-while-observed creaking turns to a statue).
+const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
+/// Vanilla `Creaking.IS_TEARING_DOWN`, the synced `Boolean` two slots after `CAN_MOVE`
+/// (`CAN_MOVE` 16, `IS_ACTIVE` 17, `IS_TEARING_DOWN` 18; default `false`). `isTearingDown()` reads
+/// it, and `setupAnimationStates` `animateWhen`s the death keyframe on it.
+const CREAKING_IS_TEARING_DOWN_DATA_ID: u8 = 18;
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
     #[serde(default)]
@@ -310,6 +327,8 @@ pub struct EntityClientAnimationState {
     pub hoglin: Option<HoglinAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rabbit_hop: Option<RabbitHopAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creaking: Option<CreakingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -437,8 +456,9 @@ pub struct BeeRollAnimationState {
 /// projects the elapsed seconds since the start and wraps/samples the matching
 /// `KeyframeAnimation` definition. Reusable for the whole triggered-keyframe tier
 /// (the frog's croak is the first consumer; the warden/sniffer/camel/armadillo
-/// triggered poses follow the same pattern).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// triggered poses follow the same pattern). `Default` is the stopped sentinel
+/// (`start_age: None`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyframeAnimationState {
     /// Vanilla `AnimationState.startTick` recorded at the rising edge (`age_ticks`
     /// when the trigger condition first became true). `None` is vanilla's
@@ -829,6 +849,70 @@ impl RabbitHopAnimationState {
     /// resting rabbit holds the bind pose plus its look).
     fn is_settled(&self) -> bool {
         self.jump_duration == 0 && self.jump_ticks == 0 && self.hop.start_age.is_none()
+    }
+}
+
+/// Canonical client-side creaking combat/death keyframe state, mirroring vanilla `Creaking`'s
+/// `attackAnimationState`/`invulnerabilityAnimationState`/`deathAnimationState` and the two
+/// remaining-tick counters that drive them. Entity event `4` seeds `attackAnimationRemainingTicks =
+/// 15`, event `66` seeds `invulnerabilityAnimationRemainingTicks = 8`; `aiStep` decrements both each
+/// client tick, then `Creaking.tick`'s `setupAnimationStates` `animateWhen`s each one-shot on its
+/// `ticks > 0`. The death one-shot has no counter — it `animateWhen`s on the synced `isTearingDown()`
+/// (`IS_TEARING_DOWN`) directly, so the per-tick advance is fed that flag. (Vanilla decrements in
+/// `aiStep` BEFORE `setupAnimationStates`, unlike `Rabbit`, whose `setupAnimationStates` runs first.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CreakingAnimationState {
+    /// Vanilla `Creaking.attackAnimationRemainingTicks`.
+    pub attack_ticks: i32,
+    /// Vanilla `Creaking.invulnerabilityAnimationRemainingTicks`.
+    pub invuln_ticks: i32,
+    /// Vanilla `Creaking.attackAnimationState` (the 0.7083s looping `CREAKING_ATTACK` lunge).
+    pub attack: KeyframeAnimationState,
+    /// Vanilla `Creaking.invulnerabilityAnimationState` (the 0.2917s `CREAKING_INVULNERABLE` stagger).
+    pub invuln: KeyframeAnimationState,
+    /// Vanilla `Creaking.deathAnimationState` (the 2.25s `CREAKING_DEATH` collapse).
+    pub death: KeyframeAnimationState,
+}
+
+impl CreakingAnimationState {
+    /// Vanilla `Creaking.handleEntityEvent(4)`: `attackAnimationRemainingTicks = 15`. The one-shot
+    /// itself starts on the next tick's `setupAnimationStates` once the (post-decrement) counter is
+    /// still positive.
+    fn start_attack(&mut self) {
+        self.attack_ticks = CREAKING_ATTACK_DURATION;
+    }
+
+    /// Vanilla `Creaking.handleEntityEvent(66)`: `invulnerabilityAnimationRemainingTicks = 8`.
+    fn start_invulnerable(&mut self) {
+        self.invuln_ticks = CREAKING_INVULNERABLE_DURATION;
+    }
+
+    /// One client tick in vanilla order: `Creaking.aiStep` decrements both remaining-tick counters
+    /// (toward `0`) FIRST, then `Creaking.tick`'s `setupAnimationStates` `animateWhen`s the attack on
+    /// `attackTicks > 0`, the invulnerable on `invulnTicks > 0`, and the death on the synced
+    /// `isTearingDown()`.
+    fn advance_client_tick(&mut self, age_ticks: u32, is_tearing_down: bool) {
+        if self.attack_ticks > 0 {
+            self.attack_ticks -= 1;
+        }
+        if self.invuln_ticks > 0 {
+            self.invuln_ticks -= 1;
+        }
+        self.attack.animate_when(self.attack_ticks > 0, age_ticks);
+        self.invuln.animate_when(self.invuln_ticks > 0, age_ticks);
+        self.death.animate_when(is_tearing_down, age_ticks);
+    }
+
+    /// Both counters have wound down and all three one-shots have stopped, so the state can be dropped
+    /// (a resting creaking holds the bind pose plus its look, gated only by the directly-projected
+    /// `canMove`). A tearing-down creaking keeps its death timer alive, so it never settles while the
+    /// synced `IS_TEARING_DOWN` holds.
+    fn is_settled(&self) -> bool {
+        self.attack_ticks == 0
+            && self.invuln_ticks == 0
+            && self.attack.start_age.is_none()
+            && self.invuln.start_age.is_none()
+            && self.death.start_age.is_none()
     }
 }
 
@@ -1471,6 +1555,7 @@ impl WalkAnimationState {
     /// vertical travel only for flying animals).
     fn advance_client_tick(
         &mut self,
+        entity_type_id: i32,
         feet_position: EntityVec3,
         use_y: bool,
         is_passenger: bool,
@@ -1497,7 +1582,7 @@ impl WalkAnimationState {
             self.stop();
             return;
         }
-        let target_speed = (distance * 4.0).min(1.0);
+        let target_speed = walk_update_target_speed(entity_type_id, distance);
         self.update(target_speed, 0.4, if is_baby { 3.0 } else { 1.0 });
     }
 
@@ -1531,13 +1616,26 @@ fn is_flying_animal(entity_type_id: i32) -> bool {
 
 /// Whether an entity's `updateWalkAnimation` override is not yet modelled, so its
 /// limb swing is deferred rather than driven with the base distance→speed mapping.
+/// `Camel`/`Frog` additionally gate on pose/jump/dash animation states the client
+/// does not fully track; the `Creaking` override is pure (`min(distance·25, 3)`,
+/// driven here), so it is no longer deferred.
 fn walk_animation_override_is_deferred(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
-        VANILLA_ENTITY_TYPE_CAMEL_ID
-            | VANILLA_ENTITY_TYPE_CREAKING_ID
-            | VANILLA_ENTITY_TYPE_FROG_ID
+        VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_FROG_ID
     )
+}
+
+/// Vanilla `updateWalkAnimation`'s per-entity distance→target-speed mapping, fed to
+/// `WalkAnimationState.update`. The base `LivingEntity` clamps `distance · 4` to `1.0`; `Creaking`
+/// overrides it to `distance · 25` clamped to `3.0` (a faster, higher-amplitude gait that ramps the
+/// limb-swing position ~3× quicker). The `Camel`/`Frog` overrides additionally gate on pose/jump
+/// animation states the client does not track, so they stay deferred (and never reach here).
+fn walk_update_target_speed(entity_type_id: i32, distance: f32) -> f32 {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_CREAKING_ID => (distance * 25.0).min(3.0),
+        _ => (distance * 4.0).min(1.0),
+    }
 }
 
 impl Default for PolarBearStandingAnimationState {
@@ -2387,6 +2485,23 @@ impl EntityClientAnimationState {
                     hop: KeyframeAnimationState { start_age: None },
                 })
                 .start_jump();
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_CREAKING_ID
+            && matches!(
+                event_id,
+                CREAKING_ATTACK_EVENT_ID | CREAKING_INVULNERABLE_EVENT_ID
+            )
+        {
+            // Vanilla `Creaking.handleEntityEvent`: event 4 → `attackAnimationRemainingTicks = 15`,
+            // 66 → `invulnerabilityAnimationRemainingTicks = 8`. The `aiStep` countdown advances from
+            // there; the next tick's `setupAnimationStates` starts the matching keyframe one-shot.
+            let creaking = self
+                .creaking
+                .get_or_insert_with(CreakingAnimationState::default);
+            if event_id == CREAKING_ATTACK_EVENT_ID {
+                creaking.start_attack();
+            } else {
+                creaking.start_invulnerable();
+            }
         } else if entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID
             && event_id == EVOKER_FANGS_ATTACK_EVENT_ID
         {
@@ -2460,6 +2575,37 @@ impl EntityClientAnimationState {
     pub fn rabbit_hop_seconds(&self, partial_tick: f32) -> f32 {
         self.rabbit_hop
             .and_then(|state| state.hop.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The creaking attack's elapsed seconds since entity event `4` started it (vanilla
+    /// `attackAnimationState`), projected for the renderer `CreakingModel.setupAnim`
+    /// `attackAnimation.apply`. Returns `-1.0` (the stopped-animation sentinel) for a non-attacking
+    /// creaking and every other entity; a non-negative value is wrapped by the 0.7083s looping length
+    /// each frame in the renderer.
+    pub fn creaking_attack_seconds(&self, partial_tick: f32) -> f32 {
+        self.creaking
+            .and_then(|state| state.attack.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The creaking invulnerable stagger's elapsed seconds since entity event `66` started it (vanilla
+    /// `invulnerabilityAnimationState`), projected for the renderer `CreakingModel.setupAnim`
+    /// `invulnerableAnimation.apply`. Returns `-1.0` (stopped) for a non-staggering creaking and every
+    /// other entity; a non-negative value clamps past the 0.2917s length to its final frame.
+    pub fn creaking_invulnerable_seconds(&self, partial_tick: f32) -> f32 {
+        self.creaking
+            .and_then(|state| state.invuln.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
+    /// The creaking death collapse's elapsed seconds since `isTearingDown()` became true (vanilla
+    /// `deathAnimationState`), projected for the renderer `CreakingModel.setupAnim`
+    /// `deathAnimation.apply`. Returns `-1.0` (stopped) for a non-tearing-down creaking and every
+    /// other entity; a non-negative value clamps past the 2.25s length to its final frame.
+    pub fn creaking_death_seconds(&self, partial_tick: f32) -> f32 {
+        self.creaking
+            .and_then(|state| state.death.elapsed_seconds(self.age_ticks, partial_tick))
             .unwrap_or(-1.0)
     }
 
@@ -2951,6 +3097,10 @@ impl EntityClientAnimationState {
         // metadata in the tick loop ([`axolotl_is_playing_dead`]). `false` for entities that do not
         // consume it.
         axolotl_is_playing_dead: bool,
+        // The synced `Creaking.IS_TEARING_DOWN` boolean (`isTearingDown()`), read from the entity
+        // metadata in the tick loop ([`creaking_is_tearing_down`]). `false` for entities that do not
+        // consume it.
+        creaking_is_tearing_down: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -3045,6 +3195,20 @@ impl EntityClientAnimationState {
                     rabbit_hop.advance_client_tick(self.age_ticks);
                     if rabbit_hop.is_settled() {
                         self.rabbit_hop = None;
+                    }
+                }
+            }
+            VANILLA_ENTITY_TYPE_CREAKING_ID => {
+                // The death one-shot is driven by the synced `isTearingDown()` directly, so a
+                // creaking that begins tearing down spins up the state even without a prior
+                // attack/invulnerable event; otherwise an idle creaking carries no state.
+                if self.creaking.is_some() || creaking_is_tearing_down {
+                    let creaking = self
+                        .creaking
+                        .get_or_insert_with(CreakingAnimationState::default);
+                    creaking.advance_client_tick(self.age_ticks, creaking_is_tearing_down);
+                    if creaking.is_settled() {
+                        self.creaking = None;
                     }
                 }
             }
@@ -3194,7 +3358,14 @@ impl EntityClientAnimationState {
             let use_y = is_flying_animal(entity_type_id);
             self.walk_animation
                 .get_or_insert_with(WalkAnimationState::default)
-                .advance_client_tick(transform.position, use_y, is_passenger, is_alive, is_baby);
+                .advance_client_tick(
+                    entity_type_id,
+                    transform.position,
+                    use_y,
+                    is_passenger,
+                    is_alive,
+                    is_baby,
+                );
         }
     }
 }
@@ -3239,6 +3410,21 @@ pub(crate) fn allay_is_dancing(data_values: &[EntityDataValue]) -> bool {
 /// loop; non-axolotls (whose synced slot `19` is not this boolean) fall back to `false`.
 pub(crate) fn axolotl_is_playing_dead(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, AXOLOTL_PLAYING_DEAD_DATA_ID, false)
+}
+
+/// Vanilla `Creaking.canMove()` (`entityData.get(CAN_MOVE)`): the synced boolean (default `true`)
+/// that gates the looping walk. Read straight from the entity metadata; a creaking frozen while a
+/// player observes it turns to a statue. Non-creakings fall back to `true` (the field only feeds the
+/// creaking model).
+pub(crate) fn creaking_can_move(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, CREAKING_CAN_MOVE_DATA_ID, true)
+}
+
+/// Vanilla `Creaking.isTearingDown()` (`entityData.get(IS_TEARING_DOWN)`): the synced boolean
+/// (default `false`) that drives the death collapse. Read straight from the entity metadata in the
+/// tick loop; non-creakings fall back to `false`.
+pub(crate) fn creaking_is_tearing_down(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, CREAKING_IS_TEARING_DOWN_DATA_ID, false)
 }
 
 /// Vanilla `Warden.getHeartBeatDelay()` = `40 - floor(clamp(clientAngerLevel /

@@ -198,6 +198,22 @@ entity_render_state! {
     /// `RabbitAnimation.HOP`), sampled by `RabbitModel.setupAnim`. `-1.0` (stopped) for every other
     /// entity and a resting rabbit; a non-negative value is wrapped by the looping def length.
     (with_rabbit_hop_seconds) rabbit_hop_seconds: f32 = -1.0;
+    /// Vanilla `Creaking.canMove()` (synced `CAN_MOVE`, default `true`): gates `CreakingModel`'s
+    /// looping walk. A creaking frozen while observed turns to a statue. `true` for every other entity.
+    (with_creaking_can_move) creaking_can_move: bool = true;
+    /// Vanilla `Creaking.attackAnimationState` elapsed seconds (entity event `4`-seeded, the 0.7083s
+    /// looping `CREAKING_ATTACK` lunge), sampled by `CreakingModel.setupAnim`. `-1.0` (stopped) for
+    /// every other entity and a non-attacking creaking; a non-negative value is wrapped by the looping
+    /// def length.
+    (with_creaking_attack_seconds) creaking_attack_seconds: f32 = -1.0;
+    /// Vanilla `Creaking.invulnerabilityAnimationState` elapsed seconds (entity event `66`-seeded, the
+    /// 0.2917s `CREAKING_INVULNERABLE` stagger), sampled by `CreakingModel.setupAnim`. `-1.0` (stopped)
+    /// for every other entity and a non-staggering creaking.
+    (with_creaking_invulnerable_seconds) creaking_invulnerable_seconds: f32 = -1.0;
+    /// Vanilla `Creaking.deathAnimationState` elapsed seconds (synced `isTearingDown()`-driven, the
+    /// 2.25s `CREAKING_DEATH` collapse), sampled by `CreakingModel.setupAnim`. `-1.0` (stopped) for
+    /// every other entity and a non-tearing-down creaking.
+    (with_creaking_death_seconds) creaking_death_seconds: f32 = -1.0;
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
@@ -1716,6 +1732,10 @@ mod tests {
                 warden_emerge_seconds: -1.0,
                 warden_dig_seconds: -1.0,
                 rabbit_hop_seconds: -1.0,
+                creaking_can_move: true,
+                creaking_attack_seconds: -1.0,
+                creaking_invulnerable_seconds: -1.0,
+                creaking_death_seconds: -1.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,

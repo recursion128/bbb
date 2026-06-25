@@ -695,12 +695,13 @@ When an agent does any of the following, update this file in the same slice:
     health droop (it needs the wolf's health), the `shakeOffWater` body roll, and the sitting
     pose are deferred. Deferred:
     (1) the
-    `Camel`/`Creaking`/`Frog` `updateWalkAnimation` overrides use different
-    distance→speed mappings (and
-    `Camel`/`Frog` gate on pose animation states the client does not fully track yet —
-    the camel dash and frog jump/swim-idle/croak/tongue triggered animations ARE now driven, but
-    the camel idle remains deferred), so the distance→speed walk input is
-    left at the base mapping rather than the override; (2) the base
+    `Camel`/`Frog` `updateWalkAnimation` overrides use different
+    distance→speed mappings AND gate on pose/jump animation states the client does not
+    fully track yet (the camel dash and frog jump/swim-idle/croak/tongue triggered
+    animations ARE now driven, but the camel idle remains deferred), so their
+    distance→speed walk input is left at the base mapping rather than the override. The
+    `Creaking` override is pure (`min(distance · 25, 3)`, factor `0.4`) and IS now driven —
+    its limb swing ramps ~3× faster than the base mapping (`walk_update_target_speed`); (2) the base
     `HumanoidModel.setupAnim` arm swing is implemented for the player, the skeleton
     family, and the non-zombified piglin family
     (`humanoid_arm_swing_pose`/`humanoid_arm_swing_parts`, arms at `[2, 3]`, the
@@ -2031,10 +2032,21 @@ When an agent does any of the following, update this file in the same slice:
       `applyWalk(walkAnimationPos, walkAnimationSpeed, 1, 1)` — it offsets the upper_body, head, the
       two arms (rotation), and the two legs (rotation + position), and the head channel ADDS onto the
       look the head already tracks (tests pin the head-only look, the 53-keyframe definition, and the
-      look composing onto the walking head). The un-projected `canMove` freeze gate is deferred, but a
-      frozen creaking has walk speed ≈ 0 so the amplitude already collapses to rest (fittingly, the
-      creaking turns to a statue while observed); the attack / invulnerable / death keyframe
-      animations stay deferred. The base texture is now bound on the textured path
+      look composing onto the walking head). The `canMove` freeze gate is now PROJECTED and consumed:
+      the synced `CAN_MOVE` boolean (id 16, default true) is read directly into the model source, and
+      `setupAnim` skips `applyWalk` when it is false — a creaking observed mid-step holds the bind pose
+      plus its look and turns to a statue. The three triggered combat/death keyframe one-shots are now
+      reproduced the vanilla way too: `Creaking.handleEntityEvent(4)`/`(66)` seed
+      `attackAnimationRemainingTicks = 15` / `invulnerabilityAnimationRemainingTicks = 8`, the client
+      `aiStep` decrements both each tick (BEFORE `setupAnimationStates`, unlike the rabbit), and
+      `setupAnimationStates` `animateWhen`s the looping 0.7083 s `CREAKING_ATTACK` lunge and the
+      non-looping 0.2917 s `CREAKING_INVULNERABLE` stagger on `ticks > 0`; the 2.25 s `CREAKING_DEATH`
+      collapse `animateWhen`s on the synced `isTearingDown()` (`IS_TEARING_DOWN`, id 18) directly. The
+      three definitions are transcribed exactly (68 / 19 / 52 keyframes), projected as elapsed seconds
+      (or the `-1.0` stopped sentinel) and applied additively over the walk in vanilla order, with the
+      attack/death `SCALE` channels folded onto the part scale (tests pin the tick windows, the three
+      definitions, the freeze gate, and each one-shot re-posing off the bind pose). The base texture is
+      now bound on the textured path
       (`CREAKING_TEXTURE_REF`), together with the emissive eyes overlay
       (`CREAKING_EYES_TEXTURE_REF`, vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`): an
       eyes-render-type pass re-rendering the whole model, gated on `eyes_glowing` projected from the

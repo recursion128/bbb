@@ -691,6 +691,26 @@ pub struct EntityModelSourceState {
     /// (stopped) for a resting rabbit and every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub rabbit_hop_seconds: f32,
+    /// Vanilla `Creaking.canMove()` (synced `CAN_MOVE`, default `true`): gates `CreakingModel`'s
+    /// looping walk. A creaking frozen while observed turns to a statue. `true` for every entity
+    /// without the flag (the field only feeds the creaking model).
+    #[serde(default = "entity_model_source_default_true")]
+    pub creaking_can_move: bool,
+    /// Vanilla `Creaking.attackAnimationState` elapsed seconds (entity event `4`-seeded, the 0.7083s
+    /// looping `CREAKING_ATTACK` lunge), sampled by `CreakingModel.setupAnim`'s `attackAnimation.apply`.
+    /// `-1.0` (stopped) for a non-attacking creaking and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub creaking_attack_seconds: f32,
+    /// Vanilla `Creaking.invulnerabilityAnimationState` elapsed seconds (entity event `66`-seeded, the
+    /// 0.2917s `CREAKING_INVULNERABLE` stagger), sampled by `CreakingModel.setupAnim`'s
+    /// `invulnerableAnimation.apply`. `-1.0` (stopped) for a non-staggering creaking and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub creaking_invulnerable_seconds: f32,
+    /// Vanilla `Creaking.deathAnimationState` elapsed seconds (synced `isTearingDown()`-driven, the
+    /// 2.25s `CREAKING_DEATH` collapse), sampled by `CreakingModel.setupAnim`'s `deathAnimation.apply`.
+    /// `-1.0` (stopped) for a non-tearing-down creaking and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub creaking_death_seconds: f32,
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that sways the model's legs/arms. `0.0` for a standing entity, every

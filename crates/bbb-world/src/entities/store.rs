@@ -23,9 +23,10 @@ use super::{
     VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
-    allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, entity_animation_uses_in_water,
-    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
-    is_guardian_entity_type, warden_heartbeat_delay,
+    allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
+    creaking_is_tearing_down, entity_animation_uses_in_water, guardian_attack_duration,
+    guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type, warden_heartbeat_delay,
+    VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
@@ -824,6 +825,22 @@ impl EntityStore {
             rabbit_hop_seconds: client_animations
                 .animations
                 .rabbit_hop_seconds(partial_ticks),
+            // Vanilla `Creaking`: the directly-synced `canMove()` walk gate plus the three triggered
+            // keyframe one-shots (attack/invulnerable event-driven, death on the synced
+            // `isTearingDown()`), each the elapsed seconds since it started or `-1.0` when stopped. The
+            // `canMove` read is gated on the creaking type (its synced slot `16` is the `CAN_MOVE`
+            // boolean; other entities' slot `16` is an unrelated field), defaulting to `true`.
+            creaking_can_move: identity.entity_type_id != VANILLA_ENTITY_TYPE_CREAKING_ID
+                || creaking_can_move(&metadata.data_values),
+            creaking_attack_seconds: client_animations
+                .animations
+                .creaking_attack_seconds(partial_ticks),
+            creaking_invulnerable_seconds: client_animations
+                .animations
+                .creaking_invulnerable_seconds(partial_ticks),
+            creaking_death_seconds: client_animations
+                .animations
+                .creaking_death_seconds(partial_ticks),
             walk_animation_position: client_animations
                 .animations
                 .walk_animation_position(partial_ticks),
@@ -1419,6 +1436,7 @@ impl EntityStore {
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 let allay_is_dancing = allay_is_dancing(&metadata.data_values);
                 let axolotl_is_playing_dead = axolotl_is_playing_dead(&metadata.data_values);
+                let creaking_is_tearing_down = creaking_is_tearing_down(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1432,6 +1450,7 @@ impl EntityStore {
                     camel_is_dashing,
                     allay_is_dancing,
                     axolotl_is_playing_dead,
+                    creaking_is_tearing_down,
                 );
             }
         }

@@ -3835,9 +3835,11 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
 
 #[test]
 fn entity_model_sources_defer_walk_animation_for_overridden_entities() {
-    // Camel/Creaking/Frog override `updateWalkAnimation` with mappings the client
-    // does not yet model, so their limb swing stays deferred (zero) while an
-    // ordinary cow with the base mapping animates from the same movement.
+    // Camel/Frog override `updateWalkAnimation` and additionally gate on pose/jump
+    // animation states the client does not yet model, so their limb swing stays
+    // deferred (zero) while an ordinary cow with the base mapping animates from the
+    // same movement. (The `Creaking` override is pure and IS now driven — see
+    // `creaking_walk_uses_the_vanilla_distance_to_speed_override`.)
     const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 
@@ -3885,6 +3887,84 @@ fn entity_model_sources_defer_walk_animation_for_overridden_entities() {
         "the cow's limb swing animates"
     );
     assert_eq!(walk_position(&store, 81), 0.0, "the camel stays deferred");
+}
+
+#[test]
+fn creaking_walk_uses_the_vanilla_distance_to_speed_override() {
+    // Vanilla `Creaking.updateWalkAnimation`: `targetSpeed = min(distance · 25, 3); walkAnimation
+    // .update(targetSpeed, 0.4, 1)`. After one 0.5-block step the target saturates at `3.0`, so
+    // `speed = 0 + (3 - 0) · 0.4 = 1.2` and `position = 1.2` — but `speed(partial)` clamps to `1.0`.
+    // A cow with the base `min(distance · 4, 1)` mapping reaches only `position = speed = 0.4` from
+    // the same movement, so the creaking ramps ~3× faster.
+    const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+
+    let walk = |store: &WorldStore, id: i32| -> (f32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (source.walk_animation_position, source.walk_animation_speed)
+    };
+    let sync = |store: &mut WorldStore, id: i32, x: f64| {
+        assert!(
+            store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                id,
+                position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            })
+        );
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_CREAKING_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    // Sync both to the baseline, then take the first shared tick: it only records the feet position
+    // (vanilla `xo == getX()`), so the swing stays at rest. (Both entities are advanced together each
+    // tick, so neither integrates an extra non-moving tick from the other's update.)
+    sync(&mut store, 82, 0.0);
+    sync(&mut store, 83, 0.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(walk(&store, 82), (0.0, 0.0));
+
+    // One 0.5-block step: the creaking's `min(0.5 · 25, 3) = 3.0` target gives `position = 1.2` and a
+    // clamped `speed = 1.0`; the cow's `min(0.5 · 4, 1) = 1.0` target gives `position = speed = 0.4`.
+    sync(&mut store, 82, 0.5);
+    sync(&mut store, 83, 0.5);
+    store.advance_entity_client_animations(1);
+    let (creaking_pos, creaking_speed) = walk(&store, 82);
+    assert!(
+        (creaking_pos - 1.2).abs() < 1e-5,
+        "creaking position ramps with the ·25→3 mapping: {creaking_pos}"
+    );
+    assert!(
+        (creaking_speed - 1.0).abs() < 1e-5,
+        "the projected walk speed clamps to 1.0: {creaking_speed}"
+    );
+    let (cow_pos, _) = walk(&store, 83);
+    assert!(
+        (cow_pos - 0.4).abs() < 1e-5,
+        "cow position uses the base ·4→1 mapping: {cow_pos}"
+    );
+    assert!(
+        creaking_pos > cow_pos,
+        "the creaking ramps faster than the base mapping"
+    );
 }
 
 #[test]
@@ -7615,6 +7695,136 @@ fn rabbit_jump_event_drives_the_hop_window() {
     }));
     store.advance_entity_client_animations(2);
     assert_eq!(hop(&store, 51, 0.0), -1.0);
+}
+
+#[test]
+fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
+    const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const CREAKING_ATTACK_EVENT_ID: i8 = 4;
+    const CREAKING_INVULNERABLE_EVENT_ID: i8 = 66;
+    const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
+    const CREAKING_IS_TEARING_DOWN_DATA_ID: u8 = 18;
+
+    let creaking_bool = |data_id: u8, value: bool| ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 8,
+        value: EntityDataValueKind::Boolean(value),
+    };
+    let source = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_CREAKING_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    // A resting creaking can move (the `CAN_MOVE` default) and projects the `-1.0` stopped sentinels.
+    let rest = source(&store, 70, 1.0);
+    assert!(rest.creaking_can_move, "default canMove is true");
+    assert_eq!(rest.creaking_attack_seconds, -1.0);
+    assert_eq!(rest.creaking_invulnerable_seconds, -1.0);
+    assert_eq!(rest.creaking_death_seconds, -1.0);
+
+    // The synced `CAN_MOVE = false` freezes the walk (a creaking observed mid-step turns to a statue).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![creaking_bool(CREAKING_CAN_MOVE_DATA_ID, false)],
+    }));
+    assert!(!source(&store, 70, 1.0).creaking_can_move);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![creaking_bool(CREAKING_CAN_MOVE_DATA_ID, true)],
+    }));
+
+    // Vanilla `Creaking.handleEntityEvent(4)`: `attackAnimationRemainingTicks = 15`. The one-shot is
+    // NOT started yet — it only `animateWhen`s on the NEXT tick's `setupAnimationStates`, after
+    // `aiStep` has decremented the counter (still positive). So the seed tick reads the stopped value.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 70,
+        event_id: CREAKING_ATTACK_EVENT_ID,
+    }));
+    assert_eq!(source(&store, 70, 0.0).creaking_attack_seconds, -1.0);
+    // First tick: vanilla decrements `15 -> 14` BEFORE `setupAnimationStates`, so the attack starts at
+    // the current age this very tick (elapsed begins at 0), unlike the rabbit (which is animate-first).
+    store.advance_entity_client_animations(1);
+    assert!((source(&store, 70, 0.0).creaking_attack_seconds - 0.0).abs() < 1.0e-6);
+    // It advances `1 / 20` per tick, with the partial folded into the live age.
+    store.advance_entity_client_animations(5);
+    assert!((source(&store, 70, 0.0).creaking_attack_seconds - 0.25).abs() < 1.0e-6);
+    assert!((source(&store, 70, 0.5).creaking_attack_seconds - 0.275).abs() < 1.0e-6);
+    // The window is 15 ticks (`attackTicks` 15 -> 0); the attack animates while it stays positive, so
+    // it holds through tick 14 then stops when the counter hits 0 on tick 15.
+    store.advance_entity_client_animations(8);
+    assert!(
+        (source(&store, 70, 0.0).creaking_attack_seconds - 0.65).abs() < 1.0e-6,
+        "still attacking at tick 14"
+    );
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        source(&store, 70, 0.0).creaking_attack_seconds,
+        -1.0,
+        "the attack stops when the 15-tick window closes"
+    );
+
+    // Vanilla `Creaking.handleEntityEvent(66)`: `invulnerabilityAnimationRemainingTicks = 8`, the same
+    // decrement-first window (8 ticks).
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 70,
+        event_id: CREAKING_INVULNERABLE_EVENT_ID,
+    }));
+    store.advance_entity_client_animations(1);
+    assert!((source(&store, 70, 0.0).creaking_invulnerable_seconds - 0.0).abs() < 1.0e-6);
+    store.advance_entity_client_animations(7);
+    assert_eq!(
+        source(&store, 70, 0.0).creaking_invulnerable_seconds,
+        -1.0,
+        "the stagger stops when the 8-tick window closes"
+    );
+
+    // Vanilla `deathAnimationState.animateWhen(isTearingDown(), tickCount)`: the synced
+    // `IS_TEARING_DOWN` boolean drives the collapse directly (no counter). Setting it spins up the
+    // death one-shot on the next tick; clearing it stops the timer.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![creaking_bool(CREAKING_IS_TEARING_DOWN_DATA_ID, true)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert!((source(&store, 70, 0.0).creaking_death_seconds - 0.0).abs() < 1.0e-6);
+    store.advance_entity_client_animations(5);
+    assert!((source(&store, 70, 0.0).creaking_death_seconds - 0.25).abs() < 1.0e-6);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![creaking_bool(CREAKING_IS_TEARING_DOWN_DATA_ID, false)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        source(&store, 70, 0.0).creaking_death_seconds,
+        -1.0,
+        "clearing isTearingDown stops the collapse"
+    );
+
+    // A non-creaking never gets a creaking state: its combat seconds stay stopped, and `canMove`
+    // projects the gated `true` regardless of the event/metadata.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 71,
+        event_id: CREAKING_ATTACK_EVENT_ID,
+    }));
+    store.advance_entity_client_animations(2);
+    let chicken = source(&store, 71, 0.0);
+    assert!(chicken.creaking_can_move);
+    assert_eq!(chicken.creaking_attack_seconds, -1.0);
+    assert_eq!(chicken.creaking_death_seconds, -1.0);
 }
 
 #[test]

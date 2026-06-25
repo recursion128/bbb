@@ -148,6 +148,121 @@ fn creaking_walk_moves_the_limbs_and_composes_with_the_look() {
 }
 
 #[test]
+fn creaking_combat_animations_match_vanilla_definitions() {
+    let total_keyframes = |def: &AnimationDefinition| -> usize {
+        def.bones
+            .iter()
+            .flat_map(|bone| bone.channels.iter())
+            .map(|channel| channel.keyframes.len())
+            .sum()
+    };
+
+    // Vanilla `CreakingAnimation.CREAKING_ATTACK`: 0.7083 s looping, 6 bones, 68 keyframes.
+    assert_eq!(CREAKING_ATTACK.length_seconds, 0.7083);
+    assert!(CREAKING_ATTACK.looping);
+    assert_eq!(CREAKING_ATTACK.bones.len(), 6);
+    assert_eq!(total_keyframes(&CREAKING_ATTACK), 68);
+    // The head carries a SCALE channel: at the strike (t=0.5) it stretches y by `scaleVec(1, 1.3, 1)`
+    // (offset 0.3 onto the `1.0` base).
+    let (_, _, head_scale) = sample_bone_offsets_with_scale(&CREAKING_ATTACK, "head", 0.5, 1.0);
+    assert!(
+        (head_scale[1] - 0.3).abs() < 1.0e-5,
+        "scale y was {head_scale:?}"
+    );
+    // The upper_body rotation at t=0.1667 is `degreeVec(-115, 67.5, -90)`.
+    let (_, ub_rot, _) =
+        sample_bone_offsets_with_scale(&CREAKING_ATTACK, "upper_body", 0.1667, 1.0);
+    assert!((ub_rot[0] - (-115.0_f32).to_radians()).abs() < 1.0e-4);
+    assert!((ub_rot[2] - (-90.0_f32).to_radians()).abs() < 1.0e-4);
+
+    // Vanilla `CreakingAnimation.CREAKING_INVULNERABLE`: 0.2917 s NOT looping, 3 bones, 19 keyframes.
+    assert_eq!(CREAKING_INVULNERABLE.length_seconds, 0.2917);
+    assert!(!CREAKING_INVULNERABLE.looping);
+    assert_eq!(CREAKING_INVULNERABLE.bones.len(), 3);
+    assert_eq!(total_keyframes(&CREAKING_INVULNERABLE), 19);
+    // The right_arm rotation at t=0.0833 is `degreeVec(17.5, 0, 0)`.
+    let (_, ra_rot, _) =
+        sample_bone_offsets_with_scale(&CREAKING_INVULNERABLE, "right_arm", 0.0833, 1.0);
+    assert!((ra_rot[0] - 17.5_f32.to_radians()).abs() < 1.0e-4);
+
+    // Vanilla `CreakingAnimation.CREAKING_DEATH`: 2.25 s NOT looping, 4 bones, 52 keyframes, with an
+    // upper_body SCALE squash/stretch (`scaleVec(1, 1.1, 1)` at t=0.0833 → offset 0.1).
+    assert_eq!(CREAKING_DEATH.length_seconds, 2.25);
+    assert!(!CREAKING_DEATH.looping);
+    assert_eq!(CREAKING_DEATH.bones.len(), 4);
+    assert_eq!(total_keyframes(&CREAKING_DEATH), 52);
+    let (_, _, ub_scale) =
+        sample_bone_offsets_with_scale(&CREAKING_DEATH, "upper_body", 0.0833, 1.0);
+    assert!(
+        (ub_scale[1] - 0.1).abs() < 1.0e-5,
+        "scale y was {ub_scale:?}"
+    );
+}
+
+#[test]
+fn creaking_can_move_false_freezes_the_walk() {
+    // Vanilla `setupAnim` gates `applyWalk` on `state.canMove`. An observed (canMove=false) walking
+    // creaking skips the walk and holds the bind pose, identical to a still creaking — it turns to a
+    // statue. Clearing the freeze lets the walk animate the limbs again.
+    let base = EntityModelInstance::creaking(945, [0.0, 64.0, 0.0], 0.0, false);
+    let still = entity_model_mesh(&[base]);
+    let frozen = entity_model_mesh(&[base
+        .with_walk_animation(5.0, 1.0)
+        .with_creaking_can_move(false)]);
+    assert_eq!(
+        still.vertices, frozen.vertices,
+        "a frozen creaking holds the bind pose"
+    );
+    let walking = entity_model_mesh(&[base.with_walk_animation(5.0, 1.0)]);
+    assert_ne!(
+        frozen.vertices, walking.vertices,
+        "clearing the freeze animates the walk"
+    );
+}
+
+#[test]
+fn creaking_combat_keyframes_re_pose_off_the_bind_pose() {
+    // Each triggered one-shot, applied over its projected elapsed seconds, re-poses the creaking off
+    // the bind pose; the `-1.0` stopped sentinel applies nothing. The upper_body rotation cascades to
+    // the whole upper body, and the leg channels swing the legs.
+    let base = EntityModelInstance::creaking(948, [0.0, 64.0, 0.0], 0.0, false);
+    let rest = entity_model_mesh(&[base]);
+
+    let attacking = entity_model_mesh(&[base.with_creaking_attack_seconds(0.25)]);
+    assert_eq!(rest.vertices.len(), attacking.vertices.len());
+    assert_ne!(
+        rest.vertices[..96],
+        attacking.vertices[..96],
+        "the attack swings the head subtree"
+    );
+    assert_ne!(
+        rest.vertices[264..],
+        attacking.vertices[264..],
+        "the attack swings the legs"
+    );
+    assert_eq!(
+        rest.vertices,
+        entity_model_mesh(&[base.with_creaking_attack_seconds(-1.0)]).vertices,
+        "the -1.0 sentinel applies no attack"
+    );
+
+    // The invulnerable stagger re-poses the upper body and arms (it has no leg channels).
+    let invuln = entity_model_mesh(&[base.with_creaking_invulnerable_seconds(0.1)]);
+    assert_ne!(
+        rest.vertices[..264],
+        invuln.vertices[..264],
+        "the stagger recoils the upper body and arms"
+    );
+
+    // The death collapse re-poses the upper body, head, and arms over its 2.25 s span.
+    let dying = entity_model_mesh(&[base.with_creaking_death_seconds(0.5)]);
+    assert_ne!(
+        rest.vertices, dying.vertices,
+        "the death collapse re-poses the model"
+    );
+}
+
+#[test]
 fn creaking_textured_render_matches_vanilla_renderer() {
     // An inactive creaking renders just the cutout base body.
     let dormant = creaking_textured_layer_passes(false);
