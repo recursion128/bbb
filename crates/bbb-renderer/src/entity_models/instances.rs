@@ -284,6 +284,12 @@ entity_render_state! {
     /// and that arm skips the idle bob. Applied to the [`use_item_off_hand`](Self::use_item_off_hand) arm.
     /// `false` for every entity not using a spyglass — only `PlayerModel` consumes it.
     (with_player_using_spyglass) player_using_spyglass: bool = false;
+    /// Vanilla `HumanoidModel.setupAnim` use-item arm pose `TOOT_HORN`
+    /// (`ItemStack.getUseAnimation() == TOOT_HORN`): a player tooting a goat horn raises the holding arm
+    /// to the mouth (`xRot = clamp(head.xRot, −1.2, 1.2) − 1.4835298`, `yRot = head.yRot ± π/6`). Applied
+    /// to the [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not tooting a
+    /// horn — only `PlayerModel` consumes it.
+    (with_player_tooting_horn) player_tooting_horn: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1812,6 +1818,7 @@ mod tests {
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,
                 player_using_spyglass: false,
+                player_tooting_horn: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,

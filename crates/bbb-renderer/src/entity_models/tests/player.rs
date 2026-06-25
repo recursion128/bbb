@@ -538,6 +538,52 @@ fn player_using_a_spyglass_raises_it_to_the_eye() {
 }
 
 #[test]
+fn player_tooting_a_goat_horn_raises_it_to_the_mouth() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `TOOT_HORN`: the holding arm raises the horn —
+    // `xRot = clamp(head.xRot, −1.2, 1.2) − 1.4835298`, `yRot = head.yRot ∓ π/6`. Unlike the spyglass it
+    // keeps the idle bob, so the arm roll (`zRot`) is left non-zero.
+    let yaw = 20.0_f32;
+    let pitch = -10.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let pitch_rad = pitch.to_radians();
+    let base =
+        EntityModelInstance::player(921, [0.0, 64.0, 0.0], 0.0, false).with_head_look(yaw, pitch);
+
+    let mut main = PlayerModel::new(false);
+    main.prepare(&base.with_player_tooting_horn(true));
+    let right = main.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (pitch_rad.clamp(-1.2, 1.2) - 1.4835298)).abs() < 1e-6,
+        "the right arm raises the horn to the mouth: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (yaw_rad - PI / 6.0)).abs() < 1e-6,
+        "the right arm yaws −π/6 off the head: {}",
+        right.rotation[1]
+    );
+    assert_ne!(
+        right.rotation[2], 0.0,
+        "the horn arm keeps the idle bob roll (unlike the spyglass)"
+    );
+
+    // Off-hand horn raises the LEFT arm with the mirrored yaw.
+    let mut off = PlayerModel::new(false);
+    off.prepare(
+        &base
+            .with_player_tooting_horn(true)
+            .with_use_item_off_hand(true),
+    );
+    let left = off.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[1] - (yaw_rad + PI / 6.0)).abs() < 1e-6,
+        "the left arm yaws +π/6 off the head"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

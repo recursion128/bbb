@@ -388,6 +388,31 @@ pub(in crate::entity_models) fn apply_humanoid_spyglass_pose(
     arm.pose.rotation[2] = 0.0;
 }
 
+/// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `TOOT_HORN` use-item arm pose: while a player is
+/// tooting a goat horn, the holding arm raises it to the mouth — `xRot = clamp(head.xRot, −1.2, 1.2) −
+/// 1.4835298`, `yRot = head.yRot ± π/6` (right arm `− π/6`, left arm `+ π/6`). Unlike `SPYGLASS`, vanilla
+/// keeps the idle bob on this arm, so the bob's roll (`zRot`, already applied by `apply_humanoid_walk`)
+/// is left in place. Applied before the crouch block so the crouch `arm.xRot += 0.4` still lands on top.
+pub(in crate::entity_models) fn apply_humanoid_toot_horn_pose(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+    off_hand: bool,
+) {
+    use std::f32::consts::PI;
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let x_rot = head_pitch.clamp(-1.2, 1.2) - 1.4835298;
+    let (arm_name, y_rot) = if off_hand {
+        ("left_arm", head_yaw + PI / 6.0)
+    } else {
+        ("right_arm", head_yaw - PI / 6.0)
+    };
+    let arm = root.child_mut(arm_name);
+    arm.pose.rotation[0] = x_rot;
+    arm.pose.rotation[1] = y_rot;
+}
+
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
 fn progress(t: f32, a: f32, b: f32) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)
