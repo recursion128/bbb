@@ -57,7 +57,8 @@ pub(super) use layers::{
     trident_textured_layer_passes, tropical_fish_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
     warden_textured_layer_passes, witch_textured_layer_passes, wither_skull_textured_layer_passes,
-    wither_textured_layer_passes, wolf_textured_layer_passes, zombie_textured_layer_passes,
+    wither_textured_layer_passes, wolf_textured_layer_passes,
+    zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
     EntityModelLayerRenderType,
 };

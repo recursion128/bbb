@@ -1120,7 +1120,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 367] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 368] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1274,6 +1274,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ENDER_DRAGON_EYES_TEXTURE_REF,
     NAUTILUS_TEXTURE_REF,
     NAUTILUS_BABY_TEXTURE_REF,
+    ZOMBIE_NAUTILUS_TEXTURE_REF,
     PANDA_NORMAL_TEXTURE_REF,
     PANDA_NORMAL_BABY_TEXTURE_REF,
     PANDA_LAZY_TEXTURE_REF,
@@ -2467,6 +2468,15 @@ pub(in crate::entity_models) const NAUTILUS_ENTITY_TEXTURE_REFS: [EntityModelTex
 pub fn nautilus_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &NAUTILUS_ENTITY_TEXTURE_REFS
 }
+
+// Vanilla `ZombieNautilusRenderer` `NORMAL`/`TEMPERATE` variant texture (`ZombieNautilusVariants`
+// bootstrap, the `DEFAULT`), drawn over the shared adult `NautilusModel`. The `WARM` coral variant's
+// `zombie_nautilus_coral.png` + distinct model defer.
+pub(in crate::entity_models) const ZOMBIE_NAUTILUS_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/nautilus/zombie_nautilus.png",
+        size: [128, 128],
+    };
 
 // The seven panda genes × age (`PandaRenderer.TEXTURES` / `BABY_TEXTURES`); all share the 64×64
 // atlas. Note the inconsistent vanilla baby filenames (`panda_baby.png` but `lazy_panda_baby.png`).

@@ -847,6 +847,17 @@ pub(in crate::entity_models) fn nautilus_textured_layer_passes(
     )]
 }
 
+pub(in crate::entity_models) fn zombie_nautilus_textured_layer_passes() -> Vec<EntityModelLayerPass>
+{
+    // Vanilla `ZombieNautilusRenderer` `NORMAL` variant: the shared adult `NautilusModel` body
+    // textured by `zombie_nautilus.png` (the `WARM` coral model/texture defers).
+    vec![EntityModelLayerPass::base(
+        EntityModelLayerRenderType::Cutout,
+        ZOMBIE_NAUTILUS_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+    )]
+}
+
 pub(in crate::entity_models) fn panda_textured_layer_passes(
     variant: PandaModelVariant,
     baby: bool,

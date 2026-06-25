@@ -364,6 +364,12 @@ pub enum EntityModelKind {
     Nautilus {
         baby: bool,
     },
+    /// `ZombieNautilusRenderer` (a plain `MobRenderer`, never a baby): the `NORMAL`/`TEMPERATE`
+    /// variant reuses the living adult `NautilusModel` body (`ModelLayers.ZOMBIE_NAUTILUS` bakes to
+    /// `NautilusModel.createBodyLayer()`) textured by `zombie_nautilus.png`. The `WARM` coral variant
+    /// (a distinct `ZombieNautilusCoralModel` mesh) and the saddle / armor equipment layers are
+    /// deferred, so this covers the default zombie nautilus.
+    ZombieNautilus,
     /// `AdultRabbitModel` / `BabyRabbitModel` at their `createBodyLayer` rest pose (`baby` selects the
     /// baby body layout — a deeper `_r1`-nested hierarchy whose head is `body`'s third child),
     /// textured by the seven `Rabbit.Variant` colours × age, with the `toast` named-rabbit override

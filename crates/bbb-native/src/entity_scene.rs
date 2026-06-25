@@ -1989,13 +1989,13 @@ fn nautilus_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Ent
     }
 }
 
-/// Vanilla `ZombieNautilusRenderer` (a plain `MobRenderer`, so never a baby) renders the same
-/// `NautilusModel.createBodyLayer()` body as the living nautilus (`ModelLayers.ZOMBIE_NAUTILUS` bakes to
-/// it), so it shares the dedicated [`EntityModelKind::Nautilus`] adult body. The `WARM` coral variant (a
-/// distinct `ZombieNautilusCoralModel` mesh), the separate coral layer, and the armor / saddle equipment
-/// layers are deferred, so this replaces the horse-shaped proxy with the real nautilus body.
+/// Vanilla `ZombieNautilusRenderer` (a plain `MobRenderer`, so never a baby): the `NORMAL`/`TEMPERATE`
+/// variant renders the same `NautilusModel.createBodyLayer()` body as the living nautilus
+/// (`ModelLayers.ZOMBIE_NAUTILUS` bakes to it), textured by `zombie_nautilus.png`. The `WARM` coral
+/// variant (a distinct `ZombieNautilusCoralModel` mesh) and the armor / saddle equipment layers are
+/// deferred, so this covers the default zombie nautilus.
 fn zombie_nautilus_model_kind() -> EntityModelKind {
-    EntityModelKind::Nautilus { baby: false }
+    EntityModelKind::ZombieNautilus
 }
 
 fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
@@ -9209,9 +9209,9 @@ mod tests {
         );
         // The nautilus (adult and baby) renders through its dedicated `NautilusModel`
         // (`createBodyMesh` / `createBabyBodyLayer`). The zombie nautilus reuses the same adult nautilus
-        // body (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`), so it too maps
-        // to the dedicated model (always adult — it is a plain `MobRenderer`); only its coral layer /
-        // `WARM` coral variant stay deferred.
+        // body (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`) but maps to the
+        // dedicated `ZombieNautilus` kind so it picks `zombie_nautilus.png` (always adult — it is a plain
+        // `MobRenderer`); only its `WARM` coral variant / equipment layers stay deferred.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
             EntityModelKind::Nautilus { baby: false }
@@ -9225,7 +9225,7 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),
-            EntityModelKind::Nautilus { baby: false }
+            EntityModelKind::ZombieNautilus
         );
         // The zombie nautilus is never a baby, so the baby flag in its metadata is ignored.
         assert_eq!(
@@ -9233,7 +9233,7 @@ mod tests {
                 VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Nautilus { baby: false }
+            EntityModelKind::ZombieNautilus
         );
     }
 

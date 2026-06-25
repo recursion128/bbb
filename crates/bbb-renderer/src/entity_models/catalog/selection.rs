@@ -285,6 +285,7 @@ impl EntityModelKind {
             Self::Fox { baby: true, .. } => "fox_baby",
             Self::Nautilus { baby: false } => "nautilus",
             Self::Nautilus { baby: true } => "nautilus_baby",
+            Self::ZombieNautilus => "zombie_nautilus",
             Self::Rabbit { baby: false, .. } => "rabbit",
             Self::Rabbit { baby: true, .. } => "rabbit_baby",
             Self::Quadruped {
@@ -408,6 +409,7 @@ impl EntityModelKind {
             Self::Armadillo { baby: true, .. } => Some(ARMADILLO_BABY_TEXTURE_REF),
             Self::Nautilus { baby: false } => Some(NAUTILUS_TEXTURE_REF),
             Self::Nautilus { baby: true } => Some(NAUTILUS_BABY_TEXTURE_REF),
+            Self::ZombieNautilus => Some(ZOMBIE_NAUTILUS_TEXTURE_REF),
             Self::Panda { baby, variant } => Some(panda_texture_ref(variant, baby)),
             Self::Axolotl { baby, variant } => Some(axolotl_texture_ref(variant, baby)),
             // The kind carries the variant and age; the sleeping dimension is dynamic render state,

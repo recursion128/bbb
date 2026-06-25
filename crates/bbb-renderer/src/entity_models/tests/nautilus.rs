@@ -298,3 +298,70 @@ fn nautilus_textured_render_matches_vanilla_renderer() {
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
 }
+
+#[test]
+fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
+    // Vanilla `ZombieNautilusRenderer` `NORMAL` variant: the shared adult `NautilusModel` body
+    // (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`) textured by
+    // `zombie_nautilus.png` — same geometry as the living adult nautilus, only the texture differs.
+    assert_eq!(
+        EntityModelKind::ZombieNautilus.model_key(),
+        "zombie_nautilus"
+    );
+    assert_eq!(
+        EntityModelKind::ZombieNautilus.vanilla_texture_ref(),
+        Some(ZOMBIE_NAUTILUS_TEXTURE_REF)
+    );
+    let passes = zombie_nautilus_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].texture, ZOMBIE_NAUTILUS_TEXTURE_REF);
+    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert!(entity_model_texture_refs().contains(&ZOMBIE_NAUTILUS_TEXTURE_REF));
+
+    let images: Vec<EntityModelTextureImage> = [NAUTILUS_TEXTURE_REF, ZOMBIE_NAUTILUS_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![(index * 30) as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    let living = entity_model_textured_mesh(
+        &[EntityModelInstance::nautilus(
+            900,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )],
+        &atlas,
+    );
+    let zombie = entity_model_textured_mesh(
+        &[EntityModelInstance::new(
+            901,
+            EntityModelKind::ZombieNautilus,
+            [0.0, 64.0, 0.0],
+            0.0,
+        )],
+        &atlas,
+    );
+    assert!(!zombie.vertices.is_empty());
+    assert!(zombie
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    // Same shared adult-nautilus geometry: identical vertex positions...
+    assert_eq!(living.vertices.len(), zombie.vertices.len());
+    assert!(living
+        .vertices
+        .iter()
+        .zip(&zombie.vertices)
+        .all(|(a, b)| a.position == b.position));
+    // ...but the zombie samples a different atlas region (its own texture).
+    assert!(living
+        .vertices
+        .iter()
+        .zip(&zombie.vertices)
+        .any(|(a, b)| a.uv != b.uv));
+}

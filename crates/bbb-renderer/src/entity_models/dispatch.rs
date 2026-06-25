@@ -63,8 +63,9 @@ use super::textured::{
     trident_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
-    wolf_textured_layer_passes, zombie_textured_layer_passes, EntityModelLayerPass,
-    EntityModelLayerRenderType, EntityModelTexturedMeshes,
+    wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
+    zombie_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
+    EntityModelTexturedMeshes,
 };
 
 /// A render-path-agnostic sink for a "uniform" entity (one model under one root transform, with its
@@ -653,6 +654,12 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             entity_model_root_transform(*instance),
             instance,
             &nautilus_textured_layer_passes(baby),
+        ),
+        EntityModelKind::ZombieNautilus => sink.model(
+            NautilusModel::new(false),
+            entity_model_root_transform(*instance),
+            instance,
+            &zombie_nautilus_textured_layer_passes(),
         ),
         EntityModelKind::Rabbit {
             baby,
