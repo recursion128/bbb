@@ -439,12 +439,20 @@ pub(in crate::entity_models) fn magma_cube_textured_layer_passes() -> Vec<Entity
     }]
 }
 
-pub(in crate::entity_models) fn ghast_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn ghast_textured_layer_passes(
+    charging: bool,
+) -> Vec<EntityModelLayerPass> {
+    // Vanilla `GhastRenderer.getTextureLocation`: `isCharging` swaps to the open-mouth shooting face.
+    let texture = if charging {
+        GHAST_SHOOTING_TEXTURE_REF
+    } else {
+        GHAST_TEXTURE_REF
+    };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::GhastBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_GHAST,
-        texture: GHAST_TEXTURE_REF,
+        texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

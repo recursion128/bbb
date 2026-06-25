@@ -328,6 +328,9 @@ const PANDA_SNEEZING_FLAG: i8 = 0x02;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
 const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
+// Vanilla Ghast.DATA_IS_CHARGING (16, BOOLEAN): `Ghast extends Mob` directly (NOT AgeableMob), so its
+// first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16, no baby/age-locked slots.
+const GHAST_IS_CHARGING_DATA_ID: u8 = 16;
 // Vanilla Arrow.ID_EFFECT_COLOR (11, INT): `Arrow extends AbstractArrow extends Projectile extends
 // Entity`, so after Entity (0-7) come the three AbstractArrow accessors ID_FLAGS (8) / PIERCE_LEVEL
 // (9) / IN_GROUND (10), then Arrow's own potion color. `getColor() > 0` marks a tipped arrow.
@@ -1682,7 +1685,9 @@ fn entity_model_kind_with_time_and_registries(
             placeholder("todo_fishing_bobber_bounds", 0.25, 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, frog_variants),
-        VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast,
+        VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast {
+            charging: entity_data_bool(data_values, GHAST_IS_CHARGING_DATA_ID, false),
+        },
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
         // Item frames render via the 3D item-model pass (border + framed item, native `item_frames`),
@@ -6571,10 +6576,18 @@ mod tests {
 
     #[test]
     fn entity_model_kind_uses_exact_model_for_ghast() {
-        // The ghast was a placeholder render box; it now resolves to the real model.
+        // The ghast was a placeholder render box; it now resolves to the real model. The `charging` flag
+        // (vanilla `Ghast.DATA_IS_CHARGING`, BOOLEAN at index 16) swaps to the shooting texture.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_GHAST_ID, &[]),
-            EntityModelKind::Ghast
+            EntityModelKind::Ghast { charging: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_GHAST_ID,
+                &[protocol_bool_data(GHAST_IS_CHARGING_DATA_ID, true)]
+            ),
+            EntityModelKind::Ghast { charging: true }
         );
     }
 

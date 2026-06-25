@@ -38,7 +38,11 @@ pub enum EntityModelKind {
     MagmaCube {
         size: i32,
     },
-    Ghast,
+    Ghast {
+        /// Vanilla `GhastRenderer.getTextureLocation`: `isCharging` swaps the base texture to
+        /// `ghast_shooting.png` (the open-mouth shooting face). Same `GhastModel`, only the texture differs.
+        charging: bool,
+    },
     HappyGhast,
     Blaze,
     Endermite,

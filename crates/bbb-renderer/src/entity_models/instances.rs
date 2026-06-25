@@ -1017,7 +1017,12 @@ impl EntityModelInstance {
     }
 
     pub fn ghast(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Ghast, position, y_rot)
+        Self::new(
+            entity_id,
+            EntityModelKind::Ghast { charging: false },
+            position,
+            y_rot,
+        )
     }
 
     pub fn happy_ghast(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

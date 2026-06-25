@@ -1798,8 +1798,10 @@ When an agent does any of the following, update this file in the same slice:
       layer pass emission, official PNG atlas upload/bind/sample path, and the
       vanilla `GhastModel.setupAnim` tentacle wave (`tentacle.xRot = 0.2 *
       sin(ageInTicks * 0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on
-      both render paths). The `isCharging` shooting-texture variant
-      (`ghast_shooting.png`), lighting, and overlay remain unsupported
+      both render paths), and the vanilla `GhastRenderer.getTextureLocation`
+      `isCharging` texture swap (`ghast.png` → `ghast_shooting.png`), driven by
+      the projected `Ghast.DATA_IS_CHARGING` synced boolean (index 16, since
+      `Ghast extends Mob` directly). Lighting and overlay remain unsupported
     - happy ghast entities as renderer-owned vanilla 26.1
       `HappyGhastModel.createBodyLayer(false, NONE)` geometry: the 16x16x16 body at
       y 16 plus the nine tentacles parented under the body (world-space y 23) with

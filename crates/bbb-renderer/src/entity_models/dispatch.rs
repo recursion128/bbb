@@ -166,11 +166,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &magma_cube_textured_layer_passes(),
         ),
-        EntityModelKind::Ghast => sink.model(
+        EntityModelKind::Ghast { charging } => sink.model(
             GhastModel::new(),
             ghast_model_root_transform(*instance),
             instance,
-            &ghast_textured_layer_passes(),
+            &ghast_textured_layer_passes(charging),
         ),
         EntityModelKind::HappyGhast => sink.model(
             HappyGhastModel::new(),

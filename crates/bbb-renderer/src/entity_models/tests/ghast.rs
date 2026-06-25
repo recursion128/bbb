@@ -48,7 +48,7 @@ fn ghast_tentacle_ring_layout_matches_vanilla() {
 
 #[test]
 fn ghast_layer_passes_match_vanilla_renderer() {
-    let passes = ghast_textured_layer_passes();
+    let passes = ghast_textured_layer_passes(false);
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::GhastBase);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
@@ -61,22 +61,45 @@ fn ghast_layer_passes_match_vanilla_renderer() {
         (passes[0].collector_order, passes[0].submit_sequence),
         (0, 0)
     );
+    // Vanilla `GhastRenderer.getTextureLocation`: `isCharging` swaps to the shooting face.
+    let charging = ghast_textured_layer_passes(true);
+    assert_eq!(charging[0].texture, GHAST_SHOOTING_TEXTURE_REF);
 }
 
 #[test]
 fn ghast_texture_ref_matches_vanilla_renderer() {
-    assert_eq!(EntityModelKind::Ghast.model_key(), "ghast");
     assert_eq!(
-        EntityModelKind::Ghast.vanilla_texture_ref(),
+        EntityModelKind::Ghast { charging: false }.model_key(),
+        "ghast"
+    );
+    assert_eq!(
+        EntityModelKind::Ghast { charging: false }.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/ghast/ghast.png",
             size: [64, 32],
         })
     );
+    // A charging ghast resolves the shooting texture (same model_key, only the texture differs).
+    assert_eq!(
+        EntityModelKind::Ghast { charging: true }.model_key(),
+        "ghast"
+    );
+    assert_eq!(
+        EntityModelKind::Ghast { charging: true }.vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/ghast/ghast_shooting.png",
+            size: [64, 32],
+        })
+    );
     assert_eq!(GHAST_TEXTURE_REF.size, [64, 32]);
+    assert_eq!(GHAST_SHOOTING_TEXTURE_REF.size, [64, 32]);
     assert_eq!(MODEL_LAYER_GHAST, "minecraft:ghast#main");
     assert!(entity_model_texture_refs().contains(&GHAST_TEXTURE_REF));
-    assert_eq!(ghast_entity_texture_refs(), &[GHAST_TEXTURE_REF]);
+    assert!(entity_model_texture_refs().contains(&GHAST_SHOOTING_TEXTURE_REF));
+    assert_eq!(
+        ghast_entity_texture_refs(),
+        &[GHAST_TEXTURE_REF, GHAST_SHOOTING_TEXTURE_REF]
+    );
 }
 
 #[test]

@@ -60,7 +60,7 @@ impl EntityModelKind {
             Self::ArmorStand { small: true, .. } => "armor_stand_small",
             Self::Slime { .. } => "slime",
             Self::MagmaCube { .. } => "magma_cube",
-            Self::Ghast => "ghast",
+            Self::Ghast { .. } => "ghast",
             Self::HappyGhast => "happy_ghast",
             Self::Blaze => "blaze",
             Self::Endermite => "endermite",
@@ -376,7 +376,11 @@ impl EntityModelKind {
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
             Self::Slime { .. } => Some(SLIME_TEXTURE_REF),
             Self::MagmaCube { .. } => Some(MAGMA_CUBE_TEXTURE_REF),
-            Self::Ghast => Some(GHAST_TEXTURE_REF),
+            Self::Ghast { charging } => Some(if charging {
+                GHAST_SHOOTING_TEXTURE_REF
+            } else {
+                GHAST_TEXTURE_REF
+            }),
             Self::HappyGhast => Some(HAPPY_GHAST_TEXTURE_REF),
             Self::Blaze => Some(BLAZE_TEXTURE_REF),
             Self::Endermite => Some(ENDERMITE_TEXTURE_REF),

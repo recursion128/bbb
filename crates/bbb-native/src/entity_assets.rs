@@ -160,6 +160,7 @@ mod tests {
                 "textures/entity/slime/slime.png",
                 "textures/entity/slime/magmacube.png",
                 "textures/entity/ghast/ghast.png",
+                "textures/entity/ghast/ghast_shooting.png",
                 "textures/entity/blaze/blaze.png",
                 "textures/entity/endermite/endermite.png",
                 "textures/entity/silverfish/silverfish.png",
