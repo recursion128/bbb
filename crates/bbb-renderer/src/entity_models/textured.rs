@@ -944,8 +944,9 @@ fn emit_drowned_textured_model(
     // `ZombieModel.setupAnim` (head look + leg swing + held-out arms) plus the drowned trident throw.
     // `DrownedModel extends ZombieModel`, so the non-swimming drowned reuses the zombie body. The
     // always-on `DrownedOuterLayer` is a second white cutout pass driven by a `DrownedOuterModel`
-    // (the inflated `createBodyLayer(0.25)` shell) posed by the SAME animator, so it tracks the limbs.
-    // The swim re-pose (needs `swimAmount`) and the baby outer layer stay deferred. No root scale.
+    // (the inflated `createBodyLayer(0.25)` shell — the adult humanoid mesh or the distinct baby-zombie
+    // mesh) posed by the SAME animator, so it tracks the limbs. The swim re-pose (needs `swimAmount`)
+    // stays deferred. No root scale.
     let transform = entity_model_root_transform(instance);
     let mut base = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, baby);
     base.prepare(&instance);
@@ -955,7 +956,7 @@ fn emit_drowned_textured_model(
         };
         let mesh = meshes.mesh_mut(pass.render_type);
         if matches!(pass.kind, EntityModelLayerKind::DrownedOuter) {
-            let mut outer = DrownedOuterModel::new();
+            let mut outer = DrownedOuterModel::new(baby);
             outer.prepare(&instance);
             outer
                 .root()

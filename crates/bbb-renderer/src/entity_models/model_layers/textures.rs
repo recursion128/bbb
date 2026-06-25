@@ -87,6 +87,14 @@ pub(in crate::entity_models) const DROWNED_OUTER_LAYER_TEXTURE_REF: EntityModelT
         size: [64, 64],
     };
 
+// Vanilla baby `DrownedOuterLayer` overlay texture (the white baby outer-layer copy). Master atlas
+// only, like the adult outer ref above.
+pub(in crate::entity_models) const DROWNED_OUTER_LAYER_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/zombie/drowned_outer_layer_baby.png",
+        size: [64, 64],
+    };
+
 pub(in crate::entity_models) const DROWNED_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
     [DROWNED_TEXTURE_REF, DROWNED_BABY_TEXTURE_REF];
 
@@ -1105,7 +1113,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 365] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 366] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1372,6 +1380,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     DROWNED_TEXTURE_REF,
     DROWNED_BABY_TEXTURE_REF,
     DROWNED_OUTER_LAYER_TEXTURE_REF,
+    DROWNED_OUTER_LAYER_BABY_TEXTURE_REF,
     ZOMBIE_VILLAGER_TEXTURE_REF,
     ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
     PIGLIN_TEXTURE_REF,

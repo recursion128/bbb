@@ -1571,10 +1571,13 @@ When an agent does any of the following, update this file in the same slice:
       shared inflated `HumanoidModel.createMesh(0.25)` geometry, the left arm/leg take the drowned's
       own non-mirrored `texOffs(32, 48)` / `texOffs(16, 48)`), driven by a `DrownedOuterModel` posed
       by the SAME `ZombieModel.setupAnim` + trident-throw animator as the base so the inflated shell
-      tracks the limbs (vanilla `coloredCutoutModelCopyLayerRender(..., -1, 1)`, white full-alpha)
-      (the baby `DrownedOuterLayer` — `BabyDrownedModel.createBodyLayer` = `BabyZombieModel`, a
-      distinct baby-zombie inflated mesh — and the `setupRotations` / `setupAnim` swim re-pose that
-      needs `swimAmount` — which would fold the raised arm back while swimming — stay deferred);
+      tracks the limbs (vanilla `coloredCutoutModelCopyLayerRender(..., -1, 1)`, white full-alpha),
+      and the baby renders its own distinct outer shell from
+      `BabyDrownedModel.createBodyLayer(CubeDeformation(0.25F))` (= `BabyZombieModel`, the baby-zombie
+      inflated mesh — NOT the drowned left-limb overrides) over
+      `textures/entity/zombie/drowned_outer_layer_baby.png` (the `setupRotations` / `setupAnim` swim
+      re-pose that needs `swimAmount` — which would fold the raised arm back while swimming — stays
+      deferred);
       zombie
       villagers share that texture-backed render path through `ZombieVillagerModel
       extends HumanoidModel`: the adult layer emits the vanilla 26.1
@@ -1604,8 +1607,8 @@ When an agent does any of the following, update this file in the same slice:
       `AbstractPiglinModel.setupAnim` head-look, leg swing, ear flap, and (for the
       non-zombified families) arm counter-swing on both render paths (the zombified
       piglin keeps its held-out `animateZombieArms` arms deferred);
-      the adult `DrownedOuterLayer` IS implemented (see the drowned note above); the baby
-      `DrownedOuterLayer`, drowned swim
+      the `DrownedOuterLayer` (adult and baby) IS implemented (see the drowned note above); drowned
+      swim
       rotation, zombie villager type/profession/level
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
@@ -3072,10 +3075,10 @@ When an agent does any of the following, update this file in the same slice:
     presentation, and remaining non-base-equine presentation,
     villager profession/type/held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie-family
-    armor/drowned baby-outer-layer/swim/zombie-villager overlays/no-hat/
+    armor/drowned swim/zombie-villager overlays/no-hat/
     converting-state/piglin-family armor/custom-head/arm-pose/converting-state
-    presentation (the adult drowned outer layer and the trident-throw arm pose ARE
-    implemented; only the baby drowned outer layer and the swim re-pose defer),
+    presentation (the drowned outer layer — adult and baby — and the trident-throw arm
+    pose ARE implemented; only the drowned swim re-pose defers),
     skeleton armor, held-item, and animation presentation,
     creeper swelling/powered overlays,
     spider walk-animation presentation (the 180-degree death flip is implemented),

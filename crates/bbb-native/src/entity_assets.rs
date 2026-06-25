@@ -361,6 +361,7 @@ mod tests {
                 "textures/entity/zombie/drowned.png",
                 "textures/entity/zombie/drowned_baby.png",
                 "textures/entity/zombie/drowned_outer_layer.png",
+                "textures/entity/zombie/drowned_outer_layer_baby.png",
                 "textures/entity/zombie_villager/zombie_villager.png",
                 "textures/entity/zombie_villager/zombie_villager_baby.png",
                 "textures/entity/piglin/piglin.png",

@@ -200,6 +200,119 @@ const BABY_ZOMBIE_LEFT_LEG_POSE: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
+pub(in crate::entity_models) const MODEL_LAYER_DROWNED_BABY_OUTER_LAYER: &str =
+    "minecraft:drowned_baby#outer";
+
+// Vanilla 26.1 ModelLayers.DROWNED_BABY_OUTER_LAYER:
+// BabyDrownedModel.createBodyLayer(CubeDeformation(0.25F)) = BabyZombieModel.createBodyLayer(0.25),
+// 64x64. The baby drowned outer layer is a DISTINCT baby-zombie inflated mesh, NOT the adult humanoid
+// + drowned left-limb overrides — `BabyZombieModel` never applies the drowned `texOffs`, so the left
+// arm/leg keep the baby zombie's own `texOffs(28, 16)`/`texOffs(0, 16)`. Each cube is the base
+// `BABY_ZOMBIE_*` box inflated by 0.25 (`min -= 0.25`, `size += 0.5`), keeping the base box as
+// `uv_size`. The head still carries TWO boxes (the second is the literal-`0.25` overlay box, identical
+// to the base baby head's `texOffs(35, 3)` box). These render textured-only, so `color` is an unused
+// placeholder.
+const DROWNED_OUTER_PLACEHOLDER_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 0.0];
+
+pub(in crate::entity_models) const BABY_DROWNED_OUTER_BODY: [ModelCube; 1] = [ModelCube::new(
+    [-2.25, -2.75, -1.25],
+    [4.5, 5.5, 2.5],
+    DROWNED_OUTER_PLACEHOLDER_COLOR,
+    [4.0, 5.0, 2.0],
+    [16.0, 16.0],
+    false,
+)];
+
+pub(in crate::entity_models) const BABY_DROWNED_OUTER_HEAD: [ModelCube; 2] = [
+    ModelCube::new(
+        [-3.25, -6.5, -3.25],
+        [6.5, 6.5, 6.5],
+        DROWNED_OUTER_PLACEHOLDER_COLOR,
+        [6.0, 6.0, 6.0],
+        [3.0, 3.0],
+        false,
+    ),
+    ModelCube::new(
+        [-3.25, -6.4, -3.25],
+        [6.5, 6.5, 6.5],
+        DROWNED_OUTER_PLACEHOLDER_COLOR,
+        [6.0, 6.0, 6.0],
+        [35.0, 3.0],
+        false,
+    ),
+];
+
+pub(in crate::entity_models) const BABY_DROWNED_OUTER_RIGHT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-1.25, -0.75, -1.25],
+    [2.5, 5.5, 2.5],
+    DROWNED_OUTER_PLACEHOLDER_COLOR,
+    [2.0, 5.0, 2.0],
+    [36.0, 16.0],
+    false,
+)];
+
+pub(in crate::entity_models) const BABY_DROWNED_OUTER_LEFT_ARM: [ModelCube; 1] = [ModelCube::new(
+    [-1.25, -0.75, -1.25],
+    [2.5, 5.5, 2.5],
+    DROWNED_OUTER_PLACEHOLDER_COLOR,
+    [2.0, 5.0, 2.0],
+    [28.0, 16.0],
+    false,
+)];
+
+pub(in crate::entity_models) const BABY_DROWNED_OUTER_RIGHT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.25, -0.25, -1.25],
+    [2.5, 4.5, 2.5],
+    DROWNED_OUTER_PLACEHOLDER_COLOR,
+    [2.0, 4.0, 2.0],
+    [8.0, 16.0],
+    false,
+)];
+
+pub(in crate::entity_models) const BABY_DROWNED_OUTER_LEFT_LEG: [ModelCube; 1] = [ModelCube::new(
+    [-1.25, -0.25, -1.25],
+    [2.5, 4.5, 2.5],
+    DROWNED_OUTER_PLACEHOLDER_COLOR,
+    [2.0, 4.0, 2.0],
+    [0.0, 16.0],
+    false,
+)];
+
+/// Builds the baby drowned outer-layer root (vanilla `BabyDrownedModel.createBodyLayer(0.25)` =
+/// `BabyZombieModel.createBodyLayer(0.25)`), mirroring the base baby zombie tree shape (body first,
+/// then the head leaf, arms, legs — the vanilla empty `hat` child carries no cubes, so it is omitted)
+/// at the shared `BABY_ZOMBIE_*_POSE` offsets, so the shared `apply_zombie_family_anim` poses it like
+/// the base baby body.
+fn baby_drowned_outer_root() -> ModelPart {
+    let children = vec![
+        (
+            "body",
+            part(BABY_ZOMBIE_BODY_POSE, &BABY_DROWNED_OUTER_BODY),
+        ),
+        (
+            "head",
+            part(BABY_ZOMBIE_HEAD_POSE, &BABY_DROWNED_OUTER_HEAD),
+        ),
+        (
+            "right_arm",
+            part(BABY_ZOMBIE_RIGHT_ARM_POSE, &BABY_DROWNED_OUTER_RIGHT_ARM),
+        ),
+        (
+            "left_arm",
+            part(BABY_ZOMBIE_LEFT_ARM_POSE, &BABY_DROWNED_OUTER_LEFT_ARM),
+        ),
+        (
+            "right_leg",
+            part(BABY_ZOMBIE_RIGHT_LEG_POSE, &BABY_DROWNED_OUTER_RIGHT_LEG),
+        ),
+        (
+            "left_leg",
+            part(BABY_ZOMBIE_LEFT_LEG_POSE, &BABY_DROWNED_OUTER_LEFT_LEG),
+        ),
+    ];
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
+
 // Vanilla 26.1 ZombieVillagerModel.createBodyLayer().
 pub(in crate::entity_models) const ADULT_ZOMBIE_VILLAGER_HEAD: [ModelCube; 2] = [
     ModelCube::new(
@@ -724,20 +837,25 @@ impl EntityModel for ZombieVariantModel {
 }
 
 /// The drowned outer-layer overlay model, mirroring vanilla `DrownedOuterLayer`: a second white
-/// `coloredCutoutModelCopyLayerRender` copy of `DrownedModel.createBodyLayer(CubeDeformation(0.25))`
-/// drawn with `drowned_outer_layer.png`. It is a `DrownedModel` in its own right, so it is posed by
-/// the exact same animator as the base (the shared `ZombieModel.setupAnim` plus the drowned trident
-/// throw), keeping the inflated shell glued to the limbs. The swim re-pose stays deferred along with
-/// the base swim animation; the baby outer (`BabyDrownedModel.createBodyLayer`, a distinct baby-zombie
-/// inflated mesh) is not yet wired, so this covers the adult drowned.
+/// `coloredCutoutModelCopyLayerRender` copy of the inflated drowned body drawn with
+/// `drowned_outer_layer.png` (adult) / `drowned_outer_layer_baby.png` (baby). It is a `DrownedModel`
+/// (adult `DrownedModel.createBodyLayer(0.25)`) / `BabyDrownedModel` (baby
+/// `BabyZombieModel.createBodyLayer(0.25)`) in its own right, so it is posed by the exact same animator
+/// as the base (the shared `ZombieModel.setupAnim` plus the drowned trident throw), keeping the
+/// inflated shell glued to the limbs. The swim re-pose stays deferred along with the base swim
+/// animation.
 pub(in crate::entity_models) struct DrownedOuterModel {
     root: ModelPart,
 }
 
 impl DrownedOuterModel {
-    pub(in crate::entity_models) fn new() -> Self {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
         Self {
-            root: drowned_outer_root(),
+            root: if baby {
+                baby_drowned_outer_root()
+            } else {
+                drowned_outer_root()
+            },
         }
     }
 }
