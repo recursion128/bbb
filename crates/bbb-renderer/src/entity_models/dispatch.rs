@@ -655,11 +655,15 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &nautilus_textured_layer_passes(baby),
         ),
-        EntityModelKind::ZombieNautilus => sink.model(
-            NautilusModel::new(false),
+        EntityModelKind::ZombieNautilus { coral } => sink.model(
+            if coral {
+                NautilusModel::new_coral()
+            } else {
+                NautilusModel::new(false)
+            },
             entity_model_root_transform(*instance),
             instance,
-            &zombie_nautilus_textured_layer_passes(),
+            &zombie_nautilus_textured_layer_passes(coral),
         ),
         EntityModelKind::Rabbit {
             baby,

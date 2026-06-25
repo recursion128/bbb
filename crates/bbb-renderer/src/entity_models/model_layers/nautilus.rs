@@ -280,33 +280,6 @@ fn nautilus_root(baby: bool) -> ModelPart {
             ],
         )
     } else {
-        let body = ModelPart::new(
-            NAUTILUS_BODY_POSE,
-            NAUTILUS_BODY_CUBES.to_vec(),
-            vec![
-                (
-                    "0",
-                    ModelPart::leaf(
-                        NAUTILUS_UPPER_MOUTH_POSE,
-                        NAUTILUS_UPPER_MOUTH_CUBES.to_vec(),
-                    ),
-                ),
-                (
-                    "1",
-                    ModelPart::leaf(
-                        NAUTILUS_INNER_MOUTH_POSE,
-                        NAUTILUS_INNER_MOUTH_CUBES.to_vec(),
-                    ),
-                ),
-                (
-                    "2",
-                    ModelPart::leaf(
-                        NAUTILUS_LOWER_MOUTH_POSE,
-                        NAUTILUS_LOWER_MOUTH_CUBES.to_vec(),
-                    ),
-                ),
-            ],
-        );
         ModelPart::new(
             NAUTILUS_ROOT_POSE,
             Vec::new(),
@@ -315,10 +288,180 @@ fn nautilus_root(baby: bool) -> ModelPart {
                     "shell",
                     ModelPart::leaf(NAUTILUS_SHELL_POSE, NAUTILUS_SHELL_CUBES.to_vec()),
                 ),
-                ("body", body),
+                ("body", nautilus_adult_body()),
             ],
         )
     }
+}
+
+/// The adult `body` subtree (`NautilusModel.createBodyMesh`): the cube-bearing body parenting its three
+/// index-named mouth boxes. Shared by the plain adult nautilus and the zombie nautilus coral variant.
+fn nautilus_adult_body() -> ModelPart {
+    ModelPart::new(
+        NAUTILUS_BODY_POSE,
+        NAUTILUS_BODY_CUBES.to_vec(),
+        vec![
+            (
+                "0",
+                ModelPart::leaf(
+                    NAUTILUS_UPPER_MOUTH_POSE,
+                    NAUTILUS_UPPER_MOUTH_CUBES.to_vec(),
+                ),
+            ),
+            (
+                "1",
+                ModelPart::leaf(
+                    NAUTILUS_INNER_MOUTH_POSE,
+                    NAUTILUS_INNER_MOUTH_CUBES.to_vec(),
+                ),
+            ),
+            (
+                "2",
+                ModelPart::leaf(
+                    NAUTILUS_LOWER_MOUTH_POSE,
+                    NAUTILUS_LOWER_MOUTH_CUBES.to_vec(),
+                ),
+            ),
+        ],
+    )
+}
+
+// Vanilla 26.1 `ZombieNautilusCoralModel.createBodyLayer` (atlas 128×128): the adult `NautilusModel`
+// body PLUS a `corals` subtree under `shell` — four coral clusters of textured-only zero-thickness
+// cross-planes. These render textured-only (the zombie nautilus is texture-backed, so the colored
+// path is skipped), so `color` is the unused [`NAUTILUS_SHELL`] placeholder; `uv_size` equals `size`.
+const fn coral_cube(min: [f32; 3], size: [f32; 3], tex: [f32; 2]) -> ModelCube {
+    ModelCube::new(min, size, NAUTILUS_SHELL, size, tex, false)
+}
+
+/// A textured-only coral cross-plane leaf at `offset`/`rotation` carrying one `cube`.
+fn coral_part(offset: [f32; 3], rotation: [f32; 3], cube: ModelCube) -> ModelPart {
+    ModelPart::leaf(PartPose { offset, rotation }, vec![cube])
+}
+
+/// Builds the `corals` subtree (vanilla `ZombieNautilusCoralModel.createBodyLayer`), parented under the
+/// adult `shell`. The four clusters keep the vanilla child order; the cross-planes are billboards
+/// (`y`-rotated ±π/4, the pink pair `z`-rotated π/2). The `corals.visible = bodyArmorItem.isEmpty()`
+/// gate is always-visible here (body armor is deferred).
+fn nautilus_corals() -> ModelPart {
+    let yellow = ModelPart::new(
+        PartPose {
+            offset: [0.0, -11.0, 11.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        Vec::new(),
+        vec![
+            (
+                "yellow_coral_second",
+                coral_part(
+                    [0.0, 0.0, 2.0],
+                    [0.0, -0.7854, 0.0],
+                    coral_cube([-4.5, -3.5, 0.0], [6.0, 8.0, 0.0], [0.0, 85.0]),
+                ),
+            ),
+            (
+                "yellow_coral_first",
+                coral_part(
+                    [0.0, 0.0, 0.0],
+                    [0.0, 0.7854, 0.0],
+                    coral_cube([-4.5, -3.5, 0.0], [6.0, 8.0, 0.0], [0.0, 85.0]),
+                ),
+            ),
+        ],
+    );
+    let pink = ModelPart::new(
+        PartPose {
+            offset: [-12.5, -18.0, 11.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        vec![coral_cube([-4.5, 4.5, 0.0], [6.0, 0.0, 8.0], [-8.0, 94.0])],
+        vec![(
+            "pink_coral_second",
+            coral_part(
+                [-1.5, 4.5, 4.0],
+                [0.0, 0.0, 1.5708],
+                coral_cube([-3.0, 0.0, -4.0], [6.0, 0.0, 8.0], [-8.0, 94.0]),
+            ),
+        )],
+    );
+    let blue = ModelPart::new(
+        PartPose {
+            offset: [-14.0, 0.0, 5.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        Vec::new(),
+        vec![
+            (
+                "blue_second",
+                coral_part(
+                    [0.0, 0.0, -2.0],
+                    [0.0, 0.7854, 0.0],
+                    coral_cube([-3.5, -5.5, 0.0], [5.0, 10.0, 0.0], [0.0, 102.0]),
+                ),
+            ),
+            (
+                "blue_first",
+                coral_part(
+                    [0.0, 0.0, 0.0],
+                    [0.0, -0.7854, 0.0],
+                    coral_cube([-3.5, -5.5, 0.0], [5.0, 10.0, 0.0], [0.0, 102.0]),
+                ),
+            ),
+        ],
+    );
+    let red = ModelPart::new(
+        PartPose {
+            offset: [0.0, 0.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        Vec::new(),
+        vec![
+            (
+                "red_coral_second",
+                coral_part(
+                    [-0.5, -1.0, 1.5],
+                    [0.0, -0.829, 0.0],
+                    coral_cube([-2.5, -5.5, 0.0], [4.0, 10.0, 0.0], [0.0, 112.0]),
+                ),
+            ),
+            (
+                "red_coral_first",
+                coral_part(
+                    [0.0, 0.0, 0.0],
+                    [0.0, 0.7854, 0.0],
+                    coral_cube([-4.5, -5.5, 0.0], [6.0, 10.0, 0.0], [0.0, 112.0]),
+                ),
+            ),
+        ],
+    );
+    ModelPart::new(
+        PartPose {
+            offset: [8.0, 4.5, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        Vec::new(),
+        vec![
+            ("yellow_coral", yellow),
+            ("pink_coral", pink),
+            ("blue_coral", blue),
+            ("red_coral", red),
+        ],
+    )
+}
+
+/// Builds the zombie nautilus coral root: the adult `root → shell + body` tree with the `corals`
+/// subtree added under `shell` (vanilla `ZombieNautilusCoralModel.createBodyLayer`).
+fn nautilus_coral_root() -> ModelPart {
+    let shell = ModelPart::new(
+        NAUTILUS_SHELL_POSE,
+        NAUTILUS_SHELL_CUBES.to_vec(),
+        vec![("corals", nautilus_corals())],
+    );
+    ModelPart::new(
+        NAUTILUS_ROOT_POSE,
+        Vec::new(),
+        vec![("shell", shell), ("body", nautilus_adult_body())],
+    )
 }
 
 /// Vanilla `NautilusModel.applyBodyRotation` clamps the look yaw/pitch to ±10° before steering the body.
@@ -341,6 +484,19 @@ impl NautilusModel {
                 PART_POSE_ZERO,
                 Vec::new(),
                 vec![("root", nautilus_root(baby))],
+            ),
+        }
+    }
+
+    /// The zombie nautilus `WARM` coral variant (vanilla `ZombieNautilusCoralModel`): the adult body
+    /// with the `corals` subtree. Always adult and shares [`NautilusModel::setup_anim`] (the corals
+    /// hang off `shell`, away from the steered `body`, so they ride the body rotation unchanged).
+    pub(in crate::entity_models) fn new_coral() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![("root", nautilus_coral_root())],
             ),
         }
     }

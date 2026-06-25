@@ -2864,13 +2864,18 @@ When an agent does any of the following, update this file in the same slice:
       out of the horse-shaped quadruped proxy — the living nautilus (adult and baby) maps to the new
       `EntityModelKind::Nautilus { baby }`, and the zombie nautilus reuses the same adult body
       (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`, a plain `MobRenderer` so
-      never a baby) → the dedicated `EntityModelKind::ZombieNautilus`, replacing the horse-shaped stand-in
-      with the real mesh of this new rideable mob. The zombie nautilus's `NORMAL`/`TEMPERATE` variant now
-      textures the shared adult body with `textures/entity/nautilus/zombie_nautilus.png` (vanilla
-      `ZombieNautilusVariants` default, `ZombieNautilusRenderer.getTextureLocation`), fixing the earlier
-      wrong-skin (it drew the living `nautilus.png`). The `WARM` coral variant (a distinct
-      `ZombieNautilusCoralModel` mesh + `zombie_nautilus_coral.png`) and its equipment / saddle layers
-      stay deferred. The adult rest-pose
+      never a baby) → the dedicated `EntityModelKind::ZombieNautilus { coral }`, replacing the horse-shaped
+      stand-in with the real mesh of this new rideable mob. Both `ZombieNautilusVariant`s are now rendered
+      (`ZombieNautilusRenderer.getTextureLocation` / `submit`, resolved from the synced
+      `DATA_VARIANT_ID` holder at index 21 by the bootstrap order — id ≥ 1 → `WARM`): the
+      `NORMAL`/`TEMPERATE` default textures the shared adult body with
+      `textures/entity/nautilus/zombie_nautilus.png` (fixing the earlier wrong-skin, where it drew the
+      living `nautilus.png`), and the `WARM` variant renders the `ZombieNautilusCoralModel` — the same
+      adult body plus the `corals` subtree (four clusters of textured-only cross-planes, eight cubes
+      under `shell`) — over `textures/entity/nautilus/zombie_nautilus_coral.png`. The
+      `corals.visible = bodyArmorItem.isEmpty()` gate is always-visible (body armor deferred), and the
+      dynamic-registry reorder path + the saddle / armor equipment layers stay deferred. The adult
+      rest-pose
       hierarchy is emitted directly (atlas 128×128): one cubeless `root` pivot at
       `offset(0, 29, -6)` parenting the `shell` at `offset(0, -13, 5)` (the 14×10×16 dome, the 14×8×20
       whorl, and a 14×8×0 rear fin plane) and the `body` at `offset(0, -8.5, 12.3)` (the 10×8×14 trunk

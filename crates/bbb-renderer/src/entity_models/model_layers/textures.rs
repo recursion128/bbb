@@ -1120,7 +1120,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 368] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 369] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1275,6 +1275,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     NAUTILUS_TEXTURE_REF,
     NAUTILUS_BABY_TEXTURE_REF,
     ZOMBIE_NAUTILUS_TEXTURE_REF,
+    ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF,
     PANDA_NORMAL_TEXTURE_REF,
     PANDA_NORMAL_BABY_TEXTURE_REF,
     PANDA_LAZY_TEXTURE_REF,
@@ -2475,6 +2476,14 @@ pub fn nautilus_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 pub(in crate::entity_models) const ZOMBIE_NAUTILUS_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/nautilus/zombie_nautilus.png",
+        size: [128, 128],
+    };
+
+// Vanilla `ZombieNautilusRenderer` `WARM` coral variant texture (`ZombieNautilusVariants` bootstrap),
+// drawn over the `ZombieNautilusCoralModel` (the adult body plus the `corals` subtree).
+pub(in crate::entity_models) const ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/nautilus/zombie_nautilus_coral.png",
         size: [128, 128],
     };
 

@@ -367,6 +367,10 @@ const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 /// after `DATA_ANGER_END_TIME` (22) and before `DATA_SOUND_VARIANT_ID` (24). `WolfRenderer` keys the
 /// base texture on the resolved variant.
 const WOLF_VARIANT_DATA_ID: u8 = 23;
+/// `ZombieNautilus.DATA_VARIANT_ID` data id (21): the synced `Holder<ZombieNautilusVariant>` registry
+/// id. `AbstractNautilus extends TamableAnimal` adds flags(18)+owner(19) then DASH(20), so the
+/// `ZombieNautilus`-own variant lands at 21.
+const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 /// `Bee.DATA_FLAGS_ID` data id (18, BYTE): the bee flags byte, the first `Bee`-own accessor
 /// (`AgeableMob` consumes 16 baby + 17 age-locked, so `Bee` starts at 18).
 const BEE_FLAGS_DATA_ID: u8 = 18;
@@ -1612,7 +1616,7 @@ fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => zombie_nautilus_model_kind(),
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => zombie_nautilus_model_kind(data_values),
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time, wolf_variants),
         VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
         VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true, cat_variants),
@@ -1989,13 +1993,38 @@ fn nautilus_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Ent
     }
 }
 
-/// Vanilla `ZombieNautilusRenderer` (a plain `MobRenderer`, so never a baby): the `NORMAL`/`TEMPERATE`
-/// variant renders the same `NautilusModel.createBodyLayer()` body as the living nautilus
-/// (`ModelLayers.ZOMBIE_NAUTILUS` bakes to it), textured by `zombie_nautilus.png`. The `WARM` coral
-/// variant (a distinct `ZombieNautilusCoralModel` mesh) and the armor / saddle equipment layers are
-/// deferred, so this covers the default zombie nautilus.
-fn zombie_nautilus_model_kind() -> EntityModelKind {
-    EntityModelKind::ZombieNautilus
+/// Vanilla `ZombieNautilusRenderer` (a plain `MobRenderer`, so never a baby), selected by the synced
+/// `ZombieNautilusVariant` holder: `NORMAL`/`TEMPERATE` renders the living adult `NautilusModel` body
+/// over `zombie_nautilus.png`, `WARM` renders the `ZombieNautilusCoralModel` (the same body plus the
+/// `corals` subtree) over `zombie_nautilus_coral.png`. The armor / saddle equipment layers defer.
+fn zombie_nautilus_model_kind(
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityModelKind {
+    EntityModelKind::ZombieNautilus {
+        coral: zombie_nautilus_coral(values),
+    }
+}
+
+/// Vanilla `ZombieNautilus.DATA_VARIANT_ID` (21, a `Holder<ZombieNautilusVariant>`): TamableAnimal adds
+/// flags(18) + owner(19) and AbstractNautilus adds DASH(20), so the variant lands at index 21. Only two
+/// variants exist — `ZombieNautilusVariants.bootstrap` registers TEMPERATE (id 0, `NORMAL` model) then
+/// WARM (id 1, coral model) — so registry id ≥ 1 selects the `WARM` coral model. Resolved by the static
+/// bootstrap order; the dynamic-registry reorder path defers (a 2-element vanilla registry is in
+/// practice never reordered).
+fn zombie_nautilus_coral(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == ZOMBIE_NAUTILUS_VARIANT_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .map(|id| id >= 1)
+        .unwrap_or(false)
 }
 
 fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
@@ -9208,10 +9237,11 @@ mod tests {
             }
         );
         // The nautilus (adult and baby) renders through its dedicated `NautilusModel`
-        // (`createBodyMesh` / `createBabyBodyLayer`). The zombie nautilus reuses the same adult nautilus
-        // body (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`) but maps to the
-        // dedicated `ZombieNautilus` kind so it picks `zombie_nautilus.png` (always adult — it is a plain
-        // `MobRenderer`); only its `WARM` coral variant / equipment layers stay deferred.
+        // (`createBodyMesh` / `createBabyBodyLayer`). The zombie nautilus maps to the dedicated
+        // `ZombieNautilus` kind, selected by the synced `ZombieNautilusVariant` holder: the default
+        // TEMPERATE → `coral: false` (the `NautilusModel` body + `zombie_nautilus.png`), WARM (registry
+        // id ≥ 1) → `coral: true` (the `ZombieNautilusCoralModel` + `zombie_nautilus_coral.png`). It is a
+        // plain `MobRenderer`, so always adult.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
             EntityModelKind::Nautilus { baby: false }
@@ -9223,9 +9253,25 @@ mod tests {
             ),
             EntityModelKind::Nautilus { baby: true }
         );
+        // No variant data → the TEMPERATE default (no corals).
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),
-            EntityModelKind::ZombieNautilus
+            EntityModelKind::ZombieNautilus { coral: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                &[protocol_zombie_nautilus_variant_data(0)]
+            ),
+            EntityModelKind::ZombieNautilus { coral: false }
+        );
+        // WARM (registry id 1) → the coral model.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                &[protocol_zombie_nautilus_variant_data(1)]
+            ),
+            EntityModelKind::ZombieNautilus { coral: true }
         );
         // The zombie nautilus is never a baby, so the baby flag in its metadata is ignored.
         assert_eq!(
@@ -9233,7 +9279,7 @@ mod tests {
                 VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::ZombieNautilus
+            EntityModelKind::ZombieNautilus { coral: false }
         );
     }
 
@@ -9704,6 +9750,18 @@ mod tests {
             serializer_id: 28,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::PigVariant,
+                id,
+            },
+        }
+    }
+
+    fn protocol_zombie_nautilus_variant_data(id: i32) -> EntityDataValue {
+        // Vanilla `EntityDataSerializers.ZOMBIE_NAUTILUS_VARIANT` is serializer id 32.
+        EntityDataValue {
+            data_id: ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+            serializer_id: 32,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
                 id,
             },
         }

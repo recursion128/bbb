@@ -305,14 +305,14 @@ fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
     // (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`) textured by
     // `zombie_nautilus.png` — same geometry as the living adult nautilus, only the texture differs.
     assert_eq!(
-        EntityModelKind::ZombieNautilus.model_key(),
+        EntityModelKind::ZombieNautilus { coral: false }.model_key(),
         "zombie_nautilus"
     );
     assert_eq!(
-        EntityModelKind::ZombieNautilus.vanilla_texture_ref(),
+        EntityModelKind::ZombieNautilus { coral: false }.vanilla_texture_ref(),
         Some(ZOMBIE_NAUTILUS_TEXTURE_REF)
     );
-    let passes = zombie_nautilus_textured_layer_passes();
+    let passes = zombie_nautilus_textured_layer_passes(false);
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].texture, ZOMBIE_NAUTILUS_TEXTURE_REF);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
@@ -340,7 +340,7 @@ fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
     let zombie = entity_model_textured_mesh(
         &[EntityModelInstance::new(
             901,
-            EntityModelKind::ZombieNautilus,
+            EntityModelKind::ZombieNautilus { coral: false },
             [0.0, 64.0, 0.0],
             0.0,
         )],
@@ -364,4 +364,65 @@ fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
         .iter()
         .zip(&zombie.vertices)
         .any(|(a, b)| a.uv != b.uv));
+}
+
+#[test]
+fn zombie_nautilus_warm_variant_adds_the_coral_cluster() {
+    // Vanilla `ZombieNautilusRenderer` `WARM` variant: the `ZombieNautilusCoralModel` — the adult body
+    // PLUS the `corals` subtree — over `zombie_nautilus_coral.png`. The corals are eight textured-only
+    // cross-plane cubes (yellow ×2, pink + pink_second, blue ×2, red ×2), so the WARM mesh carries
+    // exactly 8×6 = 48 more faces than the plain (`coral: false`) zombie nautilus body.
+    assert_eq!(
+        EntityModelKind::ZombieNautilus { coral: true }.model_key(),
+        "zombie_nautilus_coral"
+    );
+    assert_eq!(
+        EntityModelKind::ZombieNautilus { coral: true }.vanilla_texture_ref(),
+        Some(ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF)
+    );
+    assert_eq!(
+        zombie_nautilus_textured_layer_passes(true)[0].texture,
+        ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF
+    );
+    assert!(entity_model_texture_refs().contains(&ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF));
+
+    let images: Vec<EntityModelTextureImage> = [
+        ZOMBIE_NAUTILUS_TEXTURE_REF,
+        ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF,
+    ]
+    .iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(*texture, vec![(index * 30) as u8; len])
+    })
+    .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    let plain = entity_model_textured_mesh(
+        &[EntityModelInstance::new(
+            902,
+            EntityModelKind::ZombieNautilus { coral: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        )],
+        &atlas,
+    );
+    let warm = entity_model_textured_mesh(
+        &[EntityModelInstance::new(
+            903,
+            EntityModelKind::ZombieNautilus { coral: true },
+            [0.0, 64.0, 0.0],
+            0.0,
+        )],
+        &atlas,
+    );
+    assert!(!warm.vertices.is_empty());
+    assert!(warm
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    // The WARM mesh is the plain body plus the eight coral cross-plane cubes (48 faces, 192 vertices).
+    assert_eq!(warm.cutout_faces, plain.cutout_faces + 48);
+    assert_eq!(warm.vertices.len(), plain.vertices.len() + 48 * 4);
 }
