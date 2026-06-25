@@ -103,6 +103,8 @@ const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
 const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
 const VANILLA_ENTITY_TYPE_RAVAGER_ID: i32 = 109;
 const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
+const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
+const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -270,6 +272,8 @@ pub struct EntityClientAnimationState {
     pub squid: Option<SquidAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chicken_flap: Option<ChickenFlapAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slime: Option<SlimeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parrot_flap: Option<ParrotFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -889,6 +893,30 @@ pub struct ChickenFlapAnimationState {
     pub flapping: f32,
 }
 
+/// Canonical client-side slime/magma-cube squish accumulator, mirroring vanilla
+/// `Slime` (`squish`/`oSquish`/`targetSquish`/`wasOnGround`). `Slime.tick` saves the
+/// lerp endpoint (`oSquish`), eases `squish` halfway toward `targetSquish` each
+/// client tick, re-seeds the target to `-0.5` on landing / `1.0` on takeoff (the
+/// `onGround()` transitions), then decays the target by `0.6` (`decreaseSquish`).
+/// `SlimeRenderer.extractRenderState` lerps `squish` by the partial tick, and
+/// `SlimeRenderer.scale` turns it into the non-uniform body stretch. The vanilla
+/// landing squish particles/sound are server/audio effects and are not modelled.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct SlimeAnimationState {
+    /// Vanilla `Slime.squish`.
+    #[serde(default)]
+    pub squish: f32,
+    /// Vanilla `Slime.oSquish`.
+    #[serde(default)]
+    pub o_squish: f32,
+    /// Vanilla `Slime.targetSquish`.
+    #[serde(default)]
+    pub target_squish: f32,
+    /// Vanilla `Slime.wasOnGround` (field initializer `false`).
+    #[serde(default)]
+    pub was_on_ground: bool,
+}
+
 /// Canonical client-side parrot wing-flap animation, mirroring vanilla `Parrot`
 /// (`flap`/`oFlap`/`flapSpeed`/`oFlapSpeed`/`flapping`). `Parrot.aiStep` runs the
 /// same flap accumulator as the chicken, except the airborne build-up is gated on
@@ -1479,6 +1507,33 @@ impl ChickenFlapAnimationState {
     /// flapSpeed)`.
     fn flap_speed(&self, partial_tick: f32) -> f32 {
         self.o_flap_speed + (self.flap_speed - self.o_flap_speed) * partial_tick
+    }
+}
+
+impl SlimeAnimationState {
+    /// Advances one client tick of `Slime.tick`'s squish accumulator.
+    ///
+    /// Vanilla saves the lerp endpoint (`oSquish`), eases `squish` halfway toward
+    /// `targetSquish`, then — after `super.tick()` — re-seeds the target on the
+    /// `onGround()` landing (`-0.5`) / takeoff (`1.0`) transitions, records the
+    /// ground flag, and decays the target by `0.6` (`decreaseSquish`). The landing
+    /// squish particles and sound in the same method are effects, not pose state.
+    fn advance_client_tick(&mut self, on_ground: bool) {
+        self.o_squish = self.squish;
+        self.squish += (self.target_squish - self.squish) * 0.5;
+        if on_ground && !self.was_on_ground {
+            self.target_squish = -0.5;
+        } else if !on_ground && self.was_on_ground {
+            self.target_squish = 1.0;
+        }
+        self.was_on_ground = on_ground;
+        self.target_squish *= 0.6;
+    }
+
+    /// Vanilla `SlimeRenderer.extractRenderState`: `lerp(partialTicks, oSquish,
+    /// squish)`.
+    fn squish(&self, partial_tick: f32) -> f32 {
+        self.o_squish + (self.squish - self.o_squish) * partial_tick
     }
 }
 
@@ -2319,6 +2374,15 @@ impl EntityClientAnimationState {
             .map_or(0.0, |flap| flap.flap(partial_tick))
     }
 
+    /// Vanilla `SlimeRenderState.squish` (`Slime.squish` lerped): the squish amount
+    /// `SlimeRenderer.scale` turns into the body's non-uniform stretch (`ss = squish
+    /// / (size * 0.5 + 1)`, `w = 1 / (ss + 1)`, scale `[w, 1/w, w] * size`). Returns
+    /// `0.0` for every non-slime/magma-cube entity (and an unticked one), so the body
+    /// holds its undeformed cube shape.
+    pub fn slime_squish(&self, partial_tick: f32) -> f32 {
+        self.slime.map_or(0.0, |slime| slime.squish(partial_tick))
+    }
+
     /// Vanilla `ChickenRenderState.flapSpeed` (`Chicken.flapSpeed` lerped): the
     /// wing-flap amplitude `ChickenModel.setupAnim` multiplies the flap phase by.
     /// Returns `0.0` for every non-chicken entity, so the wings hold the bind pose.
@@ -2533,6 +2597,13 @@ impl EntityClientAnimationState {
                 // Vanilla `Chicken.aiStep` reads `onGround()`. A chicken with no
                 // synced ground flag defaults to on-ground (wings still), the safe
                 // common case.
+                .advance_client_tick(transform.on_ground.unwrap_or(true)),
+            VANILLA_ENTITY_TYPE_SLIME_ID | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => self
+                .slime
+                .get_or_insert_with(SlimeAnimationState::default)
+                // Vanilla `Slime.tick` reads `onGround()` for the squish target. A
+                // slime with no synced ground flag defaults to on-ground (resting
+                // squish), the safe common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true)),
             VANILLA_ENTITY_TYPE_PARROT_ID => self
                 .parrot_flap

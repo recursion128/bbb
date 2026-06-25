@@ -830,6 +830,10 @@ impl EntityStore {
             chicken_flap_speed: client_animations
                 .animations
                 .chicken_flap_speed(partial_ticks),
+            // Vanilla `SlimeRenderer.extractRenderState`: the lerped squish amount
+            // driving the slime/magma-cube body's non-uniform stretch. `0.0` for
+            // every other entity (only the slime/magma cube is given a squish state).
+            slime_squish: client_animations.animations.slime_squish(partial_ticks),
             // Vanilla `ParrotRenderer.extractRenderState`: the lerped, combined
             // wing-flap angle. `0.0` for every non-parrot entity (only the parrot is
             // given a flap animation state).

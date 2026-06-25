@@ -334,11 +334,13 @@ pub(in crate::entity_models) fn slime_model_root_transform(
     instance: EntityModelInstance,
     size: i32,
 ) -> Mat4 {
+    // Vanilla `SlimeRenderer.scale`: a `0.999` shrink + `0.001` lift to avoid
+    // z-fighting between the two slime shells, then the squish stretch.
     living_entity_model_root_transform_with_renderer_transform(
         instance,
         Mat4::from_scale(Vec3::splat(0.999))
             * Mat4::from_translation(Vec3::new(0.0, 0.001, 0.0))
-            * Mat4::from_scale(Vec3::splat(size as f32)),
+            * slime_squish_scale(instance.render_state.slime_squish, size),
     )
 }
 
@@ -346,10 +348,24 @@ pub(in crate::entity_models) fn magma_cube_model_root_transform(
     instance: EntityModelInstance,
     size: i32,
 ) -> Mat4 {
+    // Vanilla `MagmaCubeRenderer.scale`: the same squish stretch as the slime, but
+    // without the slime's `0.999` two-shell z-fight nudge.
     living_entity_model_root_transform_with_renderer_transform(
         instance,
-        Mat4::from_scale(Vec3::splat(size as f32)),
+        slime_squish_scale(instance.render_state.slime_squish, size),
     )
+}
+
+/// Vanilla `SlimeRenderer.scale` / `MagmaCubeRenderer.scale` body stretch:
+/// `ss = squish / (size * 0.5 + 1)`, `w = 1 / (ss + 1)`, then
+/// `scale(w * size, 1/w * size, w * size)` — the body widens as it flattens and
+/// narrows as it stretches, conserving silhouette. At `squish == 0` this is `w == 1`,
+/// i.e. the plain `size` cube, so a resting slime is byte-for-byte unchanged.
+fn slime_squish_scale(squish: f32, size: i32) -> Mat4 {
+    let size = size as f32;
+    let ss = squish / (size * 0.5 + 1.0);
+    let w = 1.0 / (ss + 1.0);
+    Mat4::from_scale(Vec3::new(w * size, size / w, w * size))
 }
 
 pub(in crate::entity_models) fn player_model_root_transform(instance: EntityModelInstance) -> Mat4 {

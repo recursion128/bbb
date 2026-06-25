@@ -1629,19 +1629,26 @@ When an agent does any of the following, update this file in the same slice:
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,
-      renderer size scaling from slime size metadata, texture-backed base and
-      outer layer pass emission, the `SlimeOuterLayer` submit order `1`, and an
-      alpha-blended translucent GPU bucket; squish interpolation, invisible
-      glowing outline rendering, particle/audio coupling, lighting, overlay,
-      crumbling, and full render-graph sorting parity remain unsupported
-    - magma cube entities as renderer-owned vanilla 26.1
-      `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
-      `textures/entity/slime/magmacube.png` texture reference, and renderer
-      size scaling from inherited slime size metadata, texture-backed base layer
-      pass emission, and official PNG atlas upload/bind/sample path; segment
-      squish offsets, full-bright block light, particle/audio coupling,
+      renderer size scaling from slime size metadata, the client-reconstructed
+      `Slime.tick` squish accumulator (`squish`/`oSquish`/`targetSquish`/
+      `wasOnGround` driven by the `onGround()` jump transitions, lerped per the
+      partial tick) projected into the `SlimeRenderer.scale` non-uniform body
+      stretch (`ss = squish / (size * 0.5 + 1)`, `w = 1/(ss + 1)`, scale
+      `[w, 1/w, w] * size`), texture-backed base and outer layer pass emission,
+      the `SlimeOuterLayer` submit order `1`, and an alpha-blended translucent
+      GPU bucket; invisible glowing outline rendering, particle/audio coupling,
       lighting, overlay, crumbling, and full render-graph sorting parity remain
       unsupported
+    - magma cube entities as renderer-owned vanilla 26.1
+      `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
+      `textures/entity/slime/magmacube.png` texture reference, renderer
+      size scaling from inherited slime size metadata, the shared client-side
+      squish accumulator driving both the `MagmaCubeRenderer.scale` non-uniform
+      body stretch and the `LavaSlimeModel.setupAnim` per-segment vertical spread
+      (`cubeN.y = -(4 - N) * max(0, squish) * 1.7`), texture-backed base layer
+      pass emission, and official PNG atlas upload/bind/sample path; full-bright
+      block light, particle/audio coupling, lighting, overlay, crumbling, and
+      full render-graph sorting parity remain unsupported
     - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`
       geometry: the 16x16x16 body at y 17.6 plus the nine tentacles at y 24.6,
       whose lengths are the fixed-seed `RandomSource(1660L)` (`nextInt(7) + 8`,

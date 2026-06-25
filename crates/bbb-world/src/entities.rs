@@ -708,6 +708,11 @@ pub struct EntityModelSourceState {
     /// `0.0` (wings held) at rest and for every non-chicken entity.
     #[serde(default)]
     pub chicken_flap_speed: f32,
+    /// Vanilla `SlimeRenderState.squish` (`Slime.squish` lerped): the squish amount
+    /// `SlimeRenderer.scale` turns into the slime/magma-cube body's non-uniform
+    /// stretch. `0.0` (undeformed cube) at rest and for every other entity.
+    #[serde(default)]
+    pub slime_squish: f32,
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(sin(lerp(flap)) + 1) * lerp(flapSpeed)`): the combined wing-flap angle
     /// `ParrotModel.setupAnim` feeds to the wing `zRot` (`±(0.0873 + flapAngle)`) and

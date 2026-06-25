@@ -2748,6 +2748,81 @@ fn entity_model_sources_project_chicken_wing_flap() {
 }
 
 #[test]
+fn entity_model_sources_project_slime_squish_from_ground_transitions() {
+    const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
+
+    let squish = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 81)
+            .unwrap()
+            .slime_squish
+    };
+    // Drives the slime's synced ground flag (vanilla `Slime.tick` reads `onGround()`
+    // for the squish target); the position stays put so only the squish evolves.
+    let set_on_ground = |store: &mut WorldStore, on_ground: bool| {
+        assert!(store.apply_entity_move(ProtocolEntityMove {
+            id: 81,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground,
+        }));
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_SLIME_ID,
+    ));
+
+    // An unticked slime holds its undeformed cube (squish 0).
+    assert_eq!(squish(&store, 1.0), 0.0);
+
+    // Land from rest: vanilla seeds `targetSquish = -0.5` on the takeoff→ground
+    // transition (then decays it by `0.6`), and the next tick eases `squish` toward
+    // that negative target — the landing flatten/splat.
+    set_on_ground(&mut store, true);
+    store.advance_entity_client_animations(2);
+    let landed = squish(&store, 1.0);
+    assert!(
+        landed < 0.0,
+        "landing flattens the slime (negative squish): {landed}"
+    );
+
+    // Take off: vanilla seeds `targetSquish = 1.0` on the ground→air transition, and
+    // the squish eases up through zero into the positive vertical stretch.
+    set_on_ground(&mut store, false);
+    store.advance_entity_client_animations(2);
+    let airborne = squish(&store, 1.0);
+    assert!(
+        airborne > 0.0,
+        "a jumping slime stretches vertically (positive squish): {airborne}"
+    );
+    assert!(
+        airborne > landed,
+        "takeoff lifts the squish above the landing splat: {landed} -> {airborne}"
+    );
+
+    // The lerped getter tracks the partial tick between the previous and current
+    // squish endpoints (vanilla `SlimeRenderer.extractRenderState`).
+    let at_zero = squish(&store, 0.0);
+    let at_one = squish(&store, 1.0);
+    assert_ne!(
+        at_zero, at_one,
+        "the squish is still evolving across this tick"
+    );
+    let at_half = squish(&store, 0.5);
+    assert!(
+        (at_half - (at_zero + (at_one - at_zero) * 0.5)).abs() < 1.0e-4,
+        "the projection is a linear lerp between the endpoints: {at_zero} .. {at_half} .. {at_one}"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_parrot_wing_flap() {
     const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
 

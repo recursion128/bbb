@@ -715,6 +715,7 @@ fn entity_model_instance(
         .with_guardian_tail_animation(source.guardian_tail_animation)
         .with_chicken_flap(source.chicken_flap)
         .with_chicken_flap_speed(source.chicken_flap_speed)
+        .with_slime_squish(source.slime_squish)
         .with_parrot_flap_angle(source.parrot_flap_angle)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
@@ -2663,6 +2664,57 @@ mod tests {
             chicken.render_state.chicken_flap_speed > 0.0,
             "an airborne chicken projects a non-zero flap speed: {}",
             chicken.render_state.chicken_flap_speed
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_slime_squish_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            97,
+            VANILLA_ENTITY_TYPE_SLIME_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        // Mark the slime grounded so `Slime.tick` sees the air→ground transition and
+        // seeds the landing squish target (vanilla `onGround()` true branch from rest).
+        assert!(world.apply_entity_position_sync(EntityPositionSync {
+            id: 97,
+            position: Vec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: Vec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        }));
+
+        // An unticked slime projects the undeformed cube (squish 0) into the render state.
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
+        let resting = resting
+            .iter()
+            .find(|instance| instance.entity_id == 97)
+            .unwrap();
+        assert_eq!(resting.render_state.slime_squish, 0.0);
+
+        // After ticking on the ground, the world-side squish accumulator eases toward
+        // the negative landing target, and that flows through EntityModelSourceState
+        // into the renderer EntityRenderState (`SlimeRenderer.scale` body stretch).
+        world.advance_entity_client_animations(2);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
+        let slime = instances
+            .iter()
+            .find(|instance| instance.entity_id == 97)
+            .unwrap();
+        assert!(
+            slime.render_state.slime_squish < 0.0,
+            "the projected landing squish drives SlimeRenderer.scale: {}",
+            slime.render_state.slime_squish
         );
     }
 

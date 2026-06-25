@@ -559,6 +559,12 @@ entity_render_state! {
     /// flap phase by. `0.0` (wings held) for a grounded/still chicken and every
     /// non-chicken entity.
     (with_chicken_flap_speed) chicken_flap_speed: f32 = 0.0;
+    /// Vanilla `SlimeRenderState.squish` (`Mth.lerp(partialTick, oSquish, squish)`):
+    /// the squish amount `SlimeRenderer.scale` turns into the slime/magma-cube body's
+    /// non-uniform stretch (`ss = squish / (size * 0.5 + 1)`, `w = 1 / (ss + 1)`,
+    /// scale `[w, 1/w, w] * size`). `0.0` (undeformed cube) for a resting slime/magma
+    /// cube and every other entity.
+    (with_slime_squish) slime_squish: f32 = 0.0;
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(Mth.sin(lerp(oFlap, flap)) + 1) * lerp(oFlapSpeed, flapSpeed)`): the combined
     /// wing-flap angle `ParrotModel.setupAnim` writes to the wings (`leftWing.zRot =
@@ -1719,6 +1725,7 @@ mod tests {
                 guardian_beam: None,
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
+                slime_squish: 0.0,
                 parrot_flap_angle: 0.0,
                 in_water: false,
                 on_ground: false,

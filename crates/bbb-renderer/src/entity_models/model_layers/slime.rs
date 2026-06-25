@@ -99,10 +99,10 @@ const MAGMA_CUBE_SEGMENT_NAMES: [&str; 8] = [
 
 /// Mutable magma cube model, mirroring vanilla `LavaSlimeModel`. The unified tree is built once with
 /// named children: eight stacked outer segments (`cube0..cube7`) plus the inner `inside_cube` core.
-/// Vanilla `LavaSlimeModel.setupAnim` stretches the segments by the interpolated `squish`
-/// (`oSquish`→`squish`); that squish is server-authoritative state not carried on the render state, so
-/// it stays deferred and `setup_anim` is a no-op — the model renders its rest pose. The per-size scale
-/// lives in the root transform (`magma_cube_model_root_transform`).
+/// Vanilla `LavaSlimeModel.setupAnim` fans the eight segments apart vertically by the interpolated,
+/// non-negative `squish` (`cubeN.y = -(4 - N) * max(0, squish) * 1.7`), reconstructed client-side from
+/// the `onGround()` jump transitions and projected onto the render state. The overall non-uniform body
+/// scale lives in the root transform (`magma_cube_model_root_transform`).
 pub(in crate::entity_models) struct MagmaCubeModel {
     root: ModelPart,
 }
@@ -135,15 +135,27 @@ impl EntityModel for MagmaCubeModel {
         &mut self.root
     }
 
-    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        // Vanilla `LavaSlimeModel.setupAnim`: only the non-negative squish (the jump
+        // stretch, never the landing splat) spreads the eight stacked segments apart
+        // vertically — `cubeN.y = -(4 - N) * max(0, squish) * 1.7`. The lower segments
+        // (N < 4) sink and the upper ones (N > 4) rise, opening gaps between the lava
+        // slices. The overall body scale is applied separately by the root transform.
+        let slime_squish = instance.render_state.slime_squish.max(0.0);
+        for (i, &name) in MAGMA_CUBE_SEGMENT_NAMES.iter().enumerate() {
+            self.root.child_mut(name).pose.offset[1] =
+                -((4 - i as i32) as f32) * slime_squish * 1.7;
+        }
+    }
 }
 
 /// Mutable slime inner-body model, mirroring vanilla `SlimeModel` (`ModelLayers.SLIME`,
 /// `createInnerBodyLayer`): the inner `cube` plus the two eyes and the `mouth`. The unified tree is
-/// built with named children. Vanilla `SlimeModel.setupAnim` only stretches by the interpolated
-/// `squish`, which is server-authoritative state not on the render state, so `setup_anim` is a no-op
-/// (the model renders its rest pose); the per-size scale lives in `slime_model_root_transform`. The
-/// inner body is the opaque cutout pass; [`SlimeOuterModel`] is the translucent shell.
+/// built with named children. Vanilla `SlimeModel` is typed on the base `EntityRenderState` (it never
+/// sees the squish) and has no `setupAnim` override, so `setup_anim` is a genuine no-op; the whole
+/// squish + per-size stretch lives in `SlimeRenderer.scale` (`slime_model_root_transform`), unlike the
+/// magma cube whose `LavaSlimeModel.setupAnim` additionally fans its segments apart. The inner body is
+/// the opaque cutout pass; [`SlimeOuterModel`] is the translucent shell.
 pub(in crate::entity_models) struct SlimeModel {
     root: ModelPart,
 }

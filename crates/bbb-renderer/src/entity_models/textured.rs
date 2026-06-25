@@ -843,8 +843,9 @@ fn emit_slime_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     // The unified `SlimeModel` (inner body, cutout) and `SlimeOuterModel` (shell, translucent) trees
-    // drive both render paths; both `setup_anim`s are no-ops. Each pass routes to the inner or outer
-    // root in the pre-sorted layer order.
+    // drive both render paths; both `setup_anim`s are no-ops (vanilla's squish stretch lives in the
+    // renderer `scale`, applied by `slime_model_root_transform`, not in `setupAnim`). Each pass routes
+    // to the inner or outer root in the pre-sorted layer order.
     let transform = slime_model_root_transform(instance, size);
     let mut inner = SlimeModel::new();
     inner.prepare(&instance);

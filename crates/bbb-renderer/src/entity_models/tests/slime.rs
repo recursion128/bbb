@@ -147,6 +147,106 @@ fn slime_and_magma_cube_meshes_use_vanilla_size_scaling() {
 }
 
 #[test]
+fn slime_squish_render_state_stretches_the_body_non_uniformly() {
+    // Vanilla `SlimeRenderer.scale`: `ss = squish / (size * 0.5 + 1)`,
+    // `w = 1 / (ss + 1)`, then `scale(w * size, 1/w * size, w * size)`. The body
+    // widens as it flattens and narrows as it stretches, conserving silhouette.
+    let rest = entity_model_mesh(&[EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1)]);
+    let (rest_min, rest_max) = mesh_extents(&rest);
+    let rest_height = rest_max[1] - rest_min[1];
+    let rest_width = rest_max[0] - rest_min[0];
+
+    // A positive squish (vanilla mid-jump) stretches the body tall and narrow. For
+    // `size = 1`, `squish = 0.5`: `ss = 0.5 / 1.5 = 1/3`, `w = 0.75`, so x/z scale by
+    // exactly `0.75` and y by `1/0.75`.
+    let stretched = entity_model_mesh(&[
+        EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1).with_slime_squish(0.5)
+    ]);
+    let (stretch_min, stretch_max) = mesh_extents(&stretched);
+    assert!(
+        stretch_max[1] - stretch_min[1] > rest_height,
+        "a positive squish makes the slime taller: {} -> {}",
+        rest_height,
+        stretch_max[1] - stretch_min[1]
+    );
+    let width_ratio = (stretch_max[0] - stretch_min[0]) / rest_width;
+    assert!(
+        (width_ratio - 0.75).abs() < 1.0e-4,
+        "x/z scale by w = 1 / (ss + 1) = 0.75: {width_ratio}"
+    );
+
+    // A negative squish (vanilla landing splat) flattens it short and wide.
+    let splat = entity_model_mesh(&[
+        EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1).with_slime_squish(-0.5)
+    ]);
+    let (splat_min, splat_max) = mesh_extents(&splat);
+    assert!(
+        splat_max[1] - splat_min[1] < rest_height,
+        "a negative squish makes the slime shorter: {} -> {}",
+        rest_height,
+        splat_max[1] - splat_min[1]
+    );
+    assert!(
+        splat_max[0] - splat_min[0] > rest_width,
+        "a negative squish makes the slime wider: {} -> {}",
+        rest_width,
+        splat_max[0] - splat_min[0]
+    );
+}
+
+#[test]
+fn magma_cube_squish_fans_the_segments_apart_vertically() {
+    use crate::entity_models::model::EntityModel;
+
+    // Vanilla `LavaSlimeModel.setupAnim`: `cubeN.y = -(4 - N) * max(0, squish) * 1.7`.
+    // Only a positive (jump-stretch) squish spreads the eight stacked lava slices —
+    // the lower segments sink, the upper ones rise; the negative landing splat leaves
+    // them flush. The overall body scale is handled by the root transform.
+    let base = EntityModelInstance::magma_cube(80, [0.0, 64.0, 0.0], 0.0, 1);
+
+    // Rest (squish 0): every segment holds its baked y (offset 0).
+    let mut resting = MagmaCubeModel::new();
+    resting.prepare(&base);
+    for name in ["cube0", "cube4", "cube7"] {
+        assert_eq!(
+            resting.root_mut().child_mut(name).pose.offset[1],
+            0.0,
+            "{name} sits flush at rest"
+        );
+    }
+
+    // Positive squish 0.5: cube0 sinks to -(4)·0.5·1.7, cube4 (the midpoint) stays
+    // put, cube7 rises to -(4-7)·0.5·1.7.
+    let mut stretched = MagmaCubeModel::new();
+    stretched.prepare(&base.with_slime_squish(0.5));
+    assert!(
+        (stretched.root_mut().child_mut("cube0").pose.offset[1] - (-4.0 * 0.5 * 1.7)).abs()
+            < 1.0e-6,
+        "lowest segment sinks: {}",
+        stretched.root_mut().child_mut("cube0").pose.offset[1]
+    );
+    assert_eq!(
+        stretched.root_mut().child_mut("cube4").pose.offset[1],
+        0.0,
+        "the midpoint segment stays put"
+    );
+    assert!(
+        (stretched.root_mut().child_mut("cube7").pose.offset[1] - (3.0 * 0.5 * 1.7)).abs() < 1.0e-6,
+        "highest segment rises: {}",
+        stretched.root_mut().child_mut("cube7").pose.offset[1]
+    );
+
+    // The negative landing squish is clamped at 0, so the segments stay flush.
+    let mut splat = MagmaCubeModel::new();
+    splat.prepare(&base.with_slime_squish(-0.5));
+    assert_eq!(
+        splat.root_mut().child_mut("cube0").pose.offset[1],
+        0.0,
+        "the landing splat keeps the segments flush"
+    );
+}
+
+#[test]
 fn entity_texture_atlas_stitches_official_slime_png_slots() {
     let (layout, rgba) = build_entity_model_texture_atlas(&slime_texture_images()).unwrap();
 
