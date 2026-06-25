@@ -2692,10 +2692,15 @@ When an agent does any of the following, update this file in the same slice:
       (`head.zRot = cos(ageInTicks·0.027)/22`); and the faceplant leg twitch (the synced `FLAG_FACEPLANTED`
       bit `64`: `cos(ageInTicks·0.67·0.4662 [+π])·0.1`, the diagonals out of phase). `ageScale` is the
       standard `0.5` baby / `1.0` adult (`LivingEntity.getAgeScale`; `Fox.BABY_SCALE = 0.6` only scales the
-      bounding box, not the model). Deferred: the baby `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait (so a
-      moving baby holds its bind legs — its flag poses still apply); the `FoxRenderer.setupRotations`
-      body-PITCH flip for `isPouncing || isFaceplanted` (a renderer root-transform concern, like the death
-      tip-over). The textured path now binds the full `FoxRenderer.getTextureLocation` matrix: the
+      bounding box, not the model). The baby `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait is now
+      reproduced (`BabyFoxModel.setWalkingPose` → `applyWalk(walkPos, walkSpeed, 1.0, 2.5)`): the 0.5s
+      looping `FOX_BABY_WALK` (7 bones) trots the four legs ±35° in the diagonal pairing, holds each leg
+      forward/up (POSITION) and stretched 1.15× on y (SCALE), lifts the head, and cocks the tail -2.5°,
+      driven off the projected `walk_animation_pos/speed` via `keyframe_walk_sample` (zero amplitude at
+      rest). Renderer tests pin the def (0.5s looping, 7 bones, the leg kick/stretch, the head lift) and
+      that a walking baby scampers (head included, unlike the adult swing) while a standing one holds
+      bind. Deferred: the `FoxRenderer.setupRotations` body-PITCH flip for `isPouncing || isFaceplanted`
+      (a renderer root-transform concern, like the death tip-over). The textured path now binds the full `FoxRenderer.getTextureLocation` matrix: the
       native scene reads `DATA_TYPE_ID` (18, int) and `Fox.Variant.byId` selects red/snow, crossed
       with the age (`fox`/`fox_baby`) and the projected `fox_is_sleeping` flag (`fox_sleep`/
       `fox_snow_sleep` and their `_baby` cells) — eight textures total. Only the held-item layer

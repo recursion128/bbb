@@ -1,7 +1,36 @@
+use super::super::keyframe::{
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_animated_scale, keyframe_walk_sample,
+    pos_vec, sample_bone_offsets_with_scale, scale_vec, AnimationChannel, AnimationDefinition,
+    AnimationTarget, BoneAnimation, Keyframe, KeyframeInterpolation,
+};
 use super::{apply_head_look, limb_swing_at_rest, PartPose, FOX_ORANGE, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 use std::f32::consts::{FRAC_PI_2, PI};
+
+const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
+const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
+
+const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes,
+    }
+}
+
+const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Position,
+        keyframes,
+    }
+}
+
+const fn scale_channel(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Scale,
+        keyframes,
+    }
+}
 
 // Vanilla 26.1 `AdultFoxModel.createBodyLayer` (atlas 48×32). `FoxModel extends EntityModel`: six root
 // parts — the `head` (carrying the two ears and the snout), the pitched `body` (carrying the tail), and
@@ -14,8 +43,9 @@ use std::f32::consts::{FRAC_PI_2, PI};
 // faceplant leg twitch. The sleeping pose hides all four legs via `ModelPart::visible`, mirroring how the
 // bee hides its stinger.
 //
-// Deferred: the baby `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait (so a moving baby holds its bind legs
-// — the baby's flag poses still apply); the `FoxRenderer.setupRotations` body-PITCH flip for
+// The baby's `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait is reproduced ([`FOX_BABY_WALK`],
+// applied in [`fox_set_walking_pose`] via [`apply_fox_baby_walk`]), so a moving baby scampers with the
+// diagonal trot, head lift, leg stretch, and tail cock. Deferred: the `FoxRenderer.setupRotations` body-PITCH flip for
 // `isPouncing || isFaceplanted` (a renderer root-transform concern, like the death tip-over); the four
 // `Fox.Variant` (red/snow) idle/sleeping textures and the held-item layer (so the colored debug path
 // renders one orange tint).
@@ -364,8 +394,8 @@ fn baby_fox_root() -> ModelPart {
 /// out — is keyed by leg NAME because the fox builds all four legs at the same negative pivot X (`+2`
 /// off-center), so the `QuadrupedModel` `x·z` sign rule can't resolve the phase. The base leg pose
 /// carries no `xRot`, so it is set (not accumulated). A no-op while at rest (`walkAnimationSpeed == 0`),
-/// matching the static leg pose. The baby uses `FoxBabyAnimation.FOX_BABY_WALK` instead, which is
-/// deferred, so this swing is adult-only.
+/// matching the static leg pose. The baby uses the `FOX_BABY_WALK` keyframe gait instead
+/// ([`apply_fox_baby_walk`]), so this swing is adult-only.
 fn apply_fox_adult_leg_swing(
     root: &mut ModelPart,
     walk_animation_pos: f32,
@@ -398,7 +428,9 @@ fn fox_set_walking_pose(root: &mut ModelPart, baby: bool, instance: &EntityModel
     for name in FOX_LEG_NAMES {
         root.child_mut(name).visible = true;
     }
-    if !baby {
+    if baby {
+        apply_fox_baby_walk(root, state.walk_animation_pos, state.walk_animation_speed);
+    } else {
         apply_fox_adult_leg_swing(root, state.walk_animation_pos, state.walk_animation_speed);
     }
 }
@@ -548,10 +580,170 @@ fn fox_age_scale(baby: bool) -> f32 {
     }
 }
 
+/// Vanilla `BabyFoxModel`'s `applyWalk(walkPos, walkSpeed, 1.0, 2.5)` factors: `MAX_WALK_ANIMATION_SPEED`
+/// and `WALK_ANIMATION_SCALE_FACTOR`. The speed factor scales `walkPos` into the animation time; the
+/// scale factor caps the amplitude (`min(walkSpeed · 2.5, 1.0)`), so a standing baby adds nothing.
+const FOX_BABY_WALK_SPEED_FACTOR: f32 = 1.0;
+const FOX_BABY_WALK_SCALE_FACTOR: f32 = 2.5;
+
+// ----- `FoxBabyAnimation.FOX_BABY_WALK` (length 0.5s, LOOPING). The baby's scampering gait: the four
+// legs kick ±35° in a diagonal trot (back-right & front-left in phase, the other diagonal a half-cycle
+// out), each leg also held forward/up (POSITION) and stretched 1.15× on y (SCALE); the head lifts
+// (POSITION) and the tail cocks back -2.5°. `posVec` negates y, `degreeVec` converts to radians, and
+// `scaleVec` offsets from `1.0`. Applied via `applyWalk`, so every value is scaled by the limb-swing
+// amplitude (zero at rest). The `body`/`head` ROTATION channels are vanilla no-ops (single zero keyframe),
+// transcribed faithfully. -----
+const FOX_BABY_WALK_BODY_ROT: [Keyframe; 1] = [keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR)];
+const FOX_BABY_WALK_BODY_POS: [Keyframe; 1] = [keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR)];
+const FOX_BABY_WALK_HEAD_ROT: [Keyframe; 1] = [keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR)];
+const FOX_BABY_WALK_HEAD_POS: [Keyframe; 1] = [keyframe(0.0, pos_vec(0.0, -1.025, 0.0), LINEAR)];
+const FOX_BABY_WALK_RIGHT_HIND_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(-35.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-35.0, 0.0, 0.0), CATMULLROM),
+];
+const FOX_BABY_WALK_RIGHT_HIND_LEG_POS: [Keyframe; 3] = [
+    keyframe(0.0, pos_vec(0.05, 0.6, -0.02), LINEAR),
+    keyframe(0.25, pos_vec(0.05, 0.6, -0.02), LINEAR),
+    keyframe(0.5, pos_vec(0.05, 0.6, -0.02), LINEAR),
+];
+const FOX_BABY_WALK_RIGHT_HIND_LEG_SCALE: [Keyframe; 1] =
+    [keyframe(0.0, scale_vec(1.0, 1.15, 1.0), LINEAR)];
+const FOX_BABY_WALK_LEFT_HIND_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(35.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(35.0, 0.0, 0.0), CATMULLROM),
+];
+const FOX_BABY_WALK_LEFT_HIND_LEG_POS: [Keyframe; 3] = [
+    keyframe(0.0, pos_vec(-0.05, 0.6, -0.02), LINEAR),
+    keyframe(0.25, pos_vec(-0.05, 0.6, -0.02), LINEAR),
+    keyframe(0.5, pos_vec(-0.05, 0.6, -0.02), LINEAR),
+];
+const FOX_BABY_WALK_LEFT_HIND_LEG_SCALE: [Keyframe; 1] =
+    [keyframe(0.0, scale_vec(1.0, 1.15, 1.0), LINEAR)];
+const FOX_BABY_WALK_RIGHT_FRONT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(35.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(-35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(35.0, 0.0, 0.0), CATMULLROM),
+];
+const FOX_BABY_WALK_RIGHT_FRONT_LEG_POS: [Keyframe; 1] =
+    [keyframe(0.0, pos_vec(0.05, 0.6, -0.4), LINEAR)];
+const FOX_BABY_WALK_RIGHT_FRONT_LEG_SCALE: [Keyframe; 1] =
+    [keyframe(0.0, scale_vec(1.0, 1.15, 1.0), LINEAR)];
+const FOX_BABY_WALK_LEFT_FRONT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(-35.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(35.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-35.0, 0.0, 0.0), CATMULLROM),
+];
+const FOX_BABY_WALK_LEFT_FRONT_LEG_POS: [Keyframe; 1] =
+    [keyframe(0.0, pos_vec(-0.05, 0.6, -0.4), LINEAR)];
+const FOX_BABY_WALK_LEFT_FRONT_LEG_SCALE: [Keyframe; 1] =
+    [keyframe(0.0, scale_vec(1.0, 1.15, 1.0), LINEAR)];
+const FOX_BABY_WALK_TAIL_ROT: [Keyframe; 1] =
+    [keyframe(0.0, degree_vec(-2.5, 0.0, 0.0), CATMULLROM)];
+const FOX_BABY_WALK_TAIL_POS: [Keyframe; 1] = [keyframe(0.0, pos_vec(0.0, -0.05, 0.0), CATMULLROM)];
+
+const FOX_BABY_WALK_BODY_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FOX_BABY_WALK_BODY_ROT), pos(&FOX_BABY_WALK_BODY_POS)];
+const FOX_BABY_WALK_HEAD_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FOX_BABY_WALK_HEAD_ROT), pos(&FOX_BABY_WALK_HEAD_POS)];
+const FOX_BABY_WALK_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 3] = [
+    rot(&FOX_BABY_WALK_RIGHT_HIND_LEG_ROT),
+    pos(&FOX_BABY_WALK_RIGHT_HIND_LEG_POS),
+    scale_channel(&FOX_BABY_WALK_RIGHT_HIND_LEG_SCALE),
+];
+const FOX_BABY_WALK_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 3] = [
+    rot(&FOX_BABY_WALK_LEFT_HIND_LEG_ROT),
+    pos(&FOX_BABY_WALK_LEFT_HIND_LEG_POS),
+    scale_channel(&FOX_BABY_WALK_LEFT_HIND_LEG_SCALE),
+];
+const FOX_BABY_WALK_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 3] = [
+    rot(&FOX_BABY_WALK_RIGHT_FRONT_LEG_ROT),
+    pos(&FOX_BABY_WALK_RIGHT_FRONT_LEG_POS),
+    scale_channel(&FOX_BABY_WALK_RIGHT_FRONT_LEG_SCALE),
+];
+const FOX_BABY_WALK_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 3] = [
+    rot(&FOX_BABY_WALK_LEFT_FRONT_LEG_ROT),
+    pos(&FOX_BABY_WALK_LEFT_FRONT_LEG_POS),
+    scale_channel(&FOX_BABY_WALK_LEFT_FRONT_LEG_SCALE),
+];
+const FOX_BABY_WALK_TAIL_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FOX_BABY_WALK_TAIL_ROT), pos(&FOX_BABY_WALK_TAIL_POS)];
+const FOX_BABY_WALK_BONES: [BoneAnimation; 7] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &FOX_BABY_WALK_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &FOX_BABY_WALK_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &FOX_BABY_WALK_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &FOX_BABY_WALK_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &FOX_BABY_WALK_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &FOX_BABY_WALK_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "tail",
+        channels: &FOX_BABY_WALK_TAIL_CHANNELS,
+    },
+];
+/// Vanilla `FoxBabyAnimation.FOX_BABY_WALK`: the 0.5s LOOPING baby gait, applied by
+/// `BabyFoxModel.setWalkingPose` via `babyWalkAnimation.applyWalk(walkPos, walkSpeed, 1.0, 2.5)`. The
+/// renderer drives it off the projected `walk_animation_pos/speed` through [`keyframe_walk_sample`].
+pub(in crate::entity_models) const FOX_BABY_WALK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 0.5,
+    looping: true,
+    bones: &FOX_BABY_WALK_BONES,
+};
+
+/// Vanilla `BabyFoxModel.setWalkingPose`: after the base `setWalkingPose` (head tilt, legs visible), it
+/// applies `FOX_BABY_WALK` via `applyWalk`. The keyframe-walk sample turns the limb-swing position into
+/// the loop time and the limb-swing speed into the amplitude (zero at rest), then each bone's
+/// position/rotation/scale offsets fold onto its bind pose (`scale` SETs from the `[1, 1, 1]` base, the
+/// legs stretching 1.15× on y). A no-op while standing. Mirrors the adult [`apply_fox_adult_leg_swing`]
+/// but as a keyframe gait over all seven animated bones (the four legs, the head lift, the tail cock).
+fn apply_fox_baby_walk(root: &mut ModelPart, walk_animation_pos: f32, walk_animation_speed: f32) {
+    if limb_swing_at_rest(walk_animation_speed) {
+        return;
+    }
+    let (seconds, scale) = keyframe_walk_sample(
+        &FOX_BABY_WALK,
+        walk_animation_pos,
+        walk_animation_speed,
+        FOX_BABY_WALK_SPEED_FACTOR,
+        FOX_BABY_WALK_SCALE_FACTOR,
+    );
+    let apply = |part: &mut ModelPart, bone: &str| {
+        let (position, rotation, scale_offset) =
+            sample_bone_offsets_with_scale(&FOX_BABY_WALK, bone, seconds, scale);
+        part.pose = keyframe_animated_pose(part.pose, position, rotation);
+        part.scale = keyframe_animated_scale(scale_offset);
+    };
+    apply(root.child_mut("head"), "head");
+    for name in FOX_LEG_NAMES {
+        apply(root.child_mut(name), name);
+    }
+    let body = root.child_mut("body");
+    apply(body, "body");
+    apply(body.child_mut("tail"), "tail");
+}
+
 /// Mutable fox model, mirroring vanilla `AdultFoxModel` / `BabyFoxModel`. The named root parts hang off
 /// a synthetic root, built from the baked colored geometry for the selected `baby` layout. The unified
-/// tree drives both render paths; `setup_anim` mirrors `FoxModel.setupAnim` faithfully (the baby walk
-/// keyframe and the renderer pounce/faceplant body pitch stay deferred).
+/// tree drives both render paths; `setup_anim` mirrors `FoxModel.setupAnim` faithfully (the renderer
+/// pounce/faceplant body pitch stays deferred).
 pub(in crate::entity_models) struct FoxModel {
     root: ModelPart,
     baby: bool,

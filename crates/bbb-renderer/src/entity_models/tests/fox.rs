@@ -141,6 +141,67 @@ fn fox_legs_swing_with_the_gait() {
 }
 
 #[test]
+fn fox_baby_walk_animation_matches_vanilla_definition() {
+    // Vanilla `FoxBabyAnimation.FOX_BABY_WALK`: a 0.5s LOOPING gait over seven bones (body, head, the
+    // four legs, the tail), the legs carrying ROTATION + POSITION + SCALE channels.
+    assert_eq!(FOX_BABY_WALK.length_seconds, 0.5);
+    assert!(FOX_BABY_WALK.looping);
+    assert_eq!(FOX_BABY_WALK.bones.len(), 7);
+
+    // The right hind leg kicks to `degreeVec(35, 0, 0)` at its `0.25` keyframe (sampled at full
+    // amplitude `scale = 1.0`).
+    let (_, rot, scale_off) =
+        sample_bone_offsets_with_scale(&FOX_BABY_WALK, "right_hind_leg", 0.25, 1.0);
+    assert!((rot[0] - 35.0_f32.to_radians()).abs() < 1.0e-4);
+    // Every leg stretches 1.15× on y (`scaleVec(1, 1.15, 1)` → a `0.15` offset from the `1.0` base).
+    assert!((scale_off[1] - 0.15).abs() < 1.0e-4);
+
+    // The head lifts by `posVec(0, -1.025, 0)` (y negated → `+1.025`), a constant offset scaled by the
+    // walk amplitude.
+    let (head_pos, _, _) = sample_bone_offsets_with_scale(&FOX_BABY_WALK, "head", 0.0, 1.0);
+    assert!((head_pos[1] - 1.025).abs() < 1.0e-4);
+
+    // At zero amplitude (a standing baby) every channel collapses to nothing.
+    let (z_pos, z_rot, z_scale) =
+        sample_bone_offsets_with_scale(&FOX_BABY_WALK, "right_hind_leg", 0.25, 0.0);
+    assert_eq!((z_pos, z_rot, z_scale), ([0.0; 3], [0.0; 3], [0.0; 3]));
+}
+
+#[test]
+fn baby_fox_scampers_with_the_keyframe_gait() {
+    // Unlike the adult swing (which leaves the head alone), the baby's `FOX_BABY_WALK` lifts the head
+    // and cocks the tail as well as kicking the legs, so a walking baby re-poses off the bind pose
+    // across the whole mesh. The baby head is `[0, 96)`.
+    let rest = EntityModelInstance::fox(430, [0.0, 64.0, 0.0], 0.0, true, FoxModelVariant::Red);
+    let rest_mesh = entity_model_mesh(&[rest]);
+    let walk_mesh = entity_model_mesh(&[rest.with_walk_animation(3.0, 0.8)]);
+    assert_eq!(rest_mesh.vertices.len(), walk_mesh.vertices.len());
+    assert_ne!(
+        rest_mesh.vertices, walk_mesh.vertices,
+        "the baby scampers off the bind pose"
+    );
+    assert_ne!(
+        rest_mesh.vertices[..96],
+        walk_mesh.vertices[..96],
+        "the baby's head lifts with the gait (the adult's does not)"
+    );
+
+    // The gait tracks the walk position, not just the speed.
+    let walk_later = entity_model_mesh(&[rest.with_walk_animation(6.0, 0.8)]);
+    assert_ne!(
+        walk_mesh.vertices, walk_later.vertices,
+        "the baby gait advances with the walk position"
+    );
+
+    // A standing baby (zero speed) holds the bind pose, whatever the position.
+    let still = entity_model_mesh(&[rest.with_walk_animation(3.0, 0.0)]);
+    assert_eq!(
+        still.vertices, rest_mesh.vertices,
+        "a standing baby holds the bind pose"
+    );
+}
+
+#[test]
 fn baby_fox_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `BabyFoxModel.createBodyLayer` (atlas 32×32): six named root parts — head (ears + snout
     // baked in as cubes), four legs, then body (with tail). Flatter than the adult, body has no pitch.
