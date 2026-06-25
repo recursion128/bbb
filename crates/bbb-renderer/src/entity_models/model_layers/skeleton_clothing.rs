@@ -3,6 +3,8 @@ use crate::entity_models::model::{ModelCube, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_STRAY_OUTER_LAYER: &str = "minecraft:stray#outer";
 pub(in crate::entity_models) const MODEL_LAYER_BOGGED_OUTER_LAYER: &str = "minecraft:bogged#outer";
+pub(in crate::entity_models) const MODEL_LAYER_DROWNED_OUTER_LAYER: &str =
+    "minecraft:drowned#outer";
 
 /// The clothing overlay renders textured-only (the stray frost / bogged mushroom layer has no colored
 /// debug variant), so every cube's `color` is an unused placeholder; only the geometry/UV matter.
@@ -220,5 +222,42 @@ pub(in crate::entity_models) fn bogged_clothing_root() -> ModelPart {
         BOGGED_OUTER_LEFT_ARM,
         BOGGED_OUTER_RIGHT_LEG,
         BOGGED_OUTER_LEFT_LEG,
+    )
+}
+
+// Vanilla 26.1 ModelLayers.DROWNED_OUTER_LAYER:
+// DrownedModel.createBodyLayer(new CubeDeformation(0.25F)), 64x64. This is `HumanoidModel.createMesh`
+// inflated by 0.25 (identical head/hat/body/right_arm/right_leg to the stray frost overlay above),
+// with the drowned overriding only the left arm/leg to its own `texOffs` — `texOffs(32, 48)` on the
+// arm and `texOffs(16, 48)` on the leg, neither mirrored (the drowned's left limbs are not mirror
+// copies of the right). The cubes store texel offsets, so the `64x64` outer texture normalizes them.
+pub(in crate::entity_models) const DROWNED_OUTER_LEFT_ARM: ModelCube = clothing_cube(
+    [-1.25, -2.25, -2.25],
+    [4.5, 12.5, 4.5],
+    [4.0, 12.0, 4.0],
+    [32.0, 48.0],
+    false,
+);
+
+pub(in crate::entity_models) const DROWNED_OUTER_LEFT_LEG: ModelCube = clothing_cube(
+    [-2.25, -0.25, -2.25],
+    [4.5, 12.5, 4.5],
+    [4.0, 12.0, 4.0],
+    [16.0, 48.0],
+    false,
+);
+
+/// Builds the drowned outer-layer root (vanilla `DrownedModel.createBodyLayer(CubeDeformation(0.25))`).
+/// The head/hat/body/right_arm/right_leg are the shared `HumanoidModel.createMesh(0.25)` cubes (same
+/// as the stray frost overlay); only the left arm/leg carry the drowned's distinct `texOffs`.
+pub(in crate::entity_models) fn drowned_outer_root() -> ModelPart {
+    clothing_root(
+        STRAY_OUTER_HEAD,
+        STRAY_OUTER_HAT,
+        STRAY_OUTER_BODY,
+        STRAY_OUTER_RIGHT_ARM,
+        DROWNED_OUTER_LEFT_ARM,
+        STRAY_OUTER_RIGHT_LEG,
+        DROWNED_OUTER_LEFT_LEG,
     )
 }

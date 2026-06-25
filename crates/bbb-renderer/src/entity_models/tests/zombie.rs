@@ -872,33 +872,50 @@ fn husk_texture_images() -> Vec<EntityModelTextureImage> {
 fn drowned_textured_layer_passes_reuse_the_zombie_body_layer() {
     assert_eq!(MODEL_LAYER_DROWNED, "minecraft:drowned#main");
     assert_eq!(MODEL_LAYER_DROWNED_BABY, "minecraft:drowned_baby#main");
+    assert_eq!(MODEL_LAYER_DROWNED_OUTER_LAYER, "minecraft:drowned#outer");
 
     // Vanilla `DrownedModel.createBodyLayer extends ZombieModel`; the non-swimming drowned reuses
-    // the unified `ZombieVariantModel` (plain-zombie) tree. The drowned's distinct left-limb
-    // `texOffs(32, 48)`/`texOffs(16, 48)`, the `DrownedOuterLayer`, and the swim re-pose all defer,
-    // so the layer-pass geometry is vestigial.
+    // the unified `ZombieVariantModel` (plain-zombie) tree for the base body, so the base layer-pass
+    // geometry is vestigial. The drowned's distinct left-limb `texOffs(32, 48)`/`texOffs(16, 48)`
+    // live on the outer-layer overlay; the swim re-pose defers.
+    assert_eq!(DROWNED_OUTER_LEFT_ARM.tex, [32.0, 48.0]);
+    assert!(!DROWNED_OUTER_LEFT_ARM.mirror);
+    assert_eq!(DROWNED_OUTER_LEFT_LEG.tex, [16.0, 48.0]);
+    assert!(!DROWNED_OUTER_LEFT_LEG.mirror);
+    // The shared `createMesh(0.25)` cubes are byte-identical to the stray frost overlay.
+    assert_eq!(DROWNED_OUTER_LEFT_ARM.size, STRAY_OUTER_LEFT_ARM.size);
+    assert_eq!(DROWNED_OUTER_LEFT_ARM.uv_size, STRAY_OUTER_LEFT_ARM.uv_size);
 }
 
 #[test]
 fn drowned_textured_layer_passes_match_vanilla_renderer() {
-    for (baby, model_layer, texture) in [
-        (false, "minecraft:drowned#main", DROWNED_TEXTURE_REF),
-        (
-            true,
-            "minecraft:drowned_baby#main",
-            DROWNED_BABY_TEXTURE_REF,
-        ),
-    ] {
-        let passes = drowned_textured_layer_passes(baby);
-        assert_eq!(passes.len(), 1);
-        assert_eq!(passes[0].kind, EntityModelLayerKind::DrownedBase);
-        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
-        assert_eq!(passes[0].model_layer, model_layer);
-        assert_eq!(passes[0].texture, texture);
-        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
-    }
+    // Adult: base body (`drowned.png`) + the always-on white `DrownedOuterLayer` overlay
+    // (`drowned_outer_layer.png`). Baby: base body only — the baby outer layer defers.
+    let adult = drowned_textured_layer_passes(false);
+    assert_eq!(adult.len(), 2);
+    assert_eq!(adult[0].kind, EntityModelLayerKind::DrownedBase);
+    assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(adult[0].model_layer, "minecraft:drowned#main");
+    assert_eq!(adult[0].texture, DROWNED_TEXTURE_REF);
+    assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
+
+    assert_eq!(adult[1].kind, EntityModelLayerKind::DrownedOuter);
+    assert_eq!(adult[1].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(adult[1].model_layer, "minecraft:drowned#outer");
+    assert_eq!(adult[1].texture, DROWNED_OUTER_LAYER_TEXTURE_REF);
+    assert_eq!(adult[1].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(adult[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((adult[1].collector_order, adult[1].submit_sequence), (1, 1));
+
+    let baby = drowned_textured_layer_passes(true);
+    assert_eq!(baby.len(), 1);
+    assert_eq!(baby[0].kind, EntityModelLayerKind::DrownedBase);
+    assert_eq!(baby[0].model_layer, "minecraft:drowned_baby#main");
+    assert_eq!(baby[0].texture, DROWNED_BABY_TEXTURE_REF);
+
     assert!(entity_model_texture_refs().contains(&DROWNED_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&DROWNED_BABY_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&DROWNED_OUTER_LAYER_TEXTURE_REF));
     assert_eq!(
         drowned_entity_texture_refs(),
         &[DROWNED_TEXTURE_REF, DROWNED_BABY_TEXTURE_REF]
@@ -953,6 +970,75 @@ fn drowned_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+#[test]
+fn drowned_outer_layer_overlays_the_inflated_white_shell() {
+    // Vanilla `DrownedOuterLayer`: an always-on white cutout copy of the inflated
+    // `DrownedModel.createBodyLayer(0.25)` shell (`drowned_outer_layer.png`), posed by the same
+    // animator as the base so it tracks the limbs. The seven inflated boxes add 42 cutout faces.
+    let mut images = drowned_texture_images();
+    let len = usize::try_from(
+        DROWNED_OUTER_LAYER_TEXTURE_REF.size[0] * DROWNED_OUTER_LAYER_TEXTURE_REF.size[1] * 4,
+    )
+    .unwrap();
+    images.push(EntityModelTextureImage::new(
+        DROWNED_OUTER_LAYER_TEXTURE_REF,
+        vec![200u8; len],
+    ));
+    let (with_outer, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let (base_only, _) = build_entity_model_texture_atlas(&drowned_texture_images()).unwrap();
+
+    let instances = [EntityModelInstance::zombie_variant(
+        57,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::Drowned,
+        false,
+    )];
+    let base = entity_model_textured_mesh(&instances, &base_only);
+    let outer = entity_model_textured_mesh(&instances, &with_outer);
+
+    // The outer adds exactly the inflated humanoid shell (7 boxes * 6 faces).
+    assert_eq!(outer.cutout_faces, base.cutout_faces + 42);
+    assert!(outer.vertices.len() > base.vertices.len());
+    // The white outer copy keeps the [1, 1, 1, 1] tint.
+    assert!(outer
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    // The 0.25 inflation pushes the shell past the base body in every direction.
+    let (bmin, bmax) = textured_mesh_extents(&base);
+    let (omin, omax) = textured_mesh_extents(&outer);
+    assert!(omin[0] < bmin[0] && omin[1] < bmin[1] && omin[2] < bmin[2]);
+    assert!(omax[0] > bmax[0] && omax[1] > bmax[1] && omax[2] > bmax[2]);
+
+    // The overlay is posed by the same animator, so advancing the walk re-poses it too.
+    let walking = [instances[0]
+        .with_walk_animation(2.0, 1.0)
+        .with_age_in_ticks(8.0)];
+    let outer_walk = entity_model_textured_mesh(&walking, &with_outer);
+    assert_ne!(
+        outer.vertices, outer_walk.vertices,
+        "outer shell tracks the limbs"
+    );
+
+    // The baby drowned has no outer layer yet (the baby outer mesh defers), so adding the outer
+    // texture changes nothing for it.
+    let baby = [EntityModelInstance::zombie_variant(
+        58,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::Drowned,
+        true,
+    )];
+    let baby_base = entity_model_textured_mesh(&baby, &base_only);
+    let baby_outer = entity_model_textured_mesh(&baby, &with_outer);
+    assert_eq!(
+        baby_base.cutout_faces, baby_outer.cutout_faces,
+        "baby outer defers"
+    );
 }
 
 #[test]

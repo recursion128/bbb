@@ -46,6 +46,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     ZombieBase,
     HuskBase,
     DrownedBase,
+    DrownedOuter,
     ZombieVillagerBase,
     PiglinBase,
     IllagerBase,
@@ -561,15 +562,14 @@ pub(in crate::entity_models) fn drowned_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
     // Vanilla `DrownedModel.createBodyLayer extends ZombieModel`; the non-swimming drowned reuses the
-    // unified `ZombieVariantModel` (plain-zombie) tree. Only the texture differs from the husk path;
-    // the drowned's distinct left-limb `texOffs`, the `DrownedOuterLayer`, and the swim re-pose defer.
-    // The layer-pass geometry is vestigial (`&[]`).
+    // unified `ZombieVariantModel` (plain-zombie) tree for the base body. The base body and the outer
+    // layer both come from unified model trees, so the layer-pass parts are vestigial (`&[]`).
     let (model_layer, texture) = if baby {
         (MODEL_LAYER_DROWNED_BABY, DROWNED_BABY_TEXTURE_REF)
     } else {
         (MODEL_LAYER_DROWNED, DROWNED_TEXTURE_REF)
     };
-    vec![EntityModelLayerPass {
+    let mut passes = vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::DrownedBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer,
@@ -578,7 +578,23 @@ pub(in crate::entity_models) fn drowned_textured_layer_passes(
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
-    }]
+    }];
+    // Vanilla `DrownedOuterLayer`: an always-on white cutout copy of `drowned_outer_layer.png` over the
+    // `DrownedModel.createBodyLayer(0.25)` inflated shell. The baby outer (`BabyDrownedModel`, a distinct
+    // baby-zombie inflated mesh) stays deferred, so only the adult drowned carries the overlay.
+    if !baby {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::DrownedOuter,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: MODEL_LAYER_DROWNED_OUTER_LAYER,
+            texture: DROWNED_OUTER_LAYER_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 1,
+            submit_sequence: 1,
+        });
+    }
+    passes
 }
 
 pub(in crate::entity_models) fn zombie_villager_textured_layer_passes(

@@ -1,6 +1,6 @@
 use super::{
-    apply_head_look, apply_humanoid_leg_swing_named, apply_zombie_arms_held_out_named, PartPose,
-    PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_leg_swing_named, apply_zombie_arms_held_out_named,
+    drowned_outer_root, PartPose, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::ZombieVariantModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -717,6 +717,42 @@ impl EntityModel for ZombieVariantModel {
         apply_zombie_family_anim(&mut self.root, instance);
         // Vanilla `DrownedModel.setupAnim` raises the trident to throw after the held-out zombie arms.
         // Only the drowned sets this flag (the husk / zombie villager never throw).
+        if instance.render_state.drowned_throw_trident {
+            apply_drowned_throw_trident(&mut self.root);
+        }
+    }
+}
+
+/// The drowned outer-layer overlay model, mirroring vanilla `DrownedOuterLayer`: a second white
+/// `coloredCutoutModelCopyLayerRender` copy of `DrownedModel.createBodyLayer(CubeDeformation(0.25))`
+/// drawn with `drowned_outer_layer.png`. It is a `DrownedModel` in its own right, so it is posed by
+/// the exact same animator as the base (the shared `ZombieModel.setupAnim` plus the drowned trident
+/// throw), keeping the inflated shell glued to the limbs. The swim re-pose stays deferred along with
+/// the base swim animation; the baby outer (`BabyDrownedModel.createBodyLayer`, a distinct baby-zombie
+/// inflated mesh) is not yet wired, so this covers the adult drowned.
+pub(in crate::entity_models) struct DrownedOuterModel {
+    root: ModelPart,
+}
+
+impl DrownedOuterModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: drowned_outer_root(),
+        }
+    }
+}
+
+impl EntityModel for DrownedOuterModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        apply_zombie_family_anim(&mut self.root, instance);
         if instance.render_state.drowned_throw_trident {
             apply_drowned_throw_trident(&mut self.root);
         }

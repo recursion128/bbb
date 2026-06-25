@@ -20,11 +20,11 @@ use super::{
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
         armor_layer_tint, armor_slot_texture, BreezeWindModel, CamelModel, CreeperModel,
-        HoglinModel, HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel, SheepFurModel,
-        SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
-        TropicalFishModel, TropicalFishPatternModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
+        DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, PiglinModel, PlayerModel,
+        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
+        SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, WindChargeModel,
+        WitherModel, ZombieModel, ZombieVariantModel, BREEZE_WIND_TEXTURE_REF,
+        CREEPER_ARMOR_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
         STANDARD_OUTER_ARMOR_DEFORMATION, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
@@ -940,20 +940,31 @@ fn emit_drowned_textured_model(
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    // The unified `ZombieVariantModel` tree drives both render paths; `setup_anim` runs the shared
-    // `ZombieModel.setupAnim` (head look + leg swing + held-out arms). `DrownedModel extends
-    // ZombieModel`, so the non-swimming drowned reuses the zombie body. The `DrownedOuterLayer`, the
-    // swim re-pose (needs `swimAmount`), and the trident throw arm pose all stay deferred. No root scale.
+    // The unified `ZombieVariantModel` tree drives the base body; `setup_anim` runs the shared
+    // `ZombieModel.setupAnim` (head look + leg swing + held-out arms) plus the drowned trident throw.
+    // `DrownedModel extends ZombieModel`, so the non-swimming drowned reuses the zombie body. The
+    // always-on `DrownedOuterLayer` is a second white cutout pass driven by a `DrownedOuterModel`
+    // (the inflated `createBodyLayer(0.25)` shell) posed by the SAME animator, so it tracks the limbs.
+    // The swim re-pose (needs `swimAmount`) and the baby outer layer stay deferred. No root scale.
     let transform = entity_model_root_transform(instance);
-    let mut model = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        drowned_textured_layer_passes(baby),
-        atlas,
-    );
+    let mut base = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, baby);
+    base.prepare(&instance);
+    for pass in drowned_textured_layer_passes(baby) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        let mesh = meshes.mesh_mut(pass.render_type);
+        if matches!(pass.kind, EntityModelLayerKind::DrownedOuter) {
+            let mut outer = DrownedOuterModel::new();
+            outer.prepare(&instance);
+            outer
+                .root()
+                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+        } else {
+            base.root()
+                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+        }
+    }
 }
 
 fn emit_zombie_villager_textured_model(
