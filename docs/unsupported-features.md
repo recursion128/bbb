@@ -810,11 +810,29 @@ When an agent does any of the following, update this file in the same slice:
         `SOUTH` + back `NORTH` over `0..=16`, plus per-pixel side faces tracing
         the alpha silhouette), corners via `FaceInfo`/`FaceBakery` and UVs via
         `CuboidFace` `R0`, rendered un-culled.
-      - remaining slices: the GPU item-model draw pass (binds the blocks atlas,
-        applies model/view/proj), the 8 vanilla display transforms, and wiring
-        each of the four consumers. Item lighting context (GUI front-lit vs
-        world diffuse) is an open point — the baked `shade` currently uses the
-        terrain cardinal `Direction.getShade` for both block- and generated-items.
+      - GPU item-model draw pass: the renderer draws baked `ItemModelMesh`es
+        with one item-model pipeline against two atlases — block-items sample
+        the blocks atlas (terrain bind group), flat/generated items sample the
+        item atlas (the dropped-item billboard bind group) — via
+        `set_block_item_model_meshes` / `set_flat_item_model_meshes`, solid
+        (depth-tested + depth-writing) and un-culled, in a `Load` pass before
+        the billboards.
+      - first consumer (dropped block-items): dropped item entities whose item
+        is a block render as 3D block models (native `item_models`), placed by
+        vanilla `ItemEntityRenderer`'s bob + Y spin composed with the block
+        GROUND display transform (`[0,3,0]/16`, scale `0.25`, centered), clocked
+        by world game time + partial tick with a per-entity phase. They are
+        excluded from the billboard path; non-block items and `Cross` foliage
+        blocks keep their billboard.
+      - remaining slices: flat / generated dropped items (extrude the item
+        sprite via the item atlas, needs the per-sprite alpha mask), the other
+        three consumers (held items, item frames / armor-stand, HUD 3D icons),
+        and the remaining display transforms (gui/fixed/firstperson/thirdperson/
+        head; only `ground` is wired, with the default block transform — custom
+        per-item ground transforms are not yet retained). Item lighting context
+        (GUI front-lit vs world diffuse) is an open point — the baked `shade`
+        currently uses the terrain cardinal `Direction.getShade` for both
+        block- and generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried
