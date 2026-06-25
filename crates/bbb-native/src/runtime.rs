@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -11,11 +12,11 @@ use bbb_protocol::{
     packets::{ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary},
 };
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect,
-    HUD_HOTBAR_SLOTS,
+    BlockDestroyOverlay, CameraPose, ClearColor, HudBlockItemModel, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 use bbb_world::{
     BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
@@ -376,6 +377,11 @@ pub(crate) fn pump_network_and_terrain(
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
     renderer.set_hud_hotbar_item_icons(hotbar_item_icons(world, item_runtime, entity_partial_tick));
+    renderer.set_hud_hotbar_block_item_models(hotbar_block_item_models(
+        world,
+        item_runtime,
+        terrain_textures,
+    ));
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
     sync_loom_pattern_state_for_hud(input, world);
@@ -525,6 +531,46 @@ fn hotbar_item_icons(
     }
 
     icons
+}
+
+/// The hotbar's 3D block items (vanilla inventory item rendering): for each slot holding a block item,
+/// its block model quads (over the blocks atlas) plus its `gui` display transform, so the renderer draws
+/// it as a 3D icon instead of the flat 2D sprite. `None` for empty slots and flat items (which keep the
+/// 2D sprite drawn by the HUD layer).
+fn hotbar_block_item_models(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+) -> Vec<Option<HudBlockItemModel>> {
+    let mut models: Vec<Option<HudBlockItemModel>> = (0..HUD_HOTBAR_SLOTS).map(|_| None).collect();
+    let Some(item_runtime) = item_runtime else {
+        return models;
+    };
+    for (slot, item) in world.inventory().hotbar_item_states().iter().enumerate() {
+        if slot >= HUD_HOTBAR_SLOTS {
+            break;
+        }
+        let Some(item_id) = item.item.item_id else {
+            continue;
+        };
+        let Some(resource_id) = item_runtime.item_resource_id(item_id) else {
+            continue;
+        };
+        let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) else {
+            continue;
+        };
+        if quads.is_empty() {
+            continue;
+        }
+        let gui = item_runtime
+            .item_display_transform(item_id, bbb_pack::BlockModelDisplayContext::Gui)
+            .unwrap_or_default();
+        models[slot] = Some(HudBlockItemModel {
+            quads,
+            gui_display: crate::item_models::display_matrix(&gui, false),
+        });
+    }
+    models
 }
 
 fn release_input_if_screen_opened(

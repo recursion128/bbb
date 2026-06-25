@@ -790,11 +790,13 @@ When an agent does any of the following, update this file in the same slice:
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
-    - 3D Block-Model / Item-Model Rendering (in progress, renderer geometry
-      layer complete): a renderer-owned baking layer turns parsed block/item
-      models into 3D textured quad meshes sampling the same blocks/items atlas
-      as terrain, for all four item consumers (dropped item entities, held
-      items, item frames/armor-stand, HUD 3D inventory icons). Done so far:
+    - 3D Block-Model / Item-Model Rendering (all four consumers wired): a
+      renderer-owned baking layer turns parsed block/item models into 3D textured
+      quad meshes sampling the same blocks/items atlas as terrain, for all four
+      item consumers (dropped item entities, held items, item frames/armor-stand,
+      HUD 3D inventory icons) — every consumer is now implemented; the remaining
+      items are refinements (armor-stand held items, inventory-screen 3D icons,
+      first-person viewmodel, combat arm poses, custom ground transforms). Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs, vertex
@@ -881,17 +883,33 @@ When an agent does any of the following, update this file in the same slice:
         its rotation at scale `0.5`. Deferred: the filled-map full-frame render
         (a map frame shows only its border) and the `0.5`-vs-`0.4375` invisible
         offset; the back panel's `15.5` depth is rounded to `15`.
-      - remaining slices: the last consumer (HUD 3D inventory icons — block
-        items still draw as flat 2D sprites; needs a GUI orthographic 3D pass +
-        depth, the existing item-model pipeline is hard-bound to the world
-        camera); held-item refinements (baby humanoids; first-person viewmodel;
-        family-specific combat arm poses — bow-aim / crossbow / spear — deferred
-        entity-side state); armor-stand held items. The dropped-item `ground`
-        path still uses the default block/generated GROUND transform + seating
-        lift (custom per-item ground transforms not yet applied). Item lighting
-        context (GUI front-lit vs world diffuse) is an open point — the baked
-        `shade` currently uses the terrain cardinal `Direction.getShade` for both
-        block- and generated-items.
+      - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
+        a block item renders its block model as a 3D icon (vanilla 3D inventory
+        item rendering) instead of the flat 2D sprite. Native
+        `hotbar_block_item_models` resolves each slot's block-model quads (over
+        the blocks atlas) plus its `gui` display transform into a
+        `HudBlockItemModel`; `set_hud_hotbar_block_item_models` hands them to the
+        renderer. A dedicated GUI item pass draws after the 2D HUD with its own
+        `gui_ortho` camera (vanilla `setupOrtho(0, w, h, 0, -1000, 1000)`,
+        invert-Y), a separate `gui_item_camera_buffer` (so the same-submit world
+        camera write isn't clobbered), color `Load` + a fresh depth `Clear` (per
+        vanilla's per-slot depth clear so each icon's faces sort within its slot),
+        reusing the existing item-model pipeline against the resident blocks
+        atlas. `gui_item_slot_placement` seats each model in its slot pixel rect
+        (`translate(slot_center)·scale(px, -px, px)`); the model's own `gui`
+        display transform centers and tilts it. Verified end-to-end by a headless
+        llvmpipe readback test (`hud_block_item_renders_visible_pixels_in_its_slot`)
+        that renders a block icon and asserts visible non-background pixels in the
+        slot. Flat / generated items keep their 2D sprite (no 3D model).
+      - remaining slices: inventory-screen (non-hotbar) 3D block icons reuse the
+        same pass once their slot rects are produced; held-item refinements (baby
+        humanoids; first-person viewmodel; family-specific combat arm poses —
+        bow-aim / crossbow / spear — deferred entity-side state); armor-stand held
+        items. The dropped-item `ground` path still uses the default
+        block/generated GROUND transform + seating lift (custom per-item ground
+        transforms not yet applied). Item lighting context (GUI front-lit vs world
+        diffuse) is an open point — the baked `shade` currently uses the terrain
+        cardinal `Direction.getShade` for both block- and generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried

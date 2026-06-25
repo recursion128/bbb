@@ -48,7 +48,9 @@ pub use crate::hud::{
     HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT, HUD_ASCII_LAST_GLYPH, HUD_HOTBAR_SLOTS,
 };
 pub use crate::item_entities::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
-pub use crate::item_models::{bake_item_model_mesh, ItemModelMesh, ItemModelQuad};
+pub use crate::item_models::{
+    bake_item_model_mesh, HudBlockItemModel, ItemModelMesh, ItemModelQuad,
+};
 pub use crate::particles::{
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
 };

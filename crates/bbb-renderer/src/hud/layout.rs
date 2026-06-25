@@ -1,3 +1,4 @@
+use glam::{Mat4, Vec3};
 use winit::dpi::PhysicalSize;
 
 use super::{HudAsciiGlyph, HudDigitGlyph, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
@@ -110,6 +111,18 @@ pub(super) fn hotbar_item_hud_rect(surface_size: PhysicalSize<u32>, slot: usize)
         width: HUD_HOTBAR_ITEM_SIZE,
         height: HUD_HOTBAR_ITEM_SIZE,
     }
+}
+
+/// The model→GUI-pixel placement for a 3D inventory item rendered in `rect` (vanilla `GuiItemAtlas`:
+/// `translate(slot_center, 0) · scale(slot_px, -slot_px, slot_px)`). Composed with the item's GUI
+/// display transform and projected by the GUI ortho camera, it seats a `0..1` (post-display) model in the
+/// slot's pixel rect, flipping Y to GUI space.
+pub(super) fn gui_item_slot_placement(rect: HudRect) -> Mat4 {
+    let size = rect.width as f32;
+    let center_x = rect.x + size / 2.0;
+    let center_y = rect.y + rect.height as f32 / 2.0;
+    Mat4::from_translation(Vec3::new(center_x, center_y, 0.0))
+        * Mat4::from_scale(Vec3::new(size, -size, size))
 }
 
 pub(super) fn heart_hud_rect(

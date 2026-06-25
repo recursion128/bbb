@@ -29,6 +29,15 @@ pub struct ItemModelQuad {
     pub shade: f32,
 }
 
+/// A hotbar slot's 3D block item: the block model's quads (atlas-absolute UVs over the blocks atlas, in
+/// `0..=16` model space) plus its resolved `gui` display transform. The renderer seats it in the slot's
+/// pixel rect and draws it under the GUI ortho camera (vanilla 3D inventory icon).
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudBlockItemModel {
+    pub quads: Vec<ItemModelQuad>,
+    pub gui_display: Mat4,
+}
+
 /// A baked block/item model vertex: the model-space position normalized to the unit cube and pushed
 /// through the caller's `transform`, the atlas-absolute UV, and the `tint × shade` color.
 #[repr(C)]
@@ -119,6 +128,14 @@ impl Renderer {
     /// that atlas has been uploaded; otherwise skipped.
     pub fn set_flat_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
         self.flat_item_model_meshes = meshes;
+    }
+
+    /// Sets this frame's 3D block items for the hotbar slots (`None` for an empty slot or a flat item,
+    /// which keeps its 2D sprite). Each is the block's model quads plus its `gui` display transform; the
+    /// renderer seats them in their slot pixel rects and draws them in the GUI item pass (vanilla 3D
+    /// inventory icons). Index `i` is hotbar slot `i`.
+    pub fn set_hud_hotbar_block_item_models(&mut self, models: Vec<Option<HudBlockItemModel>>) {
+        self.hud_hotbar_block_item_models = models;
     }
 
     /// Concatenates this frame's block-item meshes into one vertex + index buffer for upload.

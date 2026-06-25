@@ -58,6 +58,18 @@ impl CameraUniform {
         }
     }
 
+    /// The GUI orthographic projection for 3D inventory item icons (vanilla `Projection.setupOrtho`,
+    /// `invertY`): `setOrtho(0, width, height, 0, -1000, 1000)` over a `0..1` (wgpu) depth range. Maps GUI
+    /// pixel space (origin top-left, y down) to clip space, so a block item baked at its slot pixel rect
+    /// projects into the slot. `width`/`height` are the surface size in pixels.
+    pub(crate) fn gui_ortho(width: f32, height: f32) -> Self {
+        let projection =
+            Mat4::orthographic_rh(0.0, width.max(1.0), height.max(1.0), 0.0, -1000.0, 1000.0);
+        Self {
+            view_proj: projection.to_cols_array_2d(),
+        }
+    }
+
     pub(crate) fn from_bounds(bounds: TerrainBounds, aspect: f32) -> Self {
         let center = bounds.center();
         let extent = bounds.extent();

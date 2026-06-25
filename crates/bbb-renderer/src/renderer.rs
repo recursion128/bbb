@@ -64,8 +64,11 @@ pub struct Renderer {
     pub(super) hud_white_pixel: HudSpriteGpu,
     pub(super) terrain_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) camera_buffer: wgpu::Buffer,
+    pub(super) gui_item_camera_buffer: wgpu::Buffer,
     pub(super) terrain_atlas: TerrainAtlasGpu,
     pub(super) terrain_bind_group: wgpu::BindGroup,
+    pub(super) gui_item_bind_group: wgpu::BindGroup,
+    pub(super) hud_hotbar_block_item_models: Vec<Option<crate::item_models::HudBlockItemModel>>,
     pub(super) terrain_opaque: Vec<ResidentTerrainMesh>,
     pub(super) terrain_cutout: Vec<ResidentTerrainMesh>,
     pub(super) terrain_translucent: Vec<ResidentTerrainMesh>,
@@ -290,11 +293,19 @@ impl Renderer {
         let terrain_bind_group_layout = create_terrain_bind_group_layout(&device);
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
         let camera_buffer = create_camera_buffer(&device);
+        let gui_item_camera_buffer = create_camera_buffer(&device);
         let terrain_atlas = create_terrain_atlas_gpu(&device, &queue, 1, 1, &[255, 255, 255, 255])?;
         let terrain_bind_group = create_terrain_bind_group(
             &device,
             &terrain_bind_group_layout,
             &camera_buffer,
+            &terrain_atlas,
+        );
+        // The GUI item pass reuses the item-model pipeline + blocks atlas but with its own ortho camera.
+        let gui_item_bind_group = create_terrain_bind_group(
+            &device,
+            &terrain_bind_group_layout,
+            &gui_item_camera_buffer,
             &terrain_atlas,
         );
         let terrain_pipeline = create_terrain_pipeline(&device, format, &terrain_bind_group_layout);
@@ -366,8 +377,11 @@ impl Renderer {
             hud_white_pixel,
             terrain_bind_group_layout,
             camera_buffer,
+            gui_item_camera_buffer,
             terrain_atlas,
             terrain_bind_group,
+            gui_item_bind_group,
+            hud_hotbar_block_item_models: Vec::new(),
             terrain_opaque: Vec::new(),
             terrain_cutout: Vec::new(),
             terrain_translucent: Vec::new(),
@@ -671,6 +685,12 @@ impl Renderer {
             &self.camera_buffer,
             &self.terrain_atlas,
         );
+        self.gui_item_bind_group = create_terrain_bind_group(
+            &self.device,
+            &self.terrain_bind_group_layout,
+            &self.gui_item_camera_buffer,
+            &self.terrain_atlas,
+        );
         self.counters.atlas_pages = 1;
         self.counters.atlas_reallocations += 1;
         self.counters.atlas_width = width;
@@ -803,6 +823,11 @@ impl Renderer {
         };
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
+        // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
+        // does not clobber the world camera, which earlier passes in the same submit still read).
+        let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32);
+        self.queue
+            .write_buffer(&self.gui_item_camera_buffer, 0, bytemuck::bytes_of(&gui));
     }
 
     fn scene_bounds(&self) -> Option<TerrainBounds> {

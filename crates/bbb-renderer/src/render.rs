@@ -432,6 +432,59 @@ impl Renderer {
             }
         }
 
+        // GUI 3D block-item icons: the hotbar's block items render as 3D models (vanilla inventory item
+        // rendering) under the GUI ortho camera, on top of the 2D HUD, against a freshly-cleared depth
+        // buffer so their faces sort within each slot. Block-light items sample the blocks atlas via the
+        // GUI item bind group (the world camera's pass already finished, so reusing the depth target with
+        // a clear is safe).
+        {
+            let gui_item_mesh = self.collect_hud_block_item_mesh();
+            if !gui_item_mesh.indices.is_empty() {
+                let vertex_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-hud-block-item-vertices"),
+                            contents: bytemuck::cast_slice(&gui_item_mesh.vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+                let index_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-hud-block-item-indices"),
+                            contents: bytemuck::cast_slice(&gui_item_mesh.indices),
+                            usage: wgpu::BufferUsages::INDEX,
+                        });
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("bbb-native-hud-item-pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.item_model_pipeline);
+                pass.set_bind_group(0, &self.gui_item_bind_group, &[]);
+                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..gui_item_mesh.indices.len() as u32, 0, 0..1);
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+        }
+
         let readback = if let Some(path) = screenshot {
             Some(self.prepare_screenshot_copy(&mut encoder, &frame.texture, path)?)
         } else {

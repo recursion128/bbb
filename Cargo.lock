@@ -319,6 +319,7 @@ dependencies = [
  "bytemuck",
  "glam 0.29.3",
  "image",
+ "pollster",
  "serde",
  "wgpu",
  "winit",
