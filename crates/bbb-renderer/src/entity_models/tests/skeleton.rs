@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::entity_models::geometry::{ModelCubeDesc, ModelPartDesc};
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 /// An inline `HumanoidModel` body-layer fixture for the desc-level swing reference helpers (the
 /// skeleton now builds a named tree, so it has no `*_PARTS` desc const). Head, body, arms at `±5`,
@@ -1108,6 +1108,136 @@ fn skeleton_textured_arms_idle_bob_as_age_advances() {
         early.vertices[120..168],
         later.vertices[120..168],
         "the legs do not bob"
+    );
+}
+
+#[test]
+fn skeleton_model_aims_both_arms_for_bow_and_arrow() {
+    // Vanilla `AbstractSkeletonRenderer.getArmPose` returns `BOW_AND_ARROW` when the skeleton
+    // `isAggressive() && getMainHandItem().is(Items.BOW)`, so `HumanoidModel.poseRightArm`'s
+    // `BOW_AND_ARROW` case raises both arms forward along the head look (right-handed bow, the off
+    // arm splayed `0.4` outward), overwriting the idle walk swing's xRot/yRot while preserving zRot.
+    let yaw = 30.0_f32;
+    let pitch = -12.5_f32;
+    let yaw_rad = yaw.to_radians();
+    let pitch_rad = pitch.to_radians();
+    let aim_pitch = -std::f32::consts::FRAC_PI_2 + pitch_rad;
+
+    let mut model = SkeletonModel::new(None);
+    let aiming = EntityModelInstance::skeleton(810, [0.0, 64.0, 0.0], 0.0)
+        .with_head_look(yaw, pitch)
+        .with_is_aggressive(true)
+        .with_main_hand_holds_bow(true);
+    model.prepare(&aiming);
+
+    let right = model.root_mut().child_mut("right_arm");
+    assert!(
+        (right.pose.rotation[0] - aim_pitch).abs() < 1e-6,
+        "right arm aims down the head pitch: {} vs {aim_pitch}",
+        right.pose.rotation[0]
+    );
+    assert!(
+        (right.pose.rotation[1] - (-0.1 + yaw_rad)).abs() < 1e-6,
+        "right arm yaws -0.1 off the head yaw: {}",
+        right.pose.rotation[1]
+    );
+    let left = model.root_mut().child_mut("left_arm");
+    assert!(
+        (left.pose.rotation[0] - aim_pitch).abs() < 1e-6,
+        "left arm aims down the head pitch: {} vs {aim_pitch}",
+        left.pose.rotation[0]
+    );
+    assert!(
+        (left.pose.rotation[1] - (0.1 + yaw_rad + 0.4)).abs() < 1e-6,
+        "left arm splays 0.4 outward off the head yaw: {}",
+        left.pose.rotation[1]
+    );
+
+    // The pose is gated on BOTH flags: a bow held without aggression (not drawing) and aggression
+    // without a bow (a melee skeleton) both keep the idle arms, which rest near xRot 0 — far from
+    // the ~-1.7 rad aim pitch.
+    for not_aiming in [
+        EntityModelInstance::skeleton(811, [0.0, 64.0, 0.0], 0.0)
+            .with_head_look(yaw, pitch)
+            .with_main_hand_holds_bow(true),
+        EntityModelInstance::skeleton(812, [0.0, 64.0, 0.0], 0.0)
+            .with_head_look(yaw, pitch)
+            .with_is_aggressive(true),
+    ] {
+        let mut idle = SkeletonModel::new(None);
+        idle.prepare(&not_aiming);
+        assert!(
+            (idle.root_mut().child_mut("right_arm").pose.rotation[0] - aim_pitch).abs() > 1.0,
+            "a skeleton missing either flag does not raise the bow"
+        );
+    }
+}
+
+#[test]
+fn skeleton_bow_aim_moves_only_the_arms_in_the_textured_mesh() {
+    // End-to-end through the dispatch path: drawing a bow re-poses the arm vertices ([72, 120))
+    // while leaving the head/body ([0, 72)) and legs ([120, 168)) byte-identical, and the pose is
+    // gated on both flags so a skeleton missing either renders the resting mesh.
+    let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
+    let base = EntityModelInstance::skeleton(98, [0.0, 64.0, 0.0], 0.0).with_head_look(20.0, -10.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let aiming = entity_model_textured_mesh(
+        &[base.with_is_aggressive(true).with_main_hand_holds_bow(true)],
+        &atlas,
+    );
+
+    assert_eq!(resting.vertices.len(), aiming.vertices.len());
+    assert_eq!(
+        resting.vertices[0..72],
+        aiming.vertices[0..72],
+        "the head and body do not aim"
+    );
+    assert_ne!(
+        resting.vertices[72..120],
+        aiming.vertices[72..120],
+        "both arms raise to draw the bow"
+    );
+    assert_eq!(
+        resting.vertices[120..168],
+        aiming.vertices[120..168],
+        "the legs do not aim"
+    );
+
+    // Either flag alone leaves the resting pose.
+    assert_eq!(
+        resting.vertices,
+        entity_model_textured_mesh(&[base.with_is_aggressive(true)], &atlas).vertices,
+        "aggression without a bow does not aim"
+    );
+    assert_eq!(
+        resting.vertices,
+        entity_model_textured_mesh(&[base.with_main_hand_holds_bow(true)], &atlas).vertices,
+        "a holstered bow does not aim"
+    );
+}
+
+#[test]
+fn stray_clothing_overlay_tracks_the_aiming_arms() {
+    // The stray frost overlay is posed by the same `SkeletonModel.setupAnim`, so its arms aim with
+    // the body's — drawing a bow must move the overlay mesh too (vanilla poses the overlay layer
+    // with the base model's part angles).
+    let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
+    let base = EntityModelInstance::skeleton_variant(
+        99,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::Stray,
+    )
+    .with_head_look(20.0, -10.0);
+    let resting = entity_model_textured_mesh(&[base], &atlas);
+    let aiming = entity_model_textured_mesh(
+        &[base.with_is_aggressive(true).with_main_hand_holds_bow(true)],
+        &atlas,
+    );
+    assert_eq!(resting.vertices.len(), aiming.vertices.len());
+    assert_ne!(
+        resting.vertices, aiming.vertices,
+        "the stray body and its frost overlay both aim the bow"
     );
 }
 

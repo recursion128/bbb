@@ -17,6 +17,8 @@ use bbb_world::{
     GuardianBeamSource as WorldGuardianBeamSource, RegistryContentState, WorldStore,
 };
 
+use crate::item_runtime::NativeItemRuntime;
+
 const VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID: i32 = 0;
 const VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID: i32 = 1;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
@@ -361,6 +363,7 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
 
 pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     entity_partial_tick: f32,
 ) -> Vec<EntityModelInstance> {
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
@@ -381,6 +384,8 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
         .filter_map(|source| {
             entity_model_instance(
                 source,
+                world,
+                item_runtime,
                 game_time,
                 entity_partial_tick,
                 chicken_variants,
@@ -391,6 +396,26 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
             )
         })
         .collect()
+}
+
+/// Whether the entity's main-hand item is a bow (vanilla `SkeletonRenderState.isHoldingBow =
+/// getMainHandItem().is(Items.BOW)`), driving the skeleton's `BOW_AND_ARROW` aim pose. Resolved through
+/// the item registry, so it needs the runtime; `false` without it or for any non-bow / empty hand.
+fn entity_main_hand_holds_bow(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, false) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
 }
 
 fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
@@ -408,8 +433,11 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn entity_model_instance(
     source: EntityModelSourceState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     game_time: i64,
     entity_partial_tick: f32,
     chicken_variants: Option<&RegistryContentState>,
@@ -436,6 +464,13 @@ fn entity_model_instance(
     if let EntityModelKind::Armadillo { rolled_up, .. } = &mut kind {
         *rolled_up = source.armadillo_is_hiding_in_shell;
     }
+    // Only skeletons drive the `BOW_AND_ARROW` aim pose; resolve the held item just for them to avoid a
+    // per-entity item lookup for every mob.
+    let main_hand_holds_bow =
+        matches!(
+            kind,
+            EntityModelKind::Skeleton | EntityModelKind::SkeletonVariant { .. }
+        ) && entity_main_hand_holds_bow(world, item_runtime, source.entity_id);
     let head_eat = sheep_head_eat_pose(
         source.entity_type_id,
         source.sheep_eat_animation_tick,
@@ -504,6 +539,7 @@ fn entity_model_instance(
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_is_aggressive(source.is_aggressive)
+        .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_enderman_carrying(source.enderman_carrying)
         .with_enderman_creepy(source.enderman_creepy)
         .with_bat_resting(source.bat_resting)
@@ -2229,7 +2265,7 @@ mod tests {
             values: vec![protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -2259,7 +2295,7 @@ mod tests {
         ));
 
         // At rest both entities resolve to the resting head pose.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
         assert_eq!(resting[0].render_state.head_eat, SheepHeadEatPose::NONE);
         assert_eq!(resting[1].render_state.head_eat, SheepHeadEatPose::NONE);
 
@@ -2269,7 +2305,7 @@ mod tests {
             entity_id: 70,
             event_id: 10,
         }));
-        let eating = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
+        let eating = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5);
         assert_eq!(
             eating[0].render_state.head_eat,
             SheepHeadEatPose::from_eat_tick(40, 0.5)
@@ -2279,7 +2315,7 @@ mod tests {
 
         // The pose follows the canonical countdown as it decrements.
         world.advance_entity_client_animations(20);
-        let mid = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let mid = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
         assert_eq!(
             mid[0].render_state.head_eat,
             SheepHeadEatPose::from_eat_tick(20, 0.0)
@@ -2296,7 +2332,7 @@ mod tests {
         ));
 
         // A warden at rest projects no tendril pulse, so WardenModel.animateTendrils holds at bind.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(resting[0].render_state.tendril_animation, 0.0);
 
         // Vanilla Warden.handleEntityEvent(61) resets tendrilAnimation to 10; getTendrilAnimation
@@ -2307,7 +2343,7 @@ mod tests {
             event_id: 61,
         }));
         world.advance_entity_client_animations(3);
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(
             instances[0].render_state.tendril_animation,
             7.0 / 10.0,
@@ -2325,7 +2361,7 @@ mod tests {
         ));
 
         // A warden between heartbeats projects no heart pulse, so the heart overlay's alpha is 0.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(resting[0].render_state.heart_animation, 0.0);
 
         // With no synced anger, vanilla `Warden.getHeartBeatDelay()` is the calm 40, so the heartbeat
@@ -2333,7 +2369,7 @@ mod tests {
         // `heartAnimationO = 10; heartAnimation--`, leaving the pair (10, 9). At partialTick 1.0
         // `getHeartAnimation` lerps to 9/10.
         world.advance_entity_client_animations(40);
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(
             instances[0].render_state.heart_animation,
             9.0 / 10.0,
@@ -2369,7 +2405,7 @@ mod tests {
         }));
 
         // A floating squid at rest projects the bind pose into the render state.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         let resting = resting
             .iter()
             .find(|instance| instance.entity_id == 95)
@@ -2383,7 +2419,7 @@ mod tests {
         // which flow through EntityModelSourceState into the renderer EntityRenderState
         // (`SquidModel.setupAnim` tentacle xRot + `SquidRenderer.setupRotations` tilt).
         world.advance_entity_client_animations(24);
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         let squid = instances
             .iter()
             .find(|instance| instance.entity_id == 95)
@@ -2433,7 +2469,7 @@ mod tests {
         }));
 
         // An unticked chicken projects the bind pose (wings held) into the render state.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         let resting = resting
             .iter()
             .find(|instance| instance.entity_id == 96)
@@ -2446,7 +2482,7 @@ mod tests {
         // EntityModelSourceState into the renderer EntityRenderState (`ChickenModel.setupAnim`
         // wing zRot).
         world.advance_entity_client_animations(3);
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         let chicken = instances
             .iter()
             .find(|instance| instance.entity_id == 96)
@@ -2495,7 +2531,7 @@ mod tests {
             200.0,
         ));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         let find = |id: i32| {
             instances
                 .iter()
@@ -2533,7 +2569,7 @@ mod tests {
         ));
 
         // A polar bear on all fours and any other entity carry a zero scale.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(resting[0].render_state.polar_bear_stand_scale, 0.0);
         assert_eq!(resting[1].render_state.polar_bear_stand_scale, 0.0);
 
@@ -2546,7 +2582,7 @@ mod tests {
         // Vanilla PolarBearRenderer.extractRenderState reads
         // getStandingAnimationScale(partialTick); after one tick that is
         // lerp(0.5, 0, 1) / 6.
-        let standing = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
+        let standing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5);
         assert_eq!(standing[0].render_state.polar_bear_stand_scale, 0.5 / 6.0);
         assert_eq!(standing[1].render_state.polar_bear_stand_scale, 0.0);
     }
@@ -2571,7 +2607,7 @@ mod tests {
         ));
 
         let peek = |world: &WorldStore, id: i32, partial: f32| {
-            entity_model_instances_from_world_at_partial_tick(world, partial)
+            entity_model_instances_from_world_at_partial_tick(world, None, partial)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -2607,7 +2643,7 @@ mod tests {
         ));
 
         // A living entity at rest carries deathTime 0 and no red overlay.
-        let alive = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let alive = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
         assert_eq!(alive[0].render_state.death_time, 0.0);
         assert!(!alive[0].render_state.has_red_overlay);
 
@@ -2619,7 +2655,7 @@ mod tests {
             values: vec![protocol_float_data(VANILLA_ENTITY_HEALTH_DATA_ID, 0.0)],
         }));
         world.advance_entity_client_animations(2);
-        let dying = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+        let dying = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
         assert_eq!(dying[0].render_state.death_time, 2.25);
         assert!(dying[0].render_state.has_red_overlay);
     }
@@ -2636,7 +2672,7 @@ mod tests {
         ));
 
         // A living entity that is not frozen solid has an unshaken body yaw.
-        let warm = entity_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let warm = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
         assert_eq!(warm[0].render_state.body_rot, 0.0);
 
         // Vanilla Entity.isFullyFrozen(): ticksFrozen >= 140. setupRotations then
@@ -2647,7 +2683,7 @@ mod tests {
             values: vec![protocol_int_data(VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 140)],
         }));
         world.advance_entity_client_animations(2);
-        let frozen = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+        let frozen = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
         let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
         assert!((frozen[0].render_state.body_rot - expected_shake).abs() < 1e-6);
         // The head turn relative to the body is unchanged by the shake.
@@ -2671,7 +2707,7 @@ mod tests {
 
         let shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
         let body_rot = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -2718,7 +2754,7 @@ mod tests {
         ));
 
         let auto_spin = |world: &WorldStore, id: i32, partial: f32| {
-            entity_model_instances_from_world_at_partial_tick(world, partial)
+            entity_model_instances_from_world_at_partial_tick(world, None, partial)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -2777,7 +2813,7 @@ mod tests {
         ));
 
         let aggressive = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -2816,7 +2852,7 @@ mod tests {
         ));
 
         let state = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -2860,7 +2896,7 @@ mod tests {
         ));
 
         let resting = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -2903,7 +2939,7 @@ mod tests {
         ));
 
         let charging = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -2960,7 +2996,7 @@ mod tests {
         ));
 
         let has_egg = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3020,7 +3056,7 @@ mod tests {
         ));
 
         let laying = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3074,7 +3110,7 @@ mod tests {
         ));
 
         let shows_bottom = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3117,7 +3153,7 @@ mod tests {
         ));
 
         let has_stinger = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3153,7 +3189,7 @@ mod tests {
         ));
 
         let angry = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3203,7 +3239,7 @@ mod tests {
         }));
 
         let sit_seconds = |world: &WorldStore, id: i32| {
-            let state = entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            let state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3270,7 +3306,7 @@ mod tests {
         ));
 
         let crouching = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3318,7 +3354,7 @@ mod tests {
         ));
 
         let render_state = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 1.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3394,7 +3430,7 @@ mod tests {
         ));
 
         let sleeping = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -3436,7 +3472,7 @@ mod tests {
         ));
 
         let scale = |world: &WorldStore| {
-            entity_model_instances_from_world_at_partial_tick(world, 0.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == 97)
                 .unwrap()
@@ -3469,7 +3505,7 @@ mod tests {
         ));
 
         let walk = |world: &WorldStore| -> (f32, f32) {
-            let state = entity_model_instances_from_world_at_partial_tick(world, 1.0)
+            let state = entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == 98)
                 .unwrap()
@@ -3545,7 +3581,7 @@ mod tests {
             [1.0, 64.0, -2.0],
         ));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(
             instances[0].render_state.light_coords,
             bbb_renderer::ENTITY_FULL_BRIGHT_LIGHT_COORDS
@@ -3561,13 +3597,13 @@ mod tests {
             [1.0, 64.0, -2.0],
         ));
 
-        let calm = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let calm = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(!calm[0].render_state.has_red_overlay);
 
         assert!(
             world.apply_hurt_animation(bbb_protocol::packets::HurtAnimation { id: 91, yaw: 0.0 })
         );
-        let hurt = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let hurt = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(hurt[0].render_state.has_red_overlay);
     }
 
@@ -3591,7 +3627,7 @@ mod tests {
             VANILLA_ENTITY_TYPE_CREEPER_ID,
             [1.0, 64.0, -2.0],
         ));
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(resting[0].render_state.white_overlay_progress, 0.0);
 
         assert!(world.apply_set_entity_data(SetEntityData {
@@ -3607,7 +3643,7 @@ mod tests {
         // swell = 5, getSwelling(1.0) = 5/28; the strobe lands in an odd bucket
         // so the projected progress is the clamped swelling (>= 0.5).
         let swelling = 5.0 / 28.0;
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(
             instances[0].render_state.white_overlay_progress,
             creeper_white_overlay_progress(swelling)
@@ -3626,7 +3662,7 @@ mod tests {
             VANILLA_ENTITY_TYPE_CREEPER_ID,
             [1.0, 64.0, -2.0],
         ));
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(
             resting[0].render_state.creeper_swelling, 0.0,
             "a calm creeper carries no swell, so CreeperRenderer.scale is the identity"
@@ -3644,7 +3680,7 @@ mod tests {
         }));
         world.advance_entity_client_animations(5);
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert_eq!(
             instances[0].render_state.creeper_swelling,
             5.0 / 28.0,
@@ -3664,7 +3700,7 @@ mod tests {
             [1.0, 64.0, -2.0],
         ));
         // A plain creeper is not powered, so it wears no CreeperPowerLayer energy swirl.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(!resting[0].render_state.creeper_powered);
 
         // Vanilla `Creeper.DATA_IS_POWERED` (index 17): set true for a lightning-charged creeper.
@@ -3676,7 +3712,7 @@ mod tests {
                 value: EntityDataValueKind::Boolean(true),
             }],
         }));
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(
             instances[0].render_state.creeper_powered,
             "the charged creeper projects isPowered, gating the energy-swirl overlay"
@@ -3692,7 +3728,7 @@ mod tests {
             [3.0, 64.0, 1.0],
         ));
         // A wither with no synced health defaults to full (maxHealth 300), so it is not powered.
-        let resting = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(!resting[0].render_state.wither_powered);
 
         // A healthy wither (health 200/300 > 150) stays un-powered.
@@ -3700,7 +3736,7 @@ mod tests {
             id: 145,
             values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 200.0)],
         }));
-        let healthy = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let healthy = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(!healthy[0].render_state.wither_powered);
 
         // Vanilla `WitherBoss.isPowered() = getHealth() <= getMaxHealth() / 2`: at or below half
@@ -3709,7 +3745,7 @@ mod tests {
             id: 145,
             values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 120.0)],
         }));
-        let powered = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let powered = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(
             powered[0].render_state.wither_powered,
             "the half-health wither projects isPowered, gating the energy-swirl overlay"
@@ -3800,7 +3836,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -3907,7 +3943,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -4014,7 +4050,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -4065,7 +4101,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -4110,7 +4146,7 @@ mod tests {
             )],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -4160,7 +4196,7 @@ mod tests {
             values: vec![protocol_int_data(SLIME_SIZE_DATA_ID, 3)],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -4187,7 +4223,7 @@ mod tests {
         ));
         world.advance_entity_client_animations(7);
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
 
         assert_eq!(instances.len(), 1);
         assert!(
@@ -4213,7 +4249,7 @@ mod tests {
         }
 
         let sources = world.entity_model_sources_at_partial_tick(1.0);
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             sources.len(),
@@ -5218,7 +5254,7 @@ mod tests {
             )],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -5258,7 +5294,7 @@ mod tests {
         }));
         world.advance_entity_client_animations(12);
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 0.5);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5);
 
         assert_eq!(
             instances,
@@ -5295,7 +5331,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 0.25);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
 
         assert_eq!(
             instances,
@@ -6305,7 +6341,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -6416,7 +6452,7 @@ mod tests {
             clock_updates: Vec::new(),
         });
 
-        let angry_instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let angry_instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             angry_instances,
@@ -6442,7 +6478,7 @@ mod tests {
             clock_updates: Vec::new(),
         });
 
-        let calm_instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let calm_instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             calm_instances,
@@ -6479,7 +6515,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,
@@ -6524,7 +6560,7 @@ mod tests {
             ],
         }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         let tail_angle = instances[0].render_state.wolf_tail_angle;
         let expected = (0.55 - 0.8 * 0.4) * std::f32::consts::PI; // damageRatio 0.8
         assert!(
@@ -6543,7 +6579,7 @@ mod tests {
             id: 149,
             values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 4.0)],
         }));
-        let wild_instances = entity_model_instances_from_world_at_partial_tick(&wild, 1.0);
+        let wild_instances = entity_model_instances_from_world_at_partial_tick(&wild, None, 1.0);
         assert_eq!(
             wild_instances[0].render_state.wolf_tail_angle,
             std::f32::consts::PI / 5.0
@@ -6568,7 +6604,7 @@ mod tests {
                 TAMABLE_ANIMAL_TAME_FLAG | TAMABLE_ANIMAL_SITTING_FLAG,
             )],
         }));
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(
             instances[0].render_state.wolf_sitting,
             "a sitting wolf projects wolf_sitting"
@@ -6581,7 +6617,7 @@ mod tests {
                 TAMABLE_ANIMAL_TAME_FLAG,
             )],
         }));
-        let standing = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let standing = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         assert!(
             !standing[0].render_state.wolf_sitting,
             "a standing wolf does not project wolf_sitting"
@@ -6607,7 +6643,7 @@ mod tests {
         ));
 
         let parrot_sitting = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 1.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -6667,7 +6703,7 @@ mod tests {
         ));
 
         let casting = |world: &WorldStore, id: i32| {
-            entity_model_instances_from_world_at_partial_tick(world, 1.0)
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
@@ -7151,7 +7187,7 @@ mod tests {
         ));
         assert!(world.apply_set_camera(SetCamera { camera_id: 11 }));
 
-        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
         assert_eq!(
             instances,

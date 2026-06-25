@@ -484,12 +484,34 @@ fn skeleton_tree(family: Option<SkeletonModelFamily>) -> ModelPart {
     }
 }
 
+/// Vanilla `SkeletonModel`'s bow-aim arm pose: `AbstractSkeletonRenderer.getArmPose` returns
+/// `BOW_AND_ARROW` when the skeleton `isAggressive() && getMainHandItem().is(Items.BOW)`, so
+/// `HumanoidModel.poseRightArm`'s `BOW_AND_ARROW` case raises both arms forward along the head look,
+/// overwriting the idle walk swing. The skeleton is right-handed (bow in the right arm); the off arm is
+/// splayed `0.4` outward. `head_yaw_degrees` / `head_pitch_degrees` are the same net head look fed to
+/// [`apply_head_look`] (vanilla `head.yRot` / `head.xRot`, radians once converted).
+fn apply_skeleton_bow_aim(root: &mut ModelPart, head_yaw_degrees: f32, head_pitch_degrees: f32) {
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let aim_pitch = -std::f32::consts::FRAC_PI_2 + head_pitch;
+    let right = root.child_mut("right_arm");
+    right.pose.rotation = [aim_pitch, -0.1 + head_yaw, right.pose.rotation[2]];
+    let left = root.child_mut("left_arm");
+    left.pose.rotation = [aim_pitch, 0.1 + head_yaw + 0.4, left.pose.rotation[2]];
+}
+
+/// Whether the skeleton renders the `BOW_AND_ARROW` aim pose this frame (vanilla
+/// `AbstractSkeletonRenderer.getArmPose`).
+fn skeleton_is_aiming_bow(instance: &EntityModelInstance) -> bool {
+    instance.render_state.is_aggressive && instance.render_state.main_hand_holds_bow
+}
+
 /// Mutable skeleton model, mirroring vanilla `SkeletonModel` (the base `HumanoidModel`) and its
 /// stray / parched / bogged / wither-skeleton variants. The unified tree is built for the selected
 /// family ([`skeleton_tree`]) with the vanilla child names. `setup_anim` runs the shared
-/// `HumanoidModel.setupAnim` (head look + arm/leg walk swing). The bow-aiming arm pose is deferred;
-/// the wither dark tint / root transform and the stray / bogged clothing overlay
-/// ([`SkeletonClothingModel`]) are applied at the call site.
+/// `HumanoidModel.setupAnim` (head look + arm/leg walk swing) then the `BOW_AND_ARROW` aim pose when the
+/// skeleton is aggressive and holding a bow. The wither dark tint / root transform and the stray / bogged
+/// clothing overlay ([`SkeletonClothingModel`]) are applied at the call site.
 pub(in crate::entity_models) struct SkeletonModel {
     root: ModelPart,
 }
@@ -524,6 +546,13 @@ impl EntityModel for SkeletonModel {
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
         );
+        if skeleton_is_aiming_bow(instance) {
+            apply_skeleton_bow_aim(
+                &mut self.root,
+                render_state.head_yaw,
+                render_state.head_pitch,
+            );
+        }
     }
 }
 
@@ -567,5 +596,14 @@ impl EntityModel for SkeletonClothingModel {
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
         );
+        // The clothing overlay tracks the body arms, so it aims with them (vanilla poses the overlay with
+        // the same `SkeletonModel.setupAnim`).
+        if skeleton_is_aiming_bow(instance) {
+            apply_skeleton_bow_aim(
+                &mut self.root,
+                render_state.head_yaw,
+                render_state.head_pitch,
+            );
+        }
     }
 }

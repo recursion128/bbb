@@ -231,6 +231,11 @@ entity_render_state! {
     /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs
     /// `-π / 2.25` calm). `false` for every calm or non-zombie-family entity.
     (with_is_aggressive) is_aggressive: bool = false;
+    /// Vanilla `SkeletonRenderState.isHoldingBow` (`getMainHandItem().is(Items.BOW)`): with
+    /// [`is_aggressive`](Self::is_aggressive), `AbstractSkeletonRenderer.getArmPose` returns
+    /// `BOW_AND_ARROW`, so `SkeletonModel` aims both arms forward along the head look. `false` for every
+    /// non-skeleton entity and for a skeleton not holding a bow.
+    (with_main_hand_holds_bow) main_hand_holds_bow: bool = false;
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
     /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
     /// ±0.05`). `false` for every other entity.
@@ -1571,6 +1576,7 @@ mod tests {
                 walk_animation_speed: 0.0,
                 age_in_ticks: 0.0,
                 is_aggressive: false,
+                main_hand_holds_bow: false,
                 enderman_carrying: false,
                 enderman_creepy: false,
                 bat_resting: false,

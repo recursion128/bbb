@@ -939,9 +939,18 @@ When an agent does any of the following, update this file in the same slice:
         is deferred: vanilla scales its arm part by `BABY_TRANSFORMER` (0.5) and the
         held item rides that scale, but this crate bakes that scale into the small
         mesh's vertices (no part scale), so the held item would not pick it up.
-      - remaining slices: held-item refinements (first-person viewmodel;
-        family-specific combat arm poses — bow-aim / crossbow / spear — deferred
-        entity-side state); the small armor stand's held items (needs the part-scale
+      - family combat arm poses, first pose DONE (skeleton bow-aim): the
+        `BOW_AND_ARROW` `ArmPose` raises both arms forward along the head look when
+        a skeleton `isAggressive() && getMainHandItem().is(Items.BOW)`. The
+        cross-crate state is now projected — `entity_model_instance` reads
+        `EntityEquipment` via `NativeItemRuntime` to set `main_hand_holds_bow`
+        (gated to the skeleton kinds), pairing with the already-projected
+        `is_aggressive`; `SkeletonModel`/`SkeletonClothingModel.setupAnim` apply it
+        after the walk swing. See the skeleton entry below.
+      - remaining slices: held-item refinements (first-person viewmodel; the
+        remaining combat arm poses — crossbow / spear / the `SkeletonModel` melee
+        swing, which needs the projected `attackTime`); the held bow mesh in the
+        aimed hand; the small armor stand's held items (needs the part-scale
         path the small mesh's baked-in `BABY_TRANSFORMER` skips). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
         `shade` currently uses the terrain cardinal `Direction.getShade` for both
@@ -1385,9 +1394,15 @@ When an agent does any of the following, update this file in the same slice:
       `HumanoidModel` arm counter-swing on the two arm parts (colored and
       textured, including the parched body-first part order, the wither scaled
       transform, and the Stray/Bogged clothing overlay whose layer
-      `SkeletonModel` runs the same `setupAnim`); skeleton-family armor, held
-      bows/items, the `SkeletonModel` melee arm swing (`isAggressive &&
-      !isHoldingBow`) and bow-aiming `ArmPose`, and lighting remain unsupported
+      `SkeletonModel` runs the same `setupAnim`), and the `BOW_AND_ARROW`
+      aim `ArmPose` — vanilla `AbstractSkeletonRenderer.getArmPose` raising both
+      arms forward along the head look when the skeleton `isAggressive() &&
+      getMainHandItem().is(Items.BOW)` (the off arm splayed `0.4` outward),
+      driven by the projected `is_aggressive` + `main_hand_holds_bow` render
+      state and applied to the base body and the Stray/Bogged clothing overlay
+      alike; skeleton-family armor, the held bow item mesh in the aimed hand,
+      the `SkeletonModel` melee arm swing (`isAggressive && !isHoldingBow`,
+      needs the projected `attackTime`), and lighting remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,

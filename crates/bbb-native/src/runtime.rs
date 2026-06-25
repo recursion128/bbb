@@ -416,7 +416,7 @@ pub(crate) fn pump_network_and_terrain(
     // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
     // the two atlas draws). The entity instances are built once and reused for the hand transforms.
     let entity_instances =
-        entity_model_instances_from_world_at_partial_tick(world, entity_partial_tick);
+        entity_model_instances_from_world_at_partial_tick(world, item_runtime, entity_partial_tick);
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
     // Item frames render their wooden border + framed item into the same two atlas draws.
