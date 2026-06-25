@@ -34,12 +34,13 @@ fn evoker_fangs_cubes_match_vanilla_26_1_body_layer() {
 
 #[test]
 fn evoker_fangs_mesh_uses_vanilla_body_layer_geometry() {
-    // 3 cubes → 18 faces / 72 vertices / 108 indices; the base and jaws carry their tints.
-    let fangs = entity_model_mesh(&[EntityModelInstance::evoker_fangs(
-        470,
-        [0.0, 64.0, 0.0],
-        0.0,
-    )]);
+    // 3 cubes → 18 faces / 72 vertices / 108 indices; the base and jaws carry their tints. The fang
+    // must be mid-attack (`biteProgress > 0`) to be drawn at all — vanilla hides it underground while
+    // `biteProgress == 0`; the face/vertex counts are pose-invariant so any visible progress works.
+    let fangs = entity_model_mesh(&[
+        EntityModelInstance::evoker_fangs(470, [0.0, 64.0, 0.0], 0.0)
+            .with_evoker_fangs_bite_progress(0.5),
+    ]);
     assert_eq!(fangs.opaque_faces, 18);
     assert_eq!(fangs.vertices.len(), 72);
     assert_eq!(fangs.indices.len(), 108);
@@ -86,15 +87,76 @@ fn evoker_fangs_textured_mesh_uses_vanilla_uvs_and_geometry() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    // A mid-attack fang (`biteProgress > 0`); a resting fang is hidden underground (vanilla render gate).
     let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::evoker_fangs(
-            470,
-            [0.0, 64.0, 0.0],
-            0.0,
-        )],
+        &[
+            EntityModelInstance::evoker_fangs(470, [0.0, 64.0, 0.0], 0.0)
+                .with_evoker_fangs_bite_progress(0.5),
+        ],
         &atlas,
     );
     assert_eq!(mesh.cutout_faces, 18);
     assert_eq!(mesh.vertices.len(), 72);
     assert_eq!(mesh.indices.len(), 108);
+}
+
+#[test]
+fn evoker_fangs_bite_progress_snaps_the_jaws_and_vanishes() {
+    use crate::entity_models::model::EntityModel;
+    use std::f32::consts::PI;
+
+    let base = EntityModelInstance::evoker_fangs(470, [0.0, 64.0, 0.0], 0.0);
+
+    // biteProgress 0: vanilla `EvokerFangsRenderer` skips the render entirely (the fang
+    // is still underground), so the whole model is hidden.
+    let mut hidden = EvokerFangsModel::new();
+    hidden.prepare(&base);
+    assert!(!hidden.root().visible, "an un-attacked fang is hidden");
+
+    // biteProgress 0.5: the cubic ease-out `biteAmount` has reached 0, so both jaws have
+    // snapped fully shut (zRot = π); the fang has risen out of the ground (base.y below
+    // its bind 24); and the model is at full size (preScale = 1).
+    let mut biting = EvokerFangsModel::new();
+    biting.prepare(&base.with_evoker_fangs_bite_progress(0.5));
+    assert!(biting.root().visible, "an attacking fang is shown");
+    assert_eq!(biting.root().scale, [1.0; 3], "full size mid-bite");
+    let base_part = biting.root_mut().child_mut("base");
+    assert!(
+        (base_part.child_mut("upper_jaw").pose.rotation[2] - PI).abs() < 1.0e-6,
+        "the upper jaw snaps shut to zRot π"
+    );
+    assert!(
+        (base_part.child_mut("lower_jaw").pose.rotation[2] - PI).abs() < 1.0e-6,
+        "the lower jaw snaps shut to zRot π"
+    );
+    assert!(
+        base_part.pose.offset[1] < 24.0,
+        "the fang rises out of the ground (base.y below its bind 24): {}",
+        base_part.pose.offset[1]
+    );
+
+    // biteProgress just opening (small positive): the jaws are still spread (biteAmount
+    // ≈ 1 → upper zRot ≈ 0.65π), i.e. open wider than the fully-shut π.
+    let mut opening = EvokerFangsModel::new();
+    opening.prepare(&base.with_evoker_fangs_bite_progress(0.05));
+    let upper_open = opening
+        .root_mut()
+        .child_mut("base")
+        .child_mut("upper_jaw")
+        .pose
+        .rotation[2];
+    assert!(
+        upper_open < PI,
+        "the jaws start open before snapping shut: {upper_open}"
+    );
+
+    // biteProgress 1.0: the final vanish — `preScale = (1 - 1)/0.1 = 0` shrinks the
+    // whole model to nothing.
+    let mut vanished = EvokerFangsModel::new();
+    vanished.prepare(&base.with_evoker_fangs_bite_progress(1.0));
+    assert_eq!(
+        vanished.root().scale,
+        [0.0; 3],
+        "the fang vanishes at the end of the bite"
+    );
 }

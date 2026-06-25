@@ -834,6 +834,12 @@ impl EntityStore {
             // driving the slime/magma-cube body's non-uniform stretch. `0.0` for
             // every other entity (only the slime/magma cube is given a squish state).
             slime_squish: client_animations.animations.slime_squish(partial_ticks),
+            // Vanilla `EvokerFangsRenderer.extractRenderState`: the `0..1` bite ramp
+            // driving the fang's jaw snap, rise, and vanish. `0.0` (hidden) for every
+            // other entity and a fang whose attack has not started.
+            evoker_fangs_bite_progress: client_animations
+                .animations
+                .evoker_fangs_bite_progress(partial_ticks),
             // Vanilla `ParrotRenderer.extractRenderState`: the lerped, combined
             // wing-flap angle. `0.0` for every non-parrot entity (only the parrot is
             // given a flap animation state).

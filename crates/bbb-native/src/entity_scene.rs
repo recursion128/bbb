@@ -716,6 +716,7 @@ fn entity_model_instance(
         .with_chicken_flap(source.chicken_flap)
         .with_chicken_flap_speed(source.chicken_flap_speed)
         .with_slime_squish(source.slime_squish)
+        .with_evoker_fangs_bite_progress(source.evoker_fangs_bite_progress)
         .with_parrot_flap_angle(source.parrot_flap_angle)
         .with_white_overlay_progress(creeper_white_overlay_progress(source.creeper_swelling)),
     )
@@ -2715,6 +2716,41 @@ mod tests {
             slime.render_state.slime_squish < 0.0,
             "the projected landing squish drives SlimeRenderer.scale: {}",
             slime.render_state.slime_squish
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_evoker_fangs_bite_progress_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            98,
+            VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let bite = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+                .iter()
+                .find(|instance| instance.entity_id == 98)
+                .map(|instance| instance.render_state.evoker_fangs_bite_progress)
+        };
+
+        // A fang that has not started its attack is hidden underground: biteProgress 0.
+        assert_eq!(bite(&world), Some(0.0));
+
+        // Vanilla `EvokerFangs.handleEntityEvent`: event 4 starts the attack, and the
+        // `lifeTicks` countdown drives the biteProgress ramp above 0, flowing through
+        // EntityModelSourceState into the renderer EntityRenderState
+        // (`EvokerFangsModel.setupAnim` jaw snap / rise / vanish).
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 98,
+            event_id: 4,
+        }));
+        world.advance_entity_client_animations(3);
+        let progress = bite(&world).expect("the attacking fang projects an instance");
+        assert!(
+            progress > 0.0,
+            "the projected bite ramp drives EvokerFangsModel.setupAnim: {progress}"
         );
     }
 

@@ -7101,6 +7101,68 @@ fn ravager_attack_stun_and_roar_timers_advance_together() {
 }
 
 #[test]
+fn evoker_fangs_attack_event_drives_the_bite_progress_ramp() {
+    const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        79,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let progress = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .evoker_fangs_bite_progress
+    };
+
+    // An un-attacked fang is hidden underground (biteProgress 0).
+    assert_eq!(progress(&store, 78, 1.0), 0.0);
+    store.advance_entity_client_animations(5);
+    assert_eq!(progress(&store, 78, 1.0), 0.0);
+
+    // Vanilla `EvokerFangs.handleEntityEvent`: event 4 → `clientSideAttackStarted = true`,
+    // and `lifeTicks` (22) begins counting down; `getAnimationProgress` at `lifeTicks`
+    // 22 is `1 - (20 - partial)/20`, i.e. just above 0 and climbing.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 78,
+        event_id: 4,
+    }));
+    let started = progress(&store, 78, 1.0);
+    assert!(started > 0.0, "the attack ramp starts climbing: {started}");
+
+    store.advance_entity_client_animations(1);
+    let after_one = progress(&store, 78, 1.0);
+    assert!(
+        after_one > started,
+        "the bite ramp keeps climbing: {started} -> {after_one}"
+    );
+
+    // After 20 ticks `lifeTicks` has reached 2, so `getAnimationProgress` saturates at
+    // 1.0 (the fang has fully snapped shut and vanished) and holds there.
+    store.advance_entity_client_animations(20);
+    assert_eq!(progress(&store, 78, 1.0), 1.0);
+    store.advance_entity_client_animations(5);
+    assert_eq!(progress(&store, 78, 1.0), 1.0);
+
+    // The fang event on a non-fang never starts a ramp.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 79,
+        event_id: 4,
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(progress(&store, 79, 1.0), 0.0);
+}
+
+#[test]
 fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
     const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
     const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;

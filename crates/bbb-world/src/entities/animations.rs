@@ -105,6 +105,7 @@ const VANILLA_ENTITY_TYPE_RAVAGER_ID: i32 = 109;
 const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
 const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
+const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -220,6 +221,12 @@ const RAVAGER_ROAR_TICKS: i32 = 20;
 const HOGLIN_ATTACK_EVENT_ID: i8 = 4;
 const HOGLIN_ATTACK_TICKS: i32 = 10;
 
+/// Vanilla `EvokerFangs.handleEntityEvent`: event `4` sets `clientSideAttackStarted = true`, after which
+/// `EvokerFangs.tick` decrements `lifeTicks` (field initializer `22`) each client tick. The
+/// `getAnimationProgress` ramp built from `lifeTicks` drives `EvokerFangsModel.setupAnim`.
+const EVOKER_FANGS_ATTACK_EVENT_ID: i8 = 4;
+const EVOKER_FANGS_LIFE_TICKS: i32 = 22;
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
     #[serde(default)]
@@ -274,6 +281,8 @@ pub struct EntityClientAnimationState {
     pub chicken_flap: Option<ChickenFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slime: Option<SlimeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evoker_fangs: Option<EvokerFangsAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parrot_flap: Option<ParrotFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -917,6 +926,23 @@ pub struct SlimeAnimationState {
     pub was_on_ground: bool,
 }
 
+/// Canonical client-side evoker-fangs attack animation, mirroring vanilla `EvokerFangs`
+/// (`clientSideAttackStarted` / `lifeTicks`). The fang is spawned underground and hidden until the
+/// server broadcasts entity event `4` (`EvokerFangs.handleEntityEvent` → `clientSideAttackStarted =
+/// true`); from then on `EvokerFangs.tick` decrements `lifeTicks` (initially `22`) each client tick.
+/// `getAnimationProgress` builds the `0..1` bite ramp from `lifeTicks`, which
+/// `EvokerFangsModel.setupAnim` turns into the jaw snap, the rise out of the ground, and the final
+/// vanish (root scale → 0). The attack sound on the same event is audio, not pose, and is not modelled.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EvokerFangsAnimationState {
+    /// Vanilla `EvokerFangs.clientSideAttackStarted`.
+    #[serde(default)]
+    pub started: bool,
+    /// Vanilla `EvokerFangs.lifeTicks` (field initializer `22`).
+    #[serde(default)]
+    pub life_ticks: i32,
+}
+
 /// Canonical client-side parrot wing-flap animation, mirroring vanilla `Parrot`
 /// (`flap`/`oFlap`/`flapSpeed`/`oFlapSpeed`/`flapping`). `Parrot.aiStep` runs the
 /// same flap accumulator as the chicken, except the airborne build-up is gated on
@@ -1537,6 +1563,44 @@ impl SlimeAnimationState {
     }
 }
 
+impl Default for EvokerFangsAnimationState {
+    fn default() -> Self {
+        // Vanilla `EvokerFangs` field initializers: `lifeTicks = 22`,
+        // `clientSideAttackStarted = false`.
+        Self {
+            started: false,
+            life_ticks: EVOKER_FANGS_LIFE_TICKS,
+        }
+    }
+}
+
+impl EvokerFangsAnimationState {
+    /// Advances one client tick of `EvokerFangs.tick`. Vanilla decrements `lifeTicks`
+    /// every tick once the attack has started; the count is clamped at `2` (where the
+    /// progress ramp has already saturated at `1.0` — the vanished state) to bound it
+    /// while the entity waits to be removed.
+    fn advance_client_tick(&mut self) {
+        if self.started && self.life_ticks > 2 {
+            self.life_ticks -= 1;
+        }
+    }
+
+    /// Vanilla `EvokerFangs.getAnimationProgress(partialTick)`: `0` until the attack
+    /// starts, then the `lifeTicks`-driven `0..1` ramp `1 - (lifeTicks - 2 -
+    /// partialTick) / 20`, saturating at `1.0` once `lifeTicks <= 2`.
+    fn bite_progress(&self, partial_tick: f32) -> f32 {
+        if !self.started {
+            return 0.0;
+        }
+        let remaining_life = self.life_ticks - 2;
+        if remaining_life <= 0 {
+            1.0
+        } else {
+            1.0 - (remaining_life as f32 - partial_tick) / 20.0
+        }
+    }
+}
+
 impl Default for ParrotFlapAnimationState {
     fn default() -> Self {
         // Vanilla `Parrot` field initializers: `flapping = 1.0F` (and `nextFlap =
@@ -2009,6 +2073,14 @@ impl EntityClientAnimationState {
                     attack_animation_tick: 0,
                 })
                 .attack_animation_tick = HOGLIN_ATTACK_TICKS;
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID
+            && event_id == EVOKER_FANGS_ATTACK_EVENT_ID
+        {
+            // Vanilla `EvokerFangs.handleEntityEvent`: event 4 → `clientSideAttackStarted = true`,
+            // arming the `lifeTicks` countdown that `tick` runs.
+            self.evoker_fangs
+                .get_or_insert_with(EvokerFangsAnimationState::default)
+                .started = true;
         }
     }
 
@@ -2383,6 +2455,15 @@ impl EntityClientAnimationState {
         self.slime.map_or(0.0, |slime| slime.squish(partial_tick))
     }
 
+    /// Vanilla `EvokerFangsRenderState.biteProgress` (`EvokerFangs.getAnimationProgress`):
+    /// the `0..1` attack ramp `EvokerFangsModel.setupAnim` turns into the jaw snap, the
+    /// rise out of the ground, and the final vanish. Returns `0.0` (the hidden,
+    /// pre-attack fang) for every non-fang entity and a fang that has not yet started.
+    pub fn evoker_fangs_bite_progress(&self, partial_tick: f32) -> f32 {
+        self.evoker_fangs
+            .map_or(0.0, |fangs| fangs.bite_progress(partial_tick))
+    }
+
     /// Vanilla `ChickenRenderState.flapSpeed` (`Chicken.flapSpeed` lerped): the
     /// wing-flap amplitude `ChickenModel.setupAnim` multiplies the flap phase by.
     /// Returns `0.0` for every non-chicken entity, so the wings hold the bind pose.
@@ -2605,6 +2686,14 @@ impl EntityClientAnimationState {
                 // slime with no synced ground flag defaults to on-ground (resting
                 // squish), the safe common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true)),
+            VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => {
+                // Vanilla `EvokerFangs.tick` counts down `lifeTicks` once the attack
+                // has started (the event arm seeds the state); an un-attacked fang
+                // holds `started = false` (hidden) and is left untouched.
+                if let Some(fangs) = self.evoker_fangs.as_mut() {
+                    fangs.advance_client_tick();
+                }
+            }
             VANILLA_ENTITY_TYPE_PARROT_ID => self
                 .parrot_flap
                 .get_or_insert_with(ParrotFlapAnimationState::default)

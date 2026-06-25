@@ -1095,6 +1095,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (42, pick(0.4, 0.3, 0.0)),        // minecraft:endermite
     (45, pick(2.0, 2.0, 0.0)),        // minecraft:end_crystal
     (46, pick(0.6, 1.95, 0.0)),       // minecraft:evoker
+    (47, pick(0.5, 0.8, 0.0)),        // minecraft:evoker_fangs
     (51, pick(0.98, 0.98, 0.0)),      // minecraft:falling_block
     (52, pick(1.0, 1.0, 1.0)),        // minecraft:fireball
     (54, pick(0.6, 0.7, 0.0)),        // minecraft:fox

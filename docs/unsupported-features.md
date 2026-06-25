@@ -2337,13 +2337,19 @@ When an agent does any of the following, update this file in the same slice:
       parents the two jaws (a shared 4×14×8 box) at their bind rotations — `upper_jaw` at `offset(6.5, 0, 1)`
       with `zRot = 0.65π = 2.042035`, `lower_jaw` at `offset(3.5, 0, 9)` with `yRot = π` and `zRot = 1.35π =
       4.2411504` — three cubes. The bind rotations are exactly the `setupAnim` closed-jaw rest at
-      `biteProgress = 0` (`upperJaw.zRot = π - 0.35π`, `lowerJaw.zRot = π + 0.35π`), so every
-      `EvokerFangsModel.setupAnim` motion is deferred — the jaw bite open/close, the `base.y` drop, and the
-      root emerge scale / `root.y = 24 - 20·preScale`. `EvokerFangsRenderer` is a plain `EntityRenderer` that
+      `biteProgress = 0` (`upperJaw.zRot = π - 0.35π`, `lowerJaw.zRot = π + 0.35π`). The full
+      `EvokerFangsModel.setupAnim` is now wired from a client-reconstructed `biteProgress`: entity event `4`
+      (`EvokerFangs.handleEntityEvent`) sets `clientSideAttackStarted`, after which the `lifeTicks` countdown
+      (initially `22`) drives `getAnimationProgress`'s `0..1` ramp; `setupAnim` turns it into the cubic
+      ease-out jaw snap (`upper/lower_jaw.zRot = π ∓ biteAmount·0.35π`), the rise out of the ground
+      (`base.y -= (biteProgress + sin(biteProgress·2.7))·7.2`), and the final vanish (`root.y = 24 -
+      20·preScale`, `root` scale `→ 0` over the last 10%). The whole model is hidden while `biteProgress == 0`
+      (vanilla `EvokerFangsRenderer` skips the render). The fang also now carries its vanilla
+      `sized(0.5, 0.8)` pick bounds (type id `47`), so it is enumerated and rendered at all. `EvokerFangsRenderer`
       applies the standard flip and `-1.501` y-offset but a distinct `Ry(90 - yRot)` yaw (captured by
-      `evoker_fangs_model_root_transform`). The base texture is now bound on the textured path
-      (`EVOKER_FANGS_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture
-      side. The colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
+      `evoker_fangs_model_root_transform`). The base texture is bound on the textured path
+      (`EVOKER_FANGS_TEXTURE_REF`), the primary path, with nothing left deferred on the texture side. The
+      colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
     - leash knot entities as renderer-owned vanilla 26.1 `LeashKnotModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `76` to the new
       `EntityModelKind::LeashKnot`, replacing the former placeholder bounds box. The mesh root holds a single

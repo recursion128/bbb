@@ -713,6 +713,12 @@ pub struct EntityModelSourceState {
     /// stretch. `0.0` (undeformed cube) at rest and for every other entity.
     #[serde(default)]
     pub slime_squish: f32,
+    /// Vanilla `EvokerFangsRenderState.biteProgress` (`EvokerFangs.getAnimationProgress`):
+    /// the `0..1` attack ramp `EvokerFangsModel.setupAnim` turns into the jaw snap, the
+    /// rise out of the ground, and the final vanish. `0.0` (hidden) for an un-attacked
+    /// fang and every other entity.
+    #[serde(default)]
+    pub evoker_fangs_bite_progress: f32,
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(sin(lerp(flap)) + 1) * lerp(flapSpeed)`): the combined wing-flap angle
     /// `ParrotModel.setupAnim` feeds to the wing `zRot` (`±(0.0873 + flapAngle)`) and

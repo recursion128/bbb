@@ -565,6 +565,14 @@ entity_render_state! {
     /// scale `[w, 1/w, w] * size`). `0.0` (undeformed cube) for a resting slime/magma
     /// cube and every other entity.
     (with_slime_squish) slime_squish: f32 = 0.0;
+    /// Vanilla `EvokerFangsRenderState.biteProgress` (`EvokerFangs.getAnimationProgress`):
+    /// the `0..1` attack ramp `EvokerFangsModel.setupAnim` turns into the jaw snap
+    /// (`upper/lower_jaw.zRot`), the rise out of the ground (`base.y`), and the final
+    /// vanish (`root.y` + `root` scale → 0). The renderer also hides the fang entirely
+    /// while this is `0` (vanilla `EvokerFangsRenderer` skips rendering at
+    /// `biteProgress == 0`). `0.0` (hidden) for an un-attacked fang and every other
+    /// entity.
+    (with_evoker_fangs_bite_progress) evoker_fangs_bite_progress: f32 = 0.0;
     /// Vanilla `ParrotRenderState.flapAngle` (`ParrotRenderer.extractRenderState`:
     /// `(Mth.sin(lerp(oFlap, flap)) + 1) * lerp(oFlapSpeed, flapSpeed)`): the combined
     /// wing-flap angle `ParrotModel.setupAnim` writes to the wings (`leftWing.zRot =
@@ -1726,6 +1734,7 @@ mod tests {
                 chicken_flap: 0.0,
                 chicken_flap_speed: 0.0,
                 slime_squish: 0.0,
+                evoker_fangs_bite_progress: 0.0,
                 parrot_flap_angle: 0.0,
                 in_water: false,
                 on_ground: false,
