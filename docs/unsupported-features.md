@@ -1784,8 +1784,9 @@ When an agent does any of the following, update this file in the same slice:
       squish accumulator driving both the `MagmaCubeRenderer.scale` non-uniform
       body stretch and the `LavaSlimeModel.setupAnim` per-segment vertical spread
       (`cubeN.y = -(4 - N) * max(0, squish) * 1.7`), texture-backed base layer
-      pass emission, and official PNG atlas upload/bind/sample path; full-bright
-      block light, particle/audio coupling, lighting, overlay, crumbling, and
+      pass emission, and official PNG atlas upload/bind/sample path; the full-bright
+      block light (`MagmaCubeRenderer.getBlockLightLevel = 15`) IS now applied (`entity_light_coords`).
+      Particle/audio coupling, lighting, overlay, crumbling, and
       full render-graph sorting parity remain unsupported
     - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`
       geometry: the 16x16x16 body at y 17.6 plus the nine tentacles at y 24.6,
@@ -1822,8 +1823,9 @@ When an agent does any of the following, update this file in the same slice:
       `BlazeModel.setupAnim` rod orbit (twelve rods in three rings of radius 9/7/5,
       their x/y/z offsets set every frame from the projected `ageInTicks`), and the
       shared head look (`head.yRot/xRot` from the net look angles), on both render
-      paths. The `BlazeRenderer` full-bright block light (`getBlockLightLevel = 15`),
-      lighting, and overlay remain unsupported
+      paths. The `BlazeRenderer` full-bright block light (`getBlockLightLevel = 15`) IS now
+      applied (in `entity_light_coords`, forcing the packed block light to 15 for the blaze type);
+      lighting and overlay remain unsupported
     - endermite entities as renderer-owned vanilla 26.1
       `EndermiteModel.createBodyLayer()` geometry: the four nested chitin segments
       from `BODY_SIZES`/`BODY_TEXS` (each `addBox(-sx/2, 0, -sz/2, sx, sy, sz)` posed
@@ -1869,9 +1871,10 @@ When an agent does any of the following, update this file in the same slice:
       into the translucent mesh (`RenderTypes::entityTranslucent`), hand-emitted through the same
       animated body→arm/wing hierarchy as the colored path. The `isCharging` texture swap to
       `vex_charging.png`, the held-item charging arm variant (`xRot = π·7/6` per hand, which
-      needs held-item presence projected — equipment is world-level only today), and the
-      constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and overlay remain
-      unsupported
+      needs held-item presence projected — equipment is world-level only today) remain
+      unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
+      (`entity_light_coords` forces the packed block light to 15 for the vex type). Lighting and overlay
+      remain unsupported
     - allay entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `2` to the real `AllayModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `AllayModel.createBodyLayer()`
@@ -1900,8 +1903,9 @@ When an agent does any of the following, update this file in the same slice:
       (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
       hierarchy as the colored path. The held-item arm poses (`holdingAnimationProgress` scaling
       the arm roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch
-      and held item) and the constant full-bright `getBlockLightLevel` (→ 15) glow, lighting, and
-      overlay remain unsupported
+      and held item) remain unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS
+      now applied (`entity_light_coords` forces the packed block light to 15 for the allay type).
+      Lighting and overlay remain unsupported
     - strider entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `129` to the real `AdultStriderModel` /
       `BabyStriderModel`, replacing the former horse-quadruped fallback, keyed off the synced
@@ -2724,8 +2728,12 @@ When an agent does any of the following, update this file in the same slice:
       override replaces `LivingEntityRenderer.setupRotations`); the official squid/glow_squid adult
       (64x32) / baby (32x32) texture references, the hand-emitted texture-backed
       render path over the procedural ring, and the official PNG atlas
-      upload/bind/sample path (colored and textured). The glow-squid emissive overlay
-      and `GlowSquidRenderer` darken-ticks light boost, lighting, and overlay remain
+      upload/bind/sample path (colored and textured). The `GlowSquidRenderer.getBlockLightLevel`
+      darken-ticks light boost IS now applied (`entity_light_coords` reads the synced
+      `DATA_DARK_TICKS_REMAINING` int at index 18 and boosts the packed block light to
+      `max(block, (int)clampedLerp(1 − darkTicks/10, 0, 15))` — full bright while undamaged, dimming for
+      ~100 ticks after a hurt and ramping back over the final 10). Note 26.1 has NO separate glow-squid
+      emissive overlay/texture; the glow is purely this block-light override. Lighting and overlay remain
       unsupported. The `Squid.aiStep` swim integration IS now projected client-side
       (a `SquidAnimationState` accumulator in `entities/animations.rs`: `tentacleSpeed`
       seeded from the entity id via the Java `Random` LCG, the `tentacleMovement`

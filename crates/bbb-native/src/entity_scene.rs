@@ -1058,7 +1058,8 @@ fn entity_model_instance(
         source.sheep_eat_animation_tick,
         entity_partial_tick,
     );
-    let light_coords = entity_light_coords(&source.data_values, source.light);
+    let light_coords =
+        entity_light_coords(source.entity_type_id, &source.data_values, source.light);
     // Vanilla `Camel.setupAnimationStates()`: the sit/sit-pose/stand-up timing projected purely
     // from the synced `LAST_POSE_CHANGE_TICK` (id 20) and the world game time.
     let camel_sit = camel_sit_state(source.entity_type_id, &source.data_values, game_time);
@@ -1346,18 +1347,62 @@ fn creeper_white_overlay_progress(swelling: f32) -> f32 {
 /// `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block, sky)`). Mirrors
 /// `EntityRenderer.getBlockLightLevel`, which forces block light to `15` while
 /// the entity is on fire (shared-flags bit `0x01`); sky light is unchanged.
+/// Vanilla `GlowSquid.DATA_DARK_TICKS_REMAINING` synced INT (the first own accessor on the
+/// `Squid`/`AgeableWaterCreature` chain, so index `18`: Entity 0-7, LivingEntity 8-14, Mob 15,
+/// AgeableMob baby 16 + age-locked 17). Counts down from `100` after a hurt; `0` while undamaged.
+const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
+
+/// Vanilla `Mth.clampedLerp(factor, min, max)`: `min` for `factor < 0`, `max` for `factor > 1`, else the
+/// linear interpolation `min + factor·(max − min)`.
+fn clamped_lerp(factor: f32, min: f32, max: f32) -> f32 {
+    if factor < 0.0 {
+        min
+    } else if factor > 1.0 {
+        max
+    } else {
+        min + factor * (max - min)
+    }
+}
+
 fn entity_light_coords(
+    entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
     light: bbb_world::TerrainLight,
 ) -> u32 {
     let on_fire = (entity_data_byte(data_values, ENTITY_SHARED_FLAGS_DATA_ID, 0)
         & ENTITY_SHARED_FLAG_ON_FIRE)
         != 0;
-    let block = if on_fire {
+    let mut block = if on_fire {
         15
     } else {
         u32::from(light.block.min(15))
     };
+    // Vanilla full-bright renderers (`getBlockLightLevel` returns `15` unconditionally): these glow with
+    // their own internal fire / energy regardless of the surrounding block light. The complete 26.1 set is
+    // `BlazeRenderer`, `MagmaCubeRenderer`, `WitherBossRenderer`, `WitherSkullRenderer`,
+    // `DragonFireballRenderer`, `ShulkerBulletRenderer`, `AllayRenderer`, and `VexRenderer`.
+    if matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_BLAZE_ID
+            | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
+            | VANILLA_ENTITY_TYPE_WITHER_ID
+            | VANILLA_ENTITY_TYPE_WITHER_SKULL_ID
+            | VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID
+            | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
+            | VANILLA_ENTITY_TYPE_ALLAY_ID
+            | VANILLA_ENTITY_TYPE_VEX_ID
+    ) {
+        block = 15;
+    }
+    // Vanilla `GlowSquidRenderer.getBlockLightLevel`: a bioluminescent boost
+    // `max(blockLight, (int)clampedLerp(1 − darkTicks/10, 0, 15))`. Undamaged (`darkTicks == 0`) it is fully
+    // bright (`15`); a hurt drops `darkTicks` to `100` (dark), and it ramps back to full over the final 10
+    // ticks. The vanilla `glow == 15 ? 15 : max(glow, super)` ternary is just `max(super, glow)` (super ≤ 15).
+    if entity_type_id == VANILLA_ENTITY_TYPE_GLOW_SQUID_ID {
+        let dark_ticks = entity_data_int(data_values, GLOW_SQUID_DARK_TICKS_DATA_ID, 0);
+        let glow = clamped_lerp(1.0 - dark_ticks as f32 / 10.0, 0.0, 15.0) as u32;
+        block = block.max(glow);
+    }
     let sky = u32::from(light.sky.min(15));
     block << 4 | sky << 20
 }
@@ -5516,19 +5561,21 @@ mod tests {
     fn entity_light_coords_packs_vanilla_block_and_sky_with_on_fire_override() {
         use bbb_world::TerrainLight;
 
+        // A generic (non-special) entity type — no per-renderer block-light override.
+        let generic = VANILLA_ENTITY_TYPE_CHICKEN_ID;
         // Daylight surface (block 0, sky 15) -> LightCoordsUtil.pack(0, 15).
         assert_eq!(
-            entity_light_coords(&[], TerrainLight { sky: 15, block: 0 }),
+            entity_light_coords(generic, &[], TerrainLight { sky: 15, block: 0 }),
             15 << 20
         );
         // Full-bright fallback (block 15, sky 15) -> LightCoordsUtil.FULL_BRIGHT.
         assert_eq!(
-            entity_light_coords(&[], TerrainLight { sky: 15, block: 15 }),
+            entity_light_coords(generic, &[], TerrainLight { sky: 15, block: 15 }),
             15_728_880
         );
         // Torch-lit cave (block 14, sky 0) -> pack(14, 0).
         assert_eq!(
-            entity_light_coords(&[], TerrainLight { sky: 0, block: 14 }),
+            entity_light_coords(generic, &[], TerrainLight { sky: 0, block: 14 }),
             14 << 4
         );
         // EntityRenderer.getBlockLightLevel forces block light to 15 on fire,
@@ -5538,8 +5585,69 @@ mod tests {
             ENTITY_SHARED_FLAG_ON_FIRE,
         )];
         assert_eq!(
-            entity_light_coords(&on_fire, TerrainLight { sky: 4, block: 0 }),
+            entity_light_coords(generic, &on_fire, TerrainLight { sky: 4, block: 0 }),
             (15 << 4) | (4 << 20)
+        );
+    }
+
+    #[test]
+    fn entity_light_coords_applies_vanilla_per_renderer_block_light_overrides() {
+        use bbb_world::TerrainLight;
+
+        let dark = TerrainLight { sky: 0, block: 0 };
+        // Vanilla `BlazeRenderer`/`MagmaCubeRenderer.getBlockLightLevel` = 15 unconditionally: even in pitch
+        // dark, the block light packs to 15 (sky stays 0).
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_BLAZE_ID, &[], dark),
+            15 << 4
+        );
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, &[], dark),
+            15 << 4
+        );
+        // The full set also covers the wither, wither skull, dragon fireball, shulker bullet, allay, and vex.
+        for full_bright in [
+            VANILLA_ENTITY_TYPE_WITHER_ID,
+            VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+            VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+            VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+            VANILLA_ENTITY_TYPE_ALLAY_ID,
+            VANILLA_ENTITY_TYPE_VEX_ID,
+        ] {
+            assert_eq!(entity_light_coords(full_bright, &[], dark), 15 << 4);
+        }
+
+        // Vanilla `GlowSquidRenderer.getBlockLightLevel` = max(super, (int)clampedLerp(1 - darkTicks/10, 0,
+        // 15)). Undamaged (no DARK_TICKS data, so 0) -> fully bright 15.
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &[], dark),
+            15 << 4
+        );
+        let dark_ticks = |ticks: i32| vec![protocol_int_data(GLOW_SQUID_DARK_TICKS_DATA_ID, ticks)];
+        // Just hurt (darkTicks 100): factor = 1 - 10 = -9 < 0 -> min 0, so the boost is 0 and the squid is as
+        // dark as its surroundings (block 0 here).
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &dark_ticks(100), dark),
+            0
+        );
+        // Mid-ramp (darkTicks 5): factor = 0.5 -> (int) lerp(0.5, 0, 15) = (int) 7.5 = 7.
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &dark_ticks(5), dark),
+            7 << 4
+        );
+        // darkTicks 10: factor = 0 -> 0 boost.
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &dark_ticks(10), dark),
+            0
+        );
+        // The boost only ever RAISES the block light: a torch-lit (block 12) hurt glow squid keeps 12.
+        assert_eq!(
+            entity_light_coords(
+                VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+                &dark_ticks(100),
+                TerrainLight { sky: 0, block: 12 }
+            ),
+            12 << 4
         );
     }
 
