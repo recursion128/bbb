@@ -560,6 +560,18 @@ pub struct EntityModelSourceState {
     /// golem holds a poppy out to a villager. `0` when not offering and for every non-golem.
     #[serde(default)]
     pub iron_golem_offer_flower_tick: i32,
+    /// Vanilla `RavagerRenderState.stunnedTicksRemaining` (partial-lerped `stunnedTick`, from entity
+    /// event 39): the post-shield-block stun head shake. `0.0` when not stunned and for every non-ravager.
+    #[serde(default)]
+    pub ravager_stunned_ticks_remaining: f32,
+    /// Vanilla `RavagerRenderState.attackTicksRemaining` (partial-lerped `attackTick`, from entity event
+    /// 4): the bite neck lunge / mouth open. `0.0` when not attacking and for every non-ravager.
+    #[serde(default)]
+    pub ravager_attack_ticks_remaining: f32,
+    /// Vanilla `RavagerRenderState.roarAnimation` (the `0..1` roar ramp, armed when a stun ends): the
+    /// roar mouth open. `0.0` when not roaring and for every non-ravager.
+    #[serde(default)]
+    pub ravager_roar_animation: f32,
     #[serde(default)]
     pub polar_bear_stand_scale: f32,
     /// Stored block+sky light at the entity's light-probe block position,

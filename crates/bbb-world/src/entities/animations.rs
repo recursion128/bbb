@@ -100,6 +100,7 @@ const BEE_FLAG_ROLL: i8 = 2;
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
+const VANILLA_ENTITY_TYPE_RAVAGER_ID: i32 = 109;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -202,6 +203,14 @@ const IRON_GOLEM_OFFER_FLOWER_EVENT_ID: i8 = 11;
 const IRON_GOLEM_STOP_OFFER_FLOWER_EVENT_ID: i8 = 34;
 const IRON_GOLEM_ATTACK_TICKS: i32 = 10;
 const IRON_GOLEM_OFFER_FLOWER_TICKS: i32 = 400;
+/// Vanilla `Ravager.handleEntityEvent`: event `4` sets `attackTick = 10` (the bite), event `39` sets
+/// `stunnedTick = 40` (a shield-block stun). The roar is not event-driven — when `stunnedTick` decays to
+/// `0` the client `aiStep` sets `roarTick = 20`, so a roar always follows a stun.
+const RAVAGER_ATTACK_EVENT_ID: i8 = 4;
+const RAVAGER_STUN_EVENT_ID: i8 = 39;
+const RAVAGER_ATTACK_TICKS: i32 = 10;
+const RAVAGER_STUN_TICKS: i32 = 40;
+const RAVAGER_ROAR_TICKS: i32 = 20;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -233,6 +242,8 @@ pub struct EntityClientAnimationState {
     pub goat_ramming: Option<GoatRammingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub iron_golem: Option<IronGolemAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ravager: Option<RavagerAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -594,6 +605,75 @@ impl IronGolemAnimationState {
     fn attack_ticks_remaining(self, partial_tick: f32) -> f32 {
         if self.attack_animation_tick > 0 {
             self.attack_animation_tick as f32 - partial_tick
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Canonical client-side ravager attack / stun / roar timers, mirroring vanilla `Ravager.attackTick` /
+/// `stunnedTick` / `roarTick`. Entity event `4` sets the attack timer to [`RAVAGER_ATTACK_TICKS`] (the
+/// bite), event `39` sets the stun timer to [`RAVAGER_STUN_TICKS`]; each client `aiStep` decrements all
+/// three, and when the stun timer reaches `0` it arms the roar timer ([`RAVAGER_ROAR_TICKS`]) — so a
+/// roar always follows a stun. `RavagerModel.setupAnim` drives the neck lunge, head shake, and mouth
+/// open from the three.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RavagerAnimationState {
+    pub attack_tick: i32,
+    pub stunned_tick: i32,
+    pub roar_tick: i32,
+}
+
+impl RavagerAnimationState {
+    /// Vanilla `Ravager.aiStep`: decrement the roar, attack, and stun timers; when the stun timer hits
+    /// `0` it sets `roarTick = 20` (the post-stun roar).
+    fn advance_client_tick(&mut self) {
+        if self.roar_tick > 0 {
+            self.roar_tick -= 1;
+        }
+        if self.attack_tick > 0 {
+            self.attack_tick -= 1;
+        }
+        if self.stunned_tick > 0 {
+            self.stunned_tick -= 1;
+            if self.stunned_tick == 0 {
+                self.roar_tick = RAVAGER_ROAR_TICKS;
+            }
+        }
+    }
+
+    /// All three timers have run out, so the ravager is back to its idle/walk and the state can be
+    /// dropped.
+    fn is_settled(&self) -> bool {
+        self.attack_tick == 0 && self.stunned_tick == 0 && self.roar_tick == 0
+    }
+
+    /// Vanilla `RavagerRenderer.extractRenderState`: `stunnedTicksRemaining = getStunnedTick() > 0 ?
+    /// tick - partialTicks : 0`.
+    fn stunned_ticks_remaining(self, partial_tick: f32) -> f32 {
+        if self.stunned_tick > 0 {
+            self.stunned_tick as f32 - partial_tick
+        } else {
+            0.0
+        }
+    }
+
+    /// Vanilla `RavagerRenderer.extractRenderState`: `attackTicksRemaining = getAttackTick() > 0 ?
+    /// tick - partialTicks : 0`.
+    fn attack_ticks_remaining(self, partial_tick: f32) -> f32 {
+        if self.attack_tick > 0 {
+            self.attack_tick as f32 - partial_tick
+        } else {
+            0.0
+        }
+    }
+
+    /// Vanilla `RavagerRenderer.extractRenderState`: `roarAnimation = roarTick > 0 ? (20 - roarTick +
+    /// partialTicks) / 20 : 0` — a `0..1` ramp as the roar timer decays from `20` to `0`.
+    fn roar_animation(self, partial_tick: f32) -> f32 {
+        if self.roar_tick > 0 {
+            (RAVAGER_ROAR_TICKS as f32 - self.roar_tick as f32 + partial_tick)
+                / RAVAGER_ROAR_TICKS as f32
         } else {
             0.0
         }
@@ -1815,6 +1895,21 @@ impl EntityClientAnimationState {
                 }
                 _ => golem.offer_flower_tick = 0,
             }
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_RAVAGER_ID
+            && matches!(event_id, RAVAGER_ATTACK_EVENT_ID | RAVAGER_STUN_EVENT_ID)
+        {
+            // Vanilla `Ravager.handleEntityEvent`: event 4 → `attackTick = 10`, 39 → `stunnedTick = 40`.
+            // The `aiStep` decrements them and arms the post-stun roar.
+            let ravager = self.ravager.get_or_insert(RavagerAnimationState {
+                attack_tick: 0,
+                stunned_tick: 0,
+                roar_tick: 0,
+            });
+            if event_id == RAVAGER_ATTACK_EVENT_ID {
+                ravager.attack_tick = RAVAGER_ATTACK_TICKS;
+            } else {
+                ravager.stunned_tick = RAVAGER_STUN_TICKS;
+            }
         }
     }
 
@@ -1842,6 +1937,27 @@ impl EntityClientAnimationState {
     /// renderer offer-flower arm hold. `0` when the golem is not offering a poppy.
     pub fn iron_golem_offer_flower_tick(&self) -> i32 {
         self.iron_golem.map_or(0, |state| state.offer_flower_tick)
+    }
+
+    /// Vanilla `RavagerRenderState.stunnedTicksRemaining` (partial-lerped `stunnedTick`), exposed for the
+    /// renderer `RavagerModel.setupAnim` head-shake stun pose. `0.0` when not stunned.
+    pub fn ravager_stunned_ticks_remaining(&self, partial_tick: f32) -> f32 {
+        self.ravager
+            .map_or(0.0, |state| state.stunned_ticks_remaining(partial_tick))
+    }
+
+    /// Vanilla `RavagerRenderState.attackTicksRemaining` (partial-lerped `attackTick`), exposed for the
+    /// renderer ravager neck-lunge / mouth-open bite pose. `0.0` when not attacking.
+    pub fn ravager_attack_ticks_remaining(&self, partial_tick: f32) -> f32 {
+        self.ravager
+            .map_or(0.0, |state| state.attack_ticks_remaining(partial_tick))
+    }
+
+    /// Vanilla `RavagerRenderState.roarAnimation` (the `0..1` roar ramp), exposed for the renderer
+    /// ravager mouth-open roar pose. `0.0` when not roaring.
+    pub fn ravager_roar_animation(&self, partial_tick: f32) -> f32 {
+        self.ravager
+            .map_or(0.0, |state| state.roar_animation(partial_tick))
     }
 
     /// Vanilla `Warden.getTendrilAnimation(partialTick)`, exposed for the renderer
@@ -2274,6 +2390,14 @@ impl EntityClientAnimationState {
                     golem.advance_client_tick();
                     if golem.is_settled() {
                         self.iron_golem = None;
+                    }
+                }
+            }
+            VANILLA_ENTITY_TYPE_RAVAGER_ID => {
+                if let Some(ravager) = self.ravager.as_mut() {
+                    ravager.advance_client_tick();
+                    if ravager.is_settled() {
+                        self.ravager = None;
                     }
                 }
             }

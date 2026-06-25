@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn ravager_cubes_match_vanilla_26_1_body_layer() {
@@ -161,8 +161,8 @@ fn ravager_textured_mesh_turns_nested_head_not_neck_or_body() {
 fn ravager_swings_its_legs_when_walking() {
     // Vanilla `RavagerModel.setupAnim` swings the four legs `cos(pos * 0.6662 [+ π]) *
     // 0.4 * speed` (the `QuadrupedModel` phase with a shorter 0.4 amplitude). A standing
-    // ravager is inert; a walking one lifts its feet and splays its legs along Z. The
-    // neck/mouth attack/stun/roar poses are deferred.
+    // ravager is inert (the always-applied neck/mouth combat pose is identical at rest, so
+    // rest == still); a walking one lifts its feet and splays its legs along Z.
     let base = EntityModelInstance::ravager(280, [0.0, 64.0, 0.0], 0.0);
     let rest = entity_model_mesh(&[base]);
     let still = entity_model_mesh(&[base.with_walk_animation(2.5, 0.0)]);
@@ -289,4 +289,97 @@ fn ravager_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+// Vanilla `Mth.triangleWave` (replicated for the test expectations).
+fn triangle_wave(index: f32, period: f32) -> f32 {
+    ((index % period - period * 0.5).abs() - period * 0.25) / (period * 0.25)
+}
+
+fn ravager_neck_and_mouth(model: &mut RavagerModel) -> (PartPose, PartPose) {
+    let neck = model.root_mut().child_mut("neck").pose;
+    let mouth = model
+        .root_mut()
+        .child_mut("neck")
+        .child_mut("head")
+        .child_mut("mouth")
+        .pose;
+    (neck, mouth)
+}
+
+#[test]
+fn ravager_combat_poses_drive_the_neck_and_mouth() {
+    use std::f32::consts::PI;
+
+    let base = EntityModelInstance::ravager(230, [0.0, 64.0, 0.0], 0.0);
+
+    // Resting: the neck sits at its bind offset and the jaw cracks open π·0.01 (vanilla always poses it).
+    let mut resting = RavagerModel::new();
+    resting.prepare(&base);
+    let (neck, mouth) = ravager_neck_and_mouth(&mut resting);
+    assert_eq!(neck.offset, [0.0, -7.0, 5.5]);
+    assert_eq!(neck.rotation[0], 0.0);
+    assert!(
+        (mouth.rotation[0] - PI * 0.01).abs() < 1.0e-6,
+        "resting jaw: {}",
+        mouth.rotation[0]
+    );
+
+    // Attacking: the neck lunges forward (`z = -6.5 + headPos`) and the jaw snaps open.
+    let attack = 8.0_f32;
+    let mut attacking = RavagerModel::new();
+    attacking.prepare(&base.with_ravager_attack_ticks_remaining(attack));
+    let (neck, mouth) = ravager_neck_and_mouth(&mut attacking);
+    let scaled = (1.0 + triangle_wave(attack, 10.0)) * 0.5;
+    let head_pos = scaled * scaled * scaled * 12.0;
+    assert!(
+        (neck.offset[2] - (-6.5 + head_pos)).abs() < 1.0e-6,
+        "neck lunges: {}",
+        neck.offset[2]
+    );
+    // attack > 5 → mouth.xRot = sin((-4 + tick)/4)·π·0.4.
+    assert!(
+        (mouth.rotation[0] - ((-4.0 + attack) / 4.0).sin() * PI * 0.4).abs() < 1.0e-6,
+        "bite jaw: {}",
+        mouth.rotation[0]
+    );
+
+    // Stunned: the neck tilts (xRot = 0.21991149) and side-shakes (neck.x != 0); jaw opens π·0.05.
+    let stun = 30.0_f32;
+    let mut stunned = RavagerModel::new();
+    stunned.prepare(&base.with_ravager_stunned_ticks_remaining(stun));
+    let (neck, mouth) = ravager_neck_and_mouth(&mut stunned);
+    assert!(
+        (neck.rotation[0] - 0.21991149).abs() < 1.0e-6,
+        "stun tilt: {}",
+        neck.rotation[0]
+    );
+    assert!(
+        (neck.offset[0] - (f64::from(stun) / 40.0 * 10.0).sin() as f32 * 3.0).abs() < 1.0e-6,
+        "stun shake: {}",
+        neck.offset[0]
+    );
+    assert!(
+        (mouth.rotation[0] - PI * 0.05).abs() < 1.0e-6,
+        "stun jaw: {}",
+        mouth.rotation[0]
+    );
+
+    // Roaring (not stunned/attacking): the jaw gapes π/2·sin(roar·π/4).
+    let roar = 0.5_f32;
+    let mut roaring = RavagerModel::new();
+    roaring.prepare(&base.with_ravager_roar_animation(roar));
+    let (_, mouth) = ravager_neck_and_mouth(&mut roaring);
+    assert!(
+        (mouth.rotation[0] - (PI / 2.0) * (roar * PI * 0.25).sin()).abs() < 1.0e-6,
+        "roar jaw: {}",
+        mouth.rotation[0]
+    );
+
+    // The combat pose visibly changes the rendered mesh vs a resting ravager.
+    assert_ne!(
+        entity_model_mesh(&[base]).vertices,
+        entity_model_mesh(&[base.with_ravager_attack_ticks_remaining(attack)]).vertices,
+        "the attack lunge re-poses the neck/mouth"
+    );
 }

@@ -738,6 +738,15 @@ impl EntityStore {
             iron_golem_offer_flower_tick: client_animations
                 .animations
                 .iron_golem_offer_flower_tick(),
+            ravager_stunned_ticks_remaining: client_animations
+                .animations
+                .ravager_stunned_ticks_remaining(partial_ticks),
+            ravager_attack_ticks_remaining: client_animations
+                .animations
+                .ravager_attack_ticks_remaining(partial_ticks),
+            ravager_roar_animation: client_animations
+                .animations
+                .ravager_roar_animation(partial_ticks),
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),

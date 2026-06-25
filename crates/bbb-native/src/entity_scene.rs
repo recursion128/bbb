@@ -688,6 +688,9 @@ fn entity_model_instance(
         .with_goat_ramming_x_head_rot(goat_ramming_x_head_rot)
         .with_iron_golem_attack_ticks_remaining(source.iron_golem_attack_ticks_remaining)
         .with_iron_golem_offer_flower_tick(source.iron_golem_offer_flower_tick)
+        .with_ravager_stunned_ticks_remaining(source.ravager_stunned_ticks_remaining)
+        .with_ravager_attack_ticks_remaining(source.ravager_attack_ticks_remaining)
+        .with_ravager_roar_animation(source.ravager_roar_animation)
         .with_turtle_has_egg(turtle_has_egg(source.entity_type_id, &source.data_values))
         .with_turtle_laying_egg(turtle_laying_egg(
             source.entity_type_id,

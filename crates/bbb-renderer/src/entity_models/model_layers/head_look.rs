@@ -777,7 +777,7 @@ pub(in crate::entity_models) fn ravager_leg_swing_pose(
 
 /// Vanilla `Mth.triangleWave(index, period)`: a triangle wave in `[-1, 1]`,
 /// `(|index % period - period/2| - period/4) / (period/4)`.
-fn triangle_wave(index: f32, period: f32) -> f32 {
+pub(in crate::entity_models) fn triangle_wave(index: f32, period: f32) -> f32 {
     ((index % period - period * 0.5).abs() - period * 0.25) / (period * 0.25)
 }
 

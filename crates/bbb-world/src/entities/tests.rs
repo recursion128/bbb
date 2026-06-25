@@ -6964,6 +6964,68 @@ fn iron_golem_attack_and_offer_events_drive_client_animation_timers() {
 }
 
 #[test]
+fn ravager_attack_stun_and_roar_timers_advance_together() {
+    const VANILLA_ENTITY_TYPE_RAVAGER_ID: i32 = 109;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        76,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let source = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+
+    // Vanilla Ravager.handleEntityEvent: event 4 sets attackTick to 10 (partial-lerped projection).
+    assert_eq!(source(&store, 76, 0.0).ravager_attack_ticks_remaining, 0.0);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 76,
+        event_id: 4,
+    }));
+    assert_eq!(source(&store, 76, 0.5).ravager_attack_ticks_remaining, 9.5);
+    store.advance_entity_client_animations(10);
+    assert_eq!(source(&store, 76, 0.0).ravager_attack_ticks_remaining, 0.0);
+
+    // Event 39 sets stunnedTick to 40; when it decays to 0 the aiStep arms the post-stun roar (20).
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 76,
+        event_id: 39,
+    }));
+    assert_eq!(
+        source(&store, 76, 0.0).ravager_stunned_ticks_remaining,
+        40.0
+    );
+    assert_eq!(source(&store, 76, 0.0).ravager_roar_animation, 0.0);
+    store.advance_entity_client_animations(40);
+    // Stun has ended; the roar is now armed at 20 and the roarAnimation ramp begins (0 at tick 20).
+    assert_eq!(source(&store, 76, 0.0).ravager_stunned_ticks_remaining, 0.0);
+    assert_eq!(source(&store, 76, 0.0).ravager_roar_animation, 0.0);
+    store.advance_entity_client_animations(5);
+    // After 5 roar ticks: roarTick = 15, roarAnimation = (20 - 15)/20 = 0.25.
+    assert!((source(&store, 76, 0.0).ravager_roar_animation - 0.25).abs() < 1.0e-6);
+    store.advance_entity_client_animations(15);
+    assert_eq!(source(&store, 76, 0.0).ravager_roar_animation, 0.0);
+
+    // The ravager events on a non-ravager never start the timers.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 77,
+        event_id: 39,
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 77, 0.0).ravager_stunned_ticks_remaining, 0.0);
+}
+
+#[test]
 fn warden_tendril_event_drives_client_animation_pulse() {
     const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

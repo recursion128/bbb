@@ -461,6 +461,19 @@ entity_render_state! {
     /// its right arm out with a poppy (`xRot = -0.8 + 0.025·triangleWave(tick, 70)`, left arm flat).
     /// `0` for a golem not offering and every other entity. The flower block itself is not yet rendered.
     (with_iron_golem_offer_flower_tick) iron_golem_offer_flower_tick: i32 = 0;
+    /// Vanilla `RavagerRenderState.stunnedTicksRemaining` (partial-lerped `stunnedTick`): while `> 0`,
+    /// `RavagerModel.setupAnim` tilts the neck and shakes the head side-to-side (`neck.x =
+    /// sin(stunned/40·10)·3`) with the jaw slightly open. `0.0` for a ravager not stunned and every other
+    /// entity.
+    (with_ravager_stunned_ticks_remaining) ravager_stunned_ticks_remaining: f32 = 0.0;
+    /// Vanilla `RavagerRenderState.attackTicksRemaining` (partial-lerped `attackTick`): while `> 0`, the
+    /// neck lunges forward (`neck.z = -6.5 + headPos`) and the mouth snaps open for the bite. `0.0` for a
+    /// ravager not attacking and every other entity.
+    (with_ravager_attack_ticks_remaining) ravager_attack_ticks_remaining: f32 = 0.0;
+    /// Vanilla `RavagerRenderState.roarAnimation` (the `0..1` roar ramp): while `> 0` (and not stunned /
+    /// attacking), the mouth gapes for the roar (`mouth.xRot = π/2·sin(roar·π/4)`). `0.0` for a ravager
+    /// not roaring and every other entity.
+    (with_ravager_roar_animation) ravager_roar_animation: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -1682,6 +1695,9 @@ mod tests {
                 goat_ramming_x_head_rot: 0.0,
                 iron_golem_attack_ticks_remaining: 0.0,
                 iron_golem_offer_flower_tick: 0,
+                ravager_stunned_ticks_remaining: 0.0,
+                ravager_attack_ticks_remaining: 0.0,
+                ravager_roar_animation: 0.0,
                 is_crouching: false,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,

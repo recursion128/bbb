@@ -649,9 +649,17 @@ When an agent does any of the following, update this file in the same slice:
     the `QuadrupedModel` diagonal phase (`cos(pos * 0.6662 [+ π])`, in phase when
     `x*z < 0`) but a shorter `0.4` amplitude (`legRot = 0.4 * speed`) rather than the
     usual `1.4`; legs sit at `[2, 3, 4, 5]` and the swing only sets `xRot`, leaving the
-    nested neck/head subtree (which the head-look pose drives) untouched. Its mouth-open
-    attack pose, the stunned-shake `xRot`, and the roar/biting head animations are
-    deferred event animations. The spider and cave spider (`emit_spider_model` /
+    nested neck/head subtree (which the head-look pose drives) untouched. Its neck/mouth
+    attack, stun, and roar poses are implemented too (`apply_ravager_combat`, always applied
+    so a resting jaw cracks open `π·0.01`): `Ravager.handleEntityEvent` event `4` sets
+    `attackTick = 10` and event `39` sets `stunnedTick = 40`; the client `aiStep` decrements
+    all three timers and, when the stun ends, arms `roarTick = 20` (so a roar always follows a
+    stun). The partial-lerped `attackTicksRemaining` lunges the neck forward (`neck.z = -6.5 +
+    ((1 + triangleWave(tick, 10))·0.5)³·12`) and snaps the jaw in two phases; otherwise a
+    `stunnedTicksRemaining` tilts the neck (`xRot = 0.21991149`), side-shakes it (`neck.x =
+    sin(stunned/40·10)·3`) and opens the jaw `π·0.05`, or a `roarAnimation` (`(20 - roarTick +
+    partial)/20`) gapes it (`mouth.xRot = π/2·sin(roar·π/4)`). Only the roar particle/knockback
+    effects (event `69`) are deferred. The spider and cave spider (`emit_spider_model` /
     `emit_cave_spider_model` colored and `emit_spider_textured_model` textured, both base
     and eyes passes) use a dedicated `spider_leg_swing_pose`: `SpiderModel` is a custom
     `EntityModel` whose `setupAnim` accumulates onto each of the eight legs a horizontal
@@ -1319,9 +1327,10 @@ When an agent does any of the following, update this file in the same slice:
       textured), and the vanilla `RavagerModel.setupAnim` leg walk swing
       (`ravager_leg_swing_pose`: the `QuadrupedModel` diagonal phase
       `cos(pos * 0.6662 [+ π])` at the shorter `0.4` amplitude, legs `[2, 3, 4, 5]`,
-      `xRot` only so the neck/head subtree is untouched) on both render paths; attack
-      neck motion, stunned neck/mouth animation, roar mouth animation, and lighting
-      remain unsupported
+      `xRot` only so the neck/head subtree is untouched) plus the event-driven attack
+      neck-lunge, stunned neck shake, and roar mouth-gape poses (`apply_ravager_combat`
+      — see the ravager note above) on both render paths; only the roar
+      particle/knockback effects and lighting remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
