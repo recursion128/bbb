@@ -466,6 +466,29 @@ fn entity_hand_holds_trident(
     item_runtime.item_resource_id(item_id) == Some("minecraft:trident")
 }
 
+/// Whether the item in the given hand is a bow (vanilla `BowItem.getUseAnimation() == BOW`, which only
+/// `minecraft:bow` returns). While the entity draws it, `HumanoidModel.poseRightArm`/`poseLeftArm`
+/// `BOW_AND_ARROW` raises BOTH arms along the head look (the pose is two-handed + affectsOffhandPose, so the
+/// opposite arm's pose is skipped). Resolved through the item registry; `false` without it or for any
+/// non-bow / empty hand.
+fn entity_hand_holds_bow(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
+}
+
 /// Whether the item in the given hand is a spear — one of the seven tool-material spears whose item
 /// prototype sets `DataComponents.SWING_ANIMATION` to `SwingAnimationType.STAB` in `Item.Properties.spear(...)`.
 /// A spear's melee swing uses the `STAB` `SpearAnimations.thirdPersonAttackHand` pose instead of the default
@@ -838,6 +861,24 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         );
+    // Vanilla `HumanoidModel.poseRightArm` `BOW_AND_ARROW` use-item arm pose: while a player draws a bow
+    // (`isUsingItem` + the using hand holds a bow, `BowItem.getUseAnimation() == BOW`), BOTH arms raise along
+    // the head look. The pose is two-handed and `affectsOffhandPose`, so `poseRightArm` sets both arms and the
+    // opposite arm's pose is skipped. Gated to a MAIN-hand draw (right-handed player); the off-hand bow draw
+    // (the mirrored `poseLeftArm` `BOW_AND_ARROW`) stays deferred.
+    let player_drawing_bow = matches!(kind, EntityModelKind::Player { .. })
+        && source.is_using_item
+        && !source.use_item_off_hand
+        && entity_hand_holds_bow(world, item_runtime, source.entity_id, false);
+    // Vanilla `HumanoidModel.setupAnim` dispatch (lines 245-257): when the main hand uses an
+    // `affectsOffhandPose` item (the two-handed draws — `BOW_AND_ARROW` / `THROW_TRIDENT`, which bbb poses),
+    // `poseLeftArm` is SKIPPED, so the off hand gets NO pose. Suppress the off-hand `ITEM` fallback in that
+    // case (the off arm keeps its bow/trident-set or walk pose). `SPYGLASS`/`TOOT_HORN`/`BRUSH`/`BLOCK` do NOT
+    // affect the off-hand pose, so they leave the off-hand `ITEM` fallback intact.
+    let main_hand_use_affects_offhand = source.is_using_item
+        && !source.use_item_off_hand
+        && (entity_hand_holds_bow(world, item_runtime, source.entity_id, false)
+            || entity_hand_holds_trident(world, item_runtime, source.entity_id, false));
     // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM` arm pose (`HumanoidModel.poseRightArm` ITEM case):
     // a player holding a generic item in its main hand lowers and halves the arm swing. This is the `ITEM`
     // branch reached after the special-pose checks fail, gated here to the "not using an item" case — the
@@ -857,11 +898,13 @@ fn entity_model_instance(
     // suppressed only when the player is using the OFF hand specifically (`is_using_item && use_item_off_hand`,
     // which routes to the off-hand use poses — spyglass/horn/brush; using the MAIN hand leaves the off hand on
     // its `ITEM` fallback). Excludes off-hand spears (-> `SPEAR`) and charged crossbows (-> `CROSSBOW_HOLD`).
-    // The `isTwoHanded`-main-hand override (which forces a non-empty off hand to `ITEM` even over those two)
-    // stays deferred — it only diverges for an off-hand spear / charged crossbow while the main hand draws a
-    // two-handed item, and bbb renders neither off-hand pose yet.
+    // Also suppressed when the main hand draws an `affectsOffhandPose` item (`main_hand_use_affects_offhand`,
+    // the bow / trident), since vanilla skips `poseLeftArm` entirely there. The `isTwoHanded`-main-hand
+    // override (which would instead FORCE a non-empty off hand to `ITEM`) stays deferred — it only diverges
+    // for an off-hand spear / charged crossbow while the main hand draws a two-handed item.
     let player_off_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
         && !(source.is_using_item && source.use_item_off_hand)
+        && !main_hand_use_affects_offhand
         && entity_offhand_non_empty(world, source.entity_id)
         && !entity_hand_holds_spear(world, item_runtime, source.entity_id, true)
         && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, true);
@@ -1030,6 +1073,7 @@ fn entity_model_instance(
         .with_player_brushing(player_brushing)
         .with_player_blocking(player_blocking)
         .with_player_throwing_trident(player_throwing_trident)
+        .with_player_drawing_bow(player_drawing_bow)
         .with_player_main_hand_item_pose(player_main_hand_item_pose)
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_use_item_off_hand(source.use_item_off_hand)
@@ -4304,6 +4348,36 @@ mod tests {
             .render_state
             .player_throwing_trident;
         assert!(!throwing);
+    }
+
+    #[test]
+    fn entity_model_instances_bow_draw_pose_needs_a_resolved_bow() {
+        // The BOW_AND_ARROW use-item pose needs the using-hand item resolved through the item registry to
+        // confirm a bow; without an item runtime it can never resolve, so the projection defaults off even
+        // for a player flagged as using an item.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            255,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [6.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 255,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING
+            )],
+        }));
+        let drawing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 255)
+            .unwrap()
+            .render_state
+            .player_drawing_bow;
+        assert!(!drawing);
     }
 
     #[test]

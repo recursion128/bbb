@@ -491,6 +491,29 @@ pub(in crate::entity_models) fn apply_humanoid_throw_trident_pose(
     arm.pose.rotation[1] = 0.0;
 }
 
+/// Vanilla `HumanoidModel.poseRightArm` `BOW_AND_ARROW` use-item arm pose: while a player draws a main-hand
+/// bow, BOTH arms raise forward along the head look — `rightArm.xRot = leftArm.xRot = −π/2 + head.xRot`,
+/// `rightArm.yRot = −0.1 + head.yRot`, `leftArm.yRot = 0.1 + head.yRot + 0.4`. The pose is two-handed +
+/// `affectsOffhandPose`, so vanilla's `poseRightArm` sets both arms and `poseLeftArm` never runs (the
+/// projection suppresses the off-hand `ITEM` fallback to match). These are SET (not halved/added), so they
+/// overwrite the walk-swing pitch/yaw; the bob roll (`zRot`) is left in place. Only the right-handed
+/// main-hand draw is posed; the mirrored off-hand draw stays deferred. Applied before the crouch block.
+pub(in crate::entity_models) fn apply_humanoid_bow_pose(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+) {
+    use std::f32::consts::PI;
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let right = root.child_mut("right_arm");
+    right.pose.rotation[0] = -PI / 2.0 + head_pitch;
+    right.pose.rotation[1] = -0.1 + head_yaw;
+    let left = root.child_mut("left_arm");
+    left.pose.rotation[0] = -PI / 2.0 + head_pitch;
+    left.pose.rotation[1] = 0.1 + head_yaw + 0.4;
+}
+
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
 fn progress(t: f32, a: f32, b: f32) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)

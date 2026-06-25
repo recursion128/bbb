@@ -321,6 +321,13 @@ entity_render_state! {
     /// [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not charging a trident —
     /// only `PlayerModel` consumes it (the drowned reaches the same pose via its own aggression path).
     (with_player_throwing_trident) player_throwing_trident: bool = false;
+    /// Vanilla `HumanoidModel.poseRightArm` use-item arm pose `BOW_AND_ARROW`: while a player draws a
+    /// main-hand bow, BOTH arms raise along the head look — `rightArm.xRot = leftArm.xRot = −π/2 + head.xRot`,
+    /// `rightArm.yRot = −0.1 + head.yRot`, `leftArm.yRot = 0.1 + head.yRot + 0.4`. The pose is two-handed +
+    /// `affectsOffhandPose`, so `poseRightArm` sets both arms and `poseLeftArm` is skipped (the off-hand `ITEM`
+    /// fallback is suppressed in the projection). `false` for every entity not drawing a bow — only
+    /// `PlayerModel` consumes it; the off-hand bow draw stays deferred.
+    (with_player_drawing_bow) player_drawing_bow: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1855,6 +1862,7 @@ mod tests {
                 player_off_hand_item_pose: false,
                 player_blocking: false,
                 player_throwing_trident: false,
+                player_drawing_bow: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,

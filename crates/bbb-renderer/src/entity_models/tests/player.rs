@@ -786,6 +786,53 @@ fn player_charging_a_trident_raises_the_arm_overhead() {
 }
 
 #[test]
+fn player_drawing_a_bow_raises_both_arms_along_the_head_look() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.poseRightArm` `BOW_AND_ARROW`: both arms raise along the head look —
+    // `rightArm.xRot = leftArm.xRot = −π/2 + head.xRot`, `rightArm.yRot = −0.1 + head.yRot`,
+    // `leftArm.yRot = 0.1 + head.yRot + 0.4`. These are SET, overwriting the walk pitch/yaw.
+    let yaw = 15.0_f32.to_radians();
+    let pitch = (-20.0_f32).to_radians();
+    let base = EntityModelInstance::player(970, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(15.0, -20.0)
+        .with_walk_animation(0.0, 1.0);
+
+    let mut drawing = PlayerModel::new(false);
+    drawing.prepare(&base.with_player_drawing_bow(true));
+    let right = drawing.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-PI / 2.0 + pitch)).abs() < 1e-5,
+        "the right arm raises to −π/2 + head.xRot: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (-0.1 + yaw)).abs() < 1e-5,
+        "the right arm yaws −0.1 + head.yRot: {}",
+        right.rotation[1]
+    );
+    let left = drawing.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (-PI / 2.0 + pitch)).abs() < 1e-5,
+        "the left arm raises to −π/2 + head.xRot: {}",
+        left.rotation[0]
+    );
+    assert!(
+        (left.rotation[1] - (0.1 + yaw + 0.4)).abs() < 1e-5,
+        "the left arm yaws 0.1 + head.yRot + 0.4: {}",
+        left.rotation[1]
+    );
+
+    // A non-drawing walking player keeps its swinging (much lower) arm pitch — the bow visibly raises both.
+    let mut idle = PlayerModel::new(false);
+    idle.prepare(&base);
+    assert!(
+        idle.root_mut().child_mut("right_arm").pose.rotation[0] > -PI / 2.0 + pitch + 0.5,
+        "a non-drawing player does not raise the arm to the bow stance"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

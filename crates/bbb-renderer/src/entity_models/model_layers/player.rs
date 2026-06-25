@@ -1,9 +1,9 @@
 use super::{
     apply_head_look, apply_humanoid_attack_animation, apply_humanoid_block_pose,
-    apply_humanoid_brush_pose, apply_humanoid_crouch_named, apply_humanoid_item_hold_pose,
-    apply_humanoid_spyglass_pose, apply_humanoid_stab_attack_animation,
-    apply_humanoid_throw_trident_pose, apply_humanoid_toot_horn_pose, apply_humanoid_walk,
-    PartPose, PART_POSE_ZERO, PLAYER_BLUE,
+    apply_humanoid_bow_pose, apply_humanoid_brush_pose, apply_humanoid_crouch_named,
+    apply_humanoid_item_hold_pose, apply_humanoid_spyglass_pose,
+    apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
+    apply_humanoid_toot_horn_pose, apply_humanoid_walk, PartPose, PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -349,6 +349,16 @@ impl EntityModel for PlayerModel {
         }
         if render_state.player_throwing_trident {
             apply_humanoid_throw_trident_pose(&mut self.root, render_state.use_item_off_hand);
+        }
+        // Vanilla `HumanoidModel.poseRightArm` `BOW_AND_ARROW`: drawing a main-hand bow raises both arms along
+        // the head look. Two-handed + affectsOffhandPose, so `poseLeftArm` is skipped (the projection
+        // suppresses the off-hand ITEM fallback while drawing), and this sets both arms here.
+        if render_state.player_drawing_bow {
+            apply_humanoid_bow_pose(
+                &mut self.root,
+                render_state.head_yaw,
+                render_state.head_pitch,
+            );
         }
         // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM`: a player holding a plain main-hand item lowers
         // and halves the arm. It runs as part of `poseRightArm` (before crouch/attack) and only on the main

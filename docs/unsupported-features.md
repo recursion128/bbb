@@ -807,11 +807,19 @@ When an agent does any of the following, update this file in the same slice:
     pose IS now implemented too (`apply_humanoid_throw_trident_pose`, the same `poseRightArm`/`poseLeftArm`
     `THROW_TRIDENT` case the drowned reaches via aggression): while a player charges a trident throw
     (`isUsingItem` + the using hand holds a trident, `TridentItem.getUseAnimation() == TRIDENT`) the holding
-    arm raises the trident straight overhead — `xRot = arm.xRot · 0.5 − π`, `yRot = 0`. The remaining
+    arm raises the trident straight overhead — `xRot = arm.xRot · 0.5 − π`, `yRot = 0`. The two-handed
+    `BOW_AND_ARROW` draw IS now implemented too (`apply_humanoid_bow_pose`, `HumanoidModel.poseRightArm`
+    `BOW_AND_ARROW`): while a player draws a main-hand bow (`isUsingItem` + the using hand holds a bow,
+    `BowItem.getUseAnimation() == BOW`) BOTH arms raise along the head look — `rightArm.xRot = leftArm.xRot =
+    −π/2 + head.xRot`, `rightArm.yRot = −0.1 + head.yRot`, `leftArm.yRot = 0.1 + head.yRot + 0.4`. Because
+    `BOW_AND_ARROW`/`THROW_TRIDENT` are `affectsOffhandPose=true`, vanilla's `setupAnim` SKIPS `poseLeftArm`
+    when the main hand draws them, so the projection now suppresses the off-hand `ITEM` fallback during a
+    main-hand bow/trident draw (`main_hand_use_affects_offhand`) to match. The remaining
     use-item arm poses on the same dispatch (the using-item routes that also resolve to
-    `ITEM` — `EAT`/`DRINK` — and the two-handed `BOW_AND_ARROW`/`CROSSBOW` draw poses, a non-shield
+    `ITEM` — `EAT`/`DRINK` — the two-handed `CROSSBOW_CHARGE` draw (the per-tick `animateCrossbowCharge`), the
+    mirrored off-hand bow/trident draw, a non-shield
     datapack `BLOCKS_ATTACKS` item, the off-arm `EMPTY` reset, and the
-    `affectsOffhandPose` / `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
+    `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
     off-hand spear/charged crossbow while the main hand draws a two-handed item) stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
