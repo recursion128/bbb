@@ -415,6 +415,12 @@ entity_render_state! {
     /// (`zRot = ±3π/4`, `xRot = cos(ageInTicks · 0.6662) · 0.25`). `false` for every other entity
     /// and for an idle illager (which shows the static CROSSED arms).
     (with_illager_spellcasting) illager_spellcasting: bool = false;
+    /// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean, id 16): a celebrating
+    /// evoker/vindicator whose `getArmPose` returns `CELEBRATING` (when not casting / not aggressive),
+    /// so `IllagerModel.setupAnim` raises the two separate arms into the victory dance (`zRot` raised,
+    /// `xRot = cos(ageInTicks · 0.6662) · 0.05`). `false` for every other entity and for an idle illager
+    /// (which shows the static CROSSED arms).
+    (with_illager_celebrating) illager_celebrating: bool = false;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -1626,6 +1632,7 @@ mod tests {
                 legs_armor_dye: None,
                 feet_armor_dye: None,
                 illager_spellcasting: false,
+                illager_celebrating: false,
                 is_crouching: false,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,

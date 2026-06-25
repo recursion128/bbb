@@ -597,6 +597,133 @@ fn non_spellcaster_illagers_ignore_the_spellcasting_flag() {
 }
 
 #[test]
+fn illager_celebrate_arm_pose_matches_vanilla() {
+    use std::f32::consts::PI;
+
+    // Vanilla `IllagerModel.setupAnim` CELEBRATING: both arms hold the bind offset (`x = ∓5`, `z = 0`),
+    // bob `xRot = cos(ageInTicks · 0.6662) · 0.05`, raise asymmetrically (right `zRot = 2.670354`, left
+    // `zRot = -3π/4`), with `yRot = 0`.
+    let right = illager_celebrate_arm_pose(ILLAGER_RIGHT_ARM_POSE, 0.0, true);
+    assert_eq!(right.offset, [-5.0, 2.0, 0.0]);
+    assert!((right.rotation[0] - 0.05).abs() < 1.0e-6); // cos(0) * 0.05
+    assert_eq!(right.rotation[1], 0.0);
+    assert!((right.rotation[2] - 2.670354).abs() < 1.0e-6);
+
+    let left = illager_celebrate_arm_pose(ILLAGER_LEFT_ARM_POSE, 0.0, false);
+    assert_eq!(left.offset, [5.0, 2.0, 0.0]);
+    assert!((left.rotation[2] - (-PI * 3.0 / 4.0)).abs() < 1.0e-6);
+
+    // The arm pitch bobs with `ageInTicks`.
+    let aged = illager_celebrate_arm_pose(ILLAGER_RIGHT_ARM_POSE, 5.0, true);
+    assert!((aged.rotation[0] - (5.0_f32 * 0.6662).cos() * 0.05).abs() < 1.0e-6);
+}
+
+#[test]
+fn aggressive_illusioner_draws_its_bow() {
+    use std::f32::consts::FRAC_PI_2;
+
+    // Vanilla `Illusioner.getArmPose`: `!isCastingSpell() && isAggressive()` → BOW_AND_ARROW. The
+    // illager braces the off hand across the bow: right arm `xRot = -π/2 + head.xRot`,
+    // `yRot = -0.1 + head.yRot`; left arm `xRot = -0.9424779 + head.xRot`, `yRot = head.yRot - 0.4`,
+    // `zRot = π/2`.
+    let yaw = 20.0_f32;
+    let pitch = -12.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let pitch_rad = pitch.to_radians();
+    let drawing =
+        EntityModelInstance::illager(68, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Illusioner)
+            .with_head_look(yaw, pitch)
+            .with_is_aggressive(true);
+    let mut model = IllagerModel::new(&drawing, IllagerModelFamily::Illusioner);
+    model.prepare(&drawing);
+
+    let right = model.root_mut().child_mut("right_arm");
+    assert!(
+        (right.pose.rotation[0] - (-FRAC_PI_2 + pitch_rad)).abs() < 1.0e-6,
+        "right arm aims down the head pitch: {}",
+        right.pose.rotation[0]
+    );
+    assert!((right.pose.rotation[1] - (-0.1 + yaw_rad)).abs() < 1.0e-6);
+    let left = model.root_mut().child_mut("left_arm");
+    assert!((left.pose.rotation[0] - (-0.9424779 + pitch_rad)).abs() < 1.0e-6);
+    assert!((left.pose.rotation[1] - (yaw_rad - 0.4)).abs() < 1.0e-6);
+    assert!(
+        (left.pose.rotation[2] - FRAC_PI_2).abs() < 1.0e-6,
+        "the braced off arm rolls to π/2"
+    );
+
+    // The mesh swaps the crossed arms (240 hatted verts) for the uncrossed hatted layout (216); an
+    // idle illusioner stays crossed.
+    let idle = entity_model_mesh(&[EntityModelInstance::illager(
+        68,
+        [0.0, 64.0, 0.0],
+        0.0,
+        IllagerModelFamily::Illusioner,
+    )]);
+    let aggressive = entity_model_mesh(&[drawing]);
+    assert_eq!(idle.vertices.len(), 240);
+    assert_eq!(
+        aggressive.vertices.len(),
+        216,
+        "the crossed arms part is hidden and the separate arms draw the bow"
+    );
+}
+
+#[test]
+fn celebrating_raiders_raise_the_victory_arms() {
+    // Vanilla `SpellcasterIllager`/`Vindicator.getArmPose`: not casting / not aggressive and
+    // `isCelebrating()` → CELEBRATING. The evoker and vindicator swap their crossed arms (216) for the
+    // uncrossed separate-arm dance (192) and roll the right arm up to `2.670354`.
+    for (id, family) in [
+        (46, IllagerModelFamily::Evoker),
+        (140, IllagerModelFamily::Vindicator),
+    ] {
+        let base = EntityModelInstance::illager(id, [0.0, 64.0, 0.0], 0.0, family);
+        let idle = entity_model_mesh(&[base]);
+        let celebrating = entity_model_mesh(&[base.with_illager_celebrating(true)]);
+        assert_eq!(idle.vertices.len(), 216);
+        assert_eq!(
+            celebrating.vertices.len(),
+            192,
+            "the crossed arms hide and two separate arms dance"
+        );
+        assert_ne!(idle.vertices, celebrating.vertices);
+
+        let celebrating_instance = base.with_illager_celebrating(true);
+        let mut model = IllagerModel::new(&celebrating_instance, family);
+        model.prepare(&celebrating_instance);
+        assert!(
+            (model.root_mut().child_mut("right_arm").pose.rotation[2] - 2.670354).abs() < 1.0e-6,
+            "the right arm raises into the victory roll"
+        );
+    }
+
+    // An aggressive vindicator's ATTACKING melee swing is deferred (it needs `attackTime`), and
+    // aggression outranks celebrating in vanilla `getArmPose`, so it stays crossed (216).
+    let vindicator =
+        EntityModelInstance::illager(140, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Vindicator);
+    let attacking = entity_model_mesh(&[vindicator
+        .with_illager_celebrating(true)
+        .with_is_aggressive(true)]);
+    assert_eq!(
+        attacking.vertices.len(),
+        216,
+        "an aggressive vindicator stays crossed (ATTACKING deferred)"
+    );
+
+    // The celebrate flag is gated to the evoker/vindicator: a celebrating pillager keeps its
+    // crossbow-swing arms (it never returns CELEBRATING), and an illusioner is unaffected (it draws
+    // a bow when aggressive, crosses otherwise).
+    let pillager =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager);
+    assert_eq!(
+        entity_model_mesh(&[pillager]).vertices,
+        entity_model_mesh(&[pillager.with_illager_celebrating(true)]).vertices,
+        "the pillager ignores the celebrate flag"
+    );
+}
+
+#[test]
 fn crossed_arm_illagers_keep_their_arms_still_when_walking() {
     // The evoker/vindicator/illusioner show the static crossed `arms` part: vanilla swings
     // the *invisible* separate arms, so the visible crossed part holds still. The evoker

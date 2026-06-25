@@ -228,6 +228,10 @@ const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
 /// spellcaster illagers use for `DATA_SPELL_CASTING_ID`, since each illager subclass adds its own
 /// accessor in that position. `getArmPose` returns `CROSSBOW_CHARGE` while true, else `CROSSBOW_HOLD`.
 const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
+/// Vanilla `Raider.IS_CELEBRATING` data id (16): the boolean set while a raider celebrates a raid
+/// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
+/// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
+const RAIDER_IS_CELEBRATING_DATA_ID: u8 = 16;
 // `ArmorStand extends LivingEntity` directly — it is NOT a `Mob`, so there is no
 // `Mob.DATA_MOB_FLAGS_ID` (15); `ArmorStand.DATA_CLIENT_FLAGS` is the first accessor after
 // `LivingEntity` (0-14) and lands at 15, with the six pose rotations following at 16-21.
@@ -639,6 +643,10 @@ fn entity_model_instance(
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
         .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
         .with_illager_spellcasting(illager_spellcasting(
+            source.entity_type_id,
+            &source.data_values,
+        ))
+        .with_illager_celebrating(illager_celebrating(
             source.entity_type_id,
             &source.data_values,
         ))
@@ -1568,6 +1576,20 @@ fn illager_spellcasting(
     (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_ILLUSIONER_ID)
         && entity_data_byte(values, SPELLCASTER_ILLAGER_CASTING_DATA_ID, 0) > 0
+}
+
+/// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean, id 16): drives the evoker and
+/// vindicator `CELEBRATING` victory-dance arm pose. Only those two render it — the illusioner overrides
+/// `getArmPose` (bow, no celebrate) and the pillager never returns `CELEBRATING` — so the projection is
+/// gated to the evoker / vindicator types. The renderer additionally suppresses it while casting /
+/// aggressive (which take priority in vanilla `getArmPose`).
+fn illager_celebrating(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_VINDICATOR_ID)
+        && entity_data_bool(values, RAIDER_IS_CELEBRATING_DATA_ID, false)
 }
 
 /// Vanilla `TurtleRenderState.hasEgg = !isBaby() && Turtle.hasEgg()` (the synced `HAS_EGG`
@@ -3130,6 +3152,57 @@ mod tests {
             )],
         }));
         assert!(!charging(&world, 161));
+    }
+
+    #[test]
+    fn entity_model_instances_project_illager_celebrating() {
+        // Vanilla Raider.IS_CELEBRATING (BOOLEAN data id 16) and SpellcasterIllager/Vindicator
+        // .getArmPose: the evoker and vindicator render the CELEBRATING dance while it is set. The
+        // pillager never returns CELEBRATING, so the projection is gated to the evoker/vindicator.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            170,
+            VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            171,
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            [2.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            172,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let celebrating = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .illager_celebrating
+        };
+
+        // No flag → not celebrating.
+        assert!(!celebrating(&world, 170));
+
+        // Raider.IS_CELEBRATING (data id 16) projects the dance for the vindicator and evoker.
+        for id in [170, 171] {
+            assert!(world.apply_set_entity_data(SetEntityData {
+                id,
+                values: vec![protocol_bool_data(RAIDER_IS_CELEBRATING_DATA_ID, true)],
+            }));
+            assert!(celebrating(&world, id));
+        }
+
+        // The same flag on a pillager does NOT project celebrating (it never returns CELEBRATING).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 172,
+            values: vec![protocol_bool_data(RAIDER_IS_CELEBRATING_DATA_ID, true)],
+        }));
+        assert!(!celebrating(&world, 172));
     }
 
     #[test]

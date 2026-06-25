@@ -568,9 +568,20 @@ When an agent does any of the following, update this file in the same slice:
     `holdingInRightArm`: right (holding) arm `xRot = -π/2 + head.xRot + 0.1`,
     `yRot = -0.3 + head.yRot`; left (shooting) arm `xRot = -1.5 + head.xRot`,
     `yRot = 0.6 + head.yRot` — overwriting the walk swing on both render paths (the held
-    crossbow mesh rides the leveled hand). The `CROSSBOW_CHARGE` pull-back pose (which
-    needs the projected `ticksUsingItem`/`maxCrossbowChargeDuration`) and the
-    attack/bow/celebrate overrides and riding sit pose stay deferred. The villager family
+    crossbow mesh rides the leveled hand). The illusioner `BOW_AND_ARROW` draw is also
+    projected (`Illusioner.getArmPose`: `!casting && isAggressive` → BOW_AND_ARROW): the
+    uncrossed arms aim the bow along the head look with the illager bracing the off hand —
+    right arm `xRot = -π/2 + head.xRot`, `yRot = -0.1 + head.yRot`; left arm
+    `xRot = -0.9424779 + head.xRot`, `yRot = head.yRot - 0.4`, `zRot = π/2`. The evoker /
+    vindicator `CELEBRATING` victory dance is projected too (`Raider.isCelebrating()`, the
+    synced `IS_CELEBRATING` boolean, data id `16`, gated to the evoker/vindicator and
+    suppressed while casting / aggressive): both separate arms bob
+    `xRot = cos(ageInTicks · 0.6662) · 0.05` and raise asymmetrically (right `zRot =
+    2.670354`, left `zRot = -3π/4`). These swaps to the uncrossed separate-arm layout
+    mirror vanilla `crossedArms = pose == CROSSED`. The vindicator melee `ATTACKING` swing
+    (which needs the projected `attackTime`/`getAttackAnim`), the pillager `CROSSBOW_CHARGE`
+    pull-back (which needs `ticksUsingItem`/`maxCrossbowChargeDuration`), and the riding sit
+    pose stay deferred. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
     `emit_villager_family_textured_passes` textured for the villager/wandering-trader, plus
     the witch's own `emit_witch_model`/`emit_witch_textured_model` that add the idle nose bob)

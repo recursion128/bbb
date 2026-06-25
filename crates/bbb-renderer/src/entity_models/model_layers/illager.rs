@@ -213,25 +213,22 @@ fn arms() -> Vec<(&'static str, ModelPart)> {
     ]
 }
 
-/// Builds the unified illager tree for `family`/`spellcasting`, mirroring the vanilla layer choice
-/// with the vanilla `IllagerModel` child names. The idle crossed layout lists `head`, `body`, the
-/// folded `arms`, then the legs; the uncrossed (pillager / spellcasting) layout lists `head`, `body`,
-/// the legs, then the separate `right_arm`/`left_arm`. The illusioner keeps its hatted head in both.
-/// Vanilla declaration order is preserved so the colored render order stays byte-identical, while the
-/// head look, leg swing, and arm poses resolve their parts by name.
-fn illager_tree(family: IllagerModelFamily, spellcasting: bool) -> ModelPart {
+/// Builds the unified illager tree, mirroring the vanilla layer choice with the vanilla `IllagerModel`
+/// child names. The idle crossed layout (`uncrossed = false`) lists `head`, `body`, the folded `arms`,
+/// then the legs; the `uncrossed` layout (the pillager, and any spell-casting / bow-drawing / celebrating
+/// evoker/vindicator/illusioner) lists `head`, `body`, the legs, then the separate `right_arm`/`left_arm`.
+/// The illusioner keeps its hatted head in both. Vanilla declaration order is preserved so the colored
+/// render order stays byte-identical, while the head look, leg swing, and arm poses resolve by name.
+fn illager_tree(family: IllagerModelFamily, uncrossed: bool) -> ModelPart {
     let hatted = matches!(family, IllagerModelFamily::Illusioner);
-    // The idle crossed layout applies to the evoker/vindicator/illusioner that are not spell-casting;
-    // the pillager (and any spell-casting evoker/illusioner) use the uncrossed separate-arm layout.
-    let crossed = !spellcasting && !matches!(family, IllagerModelFamily::Pillager);
     let mut children: Vec<(&'static str, ModelPart)> =
         vec![("head", head(hatted)), ("body", body())];
-    if crossed {
-        children.push(("arms", crossed_arms()));
-        children.extend(legs());
-    } else {
+    if uncrossed {
         children.extend(legs());
         children.extend(arms());
+    } else {
+        children.push(("arms", crossed_arms()));
+        children.extend(legs());
     }
     ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
 }
@@ -258,6 +255,51 @@ pub(in crate::entity_models) fn illager_spellcast_arm_pose(
             },
         ],
     }
+}
+
+/// Vanilla `IllagerModel.setupAnim` `CELEBRATING` arm pose for one separate arm (the evoker/vindicator
+/// raid victory dance). Both arms hold their bind offset (`rightArm.x = -5`/`leftArm.x = 5`, `z = 0`),
+/// bob `xRot = cos(ageInTicks · 0.6662) · 0.05`, and raise outward by an asymmetric roll — the right arm
+/// higher (`zRot = 2.670354`), the left to `-3π/4` — with `yRot = 0`.
+pub(in crate::entity_models) fn illager_celebrate_arm_pose(
+    base: PartPose,
+    age_in_ticks: f32,
+    is_right: bool,
+) -> PartPose {
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            (age_in_ticks * 0.6662).cos() * 0.05,
+            0.0,
+            if is_right {
+                2.670354
+            } else {
+                -std::f32::consts::PI * 3.0 / 4.0
+            },
+        ],
+    }
+}
+
+/// Vanilla `IllagerModel.setupAnim` `BOW_AND_ARROW` arm pose (the illusioner drawing its bow). Unlike
+/// the symmetric `HumanoidModel`/skeleton aim, the illager braces the off (left) hand across the bow:
+/// the right arm aims down the head look (`xRot = -π/2 + head.xRot`, `yRot = -0.1 + head.yRot`, `zRot`
+/// preserved), the left arm holds the bow level and rolled in (`xRot = -0.9424779 + head.xRot`,
+/// `yRot = head.yRot - 0.4`, `zRot = π/2`).
+fn apply_illager_bow_aim(root: &mut ModelPart, head_yaw_degrees: f32, head_pitch_degrees: f32) {
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let right = root.child_mut("right_arm");
+    right.pose.rotation = [
+        -std::f32::consts::FRAC_PI_2 + head_pitch,
+        -0.1 + head_yaw,
+        right.pose.rotation[2],
+    ];
+    let left = root.child_mut("left_arm");
+    left.pose.rotation = [
+        -0.9424779 + head_pitch,
+        head_yaw - 0.4,
+        std::f32::consts::FRAC_PI_2,
+    ];
 }
 
 /// Vanilla `IllagerModel.setupAnim` `CROSSBOW_HOLD` arm pose (`AnimationUtils.animateCrossbowHold` with
@@ -290,29 +332,86 @@ fn illager_is_holding_crossbow(instance: &EntityModelInstance) -> bool {
     instance.render_state.main_hand_holds_crossbow && !instance.render_state.is_charging_crossbow
 }
 
-/// Whether an illager is mid spell-cast — only the evoker and illusioner cast, and only then do they
-/// swap from the static crossed `arms` layout to the uncrossed separate-arm layout.
-fn illager_is_spellcasting(instance: &EntityModelInstance, family: IllagerModelFamily) -> bool {
-    instance.render_state.illager_spellcasting
-        && matches!(
-            family,
-            IllagerModelFamily::Evoker | IllagerModelFamily::Illusioner
-        )
+/// The resolved illager arm pose for a frame, mirroring each family's vanilla `getArmPose()` for the
+/// poses bbb renders. `Crossed` shows the static folded `arms` part; every other pose uses the uncrossed
+/// separate arms. The vindicator melee `ATTACKING` swing (needs `attackTime`) and the pillager
+/// `CROSSBOW_CHARGE` draw (needs `ticksUsingItem`) are deferred, so an aggressive vindicator stays
+/// `Crossed` and a charging pillager keeps the `Swing`/`CrossbowHold` arms.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum IllagerArmPose {
+    /// Folded `arms` part — vanilla `CROSSED` (idle evoker/vindicator/illusioner).
+    Crossed,
+    /// Pillager separate-arm walk swing, optionally overridden by the `CROSSBOW_HOLD` level.
+    Swing,
+    /// Evoker/illusioner `SPELLCASTING` raised arms.
+    Spellcast,
+    /// Illusioner `BOW_AND_ARROW` draw.
+    BowAndArrow,
+    /// Evoker/vindicator `CELEBRATING` victory dance.
+    Celebrating,
+}
+
+impl IllagerArmPose {
+    /// Whether this pose renders the uncrossed separate-arm layout (vanilla `crossedArms = pose ==
+    /// CROSSED` toggles the `arms` part off and the separate arms on for every non-`Crossed` pose).
+    fn uses_separate_arms(self) -> bool {
+        self != IllagerArmPose::Crossed
+    }
+}
+
+/// Resolves the illager arm pose from the projected render state, mirroring each family's vanilla
+/// `getArmPose()` for the supported poses. The pillager always uses the uncrossed swing layout (vanilla
+/// returns HOLD/CHARGE/ATTACKING/NEUTRAL, never CROSSED); the spellcasters cast first (priority), else the
+/// evoker celebrates and the illusioner draws its bow when aggressive; the vindicator celebrates when not
+/// aggressive (its `ATTACKING` melee swing is deferred, so an aggressive vindicator stays `Crossed`).
+fn resolve_illager_arm_pose(
+    instance: &EntityModelInstance,
+    family: IllagerModelFamily,
+) -> IllagerArmPose {
+    let rs = &instance.render_state;
+    match family {
+        IllagerModelFamily::Pillager => IllagerArmPose::Swing,
+        IllagerModelFamily::Evoker => {
+            if rs.illager_spellcasting {
+                IllagerArmPose::Spellcast
+            } else if rs.illager_celebrating {
+                IllagerArmPose::Celebrating
+            } else {
+                IllagerArmPose::Crossed
+            }
+        }
+        IllagerModelFamily::Illusioner => {
+            if rs.illager_spellcasting {
+                IllagerArmPose::Spellcast
+            } else if rs.is_aggressive {
+                IllagerArmPose::BowAndArrow
+            } else {
+                IllagerArmPose::Crossed
+            }
+        }
+        IllagerModelFamily::Vindicator => {
+            if !rs.is_aggressive && rs.illager_celebrating {
+                IllagerArmPose::Celebrating
+            } else {
+                IllagerArmPose::Crossed
+            }
+        }
+    }
 }
 
 /// Mutable illager model, mirroring vanilla `IllagerModel`/`SpellcasterIllagerModel` shared by the
-/// evoker, vindicator, illusioner, and pillager. The unified tree is built for `family`/`spellcasting`
-/// with the vanilla child names. `setup_anim` looks the head ([`apply_head_look`] on `head`) and swings
-/// the legs at the villager-family half amplitude ([`apply_half_amplitude_leg_swing`]); the
-/// pillager additionally swings its separate arms at the `HumanoidModel` amplitude
-/// ([`humanoid_arm_swing_pose`] on `right_arm`/`left_arm`), while a spellcasting evoker/illusioner
-/// instead raises both arms into the `SPELLCASTING` pose ([`illager_spellcast_arm_pose`]). A pillager
-/// holding a crossbow levels it into the `CROSSBOW_HOLD` pose ([`apply_illager_crossbow_hold`]). The
-/// attack/bow/crossbow-charge/celebrate arm overrides and the riding sit pose defer.
+/// evoker, vindicator, illusioner, and pillager. The unified tree is built for the resolved
+/// [`IllagerArmPose`] with the vanilla `IllagerModel` child names. `setup_anim` looks the head
+/// ([`apply_head_look`] on `head`) and swings the legs at the villager-family half amplitude
+/// ([`apply_half_amplitude_leg_swing`]), then applies the resolved arm pose: the pillager swings its
+/// separate arms ([`humanoid_arm_swing_pose`]) and levels a held crossbow ([`apply_illager_crossbow_hold`]);
+/// a casting evoker/illusioner raises the `SPELLCASTING` arms ([`illager_spellcast_arm_pose`]); an
+/// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); a celebrating evoker/vindicator dances
+/// ([`illager_celebrate_arm_pose`]). The vindicator melee `ATTACKING` swing, the pillager
+/// `CROSSBOW_CHARGE` draw, and the riding sit pose defer.
 pub(in crate::entity_models) struct IllagerModel {
     root: ModelPart,
-    family: IllagerModelFamily,
-    spellcasting: bool,
+    pose: IllagerArmPose,
 }
 
 impl IllagerModel {
@@ -320,11 +419,10 @@ impl IllagerModel {
         instance: &EntityModelInstance,
         family: IllagerModelFamily,
     ) -> Self {
-        let spellcasting = illager_is_spellcasting(instance, family);
+        let pose = resolve_illager_arm_pose(instance, family);
         Self {
-            root: illager_tree(family, spellcasting),
-            family,
-            spellcasting,
+            root: illager_tree(family, pose.uses_separate_arms()),
+            pose,
         }
     }
 }
@@ -348,29 +446,45 @@ impl EntityModel for IllagerModel {
         let limb_swing = render_state.walk_animation_pos;
         let limb_swing_amount = render_state.walk_animation_speed;
         apply_half_amplitude_leg_swing(&mut self.root, limb_swing, limb_swing_amount);
-        if self.spellcasting {
-            // Vanilla overwrites both separate arms' rotations with the spellcasting pose, so it
-            // overrides even at rest.
-            let age = render_state.age_in_ticks;
-            let right = self.root.child_mut("right_arm");
-            right.pose = illager_spellcast_arm_pose(right.pose, age, true);
-            let left = self.root.child_mut("left_arm");
-            left.pose = illager_spellcast_arm_pose(left.pose, age, false);
-        } else if matches!(self.family, IllagerModelFamily::Pillager) {
-            // Only the pillager renders the uncrossed (separate, swinging) arms; the idle
-            // evoker/vindicator/illusioner show the static crossed `arms` part instead.
-            for name in ["right_arm", "left_arm"] {
-                let arm = self.root.child_mut(name);
-                arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+        let age = render_state.age_in_ticks;
+        match self.pose {
+            // The folded `arms` part is static — vanilla never animates it (it swings the invisible
+            // separate arms), so the crossed illager only swings its legs.
+            IllagerArmPose::Crossed => {}
+            IllagerArmPose::Swing => {
+                for name in ["right_arm", "left_arm"] {
+                    let arm = self.root.child_mut(name);
+                    arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                }
+                // A pillager holding its crossbow levels it along the head look, overwriting the walk
+                // swing (vanilla `CROSSBOW_HOLD`). The charge pull-back pose is deferred.
+                if illager_is_holding_crossbow(instance) {
+                    apply_illager_crossbow_hold(
+                        &mut self.root,
+                        render_state.head_yaw,
+                        render_state.head_pitch,
+                    );
+                }
             }
-            // A pillager holding its crossbow levels it along the head look, overwriting the walk swing
-            // (vanilla `IllagerModel.setupAnim` `CROSSBOW_HOLD`). The charge pull-back pose is deferred.
-            if illager_is_holding_crossbow(instance) {
-                apply_illager_crossbow_hold(
+            IllagerArmPose::Spellcast => {
+                // Vanilla overwrites both separate arms' rotations with the spellcasting pose.
+                let right = self.root.child_mut("right_arm");
+                right.pose = illager_spellcast_arm_pose(right.pose, age, true);
+                let left = self.root.child_mut("left_arm");
+                left.pose = illager_spellcast_arm_pose(left.pose, age, false);
+            }
+            IllagerArmPose::BowAndArrow => {
+                apply_illager_bow_aim(
                     &mut self.root,
                     render_state.head_yaw,
                     render_state.head_pitch,
                 );
+            }
+            IllagerArmPose::Celebrating => {
+                let right = self.root.child_mut("right_arm");
+                right.pose = illager_celebrate_arm_pose(right.pose, age, true);
+                let left = self.root.child_mut("left_arm");
+                left.pose = illager_celebrate_arm_pose(left.pose, age, false);
             }
         }
     }
