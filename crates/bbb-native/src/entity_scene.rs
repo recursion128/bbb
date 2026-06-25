@@ -314,6 +314,13 @@ const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 // UNHAPPY (18) / SNEEZE (19) / EAT (20) come the two gene bytes; DATA_ID_FLAGS follows at 23.
 const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
 const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
+/// Vanilla `Panda.UNHAPPY_COUNTER` (18, INT): `> 0` drives `PandaRenderState.isUnhappy`, the head-shake
+/// + front-leg paddle. `Panda.SNEEZE_COUNTER` (19, INT) is the `sneezeTime` ramp; the `isSneezing` flag
+/// is `Panda.DATA_ID_FLAGS` (23, BYTE) bit `0x02` (`getFlag(2)`).
+const PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
+const PANDA_SNEEZE_COUNTER_DATA_ID: u8 = 19;
+const PANDA_FLAGS_DATA_ID: u8 = 23;
+const PANDA_SNEEZING_FLAG: i8 = 0x02;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
 const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
@@ -658,6 +665,15 @@ fn entity_model_instance(
             &source.data_values,
         ))
         .with_piglin_dancing(piglin_is_dancing(
+            source.entity_type_id,
+            &source.data_values,
+        ))
+        .with_panda_unhappy(panda_is_unhappy(source.entity_type_id, &source.data_values))
+        .with_panda_sneezing(panda_is_sneezing(
+            source.entity_type_id,
+            &source.data_values,
+        ))
+        .with_panda_sneeze_time(panda_sneeze_time(
             source.entity_type_id,
             &source.data_values,
         ))
@@ -1613,6 +1629,39 @@ fn piglin_is_dancing(
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
         && entity_data_bool(values, PIGLIN_IS_DANCING_DATA_ID, false)
+}
+
+/// Vanilla `PandaRenderState.isUnhappy = Panda.getUnhappyCounter() > 0` (the synced `UNHAPPY_COUNTER`
+/// int, id 18): the panda shakes its head and paddles its front legs. Gated to the panda type.
+fn panda_is_unhappy(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
+        && entity_data_int(values, PANDA_UNHAPPY_COUNTER_DATA_ID, 0) > 0
+}
+
+/// Vanilla `PandaRenderState.isSneezing = Panda.isSneezing()` (the synced `DATA_ID_FLAGS` byte, id 23,
+/// bit `0x02`): the panda dips its head into a sneeze. Gated to the panda type.
+fn panda_is_sneezing(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
+        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, 0) & PANDA_SNEEZING_FLAG) != 0
+}
+
+/// Vanilla `PandaRenderState.sneezeTime = Panda.getSneezeCounter()` (the synced `SNEEZE_COUNTER` int, id
+/// 19): the 0..20 ramp that drives the sneeze head dip. `0` for a non-panda or a panda not sneezing.
+fn panda_sneeze_time(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> i32 {
+    if entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID {
+        entity_data_int(values, PANDA_SNEEZE_COUNTER_DATA_ID, 0)
+    } else {
+        0
+    }
 }
 
 /// Vanilla `TurtleRenderState.hasEgg = !isBaby() && Turtle.hasEgg()` (the synced `HAS_EGG`
@@ -3271,6 +3320,58 @@ mod tests {
             values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
         }));
         assert!(!dancing(&world, 181));
+    }
+
+    #[test]
+    fn entity_model_instances_project_panda_unhappy_and_sneezing() {
+        // Vanilla PandaRenderState: isUnhappy = getUnhappyCounter() > 0 (INT id 18); isSneezing =
+        // isSneezing() (DATA_ID_FLAGS byte id 23, bit 0x02); sneezeTime = getSneezeCounter() (INT id 19).
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            190,
+            VANILLA_ENTITY_TYPE_PANDA_ID,
+            [1.0, 64.0, -4.0],
+        ));
+
+        let panda = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 190)
+                .unwrap()
+                .render_state
+        };
+
+        // No data → content panda.
+        let rest = panda(&world);
+        assert!(!rest.panda_unhappy);
+        assert!(!rest.panda_sneezing);
+        assert_eq!(rest.panda_sneeze_time, 0);
+
+        // UNHAPPY_COUNTER > 0 projects the unhappy shake; the sneeze flag + counter project the dip.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 190,
+            values: vec![
+                protocol_int_data(PANDA_UNHAPPY_COUNTER_DATA_ID, 12),
+                protocol_int_data(PANDA_SNEEZE_COUNTER_DATA_ID, 9),
+                protocol_byte_data(PANDA_FLAGS_DATA_ID, PANDA_SNEEZING_FLAG),
+            ],
+        }));
+        let active = panda(&world);
+        assert!(active.panda_unhappy);
+        assert!(active.panda_sneezing);
+        assert_eq!(active.panda_sneeze_time, 9);
+
+        // A zero unhappy counter is content again; clearing the flag stops the sneeze even with a counter.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 190,
+            values: vec![
+                protocol_int_data(PANDA_UNHAPPY_COUNTER_DATA_ID, 0),
+                protocol_byte_data(PANDA_FLAGS_DATA_ID, 0),
+            ],
+        }));
+        let calmed = panda(&world);
+        assert!(!calmed.panda_unhappy);
+        assert!(!calmed.panda_sneezing);
     }
 
     #[test]

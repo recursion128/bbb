@@ -7,11 +7,12 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // Vanilla 26.1 `PandaModel.createBodyLayer` (atlas 64×64). `PandaModel extends QuadrupedModel`, so the
 // six root parts follow the quadruped layout — `head` (carrying the muzzle and two ears), the pitched
 // `body`, and the four legs (all sharing one 6×9×6 box) — and the base `QuadrupedModel.setupAnim` turns
-// the head by the look angles and swings the four legs off the walk cycle. Every panda-specific pose in
-// `PandaModel.setupAnim` (the `isUnhappy` head shake / leg paddle, the `isSneezing` head dip, the
-// `sitAmount` sitting fold with its eating / scared variants, the `lieOnBackAmount` belly roll, and the
-// `rollAmount` somersault) reads un-projected `PandaRenderState` fields / `AnimationState`s and stays
-// deferred, so a resting panda renders at this bind pose plus the head look and leg swing. The black
+// the head by the look angles and swings the four legs off the walk cycle. The `isUnhappy` head shake /
+// leg paddle and the `isSneezing` head dip are projected and applied ([`apply_panda_emotes`]); the
+// remaining `PandaModel.setupAnim` poses (the `sitAmount` sitting fold with its eating / scared variants,
+// the `lieOnBackAmount` belly roll, and the `rollAmount` somersault) read un-projected client-tick
+// interpolation `AnimationState`s and stay deferred, so an idle panda renders at this bind pose plus the
+// head look and leg swing. The black
 // patches (eye rings, shoulders, legs) come from the deferred texture; the colored debug path uses a
 // white body / head / muzzle and black ears / legs, the two tones the geometry separates. Panda uses a
 // plain `MobRenderer` / `LivingEntityRenderer.setupRotations`. Each unified cube carries both render
@@ -274,6 +275,42 @@ fn panda_tree(baby: bool) -> ModelPart {
 /// unified tree is built for the selected `baby` layout with the vanilla child names. `setup_anim` runs
 /// the shared `QuadrupedModel` head look ([`apply_head_look`] on `head`) and four-leg swing
 /// ([`apply_quadruped_leg_swing`]); every panda-specific pose stays deferred.
+/// Vanilla `PandaModel.setupAnim`'s `isUnhappy` and `isSneezing` branches, applied after the inherited
+/// `QuadrupedModel` head look + four-leg swing. An unhappy panda shakes its head (`yRot = zRot =
+/// 0.35·sin(0.6·age)`, overwriting the look yaw) and paddles its front legs (`xRot = ∓0.75·sin(0.3·age)`,
+/// overwriting the walk swing); a sneezing panda dips its head (`xRot` ramps to `-π/4` over `sneezeTime`
+/// 0..14, then holds at `-π/4` for 15..19 — vanilla's `(sneezeTime-15)/5` is integer division, so the
+/// "ease back" term is always 0). Both run on the reset bind pose, so the resting (`else`) head `zRot`
+/// stays 0 with no action.
+fn apply_panda_emotes(
+    root: &mut ModelPart,
+    unhappy: bool,
+    sneezing: bool,
+    sneeze_time: i32,
+    age_in_ticks: f32,
+) {
+    use std::f32::consts::PI;
+    if unhappy {
+        let head_shake = 0.35 * (0.6 * age_in_ticks).sin();
+        {
+            let head = root.child_mut("head");
+            head.pose.rotation[1] = head_shake;
+            head.pose.rotation[2] = head_shake;
+        }
+        let paddle = 0.75 * (0.3 * age_in_ticks).sin();
+        root.child_mut("right_front_leg").pose.rotation[0] = -paddle;
+        root.child_mut("left_front_leg").pose.rotation[0] = paddle;
+    }
+    if sneezing {
+        let head = root.child_mut("head");
+        if sneeze_time < 15 {
+            head.pose.rotation[0] = -PI / 4.0 * sneeze_time as f32 / 14.0;
+        } else if sneeze_time < 20 {
+            head.pose.rotation[0] = -PI / 4.0;
+        }
+    }
+}
+
 pub(in crate::entity_models) struct PandaModel {
     root: ModelPart,
 }
@@ -306,6 +343,15 @@ impl EntityModel for PandaModel {
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
+        );
+        // Vanilla `PandaModel.setupAnim` overrides the head/front legs for the unhappy shake and the
+        // sneeze head dip after the inherited quadruped pose.
+        apply_panda_emotes(
+            &mut self.root,
+            render_state.panda_unhappy,
+            render_state.panda_sneezing,
+            render_state.panda_sneeze_time,
+            render_state.age_in_ticks,
         );
     }
 }

@@ -2703,11 +2703,18 @@ When an agent does any of the following, update this file in the same slice:
       projected `head_yaw/head_pitch` (`head.xRot/yRot` set from the look) and the four legs swing off the
       projected `walk_animation_pos/speed` (`leg.xRot = cos(pos·0.6662 [+π])·1.4·speed`, the diagonal pair
       in phase), via the same `apply_head_look` / `apply_quadruped_leg_swing` helpers the cow / pig / sheep /
-      polar-bear paths use. Every panda-specific `PandaModel.setupAnim` pose — the `isUnhappy` head shake and
-      front-leg paddle, the `isSneezing` head dip, the `sitAmount` sitting fold with its eating / scared
-      variants, the `lieOnBackAmount` belly roll, and the `rollAmount` somersault — reads un-projected
-      `PandaRenderState` fields / `AnimationState`s and stays deferred, so a resting panda renders at this
-      bind pose plus the head look and leg swing. The textured path IS wired with the seven `Panda.Gene`
+      polar-bear paths use. The `isUnhappy` head shake + front-leg paddle and the `isSneezing` head dip
+      are projected and applied (`apply_panda_emotes`): `isUnhappy = Panda.getUnhappyCounter() > 0` (the
+      synced `UNHAPPY_COUNTER` int id 18) sets `head.yRot = head.zRot = 0.35·sin(0.6·ageInTicks)`
+      (overwriting the look yaw) and `frontLeg.xRot = ∓0.75·sin(0.3·ageInTicks)` (overwriting the walk
+      swing); `isSneezing = Panda.isSneezing()` (the `DATA_ID_FLAGS` byte id 23 bit `0x02`) dips
+      `head.xRot` to `-π/4` over the `sneezeTime` ramp (`SNEEZE_COUNTER` int id 19, ticks 0..14, then
+      holds — vanilla's `(sneezeTime-15)/5` integer division makes the 15..19 ease-back term 0). The
+      remaining panda-specific `PandaModel.setupAnim` poses — the `sitAmount` sitting fold with its eating /
+      scared variants, the `lieOnBackAmount` belly roll, and the `rollAmount` somersault — read
+      un-projected client-tick interpolation `AnimationState`s and stay deferred, so an idle panda renders
+      at this bind pose plus the head look, leg swing, and (when active) the unhappy / sneeze poses. The
+      textured path IS wired with the seven `Panda.Gene`
       variants: the displayed gene is `Panda.Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two
       synced gene bytes (`MAIN_GENE_ID` 21 / `HIDDEN_GENE_ID` 22) — a dominant main gene always shows, a
       recessive main gene (`BROWN`/`WEAK`) shows only when both genes match, else `NORMAL` — and

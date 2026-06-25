@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::model::EntityModel;
+
 #[test]
 fn panda_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `PandaModel.createBodyLayer` (atlas 64×64): the head (carrying the skull, muzzle, and two
@@ -351,4 +353,110 @@ fn panda_textured_render_matches_vanilla_renderer() {
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
+}
+
+#[test]
+fn unhappy_panda_shakes_its_head_and_paddles_its_front_legs() {
+    // Vanilla `PandaModel.setupAnim` `isUnhappy`: the head shakes (`yRot = zRot = 0.35·sin(0.6·age)`,
+    // overwriting the look yaw) and the front legs paddle (`xRot = ∓0.75·sin(0.3·age)`, overwriting the
+    // walk swing). All driven by `ageInTicks`; the hind legs and body are untouched.
+    let age = 7.0_f32;
+    let base =
+        EntityModelInstance::panda(620, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal)
+            .with_head_look(40.0, 0.0)
+            .with_age_in_ticks(age);
+    let mut model = PandaModel::new(false);
+    model.prepare(&base.with_panda_unhappy(true));
+
+    let shake = 0.35 * (0.6 * age).sin();
+    let head = model.root_mut().child_mut("head").pose.rotation;
+    assert!(
+        (head[1] - shake).abs() < 1.0e-6,
+        "the head shake overwrites the look yaw: {}",
+        head[1]
+    );
+    assert!(
+        (head[2] - shake).abs() < 1.0e-6,
+        "the head rolls: {}",
+        head[2]
+    );
+
+    let paddle = 0.75 * (0.3 * age).sin();
+    let right_front = model.root_mut().child_mut("right_front_leg").pose.rotation[0];
+    let left_front = model.root_mut().child_mut("left_front_leg").pose.rotation[0];
+    assert!(
+        (right_front + paddle).abs() < 1.0e-6,
+        "right front paddles: {right_front}"
+    );
+    assert!(
+        (left_front - paddle).abs() < 1.0e-6,
+        "left front mirrors: {left_front}"
+    );
+
+    // A content panda keeps the look yaw (no shake) and a flat head roll.
+    let mut content = PandaModel::new(false);
+    content.prepare(&base);
+    let content_head = content.root_mut().child_mut("head").pose.rotation;
+    assert_eq!(
+        content_head[2], 0.0,
+        "a content panda does not roll its head"
+    );
+    assert!(
+        (content_head[1] - 40.0_f32.to_radians()).abs() < 1.0e-6,
+        "a content panda tracks the look yaw: {}",
+        content_head[1]
+    );
+
+    // The shake animates with ageInTicks (mesh changes frame to frame).
+    let later = entity_model_mesh(&[base.with_panda_unhappy(true).with_age_in_ticks(age + 3.0)]);
+    assert_ne!(
+        entity_model_mesh(&[base.with_panda_unhappy(true)]).vertices,
+        later.vertices,
+        "the unhappy shake keeps moving"
+    );
+}
+
+#[test]
+fn sneezing_panda_dips_its_head() {
+    use std::f32::consts::PI;
+
+    // Vanilla `PandaModel.setupAnim` `isSneezing`: the head dips, `xRot = -π/4·sneezeTime/14` over ticks
+    // 0..14, then holds at `-π/4` for 15..19 (vanilla's `(sneezeTime-15)/5` integer division is 0). The
+    // sneeze SETs the head pitch, overwriting the look pitch.
+    let base =
+        EntityModelInstance::panda(621, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal)
+            .with_head_look(0.0, -30.0)
+            .with_panda_sneezing(true);
+
+    // Mid-ramp (tick 7): the head has dipped halfway to -π/4.
+    let mut ramp = PandaModel::new(false);
+    ramp.prepare(&base.with_panda_sneeze_time(7));
+    let ramp_pitch = ramp.root_mut().child_mut("head").pose.rotation[0];
+    assert!(
+        (ramp_pitch - (-PI / 4.0 * 7.0 / 14.0)).abs() < 1.0e-6,
+        "the head dips partway: {ramp_pitch}"
+    );
+
+    // Peak hold (tick 17): the head holds at -π/4.
+    let mut hold = PandaModel::new(false);
+    hold.prepare(&base.with_panda_sneeze_time(17));
+    let hold_pitch = hold.root_mut().child_mut("head").pose.rotation[0];
+    assert!(
+        (hold_pitch + PI / 4.0).abs() < 1.0e-6,
+        "the head holds at -π/4: {hold_pitch}"
+    );
+
+    // A panda not sneezing keeps its look pitch (sneeze flag off → the dip never applies, even with a
+    // stale counter).
+    let mut quiet = PandaModel::new(false);
+    quiet.prepare(
+        &EntityModelInstance::panda(621, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal)
+            .with_head_look(0.0, -30.0)
+            .with_panda_sneeze_time(7),
+    );
+    let quiet_pitch = quiet.root_mut().child_mut("head").pose.rotation[0];
+    assert!(
+        (quiet_pitch - (-30.0_f32).to_radians()).abs() < 1.0e-6,
+        "a non-sneezing panda keeps its look pitch: {quiet_pitch}"
+    );
 }

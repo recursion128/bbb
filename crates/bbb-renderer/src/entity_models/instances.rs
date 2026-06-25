@@ -436,6 +436,17 @@ entity_render_state! {
     /// `false` for every other entity (the piglin brute and zombified piglin never dance) and an idle
     /// piglin.
     (with_piglin_dancing) piglin_dancing: bool = false;
+    /// Vanilla `PandaRenderState.isUnhappy` (`Panda.getUnhappyCounter() > 0`): an unhappy panda whose
+    /// `PandaModel.setupAnim` shakes its head (`yRot = zRot = 0.35·sin(0.6·ageInTicks)`) and paddles its
+    /// front legs (`xRot = ∓0.75·sin(0.3·ageInTicks)`). `false` for every other entity and a content panda.
+    (with_panda_unhappy) panda_unhappy: bool = false;
+    /// Vanilla `PandaRenderState.isSneezing` (`Panda.isSneezing()`, the `DATA_ID_FLAGS` bit): a sneezing
+    /// panda whose `PandaModel.setupAnim` dips its head ([`panda_sneeze_time`] driving the ramp). `false`
+    /// for every other entity and a panda not mid-sneeze.
+    (with_panda_sneezing) panda_sneezing: bool = false;
+    /// Vanilla `PandaRenderState.sneezeTime` (`Panda.getSneezeCounter()`, the 0..20 ramp): drives the
+    /// sneeze head dip (`head.xRot` falls to `-π/4` over ticks 0..14, then holds). `0` when not sneezing.
+    (with_panda_sneeze_time) panda_sneeze_time: i32 = 0;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -1651,6 +1662,9 @@ mod tests {
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,
+                panda_unhappy: false,
+                panda_sneezing: false,
+                panda_sneeze_time: 0,
                 is_crouching: false,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
