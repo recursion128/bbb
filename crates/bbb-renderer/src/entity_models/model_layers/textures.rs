@@ -266,7 +266,8 @@ pub(in crate::entity_models) const BAT_TEXTURE_REF: EntityModelTextureRef = Enti
     size: [32, 32],
 };
 
-// Vanilla `BeeRenderer` base textures (the non-angry, non-nectar adult and baby).
+// Vanilla `BeeRenderer.getTextureLocation`: the eight angry × nectar × baby texture variants.
+// Adults are 64x64, babies 32x32 (`BabyBeeModel` reuses the adult mesh at half scale).
 pub(in crate::entity_models) const BEE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/bee/bee.png",
     size: [64, 64],
@@ -276,6 +277,55 @@ pub(in crate::entity_models) const BEE_BABY_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/bee/bee_baby.png",
         size: [32, 32],
     };
+pub(in crate::entity_models) const BEE_ANGRY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_angry.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const BEE_NECTAR_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_nectar.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const BEE_ANGRY_NECTAR_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_angry_nectar.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const BEE_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_angry_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const BEE_NECTAR_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_nectar_baby.png",
+        size: [32, 32],
+    };
+pub(in crate::entity_models) const BEE_ANGRY_NECTAR_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/bee/bee_angry_nectar_baby.png",
+        size: [32, 32],
+    };
+
+/// Vanilla `BeeRenderer.getTextureLocation`: select the bee face from the `isAngry`, `hasNectar`
+/// and `isBaby` render-state flags. The eight-way matrix is transcribed verbatim.
+pub(in crate::entity_models) fn bee_texture_ref(
+    baby: bool,
+    angry: bool,
+    has_nectar: bool,
+) -> EntityModelTextureRef {
+    match (angry, has_nectar, baby) {
+        (true, true, true) => BEE_ANGRY_NECTAR_BABY_TEXTURE_REF,
+        (true, true, false) => BEE_ANGRY_NECTAR_TEXTURE_REF,
+        (true, false, true) => BEE_ANGRY_BABY_TEXTURE_REF,
+        (true, false, false) => BEE_ANGRY_TEXTURE_REF,
+        (false, true, true) => BEE_NECTAR_BABY_TEXTURE_REF,
+        (false, true, false) => BEE_NECTAR_TEXTURE_REF,
+        (false, false, true) => BEE_BABY_TEXTURE_REF,
+        (false, false, false) => BEE_TEXTURE_REF,
+    }
+}
 
 // Vanilla `BreezeRenderer` base body texture (the swirling wind layer / emissive eyes use the
 // separate `breeze_wind.png` / `breeze_eyes.png`).
@@ -796,7 +846,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 305] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 311] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1070,6 +1120,12 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     BAT_TEXTURE_REF,
     BEE_TEXTURE_REF,
     BEE_BABY_TEXTURE_REF,
+    BEE_ANGRY_TEXTURE_REF,
+    BEE_NECTAR_TEXTURE_REF,
+    BEE_ANGRY_NECTAR_TEXTURE_REF,
+    BEE_ANGRY_BABY_TEXTURE_REF,
+    BEE_NECTAR_BABY_TEXTURE_REF,
+    BEE_ANGRY_NECTAR_BABY_TEXTURE_REF,
     BREEZE_TEXTURE_REF,
     BREEZE_EYES_TEXTURE_REF,
     BREEZE_WIND_TEXTURE_REF,
@@ -1182,8 +1238,16 @@ pub fn bat_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BAT_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const BEE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [BEE_TEXTURE_REF, BEE_BABY_TEXTURE_REF];
+pub(in crate::entity_models) const BEE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 8] = [
+    BEE_TEXTURE_REF,
+    BEE_BABY_TEXTURE_REF,
+    BEE_ANGRY_TEXTURE_REF,
+    BEE_NECTAR_TEXTURE_REF,
+    BEE_ANGRY_NECTAR_TEXTURE_REF,
+    BEE_ANGRY_BABY_TEXTURE_REF,
+    BEE_NECTAR_BABY_TEXTURE_REF,
+    BEE_ANGRY_NECTAR_BABY_TEXTURE_REF,
+];
 
 pub fn bee_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BEE_ENTITY_TEXTURE_REFS

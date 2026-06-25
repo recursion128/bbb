@@ -354,6 +354,12 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
+/// `Bee.DATA_FLAGS_ID` data id (18, BYTE): the bee flags byte, the first `Bee`-own accessor
+/// (`AgeableMob` consumes 16 baby + 17 age-locked, so `Bee` starts at 18).
+const BEE_FLAGS_DATA_ID: u8 = 18;
+/// `Bee.FLAG_HAS_NECTAR` (8): the `DATA_FLAGS_ID` bit set while the bee carries pollen, which
+/// `BeeRenderer.getTextureLocation` swaps to the `*_nectar*` texture.
+const BEE_FLAG_HAS_NECTAR: i8 = 8;
 /// `Bee.DATA_ANGER_END_TIME` data id (19): the synced `NeutralMob` anger-end game time,
 /// defined right after `Bee.DATA_FLAGS_ID` (18). `Bee.isAngry()` is `endTime > 0 &&
 /// endTime - gameTime > 0`.
@@ -1648,6 +1654,8 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
         VANILLA_ENTITY_TYPE_BEE_ID => EntityModelKind::Bee {
             baby: ageable_baby(data_values),
+            angry: bee_is_angry(entity_type_id, data_values, game_time),
+            has_nectar: bee_has_nectar(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_BLAZE_ID => EntityModelKind::Blaze,
         VANILLA_ENTITY_TYPE_BREEZE_ID => EntityModelKind::Breeze,
@@ -2074,6 +2082,16 @@ fn bee_is_angry(
     }
     let end_time = entity_data_long(values, BEE_ANGER_END_TIME_DATA_ID, -1);
     end_time > 0 && end_time - game_time > 0
+}
+
+/// Vanilla `BeeRenderState.hasNectar` (`Bee.hasNectar()`, the synced `DATA_FLAGS_ID & FLAG_HAS_NECTAR`):
+/// bit 8 of the bee flags byte. Drives the `BeeRenderer.getTextureLocation` nectar texture swap.
+/// Gated to the bee; every other entity reports no nectar.
+fn bee_has_nectar(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    if entity_type_id != VANILLA_ENTITY_TYPE_BEE_ID {
+        return false;
+    }
+    entity_data_byte(values, BEE_FLAGS_DATA_ID, 0) & BEE_FLAG_HAS_NECTAR != 0
 }
 
 /// The three projected camel sit/stand elapsed-seconds values, each `-1.0` when its
@@ -6682,18 +6700,70 @@ mod tests {
     fn entity_model_kind_projects_bee_baby_from_data() {
         // The bee was a placeholder render box; it now resolves to the real `AdultBeeModel` /
         // `BabyBeeModel`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default adult).
-        // The procedural airborne flap / bob reads the projected age and ground state; the anger /
-        // rolled-up / nectar states are deferred entity-side state.
+        // The procedural airborne flap / bob reads the projected age and ground state.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_BEE_ID, &[]),
-            EntityModelKind::Bee { baby: false }
+            EntityModelKind::Bee {
+                baby: false,
+                angry: false,
+                has_nectar: false,
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_BEE_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Bee { baby: true }
+            EntityModelKind::Bee {
+                baby: true,
+                angry: false,
+                has_nectar: false,
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_projects_bee_nectar_and_angry_texture_flags() {
+        // Vanilla `BeeRenderer.getTextureLocation` keys on `hasNectar` (the synced
+        // `DATA_FLAGS_ID & 8`, index 18) and `isAngry` (the synced `DATA_ANGER_END_TIME`, index 19,
+        // in the future). A bee carrying nectar swaps to the `*_nectar*` texture.
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_BEE_ID,
+                &[protocol_byte_data(BEE_FLAGS_DATA_ID, BEE_FLAG_HAS_NECTAR)],
+                0.0,
+                0,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Bee {
+                baby: false,
+                angry: false,
+                has_nectar: true,
+            }
+        );
+        // An anger-end time past the current game time makes the bee angry (and the roll/stung
+        // bits in the flags byte do not flip `hasNectar`).
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_BEE_ID,
+                &[protocol_long_data(BEE_ANGER_END_TIME_DATA_ID, 100)],
+                0.0,
+                10,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Bee {
+                baby: false,
+                angry: true,
+                has_nectar: false,
+            }
         );
     }
 

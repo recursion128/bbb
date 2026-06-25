@@ -118,34 +118,84 @@ fn bee_flaps_while_airborne_and_rests_on_ground() {
 
 #[test]
 fn bee_texture_ref_matches_vanilla_renderer() {
-    assert_eq!(EntityModelKind::Bee { baby: false }.model_key(), "bee");
-    assert_eq!(EntityModelKind::Bee { baby: true }.model_key(), "bee_baby");
-    assert_eq!(
-        EntityModelKind::Bee { baby: false }.vanilla_texture_ref(),
-        Some(EntityModelTextureRef {
-            path: "textures/entity/bee/bee.png",
-            size: [64, 64],
-        })
-    );
-    assert_eq!(
-        EntityModelKind::Bee { baby: true }.vanilla_texture_ref(),
-        Some(EntityModelTextureRef {
-            path: "textures/entity/bee/bee_baby.png",
-            size: [32, 32],
-        })
-    );
-    // The accessor lists the adult then baby base textures.
-    assert_eq!(
-        bee_entity_texture_refs(),
-        &[
-            EntityModelTextureRef {
-                path: "textures/entity/bee/bee.png",
-                size: [64, 64],
-            },
-            EntityModelTextureRef {
-                path: "textures/entity/bee/bee_baby.png",
-                size: [32, 32],
+    // model_key (mesh geometry) depends on `baby` only; angry/nectar never change the mesh.
+    for &(angry, has_nectar) in &[(false, false), (true, false), (false, true), (true, true)] {
+        assert_eq!(
+            EntityModelKind::Bee {
+                baby: false,
+                angry,
+                has_nectar,
             }
+            .model_key(),
+            "bee"
+        );
+        assert_eq!(
+            EntityModelKind::Bee {
+                baby: true,
+                angry,
+                has_nectar,
+            }
+            .model_key(),
+            "bee_baby"
+        );
+    }
+
+    // Vanilla `BeeRenderer.getTextureLocation`: the eight angry × nectar × baby faces.
+    let texture = |baby, angry, has_nectar| {
+        EntityModelKind::Bee {
+            baby,
+            angry,
+            has_nectar,
+        }
+        .vanilla_texture_ref()
+        .unwrap()
+        .path
+    };
+    assert_eq!(texture(false, false, false), "textures/entity/bee/bee.png");
+    assert_eq!(
+        texture(false, true, false),
+        "textures/entity/bee/bee_angry.png"
+    );
+    assert_eq!(
+        texture(false, false, true),
+        "textures/entity/bee/bee_nectar.png"
+    );
+    assert_eq!(
+        texture(false, true, true),
+        "textures/entity/bee/bee_angry_nectar.png"
+    );
+    assert_eq!(
+        texture(true, false, false),
+        "textures/entity/bee/bee_baby.png"
+    );
+    assert_eq!(
+        texture(true, true, false),
+        "textures/entity/bee/bee_angry_baby.png"
+    );
+    assert_eq!(
+        texture(true, false, true),
+        "textures/entity/bee/bee_nectar_baby.png"
+    );
+    assert_eq!(
+        texture(true, true, true),
+        "textures/entity/bee/bee_angry_nectar_baby.png"
+    );
+
+    // The accessor lists all eight faces (adult base/baby first, then the variants).
+    assert_eq!(
+        bee_entity_texture_refs()
+            .iter()
+            .map(|texture| texture.path)
+            .collect::<Vec<_>>(),
+        vec![
+            "textures/entity/bee/bee.png",
+            "textures/entity/bee/bee_baby.png",
+            "textures/entity/bee/bee_angry.png",
+            "textures/entity/bee/bee_nectar.png",
+            "textures/entity/bee/bee_angry_nectar.png",
+            "textures/entity/bee/bee_angry_baby.png",
+            "textures/entity/bee/bee_nectar_baby.png",
+            "textures/entity/bee/bee_angry_nectar_baby.png",
         ]
     );
 }

@@ -83,10 +83,13 @@ pub enum EntityModelKind {
     /// Bee (`AdultBeeModel` / `BabyBeeModel`, `BeeRenderer`). The procedural `BeeModel.setupAnim`
     /// airborne wing flap (`zRot = cos(ageInTicks · 120.32113°) · π · 0.15`) and the idle
     /// `bobUpAndDown` bone/leg/antenna bob, gated on the synced `Entity.onGround`. The anger pose
-    /// (`isAngry`), the rolled-up fall pose (`rollAmount`), the stinger-loss (`hasStinger`) and the
-    /// nectar/angry texture swaps are deferred entity-side state.
+    /// (`isAngry`), the rolled-up fall pose (`rollAmount`) and the stinger-loss (`hasStinger`) are
+    /// projected as render-state. `angry`/`has_nectar` drive the vanilla
+    /// `BeeRenderer.getTextureLocation` eight-way texture swap (`bee[_angry][_nectar][_baby].png`).
     Bee {
         baby: bool,
+        angry: bool,
+        has_nectar: bool,
     },
     /// Breeze (`BreezeModel`, `BreezeRenderer`). The base body layer (head + three rods) driven by
     /// the looping `BreezeAnimation.IDLE` keyframe animation (the second keyframe entity, and the

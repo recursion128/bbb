@@ -2017,8 +2017,13 @@ When an agent does any of the following, update this file in the same slice:
       paths: the projected `bee_roll_amount` (`Bee.getRollAmount(partialTick)`, the client
       `updateRollAmount` accumulator easing toward the synced `DATA_FLAGS_ID & 2` roll flag — `+0.2`
       while rolling, `-0.24` otherwise) tips the `bone` pivot onto its back via `BeeModel.setupAnim`'s
-      final `bone.xRot = rotLerpRad(rollAmount, bone.xRot, 3.0915928)`. The nectar/angry texture swaps
-      remain unsupported
+      final `bone.xRot = rotLerpRad(rollAmount, bone.xRot, 3.0915928)`. The full
+      `BeeRenderer.getTextureLocation` eight-way texture swap is implemented (`EntityModelKind::Bee`
+      now carries `angry` / `has_nectar`): the projected `hasNectar` (the synced `DATA_FLAGS_ID & 8`,
+      index 18) and `isAngry` (the synced `DATA_ANGER_END_TIME`, index 19, vs the world game time)
+      select among `bee[_angry][_nectar][_baby].png` (the six new variant references join the master
+      atlas array → 311), so a pollen-laden or aggravated bee shows the matching face on the textured
+      path while the model/animation stay identical
     - breeze entities are wired end to end on both render paths off the real vanilla 26.1
       `BreezeModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `17` to the
       new `EntityModelKind::Breeze`, replacing the former placeholder box. Renderer-owned vanilla
