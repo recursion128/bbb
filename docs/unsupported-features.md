@@ -827,8 +827,12 @@ When an agent does any of the following, update this file in the same slice:
         + Y spin composed with the model's GROUND display transform (block
         `[0,3,0]/16` scale `0.25`; flat `[0,2,0]/16` scale `0.5` with vanilla's
         `minOffsetY` ground-seating lift), clocked by world game time + partial
-        tick with a per-entity phase. These entities are excluded from the
-        billboard path; thrown-item projectiles keep their billboard.
+        tick with a per-entity phase. A stack renders the vanilla cluster of
+        `1..=5` jittered copies (`getRenderedAmount` by stack size;
+        `submitMultipleFromCount` scatters thick models in 3D and stacks thin
+        ones back-to-front, jittered by a faithful Java LCG seeded on the item
+        id). These entities are excluded from the billboard path; thrown-item
+        projectiles keep their billboard.
       - remaining slices: the other three consumers (held items, item frames /
         armor-stand, HUD 3D icons), and their display transforms (gui/fixed/
         firstperson/thirdperson/head; only `ground` is wired, with the default
