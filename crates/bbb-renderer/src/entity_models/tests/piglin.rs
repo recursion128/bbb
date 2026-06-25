@@ -812,6 +812,81 @@ fn piglin_holds_its_crossbow_level_with_the_head_look() {
 }
 
 #[test]
+fn piglin_pulls_its_crossbow_back_while_charging() {
+    use std::f32::consts::FRAC_PI_2;
+    // Vanilla `PiglinModel.setupAnim` `CROSSBOW_CHARGE` (`AnimationUtils.animateCrossbowCharge`,
+    // `holdingInRightArm = true`, the same pose as the pillager): the right (holding) arm fixes at
+    // `yRot = -0.8`, `xRot = -0.97079635`; the left (pulling) arm lerps `yRot 0.4 → 0.85` and
+    // `xRot -0.97079635 → -π/2` over `ticksUsingItem / 25` (clamped). Only the regular piglin draws.
+    const HOLD_X_ROT: f32 = -0.97079635;
+    let arms = |ticks: f32| {
+        let charging = EntityModelInstance::piglin(
+            98,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PiglinModelFamily::Piglin,
+            false,
+        )
+        .with_head_look(25.0, -15.0)
+        .with_piglin_crossbow_charge(true)
+        .with_crossbow_charge_ticks(ticks);
+        let mut model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+        model.prepare(&charging);
+        (
+            model.root_mut().child_mut("right_arm").pose,
+            model.root_mut().child_mut("left_arm").pose,
+        )
+    };
+
+    // At the start of the draw (ticks 0) the left arm sits at the rest end of the lerp.
+    let (right0, left0) = arms(0.0);
+    assert!(
+        (right0.rotation[1] - (-0.8)).abs() < 1.0e-6
+            && (right0.rotation[0] - HOLD_X_ROT).abs() < 1.0e-6,
+        "the holding (right) arm braces the crossbow regardless of the draw: {right0:?}"
+    );
+    assert!(
+        (left0.rotation[1] - 0.4).abs() < 1.0e-6 && (left0.rotation[0] - HOLD_X_ROT).abs() < 1.0e-6,
+        "the pulling (left) arm starts at the rest end of the draw: {left0:?}"
+    );
+
+    // At full charge (ticks 25) the left arm reaches the fully-drawn end of the lerp.
+    let (_, left_full) = arms(25.0);
+    assert!(
+        (left_full.rotation[1] - 0.85).abs() < 1.0e-6
+            && (left_full.rotation[0] - (-FRAC_PI_2)).abs() < 1.0e-6,
+        "the pulling arm reaches full draw at maxChargeDuration: {left_full:?}"
+    );
+
+    // Mid-draw the left arm sits strictly between the two ends, and over-charge clamps to full draw.
+    let (_, left_mid) = arms(12.5);
+    assert!(
+        left_mid.rotation[1] > 0.4 && left_mid.rotation[1] < 0.85,
+        "mid-draw the pulling arm is between rest and full: {}",
+        left_mid.rotation[1]
+    );
+    let (_, left_over) = arms(40.0);
+    assert!(
+        (left_over.rotation[1] - 0.85).abs() < 1.0e-6,
+        "an over-charged draw clamps to full: {}",
+        left_over.rotation[1]
+    );
+
+    // The charge draw is a distinct pose from the level hold (the right arm yaws to -0.8, not -0.3+head).
+    let holding =
+        EntityModelInstance::piglin(98, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_head_look(25.0, -15.0)
+            .with_piglin_crossbow_hold(true);
+    let mut hold_model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    hold_model.prepare(&holding);
+    let hold_right = hold_model.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (hold_right.rotation[1] - right0.rotation[1]).abs() > 0.4,
+        "the charge draw repositions the arms differently from the level hold"
+    );
+}
+
+#[test]
 fn piglin_raises_and_swings_its_melee_weapon_when_attacking() {
     // Vanilla `PiglinModel` `ATTACKING_WITH_MELEE_WEAPON`: at rest (`attackTime == 0`) `holdWeaponHigh`
     // raises the main (right) arm overhead (`xRot = -1.8`, overwriting only the pitch); mid-swing

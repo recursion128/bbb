@@ -26,7 +26,8 @@ use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
     creaking_is_tearing_down, entity_animation_uses_in_water, guardian_attack_duration,
     guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type,
-    pillager_is_charging_crossbow, warden_heartbeat_delay, VANILLA_ENTITY_TYPE_CREAKING_ID,
+    piglin_is_charging_crossbow, pillager_is_charging_crossbow, warden_heartbeat_delay,
+    VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
@@ -921,10 +922,10 @@ impl EntityStore {
             allay_spinning_progress: client_animations
                 .animations
                 .allay_spinning_progress(partial_ticks),
-            // Vanilla `IllagerRenderState.ticksUsingItem` for the pillager `CROSSBOW_CHARGE` draw,
-            // reconstructed from the charge counter. `0.0` for a pillager not charging and every other
-            // entity (the renderer only consumes it while the synced charging flag is set).
-            pillager_crossbow_charge_ticks: client_animations
+            // Vanilla `{Illager,Piglin}RenderState.ticksUsingItem` for the `CROSSBOW_CHARGE` draw,
+            // reconstructed from the shared charge counter (the pillager and the regular piglin both draw
+            // crossbows). `0.0` for anything not mid-draw (the renderer only reads it while charging).
+            crossbow_charge_ticks: client_animations
                 .animations
                 .crossbow_charge_ticks_using_item(partial_ticks),
             // Vanilla `AxolotlRenderer.extractRenderState`: the four `BinaryAnimator` factors
@@ -1474,6 +1475,8 @@ impl EntityStore {
                 let creaking_is_tearing_down = creaking_is_tearing_down(&metadata.data_values);
                 let pillager_is_charging_crossbow =
                     pillager_is_charging_crossbow(&metadata.data_values);
+                let piglin_is_charging_crossbow =
+                    piglin_is_charging_crossbow(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1489,6 +1492,7 @@ impl EntityStore {
                     axolotl_is_playing_dead,
                     creaking_is_tearing_down,
                     pillager_is_charging_crossbow,
+                    piglin_is_charging_crossbow,
                 );
             }
         }

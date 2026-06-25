@@ -7705,25 +7705,25 @@ fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
     };
 
     // A pillager that has never drawn its crossbow projects zero use-item ticks.
-    assert_eq!(source(&store, 1.0).pillager_crossbow_charge_ticks, 0.0);
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
     store.advance_entity_client_animations(3);
-    assert_eq!(source(&store, 1.0).pillager_crossbow_charge_ticks, 0.0);
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
 
     // Vanilla `LivingEntity` reconstructs `getTicksUsingItem()` as a per-tick count that rises while the
     // crossbow draw (use-item) is active; the renderer reads `getTicksUsingItem(partialTicks)`.
     set_charging(&mut store, true);
     store.advance_entity_client_animations(1);
     assert_eq!(
-        source(&store, 0.0).pillager_crossbow_charge_ticks,
+        source(&store, 0.0).crossbow_charge_ticks,
         1.0,
         "one tick of charging counts as one use-item tick"
     );
     // The partial tick adds the in-between fraction, matching `getTicksUsingItem(partialTicks)`.
-    assert_eq!(source(&store, 0.5).pillager_crossbow_charge_ticks, 1.5);
+    assert_eq!(source(&store, 0.5).crossbow_charge_ticks, 1.5);
 
     store.advance_entity_client_animations(9);
     assert_eq!(
-        source(&store, 0.0).pillager_crossbow_charge_ticks,
+        source(&store, 0.0).crossbow_charge_ticks,
         10.0,
         "the counter keeps climbing while the draw is held"
     );
@@ -7732,10 +7732,60 @@ fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
     set_charging(&mut store, false);
     store.advance_entity_client_animations(1);
     assert_eq!(
-        source(&store, 1.0).pillager_crossbow_charge_ticks,
+        source(&store, 1.0).crossbow_charge_ticks,
         0.0,
         "releasing the crossbow resets the use-item counter"
     );
+}
+
+#[test]
+fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
+    const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
+    const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID,
+    ));
+
+    let source = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 78)
+            .unwrap()
+    };
+    let set_charging = |store: &mut WorldStore, charging: bool| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 78,
+            values: vec![ProtocolEntityDataValue {
+                data_id: PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(charging),
+            }],
+        }));
+    };
+
+    // The regular piglin draws its crossbow with the SAME `animateCrossbowCharge`, so it shares the
+    // pillager's `getTicksUsingItem` counter — only its synced flag's id (18 vs 17) differs.
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
+    store.advance_entity_client_animations(2);
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
+
+    set_charging(&mut store, true);
+    store.advance_entity_client_animations(4);
+    assert_eq!(
+        source(&store, 0.0).crossbow_charge_ticks,
+        4.0,
+        "four ticks of charging count as four use-item ticks"
+    );
+    assert_eq!(source(&store, 0.5).crossbow_charge_ticks, 4.5);
+
+    // Releasing the crossbow resets the shared counter.
+    set_charging(&mut store, false);
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
 }
 
 #[test]

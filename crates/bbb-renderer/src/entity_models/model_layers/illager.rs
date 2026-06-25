@@ -1,16 +1,11 @@
 use super::{
     apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_half_amplitude_leg_swing,
     apply_head_look, apply_humanoid_weapon_swing_down, humanoid_arm_swing_pose, PartPose,
-    ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
+    CROSSBOW_CHARGE_DURATION_TICKS, ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
-
-/// Vanilla `CrossbowItem.getChargeDuration` without a Quick Charge enchant: `floor(1.25 · 20) = 25`
-/// ticks. The pillager's `animateCrossbowCharge` lerps over this; the rare Quick Charge enchant (which
-/// shortens it) is not projected, a minor draw-speed simplification.
-const PILLAGER_CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
 
 pub(in crate::entity_models) const MODEL_LAYER_EVOKER: &str = "minecraft:evoker#main";
 pub(in crate::entity_models) const MODEL_LAYER_ILLUSIONER: &str = "minecraft:illusioner#main";
@@ -454,8 +449,8 @@ impl EntityModel for IllagerModel {
                 if render_state.is_charging_crossbow {
                     apply_crossbow_charge_pose(
                         &mut self.root,
-                        PILLAGER_CROSSBOW_CHARGE_DURATION_TICKS,
-                        render_state.illager_crossbow_charge_ticks,
+                        CROSSBOW_CHARGE_DURATION_TICKS,
+                        render_state.crossbow_charge_ticks,
                     );
                 } else if illager_is_holding_crossbow(instance) {
                     apply_crossbow_hold_pose(

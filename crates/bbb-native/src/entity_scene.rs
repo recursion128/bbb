@@ -688,6 +688,22 @@ fn entity_model_instance(
         && entity_main_hand_holds_melee_weapon(world, source.entity_id)
         && !piglin_is_dancing(source.entity_type_id, &source.data_values)
         && !piglin_admiring;
+    // Vanilla `Piglin.getArmPose` `CROSSBOW_CHARGE`: a regular piglin drawing its crossbow
+    // (`isChargingCrossbow()`, the synced `DATA_IS_CHARGING_CROSSBOW` boolean id 18). Vanilla checks only
+    // the flag (no held-item gate), but it ranks below DANCING / ADMIRING / ATTACKING, so suppress it under
+    // those (a charging crossbow hand can never hold a melee tool, so the attack gate is also item-exclusive
+    // — the explicit `!` is defensive). The pull-back ticks come from the shared `crossbow_charge_ticks`.
+    let piglin_crossbow_charge =
+        matches!(
+            kind,
+            EntityModelKind::Piglin {
+                family: PiglinModelFamily::Piglin,
+                ..
+            }
+        ) && piglin_is_charging_crossbow(source.entity_type_id, &source.data_values)
+            && !piglin_is_dancing(source.entity_type_id, &source.data_values)
+            && !piglin_admiring
+            && !piglin_attacking_with_melee;
     // Vanilla `Goat.getRammingXHeadRot()`: the world-projected `lowerHeadTick` ram counter scaled by the
     // adult/baby max head pitch. Resolved here because the baby flag lives in the goat kind.
     let goat_ramming_x_head_rot = match kind {
@@ -773,7 +789,7 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
-        .with_illager_crossbow_charge_ticks(source.pillager_crossbow_charge_ticks)
+        .with_crossbow_charge_ticks(source.crossbow_charge_ticks)
         .with_enderman_carrying(source.enderman_carrying)
         .with_enderman_creepy(source.enderman_creepy)
         .with_bat_resting(source.bat_resting)
@@ -839,6 +855,7 @@ fn entity_model_instance(
             &source.data_values,
         ))
         .with_piglin_crossbow_hold(piglin_crossbow_hold)
+        .with_piglin_crossbow_charge(piglin_crossbow_charge)
         .with_piglin_attacking_with_melee(piglin_attacking_with_melee)
         .with_piglin_admiring(piglin_admiring)
         .with_panda_unhappy(panda_is_unhappy(source.entity_type_id, &source.data_values))
@@ -3744,7 +3761,7 @@ mod tests {
     #[test]
     fn piglin_is_charging_crossbow_is_gated_to_the_regular_piglin() {
         // Vanilla Piglin.DATA_IS_CHARGING_CROSSBOW (BOOLEAN id 18): getArmPose returns CROSSBOW_CHARGE
-        // (deferred pull-back) while true, suppressing CROSSBOW_HOLD. Only the regular piglin defines the
+        // (the pull-back draw) while true, suppressing CROSSBOW_HOLD. Only the regular piglin defines the
         // accessor, so the projection is type-gated.
         let charging = vec![protocol_bool_data(
             PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
@@ -3762,6 +3779,58 @@ mod tests {
             VANILLA_ENTITY_TYPE_PIGLIN_ID,
             &[]
         ));
+    }
+
+    #[test]
+    fn entity_model_instances_project_piglin_crossbow_charge() {
+        // Vanilla Piglin.getArmPose → CROSSBOW_CHARGE while isChargingCrossbow() (BOOLEAN id 18): the
+        // regular piglin draws its crossbow. Unlike CROSSBOW_HOLD this needs no held-item resolution (the
+        // flag alone drives it), so it projects without an item runtime. Gated to the regular piglin: the
+        // brute never charges (and slot 18 is not even defined on it).
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            190,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [1.0, 64.0, -4.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            191,
+            VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+            [2.0, 64.0, -4.0],
+        ));
+
+        let charging = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .piglin_crossbow_charge
+        };
+
+        // No flag → not drawing.
+        assert!(!charging(&world, 190));
+
+        // Piglin.DATA_IS_CHARGING_CROSSBOW (id 18) projects the draw for the regular piglin — no item
+        // runtime needed.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 190,
+            values: vec![protocol_bool_data(
+                PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+                true
+            )],
+        }));
+        assert!(charging(&world, 190));
+
+        // The same data id on a piglin brute does NOT project a draw.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 191,
+            values: vec![protocol_bool_data(
+                PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+                true
+            )],
+        }));
+        assert!(!charging(&world, 191));
     }
 
     #[test]

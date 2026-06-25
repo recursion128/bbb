@@ -343,7 +343,7 @@ fn pillager_pulls_its_crossbow_back_while_charging() {
         let instance =
             EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
                 .with_is_charging_crossbow(true)
-                .with_illager_crossbow_charge_ticks(ticks);
+                .with_crossbow_charge_ticks(ticks);
         let mut model = IllagerModel::new(&instance, IllagerModelFamily::Pillager);
         model.prepare(&instance);
         let right = model.root_mut().child_mut("right_arm").pose;
@@ -413,7 +413,7 @@ fn pillager_crossbow_hold_reposes_only_the_arms() {
     let charging = entity_model_mesh(&[base
         .with_main_hand_holds_crossbow(true)
         .with_is_charging_crossbow(true)
-        .with_illager_crossbow_charge_ticks(12.0)]);
+        .with_crossbow_charge_ticks(12.0)]);
     assert_eq!(
         rest.vertices[0..144],
         charging.vertices[0..144],

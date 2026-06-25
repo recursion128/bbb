@@ -1,6 +1,7 @@
 use super::{
-    apply_crossbow_hold_pose, apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_walk,
-    apply_humanoid_weapon_swing_down, piglin_ear_flap_pose, PartPose, PART_POSE_ZERO,
+    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look,
+    apply_humanoid_leg_swing_named, apply_humanoid_walk, apply_humanoid_weapon_swing_down,
+    piglin_ear_flap_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO,
     PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
@@ -615,6 +616,18 @@ impl EntityModel for PiglinModel {
                 &mut self.root,
                 render_state.head_yaw,
                 render_state.head_pitch,
+            );
+        }
+        // Vanilla `PiglinModel.setupAnim` `CROSSBOW_CHARGE`: a regular piglin drawing its crossbow pulls it
+        // back, the left (pulling) arm lerping from rest to full draw over the projected use-item ticks,
+        // overwriting the walk arm swing. Higher priority than CROSSBOW_HOLD (applied after it so it wins
+        // when both somehow fire), below ATTACKING / ADMIRING / DANCING (the projection gates it off under
+        // those, and they apply later so they still win).
+        if render_state.piglin_crossbow_charge {
+            apply_crossbow_charge_pose(
+                &mut self.root,
+                CROSSBOW_CHARGE_DURATION_TICKS,
+                render_state.crossbow_charge_ticks,
             );
         }
         // Vanilla `PiglinModel` `ATTACKING_WITH_MELEE_WEAPON`: a piglin/brute that is aggressive and holds

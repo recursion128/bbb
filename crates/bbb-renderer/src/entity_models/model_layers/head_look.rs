@@ -373,9 +373,12 @@ pub(in crate::entity_models) fn apply_crossbow_hold_pose(
 /// holdingInRightArm = true)`: the right (holding) arm braces the crossbow (`yRot = -0.8`,
 /// `xRot = -0.97079635`) while the left (pulling) arm draws the string back over the charge — its `xRot`
 /// lerps `-0.97079635 → -π/2` and its `yRot` lerps `0.4 → 0.85` as `ticksUsingItem / maxChargeDuration`
-/// climbs `0 → 1` (clamped). Shared by every humanoid that draws a crossbow (the pillager, and the piglin
-/// once wired). `max_charge_duration` is the vanilla `CrossbowItem.getChargeDuration` (25 ticks without a
-/// Quick Charge enchant — the rare enchant is not projected, a minor draw-speed simplification).
+/// climbs `0 → 1` (clamped). Shared by every humanoid that draws a crossbow (the pillager and the regular
+/// piglin). `max_charge_duration` is the vanilla `CrossbowItem.getChargeDuration` ([`CROSSBOW_CHARGE_DURATION_TICKS`],
+/// 25 ticks without a Quick Charge enchant — the rare enchant is not projected, a minor draw-speed
+/// simplification).
+pub(in crate::entity_models) const CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
+
 pub(in crate::entity_models) fn apply_crossbow_charge_pose(
     root: &mut ModelPart,
     max_charge_duration: f32,

@@ -285,14 +285,14 @@ entity_render_state! {
     (with_drowned_throw_trident) drowned_throw_trident: bool = false;
     /// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17):
     /// `Pillager.getArmPose` returns `CROSSBOW_CHARGE` instead of `CROSSBOW_HOLD` while drawing, so the
-    /// pillager pulls the crossbow back ([`illager_crossbow_charge_ticks`](Self::illager_crossbow_charge_ticks)
+    /// pillager pulls the crossbow back ([`crossbow_charge_ticks`](Self::crossbow_charge_ticks)
     /// drives the draw). `false` for every non-pillager entity.
     (with_is_charging_crossbow) is_charging_crossbow: bool = false;
-    /// Vanilla `IllagerRenderState.ticksUsingItem` for the pillager `CROSSBOW_CHARGE` draw — the
+    /// Vanilla `{Illager,Piglin}RenderState.ticksUsingItem` for the `CROSSBOW_CHARGE` draw — the
     /// reconstructed `getTicksUsingItem()`. `AnimationUtils.animateCrossbowCharge` lerps the pulling arm
-    /// from rest to full draw over `ticksUsingItem / maxChargeDuration`. `0.0` for a pillager not charging
-    /// and every other entity (only read while [`is_charging_crossbow`](Self::is_charging_crossbow)).
-    (with_illager_crossbow_charge_ticks) illager_crossbow_charge_ticks: f32 = 0.0;
+    /// from rest to full draw over `ticksUsingItem / maxChargeDuration`. Shared by the pillager
+    /// (`IllagerModel`) and the regular piglin (`PiglinModel`). `0.0` for anything not mid-draw.
+    (with_crossbow_charge_ticks) crossbow_charge_ticks: f32 = 0.0;
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
     /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
     /// ±0.05`). `false` for every other entity.
@@ -496,6 +496,13 @@ entity_render_state! {
     /// the head look — the right (holding) arm raises the crossbow and the left (shooting) arm reaches the
     /// trigger. `false` for every other entity, a charging/dancing piglin, and an empty-handed piglin.
     (with_piglin_crossbow_hold) piglin_crossbow_hold: bool = false;
+    /// Vanilla `Piglin.getArmPose` `CROSSBOW_CHARGE` (`AnimationUtils.animateCrossbowCharge`, holding in
+    /// the right arm): a regular piglin drawing its crossbow (the synced `IS_CHARGING_CROSSBOW` boolean,
+    /// id 18) pulls it back — the right (holding) arm fixes at `yRot = -0.8` and the left (pulling) arm
+    /// lerps from rest to full draw over [`crossbow_charge_ticks`](Self::crossbow_charge_ticks) `/ 25`.
+    /// Higher priority than `CROSSBOW_HOLD`, lower than `ATTACKING`/`ADMIRING`/`DANCING`. `false` for every
+    /// other entity and a piglin not mid-draw.
+    (with_piglin_crossbow_charge) piglin_crossbow_charge: bool = false;
     /// Vanilla `PiglinModel` `ATTACKING_WITH_MELEE_WEAPON` (`PiglinModel.holdWeaponHigh` +
     /// `AnimationUtils.swingWeaponDown`, mainArm = RIGHT): a piglin or piglin brute that is aggressive and
     /// holds a melee weapon (a main-hand item carrying the `minecraft:tool` data component) raises the
@@ -1791,7 +1798,7 @@ mod tests {
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,
                 is_charging_crossbow: false,
-                illager_crossbow_charge_ticks: 0.0,
+                crossbow_charge_ticks: 0.0,
                 enderman_carrying: false,
                 enderman_creepy: false,
                 bat_resting: false,
@@ -1835,6 +1842,7 @@ mod tests {
                 illager_celebrating: false,
                 piglin_dancing: false,
                 piglin_crossbow_hold: false,
+                piglin_crossbow_charge: false,
                 piglin_attacking_with_melee: false,
                 piglin_admiring: false,
                 panda_unhappy: false,
