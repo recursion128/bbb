@@ -369,6 +369,34 @@ impl TerrainTextureState {
         )
     }
 
+    /// Bakes the **item form** of a block — the block's model rendered as a held / dropped / framed /
+    /// inventory item — into item-model quads in vanilla `0..=16` model space, sampling the blocks atlas.
+    /// Returns `None` when no real block model exists for `block_name`, so a non-block item (apple, stick)
+    /// is left to the flat-item path; a `Cross` foliage block bakes to an empty `Vec` (it renders as a
+    /// flat item, not a 3D cross), which the caller treats the same as "not a 3D item". Biome tints use
+    /// the default (no-position) climate, matching vanilla's fixed inventory grass/foliage color.
+    pub(crate) fn block_item_quads(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<Vec<bbb_renderer::ItemModelQuad>> {
+        let models = self.block_models.as_ref()?;
+        models.block_render_model_with_seed(block_name, properties, None)?;
+        let (texture_indices, tint, _transparency, shape, _ao) = self.block_render_data(
+            Some(block_name),
+            properties,
+            bbb_world::TerrainMaterialClass::Opaque,
+            None,
+            None,
+        );
+        Some(bbb_renderer::terrain::bake_block_item_quads(
+            &shape,
+            texture_indices,
+            tint,
+            &self.atlas,
+        ))
+    }
+
     fn face_texture_indices(&self, face_textures: &BlockFaceTextures) -> [u32; 6] {
         std::array::from_fn(|index| self.texture_index(&face_textures.textures[index]))
     }

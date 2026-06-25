@@ -252,6 +252,7 @@ dependencies = [
  "bbb-renderer",
  "bbb-world",
  "clap",
+ "glam 0.29.3",
  "image",
  "pollster",
  "serde",

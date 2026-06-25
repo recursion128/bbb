@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use bbb_renderer::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
 use bbb_world::{ItemEntityStackState, WorldStore};
 
@@ -13,15 +15,18 @@ const THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET: f32 = 0.0;
 pub(crate) fn item_entity_billboards_from_world(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    rendered_as_models: &BTreeSet<i32>,
 ) -> Vec<ItemEntityBillboard> {
     let Some(item_runtime) = item_runtime else {
         return Vec::new();
     };
 
-    // Dropped items: the unit-scale sprite lifted above the ground position.
+    // Dropped items: the unit-scale sprite lifted above the ground position. Items already drawn as 3D
+    // block-item models (see `item_models`) are skipped so they are not double-rendered.
     let mut billboards: Vec<ItemEntityBillboard> = world
         .item_entity_stacks()
         .into_iter()
+        .filter(|state| !rendered_as_models.contains(&state.entity_id))
         .filter_map(|state| {
             let icon = item_runtime.icon_for_stack(&state.stack)?;
             Some(item_entity_billboard_from_icon(
@@ -92,7 +97,7 @@ mod tests {
     #[test]
     fn item_entity_billboards_from_world_without_runtime_is_empty() {
         assert_eq!(
-            item_entity_billboards_from_world(&WorldStore::new(), None),
+            item_entity_billboards_from_world(&WorldStore::new(), None, &BTreeSet::new()),
             Vec::new()
         );
     }

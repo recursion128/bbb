@@ -630,6 +630,12 @@ impl NativeItemRuntime {
         self.icon_for_stack_with_bundle_selected_item(stack, None)
     }
 
+    /// The resource id (e.g. `minecraft:stone`) for an item protocol id, via the item registry. Used to
+    /// map a dropped item to the block of the same id for 3D block-item rendering.
+    pub(crate) fn item_resource_id(&self, protocol_id: i32) -> Option<&str> {
+        self.registry.as_ref()?.resource_id(protocol_id)
+    }
+
     pub(crate) fn icon_for_stack_with_bundle_selected_item(
         &self,
         stack: &ItemStackSummary,

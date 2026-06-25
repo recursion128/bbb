@@ -25,6 +25,7 @@ mod entity_scene;
 mod hud_assets;
 mod input;
 mod item_entities;
+mod item_models;
 mod item_runtime;
 mod particle_registry;
 mod particle_runtime;

@@ -39,6 +39,7 @@ use crate::{
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
     item_entities::item_entity_billboards_from_world,
+    item_models::dropped_item_models,
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
@@ -390,7 +391,21 @@ pub(crate) fn pump_network_and_terrain(
         },
         entity_partial_tick,
     ));
-    renderer.set_item_entity_billboards(item_entity_billboards_from_world(world, item_runtime));
+    // Dropped block-items render as 3D block-item models (replacing their billboard); the animation
+    // clock is the world game time plus the partial tick.
+    let item_model_age_ticks = world
+        .world_time()
+        .map(|time| time.game_time as f32)
+        .unwrap_or(0.0)
+        + entity_partial_tick;
+    let dropped_item_models =
+        dropped_item_models(world, item_runtime, terrain_textures, item_model_age_ticks);
+    renderer.set_item_entity_billboards(item_entity_billboards_from_world(
+        world,
+        item_runtime,
+        &dropped_item_models.handled_entity_ids,
+    ));
+    renderer.set_block_item_model_meshes(dropped_item_models.meshes);
     renderer.set_entity_model_instances(entity_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
