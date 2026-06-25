@@ -1095,7 +1095,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 359] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 361] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1322,6 +1322,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     FELINE_CAT_COLLAR_BABY_TEXTURE_REF,
     MOOSHROOM_TEXTURE_REF,
     MOOSHROOM_BABY_TEXTURE_REF,
+    MOOSHROOM_BROWN_TEXTURE_REF,
+    MOOSHROOM_BROWN_BABY_TEXTURE_REF,
     ARROW_TEXTURE_REF,
     ARROW_TIPPED_TEXTURE_REF,
     ARROW_SPECTRAL_TEXTURE_REF,
@@ -3033,8 +3035,9 @@ pub fn feline_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 
 // The mooshroom shares the cow model (`ModelLayers.MOOSHROOM` is the cow mesh), so it reuses the cow
 // UV layout and only swaps in the mooshroom recolor. Vanilla `MushroomCowRenderer` keys the texture on
-// the red/brown variant; bbb's `Mooshroom { baby }` carries no colour yet, so only the default red is
-// wired (the brown variant and the `MushroomCowMushroomLayer` block-mushrooms stay deferred).
+// the red/brown variant (`MushroomCowRenderer.getTextureLocation`), keyed on the synced
+// `MushroomCow.DATA_TYPE`; `RED` is the vanilla default. The `MushroomCowMushroomLayer`
+// block-mushrooms stay deferred (they need the block-model renderer).
 pub(in crate::entity_models) const MOOSHROOM_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/cow/mooshroom_red.png",
@@ -3045,8 +3048,22 @@ pub(in crate::entity_models) const MOOSHROOM_BABY_TEXTURE_REF: EntityModelTextur
         path: "textures/entity/cow/mooshroom_red_baby.png",
         size: [64, 64],
     };
-pub(in crate::entity_models) const MOOSHROOM_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [MOOSHROOM_TEXTURE_REF, MOOSHROOM_BABY_TEXTURE_REF];
+pub(in crate::entity_models) const MOOSHROOM_BROWN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/mooshroom_brown.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const MOOSHROOM_BROWN_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/cow/mooshroom_brown_baby.png",
+        size: [64, 64],
+    };
+pub(in crate::entity_models) const MOOSHROOM_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 4] = [
+    MOOSHROOM_TEXTURE_REF,
+    MOOSHROOM_BABY_TEXTURE_REF,
+    MOOSHROOM_BROWN_TEXTURE_REF,
+    MOOSHROOM_BROWN_BABY_TEXTURE_REF,
+];
 pub fn mooshroom_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &MOOSHROOM_ENTITY_TEXTURE_REFS
 }

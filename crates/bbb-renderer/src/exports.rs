@@ -32,12 +32,13 @@ pub use crate::entity_models::{
     EntityDyeColor, EntityModelBounds, EntityModelInstance, EntityModelKind,
     EntityModelTextureImage, EntityModelTextureRef, EntityRenderState, FoxModelVariant,
     FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily, HumanoidModelFamily,
-    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant,
-    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily,
-    RabbitModelVariant, SalmonModelSize, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant,
+    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+    QuadrupedModelFamily, RabbitModelVariant, SalmonModelSize, SheepHeadEatPose, SheepWoolColor,
+    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN,
+    PLAYER_MODEL_PARTS_ALL_VISIBLE,
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{

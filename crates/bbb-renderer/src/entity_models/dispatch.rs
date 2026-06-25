@@ -629,13 +629,14 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &ender_dragon_textured_layer_passes(),
         ),
-        EntityModelKind::Mooshroom { baby } => sink.model(
+        EntityModelKind::Mooshroom { baby, variant } => sink.model(
             CowModel::new(CowModelVariant::Temperate, baby),
             entity_model_root_transform(*instance),
             instance,
             // Vanilla `MushroomCowRenderer` renders the cow mesh with the mooshroom recolor; reuse the
-            // cow geometry and bind the mooshroom texture (the block-mushroom layer stays deferred).
-            &mooshroom_textured_layer_passes(baby),
+            // cow geometry and bind the red/brown mooshroom texture (the block-mushroom layer stays
+            // deferred).
+            &mooshroom_textured_layer_passes(baby, variant),
         ),
         EntityModelKind::Panda { baby, variant } => sink.model(
             PandaModel::new(baby),

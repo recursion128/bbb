@@ -2955,11 +2955,13 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.COW`, `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so the mooshroom reuses
       the dedicated temperate-cow geometry directly — ten cubes (the head with horns / muzzle, the pitched
       body, four legs) for the adult, the smaller `BabyCowModel` layout for the baby, with the shared
-      `QuadrupedModel` head look and leg swing already reproduced by the cow path. The base texture is now
-      bound on the textured path (`MOOSHROOM_TEXTURE_REF` / `MOOSHROOM_BABY_TEXTURE_REF`, the red/brown
-      mooshroom body textures), the primary now-wired path; the mushroom block-model layer
-      (`MushroomCowMushroomLayer`, drawn through the block renderer) stays deferred. The colored debug path
-      stays as a fallback (it shows the cow-brown body tint)
+      `QuadrupedModel` head look and leg swing already reproduced by the cow path. The full
+      `MushroomCowRenderer.getTextureLocation` red/brown texture swap is now implemented:
+      `EntityModelKind::Mooshroom` carries a `variant` projected from the synced `MushroomCow.DATA_TYPE`
+      (index 20 INT, `ByIdMap` CLAMP, `Red` default) which binds `mooshroom_{red,brown}[_baby].png` on
+      the textured path (the two brown faces join the master atlas array → 361); the mushroom
+      block-model layer (`MushroomCowMushroomLayer`, drawn through the block renderer) stays deferred.
+      The colored debug path stays as a fallback (it shows the cow-brown body tint)
     - panda entities (adult and baby) as renderer-owned vanilla 26.1 `PandaModel.createBodyLayer()` /
       `BabyPandaModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `96` out of the mooshroom/panda cow-shaped quadruped

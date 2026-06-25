@@ -321,6 +321,8 @@ mod tests {
                 "textures/entity/cat/cat_collar_baby.png",
                 "textures/entity/cow/mooshroom_red.png",
                 "textures/entity/cow/mooshroom_red_baby.png",
+                "textures/entity/cow/mooshroom_brown.png",
+                "textures/entity/cow/mooshroom_brown_baby.png",
                 "textures/entity/projectiles/arrow.png",
                 "textures/entity/projectiles/arrow_tipped.png",
                 "textures/entity/projectiles/arrow_spectral.png",

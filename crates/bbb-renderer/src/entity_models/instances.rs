@@ -1366,7 +1366,10 @@ impl EntityModelInstance {
     pub fn mooshroom(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Mooshroom { baby },
+            EntityModelKind::Mooshroom {
+                baby,
+                variant: MooshroomVariant::Red,
+            },
             position,
             y_rot,
         )

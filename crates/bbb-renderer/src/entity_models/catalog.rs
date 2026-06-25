@@ -2,8 +2,8 @@ mod selection;
 
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref, llama_texture_ref,
-    pig_texture_ref, player_texture_ref, sheep_wool_render_color, squid_texture_ref,
-    wolf_texture_ref,
+    mooshroom_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
+    squid_texture_ref, wolf_texture_ref,
 };
 #[cfg(test)]
 pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_wool_layer_color};
@@ -259,11 +259,13 @@ pub enum EntityModelKind {
     /// `CowModel` / `BabyCowModel` mesh (`ModelLayers.MOOSHROOM` bakes to the same `cowBodyLayer` as the
     /// temperate cow, `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`). Rendered on the colored path
     /// as the temperate [`Cow`](EntityModelKind::Cow) geometry (`baby` selecting the baby layout), so it
-    /// is the real cow body rather than the generic quadruped stand-in. The defining mushroom block-model
-    /// layer (`MushroomCowMushroomLayer`, rendered via the block renderer) and the red/brown mooshroom
-    /// body textures live on the deferred block-model / texture-backed paths.
+    /// is the real cow body rather than the generic quadruped stand-in. `variant` drives the vanilla
+    /// `MushroomCowRenderer` red/brown body-texture swap (`mooshroom_<variant>[_baby].png`). The
+    /// defining mushroom block-model layer (`MushroomCowMushroomLayer`, rendered via the block
+    /// renderer) stays on the deferred block-model path.
     Mooshroom {
         baby: bool,
+        variant: MooshroomVariant,
     },
     Sheep {
         baby: bool,
@@ -882,6 +884,27 @@ impl EntityDyeColor {
             blue as f32 / 255.0,
             1.0,
         ]
+    }
+}
+
+/// Vanilla `MushroomCow.Variant` (the synced `MushroomCow.DATA_TYPE` int): the two mooshroom coats,
+/// sharing the `CowModel` body and differing only by texture (`MushroomCowRenderer`). `Red` is the
+/// vanilla `Variant.DEFAULT` (id 0); `Brown` is id 1.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MooshroomVariant {
+    Red,
+    Brown,
+}
+
+impl MooshroomVariant {
+    /// Vanilla `MushroomCow.Variant.byId` (`ByIdMap.continuous(..., CLAMP)`): clamps the synced
+    /// `DATA_TYPE` id, so `<= 0` resolves to `Red` (id 0) and `>= 1` to `Brown` (id 1).
+    pub fn from_vanilla_id(id: i32) -> Self {
+        if id >= 1 {
+            Self::Brown
+        } else {
+            Self::Red
+        }
     }
 }
 

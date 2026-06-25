@@ -184,8 +184,8 @@ impl EntityModelKind {
                 family: SkeletonModelFamily::Bogged { .. },
             } => "bogged",
             Self::Cow { variant, baby } => cow_model_key(variant, baby),
-            Self::Mooshroom { baby: false } => "mooshroom",
-            Self::Mooshroom { baby: true } => "mooshroom_baby",
+            Self::Mooshroom { baby: false, .. } => "mooshroom",
+            Self::Mooshroom { baby: true, .. } => "mooshroom_baby",
             Self::Sheep {
                 baby,
                 sheared,
@@ -425,8 +425,7 @@ impl EntityModelKind {
                 cat_variant,
                 ..
             } => Some(feline_texture_ref(cat, baby, cat_variant)),
-            Self::Mooshroom { baby: false } => Some(MOOSHROOM_TEXTURE_REF),
-            Self::Mooshroom { baby: true } => Some(MOOSHROOM_BABY_TEXTURE_REF),
+            Self::Mooshroom { baby, variant } => Some(mooshroom_texture_ref(baby, variant)),
             Self::Vex => Some(VEX_TEXTURE_REF),
             Self::Allay => Some(ALLAY_TEXTURE_REF),
             Self::Strider { baby, cold } => Some(strider_texture_ref(baby, cold)),
@@ -933,6 +932,19 @@ fn wolf_model_key(baby: bool, tame: bool, angry: bool) -> &'static str {
         (true, true, _) => "wolf_tame_baby",
         (true, false, true) => "wolf_angry_baby",
         (true, false, false) => "wolf_baby",
+    }
+}
+
+pub(in crate::entity_models) fn mooshroom_texture_ref(
+    baby: bool,
+    variant: MooshroomVariant,
+) -> EntityModelTextureRef {
+    // Vanilla `MushroomCowRenderer.getTextureLocation`: `isBaby ? variant.baby : variant.adult`.
+    match (variant, baby) {
+        (MooshroomVariant::Red, false) => MOOSHROOM_TEXTURE_REF,
+        (MooshroomVariant::Red, true) => MOOSHROOM_BABY_TEXTURE_REF,
+        (MooshroomVariant::Brown, false) => MOOSHROOM_BROWN_TEXTURE_REF,
+        (MooshroomVariant::Brown, true) => MOOSHROOM_BROWN_BABY_TEXTURE_REF,
     }
 }
 

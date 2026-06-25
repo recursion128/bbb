@@ -1,14 +1,14 @@
 use super::super::{
     catalog::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
-        llama_texture_ref, pig_texture_ref, player_texture_ref, sheep_wool_render_color,
-        wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily,
-        CamelModelFamily, CatModelVariant, ChickenModelVariant, CowModelVariant, EntityDyeColor,
-        EntityModelTextureRef, FoxModelVariant, FrogModelVariant, HoglinModelFamily,
-        IllagerModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
-        PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
-        SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern,
-        WolfModelVariant,
+        llama_texture_ref, mooshroom_texture_ref, pig_texture_ref, player_texture_ref,
+        sheep_wool_render_color, wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant,
+        BoatModelFamily, CamelModelFamily, CatModelVariant, ChickenModelVariant, CowModelVariant,
+        EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
+        HoglinModelFamily, IllagerModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant,
+        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -879,16 +879,13 @@ pub(in crate::entity_models) fn feline_textured_layer_passes(
 
 pub(in crate::entity_models) fn mooshroom_textured_layer_passes(
     baby: bool,
+    variant: MooshroomVariant,
 ) -> Vec<EntityModelLayerPass> {
     // The mooshroom reuses the cow model tree (geometry drives off it), so this binds only the
-    // mooshroom recolor over the shared cow UVs.
+    // mooshroom recolor (the red/brown variant face) over the shared cow UVs.
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        if baby {
-            MOOSHROOM_BABY_TEXTURE_REF
-        } else {
-            MOOSHROOM_TEXTURE_REF
-        },
+        mooshroom_texture_ref(baby, variant),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

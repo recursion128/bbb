@@ -84,39 +84,79 @@ fn mooshroom_colored_runtime_skips_the_texture_backed_mooshroom() {
 
 #[test]
 fn mooshroom_exposes_stable_model_keys() {
-    assert_eq!(
-        EntityModelKind::Mooshroom { baby: false }.model_key(),
-        "mooshroom"
-    );
-    assert_eq!(
-        EntityModelKind::Mooshroom { baby: true }.model_key(),
-        "mooshroom_baby"
-    );
+    // The model_key (mesh geometry) is variant-agnostic: red and brown share the `CowModel` body.
+    for variant in [MooshroomVariant::Red, MooshroomVariant::Brown] {
+        assert_eq!(
+            EntityModelKind::Mooshroom {
+                baby: false,
+                variant,
+            }
+            .model_key(),
+            "mooshroom"
+        );
+        assert_eq!(
+            EntityModelKind::Mooshroom {
+                baby: true,
+                variant,
+            }
+            .model_key(),
+            "mooshroom_baby"
+        );
+    }
 }
 
 #[test]
 fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
+    // Vanilla `MushroomCowRenderer.getTextureLocation`: red/brown × adult/baby.
     assert_eq!(
-        mooshroom_textured_layer_passes(false)[0].texture,
+        mooshroom_textured_layer_passes(false, MooshroomVariant::Red)[0].texture,
         MOOSHROOM_TEXTURE_REF
     );
     assert_eq!(
-        mooshroom_textured_layer_passes(true)[0].texture,
+        mooshroom_textured_layer_passes(true, MooshroomVariant::Red)[0].texture,
         MOOSHROOM_BABY_TEXTURE_REF
     );
     assert_eq!(
-        EntityModelKind::Mooshroom { baby: false }.vanilla_texture_ref(),
-        Some(MOOSHROOM_TEXTURE_REF)
+        mooshroom_textured_layer_passes(false, MooshroomVariant::Brown)[0].texture,
+        MOOSHROOM_BROWN_TEXTURE_REF
     );
     assert_eq!(
-        EntityModelKind::Mooshroom { baby: true }.vanilla_texture_ref(),
-        Some(MOOSHROOM_BABY_TEXTURE_REF)
+        mooshroom_textured_layer_passes(true, MooshroomVariant::Brown)[0].texture,
+        MOOSHROOM_BROWN_BABY_TEXTURE_REF
+    );
+    let texture = |baby, variant| {
+        EntityModelKind::Mooshroom { baby, variant }
+            .vanilla_texture_ref()
+            .unwrap()
+            .path
+    };
+    assert_eq!(
+        texture(false, MooshroomVariant::Red),
+        "textures/entity/cow/mooshroom_red.png"
+    );
+    assert_eq!(
+        texture(true, MooshroomVariant::Red),
+        "textures/entity/cow/mooshroom_red_baby.png"
+    );
+    assert_eq!(
+        texture(false, MooshroomVariant::Brown),
+        "textures/entity/cow/mooshroom_brown.png"
+    );
+    assert_eq!(
+        texture(true, MooshroomVariant::Brown),
+        "textures/entity/cow/mooshroom_brown_baby.png"
     );
     assert!(entity_model_texture_refs().contains(&MOOSHROOM_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&MOOSHROOM_BABY_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&MOOSHROOM_BROWN_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&MOOSHROOM_BROWN_BABY_TEXTURE_REF));
     assert_eq!(
         mooshroom_entity_texture_refs(),
-        &[MOOSHROOM_TEXTURE_REF, MOOSHROOM_BABY_TEXTURE_REF]
+        &[
+            MOOSHROOM_TEXTURE_REF,
+            MOOSHROOM_BABY_TEXTURE_REF,
+            MOOSHROOM_BROWN_TEXTURE_REF,
+            MOOSHROOM_BROWN_BABY_TEXTURE_REF,
+        ]
     );
 
     // The atlas carries both the mooshroom recolor and the cow textures so the cow comparison emit

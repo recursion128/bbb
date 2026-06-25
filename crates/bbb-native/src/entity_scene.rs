@@ -6,11 +6,12 @@ use bbb_renderer::{
     CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
     EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
     GuardianBeamRenderState, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily,
-    LlamaModelFamily, LlamaVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
-    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
+    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
+    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
@@ -278,6 +279,10 @@ const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 const COW_VARIANT_DATA_ID: u8 = 18;
+/// `MushroomCow.DATA_TYPE` data id (20, INT): the red/brown variant. `MushroomCow` extends `Cow`,
+/// whose own accessors are `DATA_VARIANT_ID` (18) + `DATA_SOUND_VARIANT_ID` (19), so the mooshroom's
+/// first own accessor is 20.
+const MUSHROOM_COW_TYPE_DATA_ID: u8 = 20;
 const PIG_VARIANT_DATA_ID: u8 = 19;
 // Vanilla Frog.DATA_VARIANT_ID (18, Holder<FrogVariant>): `Frog extends Animal`, so its first own
 // accessor follows Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) /
@@ -2022,10 +2027,16 @@ fn cow_model_kind(
 /// `CowModel` / `BabyCowModel` body (`ModelLayers.MOOSHROOM` bakes to the temperate `cowBodyLayer`,
 /// `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so it maps to the dedicated
 /// [`EntityModelKind::Mooshroom`] (`baby` selecting the layout) — the real cow body instead of the
-/// generic quadruped stand-in. The mushroom block-model layer and red/brown textures stay deferred.
+/// generic quadruped stand-in. The mushroom block-model layer stays deferred; the red/brown body
+/// texture is projected from the synced `MushroomCow.DATA_TYPE` (index 20).
 fn mooshroom_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
     EntityModelKind::Mooshroom {
         baby: ageable_baby(values),
+        variant: MooshroomVariant::from_vanilla_id(entity_data_int(
+            values,
+            MUSHROOM_COW_TYPE_DATA_ID,
+            0,
+        )),
     }
 }
 
@@ -7346,17 +7357,36 @@ mod tests {
             }
         );
         // The mooshroom shares the cow body, so it renders through the dedicated `Mooshroom` model
-        // (the real cow mesh) rather than the generic quadruped stand-in — adult and baby alike.
+        // (the real cow mesh) rather than the generic quadruped stand-in — adult and baby alike. The
+        // default variant (no `DATA_TYPE`) is the vanilla `Red`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
-            EntityModelKind::Mooshroom { baby: false }
+            EntityModelKind::Mooshroom {
+                baby: false,
+                variant: MooshroomVariant::Red,
+            }
         );
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
-            EntityModelKind::Mooshroom { baby: true }
+            EntityModelKind::Mooshroom {
+                baby: true,
+                variant: MooshroomVariant::Red,
+            }
+        );
+        // The synced `MushroomCow.DATA_TYPE` (index 20) selects the brown coat (id 1; `ByIdMap` CLAMP
+        // folds any id ≥ 1 to brown).
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+                &[protocol_int_data(MUSHROOM_COW_TYPE_DATA_ID, 1)]
+            ),
+            EntityModelKind::Mooshroom {
+                baby: false,
+                variant: MooshroomVariant::Brown,
+            }
         );
     }
 
