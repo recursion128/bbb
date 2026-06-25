@@ -242,50 +242,34 @@ impl Renderer {
             block_destroy_overlay_draw_calls += 1;
         }
 
-        let (item_model_vertices, item_model_indices) = self.collect_item_model_geometry();
-        if !item_model_indices.is_empty() {
-            let item_model_vertex_buffer =
-                self.device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("bbb-item-model-frame-vertices"),
-                        contents: bytemuck::cast_slice(&item_model_vertices),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    });
-            let item_model_index_buffer =
-                self.device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("bbb-item-model-frame-indices"),
-                        contents: bytemuck::cast_slice(&item_model_indices),
-                        usage: wgpu::BufferUsages::INDEX,
-                    });
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("bbb-native-item-model-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.item_model_pipeline);
+        // Block-item models sample the blocks atlas (the terrain bind group); flat / generated item
+        // models sample the item atlas (the dropped-item billboard bind group). Each is a separate draw
+        // because they bind a different texture, but both reuse the one item-model pipeline.
+        let (block_item_vertices, block_item_indices) = self.collect_block_item_model_geometry();
+        if !block_item_indices.is_empty() {
+            self.draw_item_model_geometry(
+                &mut encoder,
+                &view,
+                &block_item_vertices,
+                &block_item_indices,
+                &self.terrain_bind_group,
+            );
             pipeline_switches += 1;
-            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            pass.set_vertex_buffer(0, item_model_vertex_buffer.slice(..));
-            pass.set_index_buffer(item_model_index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..item_model_indices.len() as u32, 0, 0..1);
             item_model_draw_calls += 1;
+        }
+        let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
+        if !flat_item_indices.is_empty() {
+            if let Some(atlas) = &self.item_entity_atlas {
+                self.draw_item_model_geometry(
+                    &mut encoder,
+                    &view,
+                    &flat_item_vertices,
+                    &flat_item_indices,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
         }
 
         let item_entity_vertices = self.collect_item_entity_vertices();
@@ -487,5 +471,59 @@ impl Renderer {
             + hud_draw_calls;
         self.counters.pipeline_switches = pipeline_switches;
         Ok(())
+    }
+
+    /// Draws one frame's merged item-model geometry: uploads the per-frame vertex + index buffers and
+    /// issues a single indexed draw with the item-model pipeline against `bind_group` (the blocks atlas
+    /// for block-items, or the item atlas for flat items). A `Load` pass over the shared color + depth
+    /// targets, so item models depth-interact with the world drawn before them.
+    fn draw_item_model_geometry(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        vertices: &[crate::item_models::ItemModelVertex],
+        indices: &[u32],
+        bind_group: &wgpu::BindGroup,
+    ) {
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bbb-item-model-frame-vertices"),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let index_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bbb-item-model-frame-indices"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("bbb-native-item-model-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.item_model_pipeline);
+        pass.set_bind_group(0, bind_group, &[]);
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
     }
 }

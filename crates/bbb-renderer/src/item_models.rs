@@ -105,17 +105,30 @@ pub(crate) fn merge_item_model_meshes(
 }
 
 impl Renderer {
-    /// Sets the baked block/item-model meshes to draw this frame. Each mesh is already in world space
-    /// with atlas-absolute UVs and `tint × shade` vertex colors (the caller applies the world / display
-    /// transform at bake time via [`ItemModelMesh::append_quads`]); the renderer concatenates and draws
-    /// them indexed against the shared blocks atlas.
-    pub fn set_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
-        self.item_model_meshes = meshes;
+    /// Sets the baked **block-item** model meshes to draw this frame — those whose UVs are absolute into
+    /// the blocks atlas (the same atlas terrain samples). Each mesh is already in world space with
+    /// `tint × shade` vertex colors (the caller applies the world / display transform at bake time via
+    /// [`ItemModelMesh::append_quads`]); the renderer concatenates and draws them indexed against the
+    /// resident blocks atlas.
+    pub fn set_block_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.block_item_model_meshes = meshes;
     }
 
-    /// Concatenates this frame's item-model meshes into one vertex + index buffer for upload.
-    pub(crate) fn collect_item_model_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
-        merge_item_model_meshes(&self.item_model_meshes)
+    /// Sets the baked **flat / generated** item-model meshes to draw this frame — those whose UVs are
+    /// absolute into the item atlas (the same atlas the dropped-item billboards sample). Drawn only when
+    /// that atlas has been uploaded; otherwise skipped.
+    pub fn set_flat_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.flat_item_model_meshes = meshes;
+    }
+
+    /// Concatenates this frame's block-item meshes into one vertex + index buffer for upload.
+    pub(crate) fn collect_block_item_model_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.block_item_model_meshes)
+    }
+
+    /// Concatenates this frame's flat-item meshes into one vertex + index buffer for upload.
+    pub(crate) fn collect_flat_item_model_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.flat_item_model_meshes)
     }
 }
 
