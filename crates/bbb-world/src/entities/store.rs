@@ -821,6 +821,9 @@ impl EntityStore {
             warden_dig_seconds: client_animations
                 .animations
                 .warden_dig_seconds(partial_ticks),
+            rabbit_hop_seconds: client_animations
+                .animations
+                .rabbit_hop_seconds(partial_ticks),
             walk_animation_position: client_animations
                 .animations
                 .walk_animation_position(partial_ticks),

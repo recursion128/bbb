@@ -113,6 +113,13 @@ const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
 const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
+const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
+/// Vanilla `Rabbit.handleEntityEvent`: event `1` (`spawnSprintParticle`) also seeds the client-side
+/// hop reconstruction — `jumpDuration = 15; jumpTicks = 0;` — so the `hopAnimationState` plays for
+/// one 15-tick (0.75s, exactly one loop of `RabbitAnimation.HOP`) jump arc.
+const RABBIT_JUMP_EVENT_ID: i8 = 1;
+/// Vanilla `Rabbit.startJumping` / `handleEntityEvent(1)`: `this.jumpDuration = 15`.
+const RABBIT_JUMP_DURATION: i32 = 15;
 /// Vanilla `Axolotl.DATA_PLAYING_DEAD`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 19
 /// (Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17, then `Axolotl`'s first own accessor
 /// `DATA_VARIANT` 18, `DATA_PLAYING_DEAD` 19, `FROM_BUCKET` 20). `Axolotl.tickAdultAnimations` reads
@@ -301,6 +308,8 @@ pub struct EntityClientAnimationState {
     pub ravager: Option<RavagerAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hoglin: Option<HoglinAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rabbit_hop: Option<RabbitHopAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -774,6 +783,52 @@ impl HoglinAnimationState {
     /// the baked rest tilt).
     fn is_settled(&self) -> bool {
         self.attack_animation_tick == 0
+    }
+}
+
+/// Canonical client-side rabbit hop timer, mirroring vanilla `Rabbit`'s `jumpTicks`/`jumpDuration`
+/// counter and its `hopAnimationState`. Entity event `1` seeds `jumpDuration = 15; jumpTicks = 0`;
+/// each client tick `Rabbit.setupAnimationStates` `startIfStopped`/`stop`s the hop on `jumpTicks > 0`
+/// and `Rabbit.aiStep` advances `jumpTicks` toward `jumpDuration`, wrapping it back to `0` (and
+/// clearing `jumpDuration`) when they meet — so the hop runs for exactly one 15-tick window per jump,
+/// matching the 0.75s looping `RabbitAnimation.HOP`. The random idle-head-tilt animation
+/// (`shouldPlayIdleAnimation` gated on a `random.nextInt(40) + 180` timeout) is NOT reconstructable
+/// and stays deferred, so the hop branch always governs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RabbitHopAnimationState {
+    /// Vanilla `Rabbit.jumpTicks`.
+    pub jump_ticks: i32,
+    /// Vanilla `Rabbit.jumpDuration`.
+    pub jump_duration: i32,
+    /// Vanilla `Rabbit.hopAnimationState` (the 0.75s looping `WARDEN`-style `HOP` keyframe).
+    pub hop: KeyframeAnimationState,
+}
+
+impl RabbitHopAnimationState {
+    /// Vanilla `Rabbit.handleEntityEvent(1)`: `jumpDuration = 15; jumpTicks = 0`. The hop itself is
+    /// started by the next tick's `setupAnimationStates` once `jumpTicks` climbs past `0`.
+    fn start_jump(&mut self) {
+        self.jump_duration = RABBIT_JUMP_DURATION;
+        self.jump_ticks = 0;
+    }
+
+    /// One client tick in vanilla order: `Rabbit.baseTick` runs `setupAnimationStates` (the hop
+    /// branch — idle deferred — `startIfStopped`/`stop` on `jumpTicks > 0`) BEFORE `Rabbit.aiStep`
+    /// advances `jumpTicks` (`++` until it meets `jumpDuration`, then both reset to `0`).
+    fn advance_client_tick(&mut self, age_ticks: u32) {
+        self.hop.animate_when(self.jump_ticks > 0, age_ticks);
+        if self.jump_ticks != self.jump_duration {
+            self.jump_ticks += 1;
+        } else if self.jump_duration != 0 {
+            self.jump_ticks = 0;
+            self.jump_duration = 0;
+        }
+    }
+
+    /// The jump window has fully wound down and the hop has stopped, so the state can be dropped (a
+    /// resting rabbit holds the bind pose plus its look).
+    fn is_settled(&self) -> bool {
+        self.jump_duration == 0 && self.jump_ticks == 0 && self.hop.start_age.is_none()
     }
 }
 
@@ -2320,6 +2375,18 @@ impl EntityClientAnimationState {
                     attack_animation_tick: 0,
                 })
                 .attack_animation_tick = HOGLIN_ATTACK_TICKS;
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_RABBIT_ID
+            && event_id == RABBIT_JUMP_EVENT_ID
+        {
+            // Vanilla `Rabbit.handleEntityEvent(1)`: seed the hop reconstruction (`jumpDuration = 15;
+            // jumpTicks = 0`); the next tick's `setupAnimationStates` starts the hop keyframe.
+            self.rabbit_hop
+                .get_or_insert(RabbitHopAnimationState {
+                    jump_ticks: 0,
+                    jump_duration: 0,
+                    hop: KeyframeAnimationState { start_age: None },
+                })
+                .start_jump();
         } else if entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID
             && event_id == EVOKER_FANGS_ATTACK_EVENT_ID
         {
@@ -2383,6 +2450,17 @@ impl EntityClientAnimationState {
     /// hoglin / zoglin is not mid-headbutt.
     pub fn hoglin_attack_animation_tick(&self) -> i32 {
         self.hoglin.map_or(0, |state| state.attack_animation_tick)
+    }
+
+    /// The rabbit hop's elapsed seconds since its `hopAnimationState` started (vanilla
+    /// `Rabbit.hopAnimationState`, the 0.75s looping `RabbitAnimation.HOP`), projected for the
+    /// renderer `RabbitModel.setupAnim` `hopAnimation.apply`. Returns `-1.0` (the stopped-animation
+    /// sentinel) for a resting rabbit and every other entity; a non-negative value is wrapped by the
+    /// looping def length each frame in the renderer.
+    pub fn rabbit_hop_seconds(&self, partial_tick: f32) -> f32 {
+        self.rabbit_hop
+            .and_then(|state| state.hop.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
     }
 
     /// Vanilla `Warden.getTendrilAnimation(partialTick)`, exposed for the renderer
@@ -2959,6 +3037,14 @@ impl EntityClientAnimationState {
                     hoglin.advance_client_tick();
                     if hoglin.is_settled() {
                         self.hoglin = None;
+                    }
+                }
+            }
+            VANILLA_ENTITY_TYPE_RABBIT_ID => {
+                if let Some(rabbit_hop) = self.rabbit_hop.as_mut() {
+                    rabbit_hop.advance_client_tick(self.age_ticks);
+                    if rabbit_hop.is_settled() {
+                        self.rabbit_hop = None;
                     }
                 }
             }

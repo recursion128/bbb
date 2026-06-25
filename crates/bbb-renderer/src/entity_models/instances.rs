@@ -194,6 +194,10 @@ entity_render_state! {
     /// `WARDEN_DIG` despawn burrow), sampled by `WardenModel.setupAnim`. `-1.0` (stopped) for every
     /// other entity and a non-digging warden.
     (with_warden_dig_seconds) warden_dig_seconds: f32 = -1.0;
+    /// Vanilla `Rabbit.hopAnimationState` elapsed seconds (entity event `1`-seeded, the 0.75s looping
+    /// `RabbitAnimation.HOP`), sampled by `RabbitModel.setupAnim`. `-1.0` (stopped) for every other
+    /// entity and a resting rabbit; a non-negative value is wrapped by the looping def length.
+    (with_rabbit_hop_seconds) rabbit_hop_seconds: f32 = -1.0;
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack` riptide spin: when the
     /// entity is mid-trident-spin, `Some(ageInTicks)` (the lerped
     /// `ageInTicks + partialTick`) drives the `LivingEntityRenderer.setupRotations`
@@ -1711,6 +1715,7 @@ mod tests {
                 warden_sonic_boom_seconds: -1.0,
                 warden_emerge_seconds: -1.0,
                 warden_dig_seconds: -1.0,
+                rabbit_hop_seconds: -1.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
                 sleeping: None,

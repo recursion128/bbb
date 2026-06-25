@@ -2802,10 +2802,20 @@ When an agent does any of the following, update this file in the same slice:
       intermediate and the head is `body`'s third child — also nine cubes. The head look is reproduced:
       `RabbitModel.setupAnim` sets `head.yRot/xRot` from the projected `head_yaw/head_pitch` (an assignment
       that overwrites the head's baked pitch, gated on the idle-head-tilt `AnimationState` that bbb never
-      starts, so the look applies every frame), turning only the head and its two ears. The looping
-      `RabbitAnimation.HOP` / `BabyRabbitAnimation` and `IDLE_HEAD_TILT` keyframe animations need
-      un-projected `AnimationState`s and stay deferred, so a resting rabbit renders at this bind pose plus
-      the head look. The seven `Rabbit.Variant` color/texture variants are now bound on the textured path:
+      starts, so the look applies every frame), turning only the head and its two ears, then applies the
+      looping `RabbitAnimation.HOP` (0.75s, 11 bones, 110 keyframes) additively over every bone while the
+      rabbit is mid-jump. The hop is reconstructed client-side: entity event `1` (`Rabbit.handleEntityEvent`)
+      seeds `jumpDuration = 15; jumpTicks = 0`, then each client tick mirrors vanilla's order —
+      `setupAnimationStates` `startIfStopped`/`stop`s the hop on `jumpTicks > 0` (a reused
+      `KeyframeAnimationState`) BEFORE `aiStep` lifts `jumpTicks` toward `jumpDuration` and wraps it back to
+      `0` — so the hop runs for exactly one 15-tick window (= one loop) per jump. Projected as
+      `rabbit_hop_seconds` (`-1.0` when stopped). The two ears were renamed from the positional `"0"`/`"1"`
+      to the vanilla `right_ear`/`left_ear` (right-then-left, vertex order preserved) in both the adult and
+      baby trees so the per-ear HOP channels apply to both. World tests pin the seed→1-tick-delay→15-tick
+      window→stop sequence; renderer tests pin the HOP def (0.75s looping, 11 bones) and that a hopping
+      rabbit (adult and baby) re-poses off bind and swings the hind legs. DEFERRED: the random-timed
+      `IDLE_HEAD_TILT` keyframe (`shouldPlayIdleAnimation` gated on a `random.nextInt(40) + 180` timeout) is
+      not reconstructable client-side. The seven `Rabbit.Variant` color/texture variants are now bound on the textured path:
       the native scene reads `DATA_TYPE_ID` (18, int) and `Rabbit.Variant.byId` (sparse; EVIL = 99 → the
       `caerbannog` texture) selects the colour, crossed with the age and the `Toast` custom-name override
       (`checkMagicName(entity, "Toast")` → `rabbit_toast`/`_baby`), matching

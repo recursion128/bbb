@@ -686,6 +686,11 @@ pub struct EntityModelSourceState {
     /// `-1.0` (stopped) for a non-digging warden and every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub warden_dig_seconds: f32,
+    /// Vanilla `Rabbit.hopAnimationState` elapsed seconds (entity event `1`-seeded, the 0.75s looping
+    /// `RabbitAnimation.HOP`), sampled by `RabbitModel.setupAnim`'s `hopAnimation.apply`. `-1.0`
+    /// (stopped) for a resting rabbit and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub rabbit_hop_seconds: f32,
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that sways the model's legs/arms. `0.0` for a standing entity, every

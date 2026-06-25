@@ -7546,6 +7546,78 @@ fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
 }
 
 #[test]
+fn rabbit_jump_event_drives_the_hop_window() {
+    const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const RABBIT_JUMP_EVENT_ID: i8 = 1;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        50,
+        VANILLA_ENTITY_TYPE_RABBIT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        51,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let hop = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .rabbit_hop_seconds
+    };
+
+    // A resting rabbit projects the `-1.0` stopped sentinel.
+    assert_eq!(hop(&store, 50, 1.0), -1.0);
+
+    // Vanilla `Rabbit.handleEntityEvent(1)` seeds `jumpDuration = 15; jumpTicks = 0`. The hop is NOT
+    // started yet — vanilla's `setupAnimationStates` (the hop branch) runs BEFORE `aiStep` lifts
+    // `jumpTicks` past `0`, so the seed tick still reads the stopped sentinel.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 50,
+        event_id: RABBIT_JUMP_EVENT_ID,
+    }));
+    assert_eq!(hop(&store, 50, 0.0), -1.0);
+    // First tick: `jumpTicks` climbs to 1, but the hop only `startIfStopped`s on the NEXT tick's
+    // `setupAnimationStates`, so it is still stopped here.
+    store.advance_entity_client_animations(1);
+    assert_eq!(hop(&store, 50, 0.0), -1.0);
+    // Second tick: `jumpTicks > 0`, so the hop starts at the current age (elapsed begins at 0).
+    store.advance_entity_client_animations(1);
+    assert!((hop(&store, 50, 0.0) - 0.0).abs() < 1.0e-6);
+    // The hop advances `1 / 20` per tick while the window runs.
+    store.advance_entity_client_animations(5);
+    assert!((hop(&store, 50, 0.0) - 0.25).abs() < 1.0e-6);
+    // The partial tick folds into the live age.
+    assert!((hop(&store, 50, 0.5) - 0.275).abs() < 1.0e-6);
+
+    // The window is 15 ticks; the hop holds through its end (`jumpTicks` reaches `jumpDuration` and
+    // resets), then stops on the following tick (`jumpTicks` back to 0).
+    store.advance_entity_client_animations(9);
+    assert!(
+        (hop(&store, 50, 0.0) - 0.7).abs() < 1.0e-6,
+        "still hopping at tick 14"
+    );
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        hop(&store, 50, 0.0),
+        -1.0,
+        "the hop stops when the jump window closes"
+    );
+
+    // The jump event on a non-rabbit never starts a hop.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 51,
+        event_id: RABBIT_JUMP_EVENT_ID,
+    }));
+    store.advance_entity_client_animations(2);
+    assert_eq!(hop(&store, 51, 0.0), -1.0);
+}
+
+#[test]
 fn warden_tendril_event_drives_client_animation_pulse() {
     const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

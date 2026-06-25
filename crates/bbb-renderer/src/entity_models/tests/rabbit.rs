@@ -331,3 +331,121 @@ fn rabbit_textured_render_matches_vanilla_renderer() {
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
 }
+
+#[test]
+fn rabbit_hop_animation_matches_vanilla_definition() {
+    // Vanilla `RabbitAnimation.HOP`: a 0.75s LOOPING bunny-hop animating all eleven bones (the body,
+    // head, the two leg groups, the four individual legs, the two ears, and the tail).
+    assert_eq!(RABBIT_HOP.length_seconds, 0.75);
+    assert!(RABBIT_HOP.looping);
+    assert_eq!(RABBIT_HOP.bones.len(), 11);
+
+    // The body rocks up to `degreeVec(32.5, 0, 0)` at its `0.2917` keyframe.
+    let (_, body_rot) = sample_bone_offsets(&RABBIT_HOP, "body", 0.2917, 1.0);
+    assert!((body_rot[0] - 32.5_f32.to_radians()).abs() < 1.0e-4);
+    // The back legs kick up to `degreeVec(125, 0, 0)` at their `0.25` keyframe.
+    let (_, backlegs_rot) = sample_bone_offsets(&RABBIT_HOP, "backlegs", 0.25, 1.0);
+    assert!((backlegs_rot[0] - 125.0_f32.to_radians()).abs() < 1.0e-4);
+    // The head counter-bobs the other way (`degreeVec(-32.17, 0, 0)` at `0.2917`).
+    let (_, head_rot) = sample_bone_offsets(&RABBIT_HOP, "head", 0.2917, 1.0);
+    assert!((head_rot[0] - (-32.17_f32).to_radians()).abs() < 1.0e-4);
+
+    // The two ears flop ASYMMETRICALLY (vanilla `left_ear` reaches `-48.5°` at `0.375` while
+    // `right_ear` reaches `-31.5°`), so the per-ear channels must address the correct side. The model
+    // names the ear children by their true vanilla identity (the adult ear consts are inverted), so
+    // these channels land on the matching pivot.
+    let (_, left_ear_rot) = sample_bone_offsets(&RABBIT_HOP, "left_ear", 0.375, 1.0);
+    let (_, right_ear_rot) = sample_bone_offsets(&RABBIT_HOP, "right_ear", 0.375, 1.0);
+    assert!((left_ear_rot[0] - (-48.5_f32).to_radians()).abs() < 1.0e-4);
+    assert!((right_ear_rot[0] - (-31.5_f32).to_radians()).abs() < 1.0e-4);
+    assert_ne!(
+        left_ear_rot[0], right_ear_rot[0],
+        "the ears flop asymmetrically"
+    );
+}
+
+#[test]
+fn rabbit_hop_re_poses_off_the_bind_pose_and_swings_the_legs() {
+    // A resting rabbit (the `-1.0` stopped sentinel) renders at the look/bind pose; the hind-leg
+    // haunches occupy the trailing vertices `[168, 216)` (the head look never reaches them).
+    let rest = entity_model_mesh(&[EntityModelInstance::rabbit(
+        710,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        RabbitModelVariant::Brown,
+        false,
+    )]);
+
+    // A mid-hop rabbit re-poses off the bind pose AND swings the legs (the hop is the only motion that
+    // reaches them). It re-poses parts, it does not add or hide cubes.
+    let hopping = entity_model_mesh(&[EntityModelInstance::rabbit(
+        711,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        RabbitModelVariant::Brown,
+        false,
+    )
+    .with_rabbit_hop_seconds(0.3)]);
+    assert_eq!(rest.vertices.len(), hopping.vertices.len());
+    assert_ne!(
+        rest.vertices, hopping.vertices,
+        "the hopping rabbit leaves the bind pose"
+    );
+    assert_ne!(
+        rest.vertices[168..],
+        hopping.vertices[168..],
+        "the hop swings the hind legs / haunches"
+    );
+
+    // Sampling the looping hop at a later time advances the arc.
+    let hopping_later = entity_model_mesh(&[EntityModelInstance::rabbit(
+        712,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        RabbitModelVariant::Brown,
+        false,
+    )
+    .with_rabbit_hop_seconds(0.55)]);
+    assert_ne!(
+        hopping.vertices, hopping_later.vertices,
+        "the hop advances as its elapsed seconds climb"
+    );
+
+    // The baby rabbit hops too (its shared tree carries the same eleven HOP bones).
+    let baby_rest = entity_model_mesh(&[EntityModelInstance::rabbit(
+        713,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        RabbitModelVariant::Brown,
+        false,
+    )]);
+    let baby_hop = entity_model_mesh(&[EntityModelInstance::rabbit(
+        714,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        RabbitModelVariant::Brown,
+        false,
+    )
+    .with_rabbit_hop_seconds(0.3)]);
+    assert_ne!(
+        baby_rest.vertices, baby_hop.vertices,
+        "the baby rabbit hops off the bind pose"
+    );
+
+    // The `-1.0` no-animation sentinel leaves the rabbit at the bind pose.
+    let cleared = entity_model_mesh(&[EntityModelInstance::rabbit(
+        715,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        RabbitModelVariant::Brown,
+        false,
+    )
+    .with_rabbit_hop_seconds(-1.0)]);
+    assert_eq!(cleared.vertices, rest.vertices);
+}
