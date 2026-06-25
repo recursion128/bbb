@@ -413,6 +413,20 @@ pub(in crate::entity_models) fn apply_humanoid_toot_horn_pose(
     arm.pose.rotation[1] = y_rot;
 }
 
+/// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `BRUSH` use-item arm pose (also the generic `ITEM`
+/// pose with `π/10` instead of `π/5`): while a player is brushing, the holding arm lowers toward the
+/// block — `xRot = arm.xRot · 0.5 − π/5`, `yRot = 0`. Unlike the spyglass/horn this READS the arm's
+/// current pitch and halves it (the vanilla pose runs before the idle bob, which bbb folds into
+/// `apply_humanoid_walk`, so the halved value carries bbb's small bob component — the shared posed-arm
+/// bob convention, see the renderer-scene-parity note). Applied before the crouch block.
+pub(in crate::entity_models) fn apply_humanoid_brush_pose(root: &mut ModelPart, off_hand: bool) {
+    use std::f32::consts::PI;
+    let arm_name = if off_hand { "left_arm" } else { "right_arm" };
+    let arm = root.child_mut(arm_name);
+    arm.pose.rotation[0] = arm.pose.rotation[0] * 0.5 - PI / 5.0;
+    arm.pose.rotation[1] = 0.0;
+}
+
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
 fn progress(t: f32, a: f32, b: f32) -> f32 {
     ((t - a) / (b - a)).clamp(0.0, 1.0)

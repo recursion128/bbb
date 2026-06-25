@@ -1,7 +1,8 @@
 use super::{
-    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_crouch_named,
-    apply_humanoid_spyglass_pose, apply_humanoid_stab_attack_animation,
-    apply_humanoid_toot_horn_pose, apply_humanoid_walk, PartPose, PART_POSE_ZERO, PLAYER_BLUE,
+    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_brush_pose,
+    apply_humanoid_crouch_named, apply_humanoid_spyglass_pose,
+    apply_humanoid_stab_attack_animation, apply_humanoid_toot_horn_pose, apply_humanoid_walk,
+    PartPose, PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -333,6 +334,9 @@ impl EntityModel for PlayerModel {
                 render_state.head_pitch,
                 render_state.use_item_off_hand,
             );
+        }
+        if render_state.player_brushing {
+            apply_humanoid_brush_pose(&mut self.root, render_state.use_item_off_hand);
         }
         if render_state.is_crouching {
             apply_humanoid_crouch_named(&mut self.root);

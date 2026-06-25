@@ -290,6 +290,12 @@ entity_render_state! {
     /// to the [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not tooting a
     /// horn — only `PlayerModel` consumes it.
     (with_player_tooting_horn) player_tooting_horn: bool = false;
+    /// Vanilla `HumanoidModel.setupAnim` use-item arm pose `BRUSH`
+    /// (`ItemStack.getUseAnimation() == BRUSH`): a player brushing lowers the holding arm to the block
+    /// (`xRot = arm.xRot · 0.5 − π/5`, `yRot = 0`). Applied to the
+    /// [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not brushing — only
+    /// `PlayerModel` consumes it.
+    (with_player_brushing) player_brushing: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1819,6 +1825,7 @@ mod tests {
                 main_hand_swing_is_stab: false,
                 player_using_spyglass: false,
                 player_tooting_horn: false,
+                player_brushing: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,

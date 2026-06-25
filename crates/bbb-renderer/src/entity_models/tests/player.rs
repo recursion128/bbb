@@ -584,6 +584,43 @@ fn player_tooting_a_goat_horn_raises_it_to_the_mouth() {
 }
 
 #[test]
+fn player_brushing_lowers_the_arm_to_the_block() {
+    use std::f32::consts::PI;
+
+    // Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `BRUSH`: the holding arm lowers — `xRot =
+    // arm.xRot · 0.5 − π/5`, `yRot = 0`. At rest (age 0, not walking) the arm pitch is `0`, so the brush
+    // pose lands the arm at exactly `−π/5`.
+    let base =
+        EntityModelInstance::player(922, [0.0, 64.0, 0.0], 0.0, false).with_head_look(20.0, -10.0);
+
+    let mut main = PlayerModel::new(false);
+    main.prepare(&base.with_player_brushing(true));
+    let right = main.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-PI / 5.0)).abs() < 1e-6,
+        "the right arm lowers to −π/5: {}",
+        right.rotation[0]
+    );
+    assert_eq!(right.rotation[1], 0.0, "the brush pose zeroes the arm yaw");
+
+    // A non-brushing player keeps its (much higher) idle arm pitch — the brush visibly lowers the arm.
+    let mut idle = PlayerModel::new(false);
+    idle.prepare(&base);
+    assert!(
+        idle.root_mut().child_mut("right_arm").pose.rotation[0] > -PI / 5.0 + 0.3,
+        "an idle player does not lower the arm to the block"
+    );
+
+    // Off-hand brushing lowers the LEFT arm instead.
+    let mut off = PlayerModel::new(false);
+    off.prepare(&base.with_player_brushing(true).with_use_item_off_hand(true));
+    assert!(
+        (off.root_mut().child_mut("left_arm").pose.rotation[0] - (-PI / 5.0)).abs() < 1e-6,
+        "the off hand lowers the left arm"
+    );
+}
+
+#[test]
 fn player_swings_its_legs_when_walking() {
     // `PlayerModel extends HumanoidModel` and its `setupAnim` only toggles part
     // visibility before `super.setupAnim`, so a remote player inherits the

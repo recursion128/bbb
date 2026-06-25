@@ -542,6 +542,28 @@ fn entity_hand_holds_goat_horn(
     item_runtime.item_resource_id(item_id) == Some("minecraft:goat_horn")
 }
 
+/// Whether the item in the given hand is a brush (vanilla `ItemStack.getUseAnimation() ==
+/// ItemUseAnimation.BRUSH`, which only `BrushItem` / `minecraft:brush` returns). While the entity is
+/// brushing, `HumanoidModel.poseRightArm`/`poseLeftArm` lower that arm to the brushed block. Resolved
+/// through the item registry; `false` without it or for any other / empty hand.
+fn entity_hand_holds_brush(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+) -> bool {
+    let Some(item_runtime) = item_runtime else {
+        return false;
+    };
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_runtime.item_resource_id(item_id) == Some("minecraft:brush")
+}
+
 /// Whether the entity's main-hand item is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)`),
 /// driving the pillager's `CROSSBOW_HOLD` arm pose. Resolved through the item registry, so it needs the
 /// runtime; `false` without it or for any non-crossbow / empty hand.
@@ -730,6 +752,16 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         );
+    // Vanilla `HumanoidModel.setupAnim` use-item arm pose `BRUSH`: while a player is brushing
+    // (`isUsingItem` + the using hand holds a brush), the holding arm lowers to the brushed block.
+    let player_brushing = matches!(kind, EntityModelKind::Player { .. })
+        && source.is_using_item
+        && entity_hand_holds_brush(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        );
     // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
     let main_hand_holds_crossbow =
         matches!(
@@ -892,6 +924,7 @@ fn entity_model_instance(
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
         .with_player_using_spyglass(player_using_spyglass)
         .with_player_tooting_horn(player_tooting_horn)
+        .with_player_brushing(player_brushing)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_drowned_throw_trident(drowned_throw_trident)
@@ -4074,6 +4107,36 @@ mod tests {
             .render_state
             .player_tooting_horn;
         assert!(!tooting);
+    }
+
+    #[test]
+    fn entity_model_instances_brush_pose_needs_a_resolved_brush() {
+        // The BRUSH use-item pose needs the using-hand item resolved through the item registry to confirm
+        // a brush; without an item runtime it can never resolve, so the projection defaults off even for a
+        // player flagged as using an item.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            252,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [3.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 252,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING
+            )],
+        }));
+        let brushing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 252)
+            .unwrap()
+            .render_state
+            .player_brushing;
+        assert!(!brushing);
     }
 
     #[test]

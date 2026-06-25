@@ -780,9 +780,13 @@ When an agent does any of the following, update this file in the same slice:
     tooting a goat horn (`isUsingItem` + the using hand holds `minecraft:goat_horn`, the only `TOOT_HORN`
     use-animation item) raises the holding arm to the mouth — `xRot = clamp(head.xRot, −1.2, 1.2) −
     1.4835298`, `yRot = head.yRot ∓ π/6` — keeping the idle bob (unlike the spyglass), applied before the
-    crouch block. The other use-item arm poses on the same dispatch (`BRUSH`, the generic `ITEM`/`BLOCK`
-    hold poses, and the off-arm `EMPTY`/`ITEM` pose + the `affectsOffhandPose`/`isTwoHanded` routing) stay
-    deferred. The
+    crouch block. The `BRUSH` pose is likewise implemented (`apply_humanoid_brush_pose`): a player brushing
+    (`isUsingItem` + the using hand holds `minecraft:brush`, the only `BRUSH` use-animation item) lowers the
+    holding arm to the block — `xRot = arm.xRot · 0.5 − π/5`, `yRot = 0`. (Like every bbb posed arm, the
+    halved `arm.xRot` carries bbb's small folded-in idle bob rather than vanilla's bob-applied-after; the
+    full bob-reorder that would make the multiply exact is the shared deferred convention.) The remaining
+    use-item arm poses on the same dispatch (the generic `ITEM`/`BLOCK` hold poses, the off-arm
+    `EMPTY`/`ITEM` pose + the `affectsOffhandPose`/`isTwoHanded` routing) stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —
