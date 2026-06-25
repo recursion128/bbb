@@ -379,7 +379,12 @@ pub enum EntityModelKind {
     Spider,
     CaveSpider,
     Enderman,
-    IronGolem,
+    /// Iron golem (`IronGolemModel`, `IronGolemRenderer`). `crackiness` drives the vanilla
+    /// `IronGolemCrackinessLayer` damage-crack overlay (`iron_golem_crackiness_{low,medium,high}.png`),
+    /// selected by `IronGolem.getCrackiness()`. The poppy-holding / attack poses stay deferred.
+    IronGolem {
+        crackiness: IronGolemCrackiness,
+    },
     SnowGolem,
     Witch,
     /// Squid and glow squid (`SquidModel`, `SquidRenderer` / `GlowSquidRenderer`).
@@ -884,6 +889,34 @@ impl EntityDyeColor {
             blue as f32 / 255.0,
             1.0,
         ]
+    }
+}
+
+/// Vanilla `Crackiness.Level` for the iron golem (`IronGolem.getCrackiness()`): the damage-crack
+/// overlay tier, selected by `Crackiness.GOLEM.byFraction(health / maxHealth)`. `None` draws no
+/// overlay; `Low`/`Medium`/`High` overlay the matching `iron_golem_crackiness_*` texture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IronGolemCrackiness {
+    None,
+    Low,
+    Medium,
+    High,
+}
+
+impl IronGolemCrackiness {
+    /// Vanilla `Crackiness.GOLEM.byFraction` with `(fractionLow, fractionMedium, fractionHigh) =
+    /// (0.75, 0.5, 0.25)`: a health fraction below `0.25` is `High`, below `0.5` `Medium`, below
+    /// `0.75` `Low`, otherwise `None`.
+    pub fn from_health_fraction(fraction: f32) -> Self {
+        if fraction < 0.25 {
+            Self::High
+        } else if fraction < 0.5 {
+            Self::Medium
+        } else if fraction < 0.75 {
+            Self::Low
+        } else {
+            Self::None
+        }
     }
 }
 

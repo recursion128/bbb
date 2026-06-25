@@ -63,20 +63,70 @@ fn iron_golem_model_mesh_uses_vanilla_body_layer_geometry() {
 
 #[test]
 fn iron_golem_texture_ref_matches_vanilla_renderer() {
-    assert_eq!(EntityModelKind::IronGolem.model_key(), "iron_golem");
+    let golem = EntityModelKind::IronGolem {
+        crackiness: IronGolemCrackiness::None,
+    };
+    assert_eq!(golem.model_key(), "iron_golem");
     assert_eq!(
-        EntityModelKind::IronGolem.vanilla_texture_ref(),
+        golem.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/iron_golem/iron_golem.png",
             size: [128, 128],
         })
     );
+    // The base texture (and the model_key) is the same for every crackiness tier; the cracks are a
+    // separate overlay layer.
+    assert_eq!(
+        EntityModelKind::IronGolem {
+            crackiness: IronGolemCrackiness::High,
+        }
+        .vanilla_texture_ref(),
+        golem.vanilla_texture_ref()
+    );
+}
+
+#[test]
+fn iron_golem_crackiness_from_health_fraction_matches_vanilla() {
+    // Vanilla `Crackiness.GOLEM` = (0.75, 0.5, 0.25): below 0.25 high, below 0.5 medium, below 0.75
+    // low, otherwise none. Full health (100/100 = 1.0) is uncracked.
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(1.0),
+        IronGolemCrackiness::None
+    );
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(0.75),
+        IronGolemCrackiness::None
+    );
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(0.74),
+        IronGolemCrackiness::Low
+    );
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(0.5),
+        IronGolemCrackiness::Low
+    );
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(0.49),
+        IronGolemCrackiness::Medium
+    );
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(0.25),
+        IronGolemCrackiness::Medium
+    );
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(0.24),
+        IronGolemCrackiness::High
+    );
+    assert_eq!(
+        IronGolemCrackiness::from_health_fraction(0.0),
+        IronGolemCrackiness::High
+    );
 }
 
 #[test]
 fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
-    let passes = iron_golem_textured_layer_passes();
-
+    // An uncracked golem is a single base pass.
+    let passes = iron_golem_textured_layer_passes(IronGolemCrackiness::None);
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::IronGolemBase);
     assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
@@ -88,6 +138,35 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
         (passes[0].collector_order, passes[0].submit_sequence),
         (0, 0)
     );
+
+    // A cracked golem appends the matching crack overlay (Cutout, white, same model layer) — vanilla
+    // `IronGolemCrackinessLayer.renderColoredCutoutModel`.
+    for (crackiness, texture) in [
+        (
+            IronGolemCrackiness::Low,
+            IRON_GOLEM_CRACKINESS_LOW_TEXTURE_REF,
+        ),
+        (
+            IronGolemCrackiness::Medium,
+            IRON_GOLEM_CRACKINESS_MEDIUM_TEXTURE_REF,
+        ),
+        (
+            IronGolemCrackiness::High,
+            IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF,
+        ),
+    ] {
+        let passes = iron_golem_textured_layer_passes(crackiness);
+        assert_eq!(passes.len(), 2);
+        assert_eq!(passes[1].kind, EntityModelLayerKind::IronGolemCrackiness);
+        assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(passes[1].model_layer, MODEL_LAYER_IRON_GOLEM);
+        assert_eq!(passes[1].texture, texture);
+        assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            (passes[1].collector_order, passes[1].submit_sequence),
+            (1, 1)
+        );
+    }
 }
 
 #[test]

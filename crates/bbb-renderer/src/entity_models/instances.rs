@@ -1708,7 +1708,14 @@ impl EntityModelInstance {
     }
 
     pub fn iron_golem(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::IronGolem, position, y_rot)
+        Self::new(
+            entity_id,
+            EntityModelKind::IronGolem {
+                crackiness: IronGolemCrackiness::None,
+            },
+            position,
+            y_rot,
+        )
     }
 
     pub fn snow_golem(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

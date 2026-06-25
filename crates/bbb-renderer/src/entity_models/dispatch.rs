@@ -214,11 +214,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &creeper_textured_layer_passes(),
         ),
-        EntityModelKind::IronGolem => sink.model(
+        EntityModelKind::IronGolem { crackiness } => sink.model(
             IronGolemModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &iron_golem_textured_layer_passes(),
+            &iron_golem_textured_layer_passes(crackiness),
         ),
         EntityModelKind::SnowGolem => sink.model(
             SnowGolemModel::new(),

@@ -1095,7 +1095,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 361] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 364] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1204,6 +1204,9 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ENDERMAN_TEXTURE_REF,
     ENDERMAN_EYES_TEXTURE_REF,
     IRON_GOLEM_TEXTURE_REF,
+    IRON_GOLEM_CRACKINESS_LOW_TEXTURE_REF,
+    IRON_GOLEM_CRACKINESS_MEDIUM_TEXTURE_REF,
+    IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF,
     SNOW_GOLEM_TEXTURE_REF,
     WITCH_TEXTURE_REF,
     SLIME_TEXTURE_REF,
@@ -1913,12 +1916,40 @@ pub(in crate::entity_models) const IRON_GOLEM_TEXTURE_REF: EntityModelTextureRef
         size: [128, 128],
     };
 
+// Vanilla `IronGolemCrackinessLayer`: the low/medium/high damage cracks overlaid (Cutout) on the
+// base golem mesh, selected by `IronGolem.getCrackiness()` (`Crackiness.GOLEM.byFraction(health/max)`).
+pub(in crate::entity_models) const IRON_GOLEM_CRACKINESS_LOW_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/iron_golem/iron_golem_crackiness_low.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const IRON_GOLEM_CRACKINESS_MEDIUM_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/iron_golem/iron_golem_crackiness_medium.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/iron_golem/iron_golem_crackiness_high.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const IRON_GOLEM_CRACKINESS_LOW_LAYER_TEXTURE_REFS:
+    [EntityModelTextureRef; 1] = [IRON_GOLEM_CRACKINESS_LOW_TEXTURE_REF];
+pub(in crate::entity_models) const IRON_GOLEM_CRACKINESS_MEDIUM_LAYER_TEXTURE_REFS:
+    [EntityModelTextureRef; 1] = [IRON_GOLEM_CRACKINESS_MEDIUM_TEXTURE_REF];
+pub(in crate::entity_models) const IRON_GOLEM_CRACKINESS_HIGH_LAYER_TEXTURE_REFS:
+    [EntityModelTextureRef; 1] = [IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF];
+
 pub(in crate::entity_models) const SNOW_GOLEM_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/snow_golem/snow_golem.png",
         size: [64, 64],
     };
 
+// The base iron + snow golem faces used to build the per-entity test atlas. The iron golem's three
+// `IronGolemCrackinessLayer` overlays are NOT listed here — they resolve through the global entity
+// atlas (`ENTITY_MODEL_TEXTURE_REFS`, which carries all three), so this stays the small set the
+// per-entity golem tests pack (keeping their pinned atlas layout stable).
 #[cfg(test)]
 pub(in crate::entity_models) const GOLEM_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
     [IRON_GOLEM_TEXTURE_REF, SNOW_GOLEM_TEXTURE_REF];

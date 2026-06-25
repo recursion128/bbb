@@ -711,7 +711,13 @@ fn entity_model_kind_exposes_stable_model_keys() {
     assert_eq!(EntityModelKind::Spider.model_key(), "spider");
     assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");
     assert_eq!(EntityModelKind::Enderman.model_key(), "enderman");
-    assert_eq!(EntityModelKind::IronGolem.model_key(), "iron_golem");
+    assert_eq!(
+        EntityModelKind::IronGolem {
+            crackiness: IronGolemCrackiness::None,
+        }
+        .model_key(),
+        "iron_golem"
+    );
     assert_eq!(EntityModelKind::SnowGolem.model_key(), "snow_golem");
     assert_eq!(EntityModelKind::Witch.model_key(), "witch");
     assert_eq!(

@@ -6,10 +6,10 @@ use bbb_renderer::{
     CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
     EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
     GuardianBeamRenderState, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily,
-    LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
-    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
-    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant,
+    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+    RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose,
+    SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
     UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
     DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
@@ -1559,7 +1559,9 @@ fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_WITCH_ID => EntityModelKind::Witch,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => EntityModelKind::Enderman,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => EntityModelKind::IronGolem,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => EntityModelKind::IronGolem {
+            crackiness: iron_golem_crackiness(data_values),
+        },
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => EntityModelKind::SnowGolem,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => humanoid(HumanoidModelFamily::Player, false),
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
@@ -2956,6 +2958,15 @@ fn wither_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDa
     entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID
         && entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, WITHER_MAX_HEALTH)
             <= WITHER_MAX_HEALTH / 2.0
+}
+
+/// Vanilla `IronGolem.getCrackiness()` = `Crackiness.GOLEM.byFraction(getHealth() / getMaxHealth())`,
+/// the iron golem's base `Attributes.MAX_HEALTH` being the constant `100.0`. The synced
+/// `LivingEntity.DATA_HEALTH_ID` (index 9) drives the damage-crack overlay tier.
+fn iron_golem_crackiness(values: &[bbb_protocol::packets::EntityDataValue]) -> IronGolemCrackiness {
+    const IRON_GOLEM_MAX_HEALTH: f32 = 100.0;
+    let health = entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, IRON_GOLEM_MAX_HEALTH);
+    IronGolemCrackiness::from_health_fraction(health / IRON_GOLEM_MAX_HEALTH)
 }
 
 fn entity_data_int(
@@ -9505,9 +9516,23 @@ mod tests {
 
     #[test]
     fn entity_model_kind_uses_exact_model_for_iron_golem() {
+        // No synced health → the default full-health golem is uncracked.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, &[]),
-            EntityModelKind::IronGolem
+            EntityModelKind::IronGolem {
+                crackiness: IronGolemCrackiness::None,
+            }
+        );
+        // Vanilla `IronGolem.getCrackiness()` = `Crackiness.GOLEM.byFraction(health / 100)`: at 40/100
+        // (= 0.4) the medium cracks show.
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+                &[protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 40.0)]
+            ),
+            EntityModelKind::IronGolem {
+                crackiness: IronGolemCrackiness::Medium,
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),

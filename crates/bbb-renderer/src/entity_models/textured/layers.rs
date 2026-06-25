@@ -5,10 +5,10 @@ use super::super::{
         sheep_wool_render_color, wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant,
         BoatModelFamily, CamelModelFamily, CatModelVariant, ChickenModelVariant, CowModelVariant,
         EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
-        HoglinModelFamily, IllagerModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant,
-        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern, WolfModelVariant,
+        HoglinModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
+        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -29,6 +29,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     HoglinBase,
     LlamaBase,
     IronGolemBase,
+    IronGolemCrackiness,
     PigBase,
     PlayerBase,
     SheepBase,
@@ -363,8 +364,10 @@ pub(in crate::entity_models) fn enderman_textured_layer_passes() -> Vec<EntityMo
     ]
 }
 
-pub(in crate::entity_models) fn iron_golem_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass {
+pub(in crate::entity_models) fn iron_golem_textured_layer_passes(
+    crackiness: IronGolemCrackiness,
+) -> Vec<EntityModelLayerPass> {
+    let mut passes = vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::IronGolemBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: MODEL_LAYER_IRON_GOLEM,
@@ -373,7 +376,28 @@ pub(in crate::entity_models) fn iron_golem_textured_layer_passes() -> Vec<Entity
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
-    }]
+    }];
+    // Vanilla `IronGolemCrackinessLayer`: when cracked, re-render the same mesh with the matching
+    // crack texture in a white Cutout overlay (`renderColoredCutoutModel(..., -1, ...)`).
+    let crack_texture = match crackiness {
+        IronGolemCrackiness::None => None,
+        IronGolemCrackiness::Low => Some(IRON_GOLEM_CRACKINESS_LOW_TEXTURE_REF),
+        IronGolemCrackiness::Medium => Some(IRON_GOLEM_CRACKINESS_MEDIUM_TEXTURE_REF),
+        IronGolemCrackiness::High => Some(IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF),
+    };
+    if let Some(texture) = crack_texture {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::IronGolemCrackiness,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: MODEL_LAYER_IRON_GOLEM,
+            texture,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 1,
+            submit_sequence: 1,
+        });
+    }
+    passes
 }
 
 pub(in crate::entity_models) fn snow_golem_textured_layer_passes() -> Vec<EntityModelLayerPass> {

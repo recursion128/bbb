@@ -1711,8 +1711,15 @@ When an agent does any of the following, update this file in the same slice:
       `IronGolemModel.setupAnim` head-look yaw/pitch on the head part, the
       triangle-wave leg/arm walk swing, and the event-driven attack smash /
       offer-flower arm poses (colored and textured — see the iron golem note
-      above); crackiness overlay textures, the held flower block layer, and the
-      renderer body-wobble rotation remain unsupported
+      above). The `IronGolemCrackinessLayer` damage-crack overlay is now
+      implemented: `EntityModelKind::IronGolem` carries a `crackiness` projected
+      from the synced `LivingEntity.DATA_HEALTH_ID` (index 9) via
+      `IronGolem.getCrackiness()` = `Crackiness.GOLEM.byFraction(health / 100.0)`
+      (`<0.25` high, `<0.5` medium, `<0.75` low, else none), appending a white
+      Cutout overlay pass binding `iron_golem_crackiness_{low,medium,high}.png`
+      (the three faces join the master atlas array → 364) over the same model
+      layer. The held flower block layer and the renderer body-wobble rotation
+      remain unsupported
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the

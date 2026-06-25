@@ -331,7 +331,7 @@ impl EntityModelKind {
             Self::Spider => "spider",
             Self::CaveSpider => "cave_spider",
             Self::Enderman => "enderman",
-            Self::IronGolem => "iron_golem",
+            Self::IronGolem { .. } => "iron_golem",
             Self::SnowGolem => "snow_golem",
             Self::Witch => "witch",
             Self::Illager {
@@ -588,7 +588,7 @@ impl EntityModelKind {
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
             Self::Enderman => Some(ENDERMAN_TEXTURE_REF),
-            Self::IronGolem => Some(IRON_GOLEM_TEXTURE_REF),
+            Self::IronGolem { .. } => Some(IRON_GOLEM_TEXTURE_REF),
             Self::SnowGolem => Some(SNOW_GOLEM_TEXTURE_REF),
             Self::Witch => Some(WITCH_TEXTURE_REF),
             Self::Illager {
@@ -665,6 +665,15 @@ impl EntityModelKind {
             } => &BOGGED_OVERLAY_LAYER_TEXTURE_REFS,
             Self::Spider | Self::CaveSpider => &SPIDER_EYES_LAYER_TEXTURE_REFS,
             Self::Enderman => &ENDERMAN_EYES_LAYER_TEXTURE_REFS,
+            Self::IronGolem {
+                crackiness: IronGolemCrackiness::Low,
+            } => &IRON_GOLEM_CRACKINESS_LOW_LAYER_TEXTURE_REFS,
+            Self::IronGolem {
+                crackiness: IronGolemCrackiness::Medium,
+            } => &IRON_GOLEM_CRACKINESS_MEDIUM_LAYER_TEXTURE_REFS,
+            Self::IronGolem {
+                crackiness: IronGolemCrackiness::High,
+            } => &IRON_GOLEM_CRACKINESS_HIGH_LAYER_TEXTURE_REFS,
             _ => &[],
         }
     }
