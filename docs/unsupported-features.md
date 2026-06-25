@@ -716,9 +716,12 @@ When an agent does any of the following, update this file in the same slice:
     rides on top of that swing every frame for the same three families — the player and
     skeleton in both render paths and the piglin colored and textured — so their arms never
     sit perfectly still (there is no static rest fast path, and the bob is kept out of the
-    shared `humanoid_arm_swing_pose` so the pillager's separate arms and the enderman, which
-    are not `HumanoidModel`, do not get it); only the `SPYGLASS`-pose skip (needs a held
-    spyglass) and the enderman's halve/clamp composition of the bob stay deferred. The
+    shared `humanoid_arm_swing_pose` so the pillager's separate arms do not get it). The
+    enderman now composes the bob too: its `enderman_arm_swing_pose` applies the swing AND
+    the bob, then halves+clamps only `xRot` (`[-0.4, 0.4]`) the vanilla way, leaving the
+    bob's `zRot` to survive the clamp so the long arms gently splay (even the resting mesh's
+    X extent widens to `±0.5494`). Only the `SPYGLASS`-pose skip (needs a held spyglass)
+    stays deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —

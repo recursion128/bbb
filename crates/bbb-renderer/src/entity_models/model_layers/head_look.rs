@@ -581,8 +581,8 @@ pub(in crate::entity_models) fn hoglin_leg_swing_pose(
 /// halves it (`*= 0.5`) and clamps it to `[-0.4, 0.4]`. The phase rule is the
 /// `HumanoidModel` one (the right leg, part offset `x < 0`, in phase; both legs at
 /// `z = 0`). The base leg pose carries no `xRot`, so it is set (not accumulated). The
-/// arm halve/clamp, the carried-block arm pose, and the creepy attack pose are
-/// separate deferred animations.
+/// legs carry no idle bob (vanilla `bobModelPart` is arms-only); the arm swing+bob
+/// halve/clamp, the carried-block arm pose, and the creepy head shift are separate.
 pub(in crate::entity_models) fn enderman_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
@@ -601,25 +601,30 @@ pub(in crate::entity_models) fn enderman_leg_swing_pose(
     }
 }
 
-/// Vanilla `EndermanModel.setupAnim` arm swing for a single arm part. `EndermanModel
+/// Vanilla `EndermanModel.setupAnim` arm pose for a single arm part. `EndermanModel
 /// extends HumanoidModel`, so `super.setupAnim` first sets the inherited arm
 /// counter-swing ([`humanoid_arm_swing_pose`]: `arm.xRot = cos(walkAnimationPos *
 /// 0.6662 [+ π]) * 2.0 * walkAnimationSpeed * 0.5`, the right arm — part offset `x < 0`
-/// — out of phase), then the enderman halves it (`*= 0.5`) and clamps it to
-/// `[-0.4, 0.4]` exactly as it does the legs. The base arm pose carries no `xRot`, so
-/// it is set (not accumulated). When the enderman is carrying a block this swing is
-/// overridden entirely by [`enderman_carried_arm_pose`], and the creepy head/hat shift
-/// rides the head part separately.
+/// — out of phase) AND the always-on idle bob ([`humanoid_arm_bob_pose`]: `xRot +=
+/// scale * sin(ageInTicks * 0.067) * 0.05`, `zRot += scale * (cos(ageInTicks * 0.09) *
+/// 0.05 + 0.05)`), THEN the enderman halves the accumulated `xRot` (`*= 0.5`) and clamps
+/// it to `[-0.4, 0.4]` exactly as it does the legs. The halve/clamp touches only `xRot`
+/// in vanilla, so the bob's `zRot` survives the clamp untouched (the arms gently splay).
+/// The base arm pose carries no rotation, so the swing/bob set it. When the enderman is
+/// carrying a block this pose is overridden entirely by [`enderman_carried_arm_pose`],
+/// and the creepy head/hat shift rides the head part separately.
 pub(in crate::entity_models) fn enderman_arm_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
+    age_in_ticks: f32,
 ) -> PartPose {
     let swung = humanoid_arm_swing_pose(base, walk_animation_pos, walk_animation_speed);
-    let x_rot = (swung.rotation[0] * 0.5).clamp(-0.4, 0.4);
+    let bobbed = humanoid_arm_bob_pose(swung, age_in_ticks);
+    let x_rot = (bobbed.rotation[0] * 0.5).clamp(-0.4, 0.4);
     PartPose {
         offset: base.offset,
-        rotation: [x_rot, base.rotation[1], base.rotation[2]],
+        rotation: [x_rot, bobbed.rotation[1], bobbed.rotation[2]],
     }
 }
 

@@ -150,8 +150,9 @@ fn enderman_tree() -> ModelPart {
 
 /// Mutable enderman model, mirroring vanilla `EndermanModel extends HumanoidModel`. The unified tree
 /// is built once with the vanilla HumanoidModel child names. `setup_anim` looks the head, then
-/// applies the inherited arm/leg swing halved and clamped to `[-0.4, 0.4]`
-/// ([`enderman_arm_swing_pose`] on the two arms, [`enderman_leg_swing_pose`] on the two legs).
+/// applies the inherited arm/leg swing plus the arms' always-on idle bob, halved and clamped to
+/// `[-0.4, 0.4]` on `xRot` ([`enderman_arm_swing_pose`] on the two arms, [`enderman_leg_swing_pose`]
+/// on the two legs); the bob's `zRot` survives the clamp so the arms gently splay.
 /// Carrying a block overrides both arms ([`enderman_carried_arm_pose`]); the creepy stare drops the
 /// head `y -= 5` and raises its `hat` child `y += 5` (vanilla's `isCreepy` branch), so the outer head
 /// layer holds its world position as the inner head opens downward. Both the base and eyes textured
@@ -188,7 +189,12 @@ impl EntityModel for EndermanModel {
         let limb_swing_amount = render_state.walk_animation_speed;
         for name in ["right_arm", "left_arm"] {
             let arm = self.root.child_mut(name);
-            arm.pose = enderman_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+            arm.pose = enderman_arm_swing_pose(
+                arm.pose,
+                limb_swing,
+                limb_swing_amount,
+                render_state.age_in_ticks,
+            );
         }
         for name in ["right_leg", "left_leg"] {
             let leg = self.root.child_mut(name);

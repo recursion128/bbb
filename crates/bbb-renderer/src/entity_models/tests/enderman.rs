@@ -77,9 +77,12 @@ fn enderman_model_mesh_uses_vanilla_body_layer_geometry() {
     assert_eq!(mesh.vertices.len(), 168);
     assert_eq!(mesh.indices.len(), 252);
 
+    // The arms carry the always-on idle bob (`bobModelPart`), so even at rest their long shafts splay
+    // outward by the bob's `zRot` (`±0.1` at `ageInTicks = 0`), widening the X extent to `±0.5494`
+    // (vs the `±0.375` un-bobbed arm corner). Y/Z are unchanged (the head top / leg bottoms bound them).
     let (min, max) = mesh_extents(&mesh);
-    assert_close3(min, [-0.375, 63.9385, -0.25]);
-    assert_close3(max, [0.375, 66.8135, 0.25]);
+    assert_close3(min, [-0.5493963, 63.9385, -0.25]);
+    assert_close3(max, [0.5493963, 66.8135, 0.25]);
 }
 
 #[test]
@@ -202,9 +205,10 @@ fn enderman_textured_mesh_uses_parent_geometry_for_base_and_eyes_layers() {
         textured_mesh_extents(&meshes.eyes),
         textured_mesh_extents(&meshes.cutout)
     );
+    // Same as the colored geometry test: the arms' always-on idle bob splays the X extent to `±0.5494`.
     let (min, max) = textured_mesh_extents(&meshes.cutout);
-    assert_close3(min, [-0.375, 63.9385, -0.25]);
-    assert_close3(max, [0.375, 66.8135, 0.25]);
+    assert_close3(min, [-0.5493963, 63.9385, -0.25]);
+    assert_close3(max, [0.5493963, 66.8135, 0.25]);
 }
 
 #[test]
@@ -255,14 +259,15 @@ fn enderman_leg_swing_pose_halves_and_clamps_the_humanoid_swing() {
 #[test]
 fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
     // Vanilla EndermanModel.setupAnim: super.setupAnim sets arm.xRot =
-    // cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5 (amplitude 1.0), then the enderman
-    // halves it (*= 0.5) and clamps it to [-0.4, 0.4], exactly as it does the legs.
-    // The right arm sits at x = -5 (the out-of-phase + π side) and the left at x = +5 (in
-    // phase). The combined amplitude is 2.0 * 0.5 * 0.5 = 0.5, so unclamped arm.xRot =
-    // cos(angle) * speed * 0.5. At pos = 0, speed = 1: right raw = cos(π) * 0.5 = -0.5,
-    // clamped to -0.4; left raw = cos(0) * 0.5 = +0.5, clamped to +0.4.
-    let right = enderman_arm_swing_pose(RIGHT_ARM_POSE, 0.0, 1.0);
-    let left = enderman_arm_swing_pose(LEFT_ARM_POSE, 0.0, 1.0);
+    // cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5 (amplitude 1.0) plus the idle bob, then
+    // the enderman halves the xRot (*= 0.5) and clamps it to [-0.4, 0.4], exactly as it
+    // does the legs. At ageInTicks = 0 the bob's xRot term (sin(0) * 0.05) is zero, so the
+    // xRot here is the bare swing. The right arm sits at x = -5 (the out-of-phase + π side)
+    // and the left at x = +5 (in phase). The combined amplitude is 2.0 * 0.5 * 0.5 = 0.5,
+    // so unclamped arm.xRot = cos(angle) * speed * 0.5. At pos = 0, speed = 1: right raw =
+    // cos(π) * 0.5 = -0.5, clamped to -0.4; left raw = cos(0) * 0.5 = +0.5, clamped to +0.4.
+    let right = enderman_arm_swing_pose(RIGHT_ARM_POSE, 0.0, 1.0, 0.0);
+    let left = enderman_arm_swing_pose(LEFT_ARM_POSE, 0.0, 1.0, 0.0);
     assert!(
         (right.rotation[0] + 0.4).abs() < 1e-6,
         "right arm clamps to -0.4: {}",
@@ -276,7 +281,7 @@ fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
 
     // A low speed stays inside the clamp window, showing the bare halving:
     // cos(π) * 1 * 0.5 * 0.3 = -0.15 (right), the opposite phase to the same-side leg.
-    let right_slow = enderman_arm_swing_pose(RIGHT_ARM_POSE, 0.0, 0.3);
+    let right_slow = enderman_arm_swing_pose(RIGHT_ARM_POSE, 0.0, 0.3, 0.0);
     assert!(
         (right_slow.rotation[0] + 0.3 * 0.5).abs() < 1e-6,
         "unclamped half amplitude, out of phase: {}",
@@ -285,7 +290,7 @@ fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
     // A general (pos, speed) within the window: cos(pos * 0.6662 + π) * 2.0 * speed * 0.5
     // * 0.5 for the right arm; the arm's + π phase is the leg's negation.
     let phase = 2.0_f32 * 0.6662;
-    let right_general = enderman_arm_swing_pose(RIGHT_ARM_POSE, 2.0, 0.3);
+    let right_general = enderman_arm_swing_pose(RIGHT_ARM_POSE, 2.0, 0.3, 0.0);
     assert!(
         (right_general.rotation[0] - (phase + std::f32::consts::PI).cos() * 2.0 * 0.3 * 0.5 * 0.5)
             .abs()
@@ -295,6 +300,39 @@ fn enderman_arm_swing_pose_halves_and_clamps_the_humanoid_swing() {
     // the right leg (in phase) at the same half amplitude.
     let right_leg = enderman_leg_swing_pose(RIGHT_LEG_POSE, 2.0, 0.3);
     assert!((right_general.rotation[0] + right_leg.rotation[0] * (1.0 / 1.4)).abs() < 1e-6);
+}
+
+#[test]
+fn enderman_arm_pose_composes_the_idle_bob_before_the_halve_and_clamp() {
+    // Vanilla EndermanModel.setupAnim's super.setupAnim applies the always-on idle bob
+    // (`AnimationUtils.bobModelPart`) to both arms before the enderman halves/clamps xRot.
+    // The halve/clamp touches only xRot, so the bob's zRot survives untouched (the arms
+    // splay) while its xRot contribution is halved along with the swing.
+    let age = 13.0_f32;
+    // At rest (speed 0) the swing is zero, isolating the bob. The right arm (offset x < 0)
+    // bobs with scale +1: zRot = cos(age * 0.09) * 0.05 + 0.05, xRot = sin(age * 0.067) *
+    // 0.05 — and the enderman halves+clamps that xRot.
+    let right = enderman_arm_swing_pose(RIGHT_ARM_POSE, 0.0, 0.0, age);
+    let bob_z = (age * 0.09).cos() * 0.05 + 0.05;
+    let bob_x = (age * 0.067).sin() * 0.05;
+    assert!(
+        (right.rotation[2] - bob_z).abs() < 1e-6,
+        "the bob's zRot survives the clamp: {} vs {}",
+        right.rotation[2],
+        bob_z
+    );
+    assert!(
+        (right.rotation[0] - (bob_x * 0.5).clamp(-0.4, 0.4)).abs() < 1e-6,
+        "the bob's xRot is halved and clamped: {}",
+        right.rotation[0]
+    );
+    // The left arm (offset x >= 0) bobs with the opposite sign (vanilla scale -1.0).
+    let left = enderman_arm_swing_pose(LEFT_ARM_POSE, 0.0, 0.0, age);
+    assert!(
+        (left.rotation[2] + bob_z).abs() < 1e-6,
+        "the left arm splays the opposite way: {}",
+        left.rotation[2]
+    );
 }
 
 #[test]
