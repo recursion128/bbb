@@ -1,6 +1,7 @@
 use super::{
     apply_crossbow_hold_pose, apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_walk,
-    piglin_ear_flap_pose, PartPose, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    apply_humanoid_weapon_swing_down, piglin_ear_flap_pose, PartPose, PART_POSE_ZERO,
+    PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -502,6 +503,15 @@ fn apply_piglin_dance(root: &mut ModelPart, age_in_ticks: f32) {
     root.child_mut("body").pose.offset[1] += bob * 0.35;
 }
 
+/// Vanilla `PiglinModel.holdWeaponHigh` (mainArm = RIGHT): the main (right) arm raises overhead
+/// (`xRot = -1.8`), holding the melee weapon high while not mid-swing. Only the main arm's pitch is
+/// overwritten — the walk-swing yaw/roll and idle bob from `super.setupAnim` stay, and the off arm keeps
+/// its walk swing — mirroring vanilla's single-field write. Left-handed mobs (`mainArm = LEFT`, which
+/// would raise the left arm) are not projected, so this always raises the right arm.
+fn hold_weapon_high(root: &mut ModelPart) {
+    root.child_mut("right_arm").pose.rotation[0] = -1.8;
+}
+
 /// Mutable piglin model, mirroring vanilla `AbstractPiglinModel extends HumanoidModel` (the piglin,
 /// piglin brute, and zombified piglin). The unified tree is built for the `family`/`baby` layout with
 /// the vanilla child names. `setup_anim` runs `super.setupAnim` — the head look ([`apply_head_look`]
@@ -509,9 +519,11 @@ fn apply_piglin_dance(root: &mut ModelPart, age_in_ticks: f32) {
 /// zombified piglin keeps its arms at rest (the held-out `animateZombieArms` pose defers), so it swings
 /// only the legs ([`apply_humanoid_leg_swing_named`]); then it always flaps the two ears
 /// ([`piglin_ear_flap_pose`], head children). A regular piglin holding a charged crossbow then levels it
-/// ([`apply_crossbow_hold_pose`], the `CROSSBOW_HOLD` pose), and a dancing regular piglin runs the
-/// `DANCING` pose ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the
-/// attack/admire/crossbow-charge arm poses and held items defer.
+/// ([`apply_crossbow_hold_pose`], the `CROSSBOW_HOLD` pose); an aggressive piglin/brute holding a melee
+/// weapon raises and swings it ([`hold_weapon_high`] / [`apply_humanoid_weapon_swing_down`], the
+/// `ATTACKING_WITH_MELEE_WEAPON` pose); and a dancing regular piglin runs the `DANCING` pose
+/// ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the admire and
+/// crossbow-charge arm poses, the zombified piglin's `animateZombieArms`, and held items defer.
 pub(in crate::entity_models) struct PiglinModel {
     root: ModelPart,
     family: PiglinModelFamily,
@@ -586,6 +598,22 @@ impl EntityModel for PiglinModel {
                 render_state.head_yaw,
                 render_state.head_pitch,
             );
+        }
+        // Vanilla `PiglinModel` `ATTACKING_WITH_MELEE_WEAPON`: a piglin/brute that is aggressive and holds
+        // a melee weapon raises it overhead at rest (`holdWeaponHigh`, in `setupAnim`) and chops it down
+        // across an attack swing (`AnimationUtils.swingWeaponDown`, in `setupAttackAnimation`), both
+        // overwriting the walk arm swing. Higher priority than CROSSBOW_HOLD (and item-exclusive with it),
+        // applied after it; lower than DANCING, applied before the dance block so a dancing piglin wins.
+        if render_state.piglin_attacking_with_melee {
+            if render_state.attack_anim > 0.0 {
+                apply_humanoid_weapon_swing_down(
+                    &mut self.root,
+                    render_state.attack_anim,
+                    age_in_ticks,
+                );
+            } else {
+                hold_weapon_high(&mut self.root);
+            }
         }
         // Vanilla `PiglinModel.setupAnim` DANCING runs after the inherited walk + ear flap, overwriting
         // the ear/arm rotations and bobbing the head/body. Only the regular piglin dances (the

@@ -547,9 +547,9 @@ When an agent does any of the following, update this file in the same slice:
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
     `setupAnim` runs `super.setupAnim` (the inherited legs and arms) before swaying only
     the ears. The adult/baby piglin and the brute keep the inherited arm counter-swing in
-    their default state (`PiglinModel` overrides the arms in its `DANCING` and `CROSSBOW_HOLD`
-    poses — both implemented, see the piglin dance/crossbow note below — and its deferred
-    attack/admire/crossbow-charge poses), so the
+    their default state (`PiglinModel` overrides the arms in its `DANCING`, `CROSSBOW_HOLD`, and
+    `ATTACKING_WITH_MELEE_WEAPON` poses — all implemented, see the piglin dance/crossbow/attack note
+    below — and its deferred admire/crossbow-charge poses), so the
     arm swing is implemented for them too; the
     zombified piglin instead overwrites the arms with `AnimationUtils.animateZombieArms`
     (the deferred held-out zombie pose), so only its legs swing. The illager family
@@ -583,7 +583,19 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:charged_projectiles` component), not dancing (top priority) and not drawing
     (`DATA_IS_CHARGING_CROSSBOW`, data id `18`, gated to the regular piglin — whose
     `CROSSBOW_CHARGE` pull-back needs the deferred use-tick state), levels the crossbow. The
-    illusioner `BOW_AND_ARROW` draw is also
+    piglin and the piglin brute also drive `ATTACKING_WITH_MELEE_WEAPON`
+    (`Piglin`/`PiglinBrute.getArmPose`: `isAggressive() && isHoldingMeleeWeapon()`): aggression is
+    the synced `Mob.DATA_MOB_FLAGS_ID` (id `15`) bit `4` (the `is_aggressive` projection now covers
+    the piglin/brute alongside the zombie family), and a melee weapon is a main-hand item carrying
+    the `minecraft:tool` data component (`getMainHandItem().has(DataComponents.TOOL)` — the decoded
+    component patch lists wire type `28` in its added types, so no item-registry lookup is needed).
+    `PiglinModel` then raises the weapon overhead at rest (`holdWeaponHigh`, main right arm
+    `xRot = -1.8`, overwriting only the pitch) and chops it down mid-swing
+    (`AnimationUtils.swingWeaponDown` over the projected `attack_anim`, the SAME shared
+    [`apply_humanoid_weapon_swing_down`] the vindicator axe uses). The regular piglin is gated off
+    while DANCING (top priority); `ADMIRING_ITEM` (an offhand `piglin_loved`-tagged item) is higher
+    priority but an aggressive fighting piglin is never simultaneously admiring, and the zombified
+    piglin instead uses the deferred `animateZombieArms`. The illusioner `BOW_AND_ARROW` draw is also
     projected (`Illusioner.getArmPose`: `!casting && isAggressive` → BOW_AND_ARROW): the
     uncrossed arms aim the bow along the head look with the illager bracing the off hand —
     right arm `xRot = -π/2 + head.xRot`, `yRot = -0.1 + head.yRot`; left arm
@@ -627,9 +639,11 @@ When an agent does any of the following, update this file in the same slice:
     `yRot += bodyYRot·2`, `zRot += sin(t·π)·-0.4`). The same `apply_humanoid_attack_animation`
     helper is wired into the skeleton (with the `SkeletonModel` melee arm override), the zombie
     family applies the `animateZombieArms` arm-swing terms, and the vindicator chops with the
-    `IllagerModel` `swingWeaponDown` axe pose; extending the body twist to the piglin, the per-item
-    swing duration, and the STAB / NONE swing types are deferred (every swing is the default 6-tick
-    whack). The
+    `IllagerModel` `swingWeaponDown` axe pose, and the piglin/brute reuse that same
+    `swingWeaponDown` for their `ATTACKING_WITH_MELEE_WEAPON` pose (see the piglin note above); the
+    default `HumanoidModel` body-twist whack for a non-`ATTACKING` piglin (empty hand / non-tool
+    item), the per-item swing duration, and the STAB / NONE swing types are deferred (every swing is
+    the default 6-tick whack). The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,

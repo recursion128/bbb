@@ -55,6 +55,7 @@ const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
 const VANILLA_ENTITY_TYPE_PHANTOM_ID: i32 = 99;
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
+const VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID: i32 = 102;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_PUFFERFISH_ID: i32 = 107;
@@ -716,9 +717,10 @@ pub(crate) fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
 
 /// Entities rendered with the vanilla `ZombieModel` / `GiantZombieModel`, whose
 /// `setupAnim` overrides the arms with `AnimationUtils.animateZombieArms` (the held-out
-/// pose, whose `armDrop` deepens for an aggressive mob). These are the only consumers of
-/// the synced `Mob` aggressive flag in the renderer, so the `is_aggressive` projection is
-/// gated to them — every one is a `Mob` carrying the `DATA_MOB_FLAGS_ID` byte.
+/// pose, whose `armDrop` deepens for an aggressive mob). Together with
+/// [`vanilla_piglin_melee_attack_family`] these are the consumers of the synced `Mob`
+/// aggressive flag, so the `is_aggressive` projection is gated to them — every one is a
+/// `Mob` carrying the `DATA_MOB_FLAGS_ID` byte.
 pub(crate) fn vanilla_zombie_model_family(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
@@ -727,6 +729,19 @@ pub(crate) fn vanilla_zombie_model_family(entity_type_id: i32) -> bool {
             | VANILLA_ENTITY_TYPE_ZOMBIE_ID
             | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
             | VANILLA_ENTITY_TYPE_GIANT_ID
+    )
+}
+
+/// The regular piglin and the piglin brute, whose vanilla `getArmPose` returns
+/// `ATTACKING_WITH_MELEE_WEAPON` when `isAggressive() && isHoldingMeleeWeapon()` —
+/// `PiglinModel` then raises (`holdWeaponHigh`) and swings (`swingWeaponDown`) the weapon.
+/// Both consume the synced `Mob` aggressive flag, so the `is_aggressive` projection covers
+/// them. The zombified piglin is excluded: it is a `Zombie` whose `animateZombieArms` pose
+/// is deferred (covered by [`vanilla_zombie_model_family`] semantics, not the piglin pose).
+pub(crate) fn vanilla_piglin_melee_attack_family(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
     )
 }
 

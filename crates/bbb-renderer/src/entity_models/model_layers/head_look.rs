@@ -309,6 +309,42 @@ pub(in crate::entity_models) fn apply_humanoid_attack_animation(
     attack_arm.pose.rotation[2] += (attack_anim * PI).sin() * -0.4;
 }
 
+/// Vanilla `AnimationUtils.swingWeaponDown(rightArm, leftArm, mainArm = RIGHT, attackTime, ageInTicks)`:
+/// the main (right) arm raises overhead (`xRot = -1.8849558` + a `cos(age·0.09)·0.15` idle wobble) and
+/// chops down with the attack (`+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`), the off (left) arm trails
+/// (`xRot = cos(age·0.19)·0.5 += sin(t·π)·1.2 - …·0.4`), both yawing slightly apart (`±π/20`, `zRot = 0`)
+/// with the shared idle bob ([`humanoid_arm_bob_pose`]) on top. `t = attack_anim`; at rest (`t = 0`) the
+/// weapon holds raised. Shared by every humanoid that swings a melee weapon overhead (the vindicator
+/// `ATTACKING` axe, the piglin/brute `ATTACKING_WITH_MELEE_WEAPON`). Left-handed mobs (`mainArm = LEFT`)
+/// are not projected, so this always takes the right-handed branch.
+pub(in crate::entity_models) fn apply_humanoid_weapon_swing_down(
+    root: &mut ModelPart,
+    attack_anim: f32,
+    age_in_ticks: f32,
+) {
+    use std::f32::consts::PI;
+    let attack2 = (attack_anim * PI).sin();
+    let attack = ((1.0 - (1.0 - attack_anim) * (1.0 - attack_anim)) * PI).sin();
+    {
+        let right = root.child_mut("right_arm");
+        right.pose.rotation = [
+            -1.8849558 + (age_in_ticks * 0.09).cos() * 0.15 + (attack2 * 2.2 - attack * 0.4),
+            PI / 20.0,
+            0.0,
+        ];
+        right.pose = humanoid_arm_bob_pose(right.pose, age_in_ticks);
+    }
+    {
+        let left = root.child_mut("left_arm");
+        left.pose.rotation = [
+            (age_in_ticks * 0.19).cos() * 0.5 + (attack2 * 1.2 - attack * 0.4),
+            -PI / 20.0,
+            0.0,
+        ];
+        left.pose = humanoid_arm_bob_pose(left.pose, age_in_ticks);
+    }
+}
+
 /// Vanilla `AnimationUtils.animateCrossbowHold(rightArm, leftArm, head, holdingInRightArm = true)`: the
 /// right (holding) arm levels the crossbow along the head look (`yRot = -0.3 + head.yRot`,
 /// `xRot = -π/2 + head.xRot + 0.1`) while the left (shooting) arm reaches across to the trigger

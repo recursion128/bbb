@@ -811,6 +811,57 @@ fn piglin_holds_its_crossbow_level_with_the_head_look() {
     );
 }
 
+#[test]
+fn piglin_raises_and_swings_its_melee_weapon_when_attacking() {
+    // Vanilla `PiglinModel` `ATTACKING_WITH_MELEE_WEAPON`: at rest (`attackTime == 0`) `holdWeaponHigh`
+    // raises the main (right) arm overhead (`xRot = -1.8`, overwriting only the pitch); mid-swing
+    // (`attackTime > 0`) `AnimationUtils.swingWeaponDown` chops it down. The brute shares the pose.
+    for family in [PiglinModelFamily::Piglin, PiglinModelFamily::PiglinBrute] {
+        let age = 11.0_f32;
+        let held_high = EntityModelInstance::piglin(97, [0.0, 64.0, 0.0], 0.0, family, false)
+            .with_age_in_ticks(age)
+            .with_piglin_attacking_with_melee(true);
+        let mut model = PiglinModel::new(family, false);
+        model.prepare(&held_high);
+        let right_x = model.root_mut().child_mut("right_arm").pose.rotation[0];
+        assert!(
+            (right_x - (-1.8)).abs() < 1.0e-6,
+            "a resting piglin holds the weapon high (right arm xRot = -1.8): {right_x}"
+        );
+
+        // Mid-swing the right arm chops down through `swingWeaponDown` (the vindicator-shared math),
+        // landing well away from the static -1.8 raise and from the idle walk pose.
+        let attack_anim = 0.5_f32;
+        let swinging = EntityModelInstance::piglin(97, [0.0, 64.0, 0.0], 0.0, family, false)
+            .with_age_in_ticks(age)
+            .with_piglin_attacking_with_melee(true)
+            .with_attack_anim(attack_anim);
+        let mut swing_model = PiglinModel::new(family, false);
+        swing_model.prepare(&swinging);
+        let attack2 = (attack_anim * std::f32::consts::PI).sin();
+        let attack =
+            ((1.0 - (1.0 - attack_anim) * (1.0 - attack_anim)) * std::f32::consts::PI).sin();
+        let expected_right = -1.8849558
+            + (age * 0.09).cos() * 0.15
+            + (attack2 * 2.2 - attack * 0.4)
+            + (age * 0.067).sin() * 0.05; // + the shared idle bob (right arm, scale +1)
+        let swing_right = swing_model.root_mut().child_mut("right_arm").pose.rotation[0];
+        assert!(
+            (swing_right - expected_right).abs() < 1.0e-5,
+            "the swing chops the right arm down: got {swing_right}, expected {expected_right}"
+        );
+
+        // The attack visibly changes the mesh versus an idle piglin of the same family/age.
+        let idle = EntityModelInstance::piglin(97, [0.0, 64.0, 0.0], 0.0, family, false)
+            .with_age_in_ticks(age);
+        assert_ne!(
+            entity_model_mesh(&[idle]).vertices,
+            entity_model_mesh(&[swinging]).vertices,
+            "an attacking piglin no longer stands idle"
+        );
+    }
+}
+
 fn piglin_texture_images() -> Vec<EntityModelTextureImage> {
     piglin_entity_texture_refs()
         .iter()

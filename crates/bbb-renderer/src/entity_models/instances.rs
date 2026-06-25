@@ -486,6 +486,13 @@ entity_render_state! {
     /// the head look — the right (holding) arm raises the crossbow and the left (shooting) arm reaches the
     /// trigger. `false` for every other entity, a charging/dancing piglin, and an empty-handed piglin.
     (with_piglin_crossbow_hold) piglin_crossbow_hold: bool = false;
+    /// Vanilla `PiglinModel` `ATTACKING_WITH_MELEE_WEAPON` (`PiglinModel.holdWeaponHigh` +
+    /// `AnimationUtils.swingWeaponDown`, mainArm = RIGHT): a piglin or piglin brute that is aggressive and
+    /// holds a melee weapon (a main-hand item carrying the `minecraft:tool` data component) raises the
+    /// weapon overhead at rest ([`attack_anim`](Self::attack_anim) `== 0`) and chops it down across the
+    /// swing (`attack_anim > 0`). `false` for every other entity, a dancing piglin, and a piglin holding a
+    /// crossbow or no melee weapon. The zombified piglin instead does the deferred `animateZombieArms`.
+    (with_piglin_attacking_with_melee) piglin_attacking_with_melee: bool = false;
     /// Vanilla `PandaRenderState.isUnhappy` (`Panda.getUnhappyCounter() > 0`): an unhappy panda whose
     /// `PandaModel.setupAnim` shakes its head (`yRot = zRot = 0.35·sin(0.6·ageInTicks)`) and paddles its
     /// front legs (`xRot = ∓0.75·sin(0.3·ageInTicks)`). `false` for every other entity and a content panda.
@@ -1811,6 +1818,7 @@ mod tests {
                 illager_celebrating: false,
                 piglin_dancing: false,
                 piglin_crossbow_hold: false,
+                piglin_attacking_with_melee: false,
                 panda_unhappy: false,
                 panda_sneezing: false,
                 panda_sneeze_time: 0,

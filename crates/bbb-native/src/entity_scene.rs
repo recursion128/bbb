@@ -486,6 +486,27 @@ fn entity_main_hand_holds_charged_crossbow(
         && !stack.component_patch.charged_projectiles_items.is_empty()
 }
 
+/// Vanilla `DataComponents.TOOL` network type id (28, the registry order of `minecraft:tool` in
+/// `DataComponents`). `AbstractPiglin.isHoldingMeleeWeapon()` is `getMainHandItem().has(DataComponents.TOOL)`,
+/// so a main-hand stack counts as a melee weapon when its decoded component patch added this type.
+const DATA_COMPONENT_TOOL_TYPE_ID: i32 = 28;
+
+/// Whether the entity's main-hand item is a melee weapon (vanilla
+/// `AbstractPiglin.isHoldingMeleeWeapon()` = `getMainHandItem().has(DataComponents.TOOL)`), driving the
+/// piglin/brute `ATTACKING_WITH_MELEE_WEAPON` arm pose when aggressive. The decoded component patch records
+/// every added component's type id, so the `minecraft:tool` component shows up as
+/// [`DATA_COMPONENT_TOOL_TYPE_ID`] in `added_type_ids` — no item-registry lookup is needed (unlike the
+/// crossbow/bow checks, which resolve the item id). `false` for an empty hand or a non-tool main-hand item.
+fn entity_main_hand_holds_melee_weapon(world: &WorldStore, entity_id: i32) -> bool {
+    let Some(stack) = world.held_item(entity_id, false) else {
+        return false;
+    };
+    stack
+        .component_patch
+        .added_type_ids
+        .contains(&DATA_COMPONENT_TOOL_TYPE_ID)
+}
+
 /// Vanilla `Piglin.isChargingCrossbow()` (the synced `DATA_IS_CHARGING_CROSSBOW` boolean, id 18): the
 /// piglin is drawing its crossbow, so `getArmPose` returns `CROSSBOW_CHARGE` rather than `CROSSBOW_HOLD`.
 /// Only the regular piglin defines that accessor, so the projection is gated to its type.
@@ -583,6 +604,22 @@ fn entity_model_instance(
         ) && entity_main_hand_holds_charged_crossbow(world, item_runtime, source.entity_id)
             && !piglin_is_charging_crossbow(source.entity_type_id, &source.data_values)
             && !piglin_is_dancing(source.entity_type_id, &source.data_values);
+    // Vanilla `Piglin`/`PiglinBrute.getArmPose` `ATTACKING_WITH_MELEE_WEAPON`: a piglin or piglin brute
+    // that is aggressive (`Mob.isAggressive()`) and holds a melee weapon (`isHoldingMeleeWeapon()`, a
+    // main-hand item with the `tool` component). For the regular piglin, the higher-priority `DANCING`
+    // (and `ADMIRING_ITEM`, an offhand loved item whose tag check is deferred) take precedence; an
+    // aggressive fighting piglin is by the brain's design never simultaneously admiring, so gating on
+    // `!dancing` is sufficient. The brute has no dance/admire/crossbow poses. The zombified piglin uses
+    // the deferred zombie-arm pose, so it is excluded. Resolve the held item just for these families.
+    let piglin_attacking_with_melee = matches!(
+        kind,
+        EntityModelKind::Piglin {
+            family: PiglinModelFamily::Piglin | PiglinModelFamily::PiglinBrute,
+            ..
+        }
+    ) && source.is_aggressive
+        && entity_main_hand_holds_melee_weapon(world, source.entity_id)
+        && !piglin_is_dancing(source.entity_type_id, &source.data_values);
     // Vanilla `Goat.getRammingXHeadRot()`: the world-projected `lowerHeadTick` ram counter scaled by the
     // adult/baby max head pitch. Resolved here because the baby flag lives in the goat kind.
     let goat_ramming_x_head_rot = match kind {
@@ -732,6 +769,7 @@ fn entity_model_instance(
             &source.data_values,
         ))
         .with_piglin_crossbow_hold(piglin_crossbow_hold)
+        .with_piglin_attacking_with_melee(piglin_attacking_with_melee)
         .with_panda_unhappy(panda_is_unhappy(source.entity_type_id, &source.data_values))
         .with_panda_sneezing(panda_is_sneezing(
             source.entity_type_id,
@@ -2402,8 +2440,10 @@ fn entity_data_rotations(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, AttributeSnapshot, CommonPlayerSpawnInfo, EntityDataValue, EntityEvent,
-        EntityPositionSync, PlayLogin, PlayTime, SetCamera, SetEntityData, UpdateAttributes, Vec3d,
+        AddEntity, AttributeSnapshot, CommonPlayerSpawnInfo, DataComponentPatchSummary,
+        EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
+        ItemStackSummary, PlayLogin, PlayTime, SetCamera, SetEntityData, SetEquipment,
+        UpdateAttributes, Vec3d,
     };
     use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
     use uuid::Uuid;
@@ -3670,6 +3710,99 @@ mod tests {
             .render_state
             .piglin_crossbow_hold;
         assert!(!crossbow_hold);
+    }
+
+    #[test]
+    fn entity_model_instances_project_piglin_melee_attack_pose() {
+        // Vanilla Piglin/PiglinBrute.getArmPose ATTACKING_WITH_MELEE_WEAPON: aggressive (Mob.isAggressive,
+        // DATA_MOB_FLAGS_ID 15 bit 4) AND isHoldingMeleeWeapon (main-hand item with DataComponents.TOOL,
+        // wire type 28). Gated to the regular piglin + brute (the zombified piglin uses the deferred
+        // zombie-arm pose); the regular piglin is also suppressed while DANCING (higher priority).
+        const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+        const MOB_FLAG_AGGRESSIVE: i8 = 4;
+        // Any item id resolves the same way — only the TOOL component drives the pose, not the item type.
+        const MELEE_ITEM_ID: i32 = 700;
+
+        // A main-hand stack carrying the `minecraft:tool` data component (wire type 28).
+        let tool_main_hand = |entity_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id: Some(MELEE_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added_type_ids: vec![DATA_COMPONENT_TOOL_TYPE_ID],
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+            }],
+        };
+        let set_aggressive = |id: i32| SetEntityData {
+            id,
+            values: vec![protocol_byte_data(
+                VANILLA_MOB_FLAGS_DATA_ID,
+                MOB_FLAG_AGGRESSIVE,
+            )],
+        };
+        let attacking = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .piglin_attacking_with_melee
+        };
+
+        let mut world = WorldStore::new();
+        // Regular piglin (210), brute (211), zombified piglin (212): all aggressive, all holding a tool.
+        for (id, type_id) in [
+            (210, VANILLA_ENTITY_TYPE_PIGLIN_ID),
+            (211, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
+            (212, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID),
+        ] {
+            world.apply_add_entity(protocol_add_entity(id, type_id, [1.0, 64.0, -6.0]));
+            assert!(world.apply_set_equipment(tool_main_hand(id)));
+            assert!(world.apply_set_entity_data(set_aggressive(id)));
+        }
+        // The piglin and the brute raise/swing the melee weapon; the zombified piglin defers (zombie arms).
+        assert!(attacking(&world, 210));
+        assert!(attacking(&world, 211));
+        assert!(!attacking(&world, 212));
+
+        // An aggressive piglin with an empty hand (no tool component) does not raise a weapon.
+        world.apply_add_entity(protocol_add_entity(
+            213,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [2.0, 64.0, -6.0],
+        ));
+        assert!(world.apply_set_entity_data(set_aggressive(213)));
+        assert!(!attacking(&world, 213));
+
+        // A non-aggressive piglin holding a tool does not attack.
+        world.apply_add_entity(protocol_add_entity(
+            214,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [3.0, 64.0, -6.0],
+        ));
+        assert!(world.apply_set_equipment(tool_main_hand(214)));
+        assert!(!attacking(&world, 214));
+
+        // A dancing piglin (higher priority) holding a tool while aggressive keeps DANCING, not the attack.
+        world.apply_add_entity(protocol_add_entity(
+            215,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [4.0, 64.0, -6.0],
+        ));
+        assert!(world.apply_set_equipment(tool_main_hand(215)));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 215,
+            values: vec![
+                protocol_byte_data(VANILLA_MOB_FLAGS_DATA_ID, MOB_FLAG_AGGRESSIVE),
+                protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true),
+            ],
+        }));
+        assert!(!attacking(&world, 215));
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::{
     apply_crossbow_hold_pose, apply_half_amplitude_leg_swing, apply_head_look,
-    humanoid_arm_bob_pose, humanoid_arm_swing_pose, PartPose, ILLAGER_HAT_COLOR, ILLAGER_ROBE,
-    PART_POSE_ZERO,
+    apply_humanoid_weapon_swing_down, humanoid_arm_swing_pose, PartPose, ILLAGER_HAT_COLOR,
+    ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -303,36 +303,6 @@ fn apply_illager_bow_aim(root: &mut ModelPart, head_yaw_degrees: f32, head_pitch
     ];
 }
 
-/// Vanilla `AnimationUtils.swingWeaponDown` (`mainArm = RIGHT`, the vindicator `ATTACKING` axe): the
-/// main (right) arm raises overhead (`xRot = -1.8849558`) and chops down with the attack
-/// (`+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`), the off (left) arm trails (`+= sin(t·π)·1.2 - …·0.4`),
-/// both yawing slightly apart (`±π/20`) with a per-arm idle wobble and the shared bob on top. `t` is the
-/// projected `attack_anim`; at rest (`t = 0`) the weapon holds raised. Mirrors `IllagerModel.setupAnim`'s
-/// armed `ATTACKING` branch.
-fn apply_illager_weapon_swing_down(root: &mut ModelPart, attack_anim: f32, age_in_ticks: f32) {
-    use std::f32::consts::PI;
-    let attack2 = (attack_anim * PI).sin();
-    let attack = ((1.0 - (1.0 - attack_anim) * (1.0 - attack_anim)) * PI).sin();
-    {
-        let right = root.child_mut("right_arm");
-        right.pose.rotation = [
-            -1.8849558 + (age_in_ticks * 0.09).cos() * 0.15 + (attack2 * 2.2 - attack * 0.4),
-            PI / 20.0,
-            0.0,
-        ];
-        right.pose = humanoid_arm_bob_pose(right.pose, age_in_ticks);
-    }
-    {
-        let left = root.child_mut("left_arm");
-        left.pose.rotation = [
-            (age_in_ticks * 0.19).cos() * 0.5 + (attack2 * 1.2 - attack * 0.4),
-            -PI / 20.0,
-            0.0,
-        ];
-        left.pose = humanoid_arm_bob_pose(left.pose, age_in_ticks);
-    }
-}
-
 /// Whether a pillager levels its crossbow this frame (vanilla `Pillager.getArmPose` returning
 /// `CROSSBOW_HOLD`): it holds a crossbow and is not mid-draw (`isChargingCrossbow()`, whose distinct
 /// `CROSSBOW_CHARGE` pull-back pose is deferred).
@@ -505,7 +475,7 @@ impl EntityModel for IllagerModel {
                 // Vindicator ATTACKING: the armed `swingWeaponDown` raises the axe overhead and chops
                 // with the projected attack swing. IllagerModel is not a HumanoidModel, so there is no
                 // body twist — only the two-arm pose.
-                apply_illager_weapon_swing_down(&mut self.root, render_state.attack_anim, age);
+                apply_humanoid_weapon_swing_down(&mut self.root, render_state.attack_anim, age);
             }
         }
     }
