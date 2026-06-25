@@ -11,12 +11,13 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
 // chain), the `croaking_body` pouch, the tongue, and the two arms (with their hands). The looping
-// `FrogAnimation.FROG_WALK` keyframe animation is reproduced ([`FROG_WALK`]) and the triggered
-// `FrogAnimation.FROG_CROAK` pouch animation is reproduced ([`FROG_CROAK`], applied only while the
-// projected `frog_croak_seconds >= 0`); the jump, tongue, and in-water swim/idle keyframe
-// animations stay deferred (un-projected `AnimationState`s), so a still or non-swimming,
-// non-croaking frog renders at the walk-sampled pose. The three frog texture variants share this
-// geometry and are deferred with the texture-backed path.
+// The looping `FrogAnimation.FROG_WALK` cycle ([`FROG_WALK`]), the triggered `FROG_CROAK` pouch
+// ([`FROG_CROAK`], gated on `frog_croak_seconds >= 0`), the `FROG_JUMP` long-jump hold pose
+// ([`FROG_JUMP`], gated on `frog_jump_seconds >= 0`), and the looping in-water `FROG_IDLE_WATER`
+// hover ([`FROG_IDLE_WATER`], gated on `frog_swim_idle_seconds >= 0`) are all reproduced. Only the
+// tongue-flick keyframe animation stays deferred — it needs the synced `DATA_TONGUE_TARGET_ID` prey
+// target — so a still, dry, non-croaking, non-jumping frog renders at the walk-sampled pose. The
+// three frog texture variants share this geometry on the wired texture-backed path.
 
 // `body`: the `texOffs(3,1)` 7×3×9 box plus the `texOffs(23,22)` 7×0×9 underside plane.
 pub(in crate::entity_models) const FROG_BODY_CUBES: [ModelCube; 2] = [
