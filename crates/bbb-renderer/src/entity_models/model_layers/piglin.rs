@@ -512,6 +512,23 @@ fn hold_weapon_high(root: &mut ModelPart) {
     root.child_mut("right_arm").pose.rotation[0] = -1.8;
 }
 
+/// Vanilla `PiglinModel.setupAnim` `ADMIRING_ITEM` (mainArm = RIGHT): the head tilts down to look at the
+/// admired item (`head.xRot = 0.5`, `head.yRot = 0`, overwriting the head look) and the OFF (left) arm
+/// lifts the offhand item up (`leftArm.xRot = -0.9`, `leftArm.yRot = 0.5`, overwriting the walk swing; the
+/// roll/`zRot` from the idle bob is kept, matching vanilla's single-axis writes). The main (right) arm
+/// keeps its walk swing. Left-handed mobs (which would pose the right arm) are not projected, so this
+/// always poses the left arm.
+fn apply_piglin_admire(root: &mut ModelPart) {
+    {
+        let head = root.child_mut("head");
+        head.pose.rotation[0] = 0.5;
+        head.pose.rotation[1] = 0.0;
+    }
+    let left = root.child_mut("left_arm");
+    left.pose.rotation[0] = -0.9;
+    left.pose.rotation[1] = 0.5;
+}
+
 /// Mutable piglin model, mirroring vanilla `AbstractPiglinModel extends HumanoidModel` (the piglin,
 /// piglin brute, and zombified piglin). The unified tree is built for the `family`/`baby` layout with
 /// the vanilla child names. `setup_anim` runs `super.setupAnim` — the head look ([`apply_head_look`]
@@ -521,9 +538,10 @@ fn hold_weapon_high(root: &mut ModelPart) {
 /// ([`piglin_ear_flap_pose`], head children). A regular piglin holding a charged crossbow then levels it
 /// ([`apply_crossbow_hold_pose`], the `CROSSBOW_HOLD` pose); an aggressive piglin/brute holding a melee
 /// weapon raises and swings it ([`hold_weapon_high`] / [`apply_humanoid_weapon_swing_down`], the
-/// `ATTACKING_WITH_MELEE_WEAPON` pose); and a dancing regular piglin runs the `DANCING` pose
-/// ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the admire and
-/// crossbow-charge arm poses, the zombified piglin's `animateZombieArms`, and held items defer.
+/// `ATTACKING_WITH_MELEE_WEAPON` pose); a regular piglin with a piglin-loved offhand item admires it
+/// ([`apply_piglin_admire`], the `ADMIRING_ITEM` pose); and a dancing regular piglin runs the `DANCING`
+/// pose ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the
+/// crossbow-charge arm pose, the zombified piglin's `animateZombieArms`, and held items defer.
 pub(in crate::entity_models) struct PiglinModel {
     root: ModelPart,
     family: PiglinModelFamily,
@@ -614,6 +632,12 @@ impl EntityModel for PiglinModel {
             } else {
                 hold_weapon_high(&mut self.root);
             }
+        }
+        // Vanilla `PiglinModel.setupAnim` ADMIRING_ITEM: a regular piglin with a piglin-loved offhand item
+        // tilts its head down and lifts the off arm to show it. Higher priority than CROSSBOW_HOLD /
+        // ATTACKING (the projection gates those off while admiring), below DANCING (applied after).
+        if render_state.piglin_admiring {
+            apply_piglin_admire(&mut self.root);
         }
         // Vanilla `PiglinModel.setupAnim` DANCING runs after the inherited walk + ear flap, overwriting
         // the ear/arm rotations and bobbing the head/body. Only the regular piglin dances (the

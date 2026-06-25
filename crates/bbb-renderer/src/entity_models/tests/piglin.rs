@@ -862,6 +862,43 @@ fn piglin_raises_and_swings_its_melee_weapon_when_attacking() {
     }
 }
 
+#[test]
+fn piglin_admires_a_loved_offhand_item() {
+    // Vanilla `PiglinModel.setupAnim` ADMIRING_ITEM (mainArm = RIGHT): head tilts down to the item
+    // (`head.xRot = 0.5, head.yRot = 0`, overwriting the head look) and the off (left) arm lifts it
+    // (`leftArm.xRot = -0.9, leftArm.yRot = 0.5`). The right arm keeps its walk swing.
+    let admiring =
+        EntityModelInstance::piglin(98, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_head_look(30.0, -20.0)
+            .with_piglin_admiring(true);
+    let mut model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    model.prepare(&admiring);
+
+    let head = model.root_mut().child_mut("head").pose;
+    assert!(
+        (head.rotation[0] - 0.5).abs() < 1.0e-6 && head.rotation[1].abs() < 1.0e-6,
+        "the head tilts down to the item, overwriting the head look: {:?}",
+        head.rotation
+    );
+    let left = model.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (-0.9)).abs() < 1.0e-6 && (left.rotation[1] - 0.5).abs() < 1.0e-6,
+        "the left arm lifts the admired item: {:?}",
+        left.rotation
+    );
+
+    // An idle piglin keeps its head look (not the fixed admire tilt) — head yaw tracks the look.
+    let idle =
+        EntityModelInstance::piglin(98, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_head_look(30.0, -20.0);
+    let mut idle_model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    idle_model.prepare(&idle);
+    assert!(
+        idle_model.root_mut().child_mut("head").pose.rotation[1].abs() > 1.0e-3,
+        "an idle piglin's head still yaws with the look, not the fixed admire pose"
+    );
+}
+
 fn piglin_texture_images() -> Vec<EntityModelTextureImage> {
     piglin_entity_texture_refs()
         .iter()

@@ -507,6 +507,28 @@ fn entity_main_hand_holds_melee_weapon(world: &WorldStore, entity_id: i32) -> bo
         .contains(&DATA_COMPONENT_TOOL_TYPE_ID)
 }
 
+/// Vanilla `ItemTags.PIGLIN_LOVED` tag id — the items a piglin admires.
+const PIGLIN_LOVED_ITEM_TAG: &str = "minecraft:piglin_loved";
+
+/// Whether the entity's OFFHAND item is a piglin-loved item (vanilla
+/// `PiglinAi.isLovedItem(getOffhandItem())` = `getOffhandItem().is(ItemTags.PIGLIN_LOVED)`), driving the
+/// regular piglin's `ADMIRING_ITEM` arm pose. Item tags arrive over the network (`UpdateTags`) into the
+/// `minecraft:item` registry tag set, so membership is the offhand item's protocol id appearing in the
+/// `minecraft:piglin_loved` tag — no item-registry lookup needed. `false` for an empty offhand, an unknown
+/// id, or when the tag set hasn't been received.
+fn entity_offhand_holds_loved_item(world: &WorldStore, entity_id: i32) -> bool {
+    let Some(stack) = world.held_item(entity_id, true) else {
+        return false;
+    };
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    world
+        .registry_tags("minecraft:item")
+        .and_then(|registry| registry.tags.get(PIGLIN_LOVED_ITEM_TAG))
+        .is_some_and(|entries| entries.contains(&item_id))
+}
+
 /// Vanilla `Piglin.isChargingCrossbow()` (the synced `DATA_IS_CHARGING_CROSSBOW` boolean, id 18): the
 /// piglin is drawing its crossbow, so `getArmPose` returns `CROSSBOW_CHARGE` rather than `CROSSBOW_HOLD`.
 /// Only the regular piglin defines that accessor, so the projection is gated to its type.
@@ -590,10 +612,23 @@ fn entity_model_instance(
                 family: IllagerModelFamily::Pillager
             }
         ) && entity_main_hand_holds_crossbow(world, item_runtime, source.entity_id);
+    // Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinAi.isLovedItem(getOffhandItem())`): a regular
+    // piglin holding a piglin-loved item in its OFFHAND admires it (head tilts down, the off arm lifts the
+    // item). Second-highest priority (below DANCING, above ATTACKING / CROSSBOW), so it suppresses those.
+    // Only `Piglin.getArmPose` has this branch — the brute's is ATTACKING/DEFAULT only — so gate to the
+    // regular piglin. Resolve the offhand item + the `minecraft:piglin_loved` item tag just for it.
+    let piglin_admiring = matches!(
+        kind,
+        EntityModelKind::Piglin {
+            family: PiglinModelFamily::Piglin,
+            ..
+        }
+    ) && !piglin_is_dancing(source.entity_type_id, &source.data_values)
+        && entity_offhand_holds_loved_item(world, source.entity_id);
     // Vanilla `Piglin.getArmPose` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow, not
-    // dancing (top priority) and not mid-draw (`CROSSBOW_CHARGE`, whose pull-back pose is deferred).
-    // The higher-priority `ADMIRING_ITEM` / `ATTACKING_WITH_MELEE_WEAPON` poses require a non-crossbow
-    // main-hand item, so a charged-crossbow hand excludes them. Resolve the held item just for the piglin.
+    // dancing (top priority), not admiring (an offhand loved item, higher priority), and not mid-draw
+    // (`CROSSBOW_CHARGE`, whose pull-back pose is deferred). The higher-priority `ATTACKING_WITH_MELEE_WEAPON`
+    // needs a tool main-hand item, so a charged-crossbow hand excludes it. Resolve the held item just for it.
     let piglin_crossbow_hold =
         matches!(
             kind,
@@ -603,14 +638,14 @@ fn entity_model_instance(
             }
         ) && entity_main_hand_holds_charged_crossbow(world, item_runtime, source.entity_id)
             && !piglin_is_charging_crossbow(source.entity_type_id, &source.data_values)
-            && !piglin_is_dancing(source.entity_type_id, &source.data_values);
+            && !piglin_is_dancing(source.entity_type_id, &source.data_values)
+            && !piglin_admiring;
     // Vanilla `Piglin`/`PiglinBrute.getArmPose` `ATTACKING_WITH_MELEE_WEAPON`: a piglin or piglin brute
     // that is aggressive (`Mob.isAggressive()`) and holds a melee weapon (`isHoldingMeleeWeapon()`, a
-    // main-hand item with the `tool` component). For the regular piglin, the higher-priority `DANCING`
-    // (and `ADMIRING_ITEM`, an offhand loved item whose tag check is deferred) take precedence; an
-    // aggressive fighting piglin is by the brain's design never simultaneously admiring, so gating on
-    // `!dancing` is sufficient. The brute has no dance/admire/crossbow poses. The zombified piglin uses
-    // the deferred zombie-arm pose, so it is excluded. Resolve the held item just for these families.
+    // main-hand item with the `tool` component), not dancing, and (for the regular piglin) not admiring an
+    // offhand loved item (both higher priority). The brute has no dance/admire/crossbow poses, so
+    // `piglin_admiring` is always false for it. The zombified piglin uses the deferred zombie-arm pose, so
+    // it is excluded. Resolve the held item just for these families.
     let piglin_attacking_with_melee = matches!(
         kind,
         EntityModelKind::Piglin {
@@ -619,7 +654,8 @@ fn entity_model_instance(
         }
     ) && source.is_aggressive
         && entity_main_hand_holds_melee_weapon(world, source.entity_id)
-        && !piglin_is_dancing(source.entity_type_id, &source.data_values);
+        && !piglin_is_dancing(source.entity_type_id, &source.data_values)
+        && !piglin_admiring;
     // Vanilla `Goat.getRammingXHeadRot()`: the world-projected `lowerHeadTick` ram counter scaled by the
     // adult/baby max head pitch. Resolved here because the baby flag lives in the goat kind.
     let goat_ramming_x_head_rot = match kind {
@@ -770,6 +806,7 @@ fn entity_model_instance(
         ))
         .with_piglin_crossbow_hold(piglin_crossbow_hold)
         .with_piglin_attacking_with_melee(piglin_attacking_with_melee)
+        .with_piglin_admiring(piglin_admiring)
         .with_panda_unhappy(panda_is_unhappy(source.entity_type_id, &source.data_values))
         .with_panda_sneezing(panda_is_sneezing(
             source.entity_type_id,
@@ -2442,8 +2479,8 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AttributeSnapshot, CommonPlayerSpawnInfo, DataComponentPatchSummary,
         EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        ItemStackSummary, PlayLogin, PlayTime, SetCamera, SetEntityData, SetEquipment,
-        UpdateAttributes, Vec3d,
+        ItemStackSummary, PlayLogin, PlayTime, RegistryTags, SetCamera, SetEntityData,
+        SetEquipment, TagNetworkPayload, UpdateAttributes, UpdateTags, Vec3d,
     };
     use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
     use uuid::Uuid;
@@ -3803,6 +3840,153 @@ mod tests {
             ],
         }));
         assert!(!attacking(&world, 215));
+    }
+
+    #[test]
+    fn entity_model_instances_project_piglin_admiring_a_loved_offhand_item() {
+        // Vanilla Piglin.getArmPose ADMIRING_ITEM = PiglinAi.isLovedItem(getOffhandItem()) =
+        // offhand.is(ItemTags.PIGLIN_LOVED). Gated to the regular piglin (the brute has no admire branch);
+        // higher priority than ATTACKING/CROSSBOW (suppresses them), below DANCING.
+        const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+        const MOB_FLAG_AGGRESSIVE: i8 = 4;
+        const LOVED_ITEM_ID: i32 = 800; // stand-in for a `minecraft:piglin_loved` item (e.g. gold_ingot).
+        const PLAIN_ITEM_ID: i32 = 801; // not in the tag.
+        const TOOL_ITEM_ID: i32 = 802; // a melee weapon (TOOL component) for the suppression check.
+
+        let equip = |entity_id: i32, slot: EquipmentSlot, item_id: i32, tool: bool| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added_type_ids: if tool {
+                            vec![DATA_COMPONENT_TOOL_TYPE_ID]
+                        } else {
+                            Vec::new()
+                        },
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+            }],
+        };
+        let admiring = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .piglin_admiring
+        };
+
+        let mut world = WorldStore::new();
+        // The `minecraft:piglin_loved` item tag arrives via UpdateTags (gold_ingot etc.).
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: PIGLIN_LOVED_ITEM_TAG.to_string(),
+                    entries: vec![LOVED_ITEM_ID, TOOL_ITEM_ID],
+                }],
+            }],
+        });
+
+        // A regular piglin with a loved item in its OFFHAND admires it.
+        world.apply_add_entity(protocol_add_entity(
+            220,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [1.0, 64.0, -7.0],
+        ));
+        assert!(world.apply_set_equipment(equip(
+            220,
+            EquipmentSlot::OffHand,
+            LOVED_ITEM_ID,
+            false
+        )));
+        assert!(admiring(&world, 220));
+
+        // A non-loved offhand item → no admiring.
+        world.apply_add_entity(protocol_add_entity(
+            221,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [2.0, 64.0, -7.0],
+        ));
+        assert!(world.apply_set_equipment(equip(
+            221,
+            EquipmentSlot::OffHand,
+            PLAIN_ITEM_ID,
+            false
+        )));
+        assert!(!admiring(&world, 221));
+
+        // The piglin brute has no ADMIRING_ITEM branch, even with a loved offhand item.
+        world.apply_add_entity(protocol_add_entity(
+            222,
+            VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+            [3.0, 64.0, -7.0],
+        ));
+        assert!(world.apply_set_equipment(equip(
+            222,
+            EquipmentSlot::OffHand,
+            LOVED_ITEM_ID,
+            false
+        )));
+        assert!(!admiring(&world, 222));
+
+        // A dancing piglin (higher priority) does not admire.
+        world.apply_add_entity(protocol_add_entity(
+            223,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [4.0, 64.0, -7.0],
+        ));
+        assert!(world.apply_set_equipment(equip(
+            223,
+            EquipmentSlot::OffHand,
+            LOVED_ITEM_ID,
+            false
+        )));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 223,
+            values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
+        }));
+        assert!(!admiring(&world, 223));
+
+        // ADMIRING suppresses ATTACKING: an aggressive piglin with a tool main hand AND a loved offhand
+        // admires (vanilla precedence ADMIRING > ATTACKING), so it does not swing.
+        world.apply_add_entity(protocol_add_entity(
+            224,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [5.0, 64.0, -7.0],
+        ));
+        assert!(world.apply_set_equipment(equip(224, EquipmentSlot::MainHand, TOOL_ITEM_ID, true)));
+        assert!(world.apply_set_equipment(equip(
+            224,
+            EquipmentSlot::OffHand,
+            LOVED_ITEM_ID,
+            false
+        )));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 224,
+            values: vec![protocol_byte_data(
+                VANILLA_MOB_FLAGS_DATA_ID,
+                MOB_FLAG_AGGRESSIVE
+            )],
+        }));
+        let attacking_224 = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 224)
+            .unwrap()
+            .render_state
+            .piglin_attacking_with_melee;
+        assert!(
+            admiring(&world, 224),
+            "the loved offhand item makes it admire"
+        );
+        assert!(
+            !attacking_224,
+            "admiring (higher priority) suppresses the melee swing"
+        );
     }
 
     #[test]

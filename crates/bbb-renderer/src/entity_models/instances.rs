@@ -493,6 +493,11 @@ entity_render_state! {
     /// swing (`attack_anim > 0`). `false` for every other entity, a dancing piglin, and a piglin holding a
     /// crossbow or no melee weapon. The zombified piglin instead does the deferred `animateZombieArms`.
     (with_piglin_attacking_with_melee) piglin_attacking_with_melee: bool = false;
+    /// Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinModel.setupAnim`): a regular piglin holding a
+    /// piglin-loved item in its OFFHAND tilts its head down to look at it (`head.xRot = 0.5`) and lifts the
+    /// off (left) arm up to show it (`leftArm.xRot = -0.9, yRot = 0.5`). `false` for every other entity, a
+    /// dancing piglin, and a piglin with no loved offhand item.
+    (with_piglin_admiring) piglin_admiring: bool = false;
     /// Vanilla `PandaRenderState.isUnhappy` (`Panda.getUnhappyCounter() > 0`): an unhappy panda whose
     /// `PandaModel.setupAnim` shakes its head (`yRot = zRot = 0.35·sin(0.6·ageInTicks)`) and paddles its
     /// front legs (`xRot = ∓0.75·sin(0.3·ageInTicks)`). `false` for every other entity and a content panda.
@@ -1819,6 +1824,7 @@ mod tests {
                 piglin_dancing: false,
                 piglin_crossbow_hold: false,
                 piglin_attacking_with_melee: false,
+                piglin_admiring: false,
                 panda_unhappy: false,
                 panda_sneezing: false,
                 panda_sneeze_time: 0,

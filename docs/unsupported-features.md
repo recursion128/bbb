@@ -547,9 +547,9 @@ When an agent does any of the following, update this file in the same slice:
     baby) also consumes it: `AbstractPiglinModel extends HumanoidModel`, whose
     `setupAnim` runs `super.setupAnim` (the inherited legs and arms) before swaying only
     the ears. The adult/baby piglin and the brute keep the inherited arm counter-swing in
-    their default state (`PiglinModel` overrides the arms in its `DANCING`, `CROSSBOW_HOLD`, and
-    `ATTACKING_WITH_MELEE_WEAPON` poses — all implemented, see the piglin dance/crossbow/attack note
-    below — and its deferred admire/crossbow-charge poses), so the
+    their default state (`PiglinModel` overrides the arms in its `DANCING`, `CROSSBOW_HOLD`,
+    `ATTACKING_WITH_MELEE_WEAPON`, and `ADMIRING_ITEM` poses — all implemented, see the piglin
+    dance/crossbow/attack/admire note below — and its deferred crossbow-charge pose), so the
     arm swing is implemented for them too; the
     zombified piglin instead overwrites the arms with `AnimationUtils.animateZombieArms`
     (the deferred held-out zombie pose), so only its legs swing. The illager family
@@ -592,10 +592,15 @@ When an agent does any of the following, update this file in the same slice:
     `PiglinModel` then raises the weapon overhead at rest (`holdWeaponHigh`, main right arm
     `xRot = -1.8`, overwriting only the pitch) and chops it down mid-swing
     (`AnimationUtils.swingWeaponDown` over the projected `attack_anim`, the SAME shared
-    [`apply_humanoid_weapon_swing_down`] the vindicator axe uses). The regular piglin is gated off
-    while DANCING (top priority); `ADMIRING_ITEM` (an offhand `piglin_loved`-tagged item) is higher
-    priority but an aggressive fighting piglin is never simultaneously admiring, and the zombified
-    piglin instead uses the deferred `animateZombieArms`. The illusioner `BOW_AND_ARROW` draw is also
+    [`apply_humanoid_weapon_swing_down`] the vindicator axe uses). The regular piglin also drives
+    `ADMIRING_ITEM` (`Piglin.getArmPose`: `PiglinAi.isLovedItem(getOffhandItem())` =
+    `getOffhandItem().is(ItemTags.PIGLIN_LOVED)`): a piglin-loved item in the OFFHAND tilts the head down
+    to it (`head.xRot = 0.5`, `head.yRot = 0`) and lifts the off (left) arm to show it (`leftArm.xRot =
+    -0.9`, `yRot = 0.5`). The `minecraft:piglin_loved` membership is the offhand item's id appearing in the
+    network-loaded `minecraft:item` tag set (no item-registry lookup). Vanilla precedence is DANCING >
+    ADMIRING > ATTACKING > CROSSBOW, so a loved offhand item suppresses the attack/crossbow poses (the
+    regular-piglin gates carry `&& !admiring`); the brute has no admire branch and the zombified piglin
+    uses the deferred `animateZombieArms`. The illusioner `BOW_AND_ARROW` draw is also
     projected (`Illusioner.getArmPose`: `!casting && isAggressive` → BOW_AND_ARROW): the
     uncrossed arms aim the bow along the head look with the illager bracing the off hand —
     right arm `xRot = -π/2 + head.xRot`, `yRot = -0.1 + head.yRot`; left arm
@@ -750,9 +755,9 @@ When an agent does any of the following, update this file in the same slice:
     is implemented, see the zombie-arms note below; the skeleton `BOW_AND_ARROW`
     aim and the melee swing (`isAggressive && !isHoldingBow`, the raised-and-chopping arms
     driven by the projected `attack_anim`) are both implemented — see the skeleton note
-    below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose, the
-    `PiglinModel` attack/crossbow/admire poses (the `DANCING` pose and the
-    `AbstractPiglinModel` ear flap are implemented for the piglin — see below), the `IllagerModel`
+    below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose (the
+    `PiglinModel` `DANCING`, `CROSSBOW_HOLD`, `ATTACKING_WITH_MELEE_WEAPON`, and `ADMIRING_ITEM` poses
+    and the `AbstractPiglinModel` ear flap are implemented for the piglin/brute — see below), the `IllagerModel`
     pillager `CROSSBOW_CHARGE` override and riding sit
     pose (the default walk arm swing is implemented for the pillager, and the
     evoker/illusioner spellcasting raise, the illusioner `BOW_AND_ARROW`, the pillager
@@ -791,9 +796,10 @@ When an agent does any of the following, update this file in the same slice:
     sin(dancePos·40)·0.35`), and raises both arms overhead wagging (`rightArm.zRot = (70° +
     cos(dancePos·40)·10°)`, the left mirrored, `y += sin(dancePos·40)·0.5 ∓ 0.5`), running after the
     inherited walk + ear flap on the reset bind pose. The `PiglinArmPose` `ATTACKING_WITH_MELEE_WEAPON`
-    (the `swingWeaponDown` axe chop, needs `attackTime` + a `DataComponents.TOOL` main-hand check),
-    `CROSSBOW_HOLD`/`CROSSBOW_CHARGE` (need the held crossbow + charge state), and `ADMIRING_ITEM`
-    (needs the loved off-hand item) poses stay deferred.
+    (the `swingWeaponDown` axe chop over `attack_anim` + a `DataComponents.TOOL` main-hand check),
+    `CROSSBOW_HOLD` (the held charged crossbow), and `ADMIRING_ITEM` (the loved off-hand item via the
+    `minecraft:piglin_loved` tag) poses are all implemented — see the piglin note above; only
+    `CROSSBOW_CHARGE` (the pull-back draw, needs the deferred use-tick state) stays deferred.
     The same `ageInTicks` projection drives the continuous `WitchModel.setupAnim` idle nose
     bob (`witch_nose_bob_pose`): `speed = 0.01 * (entityId % 10)`, `nose.xRot =
     sin(ageInTicks * speed) * 4.5°`, `nose.zRot = cos(ageInTicks * speed) * 2.5°`, both SET
@@ -1485,8 +1491,10 @@ When an agent does any of the following, update this file in the same slice:
       rotation, trident throw arm pose, zombie villager type/profession/level
       overlays, zombie villager no-hat model selection, zombie/piglin
       converting shake, zombie-family and piglin-family armor, custom head
-      layers, held items, and the piglin attack/dance/crossbow/admiring animation
-      remain unsupported; the zombie-arm attack swing IS implemented (the
+      layers, and held items remain unsupported; the piglin
+      dance/attack/crossbow-hold/admiring arm poses ARE implemented (only the
+      piglin `CROSSBOW_CHARGE` pull-back stays deferred — see the piglin note);
+      the zombie-arm attack swing IS implemented (the
       held-out arms, the `Mob.isAggressive` arm-raise, and the
       `animateZombieArms` melee swing over the projected `attack_anim` — only the
       inherited `setupAttackAnimation` body twist / arm-anchor reposition and the
@@ -1502,8 +1510,9 @@ When an agent does any of the following, update this file in the same slice:
       family (adult/baby piglin and brute) instead applies the inherited arm
       counter-swing (the zombified piglin's arms keep the deferred
       `animateZombieArms` held-out pose; the `AbstractPiglinModel` ear sway and the
-      regular piglin's `PiglinModel` `DANCING` pose are implemented, while the
-      `PiglinModel` attack/crossbow/admire arm poses stay deferred)
+      `PiglinModel` `DANCING` / `ATTACKING_WITH_MELEE_WEAPON` / `CROSSBOW_HOLD` /
+      `ADMIRING_ITEM` arm poses are implemented, while only the `CROSSBOW_CHARGE`
+      pull-back stays deferred)
     - base skeleton, stray, parched, wither skeleton, and bogged entities as
       renderer-owned vanilla 26.1 skeleton-family geometry from
       `SkeletonModel.createBodyLayer()`,
