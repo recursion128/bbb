@@ -792,10 +792,16 @@ When an agent does any of the following, update this file in the same slice:
     `setupAttackAnimation`, and crouch/attack are additive offsets that commute). It is gated to the player
     kind (`HumanoidMobRenderer.getArmPose` never returns `ITEM`), a non-empty main hand, and `!isUsingItem`,
     and excludes spears (→ `SPEAR`) and charged crossbows (→ `CROSSBOW_HOLD`) so their dedicated poses win; a
-    non-charged crossbow or a held (not drawn) bow correctly falls through to `ITEM`. The remaining
+    non-charged crossbow or a held (not drawn) bow correctly falls through to `ITEM`. The OFF-hand `ITEM`
+    hold pose IS now implemented too (the same `apply_humanoid_item_hold_pose` posed onto the left arm, the
+    `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback → `HumanoidModel.poseLeftArm` ITEM case): a player
+    holding a plain off-hand item (shield/totem/block/food) lowers/halves the left arm, gated to a non-empty
+    off hand and suppressed only when the OFF hand is the using hand (its use poses win; using the MAIN hand
+    leaves the off hand on `ITEM`), excluding off-hand spears/charged crossbows. The remaining
     use-item arm poses on the same dispatch (the `BLOCK` hold pose, the using-item routes that also resolve to
-    `ITEM` — `EAT`/`DRINK` — and the `BOW_AND_ARROW`/`CROSSBOW` draw poses, the off-arm `EMPTY`/`ITEM` pose +
-    the `affectsOffhandPose`/`isTwoHanded` routing) stay deferred. The
+    `ITEM` — `EAT`/`DRINK` — and the `BOW_AND_ARROW`/`CROSSBOW` draw poses, the off-arm `EMPTY` reset, and the
+    `affectsOffhandPose` / `isTwoHanded`-forces-off-hand-to-`ITEM` routing — which only diverges for an
+    off-hand spear/charged crossbow while the main hand draws a two-handed item) stay deferred. The
     per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —

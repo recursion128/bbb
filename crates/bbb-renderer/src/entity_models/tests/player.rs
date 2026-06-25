@@ -648,7 +648,7 @@ fn player_holding_an_item_lowers_the_main_arm() {
         "an empty-handed player does not lower the arm"
     );
 
-    // The ITEM pose is main-hand only (right arm); the left arm is untouched.
+    // The main-hand ITEM pose is right-arm only; the left arm is untouched.
     let mut held_left = PlayerModel::new(false);
     held_left.prepare(&base.with_player_main_hand_item_pose(true));
     let left = held_left.root_mut().child_mut("left_arm").pose;
@@ -657,7 +657,41 @@ fn player_holding_an_item_lowers_the_main_arm() {
     assert_eq!(
         left.rotation,
         bare_left.root_mut().child_mut("left_arm").pose.rotation,
-        "the ITEM pose leaves the off (left) arm alone"
+        "the main-hand ITEM pose leaves the off (left) arm alone"
+    );
+}
+
+#[test]
+fn player_holding_an_off_hand_item_lowers_the_left_arm() {
+    use std::f32::consts::PI;
+
+    // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM` (`HumanoidModel.poseLeftArm` ITEM
+    // case): a player holding a plain off-hand item lowers/halves the OFF (left) arm — `xRot = arm.xRot ·
+    // 0.5 − π/10`, `yRot = 0`. At rest the arm pitch is `0`, so the left arm lands at exactly `−π/10`.
+    let base =
+        EntityModelInstance::player(940, [0.0, 64.0, 0.0], 0.0, false).with_head_look(20.0, -10.0);
+
+    let mut held = PlayerModel::new(false);
+    held.prepare(&base.with_player_off_hand_item_pose(true));
+    let left = held.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (-PI / 10.0)).abs() < 1e-6,
+        "the left arm lowers to −π/10: {}",
+        left.rotation[0]
+    );
+    assert_eq!(
+        left.rotation[1], 0.0,
+        "the off-hand ITEM pose zeroes the arm yaw"
+    );
+
+    // The off-hand ITEM pose is left-arm only; the right (main) arm is untouched.
+    let right = held.root_mut().child_mut("right_arm").pose;
+    let mut bare = PlayerModel::new(false);
+    bare.prepare(&base);
+    assert_eq!(
+        right.rotation,
+        bare.root_mut().child_mut("right_arm").pose.rotation,
+        "the off-hand ITEM pose leaves the main (right) arm alone"
     );
 }
 

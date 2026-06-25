@@ -344,6 +344,11 @@ impl EntityModel for PlayerModel {
         if render_state.player_main_hand_item_pose {
             apply_humanoid_item_hold_pose(&mut self.root, false);
         }
+        // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM`, posed by `poseLeftArm` onto the
+        // OFF (left) arm. Independent of the main-hand pose (separate arm), so order between them is moot.
+        if render_state.player_off_hand_item_pose {
+            apply_humanoid_item_hold_pose(&mut self.root, true);
+        }
         if render_state.is_crouching {
             apply_humanoid_crouch_named(&mut self.root);
         }

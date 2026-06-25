@@ -463,22 +463,23 @@ fn entity_main_hand_holds_trident(
     item_runtime.item_resource_id(item_id) == Some("minecraft:trident")
 }
 
-/// Whether the entity's main-hand item is a spear — one of the seven tool-material spears whose item
+/// Whether the item in the given hand is a spear — one of the seven tool-material spears whose item
 /// prototype sets `DataComponents.SWING_ANIMATION` to `SwingAnimationType.STAB` in `Item.Properties.spear(...)`.
 /// A spear's melee swing uses the `STAB` `SpearAnimations.thirdPersonAttackHand` pose instead of the default
 /// `WHACK`. That STAB default lives on the item PROTOTYPE (not the network component patch), so it is detected
 /// by the resolved item id rather than a component-presence check (a datapack explicitly overriding
 /// `SWING_ANIMATION` on a non-spear item is a deferred edge case). Resolved through the item registry; `false`
 /// without it or for any non-spear / empty hand.
-fn entity_main_hand_holds_spear(
+fn entity_hand_holds_spear(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
+    off_hand: bool,
 ) -> bool {
     let Some(item_runtime) = item_runtime else {
         return false;
     };
-    let Some(stack) = world.held_item(entity_id, false) else {
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
         return false;
     };
     let Some(item_id) = stack.item_id else {
@@ -584,20 +585,21 @@ fn entity_main_hand_holds_crossbow(
     item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
 }
 
-/// Whether the entity's main-hand item is a *charged* crossbow (vanilla
+/// Whether the item in the given hand is a *charged* crossbow (vanilla
 /// `isHolding(Items.CROSSBOW) && CrossbowItem.isCharged(getWeaponItem())`), driving the piglin's
 /// `CROSSBOW_HOLD` arm pose. `CrossbowItem.isCharged` is the held crossbow's `minecraft:charged_projectiles`
 /// component being non-empty (decoded into the held stack's component patch). Resolved through the item
 /// registry; `false` without it or for any non-crossbow / empty / un-charged hand.
-fn entity_main_hand_holds_charged_crossbow(
+fn entity_hand_holds_charged_crossbow(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
+    off_hand: bool,
 ) -> bool {
     let Some(item_runtime) = item_runtime else {
         return false;
     };
-    let Some(stack) = world.held_item(entity_id, false) else {
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
         return false;
     };
     let Some(item_id) = stack.item_id else {
@@ -635,6 +637,17 @@ fn entity_main_hand_holds_melee_weapon(world: &WorldStore, entity_id: i32) -> bo
 fn entity_main_hand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
     world
         .held_item(entity_id, false)
+        .and_then(|stack| stack.item_id)
+        .is_some()
+}
+
+/// Whether the entity's OFF hand holds any item at all. Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)`
+/// likewise falls back to the `ITEM` arm pose for a non-empty off hand that is not a charged crossbow /
+/// item-in-use; this is the "is the off hand non-empty" half of that fallback. Resolved from the held-item
+/// summary only (no item registry needed); `false` for an empty off hand.
+fn entity_offhand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
+    world
+        .held_item(entity_id, true)
         .and_then(|stack| stack.item_id)
         .is_some()
 }
@@ -741,7 +754,7 @@ fn entity_model_instance(
     // `WHACK`. Only `PlayerModel` consumes the shared attack helper (the skeleton/zombie/illager melee
     // models use their own arm poses), so resolve the spear just for the player kind.
     let main_hand_swing_is_stab = matches!(kind, EntityModelKind::Player { .. })
-        && entity_main_hand_holds_spear(world, item_runtime, source.entity_id);
+        && entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
     // Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`: while a player is using a spyglass
     // (`isUsingItem` + the using hand holds a spyglass), the holding arm raises it to the eye. Only
     // `PlayerModel` consumes the use-item poses, so resolve the using-hand item just for the player kind.
@@ -784,8 +797,22 @@ fn entity_model_instance(
     let player_main_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
         && !source.is_using_item
         && entity_main_hand_non_empty(world, source.entity_id)
-        && !entity_main_hand_holds_spear(world, item_runtime, source.entity_id)
-        && !entity_main_hand_holds_charged_crossbow(world, item_runtime, source.entity_id);
+        && !entity_hand_holds_spear(world, item_runtime, source.entity_id, false)
+        && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
+    // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM` arm pose, posed onto the OFF (left)
+    // arm by `HumanoidModel.poseLeftArm`: a player holding a plain off-hand item (shield/totem/block/food)
+    // lowers and halves that arm just like the main hand. Gated to the player kind and a non-empty off hand,
+    // suppressed only when the player is using the OFF hand specifically (`is_using_item && use_item_off_hand`,
+    // which routes to the off-hand use poses — spyglass/horn/brush; using the MAIN hand leaves the off hand on
+    // its `ITEM` fallback). Excludes off-hand spears (-> `SPEAR`) and charged crossbows (-> `CROSSBOW_HOLD`).
+    // The `isTwoHanded`-main-hand override (which forces a non-empty off hand to `ITEM` even over those two)
+    // stays deferred — it only diverges for an off-hand spear / charged crossbow while the main hand draws a
+    // two-handed item, and bbb renders neither off-hand pose yet.
+    let player_off_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
+        && !(source.is_using_item && source.use_item_off_hand)
+        && entity_offhand_non_empty(world, source.entity_id)
+        && !entity_hand_holds_spear(world, item_runtime, source.entity_id, true)
+        && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, true);
     // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
     let main_hand_holds_crossbow =
         matches!(
@@ -830,7 +857,7 @@ fn entity_model_instance(
                 family: PiglinModelFamily::Piglin,
                 ..
             }
-        ) && entity_main_hand_holds_charged_crossbow(world, item_runtime, source.entity_id)
+        ) && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false)
             && !piglin_is_charging_crossbow(source.entity_type_id, &source.data_values)
             && !piglin_is_dancing(source.entity_type_id, &source.data_values)
             && !piglin_admiring;
@@ -950,6 +977,7 @@ fn entity_model_instance(
         .with_player_tooting_horn(player_tooting_horn)
         .with_player_brushing(player_brushing)
         .with_player_main_hand_item_pose(player_main_hand_item_pose)
+        .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_drowned_throw_trident(drowned_throw_trident)
@@ -4236,6 +4264,96 @@ mod tests {
         ));
         assert!(world.apply_set_equipment(plain_main_hand(263)));
         assert!(!posing(&world, 263));
+    }
+
+    #[test]
+    fn entity_model_instances_project_player_off_hand_item_pose() {
+        // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM`: a player holding a plain off-hand
+        // item lowers/halves the OFF arm. Gated to the player kind + a non-empty off hand, suppressed only
+        // when USING the off hand (its use poses win); using the MAIN hand leaves the off hand on `ITEM`.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+        const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
+        const PLAIN_ITEM_ID: i32 = 720;
+
+        let plain_off_hand = |entity_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::OffHand,
+                item: ItemStackSummary {
+                    item_id: Some(PLAIN_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let posing = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .player_off_hand_item_pose
+        };
+
+        let mut world = WorldStore::new();
+        // A player holding a plain off-hand item reaches the off-hand ITEM fallback pose.
+        world.apply_add_entity(protocol_add_entity(
+            270,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, 12.0],
+        ));
+        assert!(world.apply_set_equipment(plain_off_hand(270)));
+        assert!(posing(&world, 270));
+
+        // An empty off hand has no item to pose.
+        world.apply_add_entity(protocol_add_entity(
+            271,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [2.0, 64.0, 12.0],
+        ));
+        assert!(!posing(&world, 271));
+
+        // USING the off-hand item routes through the off-hand use poses, not the ITEM fallback.
+        world.apply_add_entity(protocol_add_entity(
+            272,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [3.0, 64.0, 12.0],
+        ));
+        assert!(world.apply_set_equipment(plain_off_hand(272)));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 272,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND
+            )],
+        }));
+        assert!(!posing(&world, 272));
+
+        // USING the MAIN hand leaves the off hand on its ITEM fallback (the off hand is not the using hand).
+        world.apply_add_entity(protocol_add_entity(
+            273,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [4.0, 64.0, 12.0],
+        ));
+        assert!(world.apply_set_equipment(plain_off_hand(273)));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 273,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING
+            )],
+        }));
+        assert!(posing(&world, 273));
+
+        // A non-player mob never returns ITEM for the off hand either.
+        world.apply_add_entity(protocol_add_entity(
+            274,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [5.0, 64.0, 12.0],
+        ));
+        assert!(world.apply_set_equipment(plain_off_hand(274)));
+        assert!(!posing(&world, 274));
     }
 
     #[test]

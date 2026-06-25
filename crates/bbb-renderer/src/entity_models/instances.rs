@@ -302,6 +302,12 @@ entity_render_state! {
     /// plain item in the main hand — only `PlayerModel` consumes it, and only when not using an item and the
     /// item is not a spear (`SPEAR`) or charged crossbow (`CROSSBOW_HOLD`).
     (with_player_main_hand_item_pose) player_main_hand_item_pose: bool = false;
+    /// Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM` arm pose
+    /// (`HumanoidModel.poseLeftArm` ITEM case): a player holding a plain off-hand item lowers and halves the
+    /// OFF (left) arm (`xRot = arm.xRot · 0.5 − π/10`, `yRot = 0`). `false` for every entity not holding a
+    /// plain item in the off hand — only `PlayerModel` consumes it, and only when not using that hand and the
+    /// item is not a spear (`SPEAR`) or charged crossbow (`CROSSBOW_HOLD`).
+    (with_player_off_hand_item_pose) player_off_hand_item_pose: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -1833,6 +1839,7 @@ mod tests {
                 player_tooting_horn: false,
                 player_brushing: false,
                 player_main_hand_item_pose: false,
+                player_off_hand_item_pose: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,
