@@ -13,7 +13,8 @@ use super::colored::{
 };
 use super::model::EntityModel;
 use super::model_layers::{
-    IllagerModel, PiglinModel, PlayerModel, SkeletonModel, ZombieModel, ZombieVariantModel,
+    ArmorStandModel, IllagerModel, PiglinModel, PlayerModel, SkeletonModel, ZombieModel,
+    ZombieVariantModel,
 };
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
@@ -129,6 +130,25 @@ fn humanoid_arm_world_transform(
                 false,
             ))
         }
+        // A full-size armor stand holds items on its posed arm bone (vanilla `ArmorStandRenderer`'s
+        // `ItemInHandLayer`); `useBabyOffset` is false for ARMOR_STAND, so it always takes the adult
+        // offset. The small armor stand is deferred: vanilla scales its arm part by the `BABY_TRANSFORMER`
+        // (0.5), which the held item offset rides, but this crate bakes that scale into the small mesh's
+        // vertices (no part scale), so the held item would not pick it up.
+        EntityModelKind::ArmorStand {
+            small: false,
+            show_arms,
+            show_base_plate,
+            pose,
+        } => {
+            let mut model = ArmorStandModel::new(false, show_arms, show_base_plate, pose);
+            model.prepare(instance);
+            Some((
+                entity_model_root_transform(*instance)
+                    * model.root().try_child_attach_transform(arm_name)?,
+                false,
+            ))
+        }
         _ => None,
     }
 }
@@ -202,6 +222,29 @@ mod tests {
             baby_hand.x.abs() < adult_hand.x.abs(),
             "baby hand {baby_hand:?} more inward than adult {adult_hand:?}"
         );
+    }
+
+    #[test]
+    fn full_size_armor_stand_holds_an_item_but_small_one_is_deferred() {
+        use crate::entity_models::DEFAULT_ARMOR_STAND_MODEL_POSE;
+        let stand = |small| {
+            EntityModelInstance::new(
+                7,
+                EntityModelKind::ArmorStand {
+                    small,
+                    show_arms: true,
+                    show_base_plate: true,
+                    pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            )
+        };
+        // A full-size armor stand attaches a held item to its posed arm bone (adult offset).
+        let attach = humanoid_hand_attach_transform(&stand(false), false).unwrap();
+        assert!(attach.transform_point3(Vec3::ZERO).is_finite());
+        // The small armor stand is deferred (its `BABY_TRANSFORMER` part scale is baked into vertices).
+        assert!(humanoid_hand_attach_transform(&stand(true), false).is_none());
     }
 
     #[test]

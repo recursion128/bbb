@@ -929,13 +929,23 @@ When an agent does any of the following, update this file in the same slice:
         (`getZsize()`), so a custom transform or a non-full-height sprite seats and
         clusters exactly as vanilla (replacing the old hardcoded
         block=0 / flat=0.1875 lift, which the new path reproduces for defaults).
+      - armor-stand held items DONE (full size): a full-size armor stand renders
+        its hand items as 3D models on its posed arm bone (vanilla
+        `ArmorStandRenderer`'s `ItemInHandLayer`; `useBabyOffset` is false for
+        ARMOR_STAND, so it always takes the adult `(1, 2, -10)/16` offset). The
+        held-item dispatch builds the posed `ArmorStandModel` and reads its
+        `right_arm` / `left_arm`; the world already exposes armor-stand hand
+        equipment (`EntityEquipment`, no living-entity gate). The small armor stand
+        is deferred: vanilla scales its arm part by `BABY_TRANSFORMER` (0.5) and the
+        held item rides that scale, but this crate bakes that scale into the small
+        mesh's vertices (no part scale), so the held item would not pick it up.
       - remaining slices: held-item refinements (first-person viewmodel;
         family-specific combat arm poses — bow-aim / crossbow / spear — deferred
-        entity-side state); armor-stand held items (uses the scale-based
-        `BABY_TRANSFORMER`, so it needs the part-scale path baby mobs avoid). Item
-        lighting context (GUI front-lit vs world diffuse) is an open point — the
-        baked `shade` currently uses the terrain cardinal `Direction.getShade` for
-        both block- and generated-items.
+        entity-side state); the small armor stand's held items (needs the part-scale
+        path the small mesh's baked-in `BABY_TRANSFORMER` skips). Item lighting
+        context (GUI front-lit vs world diffuse) is an open point — the baked
+        `shade` currently uses the terrain cardinal `Direction.getShade` for both
+        block- and generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried
