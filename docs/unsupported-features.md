@@ -946,12 +946,15 @@ When an agent does any of the following, update this file in the same slice:
         `EntityEquipment` via `NativeItemRuntime` to set `main_hand_holds_bow`
         (gated to the skeleton kinds), pairing with the already-projected
         `is_aggressive`; `SkeletonModel`/`SkeletonClothingModel.setupAnim` apply it
-        after the walk swing. See the skeleton entry below.
+        after the walk swing. See the skeleton entry below. The held bow *mesh*
+        comes for free: the held-item attach reads the same posed model, so the
+        bow in the right hand rises to the horizontal aim with the arm (no extra
+        wiring).
       - remaining slices: held-item refinements (first-person viewmodel; the
         remaining combat arm poses — crossbow / spear / the `SkeletonModel` melee
-        swing, which needs the projected `attackTime`); the held bow mesh in the
-        aimed hand; the small armor stand's held items (needs the part-scale
-        path the small mesh's baked-in `BABY_TRANSFORMER` skips). Item lighting
+        swing, which needs the projected `attackTime`); the small armor stand's
+        held items (needs the part-scale path the small mesh's baked-in
+        `BABY_TRANSFORMER` skips). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
         `shade` currently uses the terrain cardinal `Direction.getShade` for both
         block- and generated-items.
@@ -1400,9 +1403,10 @@ When an agent does any of the following, update this file in the same slice:
       getMainHandItem().is(Items.BOW)` (the off arm splayed `0.4` outward),
       driven by the projected `is_aggressive` + `main_hand_holds_bow` render
       state and applied to the base body and the Stray/Bogged clothing overlay
-      alike; skeleton-family armor, the held bow item mesh in the aimed hand,
-      the `SkeletonModel` melee arm swing (`isAggressive && !isHoldingBow`,
-      needs the projected `attackTime`), and lighting remain unsupported
+      alike (the held bow mesh tracks the aimed hand through the shared posed
+      model); skeleton-family armor, the `SkeletonModel` melee arm swing
+      (`isAggressive && !isHoldingBow`, needs the projected `attackTime`), and
+      lighting remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,

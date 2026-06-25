@@ -189,6 +189,37 @@ mod tests {
     }
 
     #[test]
+    fn skeleton_held_item_follows_the_drawn_bow_aim() {
+        // The held-item attach reads the SAME posed model as the body, so a skeleton drawing its bow
+        // (`is_aggressive && main_hand_holds_bow`) raises the right hand from hanging at rest to the
+        // horizontal `BOW_AND_ARROW` aim — the bow mesh tracks the aimed arm, no extra wiring.
+        let skeleton =
+            EntityModelInstance::new(8, EntityModelKind::Skeleton, [0.0, 64.0, 0.0], 0.0);
+        let resting = humanoid_hand_attach_transform(&skeleton, false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let aiming = humanoid_hand_attach_transform(
+            &skeleton
+                .with_is_aggressive(true)
+                .with_main_hand_holds_bow(true),
+            false,
+        )
+        .unwrap()
+        .transform_point3(Vec3::ZERO);
+        assert!(aiming.is_finite());
+        // The resting arm hangs down; the aimed arm swings up to horizontal, so the hand rises.
+        assert!(
+            aiming.y > resting.y + 0.2,
+            "aimed hand {aiming:?} rises above the resting hand {resting:?}"
+        );
+        // A skeleton missing either flag keeps the resting hand (the pose is gated on both).
+        let half = humanoid_hand_attach_transform(&skeleton.with_is_aggressive(true), false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        assert_eq!(half, resting);
+    }
+
+    #[test]
     fn baby_humanoid_mobs_attach_lower_and_more_inward_than_adults() {
         // Baby zombies hold items too (vanilla `BabyZombieModel` is an explicit smaller mesh with the
         // baby `ItemInHandLayer` offset). The baby hand sits below and closer to the body center than the
