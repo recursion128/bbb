@@ -847,8 +847,14 @@ When an agent does any of the following, update this file in the same slice:
         drowned / zombie-villager), skeletons (+stray / bogged / wither),
         piglins (+brute / zombified), and illagers — posing each family's own
         model + root transform and reading its `right_arm` / `left_arm` bone
-        (degrading to no item if a family lacks a standard arm). Baby humanoids
-        are deferred (different offsets + baby-scaled pose). The off-hand item
+        (degrading to no item if a family lacks a standard arm). Baby zombies,
+        zombie variants, and piglins hold items too: vanilla bakes their reduced
+        proportions into an explicit baby mesh with no part scale
+        (`BabyZombieModel` / `BabyPiglinModel.createBodyLayer`, vs the scale-based
+        `BABY_TRANSFORMER` only ARMOR_STAND_SMALL uses), so the baby attach reuses
+        the same `root · arm` formula on the baby model and only swaps the
+        `ItemInHandLayer` `useBabyOffset` offsets to `(0, 1, -4.5)/16` (X drops to
+        0, so the left/right split comes only from the arm bone). The off-hand item
         attaches to the left arm and uses the item's `thirdperson_lefthand`
         transform with vanilla's left-hand fix (`display_matrix` negates
         `translation.x`, `rotation.y`, `rotation.z`). Native `held_item_models`
@@ -914,10 +920,11 @@ When an agent does any of the following, update this file in the same slice:
         `collect_hud_block_item_mesh` bakes each at `inventory_slot_item_hud_rect`.
         The cursor-carried item is whatever the container slots hold, so it is
         covered too.
-      - remaining slices: held-item refinements (baby
-        humanoids; first-person viewmodel; family-specific combat arm poses —
-        bow-aim / crossbow / spear — deferred entity-side state); armor-stand held
-        items. The dropped-item `ground` path still uses the default
+      - remaining slices: held-item refinements (first-person viewmodel;
+        family-specific combat arm poses — bow-aim / crossbow / spear — deferred
+        entity-side state); armor-stand held items (uses the scale-based
+        `BABY_TRANSFORMER`, so it needs the part-scale path baby mobs avoid). The
+        dropped-item `ground` path still uses the default
         block/generated GROUND transform + seating lift (custom per-item ground
         transforms not yet applied). Item lighting context (GUI front-lit vs world
         diffuse) is an open point — the baked `shade` currently uses the terrain

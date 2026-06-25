@@ -18,77 +18,94 @@ use super::model_layers::{
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
 /// The model→world transform of the hand attach point for a humanoid's main (`right`) or off (`left`)
-/// hand, or `None` if the instance is not an adult humanoid that holds items the standard way. Composes
-/// the posed arm bone (vanilla `translateToHand` = root + arm `translateAndRotate`) with the
-/// `ItemInHandLayer` hand offset (`rotX(-90°)·rotY(180°)·translate(±1, 2, -10)/16`, the adult offsets).
-/// The caller applies the item's third-person display transform and the `0..=16`→unit model on top.
-/// Baby humanoids (which use different hand offsets and a baby-scaled pose) are deferred.
+/// hand, or `None` if the instance is not a humanoid that holds items the standard way. Composes the
+/// posed arm bone (vanilla `translateToHand` = root + arm `translateAndRotate`) with the
+/// `ItemInHandLayer` hand offset (`rotX(-90°)·rotY(180°)·translate(±offsetX, offsetY, offsetZ)/16`).
+/// Vanilla `useBabyOffset` selects the offsets: adult `(1, 2, -10)`, baby `(0, 1, -4.5)`. The baby
+/// humanoid families (zombie, zombie variants, piglin) bake their reduced proportions straight into an
+/// explicit baby mesh (no part scale), so the baby attach uses the same `root · arm` formula on the baby
+/// model with only the offset swapped. The caller applies the item's third-person display transform and
+/// the `0..=16`→unit model on top.
 pub fn humanoid_hand_attach_transform(
     instance: &EntityModelInstance,
     left_hand: bool,
 ) -> Option<Mat4> {
     let arm_name = if left_hand { "left_arm" } else { "right_arm" };
-    let arm_world = humanoid_arm_world_transform(instance, arm_name)?;
+    let (arm_world, baby) = humanoid_arm_world_transform(instance, arm_name)?;
     let sign = if left_hand { -1.0 } else { 1.0 };
+    // Vanilla `ItemInHandLayer.submitArmWithItem`: `offsetX/Y/Z` are `(1, 2, -10)` adult, `(0, 1, -4.5)`
+    // baby (so baby hands share the X=0 column — the left/right split comes only from the arm bone).
+    let (offset_x, offset_y, offset_z) = if baby {
+        (0.0, 1.0, -4.5)
+    } else {
+        (1.0, 2.0, -10.0)
+    };
     Some(
         arm_world
             * Mat4::from_rotation_x(-FRAC_PI_2)
             * Mat4::from_rotation_y(PI)
-            * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
+            * Mat4::from_translation(Vec3::new(
+                sign * offset_x / 16.0,
+                offset_y / 16.0,
+                offset_z / 16.0,
+            )),
     )
 }
 
-/// The world transform of a named arm bone for the humanoid families that render held items: builds and
-/// poses the same model + root transform the entity scene uses, then reads `root · arm` (vanilla
-/// `translateToHand`). Returns `None` for non-humanoid kinds, baby humanoids, or any model that lacks the
-/// standard arm bone (so the held-item layer degrades to rendering nothing rather than panicking).
-fn humanoid_arm_world_transform(instance: &EntityModelInstance, arm_name: &str) -> Option<Mat4> {
+/// The world transform of a named arm bone plus whether the instance is a baby (so the caller picks the
+/// baby hand offset), for the humanoid families that render held items: builds and poses the same model
+/// + root transform the entity scene uses, then reads `root · arm` (vanilla `translateToHand`). Returns
+/// `None` for non-humanoid kinds or any model that lacks the standard arm bone (so the held-item layer
+/// degrades to rendering nothing rather than panicking).
+fn humanoid_arm_world_transform(
+    instance: &EntityModelInstance,
+    arm_name: &str,
+) -> Option<(Mat4, bool)> {
     match instance.kind {
         EntityModelKind::Player { slim, .. } => {
             let mut model = PlayerModel::new(slim);
             model.prepare(instance);
-            Some(
+            Some((
                 player_model_root_transform(*instance)
                     * model.root().try_child_attach_transform(arm_name)?,
-            )
+                false,
+            ))
         }
-        EntityModelKind::Zombie { baby: false } => {
-            let mut model = ZombieModel::new(false);
+        EntityModelKind::Zombie { baby } => {
+            let mut model = ZombieModel::new(baby);
             model.prepare(instance);
-            Some(
+            Some((
                 entity_model_root_transform(*instance)
                     * model.root().try_child_attach_transform(arm_name)?,
-            )
+                baby,
+            ))
         }
-        EntityModelKind::ZombieVariant {
-            family,
-            baby: false,
-        } => {
-            let mut model = ZombieVariantModel::new(family, false);
+        EntityModelKind::ZombieVariant { family, baby } => {
+            let mut model = ZombieVariantModel::new(family, baby);
             model.prepare(instance);
-            Some(
-                zombie_variant_root_transform(*instance, family, false)
+            Some((
+                zombie_variant_root_transform(*instance, family, baby)
                     * model.root().try_child_attach_transform(arm_name)?,
-            )
+                baby,
+            ))
         }
-        EntityModelKind::Piglin {
-            family,
-            baby: false,
-        } => {
-            let mut model = PiglinModel::new(family, false);
+        EntityModelKind::Piglin { family, baby } => {
+            let mut model = PiglinModel::new(family, baby);
             model.prepare(instance);
-            Some(
+            Some((
                 entity_model_root_transform(*instance)
                     * model.root().try_child_attach_transform(arm_name)?,
-            )
+                baby,
+            ))
         }
         EntityModelKind::Skeleton => {
             let mut model = SkeletonModel::new(None);
             model.prepare(instance);
-            Some(
+            Some((
                 entity_model_root_transform(*instance)
                     * model.root().try_child_attach_transform(arm_name)?,
-            )
+                false,
+            ))
         }
         EntityModelKind::SkeletonVariant { family } => {
             let mut model = SkeletonModel::new(Some(family));
@@ -98,15 +115,19 @@ fn humanoid_arm_world_transform(instance: &EntityModelInstance, arm_name: &str) 
             } else {
                 entity_model_root_transform(*instance)
             };
-            Some(root * model.root().try_child_attach_transform(arm_name)?)
+            Some((
+                root * model.root().try_child_attach_transform(arm_name)?,
+                false,
+            ))
         }
         EntityModelKind::Illager { family } => {
             let mut model = IllagerModel::new(instance, family);
             model.prepare(instance);
-            Some(
+            Some((
                 villager_adult_model_root_transform(*instance)
                     * model.root().try_child_attach_transform(arm_name)?,
-            )
+                false,
+            ))
         }
         _ => None,
     }
@@ -145,14 +166,42 @@ mod tests {
         );
         let attach = humanoid_hand_attach_transform(&zombie, false).unwrap();
         assert!(attach.transform_point3(Vec3::ZERO).is_finite());
-        // Baby humanoids are deferred (different offsets / baby-scaled pose).
-        let baby_zombie = EntityModelInstance::new(
-            4,
+    }
+
+    #[test]
+    fn baby_humanoid_mobs_attach_lower_and_more_inward_than_adults() {
+        // Baby zombies hold items too (vanilla `BabyZombieModel` is an explicit smaller mesh with the
+        // baby `ItemInHandLayer` offset). The baby hand sits below and closer to the body center than the
+        // adult's, since the baby arm bone is smaller and the baby offset drops X to 0.
+        let adult = EntityModelInstance::new(
+            5,
+            EntityModelKind::Zombie { baby: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let baby = EntityModelInstance::new(
+            6,
             EntityModelKind::Zombie { baby: true },
             [0.0, 64.0, 0.0],
             0.0,
         );
-        assert!(humanoid_hand_attach_transform(&baby_zombie, false).is_none());
+        let adult_hand = humanoid_hand_attach_transform(&adult, false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let baby_hand = humanoid_hand_attach_transform(&baby, false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        assert!(baby_hand.is_finite());
+        // Baby is shorter, so its hand is lower than the adult's.
+        assert!(
+            baby_hand.y < adult_hand.y,
+            "baby hand {baby_hand:?} below adult {adult_hand:?}"
+        );
+        // Baby right hand is closer to the X center than the adult's (smaller arm + X=0 offset).
+        assert!(
+            baby_hand.x.abs() < adult_hand.x.abs(),
+            "baby hand {baby_hand:?} more inward than adult {adult_hand:?}"
+        );
     }
 
     #[test]
