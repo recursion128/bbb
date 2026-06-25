@@ -31,12 +31,12 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
     item_frame_rotation, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
-    vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
-    vanilla_living_entity_type, vanilla_pick_bounds_for_entity_data,
-    vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
-    ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-    VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_eye_height_for_entity_data, vanilla_illager_aggressive_arm_pose_family,
+    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
+    vanilla_is_vex, vanilla_is_wither, vanilla_living_entity_type,
+    vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
+    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
+    VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -528,11 +528,13 @@ impl EntityStore {
             && self.ticks_frozen(id).unwrap_or(0) >= VANILLA_TICKS_REQUIRED_TO_FREEZE;
         // Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): the zombie-model family
         // consumes it (their held-out `animateZombieArms` arm drop deepens when aggressive),
-        // and the piglin/brute drive `ATTACKING_WITH_MELEE_WEAPON` (raise + swing a melee
-        // weapon) with it. Every such type is a Mob carrying the flags byte; other entities
-        // have no mob-flags byte (or do not use those arms), so they default to calm.
+        // the piglin/brute drive `ATTACKING_WITH_MELEE_WEAPON` (raise + swing a melee weapon)
+        // with it, and the vindicator (`ATTACKING` axe) / illusioner (`BOW_AND_ARROW` aim)
+        // resolve their arm pose from it. Every such type is a Mob carrying the flags byte;
+        // other entities have no mob-flags byte (or do not use those arms), so they stay calm.
         let is_aggressive = (vanilla_zombie_model_family(identity.entity_type_id)
-            || vanilla_piglin_melee_attack_family(identity.entity_type_id))
+            || vanilla_piglin_melee_attack_family(identity.entity_type_id)
+            || vanilla_illager_aggressive_arm_pose_family(identity.entity_type_id))
             && self
                 .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
                 .unwrap_or(0)

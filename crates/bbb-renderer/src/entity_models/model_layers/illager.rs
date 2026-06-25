@@ -312,9 +312,9 @@ fn illager_is_holding_crossbow(instance: &EntityModelInstance) -> bool {
 
 /// The resolved illager arm pose for a frame, mirroring each family's vanilla `getArmPose()` for the
 /// poses bbb renders. `Crossed` shows the static folded `arms` part; every other pose uses the uncrossed
-/// separate arms. The vindicator melee `ATTACKING` swing (needs `attackTime`) and the pillager
-/// `CROSSBOW_CHARGE` draw (needs `ticksUsingItem`) are deferred, so an aggressive vindicator stays
-/// `Crossed` and a charging pillager keeps the `Swing`/`CrossbowHold` arms.
+/// separate arms. An aggressive vindicator now chops (`Attacking`) and an aggressive illusioner draws its
+/// bow (`BowAndArrow`) — `is_aggressive` is projected for both. The pillager `CROSSBOW_CHARGE` draw (needs
+/// `ticksUsingItem`) is deferred, so a charging pillager keeps the `Swing`/`CrossbowHold` arms.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum IllagerArmPose {
     /// Folded `arms` part — vanilla `CROSSED` (idle evoker/vindicator/illusioner).
@@ -342,8 +342,8 @@ impl IllagerArmPose {
 /// Resolves the illager arm pose from the projected render state, mirroring each family's vanilla
 /// `getArmPose()` for the supported poses. The pillager always uses the uncrossed swing layout (vanilla
 /// returns HOLD/CHARGE/ATTACKING/NEUTRAL, never CROSSED); the spellcasters cast first (priority), else the
-/// evoker celebrates and the illusioner draws its bow when aggressive; the vindicator celebrates when not
-/// aggressive (its `ATTACKING` melee swing is deferred, so an aggressive vindicator stays `Crossed`).
+/// evoker celebrates and the illusioner draws its bow when aggressive; the vindicator chops its axe when
+/// aggressive (`ATTACKING`, priority over `CELEBRATING` per vanilla), else celebrates, else stays `Crossed`.
 fn resolve_illager_arm_pose(
     instance: &EntityModelInstance,
     family: IllagerModelFamily,
@@ -391,9 +391,9 @@ fn resolve_illager_arm_pose(
 /// ([`apply_half_amplitude_leg_swing`]), then applies the resolved arm pose: the pillager swings its
 /// separate arms ([`humanoid_arm_swing_pose`]) and levels a held crossbow ([`apply_illager_crossbow_hold`]);
 /// a casting evoker/illusioner raises the `SPELLCASTING` arms ([`illager_spellcast_arm_pose`]); an
-/// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); a celebrating evoker/vindicator dances
-/// ([`illager_celebrate_arm_pose`]). The vindicator melee `ATTACKING` swing, the pillager
-/// `CROSSBOW_CHARGE` draw, and the riding sit pose defer.
+/// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); an aggressive vindicator chops its axe
+/// ([`apply_humanoid_weapon_swing_down`]); a celebrating evoker/vindicator dances
+/// ([`illager_celebrate_arm_pose`]). The pillager `CROSSBOW_CHARGE` draw and the riding sit pose defer.
 pub(in crate::entity_models) struct IllagerModel {
     root: ModelPart,
     pose: IllagerArmPose,

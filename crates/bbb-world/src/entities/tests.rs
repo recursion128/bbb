@@ -1508,6 +1508,76 @@ fn entity_model_sources_project_aggressive_for_zombie_model_family() {
 }
 
 #[test]
+fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
+    // The aggressive flag also drives the piglin/brute `ATTACKING_WITH_MELEE_WEAPON`, the vindicator
+    // `ATTACKING` axe, and the illusioner `BOW_AND_ARROW` aim — so `is_aggressive` is projected for those
+    // types too. The evoker (no `isAggressive` branch in `getArmPose`) and the pillager (bbb keeps it on
+    // the walk swing) are NOT projected.
+    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+    const MOB_FLAG_AGGRESSIVE: i8 = 4;
+    const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
+    const VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID: i32 = 102;
+    const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
+    const VANILLA_ENTITY_TYPE_EVOKER_ID: i32 = 46;
+    const VANILLA_ENTITY_TYPE_ILLUSIONER_ID: i32 = 68;
+    const VANILLA_ENTITY_TYPE_VINDICATOR_ID: i32 = 140;
+
+    let aggressive = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .is_aggressive
+    };
+
+    let mut store = WorldStore::new();
+    // Types whose rendered arm pose reads `isAggressive` → projected.
+    for (id, type_id) in [
+        (90, VANILLA_ENTITY_TYPE_PIGLIN_ID),
+        (91, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
+        (92, VANILLA_ENTITY_TYPE_VINDICATOR_ID),
+        (93, VANILLA_ENTITY_TYPE_ILLUSIONER_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, type_id));
+        assert!(
+            !aggressive(&store, id),
+            "calm before the flag: type {type_id}"
+        );
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_MOB_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(MOB_FLAG_AGGRESSIVE),
+            }],
+        }));
+        assert!(
+            aggressive(&store, id),
+            "aggressive projects: type {type_id}"
+        );
+    }
+
+    // The evoker (no aggressive arm pose) and the pillager (deferred ATTACKING) stay calm even with the
+    // flag set, so a stray aggressive bit never flips an unused pose.
+    for (id, type_id) in [
+        (94, VANILLA_ENTITY_TYPE_EVOKER_ID),
+        (95, VANILLA_ENTITY_TYPE_PILLAGER_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, type_id));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_MOB_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(MOB_FLAG_AGGRESSIVE),
+            }],
+        }));
+        assert!(!aggressive(&store, id), "gated out: type {type_id}");
+    }
+}
+
+#[test]
 fn entity_model_sources_project_enderman_carrying_and_creepy() {
     const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
     const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;

@@ -40,6 +40,7 @@ const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
 const VANILLA_ENTITY_TYPE_HORSE_ID: i32 = 66;
 const VANILLA_ENTITY_TYPE_HUSK_ID: i32 = 67;
+const VANILLA_ENTITY_TYPE_ILLUSIONER_ID: i32 = 68;
 const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
 const VANILLA_ENTITY_TYPE_LEASH_KNOT_ID: i32 = 76;
@@ -72,6 +73,7 @@ const VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID: i32 = 134;
 const VANILLA_ENTITY_TYPE_TURTLE_ID: i32 = 137;
 const VANILLA_ENTITY_TYPE_VEX_ID: i32 = 138;
 const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
+const VANILLA_ENTITY_TYPE_VINDICATOR_ID: i32 = 140;
 const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
 const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
 const VANILLA_ENTITY_TYPE_WIND_CHARGE_ID: i32 = 143;
@@ -742,6 +744,20 @@ pub(crate) fn vanilla_piglin_melee_attack_family(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
         VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
+    )
+}
+
+/// The illagers whose vanilla `getArmPose` branches on `isAggressive()`, and whose bbb arm pose is
+/// resolved from it: the vindicator (`isAggressive → ATTACKING`, the `swingWeaponDown` axe) and the
+/// illusioner (`!casting && isAggressive → BOW_AND_ARROW`, the bow aim). Both consume the synced `Mob`
+/// aggressive flag, so the `is_aggressive` projection covers them. The evoker never reads `isAggressive`
+/// (its `getArmPose` is `SPELLCASTING > CELEBRATING > CROSSED`); the pillager does in vanilla
+/// (`ATTACKING` when not holding a crossbow) but bbb keeps it on the walk-swing pose, so neither is
+/// projected here — add the pillager when its `ATTACKING` pose is wired.
+pub(crate) fn vanilla_illager_aggressive_arm_pose_family(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
     )
 }
 
