@@ -229,7 +229,10 @@ When an agent does any of the following, update this file in the same slice:
 - Next action:
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
-    - dropped-item icons
+    - dropped-item icons (3D block/item model renderer in progress — see the
+      "3D Block-Model / Item-Model Rendering" evidence bullet below: the
+      renderer-side geometry baking layer now exists; the GPU draw pass and
+      native consumer wiring are the remaining slices)
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the source-verified
       player/player-slim/chicken normal/warm/cold adult and baby/
@@ -787,6 +790,31 @@ When an agent does any of the following, update this file in the same slice:
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
+    - 3D Block-Model / Item-Model Rendering (in progress, renderer geometry
+      layer complete): a renderer-owned baking layer turns parsed block/item
+      models into 3D textured quad meshes sampling the same blocks/items atlas
+      as terrain, for all four item consumers (dropped item entities, held
+      items, item frames/armor-stand, HUD 3D inventory icons). Done so far:
+      - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
+        (`item_models.rs`): corners in vanilla `0..=16` model space normalized
+        to the unit cube under a caller `transform`, atlas-absolute UVs, vertex
+        color `tint × Direction.getShade`.
+      - block-item baker (`terrain/mesh/item_bake.rs`
+        `bake_block_item_quads`): reuses the terrain box/quad geometry, atlas UV
+        mapping, and directional shade to turn a block's `TerrainRenderShape`
+        (`Cube`/`Box`/`Boxes`/`Quads`) into item-model quads with no neighbour
+        culling or AO; `Cross`/`Crosses` bake nothing.
+      - generated-item extrusion (`generated_item.rs`
+        `bake_generated_item_quads`): faithful vanilla `ItemModelGenerator` — a
+        `builtin/generated` `layerN` sprite becomes a `1/16`-thick slab (front
+        `SOUTH` + back `NORTH` over `0..=16`, plus per-pixel side faces tracing
+        the alpha silhouette), corners via `FaceInfo`/`FaceBakery` and UVs via
+        `CuboidFace` `R0`, rendered un-culled.
+      - remaining slices: the GPU item-model draw pass (binds the blocks atlas,
+        applies model/view/proj), the 8 vanilla display transforms, and wiring
+        each of the four consumers. Item lighting context (GUI front-lit vs
+        world diffuse) is an open point — the baked `shade` currently uses the
+        terrain cardinal `Direction.getShade` for both block- and generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried
