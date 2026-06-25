@@ -12,6 +12,8 @@
 
 use glam::{Mat4, Vec3};
 
+use crate::{gpu::DEPTH_FORMAT, Renderer};
+
 /// Vanilla model space is `0..=16`; the unit cube is that divided by 16.
 const MODEL_SPACE_SCALE: f32 = 1.0 / 16.0;
 
@@ -87,6 +89,153 @@ pub fn bake_item_model_mesh(quads: &[ItemModelQuad], transform: Mat4) -> ItemMod
     mesh
 }
 
+/// Concatenates several baked meshes into one vertex + index buffer, rebasing each mesh's indices onto
+/// the running vertex count. The renderer uploads this once per frame and draws it indexed.
+pub(crate) fn merge_item_model_meshes(
+    meshes: &[ItemModelMesh],
+) -> (Vec<ItemModelVertex>, Vec<u32>) {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for mesh in meshes {
+        let base = u32::try_from(vertices.len()).expect("item-model vertex count fits in u32");
+        vertices.extend_from_slice(&mesh.vertices);
+        indices.extend(mesh.indices.iter().map(|index| index + base));
+    }
+    (vertices, indices)
+}
+
+impl Renderer {
+    /// Sets the baked block/item-model meshes to draw this frame. Each mesh is already in world space
+    /// with atlas-absolute UVs and `tint × shade` vertex colors (the caller applies the world / display
+    /// transform at bake time via [`ItemModelMesh::append_quads`]); the renderer concatenates and draws
+    /// them indexed against the shared blocks atlas.
+    pub fn set_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.item_model_meshes = meshes;
+    }
+
+    /// Concatenates this frame's item-model meshes into one vertex + index buffer for upload.
+    pub(crate) fn collect_item_model_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.item_model_meshes)
+    }
+}
+
+const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
+
+fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<ItemModelVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ITEM_MODEL_VERTEX_ATTRIBUTES,
+    }
+}
+
+/// Item-model shader: samples the shared block/item atlas (bound exactly like the terrain pass —
+/// `view_proj` uniform `@0`, atlas texture `@1`, sampler `@2`) and multiplies by the baked vertex color
+/// (the per-face `tint × Direction.getShade`). Alpha cutout: transparent texels are discarded, so the
+/// thin generated-item slab and partial block faces read cleanly against the depth buffer.
+const ITEM_MODEL_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var item_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var item_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) color: vec4<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.color = input.color;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(item_atlas, item_sampler, input.uv) * input.color;
+    if texel.a <= 0.01 {
+        discard;
+    }
+    return texel;
+}
+"#;
+
+/// Builds the item-model render pipeline. Reuses the terrain camera+atlas bind-group layout (so it binds
+/// the resident blocks atlas directly), renders solid (depth-tested and depth-writing, since item models
+/// are real 3D geometry) and un-culled (the generated-item slab's faces are emitted without winding
+/// canonicalization, so both sides must draw).
+pub(crate) fn create_item_model_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-item-model-shader"),
+        source: wgpu::ShaderSource::Wgsl(ITEM_MODEL_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-item-model-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-item-model-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[item_model_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(wgpu::BlendState::REPLACE),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,6 +280,22 @@ mod tests {
         let mesh = bake_item_model_mesh(&[unit_quad(1.0, [1.0, 1.0, 1.0, 1.0])], transform);
         assert_eq!(mesh.vertices[2].position, [11.0, 65.0, -4.0]);
         assert_eq!(mesh.vertices[0].position, [10.0, 64.0, -4.0]);
+    }
+
+    #[test]
+    fn merging_meshes_rebases_indices_onto_the_running_vertex_count() {
+        let mesh = bake_item_model_mesh(&[unit_quad(1.0, [1.0, 1.0, 1.0, 1.0])], Mat4::IDENTITY);
+        let (vertices, indices) = merge_item_model_meshes(&[mesh.clone(), mesh]);
+        assert_eq!(vertices.len(), 8);
+        // The second mesh's indices are shifted past the first mesh's four vertices.
+        assert_eq!(indices, vec![0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+    }
+
+    #[test]
+    fn merging_no_meshes_is_empty() {
+        let (vertices, indices) = merge_item_model_meshes(&[]);
+        assert!(vertices.is_empty());
+        assert!(indices.is_empty());
     }
 
     #[test]
