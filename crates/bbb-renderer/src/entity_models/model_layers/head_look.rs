@@ -491,27 +491,36 @@ pub(in crate::entity_models) fn apply_humanoid_throw_trident_pose(
     arm.pose.rotation[1] = 0.0;
 }
 
-/// Vanilla `HumanoidModel.poseRightArm` `BOW_AND_ARROW` use-item arm pose: while a player draws a main-hand
-/// bow, BOTH arms raise forward along the head look — `rightArm.xRot = leftArm.xRot = −π/2 + head.xRot`,
-/// `rightArm.yRot = −0.1 + head.yRot`, `leftArm.yRot = 0.1 + head.yRot + 0.4`. The pose is two-handed +
-/// `affectsOffhandPose`, so vanilla's `poseRightArm` sets both arms and `poseLeftArm` never runs (the
-/// projection suppresses the off-hand `ITEM` fallback to match). These are SET (not halved/added), so they
-/// overwrite the walk-swing pitch/yaw; the bob roll (`zRot`) is left in place. Only the right-handed
-/// main-hand draw is posed; the mirrored off-hand draw stays deferred. Applied before the crouch block.
+/// Vanilla `HumanoidModel.poseRightArm` / `poseLeftArm` `BOW_AND_ARROW` use-item arm pose: while a player
+/// draws a bow, BOTH arms raise forward along the head look. The main-hand/right-arm branch sets
+/// `rightArm.yRot = -0.1 + head.yRot` and `leftArm.yRot = 0.1 + head.yRot + 0.4`; the off-hand/left-arm
+/// branch mirrors the brace offset (`rightArm.yRot = -0.1 + head.yRot - 0.4`,
+/// `leftArm.yRot = 0.1 + head.yRot`). Both set `xRot = -π/2 + head.xRot` on both arms. These are SET
+/// (not halved/added), so they overwrite the walk-swing pitch/yaw; the bob roll (`zRot`) is left in place.
+/// Applied before the crouch block.
 pub(in crate::entity_models) fn apply_humanoid_bow_pose(
     root: &mut ModelPart,
     head_yaw_degrees: f32,
     head_pitch_degrees: f32,
+    off_hand: bool,
 ) {
     use std::f32::consts::PI;
     let head_yaw = head_yaw_degrees.to_radians();
     let head_pitch = head_pitch_degrees.to_radians();
     let right = root.child_mut("right_arm");
     right.pose.rotation[0] = -PI / 2.0 + head_pitch;
-    right.pose.rotation[1] = -0.1 + head_yaw;
+    right.pose.rotation[1] = if off_hand {
+        -0.1 + head_yaw - 0.4
+    } else {
+        -0.1 + head_yaw
+    };
     let left = root.child_mut("left_arm");
     left.pose.rotation[0] = -PI / 2.0 + head_pitch;
-    left.pose.rotation[1] = 0.1 + head_yaw + 0.4;
+    left.pose.rotation[1] = if off_hand {
+        0.1 + head_yaw
+    } else {
+        0.1 + head_yaw + 0.4
+    };
 }
 
 /// Vanilla `Mth.clamp(Mth.inverseLerp(t, a, b), 0, 1)`: the normalized `0..1` position of `t` in `[a, b]`.
@@ -576,38 +585,51 @@ pub(in crate::entity_models) fn apply_humanoid_weapon_swing_down(
     }
 }
 
-/// Vanilla `AnimationUtils.animateCrossbowHold(rightArm, leftArm, head, holdingInRightArm = true)`: the
-/// right (holding) arm levels the crossbow along the head look (`yRot = -0.3 + head.yRot`,
-/// `xRot = -π/2 + head.xRot + 0.1`) while the left (shooting) arm reaches across to the trigger
-/// (`yRot = 0.6 + head.yRot`, `xRot = -1.5 + head.xRot`). Vanilla sets these absolutely after the walk
-/// swing (which zeroed `zRot`), so the roll is preserved. Shared by every humanoid that levels a crossbow
-/// (pillager, piglin). `head_yaw_degrees` / `head_pitch_degrees` are the net head look (vanilla
-/// `head.yRot` / `head.xRot`).
+/// Vanilla `AnimationUtils.animateCrossbowHold(rightArm, leftArm, head, holdingInRightArm = true)`, the
+/// right-handed branch shared by pillagers, piglins, and main-hand player crossbows.
 pub(in crate::entity_models) fn apply_crossbow_hold_pose(
     root: &mut ModelPart,
     head_yaw_degrees: f32,
     head_pitch_degrees: f32,
 ) {
+    apply_crossbow_hold_pose_for_hand(root, head_yaw_degrees, head_pitch_degrees, false);
+}
+
+/// Vanilla `AnimationUtils.animateCrossbowHold`: the holding arm levels the crossbow along the head look
+/// (`xRot = -π/2 + head.xRot + 0.1`, `yRot = ±0.3 + head.yRot`) while the shooting arm reaches across to the
+/// trigger (`xRot = -1.5 + head.xRot`, `yRot = ∓0.6 + head.yRot`). Vanilla sets these absolutely after the
+/// walk swing (which zeroed `zRot`), so the roll is preserved.
+pub(in crate::entity_models) fn apply_crossbow_hold_pose_for_hand(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+    off_hand: bool,
+) {
     let head_yaw = head_yaw_degrees.to_radians();
     let head_pitch = head_pitch_degrees.to_radians();
-    let right = root.child_mut("right_arm");
-    right.pose.rotation = [
-        -std::f32::consts::FRAC_PI_2 + head_pitch + 0.1,
-        -0.3 + head_yaw,
-        right.pose.rotation[2],
-    ];
-    let left = root.child_mut("left_arm");
-    left.pose.rotation = [-1.5 + head_pitch, 0.6 + head_yaw, left.pose.rotation[2]];
+    if off_hand {
+        let left = root.child_mut("left_arm");
+        left.pose.rotation = [
+            -std::f32::consts::FRAC_PI_2 + head_pitch + 0.1,
+            0.3 + head_yaw,
+            left.pose.rotation[2],
+        ];
+        let right = root.child_mut("right_arm");
+        right.pose.rotation = [-1.5 + head_pitch, -0.6 + head_yaw, right.pose.rotation[2]];
+    } else {
+        let right = root.child_mut("right_arm");
+        right.pose.rotation = [
+            -std::f32::consts::FRAC_PI_2 + head_pitch + 0.1,
+            -0.3 + head_yaw,
+            right.pose.rotation[2],
+        ];
+        let left = root.child_mut("left_arm");
+        left.pose.rotation = [-1.5 + head_pitch, 0.6 + head_yaw, left.pose.rotation[2]];
+    }
 }
 
 /// Vanilla `AnimationUtils.animateCrossbowCharge(rightArm, leftArm, maxChargeDuration, ticksUsingItem,
-/// holdingInRightArm = true)`: the right (holding) arm braces the crossbow (`yRot = -0.8`,
-/// `xRot = -0.97079635`) while the left (pulling) arm draws the string back over the charge — its `xRot`
-/// lerps `-0.97079635 → -π/2` and its `yRot` lerps `0.4 → 0.85` as `ticksUsingItem / maxChargeDuration`
-/// climbs `0 → 1` (clamped). Shared by every humanoid that draws a crossbow (the pillager and the regular
-/// piglin). `max_charge_duration` is the vanilla `CrossbowItem.getChargeDuration` ([`CROSSBOW_CHARGE_DURATION_TICKS`],
-/// 25 ticks without a Quick Charge enchant — the rare enchant is not projected, a minor draw-speed
-/// simplification).
+/// holdingInRightArm = true)`, the right-handed branch shared by pillagers, piglins, and main-hand players.
 pub(in crate::entity_models) const CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
 
 pub(in crate::entity_models) fn apply_crossbow_charge_pose(
@@ -615,16 +637,39 @@ pub(in crate::entity_models) fn apply_crossbow_charge_pose(
     max_charge_duration: f32,
     ticks_using_item: f32,
 ) {
+    apply_crossbow_charge_pose_for_hand(root, max_charge_duration, ticks_using_item, false);
+}
+
+/// Vanilla `AnimationUtils.animateCrossbowCharge`: the holding arm braces the crossbow (`yRot = ∓0.8`,
+/// `xRot = -0.97079635`) while the pulling arm draws the string back over the charge — its `xRot` lerps
+/// `-0.97079635 → -π/2` and its signed `yRot` lerps `±0.4 → ±0.85` as
+/// `ticksUsingItem / maxChargeDuration` climbs `0 → 1` (clamped). `max_charge_duration` is the vanilla
+/// `CrossbowItem.getChargeDuration` ([`CROSSBOW_CHARGE_DURATION_TICKS`], 25 ticks without Quick Charge).
+pub(in crate::entity_models) fn apply_crossbow_charge_pose_for_hand(
+    root: &mut ModelPart,
+    max_charge_duration: f32,
+    ticks_using_item: f32,
+    off_hand: bool,
+) {
     const HOLD_X_ROT: f32 = -0.97079635;
     let lerp_alpha = (ticks_using_item.clamp(0.0, max_charge_duration)) / max_charge_duration;
-    {
+    if off_hand {
+        let left = root.child_mut("left_arm");
+        left.pose.rotation[1] = 0.8;
+        left.pose.rotation[0] = HOLD_X_ROT;
+        let right = root.child_mut("right_arm");
+        right.pose.rotation[1] = -(0.4 + (0.85 - 0.4) * lerp_alpha);
+        right.pose.rotation[0] =
+            HOLD_X_ROT + (-std::f32::consts::FRAC_PI_2 - HOLD_X_ROT) * lerp_alpha;
+    } else {
         let right = root.child_mut("right_arm");
         right.pose.rotation[1] = -0.8;
         right.pose.rotation[0] = HOLD_X_ROT;
+        let left = root.child_mut("left_arm");
+        left.pose.rotation[1] = 0.4 + (0.85 - 0.4) * lerp_alpha;
+        left.pose.rotation[0] =
+            HOLD_X_ROT + (-std::f32::consts::FRAC_PI_2 - HOLD_X_ROT) * lerp_alpha;
     }
-    let left = root.child_mut("left_arm");
-    left.pose.rotation[1] = 0.4 + (0.85 - 0.4) * lerp_alpha;
-    left.pose.rotation[0] = HOLD_X_ROT + (-std::f32::consts::FRAC_PI_2 - HOLD_X_ROT) * lerp_alpha;
 }
 
 /// Vanilla `HumanoidModel.setupAnim` crouch (`isCrouching`) sneaking pose applied to a humanoid model

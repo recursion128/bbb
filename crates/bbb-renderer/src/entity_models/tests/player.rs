@@ -1375,6 +1375,36 @@ fn player_drawing_a_bow_raises_both_arms_along_the_head_look() {
         left.rotation[1]
     );
 
+    // Vanilla `HumanoidModel.poseLeftArm` mirrors the brace offset for off-hand bow draw.
+    let mut off = PlayerModel::new(false);
+    off.prepare(
+        &base
+            .with_player_drawing_bow(true)
+            .with_use_item_off_hand(true),
+    );
+    let right = off.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-PI / 2.0 + pitch)).abs() < 1e-5,
+        "the off-hand bow still raises the right arm to −π/2 + head.xRot: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (-0.1 + yaw - 0.4)).abs() < 1e-5,
+        "the off-hand bow yaws the right arm −0.1 + head.yRot − 0.4: {}",
+        right.rotation[1]
+    );
+    let left = off.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (-PI / 2.0 + pitch)).abs() < 1e-5,
+        "the off-hand bow raises the left arm to −π/2 + head.xRot: {}",
+        left.rotation[0]
+    );
+    assert!(
+        (left.rotation[1] - (0.1 + yaw)).abs() < 1e-5,
+        "the off-hand bow yaws the left arm 0.1 + head.yRot: {}",
+        left.rotation[1]
+    );
+
     // A non-drawing walking player keeps its swinging (much lower) arm pitch — the bow visibly raises both.
     let mut idle = PlayerModel::new(false);
     idle.prepare(&base);
@@ -1422,6 +1452,36 @@ fn player_charging_a_crossbow_braces_and_draws_the_string() {
         left.rotation[0]
     );
 
+    // Vanilla `holdingInRightArm = false` mirrors the brace into the left arm and makes the right arm pull.
+    let mut off = PlayerModel::new(false);
+    off.prepare(
+        &base
+            .with_player_charging_crossbow(true)
+            .with_use_item_off_hand(true),
+    );
+    let left = off.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[1] - 0.8).abs() < 1e-6,
+        "the off-hand crossbow braces the left arm at yRot 0.8: {}",
+        left.rotation[1]
+    );
+    assert!(
+        (left.rotation[0] - HOLD_X).abs() < 1e-6,
+        "the off-hand crossbow braces the left arm at xRot −0.97079635: {}",
+        left.rotation[0]
+    );
+    let right = off.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[1] - (-(0.4 + (0.85 - 0.4) * 0.5))).abs() < 1e-6,
+        "the off-hand crossbow yaws the right arm halfway through the mirrored draw: {}",
+        right.rotation[1]
+    );
+    assert!(
+        (right.rotation[0] - (HOLD_X + (-FRAC_PI_2 - HOLD_X) * 0.5)).abs() < 1e-6,
+        "the off-hand crossbow pitches the right arm halfway through the string pull: {}",
+        right.rotation[0]
+    );
+
     // A non-charging player does not brace — the right arm keeps its (much higher) idle pitch.
     let mut idle = PlayerModel::new(false);
     idle.prepare(&base);
@@ -1466,6 +1526,32 @@ fn player_holding_a_charged_crossbow_levels_it_along_the_head_look() {
         (left.rotation[1] - (0.6 + yaw)).abs() < 1e-6,
         "the left arm yaws 0.6 + head.yRot: {}",
         left.rotation[1]
+    );
+
+    // Vanilla `holdingInRightArm = false` mirrors `CROSSBOW_HOLD` for a charged off-hand crossbow.
+    let mut off = PlayerModel::new(false);
+    off.prepare(&base.with_player_crossbow_hold_off_hand(true));
+    let left = off.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (left.rotation[0] - (-FRAC_PI_2 + pitch + 0.1)).abs() < 1e-6,
+        "the off-hand crossbow levels the left arm at −π/2 + head.xRot + 0.1: {}",
+        left.rotation[0]
+    );
+    assert!(
+        (left.rotation[1] - (0.3 + yaw)).abs() < 1e-6,
+        "the off-hand crossbow yaws the left arm 0.3 + head.yRot: {}",
+        left.rotation[1]
+    );
+    let right = off.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - (-1.5 + pitch)).abs() < 1e-6,
+        "the off-hand crossbow reaches the right arm to −1.5 + head.xRot: {}",
+        right.rotation[0]
+    );
+    assert!(
+        (right.rotation[1] - (-0.6 + yaw)).abs() < 1e-6,
+        "the off-hand crossbow yaws the right arm −0.6 + head.yRot: {}",
+        right.rotation[1]
     );
 }
 

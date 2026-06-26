@@ -816,38 +816,43 @@ When an agent does any of the following, update this file in the same slice:
     `THROW_TRIDENT` case the drowned reaches via aggression): while a player charges a trident throw
     (`isUsingItem` + the using hand holds a trident, `TridentItem.getUseAnimation() == TRIDENT`) the holding
     arm raises the trident straight overhead — `xRot = arm.xRot · 0.5 − π`, `yRot = 0`. The two-handed
-    `BOW_AND_ARROW` draw IS now implemented too (`apply_humanoid_bow_pose`, `HumanoidModel.poseRightArm`
-    `BOW_AND_ARROW`): while a player draws a main-hand bow (`isUsingItem` + the using hand holds a bow,
-    `BowItem.getUseAnimation() == BOW`) BOTH arms raise along the head look — `rightArm.xRot = leftArm.xRot =
-    −π/2 + head.xRot`, `rightArm.yRot = −0.1 + head.yRot`, `leftArm.yRot = 0.1 + head.yRot + 0.4`. Because
-    `BOW_AND_ARROW`/`THROW_TRIDENT`/`CROSSBOW_CHARGE` are `affectsOffhandPose=true`, vanilla's `setupAnim`
-    SKIPS `poseLeftArm` when the main hand draws them, so the projection now suppresses the off-hand `ITEM`
-    fallback during a main-hand bow/trident/crossbow draw (`main_hand_use_affects_offhand`) to match. The
-    two-handed `CROSSBOW_CHARGE` draw IS now implemented too (`apply_crossbow_charge_pose`, the same
+    `BOW_AND_ARROW` draw IS now implemented too (`apply_humanoid_bow_pose`, `HumanoidModel.poseRightArm` /
+    `poseLeftArm` `BOW_AND_ARROW`): while a player draws a bow (`isUsingItem` + the using hand holds a bow,
+    `BowItem.getUseAnimation() == BOW`) BOTH arms raise along the head look — both arms pitch to
+    `−π/2 + head.xRot`; the main-hand branch yaws right/left to `−0.1 + head.yRot` /
+    `0.1 + head.yRot + 0.4`, while the off-hand branch mirrors the brace offset to
+    `−0.1 + head.yRot − 0.4` / `0.1 + head.yRot`. Because `BOW_AND_ARROW`/`THROW_TRIDENT`/
+    `CROSSBOW_CHARGE` are `affectsOffhandPose=true`, vanilla's `setupAnim` skips the opposite arm's
+    `poseArm` when either hand draws them, so the projection now suppresses the opposite hand's `ITEM`
+    fallback symmetrically (`main_hand_use_affects_offhand` / `off_hand_use_affects_offhand`). The two-handed
+    `CROSSBOW_CHARGE` draw IS now implemented too (`apply_crossbow_charge_pose_for_hand`, the same
     `AnimationUtils.animateCrossbowCharge` the pillager/piglin use): while a player draws an uncharged
-    main-hand crossbow (`isUsingItem` + main hand holds a crossbow, `CrossbowItem.getUseAnimation() ==
-    CROSSBOW`, excluding an already-charged one — that is `CROSSBOW_HOLD`, deferred for the player) the right
-    arm braces and the left pulls the string back over `crossbow_charge_ticks / 25`. The draw counter is the
+    crossbow (`isUsingItem` + the using hand holds a crossbow, `CrossbowItem.getUseAnimation() == CROSSBOW`,
+    excluding an already-charged one — that is `CROSSBOW_HOLD`) the holding arm braces and the opposite arm
+    pulls the string back over `crossbow_charge_ticks / 25`; the off-hand branch uses vanilla's
+    `holdingInRightArm=false` mirror. The draw counter is the
     shared `getTicksUsingItem` reconstruction, now advanced for the player off its `isUsingItem` bit in the
     world tick loop (`getTicksUsingItem` is item-agnostic, so the same counter serves; the native layer gates
     the pose to the crossbow). The `CROSSBOW_HOLD` pose IS now implemented for the player too
-    (`apply_crossbow_hold_pose`, the same `AnimationUtils.animateCrossbowHold` the pillager levels): a player
-    holding a CHARGED main-hand crossbow while not mid-swing (`AvatarRenderer.getArmPose`: `!swinging &&
-    crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look,
-    setting both arms. The `swinging` boolean is now projected (`LivingEntity.swinging`, off the attack-swing
-    state) so the swing wins as in vanilla, and the pose runs after the ITEM blocks so it overwrites the
-    off-hand `ITEM` exactly as vanilla's `poseRightArm`-runs-last does for this case. The `EAT`/`DRINK`
+    (`apply_crossbow_hold_pose` / `apply_crossbow_hold_pose_for_hand`, the same
+    `AnimationUtils.animateCrossbowHold` the pillager levels): a player holding a CHARGED main-hand or
+    off-hand crossbow while not mid-swing (`AvatarRenderer.getArmPose`: `!swinging && crossbow && isCharged`,
+    checked before the use-item branch) levels the crossbow along the head look, setting both arms with the
+    mirrored `holdingInRightArm` branch. The `swinging` boolean is now projected (`LivingEntity.swinging`, off
+    the attack-swing state) so the swing wins as in vanilla, and the main-hand pose runs after the ITEM blocks
+    so it overwrites the off-hand `ITEM` exactly as vanilla's `poseRightArm`-runs-last does for that case. The
+    off-hand hold is suppressed when the main hand already has an affecting pose (`BOW_AND_ARROW`,
+    `THROW_TRIDENT`, `CROSSBOW_CHARGE`/`HOLD`, or `SPEAR`), matching `poseLeftArm` being skipped. The
+    `EAT`/`DRINK`
     (and any using-non-special) route to `ITEM` IS now handled too: the `ITEM` gate no longer keys off
     `!isUsingItem` but off "this hand is NOT using a special-pose item" (`main_hand_use_is_special` /
     `off_hand_use_is_special` over the bow/crossbow/trident/shield/spyglass/horn/brush set), so a player
     eating food, drinking a potion, or using any plain item correctly shows the lowered `ITEM` arm. The
     `affectsOffhandPose` skip is now symmetric (`main_hand_use_affects_offhand` /
     `off_hand_use_affects_offhand`), so an `affectsOffhandPose` draw in either hand suppresses the OPPOSITE
-    hand's `ITEM`. The remaining
-    use-item arm poses on the same dispatch (the
-    mirrored off-hand bow/trident/crossbow draw + off-hand `CROSSBOW_HOLD`, a non-shield
-    datapack `BLOCKS_ATTACKS` item, and the off-arm `EMPTY` reset — a near-no-op since at rest the off arm's
-    `yRot` is already `0`) stay deferred. (The `getArmPose` `isTwoHanded`-forces-off-hand-to-`ITEM` branch
+    hand's `ITEM`. The remaining use-item arm poses on the same dispatch (a non-shield datapack
+    `BLOCKS_ATTACKS` item and the off-arm `EMPTY` reset — a near-no-op since at rest the off arm's `yRot` is
+    already `0`) stay deferred. (The `getArmPose` `isTwoHanded`-forces-off-hand-to-`ITEM` branch
     needs no implementation: every `isTwoHanded` pose is also `affectsOffhandPose`, so `setupAnim` always
     SKIPS the forced arm's `poseArm` and the forced value is never rendered.) The
     per-subclass arm/ear/nose poses that override it are tracked separately (the zombie held-out

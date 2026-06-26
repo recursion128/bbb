@@ -381,28 +381,31 @@ entity_render_state! {
     /// [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not charging a trident —
     /// only `PlayerModel` consumes it (the drowned reaches the same pose via its own aggression path).
     (with_player_throwing_trident) player_throwing_trident: bool = false;
-    /// Vanilla `HumanoidModel.poseRightArm` use-item arm pose `BOW_AND_ARROW`: while a player draws a
-    /// main-hand bow, BOTH arms raise along the head look — `rightArm.xRot = leftArm.xRot = −π/2 + head.xRot`,
-    /// `rightArm.yRot = −0.1 + head.yRot`, `leftArm.yRot = 0.1 + head.yRot + 0.4`. The pose is two-handed +
-    /// `affectsOffhandPose`, so `poseRightArm` sets both arms and `poseLeftArm` is skipped (the off-hand `ITEM`
-    /// fallback is suppressed in the projection). `false` for every entity not drawing a bow — only
-    /// `PlayerModel` consumes it; the off-hand bow draw stays deferred.
+    /// Vanilla `HumanoidModel.poseRightArm` / `poseLeftArm` use-item arm pose `BOW_AND_ARROW`: while a player
+    /// draws a bow, BOTH arms raise along the head look. The brace yaw offset mirrors when
+    /// [`use_item_off_hand`](Self::use_item_off_hand) is true. The pose has `affectsOffhandPose`, so the
+    /// opposite arm's fallback `ITEM` branch is suppressed in the projection. `false` for every entity not
+    /// drawing a bow — only `PlayerModel` consumes it.
     (with_player_drawing_bow) player_drawing_bow: bool = false;
-    /// Vanilla `HumanoidModel.poseRightArm` use-item arm pose `CROSSBOW_CHARGE` (`AnimationUtils
-    /// .animateCrossbowCharge`): while a player draws an uncharged main-hand crossbow, the right arm braces
-    /// the crossbow and the left arm pulls the string back over the draw, lerping by
-    /// [`crossbow_charge_ticks`](Self::crossbow_charge_ticks) `/ 25`. Reuses the same pose helper as the
-    /// pillager/piglin. `false` for every entity not drawing a crossbow — only `PlayerModel` consumes it on
-    /// this flag (the pillager/piglin route through their own `is_charging_crossbow`); the off-hand draw
-    /// stays deferred.
+    /// Vanilla `HumanoidModel.poseRightArm` / `poseLeftArm` use-item arm pose `CROSSBOW_CHARGE`
+    /// (`AnimationUtils.animateCrossbowCharge`): while a player draws an uncharged crossbow, the holding arm
+    /// braces and the opposite arm pulls the string back over the draw, lerping by
+    /// [`crossbow_charge_ticks`](Self::crossbow_charge_ticks) `/ 25`. The holding arm is selected by
+    /// [`use_item_off_hand`](Self::use_item_off_hand). `false` for every entity not drawing a crossbow — only
+    /// `PlayerModel` consumes it on this flag (the pillager/piglin route through their own
+    /// `is_charging_crossbow`).
     (with_player_charging_crossbow) player_charging_crossbow: bool = false;
     /// Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`): a player
     /// holding a charged main-hand crossbow while not mid-swing levels the crossbow along the head look (the
     /// right arm braces it, the left reaches the trigger). Reuses the same pose helper as the pillager.
     /// `false` for every entity not holding a charged crossbow — only `PlayerModel` consumes it on this flag
-    /// (the pillager routes through its own `is_charging_crossbow` `false` path); the off-hand hold stays
-    /// deferred.
+    /// (the pillager routes through its own `is_charging_crossbow` `false` path).
     (with_player_crossbow_hold) player_crossbow_hold: bool = false;
+    /// Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` `CROSSBOW_HOLD`: a player holding a charged off-hand
+    /// crossbow while not mid-swing levels the mirrored crossbow pose (`holdingInRightArm = false`) unless a
+    /// main-hand two-handed/affecting pose suppresses `poseLeftArm`. `false` for every entity not holding a
+    /// charged off-hand crossbow — only `PlayerModel` consumes it.
+    (with_player_crossbow_hold_off_hand) player_crossbow_hold_off_hand: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -2210,6 +2213,7 @@ mod tests {
                 player_drawing_bow: false,
                 player_charging_crossbow: false,
                 player_crossbow_hold: false,
+                player_crossbow_hold_off_hand: false,
                 use_item_off_hand: false,
                 main_hand_holds_crossbow: false,
                 drowned_throw_trident: false,

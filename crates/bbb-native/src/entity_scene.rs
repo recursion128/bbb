@@ -1000,33 +1000,46 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         );
-    // Vanilla `HumanoidModel.poseRightArm` `BOW_AND_ARROW` use-item arm pose: while a player draws a bow
-    // (`isUsingItem` + the using hand holds a bow, `BowItem.getUseAnimation() == BOW`), BOTH arms raise along
-    // the head look. The pose is two-handed and `affectsOffhandPose`, so `poseRightArm` sets both arms and the
-    // opposite arm's pose is skipped. Gated to a MAIN-hand draw (right-handed player); the off-hand bow draw
-    // (the mirrored `poseLeftArm` `BOW_AND_ARROW`) stays deferred.
+    // Vanilla `HumanoidModel.poseRightArm` / `poseLeftArm` `BOW_AND_ARROW` use-item arm pose: while a player
+    // draws a bow (`isUsingItem` + the using hand holds a bow, `BowItem.getUseAnimation() == BOW`), BOTH arms
+    // raise along the head look. The pose is two-handed and `affectsOffhandPose`, so `poseRightArm` sets both
+    // arms and the opposite arm's pose is skipped. The renderer mirrors the brace yaw when the using hand is
+    // off hand.
     let player_drawing_bow = matches!(kind, EntityModelKind::Player { .. })
         && source.is_using_item
-        && !source.use_item_off_hand
-        && entity_hand_holds_bow(world, item_runtime, source.entity_id, false);
-    // Vanilla `HumanoidModel.poseRightArm` `CROSSBOW_CHARGE` use-item arm pose (`AnimationUtils
-    // .animateCrossbowCharge`, the same one the pillager/piglin use): while a player draws an UNCHARGED
-    // main-hand crossbow (`isUsingItem` + main hand holds a crossbow, `CrossbowItem.getUseAnimation() ==
-    // CROSSBOW`), the holding arm braces and the off arm pulls the string back over the draw ticks
+        && entity_hand_holds_bow(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        );
+    // Vanilla `HumanoidModel.poseRightArm` / `poseLeftArm` `CROSSBOW_CHARGE` use-item arm pose
+    // (`AnimationUtils.animateCrossbowCharge`, the same one the pillager/piglin use): while a player draws an
+    // UNCHARGED crossbow (`isUsingItem` + the using hand holds a crossbow,
+    // `CrossbowItem.getUseAnimation() == CROSSBOW`), the holding arm braces and the opposite arm pulls the
+    // string back over the draw ticks
     // (`crossbow_charge_ticks`, the shared `getTicksUsingItem` counter advanced off `isUsingItem` in the
-    // world tick loop). A CHARGED crossbow is excluded (`getArmPose` returns `CROSSBOW_HOLD` first, deferred
-    // for the player). Gated to a MAIN-hand draw (the pose is right-handed); the off-hand draw stays deferred.
+    // world tick loop). A CHARGED crossbow is excluded (`getArmPose` returns `CROSSBOW_HOLD` first).
     let player_charging_crossbow = matches!(kind, EntityModelKind::Player { .. })
         && source.is_using_item
-        && !source.use_item_off_hand
-        && entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false)
-        && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
+        && entity_hand_holds_crossbow(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        )
+        && !entity_hand_holds_charged_crossbow(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        );
     // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, the same one
     // the pillager levels): a player holding a CHARGED main-hand crossbow while not mid-swing (`!swinging &&
     // crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look.
-    // Gated to the player kind, the main hand (the pose is right-handed; the off-hand hold stays deferred),
-    // and `!is_swinging` (the swing wins). Applied after the ITEM blocks in the model so it overwrites both
-    // arms exactly as vanilla's `poseRightArm` runs last for this case.
+    // Gated to the player kind, the main hand, and `!is_swinging` (the swing wins). Applied after the ITEM
+    // blocks in the model so it overwrites both arms exactly as vanilla's `poseRightArm` runs last for this
+    // case.
     let player_crossbow_hold = matches!(kind, EntityModelKind::Player { .. })
         && !source.is_swinging
         && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
@@ -1046,6 +1059,15 @@ fn entity_model_instance(
         && (entity_hand_holds_bow(world, item_runtime, source.entity_id, true)
             || entity_hand_holds_trident(world, item_runtime, source.entity_id, true)
             || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, true));
+    // Vanilla's off-hand `CROSSBOW_HOLD` (`poseLeftArm`) is skipped when the main hand already has an
+    // affecting pose (`BOW_AND_ARROW`, `THROW_TRIDENT`, `CROSSBOW_CHARGE`/`HOLD`, or `SPEAR`). Otherwise a
+    // charged off-hand crossbow levels the mirrored hold pose after the main hand's non-affecting pose.
+    let player_crossbow_hold_off_hand = matches!(kind, EntityModelKind::Player { .. })
+        && !source.is_swinging
+        && !main_hand_use_affects_offhand
+        && !entity_hand_holds_spear(world, item_runtime, source.entity_id, false)
+        && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false)
+        && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, true);
     // Whether a hand is the using hand holding a SPECIAL-pose item (so it gets its dedicated pose, NOT the
     // `ITEM` fallback). Any OTHER used item (food/potion -> `EAT`/`DRINK`, or a plain tool) falls through to
     // `ITEM`, so a player eating/drinking still shows the lowered `ITEM` arm.
@@ -1298,6 +1320,7 @@ fn entity_model_instance(
         .with_player_drawing_bow(player_drawing_bow)
         .with_player_charging_crossbow(player_charging_crossbow)
         .with_player_crossbow_hold(player_crossbow_hold)
+        .with_player_crossbow_hold_off_hand(player_crossbow_hold_off_hand)
         .with_player_main_hand_item_pose(player_main_hand_item_pose)
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_player_cape_texture(player_cape_texture)
@@ -5773,22 +5796,135 @@ mod tests {
 
     #[test]
     fn entity_model_instances_crossbow_hold_pose_needs_a_resolved_charged_crossbow() {
-        // The CROSSBOW_HOLD pose needs the main-hand item resolved through the item registry to confirm a
-        // CHARGED crossbow; without an item runtime it can never resolve, so the projection defaults off even
-        // for a (non-swinging) player.
+        // The CROSSBOW_HOLD pose needs the held item resolved through the item registry to confirm a CHARGED
+        // crossbow; without an item runtime neither the main-hand nor off-hand projection can resolve, so
+        // both default off even for a (non-swinging) player.
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
             257,
             VANILLA_ENTITY_TYPE_PLAYER_ID,
             [8.0, 64.0, -10.0],
         ));
-        let holding = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+        let render_state = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
             .into_iter()
             .find(|instance| instance.entity_id == 257)
             .unwrap()
-            .render_state
-            .player_crossbow_hold;
-        assert!(!holding);
+            .render_state;
+        assert!(!render_state.player_crossbow_hold);
+        assert!(!render_state.player_crossbow_hold_off_hand);
+    }
+
+    #[test]
+    fn entity_model_instances_project_off_hand_bow_and_crossbow_player_poses() {
+        // Vanilla `AvatarRenderer.getArmPose` selects the BOW/CROSSBOW use pose from the used hand, and
+        // `CROSSBOW_HOLD` before the use-item branch from either hand. The renderer owns the exact arm math;
+        // this test proves native projects the correct using-hand/off-hand booleans from resolved items.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+        const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
+        const BOW_ID: i32 = 0;
+        const CROSSBOW_ID: i32 = 1;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": [
+                "minecraft:bow",
+                "minecraft:crossbow"
+            ],
+            "protocol_ids": {
+                "minecraft:bow": BOW_ID,
+                "minecraft:crossbow": CROSSBOW_ID
+            }
+        }))
+        .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            bbb_pack::EquipmentAssetCatalog::default(),
+        );
+        let equip =
+            |entity_id: i32, slot: EquipmentSlot, item_id: i32, charged: bool| SetEquipment {
+                entity_id,
+                slots: vec![EquipmentSlotUpdate {
+                    slot,
+                    item: ItemStackSummary {
+                        item_id: Some(item_id),
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            charged_projectiles_items: if charged {
+                                vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                                    item_id: BOW_ID,
+                                    count: 1,
+                                    component_patch: DataComponentPatchSummary::default(),
+                                }]
+                            } else {
+                                Vec::new()
+                            },
+                            ..DataComponentPatchSummary::default()
+                        },
+                    },
+                }],
+            };
+        let use_off_hand = |id: i32| SetEntityData {
+            id,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
+            )],
+        };
+        let state = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+        };
+
+        let mut world = WorldStore::new();
+
+        world.apply_add_entity(protocol_add_entity(
+            258,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [9.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_equipment(equip(258, EquipmentSlot::OffHand, BOW_ID, false)));
+        assert!(world.apply_set_entity_data(use_off_hand(258)));
+        let drawing_bow = state(&world, 258);
+        assert!(drawing_bow.player_drawing_bow);
+        assert!(drawing_bow.use_item_off_hand);
+        assert!(!drawing_bow.player_off_hand_item_pose);
+
+        world.apply_add_entity(protocol_add_entity(
+            259,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [10.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_equipment(equip(259, EquipmentSlot::OffHand, CROSSBOW_ID, false)));
+        assert!(world.apply_set_entity_data(use_off_hand(259)));
+        let charging_crossbow = state(&world, 259);
+        assert!(charging_crossbow.player_charging_crossbow);
+        assert!(charging_crossbow.use_item_off_hand);
+        assert!(!charging_crossbow.player_crossbow_hold_off_hand);
+
+        world.apply_add_entity(protocol_add_entity(
+            260,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [11.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_equipment(equip(260, EquipmentSlot::OffHand, CROSSBOW_ID, true)));
+        let off_hand_hold = state(&world, 260);
+        assert!(!off_hand_hold.player_crossbow_hold);
+        assert!(off_hand_hold.player_crossbow_hold_off_hand);
+        assert!(!off_hand_hold.player_off_hand_item_pose);
+
+        world.apply_add_entity(protocol_add_entity(
+            261,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [12.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_equipment(equip(261, EquipmentSlot::MainHand, CROSSBOW_ID, true)));
+        assert!(world.apply_set_equipment(equip(261, EquipmentSlot::OffHand, CROSSBOW_ID, true)));
+        let main_hand_hold = state(&world, 261);
+        assert!(main_hand_hold.player_crossbow_hold);
+        assert!(!main_hand_hold.player_crossbow_hold_off_hand);
     }
 
     #[test]
