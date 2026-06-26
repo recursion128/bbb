@@ -216,6 +216,42 @@ fn charged_creeper_emits_scrolling_energy_swirl() {
 }
 
 #[test]
+fn charged_creeper_energy_swirl_submission_survives_missing_armor_atlas_entry() {
+    // `EnergySwirlLayer` is a residual overlay, but it must still produce its vanilla submission before
+    // the backend tries to fold the scrolled geometry into the additive mesh bucket.
+    let len =
+        usize::try_from(CREEPER_TEXTURE_REF.size[0] * CREEPER_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        CREEPER_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let grey = 128.0 / 255.0;
+    let powered = EntityModelInstance::new(962, EntityModelKind::Creeper, [1.0, 64.0, 2.0], 45.0)
+        .with_creeper_powered(true);
+
+    let meshes = entity_model_textured_meshes(&[powered], &atlas);
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        144,
+        "base creeper still renders from the available base texture"
+    );
+    assert!(
+        meshes.scroll_additive.vertices.is_empty(),
+        "missing creeper_armor.png suppresses only folded energy-swirl geometry"
+    );
+    let swirl = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl)
+        .expect("powered creeper records an energySwirl submit before atlas lookup");
+    assert_eq!(swirl.texture, CREEPER_ARMOR_TEXTURE_REF);
+    assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
+    assert_eq!((swirl.order, swirl.submit_sequence), (1, 1));
+    assert_eq!(swirl.transform, creeper_model_root_transform(powered));
+}
+
+#[test]
 fn creeper_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
     let mesh = entity_model_textured_mesh(

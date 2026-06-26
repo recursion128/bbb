@@ -109,6 +109,21 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 }
 
 impl EntityModelLayerRenderType {
+    #[cfg(test)]
+    pub(in crate::entity_models) const ALL: [Self; 11] = [
+        Self::EntitySolid,
+        Self::ArmorCutoutNoCull,
+        Self::ArmorTranslucent,
+        Self::EntityCutout,
+        Self::EntityCutoutCull,
+        Self::EntityCutoutZOffset,
+        Self::EntityTranslucent,
+        Self::Eyes,
+        Self::BreezeWind,
+        Self::EnergySwirl,
+        Self::EndCrystalBeam,
+    ];
+
     pub(in crate::entity_models) const fn mesh_bucket(self) -> EntityModelLayerRenderBucket {
         match self {
             Self::EntitySolid

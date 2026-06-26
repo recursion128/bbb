@@ -1008,7 +1008,8 @@ When an agent does any of the following, update this file in the same slice:
     - a basic hecs-derived entity bounds scene proxy
     - textured entity model submits now carry vanilla-shaped submission
       metadata alongside the existing mesh buckets: `render_type`
-      distinguishes `entitySolid`, `armorCutoutNoCull`, `entityCutout`, `entityCutoutCull`,
+      distinguishes `entitySolid`, `armorCutoutNoCull`, `armorTranslucent`,
+      `entityCutout`, `entityCutoutCull`,
       `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
       `breezeWind`, `energySwirl`, and `end_crystal_beam`; `order` mirrors
       `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
@@ -1019,7 +1020,9 @@ When an agent does any of the following, update this file in the same slice:
       `energySwirl` stay distinct at the submission boundary even when the
       current backend can fold compatible output into shared mesh buffers.
       `breezeWind` / `energySwirl` residual emits now use a shared scrolled
-      submission helper before folding into the scroll mesh buckets; Guardian
+      submission helper before folding into the scroll mesh buckets, with
+      missing-atlas tests pinning that submission metadata is recorded before
+      folded geometry is suppressed; Guardian
       attack beams also record vanilla `entityCutout` submissions before
       folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal

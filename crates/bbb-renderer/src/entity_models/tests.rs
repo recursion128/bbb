@@ -103,6 +103,11 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Cutout,
         ),
         (
+            EntityModelLayerRenderType::ArmorTranslucent,
+            "armorTranslucent",
+            EntityModelLayerRenderBucket::Translucent,
+        ),
+        (
             EntityModelLayerRenderType::EntityCutout,
             "entityCutout",
             EntityModelLayerRenderBucket::Cutout,
@@ -144,6 +149,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
         ),
     ];
 
+    assert_eq!(cases.len(), EntityModelLayerRenderType::ALL.len());
     for (render_type, vanilla_name, bucket) in cases {
         assert_eq!(render_type.vanilla_name(), vanilla_name);
         assert_eq!(render_type.mesh_bucket(), bucket);

@@ -156,3 +156,31 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
         );
     }
 }
+
+#[test]
+fn wind_charge_breeze_wind_submission_survives_missing_texture_atlas_entry() {
+    // Residual scroll emits are submission-first: the vanilla `breezeWind(wind_charge.png)` submit is
+    // recorded before atlas lookup, and missing texture data suppresses only the folded scroll mesh.
+    let base_len =
+        usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![0u8; base_len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    let instance = EntityModelInstance::wind_charge(183, [2.0, 65.0, -4.0], 30.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::BreezeWind);
+    assert_eq!(submit.texture, WIND_CHARGE_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.transform, wind_charge_model_root_transform(instance));
+    assert!(
+        meshes.scroll.vertices.is_empty(),
+        "missing wind_charge.png suppresses only folded scroll geometry"
+    );
+}
