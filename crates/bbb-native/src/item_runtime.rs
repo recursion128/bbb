@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, BTreeSet, HashMap},
+};
 
 use anyhow::{Context, Result};
 use bbb_pack::{
@@ -12,14 +15,17 @@ use bbb_pack::{
     ItemUseEffects as PackItemUseEffects, LanguageCatalog, PackRoots, SpriteImage,
     TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
+#[cfg(test)]
+use bbb_protocol::packets::ResolvableProfileSummary;
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
-    PlayerModelTypeSummary, ResolvableProfileSummary,
 };
 use bbb_renderer::{
-    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityPlayerSkin,
-    EntityPlayerSkinModel, ItemSpriteRect, SpriteAlphaMask,
+    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityPlayerSkin, ItemSpriteRect,
+    SpriteAlphaMask,
 };
+#[cfg(test)]
+use bbb_renderer::{EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
@@ -28,11 +34,15 @@ use bbb_world::{
 };
 
 mod icon_model;
+mod profile_skin;
 
 use icon_model::{
     contains_runtime_condition, item_icon_model_ref_for_definition, CrossbowChargeType,
     IconResolveContext, ItemIconModel, ItemIconModelRef,
 };
+#[cfg(test)]
+use profile_skin::profile_texture_handle;
+use profile_skin::ProfileSkinCache;
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
 
@@ -122,6 +132,7 @@ pub(crate) struct NativeItemRuntime {
     registry: Option<ItemRegistryCatalog>,
     language: LanguageCatalog,
     textures: ItemTextureState,
+    profile_skins: RefCell<ProfileSkinCache>,
 }
 
 impl NativeItemRuntime {
@@ -296,6 +307,7 @@ impl NativeItemRuntime {
             registry,
             language,
             textures,
+            profile_skins: RefCell::default(),
         })
     }
 
@@ -402,7 +414,18 @@ impl NativeItemRuntime {
         custom_head_skull_for_resource_id(
             registry.resource_id(protocol_id)?,
             &stack.component_patch,
+            &self.profile_skins,
         )
+    }
+
+    pub(crate) fn mark_profile_skin_resolved(&self, url: &str, texture_handle: u64) {
+        self.profile_skins
+            .borrow_mut()
+            .mark_resolved(url, texture_handle);
+    }
+
+    pub(crate) fn mark_profile_skin_failed(&self, url: &str) {
+        self.profile_skins.borrow_mut().mark_failed(url);
     }
 
     pub(crate) fn mount_body_armor_kinds_by_protocol_id(
@@ -1107,11 +1130,12 @@ const DATA_COMPONENT_PROFILE_TYPE_ID: i32 = 70;
 fn custom_head_skull_for_resource_id(
     resource_id: &str,
     component_patch: &DataComponentPatchSummary,
+    profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     match resource_id {
         "minecraft:skeleton_skull" => Some(EntityCustomHeadSkull::Skeleton),
         "minecraft:wither_skeleton_skull" => Some(EntityCustomHeadSkull::WitherSkeleton),
-        "minecraft:player_head" => custom_head_player_skull(component_patch),
+        "minecraft:player_head" => custom_head_player_skull(component_patch, profile_skins),
         "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
         "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
         "minecraft:dragon_head" => Some(EntityCustomHeadSkull::Dragon),
@@ -1122,6 +1146,7 @@ fn custom_head_skull_for_resource_id(
 
 fn custom_head_player_skull(
     component_patch: &DataComponentPatchSummary,
+    profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     if !component_patch_has_profile(component_patch) {
         return Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
@@ -1129,9 +1154,11 @@ fn custom_head_player_skull(
         )));
     }
 
-    Some(EntityCustomHeadSkull::Player(profile_player_skin(
-        component_patch.profile.as_ref()?,
-    )))
+    Some(EntityCustomHeadSkull::Player(
+        profile_skins
+            .borrow_mut()
+            .player_skin_for_profile(component_patch.profile.as_ref()?),
+    ))
 }
 
 fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> bool {
@@ -1141,79 +1168,6 @@ fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> b
         && !component_patch
             .removed_type_ids
             .contains(&DATA_COMPONENT_PROFILE_TYPE_ID)
-}
-
-fn profile_default_player_skin(profile: &ResolvableProfileSummary) -> EntityDefaultPlayerSkin {
-    if let Some(body) = profile.skin_patch.body.as_ref() {
-        if let Some(skin) = EntityDefaultPlayerSkin::from_texture_path(&body.texture_path) {
-            return skin;
-        }
-    }
-
-    let profile_id = profile
-        .uuid
-        .map(|uuid| uuid.as_u128())
-        .or_else(|| {
-            profile
-                .name
-                .as_deref()
-                .map(|name| bbb_protocol::codec::offline_player_uuid(name).as_u128())
-        })
-        .unwrap_or(0);
-    EntityDefaultPlayerSkin::from_vanilla_index(default_player_skin_index(profile_id))
-}
-
-fn profile_player_skin(profile: &ResolvableProfileSummary) -> EntityPlayerSkin {
-    let fallback = profile_default_player_skin(profile);
-    if profile.skin_patch.body.is_some() {
-        return EntityPlayerSkin::ProfiledDefault(fallback);
-    }
-
-    let Some(skin) = profile
-        .profile_textures
-        .as_ref()
-        .and_then(|textures| textures.skin.as_ref())
-    else {
-        return EntityPlayerSkin::ProfiledDefault(fallback);
-    };
-
-    let model = profile
-        .skin_patch
-        .model
-        .map(entity_player_skin_model)
-        .unwrap_or_else(|| entity_player_skin_model(skin.model));
-    EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
-        handle: profile_texture_handle(&skin.url),
-        fallback,
-        model,
-    })
-}
-
-fn entity_player_skin_model(model: PlayerModelTypeSummary) -> EntityPlayerSkinModel {
-    match model {
-        PlayerModelTypeSummary::Slim => EntityPlayerSkinModel::Slim,
-        PlayerModelTypeSummary::Wide => EntityPlayerSkinModel::Wide,
-    }
-}
-
-fn profile_texture_handle(url: &str) -> u64 {
-    let mut hash = 0xcbf29ce484222325u64;
-    for byte in url.bytes() {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    hash
-}
-
-fn default_player_skin_index(profile_id: u128) -> usize {
-    java_uuid_hash_code(profile_id).rem_euclid(18) as usize
-}
-
-fn java_uuid_hash_code(profile_id: u128) -> i32 {
-    let most = (profile_id >> 64) as u64;
-    let least = profile_id as u64;
-    let hilo = most ^ least;
-    ((hilo >> 32) as u32 ^ hilo as u32) as i32
 }
 
 fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {
@@ -2369,6 +2323,33 @@ mod tests {
                     handle: profile_texture_handle(skin_url),
                     fallback: EntityDefaultPlayerSkin::SlimAlex,
                     model: EntityPlayerSkinModel::Wide,
+                    status: EntityDynamicPlayerSkinStatus::Loading,
+                }
+            )))
+        );
+
+        runtime.mark_profile_skin_resolved(skin_url, 12_345);
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&dynamic),
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
+                EntityDynamicPlayerSkin {
+                    handle: 12_345,
+                    fallback: EntityDefaultPlayerSkin::SlimAlex,
+                    model: EntityPlayerSkinModel::Wide,
+                    status: EntityDynamicPlayerSkinStatus::Ready,
+                }
+            )))
+        );
+
+        runtime.mark_profile_skin_failed(skin_url);
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&dynamic),
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
+                EntityDynamicPlayerSkin {
+                    handle: profile_texture_handle(skin_url),
+                    fallback: EntityDefaultPlayerSkin::SlimAlex,
+                    model: EntityPlayerSkinModel::Wide,
+                    status: EntityDynamicPlayerSkinStatus::Failed,
                 }
             )))
         );

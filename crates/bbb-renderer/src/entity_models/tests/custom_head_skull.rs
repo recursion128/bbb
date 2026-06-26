@@ -171,6 +171,7 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
         handle: 42,
         fallback: EntityDefaultPlayerSkin::WideSteve,
         model: EntityPlayerSkinModel::Slim,
+        status: EntityDynamicPlayerSkinStatus::Ready,
     };
     let dynamic_instance = EntityModelInstance::player_with_parts(
         916,

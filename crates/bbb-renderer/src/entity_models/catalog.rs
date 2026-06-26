@@ -43,6 +43,14 @@ pub struct EntityDynamicPlayerSkin {
     pub handle: u64,
     pub fallback: EntityDefaultPlayerSkin,
     pub model: EntityPlayerSkinModel,
+    pub status: EntityDynamicPlayerSkinStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityDynamicPlayerSkinStatus {
+    Loading,
+    Ready,
+    Failed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

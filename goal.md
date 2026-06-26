@@ -115,8 +115,9 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
       到 64x64 当前布局的 vanilla `SkinTextureDownloader.processLegacySkin` 转换，以及
       opaque-base / Notch transparency alpha 规则；还缺远程 skin PNG 下载与内存/磁盘缓存。
    4. IN PROGRESS：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
-      dynamic skin handle 和 slim/wide model；还缺 loading/error fallback、resolved texture
-      handle 与真实动态纹理采样。
+      dynamic skin handle、slim/wide model、loading/ready/failed 状态，以及按 texture URL
+      缓存并可替换 resolved texture handle 的 profile-skin cache；还缺真实异步下载/上传回写
+      与动态纹理采样。
    5. 扩展 renderer 动态纹理入口：支持运行时上传/替换 dynamic skin texture
       或独立动态 skin atlas，先接 `CustomHeadLayer` / `SkullBlockRenderer`
       的 `player_head`，再推广到玩家实体本体、cape、elytra 等层。

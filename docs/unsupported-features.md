@@ -1226,16 +1226,18 @@ When an agent does any of the following, update this file in the same slice:
         selection (`metadata.model=slim`, otherwise wide when a skin URL is
         present). Native/render-state can now distinguish profileless default
         skins from profiled fallback skins and can carry a dynamic skin handle,
-        the fallback default skin, and the slim/wide model; dynamic player-head
-        submissions preserve that handle, though the renderer still samples the
-        fallback until runtime dynamic texture upload exists. Renderer now has
+        the fallback default skin, the slim/wide model, and explicit
+        loading/ready/failed status. Native also keeps a small dynamic
+        profile-skin cache keyed by texture URL, so future async download/upload
+        work can replace the request handle with a resolved texture handle while
+        the renderer continues sampling the fallback. Renderer now has
         the vanilla downloaded-skin PNG post-process primitive: it rejects
         non-PNG and non-64x64/64x32 skins, expands legacy 64x32 skins through
         `SkinTextureDownloader.processLegacySkin`'s copy rectangles, and applies
         the opaque-base / Notch transparency alpha rules to produce 64x64 RGBA
         data for a future dynamic upload. Remote profile resolution, HTTP skin
-        download, memory/disk caching, loading/error fallback states, resolved
-        texture handles, and arbitrary dynamic player-skin texture loading remain
+        download, disk caching, actual async upload completion, and arbitrary
+        dynamic player-skin texture loading remain
         deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
