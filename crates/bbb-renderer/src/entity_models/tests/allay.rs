@@ -205,10 +205,24 @@ fn allay_texture_ref_matches_vanilla_renderer() {
 #[test]
 fn allay_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&allay_texture_images()).unwrap();
-    // Allay renders into the translucent mesh (`RenderTypes::entityTranslucent`). Seven cubes →
-    // 42 faces / 168 vertices, with nothing on the cutout or eyes passes.
+    // Vanilla `AllayModel` constructs with `RenderTypes::entityTranslucent`. The backend folds that
+    // into the translucent mesh, but the submission must keep the vanilla render type, texture, tint,
+    // transform, and default collector order.
     let base = EntityModelInstance::allay(850, [0.0, 64.0, 0.0], 0.0);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(submit.texture, ALLAY_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(base));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+
+    // Seven cubes → 42 faces / 168 vertices, with nothing on the cutout or eyes passes.
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.translucent.cutout_faces, 42);

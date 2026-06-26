@@ -229,10 +229,24 @@ fn vex_texture_ref_matches_vanilla_renderer() {
 #[test]
 fn vex_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&vex_texture_images()).unwrap();
-    // Vex renders into the translucent mesh (`RenderTypes::entityTranslucent`). Seven cubes →
-    // 42 faces / 168 vertices, with nothing on the cutout or eyes passes.
+    // Vanilla `VexModel` constructs with `RenderTypes::entityTranslucent`. The backend folds that into
+    // the translucent mesh, but the submission must keep the vanilla render type, selected texture,
+    // tint, transform, and default collector order.
     let base = EntityModelInstance::vex(950, [0.0, 64.0, 0.0], 0.0);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(submit.texture, VEX_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(base));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+
+    // Seven cubes → 42 faces / 168 vertices, with nothing on the cutout or eyes passes.
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.translucent.cutout_faces, 42);
@@ -281,6 +295,29 @@ fn vex_charging_dispatch_swaps_to_the_charging_texture() {
     );
     let idle_mesh = entity_model_textured_meshes(&[idle], &atlas);
     let charging_mesh = entity_model_textured_meshes(&[charging], &atlas);
+    assert_eq!(idle_mesh.submissions.len(), 1);
+    assert_eq!(charging_mesh.submissions.len(), 1);
+    assert_eq!(
+        idle_mesh.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(
+        charging_mesh.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(idle_mesh.submissions[0].texture, VEX_TEXTURE_REF);
+    assert_eq!(
+        charging_mesh.submissions[0].texture,
+        VEX_CHARGING_TEXTURE_REF
+    );
+    assert_eq!(charging_mesh.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            charging_mesh.submissions[0].order,
+            charging_mesh.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
 
     // Same translucent geometry (identical positions), different sampled region (UVs differ).
     assert_eq!(

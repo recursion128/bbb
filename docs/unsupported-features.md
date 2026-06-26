@@ -2283,8 +2283,10 @@ When an agent does any of the following, update this file in the same slice:
       hand from `EquipmentSlot.MAINHAND` and the LEFT hand from `EquipmentSlot.OFFHAND` into
       `vex_right_hand_item_non_empty` / `vex_left_hand_item_non_empty`. The textured base layer
       draws into the translucent mesh
-      (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
-      hierarchy as the colored path, and the `isCharging` texture swap IS now applied
+      (`RenderTypes::entityTranslucent`) while preserving explicit `entityTranslucent`
+      submission metadata for texture, white tint, root transform, and `order(0)`;
+      it is hand-emitted through the same animated body→arm/wing hierarchy as the colored path,
+      and the `isCharging` texture swap IS now applied
       (`VexRenderer.getTextureLocation`: `EntityModelKind::Vex { charging }` selects
       `textures/entity/illager/vex_charging.png` over `vex.png`, the same 32×32 model, driven by the
       already-projected `charging` bit). The constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
@@ -2315,8 +2317,10 @@ When an agent does any of the following, update this file in the same slice:
       `dancingAnimationTicks` / `spinningAnimationTicks` accumulators from the `DATA_DANCING`
       rising edge and projects `isDancing` / `isSpinning` / `spinningProgress`. The textured base
       layer draws the `textures/entity/allay/allay.png` atlas reference into the translucent mesh
-      (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
-      hierarchy as the colored path. The held-item arm poses (`holdingAnimationProgress` scaling
+      (`RenderTypes::entityTranslucent`) while preserving explicit `entityTranslucent`
+      submission metadata for texture, white tint, root transform, and `order(0)`;
+      it is hand-emitted through the same animated body→arm/wing hierarchy as the colored path.
+      The held-item arm poses (`holdingAnimationProgress` scaling
       the arm roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch
       and held item) remain unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS
       now applied (`entity_light_coords` forces the packed block light to 15 for the allay type).
