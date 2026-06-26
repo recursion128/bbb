@@ -61,6 +61,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub custom_model_data_floats: CustomModelDataFloats,
     #[serde(default)]
+    pub custom_model_data_strings: Vec<String>,
+    #[serde(default)]
     pub custom_model_data_colors: Vec<i32>,
     #[serde(default)]
     pub dyed_color: Option<i32>,
@@ -344,8 +346,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
             }
             17 => {
-                let (floats, colors) = decode_custom_model_data(decoder)?;
+                let (floats, strings, colors) = decode_custom_model_data(decoder)?;
                 summary.custom_model_data_floats = floats.into();
+                summary.custom_model_data_strings = strings;
                 summary.custom_model_data_colors = colors;
             }
             44 => {
@@ -779,7 +782,9 @@ fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<()> {
     }
 }
 
-fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<(Vec<f32>, Vec<i32>)> {
+fn decode_custom_model_data(
+    decoder: &mut Decoder<'_>,
+) -> Result<(Vec<f32>, Vec<String>, Vec<i32>)> {
     let float_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut float_values = Vec::with_capacity(float_count);
     for _ in 0..float_count {
@@ -792,8 +797,9 @@ fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<(Vec<f32>, Vec<
     }
 
     let strings = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut string_values = Vec::with_capacity(strings);
     for _ in 0..strings {
-        decoder.read_string(MAX_STRING_CHARS)?;
+        string_values.push(decoder.read_string(MAX_STRING_CHARS)?);
     }
 
     let colors = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
@@ -802,7 +808,7 @@ fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<(Vec<f32>, Vec<
         color_values.push(decoder.read_i32()?);
     }
 
-    Ok((float_values, color_values))
+    Ok((float_values, string_values, color_values))
 }
 
 fn decode_use_effects(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1867,6 +1873,7 @@ mod tests {
                     },
                 ],
                 custom_model_data_floats: vec![1.0, 2.5].into(),
+                custom_model_data_strings: vec!["variant".to_string()],
                 custom_model_data_colors: vec![0x112233, 0x445566],
                 lore: vec!["Line one".to_string(), "Line two".to_string()],
                 ..DataComponentPatchSummary::default()

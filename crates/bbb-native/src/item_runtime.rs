@@ -4250,6 +4250,80 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_stack_string_select_properties() {
+        let root = unique_temp_dir("item-runtime-stack-string-select");
+        write_stack_string_select_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let selected =
+            |stack: &ItemStackSummary| runtime.icon_for_stack(stack).unwrap().layers[0].uv;
+
+        let block_state_stack = |properties: BTreeMap<String, String>| ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                block_state_properties: properties,
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        // Vanilla `ItemBlockState.get` returns null without the component/property,
+        // so no case matches and the fallback model is used.
+        assert_eq!(
+            selected(&block_state_stack(BTreeMap::new())),
+            uv("beehive_empty")
+        );
+        assert_eq!(
+            selected(&block_state_stack(BTreeMap::from([(
+                "honey_level".to_string(),
+                "5".to_string()
+            )]))),
+            uv("beehive_honey")
+        );
+        assert_eq!(
+            selected(&block_state_stack(BTreeMap::from([(
+                "wrong_property".to_string(),
+                "5".to_string()
+            )]))),
+            uv("beehive_empty")
+        );
+
+        let custom_model_data_stack = |strings: Vec<&str>| ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                custom_model_data_strings: strings.into_iter().map(str::to_string).collect(),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        // Vanilla `CustomModelDataProperty.get` reads strings[index], not floats.
+        assert_eq!(
+            selected(&custom_model_data_stack(vec!["ignored", "blue"])),
+            uv("cmd_blue")
+        );
+        assert_eq!(
+            selected(&custom_model_data_stack(vec!["ignored", "lime"])),
+            uv("cmd_green")
+        );
+        // Out-of-range index and absent component both produce no selected value.
+        assert_eq!(
+            selected(&custom_model_data_stack(vec!["blue"])),
+            uv("cmd_plain")
+        );
+        assert_eq!(
+            selected(&custom_model_data_stack(Vec::new())),
+            uv("cmd_plain")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_value_aware_range_dispatch() {
         let root = unique_temp_dir("item-runtime-range-dispatch");
         write_value_aware_range_dispatch_fixture(&root);
@@ -4715,6 +4789,56 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "crossbow", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "crossbow_arrow", &[80, 120, 40, 255]);
         write_flat_item_model_and_texture(&assets, "crossbow_firework", &[120, 40, 80, 255]);
+    }
+
+    fn write_stack_string_select_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        // Item 0 = beehive, item 1 = cmd_selector.
+        write_item_registry_source(root, &["beehive", "cmd_selector"]);
+        write_json(
+            &assets.join("items").join("beehive.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:block_state",
+                    "block_state_property": "honey_level",
+                    "cases": [
+                        {
+                            "when": "5",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/beehive_honey" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/beehive_empty" }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("cmd_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:custom_model_data",
+                    "index": 1,
+                    "cases": [
+                        {
+                            "when": "blue",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/cmd_blue" }
+                        },
+                        {
+                            "when": ["green", "lime"],
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/cmd_green" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/cmd_plain" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "beehive_empty", &[90, 70, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "beehive_honey", &[220, 180, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_plain", &[40, 40, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_blue", &[40, 80, 220, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_green", &[40, 180, 80, 255]);
     }
 
     fn write_value_aware_range_dispatch_fixture(root: &Path) {

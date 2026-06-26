@@ -146,10 +146,9 @@ fn last_range_entry_at_or_below(
 
 /// The subset of vanilla `SelectItemModelProperty` whose value is a pure
 /// projection of the item stack (resolvable from the GUI icon context). The rest
-/// (`trim_material`, `block_state`, `local_time`, `context_dimension`,
-/// `context_entity_type`, `main_hand`, `custom_model_data` string) need
-/// registry/world/owner context and keep the build-time collapse.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// (`local_time`, `context_dimension`, `context_entity_type`, `main_hand`) need
+/// ambient world/owner context and keep the build-time collapse.
+#[derive(Debug, Clone, PartialEq)]
 pub(super) enum SelectProperty {
     /// `minecraft:charge_type` — `Charge.get`, matched against the crossbow's
     /// charged-projectile contents.
@@ -157,6 +156,11 @@ pub(super) enum SelectProperty {
     /// `minecraft:trim_material` — `TrimMaterialProperty.get`, matched against
     /// the armor trim material's registry key.
     TrimMaterial,
+    /// `minecraft:block_state` — `ItemBlockState.get`, matched against one
+    /// property in the stack's `minecraft:block_state` component.
+    BlockState { property: String },
+    /// `minecraft:custom_model_data` — `CustomModelDataProperty.getString`.
+    CustomModelDataString { index: usize },
 }
 
 /// Vanilla `CrossbowItem.ChargeType` — the value of the `minecraft:charge_type`
@@ -187,6 +191,21 @@ fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
     match property.property_type.as_str() {
         "minecraft:charge_type" => Some(SelectProperty::ChargeType),
         "minecraft:trim_material" => Some(SelectProperty::TrimMaterial),
+        "minecraft:block_state" => property
+            .raw()
+            .get("block_state_property")
+            .and_then(Value::as_str)
+            .map(|property| SelectProperty::BlockState {
+                property: property.to_string(),
+            }),
+        "minecraft:custom_model_data" => Some(SelectProperty::CustomModelDataString {
+            index: property
+                .raw()
+                .get("index")
+                .and_then(Value::as_u64)
+                .and_then(|index| usize::try_from(index).ok())
+                .unwrap_or(0),
+        }),
         _ => None,
     }
 }
@@ -402,6 +421,14 @@ impl ItemIconModel {
                         .and_then(|patch| patch.armor_trim_material_id)
                         .and_then(|id| usize::try_from(id).ok())
                         .and_then(|id| ctx.trim_material_keys.and_then(|keys| keys.get(id)))
+                        .map(String::as_str),
+                    SelectProperty::BlockState { property } => ctx
+                        .component_patch
+                        .and_then(|patch| patch.block_state_properties.get(property))
+                        .map(String::as_str),
+                    SelectProperty::CustomModelDataString { index } => ctx
+                        .component_patch
+                        .and_then(|patch| patch.custom_model_data_strings.get(*index))
                         .map(String::as_str),
                 };
                 let selected = cases
@@ -619,10 +646,10 @@ pub(super) fn item_icon_model_ref_for_definition(
                     fallback: Box::new(fallback),
                 }
             } else {
-                // Context-needing select properties (trim_material/block_state/
-                // local_time/context_dimension/main_hand/...) collapse to the
-                // resolved single case since their value needs registry/world/
-                // owner context not available to the GUI icon resolver.
+                // Context-needing select properties (local_time/
+                // context_dimension/main_hand/...) collapse to the resolved
+                // single case since their value needs world/owner context not
+                // available to the GUI icon resolver.
                 selected_icon_select_model(property, cases, fallback.as_deref())
                     .map(|model| {
                         item_icon_model_ref_for_definition(

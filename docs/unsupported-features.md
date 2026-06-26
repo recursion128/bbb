@@ -3704,10 +3704,13 @@ When an agent does any of the following, update this file in the same slice:
       (local `using_item` use-tick state)
     - `minecraft:bundle/fullness` and `minecraft:count` (stack count +
       max-stack-size context)
-  - Wire the remaining value-aware `select` properties onto the same resolver:
-    - `minecraft:block_state`, `minecraft:context_dimension`,
-      `minecraft:local_time`, `minecraft:context_entity_type`,
-      `minecraft:main_hand`, `minecraft:custom_model_data` (string)
+  - Wire the remaining ambient-context `select` properties onto the same
+    resolver:
+    - `minecraft:context_dimension`, `minecraft:local_time`,
+      `minecraft:context_entity_type`, `minecraft:main_hand`
+  - Add a typed value representation for `minecraft:component` select cases
+    (`ComponentContents.get`, which dispatches case decoding through the selected
+    data component's own codec) before wiring it as a stack-only select provider.
   - Project `minecraft:trim_material` onto the dropped-item billboard and
     item-frame surfaces too (currently only the GUI icon path receives the
     trim-material registry keys; dropped/frame paths pass `None`).
@@ -3715,10 +3718,12 @@ When an agent does any of the following, update this file in the same slice:
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
   - `bbb-protocol` now decodes the `minecraft:custom_model_data` `floats` list
-    (`CustomModelDataFloats`, bit-exact `Eq`) alongside the colors list, the
-    `minecraft:charged_projectiles` item templates (`charged_projectiles_items`),
-    and the `minecraft:trim` material holder reference id
-    (`armor_trim_material_id`), so the `CustomModelDataProperty.getFloat(index)`,
+    (`CustomModelDataFloats`, bit-exact `Eq`) plus the strings/colors lists, the
+    `minecraft:block_state` property map, the `minecraft:charged_projectiles`
+    item templates (`charged_projectiles_items`), and the `minecraft:trim`
+    material holder reference id (`armor_trim_material_id`), so the
+    `CustomModelDataProperty.getFloat(index)`,
+    `CustomModelDataProperty.getString(index)`, `ItemBlockState.get`,
     `Charge.get`, and `TrimMaterialProperty.get` inputs are preserved on the wire.
   - `bbb-native` resolves `minecraft:range_dispatch` item models with the exact
     vanilla `RangeSelectItemModel.update` selection:
@@ -3736,6 +3741,12 @@ When an agent does any of the following, update this file in the same slice:
       prototype `max_damage` default
     - `minecraft:custom_model_data` — `CustomModelDataProperty.get`
       (`floats[index]`, or `0.0` when absent)
+    - `minecraft:block_state` — `ItemBlockState.get`, reading the selected
+      property from the stack's `minecraft:block_state` property map and falling
+      back when the component/property is absent
+    - `minecraft:custom_model_data` string select —
+      `CustomModelDataProperty.getString(index)`, matching `strings[index]`
+      against the case values and falling back when absent/out of range
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -3751,11 +3762,12 @@ When an agent does any of the following, update this file in the same slice:
     untrimmed model (documented follow-up).
   - The remaining numeric properties (`compass`, `time`, `cooldown`,
     `crossbow/pull`, `use_cycle`, `use_duration`, `bundle/fullness`, `count`) and
-    the remaining select properties (`block_state`, `context_dimension`,
-    `local_time`, `context_entity_type`, `main_hand`, `custom_model_data` string)
-    still collapse to the fallback/first entry because their value needs ambient
-    `ClientLevel` / `ItemOwner` / use-tick / registry context the GUI icon
-    resolver does not yet receive. This is the documented follow-up.
+    the remaining ambient select properties (`context_dimension`, `local_time`,
+    `context_entity_type`, `main_hand`) still collapse to the fallback/first entry
+    because their value needs ambient `ClientLevel` / `ItemOwner` / use-tick
+    context the GUI icon resolver does not yet receive. `minecraft:component`
+    also remains deferred until the runtime carries typed component values for
+    case matching. This is the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 
