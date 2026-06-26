@@ -1217,8 +1217,12 @@ When an agent does any of the following, update this file in the same slice:
         resource texture/model overrides, and the unpacked profile `textures`
         property URLs for skin/cape/elytra plus the vanilla slim/wide model
         selection (`metadata.model=slim`, otherwise wide when a skin URL is
-        present). Remote profile resolution, downloaded skin textures, and
-        arbitrary dynamic player-skin texture loading remain deferred.
+        present). Native/render-state can now carry a dynamic skin handle, the
+        fallback default skin, and the slim/wide model, though the renderer still
+        samples the fallback until runtime dynamic texture upload exists. Remote
+        profile resolution, downloaded skin textures, loading/error fallback
+        states, and arbitrary dynamic player-skin texture loading remain
+        deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,

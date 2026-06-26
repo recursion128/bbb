@@ -75,7 +75,7 @@ fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
             PLAYER_MODEL_PARTS_ALL_VISIBLE,
         )
         .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
-            EntityDefaultPlayerSkin::SlimSteve,
+            EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimSteve),
         )))],
         &atlas,
     );
@@ -112,7 +112,7 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
             PLAYER_MODEL_PARTS_ALL_VISIBLE,
         )
         .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
-            EntityDefaultPlayerSkin::SlimAlex,
+            EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimAlex),
         )))],
         &atlas,
     );
@@ -125,13 +125,31 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
             PLAYER_MODEL_PARTS_ALL_VISIBLE,
         )
         .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
-            EntityDefaultPlayerSkin::WideSteve,
+            EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        )))],
+        &atlas,
+    );
+    let dynamic = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            916,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+            EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+                handle: 42,
+                fallback: EntityDefaultPlayerSkin::WideSteve,
+                model: EntityPlayerSkinModel::Slim,
+            }),
         )))],
         &atlas,
     );
 
     assert_eq!(slim.cutout_faces, 12);
     assert_eq!(wide.cutout_faces, 12);
+    assert_eq!(dynamic.cutout_faces, 12);
     assert_eq!(
         slim.vertices
             .iter()
@@ -144,6 +162,17 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     );
     assert_ne!(
         slim.vertices
+            .iter()
+            .map(|vertex| vertex.uv)
+            .collect::<Vec<_>>(),
+        wide.vertices
+            .iter()
+            .map(|vertex| vertex.uv)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        dynamic
+            .vertices
             .iter()
             .map(|vertex| vertex.uv)
             .collect::<Vec<_>>(),

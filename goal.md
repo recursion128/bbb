@@ -47,7 +47,9 @@ profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资
 vanilla slim/wide 模型选择（skin 的 `metadata.model=slim`，否则 wide）。
 带 profile 的 `player_head` 已按 `PlayerSkinRenderCache` 默认 fallback 选择
 `DefaultPlayerSkin.get(UUID)`（显式 UUID、offline-name UUID 或 nil UUID），并支持指向内置默认
-player skin 的 `PlayerSkin.Patch` body；剩余的是远程 profile 解析、下载皮肤和任意动态纹理加载。
+player skin 的 `PlayerSkin.Patch` body；native/render-state 也已能携带 profile texture
+URL 派生的 dynamic skin handle、fallback 默认皮肤和 slim/wide model（renderer 暂按 fallback
+贴图绘制）。剩余的是远程 profile 解析、下载皮肤和任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -98,8 +100,9 @@ Drowned swimAmount 重姿态已完成：world 侧按 `LivingEntity.updateSwimAmo
       能解析为完整 profile/properties，失败时保留默认皮肤。
    3. 补远程 skin PNG 下载、内存/磁盘缓存、尺寸/格式校验，以及 64x32 旧 skin
       到当前布局的转换。
-   4. 扩展 native/render-state 表达，从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
-      loading/error fallback、resolved dynamic skin handle 和 slim/wide model。
+   4. IN PROGRESS：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
+      dynamic skin handle 和 slim/wide model；还缺 loading/error fallback、resolved texture
+      handle 与真实动态纹理采样。
    5. 扩展 renderer 动态纹理入口：支持运行时上传/替换 dynamic skin texture
       或独立动态 skin atlas，先接 `CustomHeadLayer` / `SkullBlockRenderer`
       的 `player_head`，再推广到玩家实体本体、cape、elytra 等层。

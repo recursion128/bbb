@@ -1204,7 +1204,7 @@ fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTex
     match skull {
         EntityCustomHeadSkull::Skeleton => SKELETON_TEXTURE_REF,
         EntityCustomHeadSkull::WitherSkeleton => WITHER_SKELETON_TEXTURE_REF,
-        EntityCustomHeadSkull::Player(skin) => default_player_skin_texture_ref(skin),
+        EntityCustomHeadSkull::Player(skin) => default_player_skin_texture_ref(skin.fallback()),
         EntityCustomHeadSkull::Zombie => ZOMBIE_TEXTURE_REF,
         EntityCustomHeadSkull::Creeper => CREEPER_TEXTURE_REF,
         EntityCustomHeadSkull::Dragon => ENDER_DRAGON_TEXTURE_REF,

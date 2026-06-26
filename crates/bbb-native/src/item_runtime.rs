@@ -14,10 +14,11 @@ use bbb_pack::{
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
-    ResolvableProfileSummary,
+    PlayerModelTypeSummary, ResolvableProfileSummary,
 };
 use bbb_renderer::{
-    EntityCustomHeadSkull, EntityDefaultPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
+    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityPlayerSkin,
+    EntityPlayerSkinModel, ItemSpriteRect, SpriteAlphaMask,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
@@ -1123,12 +1124,12 @@ fn custom_head_player_skull(
     component_patch: &DataComponentPatchSummary,
 ) -> Option<EntityCustomHeadSkull> {
     if !component_patch_has_profile(component_patch) {
-        return Some(EntityCustomHeadSkull::Player(
+        return Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
             EntityDefaultPlayerSkin::SlimSteve,
-        ));
+        )));
     }
 
-    Some(EntityCustomHeadSkull::Player(profile_default_player_skin(
+    Some(EntityCustomHeadSkull::Player(profile_player_skin(
         component_patch.profile.as_ref()?,
     )))
 }
@@ -1160,6 +1161,48 @@ fn profile_default_player_skin(profile: &ResolvableProfileSummary) -> EntityDefa
         })
         .unwrap_or(0);
     EntityDefaultPlayerSkin::from_vanilla_index(default_player_skin_index(profile_id))
+}
+
+fn profile_player_skin(profile: &ResolvableProfileSummary) -> EntityPlayerSkin {
+    let fallback = profile_default_player_skin(profile);
+    if profile.skin_patch.body.is_some() {
+        return EntityPlayerSkin::Default(fallback);
+    }
+
+    let Some(skin) = profile
+        .profile_textures
+        .as_ref()
+        .and_then(|textures| textures.skin.as_ref())
+    else {
+        return EntityPlayerSkin::Default(fallback);
+    };
+
+    let model = profile
+        .skin_patch
+        .model
+        .map(entity_player_skin_model)
+        .unwrap_or_else(|| entity_player_skin_model(skin.model));
+    EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+        handle: profile_texture_handle(&skin.url),
+        fallback,
+        model,
+    })
+}
+
+fn entity_player_skin_model(model: PlayerModelTypeSummary) -> EntityPlayerSkinModel {
+    match model {
+        PlayerModelTypeSummary::Slim => EntityPlayerSkinModel::Slim,
+        PlayerModelTypeSummary::Wide => EntityPlayerSkinModel::Wide,
+    }
+}
+
+fn profile_texture_handle(url: &str) -> u64 {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in url.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
 }
 
 fn default_player_skin_index(profile_id: u128) -> usize {
@@ -2226,9 +2269,9 @@ mod tests {
             ),
             (
                 "minecraft:player_head",
-                Some(EntityCustomHeadSkull::Player(
+                Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
                     EntityDefaultPlayerSkin::SlimSteve,
-                )),
+                ))),
             ),
             ("minecraft:dragon_head", Some(EntityCustomHeadSkull::Dragon)),
             ("minecraft:piglin_head", Some(EntityCustomHeadSkull::Piglin)),
@@ -2290,9 +2333,62 @@ mod tests {
         });
         assert_eq!(
             runtime.custom_head_skull_for_stack(&profiled),
-            Some(EntityCustomHeadSkull::Player(
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
                 EntityDefaultPlayerSkin::SlimAlex
-            ))
+            )))
+        );
+
+        let skin_url = "https://textures.minecraft.net/texture/profile-skin";
+        let mut dynamic = profiled.clone();
+        dynamic.component_patch.profile = Some(ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+                skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
+                    url: skin_url.to_string(),
+                    model: bbb_protocol::packets::PlayerModelTypeSummary::Slim,
+                }),
+                cape: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: "https://textures.minecraft.net/texture/profile-cape".to_string(),
+                }),
+                elytra: None,
+            }),
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+                body: None,
+                cape: None,
+                elytra: None,
+                model: Some(bbb_protocol::packets::PlayerModelTypeSummary::Wide),
+            },
+        });
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&dynamic),
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
+                EntityDynamicPlayerSkin {
+                    handle: profile_texture_handle(skin_url),
+                    fallback: EntityDefaultPlayerSkin::SlimAlex,
+                    model: EntityPlayerSkinModel::Wide,
+                }
+            )))
+        );
+
+        let mut resource_patched = dynamic.clone();
+        resource_patched
+            .component_patch
+            .profile
+            .as_mut()
+            .unwrap()
+            .skin_patch
+            .body = Some(bbb_protocol::packets::ResourceTextureSummary {
+            asset_id: "minecraft:entity/player/custom".to_string(),
+            texture_path: "minecraft:textures/entity/player/custom.png".to_string(),
+        });
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&resource_patched),
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
+                EntityDefaultPlayerSkin::SlimAlex
+            )))
         );
 
         let mut patched = profiled.clone();
@@ -2314,9 +2410,9 @@ mod tests {
         });
         assert_eq!(
             runtime.custom_head_skull_for_stack(&patched),
-            Some(EntityCustomHeadSkull::Player(
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
                 EntityDefaultPlayerSkin::WideSteve
-            ))
+            )))
         );
 
         let mut profile_removed = profiled.clone();
@@ -2326,9 +2422,9 @@ mod tests {
             .push(DATA_COMPONENT_PROFILE_TYPE_ID);
         assert_eq!(
             runtime.custom_head_skull_for_stack(&profile_removed),
-            Some(EntityCustomHeadSkull::Player(
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
                 EntityDefaultPlayerSkin::SlimSteve
-            ))
+            )))
         );
 
         std::fs::remove_dir_all(root).unwrap();

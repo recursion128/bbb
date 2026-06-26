@@ -16,17 +16,52 @@ pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_w
 /// Static mob heads share the same 8x8x8 mob-head layer and differ only by entity texture. Player
 /// heads use the humanoid head layer (base head plus hat). Profileless heads use vanilla's fixed
 /// `DefaultPlayerSkin.getDefaultTexture()` skin; profiled heads can use the UUID/default-skin fallback
-/// while live skin downloads stay deferred. Dragon and piglin heads use their specialized animated skull
-/// models.
+/// and can now carry a dynamic skin handle/model while live texture upload stays deferred. Dragon and
+/// piglin heads use their specialized animated skull models.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityCustomHeadSkull {
     Skeleton,
     WitherSkeleton,
-    Player(EntityDefaultPlayerSkin),
+    Player(EntityPlayerSkin),
     Zombie,
     Creeper,
     Dragon,
     Piglin,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityPlayerSkin {
+    Default(EntityDefaultPlayerSkin),
+    Dynamic(EntityDynamicPlayerSkin),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityDynamicPlayerSkin {
+    pub handle: u64,
+    pub fallback: EntityDefaultPlayerSkin,
+    pub model: EntityPlayerSkinModel,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityPlayerSkinModel {
+    Slim,
+    Wide,
+}
+
+impl EntityPlayerSkin {
+    pub const fn fallback(self) -> EntityDefaultPlayerSkin {
+        match self {
+            Self::Default(skin) => skin,
+            Self::Dynamic(skin) => skin.fallback,
+        }
+    }
+
+    pub const fn model(self) -> EntityPlayerSkinModel {
+        match self {
+            Self::Default(skin) => skin.model(),
+            Self::Dynamic(skin) => skin.model,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,6 +138,29 @@ impl EntityDefaultPlayerSkin {
             Self::WideSteve => "textures/entity/player/wide/steve.png",
             Self::WideSunny => "textures/entity/player/wide/sunny.png",
             Self::WideZuri => "textures/entity/player/wide/zuri.png",
+        }
+    }
+
+    pub const fn model(self) -> EntityPlayerSkinModel {
+        match self {
+            Self::SlimAlex
+            | Self::SlimAri
+            | Self::SlimEfe
+            | Self::SlimKai
+            | Self::SlimMakena
+            | Self::SlimNoor
+            | Self::SlimSteve
+            | Self::SlimSunny
+            | Self::SlimZuri => EntityPlayerSkinModel::Slim,
+            Self::WideAlex
+            | Self::WideAri
+            | Self::WideEfe
+            | Self::WideKai
+            | Self::WideMakena
+            | Self::WideNoor
+            | Self::WideSteve
+            | Self::WideSunny
+            | Self::WideZuri => EntityPlayerSkinModel::Wide,
         }
     }
 }
