@@ -12,7 +12,8 @@ pub use data_components::{
     AttackRangeSummary, CustomModelDataFloats, DataComponentPatchSummary,
     GameProfilePropertySummary, ItemEnchantmentSummary, ItemRaritySummary,
     ItemStackTemplateSummary, MapPostProcessingSummary, PlayerModelTypeSummary,
-    PlayerSkinPatchSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+    PlayerSkinPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
+    ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
     ResourceTextureSummary, UseEffectsSummary, WrittenBookContentSummary,
 };
 

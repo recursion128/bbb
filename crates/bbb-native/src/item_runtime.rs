@@ -2285,6 +2285,7 @@ mod tests {
             uuid: Some(uuid::Uuid::from_u128(0)),
             name: None,
             properties: Vec::new(),
+            profile_textures: None,
             skin_patch: Default::default(),
         });
         assert_eq!(
@@ -2300,6 +2301,7 @@ mod tests {
             uuid: Some(uuid::Uuid::from_u128(0)),
             name: None,
             properties: Vec::new(),
+            profile_textures: None,
             skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
                 body: Some(bbb_protocol::packets::ResourceTextureSummary {
                     asset_id: "minecraft:entity/player/wide/steve".to_string(),

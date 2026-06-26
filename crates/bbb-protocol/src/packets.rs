@@ -19,6 +19,7 @@ pub mod movement;
 pub mod play_clientbound;
 pub mod player_actions;
 pub mod player_info;
+mod profile_textures;
 pub mod scoreboard;
 pub mod server_presentation;
 pub mod serverbound;

@@ -9008,6 +9008,7 @@ fn profiled_item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
         uuid: Some(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678)),
         name: Some("Steve".to_string()),
         properties: Vec::new(),
+        profile_textures: None,
         skin_patch: Default::default(),
     });
     stack

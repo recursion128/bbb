@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::read_resource_location;
+use super::{profile_textures::decode_profile_textures_from_properties, read_resource_location};
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{decode_component_summary_from_decoder, skip_nbt_tag_from_decoder},
@@ -213,6 +213,8 @@ pub struct ResolvableProfileSummary {
     pub uuid: Option<Uuid>,
     pub name: Option<String>,
     pub properties: Vec<GameProfilePropertySummary>,
+    #[serde(default)]
+    pub profile_textures: Option<ProfileTexturesSummary>,
     pub skin_patch: PlayerSkinPatchSummary,
 }
 
@@ -244,12 +246,10 @@ pub struct ResourceTextureSummary {
     pub texture_path: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PlayerModelTypeSummary {
-    Slim,
-    Wide,
-}
+pub use super::profile_textures::{
+    PlayerModelTypeSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
+    ProfileTexturesSummary,
+};
 
 pub(crate) fn decode_data_component_patch_summary(
     decoder: &mut Decoder<'_>,
@@ -1151,12 +1151,18 @@ fn decode_resolvable_profile(decoder: &mut Decoder<'_>) -> Result<ResolvableProf
             partial.properties,
         )
     };
+    let profile_textures = decode_profile_textures_from_properties(
+        properties
+            .iter()
+            .map(|property| (property.name.as_str(), property.value.as_str())),
+    );
     let skin_patch = decode_player_skin_patch(decoder)?;
     Ok(ResolvableProfileSummary {
         kind,
         uuid,
         name,
         properties,
+        profile_textures,
         skin_patch,
     })
 }
@@ -2096,6 +2102,7 @@ mod tests {
                         value: "skin-value".to_string(),
                         signature: Some("skin-signature".to_string()),
                     }],
+                    profile_textures: None,
                     skin_patch: PlayerSkinPatchSummary {
                         body: Some(ResourceTextureSummary {
                             asset_id: "minecraft:entity/player/wide/steve".to_string(),
@@ -2129,7 +2136,7 @@ mod tests {
         payload.write_string("Alex");
         payload.write_var_i32(1);
         payload.write_string("textures");
-        payload.write_string("packed-skin");
+        payload.write_string("eyJ0aW1lc3RhbXAiOjEsInByb2ZpbGVJZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwicHJvZmlsZU5hbWUiOiJBbGV4IiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9za2luaGFzaCIsIm1ldGFkYXRhIjp7Im1vZGVsIjoic2xpbSJ9fSwiQ0FQRSI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9jYXBlaGFzaCJ9LCJFTFlUUkEiOnsidXJsIjoiaHR0cHM6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWx5dHJhaGFzaCJ9fX0=");
         payload.write_bool(false);
         payload.write_bool(false);
         payload.write_bool(false);
@@ -2152,9 +2159,21 @@ mod tests {
                     name: Some("Alex".to_string()),
                     properties: vec![GameProfilePropertySummary {
                         name: "textures".to_string(),
-                        value: "packed-skin".to_string(),
+                        value: "eyJ0aW1lc3RhbXAiOjEsInByb2ZpbGVJZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwicHJvZmlsZU5hbWUiOiJBbGV4IiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9za2luaGFzaCIsIm1ldGFkYXRhIjp7Im1vZGVsIjoic2xpbSJ9fSwiQ0FQRSI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9jYXBlaGFzaCJ9LCJFTFlUUkEiOnsidXJsIjoiaHR0cHM6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWx5dHJhaGFzaCJ9fX0=".to_string(),
                         signature: None,
                     }],
+                    profile_textures: Some(ProfileTexturesSummary {
+                        skin: Some(ProfileSkinTextureSummary {
+                            url: "https://textures.minecraft.net/texture/skinhash".to_string(),
+                            model: PlayerModelTypeSummary::Slim,
+                        }),
+                        cape: Some(ProfileTextureSummary {
+                            url: "https://textures.minecraft.net/texture/capehash".to_string(),
+                        }),
+                        elytra: Some(ProfileTextureSummary {
+                            url: "https://textures.minecraft.net/texture/elytrahash".to_string(),
+                        }),
+                    }),
                     skin_patch: PlayerSkinPatchSummary {
                         body: None,
                         cape: None,

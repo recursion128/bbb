@@ -42,7 +42,9 @@ copper golem 会用 `ItemDisplayContext.HEAD` 渲染头槽物品；custom-head s
 `dragon_head` 会通过专用 DragonHeadModel 几何和 `wornHeadAnimationPos` 下颚动画渲染。
 `wornHeadAnimationPos` 也已按 vanilla 在乘骑 living entity 时读取载具 walk animation。
 `DataComponents.PROFILE` 已按 26.1 `ResolvableProfile.STREAM_CODEC` 保留为结构化
-profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资源纹理/模型覆盖）。
+profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资源纹理/模型覆盖），
+并会解析 profile `textures` property 的 base64 JSON，提取 skin/cape/elytra URL 和
+vanilla slim/wide 模型选择（skin 的 `metadata.model=slim`，否则 wide）。
 带 profile 的 `player_head` 已按 `PlayerSkinRenderCache` 默认 fallback 选择
 `DefaultPlayerSkin.get(UUID)`（显式 UUID、offline-name UUID 或 nil UUID），并支持指向内置默认
 player skin 的 `PlayerSkin.Patch` body；剩余的是远程 profile 解析、下载皮肤和任意动态纹理加载。
@@ -90,7 +92,7 @@ Drowned swimAmount 重姿态已完成：world 侧按 `LivingEntity.updateSwimAmo
    `CustomHeadLayer` / `SkullBlockRenderer` 的远程或动态 profiled-player 皮肤、其他专用装备/物品层等），逐项从
    deferred 改为 covered。
    其中远程 / 动态 player skin 资源管线按优先级推进：
-   1. 先解析 profile `textures` property 的 base64 JSON，提取 skin URL、cape URL
+   1. DONE：解析 profile `textures` property 的 base64 JSON，提取 skin/cape/elytra URL
       和 slim/wide model 信息；保持现有默认皮肤 fallback。
    2. 补 `ResolvableProfile` 的异步 profile resolution 与缓存：partial name/UUID
       能解析为完整 profile/properties，失败时保留默认皮肤。

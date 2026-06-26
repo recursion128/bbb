@@ -1213,10 +1213,12 @@ When an agent does any of the following, update this file in the same slice:
         pose, the `dragon.png` texture, and `wornHeadAnimationPos` jaw
         animation. Protocol now preserves `DataComponents.PROFILE` (type id
         70) as a structured `ResolvableProfileSummary`, including full vs
-        partial profile, UUID/name, profile properties, and `PlayerSkin.Patch`
-        resource texture/model overrides. Remote profile resolution, downloaded
-        skin textures, and arbitrary dynamic player-skin texture loading remain
-        deferred.
+        partial profile, UUID/name, profile properties, `PlayerSkin.Patch`
+        resource texture/model overrides, and the unpacked profile `textures`
+        property URLs for skin/cape/elytra plus the vanilla slim/wide model
+        selection (`metadata.model=slim`, otherwise wide when a skin URL is
+        present). Remote profile resolution, downloaded skin textures, and
+        arbitrary dynamic player-skin texture loading remain deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1245,7 +1247,8 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel; remote
-        and arbitrary dynamic profiled-player skins in
+        profile resolution, skin PNG download/cache/validation, and arbitrary
+        dynamic profiled-player skin rendering in
         `CustomHeadLayer` / `SkullBlockRenderer`; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
