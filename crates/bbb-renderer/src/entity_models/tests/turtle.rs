@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::geometry::part_pose_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -164,6 +165,33 @@ fn turtle_textured_egg_belly_shows_when_carrying_an_egg() {
     let egg = plain.with_turtle_has_egg(true);
     let plain_meshes = entity_model_textured_meshes(&[plain], &atlas);
     let egg_meshes = entity_model_textured_meshes(&[egg], &atlas);
+    assert_eq!(plain_meshes.submissions.len(), 1);
+    let plain_submit = plain_meshes.submissions[0];
+    assert_eq!(
+        plain_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(plain_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(plain_submit.texture, TURTLE_TEXTURE_REF);
+    assert_eq!(plain_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(plain_submit.transform, entity_model_root_transform(plain));
+    assert_eq!((plain_submit.order, plain_submit.submit_sequence), (0, 0));
+
+    assert_eq!(egg_meshes.submissions.len(), 1);
+    let egg_submit = egg_meshes.submissions[0];
+    assert_eq!(
+        egg_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(egg_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(egg_submit.texture, TURTLE_TEXTURE_REF);
+    assert_eq!(egg_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        egg_submit.transform,
+        entity_model_root_transform(egg) * part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE)
+    );
+    assert_eq!((egg_submit.order, egg_submit.submit_sequence), (0, 0));
+    assert_ne!(plain_submit.transform, egg_submit.transform);
 
     // The egg belly renders into the same cutout mesh: +6 faces / +24 vertices (eight cubes).
     assert_eq!(
@@ -421,6 +449,7 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
         adult_submit.render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(adult_submit.render_type.vanilla_name(), "entityCutout");
     assert_eq!(adult_submit.texture, TURTLE_TEXTURE_REF);
     assert_eq!(adult_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(adult_submit.order, 0);
@@ -446,6 +475,7 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
         baby_submit.render_type,
         EntityModelLayerRenderType::EntityCutoutCull
     );
+    assert_eq!(baby_submit.render_type.vanilla_name(), "entityCutoutCull");
     assert_eq!(baby_submit.texture, TURTLE_BABY_TEXTURE_REF);
     assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(baby_submit.order, 0);

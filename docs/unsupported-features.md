@@ -2380,7 +2380,8 @@ When an agent does any of the following, update this file in the same slice:
       flag are now projected into the entity render state), under the standard
       `LivingEntityRenderer.setupRotations`. The textured base layer draws the
       `textures/entity/turtle/turtle.png` / `turtle_baby.png` atlas references into the cutout
-      mesh while preserving the vanilla submission render type split: adult
+      mesh while preserving explicit submission metadata for texture, white tint, root/egg-drop
+      transform, and `order(0)`, plus the vanilla render type split: adult
       `AdultTurtleModel` uses `RenderTypes::entityCutout`, while baby `BabyTurtleModel` uses
       `RenderTypes::entityCutoutCull`. Both are hand-emitted through the same animated
       head/body/leg hierarchy as the colored path. When the adult turtle carries an egg, the
