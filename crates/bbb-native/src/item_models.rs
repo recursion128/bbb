@@ -14,11 +14,11 @@ use std::{
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh, dolphin_carried_item_transform,
-    enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
-    iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
-    snow_golem_head_block_transform, witch_held_item_transform, EntityModelInstance, ItemModelMesh,
-    ItemModelQuad, MooshroomVariant,
+    bake_generated_item_quads, bake_item_model_mesh, copper_golem_hand_attach_transform,
+    dolphin_carried_item_transform, enderman_carried_block_transform, fox_held_item_transform,
+    humanoid_hand_attach_transform, iron_golem_flower_block_transform,
+    mooshroom_mushroom_block_transforms, snow_golem_head_block_transform,
+    witch_held_item_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad, MooshroomVariant,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -362,6 +362,14 @@ pub(crate) fn held_item_models(
             &mut block_meshes,
             &mut flat_meshes,
         );
+        bake_copper_golem_held_items(
+            instance,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
     }
 
     HeldItemModels {
@@ -507,6 +515,44 @@ fn bake_witch_held_item(
         block_meshes,
         flat_meshes,
     );
+}
+
+/// Bakes a copper golem's standard `ItemInHandLayer` hand items. Vanilla uses the normal third-person
+/// left/right contexts, with `CopperGolemModel.translateToHand` supplying the posed arm transform.
+#[allow(clippy::too_many_arguments)]
+fn bake_copper_golem_held_items(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    for left_hand in [false, true] {
+        let Some(stack) = world.held_item(instance.entity_id, left_hand) else {
+            continue;
+        };
+        let Some(hand) = copper_golem_hand_attach_transform(instance, left_hand) else {
+            continue;
+        };
+        let context = if left_hand {
+            BlockModelDisplayContext::ThirdPersonLeftHand
+        } else {
+            BlockModelDisplayContext::ThirdPersonRightHand
+        };
+        bake_item_stack_at_transform(
+            &stack,
+            hand,
+            context,
+            left_hand,
+            BLOCK_THIRD_PERSON_FALLBACK,
+            GENERATED_THIRD_PERSON_FALLBACK,
+            item_runtime,
+            terrain_textures,
+            block_meshes,
+            flat_meshes,
+        );
+    }
 }
 
 /// Bakes one item stack at an entity-supplied attach transform, applying the stack's retained item

@@ -526,6 +526,11 @@ entity_render_state! {
     /// `Items.POTION`; `WitchItemLayer` then attaches the rendered stack to the nose instead of the
     /// crossed arms. `false` for non-potion held items and every other entity.
     (with_witch_holding_potion) witch_holding_potion: bool = false;
+    /// Vanilla `CopperGolemModel.setupAnim`: when either hand item state is non-empty, the golem samples
+    /// the walk-with-item branch and clamps both arms into the resting held-item pose before
+    /// `ItemInHandLayer` reads the hand transform. `false` for empty-handed copper golems and every other
+    /// entity. The walk-with-item keyframe itself remains deferred.
+    (with_copper_golem_holding_item) copper_golem_holding_item: bool = false;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
     /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
@@ -2049,6 +2054,7 @@ mod tests {
                 fox_is_faceplanted: false,
                 witch_holding_item: false,
                 witch_holding_potion: false,
+                copper_golem_holding_item: false,
                 vex_charging: false,
                 wither_invulnerable_ticks: 0.0,
                 wither_powered: false,

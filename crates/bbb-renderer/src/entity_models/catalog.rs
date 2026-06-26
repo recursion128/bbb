@@ -399,8 +399,8 @@ pub enum EntityModelKind {
     /// `CopperGolemModel` at its vanilla `createBodyLayer` rest pose, textured by
     /// `WeatheringCopper.WeatherState` (`CopperGolemRenderer.getTextureLocation`) and re-rendered
     /// with the matching emissive eyes texture through vanilla `LivingEntityEmissiveLayer`.
-    /// Interaction keyframes, held items, custom head, and the antenna block decoration stay
-    /// deferred entity-side layers.
+    /// The standard held-item layer is projected; interaction keyframes, custom head, and the antenna
+    /// block decoration stay deferred entity-side layers.
     CopperGolem {
         weathering: CopperGolemWeathering,
     },

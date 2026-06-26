@@ -12,8 +12,8 @@ use super::colored::{
 };
 use super::model::EntityModel;
 use super::model_layers::{
-    ArmorStandModel, FoxModel, IllagerModel, PiglinModel, PlayerModel, SkeletonModel, WitchModel,
-    ZombieModel, ZombieVariantModel,
+    ArmorStandModel, CopperGolemModel, FoxModel, IllagerModel, PiglinModel, PlayerModel,
+    SkeletonModel, WitchModel, ZombieModel, ZombieVariantModel,
 };
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
@@ -49,6 +49,38 @@ pub fn humanoid_hand_attach_transform(
                 offset_y / 16.0,
                 offset_z / 16.0,
             )),
+    )
+}
+
+/// The model→world transform used by vanilla `CopperGolemModel.translateToHand` plus
+/// `ItemInHandLayer.submitArmWithItem`. bbb currently projects the renderer's steady `IDLE` hand branch:
+/// `root -> body -> arm`, a ±90° Y rotation (right/left), a small forward offset, then the standard
+/// third-person hand rotation and adult hand offset. Interaction keyframe hand placement stays deferred
+/// with the copper golem interaction animations.
+pub fn copper_golem_hand_attach_transform(
+    instance: &EntityModelInstance,
+    left_hand: bool,
+) -> Option<Mat4> {
+    let EntityModelKind::CopperGolem { .. } = instance.kind else {
+        return None;
+    };
+
+    let arm_name = if left_hand { "left_arm" } else { "right_arm" };
+    let mut model = CopperGolemModel::new();
+    model.prepare(instance);
+    let arm_world = entity_model_root_transform(*instance)
+        * model
+            .root()
+            .try_descendant_attach_transform(&["body", arm_name])?;
+    let sign = if left_hand { -1.0 } else { 1.0 };
+    let hand_y_rot = if left_hand { FRAC_PI_2 } else { -FRAC_PI_2 };
+    Some(
+        arm_world
+            * Mat4::from_rotation_y(hand_y_rot)
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.125))
+            * Mat4::from_rotation_x(-FRAC_PI_2)
+            * Mat4::from_rotation_y(PI)
+            * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
     )
 }
 
@@ -248,6 +280,7 @@ fn humanoid_arm_world_transform(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entity_models::CopperGolemWeathering;
     use crate::entity_models::{FoxModelVariant, PLAYER_MODEL_PARTS_ALL_VISIBLE};
 
     fn player_instance(y_rot: f32) -> EntityModelInstance {
@@ -366,6 +399,36 @@ mod tests {
             generic_transform.transform_point3(Vec3::ZERO),
             potion_transform.transform_point3(Vec3::ZERO),
             "potion branch attaches to the nose, not the crossed arms"
+        );
+    }
+
+    #[test]
+    fn copper_golem_hand_attach_uses_held_item_arm_pose() {
+        let base = EntityModelInstance::new(
+            28,
+            EntityModelKind::CopperGolem {
+                weathering: CopperGolemWeathering::Unaffected,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let resting = copper_golem_hand_attach_transform(&base, false).unwrap();
+        let holding =
+            copper_golem_hand_attach_transform(&base.with_copper_golem_holding_item(true), false)
+                .unwrap();
+        let left =
+            copper_golem_hand_attach_transform(&base.with_copper_golem_holding_item(true), true)
+                .unwrap();
+        assert!(holding.transform_point3(Vec3::ZERO).is_finite());
+        assert_ne!(
+            resting.transform_point3(Vec3::ZERO),
+            holding.transform_point3(Vec3::ZERO),
+            "non-empty copper golem hands clamp the arms into the vanilla held-item pose"
+        );
+        assert_ne!(
+            holding.transform_point3(Vec3::ZERO),
+            left.transform_point3(Vec3::ZERO),
+            "left and right hands use mirrored vanilla hand rotations"
         );
     }
 

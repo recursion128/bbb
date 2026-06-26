@@ -148,10 +148,24 @@ fn copper_golem_tree() -> ModelPart {
     )
 }
 
+fn pose_held_item_arms_if_still(root: &mut ModelPart) {
+    // Vanilla `CopperGolemModel.poseHeldItemArmsIfStill`: clamp the arms into the resting held-item pose
+    // when either rendered hand is non-empty. Walk/interaction keyframes still stay deferred.
+    let body = root.child_mut("body");
+    let right_arm = body.child_mut("right_arm");
+    right_arm.pose.rotation[0] = right_arm.pose.rotation[0].min(-0.87266463);
+    right_arm.pose.rotation[1] = right_arm.pose.rotation[1].min(-0.1134464);
+    right_arm.pose.rotation[2] = right_arm.pose.rotation[2].min(-0.064577185);
+    let left_arm = body.child_mut("left_arm");
+    left_arm.pose.rotation[0] = left_arm.pose.rotation[0].min(-0.87266463);
+    left_arm.pose.rotation[1] = left_arm.pose.rotation[1].max(0.1134464);
+    left_arm.pose.rotation[2] = left_arm.pose.rotation[2].max(0.064577185);
+}
+
 /// Mutable copper golem model, mirroring vanilla `CopperGolemModel.createBodyLayer`. The base
 /// renderer uses this same tree for both the cutout body and the emissive eyes texture. The vanilla
-/// keyframe walk/idle/interaction animations, held-item arm pose, custom head, and antenna block
-/// transform are deferred; the head look is projected now.
+/// keyframe walk/idle/interaction animations, custom head, and antenna block transform are deferred; the
+/// head look and the static held-item arm pose are projected now.
 pub(in crate::entity_models) struct CopperGolemModel {
     root: ModelPart,
 }
@@ -177,5 +191,8 @@ impl EntityModel for CopperGolemModel {
         let render_state = &instance.render_state;
         let head = self.root.child_mut("body").child_mut("head");
         apply_head_look(head, render_state.head_yaw, render_state.head_pitch);
+        if render_state.copper_golem_holding_item {
+            pose_held_item_arms_if_still(&mut self.root);
+        }
     }
 }

@@ -1055,6 +1055,11 @@ fn entity_model_instance(
         && entity_main_hand_non_empty(world, source.entity_id);
     let witch_holding_potion = witch_holding_item
         && entity_main_hand_is_item(world, item_runtime, source.entity_id, "minecraft:potion");
+    // Vanilla `CopperGolemModel.setupAnim`: either rendered hand item state selects the held-item arm
+    // clamp before `ItemInHandLayer` reads the hand transform. The walk-with-item keyframe stays deferred.
+    let copper_golem_holding_item = matches!(kind, EntityModelKind::CopperGolem { .. })
+        && (entity_main_hand_non_empty(world, source.entity_id)
+            || entity_offhand_non_empty(world, source.entity_id));
     // Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinAi.isLovedItem(getOffhandItem())`): a regular
     // piglin holding a piglin-loved item in its OFFHAND admires it (head tilts down, the off arm lifts the
     // item). Second-highest priority (below DANCING, above ATTACKING / CROSSBOW), so it suppresses those.
@@ -1239,6 +1244,7 @@ fn entity_model_instance(
         .with_fox_is_faceplanted(source.fox_is_faceplanted)
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
+        .with_copper_golem_holding_item(copper_golem_holding_item)
         .with_bee_angry(bee_is_angry(
             source.entity_type_id,
             &source.data_values,
@@ -4779,6 +4785,36 @@ mod tests {
             .render_state;
         assert!(state.witch_holding_item);
         assert!(!state.witch_holding_potion);
+    }
+
+    #[test]
+    fn entity_model_instances_project_copper_golem_holding_item_from_either_hand() {
+        // `CopperGolemModel.setupAnim` checks both rendered hand item states before clamping the arms into
+        // the held-item pose, so an off-hand-only item is enough.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            245,
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+            [3.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 245,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::OffHand,
+                item: ItemStackSummary {
+                    item_id: Some(6),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        }));
+
+        let state = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 245)
+            .unwrap()
+            .render_state;
+        assert!(state.copper_golem_holding_item);
     }
 
     #[test]
