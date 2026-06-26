@@ -18,6 +18,17 @@ impl DynamicPlayerSkinImage {
     pub const SIZE: [u32; 2] = [SKIN_WIDTH, SKIN_HEIGHT];
 }
 
+/// A downloaded non-skin player-profile texture, such as a cape or elytra texture.
+///
+/// Unlike body skins, vanilla 26.1 registers cape/elytra textures without legacy skin repair, so this
+/// type preserves the decoded PNG dimensions and RGBA pixels unchanged.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DynamicPlayerTextureImage {
+    pub handle: u64,
+    pub size: [u32; 2],
+    pub rgba: Vec<u8>,
+}
+
 /// Decode and process a downloaded player skin PNG.
 ///
 /// Mirrors vanilla 26.1 `SkinTextureDownloader.processLegacySkin`: only 64x64 and 64x32 skins are
@@ -33,6 +44,42 @@ pub fn decode_dynamic_player_skin_png(handle: u64, png: &[u8]) -> Result<Dynamic
         .context("decode player skin png")?
         .to_rgba8();
     process_dynamic_player_skin_rgba(handle, image.width(), image.height(), image.into_raw())
+}
+
+/// Decode a downloaded cape/elytra profile texture PNG.
+///
+/// Vanilla `SkinManager.TextureCache` only asks `SkinTextureDownloader` to process legacy layout when
+/// loading `Type.SKIN`; cape and elytra textures are normal PNG-backed client assets.
+pub fn decode_dynamic_player_texture_png(
+    handle: u64,
+    png: &[u8],
+) -> Result<DynamicPlayerTextureImage> {
+    let format = image::guess_format(png).context("guess player profile texture image format")?;
+    ensure!(
+        format == image::ImageFormat::Png,
+        "player profile texture is not a PNG"
+    );
+    let image = image::load_from_memory_with_format(png, image::ImageFormat::Png)
+        .context("decode player profile texture png")?
+        .to_rgba8();
+    let width = image.width();
+    let height = image.height();
+    let rgba = image.into_raw();
+    let expected_len = rgba_len(width, height, "player profile texture")?;
+    if rgba.len() != expected_len {
+        bail!(
+            "player profile texture has {} RGBA bytes, expected {} for {}x{}",
+            rgba.len(),
+            expected_len,
+            width,
+            height
+        );
+    }
+    Ok(DynamicPlayerTextureImage {
+        handle,
+        size: [width, height],
+        rgba,
+    })
 }
 
 fn process_dynamic_player_skin_rgba(
@@ -336,6 +383,28 @@ mod tests {
         assert_eq!(pixel(&skin.rgba, 0, 0), [0, 0, 99, 255]);
     }
 
+    #[test]
+    fn decodes_profile_texture_png_without_skin_post_processing() {
+        let png = rgba_png(64, 32, |x, y| {
+            [x as u8, y as u8, 44, x.wrapping_add(y) as u8]
+        });
+
+        let texture = decode_dynamic_player_texture_png(55, &png).unwrap();
+
+        assert_eq!(texture.handle, 55);
+        assert_eq!(texture.size, [64, 32]);
+        assert_eq!(texture.rgba.len(), 64 * 32 * 4);
+        assert_eq!(pixel_with_width(&texture.rgba, 64, 2, 2), [2, 2, 44, 4]);
+    }
+
+    #[test]
+    fn rejects_non_png_profile_texture() {
+        let err = decode_dynamic_player_texture_png(7, b"not a png").unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("guess player profile texture image format"));
+    }
+
     fn patterned_rgba(width: u32, height: u32) -> Vec<u8> {
         let mut rgba = vec![0; usize::try_from(width * height * 4).unwrap()];
         for y in 0..height {
@@ -367,7 +436,11 @@ mod tests {
     }
 
     fn pixel(rgba: &[u8], x: u32, y: u32) -> [u8; 4] {
-        let offset = rgba_offset(64, x, y);
+        pixel_with_width(rgba, 64, x, y)
+    }
+
+    fn pixel_with_width(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+        let offset = rgba_offset(width, x, y);
         rgba[offset..offset + 4].try_into().unwrap()
     }
 

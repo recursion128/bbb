@@ -1267,8 +1267,14 @@ When an agent does any of the following, update this file in the same slice:
         `EntityPlayerSkin`, picks wide/slim from `PlayerSkin.model`, and Ready
         dynamic body submissions sample the dynamic player-skin atlas through a
         cutout mesh while preserving vanilla `entityCutout` submission metadata.
-        Cape, elytra, and broader arbitrary dynamic texture loading remain
-        deferred.
+        Native now also has the ordinary profile-texture half for cape/elytra:
+        renderer decodes non-skin profile PNGs without legacy skin
+        post-processing, native keeps separate memory/disk caches for cape and
+        elytra textures, profile cape/elytra URLs queue async downloads, and
+        the main loop drains successful results as pending renderer uploads.
+        Renderer upload/sampling for those dynamic textures, the actual
+        CapeLayer/WingsLayer presentation, and broader arbitrary dynamic
+        texture loading remain deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1297,8 +1303,8 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel; player
-        cape/elytra dynamic skin presentation and broader arbitrary dynamic
-        texture loading; the
+        cape/elytra dynamic texture renderer upload/presentation and broader
+        arbitrary dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked

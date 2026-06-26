@@ -21,8 +21,9 @@ use bbb_protocol::packets::{
     ResolvableProfileSummary,
 };
 use bbb_renderer::{
-    DynamicPlayerSkinImage, EntityCustomHeadSkull, EntityDefaultPlayerSkin,
-    EntityDynamicPlayerSkinStatus, EntityPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
+    DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
+    EntityDefaultPlayerSkin, EntityDynamicPlayerSkinStatus, EntityPlayerSkin, ItemSpriteRect,
+    SpriteAlphaMask,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkin, EntityPlayerSkinModel};
@@ -35,7 +36,10 @@ use bbb_world::{
 
 use crate::{
     profile_resolver::{AsyncProfileResolutionRuntime, HttpGameProfileFetcher},
-    skin_runtime::{AsyncDynamicPlayerSkinRuntime, HttpSkinPngFetcher},
+    skin_runtime::{
+        AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, DynamicPlayerTextureKind,
+        HttpSkinPngFetcher,
+    },
 };
 
 mod icon_model;
@@ -46,7 +50,6 @@ use icon_model::{
     IconResolveContext, ItemIconModel, ItemIconModelRef,
 };
 pub(crate) use profile_skin::default_player_skin_for_profile_id;
-#[cfg(test)]
 use profile_skin::profile_texture_handle;
 use profile_skin::ProfileSkinCache;
 
@@ -128,6 +131,13 @@ pub(crate) struct NativeDynamicPlayerSkinDownload {
     pub(crate) skin: Option<DynamicPlayerSkinImage>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct NativeDynamicPlayerTextureDownload {
+    pub(crate) kind: DynamicPlayerTextureKind,
+    pub(crate) url: String,
+    pub(crate) texture: Option<DynamicPlayerTextureImage>,
+}
+
 #[derive(Debug)]
 pub(crate) struct NativeItemRuntime {
     item_definition_count: usize,
@@ -146,6 +156,7 @@ pub(crate) struct NativeItemRuntime {
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_skins: RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
+    dynamic_textures: RefCell<Option<AsyncDynamicPlayerTextureRuntime>>,
     profile_skins: RefCell<ProfileSkinCache>,
 }
 
@@ -323,6 +334,7 @@ impl NativeItemRuntime {
             textures,
             profile_resolutions: RefCell::default(),
             dynamic_skins: RefCell::default(),
+            dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
         })
     }
@@ -349,6 +361,7 @@ impl NativeItemRuntime {
                 .expect("test item texture atlas is valid"),
             profile_resolutions: RefCell::default(),
             dynamic_skins: RefCell::default(),
+            dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
         }
     }
@@ -458,6 +471,7 @@ impl NativeItemRuntime {
             &stack.component_patch,
             &self.profile_resolutions,
             &self.dynamic_skins,
+            &self.dynamic_textures,
             &self.profile_skins,
         )
     }
@@ -470,7 +484,12 @@ impl NativeItemRuntime {
             .profile_skins
             .borrow_mut()
             .player_skin_for_profile(profile);
-        queue_dynamic_player_skin_download(profile, player_skin, &self.dynamic_skins);
+        queue_dynamic_profile_texture_downloads(
+            profile,
+            player_skin,
+            &self.dynamic_skins,
+            &self.dynamic_textures,
+        );
         player_skin
     }
 
@@ -498,16 +517,36 @@ impl NativeItemRuntime {
     }
 
     pub(crate) fn enable_http_player_skin_downloads(&self, cache_dir: impl Into<PathBuf>) {
+        let cache_dir = cache_dir.into();
         let mut dynamic_skins = self.dynamic_skins.borrow_mut();
-        if dynamic_skins.is_some() {
-            return;
-        }
-        match HttpSkinPngFetcher::new() {
-            Ok(fetcher) => {
-                *dynamic_skins = Some(AsyncDynamicPlayerSkinRuntime::new(cache_dir, fetcher));
+        if dynamic_skins.is_none() {
+            match HttpSkinPngFetcher::new() {
+                Ok(fetcher) => {
+                    *dynamic_skins = Some(AsyncDynamicPlayerSkinRuntime::new(
+                        cache_dir.clone(),
+                        fetcher,
+                    ));
+                }
+                Err(err) => {
+                    tracing::warn!(?err, "continuing without async player skin downloads");
+                }
             }
-            Err(err) => {
-                tracing::warn!(?err, "continuing without async player skin downloads");
+        }
+        drop(dynamic_skins);
+
+        let mut dynamic_textures = self.dynamic_textures.borrow_mut();
+        if dynamic_textures.is_none() {
+            match HttpSkinPngFetcher::new() {
+                Ok(fetcher) => {
+                    *dynamic_textures =
+                        Some(AsyncDynamicPlayerTextureRuntime::new(cache_dir, fetcher));
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        ?err,
+                        "continuing without async player profile texture downloads"
+                    );
+                }
             }
         }
     }
@@ -535,9 +574,31 @@ impl NativeItemRuntime {
             .collect()
     }
 
+    pub(crate) fn drain_dynamic_player_texture_download_results(
+        &self,
+    ) -> Vec<NativeDynamicPlayerTextureDownload> {
+        self.dynamic_textures
+            .borrow_mut()
+            .as_mut()
+            .map(AsyncDynamicPlayerTextureRuntime::drain_results)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|result| NativeDynamicPlayerTextureDownload {
+                kind: result.kind,
+                url: result.url,
+                texture: result.texture,
+            })
+            .collect()
+    }
+
     #[cfg(test)]
     fn enable_player_skin_downloads_for_test(&self, runtime: AsyncDynamicPlayerSkinRuntime) {
         *self.dynamic_skins.borrow_mut() = Some(runtime);
+    }
+
+    #[cfg(test)]
+    fn enable_player_texture_downloads_for_test(&self, runtime: AsyncDynamicPlayerTextureRuntime) {
+        *self.dynamic_textures.borrow_mut() = Some(runtime);
     }
 
     #[cfg(test)]
@@ -546,6 +607,15 @@ impl NativeItemRuntime {
             .borrow()
             .as_ref()
             .map(AsyncDynamicPlayerSkinRuntime::downloaded_skin_count)
+            .unwrap_or(0)
+    }
+
+    #[cfg(test)]
+    fn downloaded_player_texture_count(&self) -> usize {
+        self.dynamic_textures
+            .borrow()
+            .as_ref()
+            .map(AsyncDynamicPlayerTextureRuntime::downloaded_texture_count)
             .unwrap_or(0)
     }
 
@@ -1263,6 +1333,7 @@ fn custom_head_skull_for_resource_id(
     component_patch: &DataComponentPatchSummary,
     profile_resolutions: &RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_skins: &RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
+    dynamic_textures: &RefCell<Option<AsyncDynamicPlayerTextureRuntime>>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     match resource_id {
@@ -1272,6 +1343,7 @@ fn custom_head_skull_for_resource_id(
             component_patch,
             profile_resolutions,
             dynamic_skins,
+            dynamic_textures,
             profile_skins,
         ),
         "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
@@ -1286,6 +1358,7 @@ fn custom_head_player_skull(
     component_patch: &DataComponentPatchSummary,
     profile_resolutions: &RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_skins: &RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
+    dynamic_textures: &RefCell<Option<AsyncDynamicPlayerTextureRuntime>>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     if !component_patch_has_profile(component_patch) {
@@ -1301,31 +1374,55 @@ fn custom_head_player_skull(
         .map(|profile_resolutions| profile_resolutions.resolve_or_queue(profile))
         .unwrap_or_else(|| profile.clone());
     let player_skin = profile_skins.borrow_mut().player_skin_for_profile(&profile);
-    queue_dynamic_player_skin_download(&profile, player_skin, dynamic_skins);
+    queue_dynamic_profile_texture_downloads(&profile, player_skin, dynamic_skins, dynamic_textures);
     Some(EntityCustomHeadSkull::Player(player_skin))
 }
 
-fn queue_dynamic_player_skin_download(
+fn queue_dynamic_profile_texture_downloads(
     profile: &ResolvableProfileSummary,
     player_skin: EntityPlayerSkin,
     dynamic_skins: &RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
+    dynamic_textures: &RefCell<Option<AsyncDynamicPlayerTextureRuntime>>,
 ) {
-    let EntityPlayerSkin::Dynamic(skin) = player_skin else {
-        return;
-    };
-    if skin.status != EntityDynamicPlayerSkinStatus::Loading {
-        return;
+    if let EntityPlayerSkin::Dynamic(skin) = player_skin {
+        if skin.status == EntityDynamicPlayerSkinStatus::Loading {
+            if let Some(url) = profile
+                .profile_textures
+                .as_ref()
+                .and_then(|textures| textures.skin.as_ref())
+                .map(|skin| skin.url.as_str())
+            {
+                if let Some(dynamic_skins) = dynamic_skins.borrow_mut().as_mut() {
+                    dynamic_skins.queue(skin.handle, url);
+                }
+            }
+        }
     }
-    let Some(url) = profile
-        .profile_textures
-        .as_ref()
-        .and_then(|textures| textures.skin.as_ref())
-        .map(|skin| skin.url.as_str())
-    else {
+
+    let Some(textures) = profile.profile_textures.as_ref() else {
         return;
     };
-    if let Some(dynamic_skins) = dynamic_skins.borrow_mut().as_mut() {
-        dynamic_skins.queue(skin.handle, url);
+    let mut dynamic_textures = dynamic_textures.borrow_mut();
+    let Some(dynamic_textures) = dynamic_textures.as_mut() else {
+        return;
+    };
+    if profile.skin_patch.cape.is_none() {
+        if let Some(cape) = textures.cape.as_ref() {
+            dynamic_textures.queue(
+                DynamicPlayerTextureKind::Cape,
+                profile_texture_handle(&cape.url),
+                &cape.url,
+            );
+        }
+    }
+    if profile.skin_patch.elytra.is_none() {
+        if let Some(elytra) = textures.elytra.as_ref() {
+            dynamic_textures.queue(
+                DynamicPlayerTextureKind::Elytra,
+                profile_texture_handle(&elytra.url),
+                &elytra.url,
+            );
+        }
     }
 }
 
@@ -1856,7 +1953,9 @@ fn item_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ItemAtlasUvRect {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::skin_runtime::{AsyncDynamicPlayerSkinRuntime, SkinPngFetcher};
+    use crate::skin_runtime::{
+        AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
+    };
     use std::{
         io::Cursor,
         path::{Path, PathBuf},
@@ -2624,6 +2723,132 @@ mod tests {
         );
 
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn player_profile_queues_dynamic_cape_and_elytra_texture_downloads() {
+        let root = unique_temp_dir("item-runtime-profile-texture-downloads");
+        let runtime = NativeItemRuntime::empty_for_test();
+        let texture_download_calls = Arc::new(AtomicUsize::new(0));
+        runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+            root.join("profile-texture-cache"),
+            TestSkinPngFetcher {
+                bytes: player_profile_texture_png_bytes(),
+                calls: texture_download_calls.clone(),
+            },
+        ));
+
+        let cape_url = "https://textures.minecraft.net/texture/profile-cape";
+        let elytra_url = "https://textures.minecraft.net/texture/profile-elytra";
+        let profile = ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+                skin: None,
+                cape: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: cape_url.to_string(),
+                }),
+                elytra: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: elytra_url.to_string(),
+                }),
+            }),
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary::default(),
+        };
+
+        assert_eq!(
+            runtime.player_skin_for_profile(&profile),
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        );
+
+        let downloads = drain_until_player_texture_download_results(&runtime, 2);
+        assert_eq!(downloads.len(), 2);
+        let cape = downloads
+            .iter()
+            .find(|download| download.kind == DynamicPlayerTextureKind::Cape)
+            .expect("cape download result");
+        assert_eq!(cape.url, cape_url);
+        let cape_texture = cape.texture.as_ref().expect("cape texture");
+        assert_eq!(cape_texture.handle, profile_texture_handle(cape_url));
+        assert_eq!(cape_texture.size, [64, 32]);
+
+        let elytra = downloads
+            .iter()
+            .find(|download| download.kind == DynamicPlayerTextureKind::Elytra)
+            .expect("elytra download result");
+        assert_eq!(elytra.url, elytra_url);
+        let elytra_texture = elytra.texture.as_ref().expect("elytra texture");
+        assert_eq!(elytra_texture.handle, profile_texture_handle(elytra_url));
+        assert_eq!(elytra_texture.size, [64, 32]);
+
+        assert_eq!(runtime.downloaded_player_texture_count(), 2);
+        assert_eq!(texture_download_calls.load(Ordering::Relaxed), 2);
+
+        runtime.player_skin_for_profile(&profile);
+        assert!(runtime
+            .drain_dynamic_player_texture_download_results()
+            .is_empty());
+        assert_eq!(texture_download_calls.load(Ordering::Relaxed), 2);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn player_profile_resource_texture_patch_suppresses_remote_cape_and_elytra_downloads() {
+        let root = unique_temp_dir("item-runtime-profile-texture-patches");
+        let runtime = NativeItemRuntime::empty_for_test();
+        let texture_download_calls = Arc::new(AtomicUsize::new(0));
+        runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+            root.join("profile-texture-cache"),
+            TestSkinPngFetcher {
+                bytes: player_profile_texture_png_bytes(),
+                calls: texture_download_calls.clone(),
+            },
+        ));
+
+        let profile = ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+                skin: None,
+                cape: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: "https://textures.minecraft.net/texture/profile-cape".to_string(),
+                }),
+                elytra: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: "https://textures.minecraft.net/texture/profile-elytra".to_string(),
+                }),
+            }),
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+                body: None,
+                cape: Some(bbb_protocol::packets::ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/cape/custom".to_string(),
+                    texture_path: "minecraft:textures/entity/player/cape/custom.png".to_string(),
+                }),
+                elytra: Some(bbb_protocol::packets::ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/elytra/custom".to_string(),
+                    texture_path: "minecraft:textures/entity/player/elytra/custom.png".to_string(),
+                }),
+                model: None,
+            },
+        };
+
+        assert_eq!(
+            runtime.player_skin_for_profile(&profile),
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        );
+        for _ in 0..10 {
+            assert!(runtime
+                .drain_dynamic_player_texture_download_results()
+                .is_empty());
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(runtime.downloaded_player_texture_count(), 0);
+        assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -3897,6 +4122,20 @@ mod tests {
         cursor.into_inner()
     }
 
+    fn player_profile_texture_png_bytes() -> Vec<u8> {
+        let mut image = image::RgbaImage::new(64, 32);
+        for y in 0..32 {
+            for x in 0..64 {
+                image.put_pixel(x, y, image::Rgba([x as u8, y as u8, 63, 255]));
+            }
+        }
+        let mut cursor = Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(image)
+            .write_to(&mut cursor, image::ImageFormat::Png)
+            .unwrap();
+        cursor.into_inner()
+    }
+
     fn drain_until_player_skin_download_result(
         runtime: &NativeItemRuntime,
     ) -> Vec<NativeDynamicPlayerSkinDownload> {
@@ -3908,6 +4147,21 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
         }
         panic!("timed out waiting for player skin download result");
+    }
+
+    fn drain_until_player_texture_download_results(
+        runtime: &NativeItemRuntime,
+        expected_len: usize,
+    ) -> Vec<NativeDynamicPlayerTextureDownload> {
+        let mut downloads = Vec::new();
+        for _ in 0..100 {
+            downloads.extend(runtime.drain_dynamic_player_texture_download_results());
+            if downloads.len() >= expected_len {
+                return downloads;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        panic!("timed out waiting for player profile texture download results");
     }
 
     fn write_test_rgba_png(path: &Path, width: u32, height: u32, rgba: &[u8]) {

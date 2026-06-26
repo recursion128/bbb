@@ -61,7 +61,10 @@ resolved profile/properties。native 也已补 skin PNG 异步下载队列，成
 数据、失败回写 failed fallback；主循环会在 renderer 上传成功后回写 Ready。玩家实体本体
 现在无 PlayerInfo 时会按 UUID 选择 vanilla 18 默认 skin；有 PlayerInfo profile 时会选择
 动态 skin/model，Ready 时通过动态 player skin atlas 的 cutout mesh 采样上传后的 skin，
-Loading/Failed 仍采样 fallback。剩余的是 cape、elytra 以及更泛化的任意动态纹理加载。
+Loading/Failed 仍采样 fallback。native 也已补 cape/elytra 这类普通 profile
+texture PNG 的异步下载/缓存 primitive（不走 legacy skin post-process，按 capes/elytra
+分目录缓存并 drain 为待上传结果）。剩余的是 renderer 动态 texture 上传/采样入口、
+CapeLayer/WingsLayer presentation，以及更泛化的任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -148,7 +151,12 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
       skin model 选择 wide/slim；renderer 为 Ready dynamic player body 使用动态
       player skin atlas 的 cutout mesh，submission 仍记录 vanilla `entityCutout`、
       fallback texture、tint、transform、order。
-   7. 推广 renderer 动态纹理入口到 cape、elytra 等层，并继续抽象 broader arbitrary
-      dynamic texture loading。
+   7. DONE for native 普通 profile texture primitive：renderer 提供
+      `decode_dynamic_player_texture_png`，只校验 PNG 并保留原始 RGBA 尺寸，不套
+      `SkinTextureDownloader.processLegacySkin`；native 用同一个 fetcher boundary 为
+      cape/elytra 分别维护 memory/disk cache 和异步队列，`NativeItemRuntime` 会从
+      profile textures 里排队 cape/elytra URL，main drain 成待上传结果。
+   8. 推广 renderer 动态纹理上传/采样入口到 cape、elytra 等层，并继续抽象 broader
+      arbitrary dynamic texture loading。
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

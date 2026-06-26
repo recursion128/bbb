@@ -771,6 +771,28 @@ fn drain_dynamic_player_skin_downloads(
         }
         items.mark_profile_skin_resolved(&download.url, handle);
     }
+
+    for download in items.drain_dynamic_player_texture_download_results() {
+        match download.texture {
+            Some(texture) => {
+                tracing::debug!(
+                    kind = ?download.kind,
+                    url = %download.url,
+                    handle = texture.handle,
+                    width = texture.size[0],
+                    height = texture.size[1],
+                    "downloaded dynamic player profile texture pending renderer upload"
+                );
+            }
+            None => {
+                tracing::warn!(
+                    kind = ?download.kind,
+                    url = %download.url,
+                    "failed to download dynamic player profile texture"
+                );
+            }
+        }
+    }
 }
 
 #[cfg(test)]
