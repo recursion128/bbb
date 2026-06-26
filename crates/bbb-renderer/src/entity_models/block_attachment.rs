@@ -8,8 +8,38 @@ use glam::{Mat4, Vec3};
 
 use super::colored::entity_model_root_transform;
 use super::model::EntityModel;
-use super::model_layers::{CowModel, IronGolemModel, SnowGolemModel};
+use super::model_layers::{CopperGolemModel, CowModel, IronGolemModel, SnowGolemModel};
 use super::{CowModelVariant, EntityModelInstance, EntityModelKind, MooshroomVariant};
+
+fn unit_cube_bottom_center_to_antenna_center() -> Mat4 {
+    Mat4::from_translation(Vec3::new(-0.5, 0.0, -0.5))
+        * Mat4::from_translation(Vec3::splat(0.5))
+        * Mat4::from_rotation_z(PI)
+        * Mat4::from_translation(Vec3::splat(-0.5))
+}
+
+/// World transform for vanilla `BlockDecorationLayer` on a copper golem's antenna block.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. It includes
+/// `CopperGolemModel.applyBlockOnAntennaTransform`: `root -> body -> head`, translate `(0, -1.75, 0)`,
+/// then the layer's shared unit-cube-bottom-center-to-antenna-center transform.
+pub fn copper_golem_antenna_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::CopperGolem { .. })
+        || instance.render_state.invisible
+    {
+        return None;
+    }
+    let mut model = CopperGolemModel::new();
+    model.prepare(instance);
+    Some(
+        entity_model_root_transform(*instance)
+            * model
+                .root()
+                .try_descendant_attach_transform(&["body", "head"])?
+            * Mat4::from_translation(Vec3::new(0.0, -1.75, 0.0))
+            * unit_cube_bottom_center_to_antenna_center(),
+    )
+}
 
 /// World transform for vanilla `CarriedBlockLayer` on endermen.
 ///
@@ -133,7 +163,19 @@ pub fn snow_golem_head_block_transform(instance: &EntityModelInstance) -> Option
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entity_models::CopperGolemWeathering;
     use glam::Vec3;
+
+    fn copper_golem() -> EntityModelInstance {
+        EntityModelInstance::new(
+            28,
+            EntityModelKind::CopperGolem {
+                weathering: CopperGolemWeathering::Unaffected,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        )
+    }
 
     fn iron_golem() -> EntityModelInstance {
         EntityModelInstance::iron_golem(74, [0.0, 64.0, 0.0], 0.0)
@@ -184,6 +226,29 @@ mod tests {
             &EntityModelInstance::enderman(41, [0.0, 64.0, 0.0], 90.0).with_enderman_carrying(true),
         )
         .unwrap();
+        let base_center = base.transform_point3(Vec3::splat(0.5));
+        let turned_center = turned.transform_point3(Vec3::splat(0.5));
+
+        assert!(base_center.is_finite());
+        assert!(turned_center.is_finite());
+        assert_ne!(base_center, turned_center);
+    }
+
+    #[test]
+    fn copper_golem_antenna_block_is_gated_on_kind_and_visibility() {
+        assert!(copper_golem_antenna_block_transform(&copper_golem()).is_some());
+        assert!(
+            copper_golem_antenna_block_transform(&copper_golem().with_invisible(true)).is_none()
+        );
+        assert!(copper_golem_antenna_block_transform(&snow_golem()).is_none());
+    }
+
+    #[test]
+    fn copper_golem_antenna_block_follows_head_look() {
+        let base = copper_golem_antenna_block_transform(&copper_golem()).unwrap();
+        let turned =
+            copper_golem_antenna_block_transform(&copper_golem().with_head_look(30.0, 20.0))
+                .unwrap();
         let base_center = base.transform_point3(Vec3::splat(0.5));
         let turned_center = turned.transform_point3(Vec3::splat(0.5));
 

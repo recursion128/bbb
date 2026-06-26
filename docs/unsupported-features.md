@@ -1860,9 +1860,17 @@ When an agent does any of the following, update this file in the same slice:
       clamps both arms into `CopperGolemModel.poseHeldItemArmsIfStill`, the
       renderer exports the `translateToHand` IDLE hand branch (`body -> arm`,
       ±90° Y, `translate(0, 0, 0.125)`), and native bakes both hands with the
-      retained third-person left/right item display transforms. The keyframe
-      walk/walk-with-item/idle/interaction animations, custom-head layer, and
-      antenna block decoration remain unsupported
+      retained third-person left/right item display transforms. The antenna
+      block decoration is now implemented through the same entity-attached
+      block-model path: protocol preserves the item stack's
+      `DataComponents.BLOCK_STATE` string map, world exposes arbitrary
+      equipment-slot item queries, native reads `CopperGolem.EQUIPMENT_SLOT_ANTENNA`
+      (`EquipmentSlot.SADDLE`), resolves block-item resource ids plus component
+      properties, and the renderer-owned transform mirrors
+      `CopperGolemModel.applyBlockOnAntennaTransform` plus
+      `BlockDecorationLayer`'s unit-cube antenna matrix. The keyframe
+      walk/walk-with-item/idle/interaction animations and custom-head layer
+      remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
@@ -3249,8 +3257,9 @@ When an agent does any of the following, update this file in the same slice:
     spider walk-animation presentation (the 180-degree death flip is implemented),
     enderman creepy render jitter (the carried-block arm pose, held-block block-model render,
     and creepy head/hat shift are implemented),
-    copper golem keyframe/custom-head/antenna-block presentation (the base model,
-    weathering texture swap, emissive eyes, and standard held-item layer are implemented),
+    copper golem keyframe/custom-head presentation (the base model, weathering
+    texture swap, emissive eyes, standard held-item layer, and antenna block
+    decoration are implemented),
     iron golem body-wobble presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity

@@ -164,8 +164,8 @@ fn pose_held_item_arms_if_still(root: &mut ModelPart) {
 
 /// Mutable copper golem model, mirroring vanilla `CopperGolemModel.createBodyLayer`. The base
 /// renderer uses this same tree for both the cutout body and the emissive eyes texture. The vanilla
-/// keyframe walk/idle/interaction animations, custom head, and antenna block transform are deferred; the
-/// head look and the static held-item arm pose are projected now.
+/// keyframe walk/idle/interaction animations and custom head are deferred; the head look, static
+/// held-item arm pose, and antenna block transform are projected now.
 pub(in crate::entity_models) struct CopperGolemModel {
     root: ModelPart,
 }

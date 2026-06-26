@@ -1362,6 +1362,15 @@ impl EntityStore {
         } else {
             ProtocolEquipmentSlot::MainHand
         };
+        self.equipment_item(id, slot)
+    }
+
+    /// The item in an arbitrary synced equipment slot, or `None` for an empty slot / no equipment.
+    pub(crate) fn equipment_item(
+        &self,
+        id: i32,
+        slot: ProtocolEquipmentSlot,
+    ) -> Option<ItemStackSummary> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let equipment = self.ecs.get::<&EntityEquipment>(entity).ok()?;
         let item = equipment

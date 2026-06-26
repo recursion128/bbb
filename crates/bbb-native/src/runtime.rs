@@ -421,7 +421,8 @@ pub(crate) fn pump_network_and_terrain(
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
     // Item frames render their wooden border + framed item into the same two atlas draws.
     let item_frame_models = item_frame_models(world, item_runtime, terrain_textures);
-    let entity_block_meshes = entity_block_models(&entity_instances, world, terrain_textures);
+    let entity_block_meshes =
+        entity_block_models(&entity_instances, world, item_runtime, terrain_textures);
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(held_item_models.block_meshes);
     block_item_meshes.extend(item_frame_models.block_meshes);

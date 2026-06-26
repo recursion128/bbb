@@ -280,6 +280,15 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         store.entities.equipment(123).unwrap().equipment,
         entity.equipment
     );
+    assert_eq!(
+        store
+            .equipment_item(123, EquipmentSlot::Head)
+            .unwrap()
+            .item_id,
+        Some(51)
+    );
+    assert!(store.equipment_item(123, EquipmentSlot::MainHand).is_none());
+    assert!(store.equipment_item(999, EquipmentSlot::Head).is_none());
 
     assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
         entity_id: 123,
@@ -424,6 +433,40 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(store.counters().entities_removed, 1);
     assert_eq!(store.counters().entity_removes_ignored, 1);
     assert_eq!(store.counters().entities_tracked, 0);
+}
+
+#[test]
+fn equipment_item_queries_non_hand_slots_and_skips_empty_stacks() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(123));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 123,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: ItemStackSummary {
+                    item_id: Some(77),
+                    count: 1,
+                    component_patch: Default::default(),
+                },
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::OffHand,
+                item: ItemStackSummary::empty(),
+            },
+        ],
+    }));
+
+    assert_eq!(
+        store
+            .equipment_item(123, EquipmentSlot::Saddle)
+            .unwrap()
+            .item_id,
+        Some(77)
+    );
+    assert!(store.equipment_item(123, EquipmentSlot::OffHand).is_none());
+    assert!(store.equipment_item(999, EquipmentSlot::Saddle).is_none());
 }
 
 #[test]

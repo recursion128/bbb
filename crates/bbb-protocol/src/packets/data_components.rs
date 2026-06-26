@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::read_resource_location;
@@ -85,6 +87,8 @@ pub struct DataComponentPatchSummary {
     pub writable_book_pages: Vec<String>,
     #[serde(default)]
     pub written_book: Option<WrittenBookContentSummary>,
+    #[serde(default)]
+    pub block_state_properties: BTreeMap<String, String>,
 }
 
 /// The `floats` list of a `minecraft:custom_model_data` component, preserved so
@@ -336,6 +340,10 @@ fn decode_typed_data_component_patch_summary(
             55 => {
                 summary.written_book = Some(decode_written_book_content(decoder)?);
             }
+            76 => {
+                summary.block_state_properties =
+                    decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
+            }
             _ => decode_data_component_value(decoder, type_id)?,
         }
         summary.added_type_ids.push(type_id);
@@ -480,7 +488,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         74 => decode_pot_decorations(decoder)?,
         77 => decode_bees(decoder)?,
         // block_state.
-        76 => decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?,
+        76 => {
+            let _ = decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
+        }
         // container.
         75 => decode_item_container_contents(decoder)?,
         other => {
@@ -1318,13 +1328,15 @@ fn decode_int_list(decoder: &mut Decoder<'_>, max: usize) -> Result<Vec<i32>> {
     Ok(values)
 }
 
-fn decode_string_map(decoder: &mut Decoder<'_>, max: usize) -> Result<()> {
+fn decode_string_map(decoder: &mut Decoder<'_>, max: usize) -> Result<BTreeMap<String, String>> {
     let count = read_bounded_len(decoder, max)?;
+    let mut entries = BTreeMap::new();
     for _ in 0..count {
-        decoder.read_string(MAX_STRING_CHARS)?;
-        decoder.read_string(MAX_STRING_CHARS)?;
+        let key = decoder.read_string(MAX_STRING_CHARS)?;
+        let value = decoder.read_string(MAX_STRING_CHARS)?;
+        entries.insert(key, value);
     }
-    Ok(())
+    Ok(entries)
 }
 
 fn decode_optional_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<()> {
@@ -1398,6 +1410,38 @@ mod tests {
                 custom_name: Some("Named".to_string()),
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_block_state_component_properties() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(76);
+        payload.write_var_i32(2);
+        payload.write_string("facing");
+        payload.write_string("south");
+        payload.write_string("powered");
+        payload.write_string("true");
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![76],
+                removed_type_ids: Vec::new(),
+                block_state_properties: BTreeMap::from([
+                    ("facing".to_string(), "south".to_string()),
+                    ("powered".to_string(), "true".to_string()),
+                ]),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -2197,6 +2241,10 @@ mod tests {
                 }],
                 bundle_contents_item_count: Some(1),
                 armor_trim_material_id: Some(1),
+                block_state_properties: BTreeMap::from([
+                    ("facing".to_string(), "north".to_string()),
+                    ("lit".to_string(), "true".to_string()),
+                ]),
                 ..DataComponentPatchSummary::default()
             }
         );

@@ -12,14 +12,15 @@ use std::{
 };
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
-use bbb_protocol::packets::ItemStackSummary;
+use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh, copper_golem_hand_attach_transform,
-    dolphin_carried_item_transform, enderman_carried_block_transform, fox_held_item_transform,
-    humanoid_hand_attach_transform, iron_golem_flower_block_transform,
-    mooshroom_mushroom_block_transforms, panda_held_item_transform,
-    snow_golem_head_block_transform, villager_crossed_arms_item_transform,
-    witch_held_item_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad, MooshroomVariant,
+    bake_generated_item_quads, bake_item_model_mesh, copper_golem_antenna_block_transform,
+    copper_golem_hand_attach_transform, dolphin_carried_item_transform,
+    enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
+    iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
+    panda_held_item_transform, snow_golem_head_block_transform,
+    villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
+    ItemModelMesh, ItemModelQuad, MooshroomVariant,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -73,9 +74,10 @@ struct EntityBlockAttachment {
 pub(crate) fn entity_block_models(
     instances: &[EntityModelInstance],
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
 ) -> Vec<ItemModelMesh> {
-    let attachments = entity_block_attachments(instances, world);
+    let attachments = entity_block_attachments(instances, world, item_runtime);
     if attachments.is_empty() {
         return Vec::new();
     }
@@ -97,6 +99,7 @@ pub(crate) fn entity_block_models(
 fn entity_block_attachments(
     instances: &[EntityModelInstance],
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
 ) -> Vec<EntityBlockAttachment> {
     let mut attachments = Vec::new();
     for instance in instances {
@@ -132,8 +135,38 @@ fn entity_block_attachments(
                 });
             }
         }
+        if let Some(attachment) =
+            copper_golem_antenna_block_attachment(instance, world, item_runtime)
+        {
+            attachments.push(attachment);
+        }
     }
     attachments
+}
+
+fn copper_golem_antenna_block_attachment(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<EntityBlockAttachment> {
+    let item_runtime = item_runtime?;
+    let stack = world.equipment_item(instance.entity_id, EquipmentSlot::Saddle)?;
+    let item_id = stack.item_id?;
+    let block_id = item_runtime.item_resource_id(item_id)?;
+    copper_golem_antenna_block_attachment_from_stack(instance, &stack, block_id)
+}
+
+fn copper_golem_antenna_block_attachment_from_stack(
+    instance: &EntityModelInstance,
+    stack: &ItemStackSummary,
+    block_id: &str,
+) -> Option<EntityBlockAttachment> {
+    let transform = copper_golem_antenna_block_transform(instance)?;
+    Some(EntityBlockAttachment {
+        block_id: Cow::Owned(block_id.to_string()),
+        properties: stack.component_patch.block_state_properties.clone(),
+        transform,
+    })
 }
 
 /// Vanilla `Blocks.CARVED_PUMPKIN.defaultBlockState()` sets `FACING = NORTH`; the snow-golem head layer
@@ -839,7 +872,8 @@ impl LegacyRandom {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, EntityDataValue, EntityDataValueKind, SetEntityData, Vec3d,
+        AddEntity, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, SetEntityData,
+        Vec3d,
     };
     use uuid::Uuid;
 
@@ -969,6 +1003,7 @@ mod tests {
                 baby_mooshroom,
             ],
             &world,
+            None,
         );
 
         assert_eq!(attachments.len(), 5);
@@ -995,7 +1030,7 @@ mod tests {
         let enderman = EntityModelInstance::enderman(entity_id, [0.0, 64.0, 0.0], 0.0)
             .with_enderman_carrying(true);
 
-        let attachments = entity_block_attachments(&[enderman], &world);
+        let attachments = entity_block_attachments(&[enderman], &world, None);
 
         assert_eq!(attachments.len(), 1);
         assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
@@ -1003,6 +1038,55 @@ mod tests {
             attachments[0].properties,
             BTreeMap::from([("snowy".to_string(), "false".to_string())])
         );
+    }
+
+    #[test]
+    fn copper_golem_antenna_attachment_uses_block_state_component_properties() {
+        let copper_golem = EntityModelInstance::new(
+            28,
+            bbb_renderer::EntityModelKind::CopperGolem {
+                weathering: bbb_renderer::CopperGolemWeathering::Unaffected,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let stack = ItemStackSummary {
+            item_id: Some(901),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                block_state_properties: BTreeMap::from([
+                    ("facing".to_string(), "south".to_string()),
+                    ("powered".to_string(), "true".to_string()),
+                ]),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+
+        let attachment = copper_golem_antenna_block_attachment_from_stack(
+            &copper_golem,
+            &stack,
+            "minecraft:oak_button",
+        )
+        .unwrap();
+
+        assert_eq!(attachment.block_id.as_ref(), "minecraft:oak_button");
+        assert_eq!(
+            attachment.properties,
+            BTreeMap::from([
+                ("facing".to_string(), "south".to_string()),
+                ("powered".to_string(), "true".to_string()),
+            ])
+        );
+        assert!(attachment
+            .transform
+            .transform_point3(Vec3::splat(0.5))
+            .is_finite());
+        assert!(copper_golem_antenna_block_attachment_from_stack(
+            &EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0),
+            &stack,
+            "minecraft:oak_button",
+        )
+        .is_none());
     }
 
     #[test]

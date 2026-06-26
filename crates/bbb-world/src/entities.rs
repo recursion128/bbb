@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
-    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+    EquipmentSlot as ProtocolEquipmentSlot, EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
     ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
     RemoveEntities as ProtocolRemoveEntities, TakeItemEntity as ProtocolTakeItemEntity,
 };
@@ -1373,6 +1373,17 @@ impl WorldStore {
     /// empty hand. Drives the third-person held-item 3D render.
     pub fn held_item(&self, id: i32, off_hand: bool) -> Option<ProtocolItemStackSummary> {
         self.entities.held_item(id, off_hand)
+    }
+
+    /// The item in an arbitrary vanilla equipment slot, or `None` for an empty / absent slot. This is
+    /// used by entity render layers whose source slot is not a hand, such as the copper golem's antenna
+    /// block in `EquipmentSlot.SADDLE`.
+    pub fn equipment_item(
+        &self,
+        id: i32,
+        slot: ProtocolEquipmentSlot,
+    ) -> Option<ProtocolItemStackSummary> {
+        self.entities.equipment_item(id, slot)
     }
 
     /// Collects the `DATA_ITEM_STACK` carried by every entity whose type id is in `type_ids`. The
