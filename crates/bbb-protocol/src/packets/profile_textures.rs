@@ -25,7 +25,7 @@ pub enum PlayerModelTypeSummary {
     Wide,
 }
 
-pub(crate) fn decode_profile_textures_from_properties<'a>(
+pub fn decode_profile_textures_from_properties<'a>(
     properties: impl IntoIterator<Item = (&'a str, &'a str)>,
 ) -> Option<ProfileTexturesSummary> {
     properties

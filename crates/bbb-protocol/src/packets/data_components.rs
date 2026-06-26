@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::{profile_textures::decode_profile_textures_from_properties, read_resource_location};
+use super::read_resource_location;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{decode_component_summary_from_decoder, skip_nbt_tag_from_decoder},
@@ -247,8 +247,8 @@ pub struct ResourceTextureSummary {
 }
 
 pub use super::profile_textures::{
-    PlayerModelTypeSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
-    ProfileTexturesSummary,
+    decode_profile_textures_from_properties, PlayerModelTypeSummary, ProfileSkinTextureSummary,
+    ProfileTextureSummary, ProfileTexturesSummary,
 };
 
 pub(crate) fn decode_data_component_patch_summary(

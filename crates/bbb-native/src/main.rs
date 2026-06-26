@@ -30,6 +30,7 @@ mod item_models;
 mod item_runtime;
 mod particle_registry;
 mod particle_runtime;
+mod profile_resolver;
 mod runtime;
 mod skin_runtime;
 mod startup;

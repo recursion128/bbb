@@ -52,7 +52,9 @@ player skin 的 `PlayerSkin.Patch` body；renderer 会把 profiled default/dynam
 按 vanilla `PlayerSkinRenderCache.renderType()` 记录为 `entityTranslucent` submission。
 native/render-state 也已能携带 profile texture URL 派生的 dynamic skin handle、fallback
 默认皮肤和 slim/wide model，submission 会保留 dynamic handle（renderer 暂按 fallback
-贴图绘制）。剩余的是远程 profile 解析、下载皮肤和任意动态纹理加载。
+贴图绘制）。native 已补 `ResolvableProfile` 的 name/UUID profile resolution
+缓存 primitive 和 reqwest/rustls HTTP fetcher；剩余的是把 profile/skin 解析下载接入
+运行时异步调度、GPU 动态纹理上传，以及任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -109,8 +111,11 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
    其中远程 / 动态 player skin 资源管线按优先级推进：
    1. DONE：解析 profile `textures` property 的 base64 JSON，提取 skin/cape/elytra URL
       和 slim/wide model 信息；保持现有默认皮肤 fallback。
-   2. 补 `ResolvableProfile` 的异步 profile resolution 与缓存：partial name/UUID
-      能解析为完整 profile/properties，失败时保留默认皮肤。
+   2. IN PROGRESS：native 已补 `ResolvableProfile` resolution/cache primitive：
+      按 vanilla 只解析无 properties 且仅有 name 或仅有 UUID 的 dynamic partial
+      profile，invalid name / miss / fetch failure 保留默认皮肤 fallback；HTTP fetcher
+      覆盖 Mojang name→UUID 与 session profile/properties 解析。还缺运行时异步调度
+      与接入 custom-head profile 投影。
    3. IN PROGRESS：renderer 已补下载后 skin PNG 格式/尺寸校验、64x32 legacy skin
       到 64x64 当前布局的 vanilla `SkinTextureDownloader.processLegacySkin` 转换，以及
       opaque-base / Notch transparency alpha 规则；native 已补 fetcher-backed memory/disk

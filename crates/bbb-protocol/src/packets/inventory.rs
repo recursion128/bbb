@@ -9,9 +9,9 @@ use crate::{
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
-    AttackRangeSummary, CustomModelDataFloats, DataComponentPatchSummary,
-    GameProfilePropertySummary, ItemEnchantmentSummary, ItemRaritySummary,
-    ItemStackTemplateSummary, MapPostProcessingSummary, PlayerModelTypeSummary,
+    decode_profile_textures_from_properties, AttackRangeSummary, CustomModelDataFloats,
+    DataComponentPatchSummary, GameProfilePropertySummary, ItemEnchantmentSummary,
+    ItemRaritySummary, ItemStackTemplateSummary, MapPostProcessingSummary, PlayerModelTypeSummary,
     PlayerSkinPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
     ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
     ResourceTextureSummary, UseEffectsSummary, WrittenBookContentSummary,
