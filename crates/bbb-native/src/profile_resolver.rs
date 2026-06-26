@@ -1,4 +1,9 @@
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::mpsc::{self, Receiver, Sender},
+    thread,
+    time::Duration,
+};
 
 use anyhow::{Context, Result};
 use bbb_protocol::packets::{
@@ -28,7 +33,10 @@ pub(crate) struct ResolvedGameProfile {
 }
 
 impl ResolvedGameProfile {
-    fn into_resolvable(self, skin_patch: PlayerSkinPatchSummary) -> ResolvableProfileSummary {
+    pub(crate) fn into_resolvable(
+        self,
+        skin_patch: PlayerSkinPatchSummary,
+    ) -> ResolvableProfileSummary {
         let profile_textures = decode_profile_textures_from_properties(
             self.properties
                 .iter()
@@ -82,6 +90,16 @@ impl<F: GameProfileFetcher> ResolvableProfileResolver<F> {
         }
     }
 
+    pub(crate) fn resolve_key(
+        &mut self,
+        key: &ProfileResolutionKey,
+    ) -> Result<Option<ResolvedGameProfile>> {
+        match key {
+            ProfileResolutionKey::Name(name) => self.resolve_by_name(name),
+            ProfileResolutionKey::Uuid(uuid) => self.resolve_by_id(*uuid),
+        }
+    }
+
     fn resolve_by_name(&mut self, name: &str) -> Result<Option<ResolvedGameProfile>> {
         if !valid_player_name(name) {
             return Ok(None);
@@ -115,6 +133,110 @@ impl<F: GameProfileFetcher> ResolvableProfileResolver<F> {
         }
         Ok(self.profile_cache_by_id.get(&id).cloned().flatten())
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum ProfileResolutionKey {
+    Name(String),
+    Uuid(Uuid),
+}
+
+impl ProfileResolutionKey {
+    fn from_profile(profile: &ResolvableProfileSummary) -> Option<Self> {
+        if !is_dynamic_resolvable_profile(profile) || profile.profile_textures.is_some() {
+            return None;
+        }
+
+        match (profile.name.as_deref(), profile.uuid) {
+            (Some(name), None) if valid_player_name(name) => Some(Self::Name(name.to_string())),
+            (None, Some(uuid)) => Some(Self::Uuid(uuid)),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct AsyncProfileResolutionRuntime {
+    entries: HashMap<ProfileResolutionKey, ProfileResolutionEntry>,
+    request_tx: Sender<ProfileResolutionKey>,
+    result_rx: Receiver<ProfileResolutionResult>,
+}
+
+impl AsyncProfileResolutionRuntime {
+    pub(crate) fn new(fetcher: impl GameProfileFetcher + Send + 'static) -> Self {
+        let (request_tx, request_rx) = mpsc::channel();
+        let (result_tx, result_rx) = mpsc::channel();
+        thread::spawn(move || {
+            let mut resolver = ResolvableProfileResolver::new(fetcher);
+            for key in request_rx {
+                let resolved = resolver.resolve_key(&key).ok().flatten();
+                if result_tx
+                    .send(ProfileResolutionResult { key, resolved })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
+        Self {
+            entries: HashMap::new(),
+            request_tx,
+            result_rx,
+        }
+    }
+
+    pub(crate) fn resolve_or_queue(
+        &mut self,
+        profile: &ResolvableProfileSummary,
+    ) -> ResolvableProfileSummary {
+        self.drain_results();
+        let Some(key) = ProfileResolutionKey::from_profile(profile) else {
+            return profile.clone();
+        };
+
+        match self.entries.get(&key) {
+            Some(ProfileResolutionEntry::Resolved(resolved)) => {
+                return resolved.clone().into_resolvable(profile.skin_patch.clone());
+            }
+            Some(ProfileResolutionEntry::Pending | ProfileResolutionEntry::Failed) => {
+                return profile.clone();
+            }
+            None => {}
+        }
+
+        self.entries
+            .insert(key.clone(), ProfileResolutionEntry::Pending);
+        if self.request_tx.send(key.clone()).is_err() {
+            self.entries.insert(key, ProfileResolutionEntry::Failed);
+        }
+        profile.clone()
+    }
+
+    pub(crate) fn drain_results(&mut self) -> usize {
+        let mut drained = 0usize;
+        while let Ok(result) = self.result_rx.try_recv() {
+            drained += 1;
+            let entry = result
+                .resolved
+                .map(ProfileResolutionEntry::Resolved)
+                .unwrap_or(ProfileResolutionEntry::Failed);
+            self.entries.insert(result.key, entry);
+        }
+        drained
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ProfileResolutionEntry {
+    Pending,
+    Resolved(ResolvedGameProfile),
+    Failed,
+}
+
+#[derive(Debug)]
+struct ProfileResolutionResult {
+    key: ProfileResolutionKey,
+    resolved: Option<ResolvedGameProfile>,
 }
 
 #[derive(Debug, Clone)]
@@ -244,7 +366,12 @@ mod tests {
     use std::{
         io::{Read, Write},
         net::TcpListener,
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        },
         thread,
+        time::Duration,
     };
 
     const SLIM_TEXTURES_PROPERTY: &str = "eyJ0aW1lc3RhbXAiOjEsInByb2ZpbGVJZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwicHJvZmlsZU5hbWUiOiJBbGV4IiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9za2luaGFzaCIsIm1ldGFkYXRhIjp7Im1vZGVsIjoic2xpbSJ9fSwiQ0FQRSI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9jYXBlaGFzaCJ9LCJFTFlUUkEiOnsidXJsIjoiaHR0cHM6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWx5dHJhaGFzaCJ9fX0=";
@@ -383,6 +510,68 @@ mod tests {
     }
 
     #[test]
+    fn async_profile_resolution_runtime_returns_fallback_then_resolved_profile() {
+        let uuid = Uuid::from_u128(0x01234567_89ab_cdef_0123_456789abcdef);
+        let counters = AsyncFetchCounters::default();
+        let mut runtime = AsyncProfileResolutionRuntime::new(AsyncFakeGameProfileFetcher {
+            uuid,
+            name: "Alex".to_string(),
+            profile: Some(ResolvedGameProfile {
+                uuid,
+                name: "Alex".to_string(),
+                properties: vec![textures_property()],
+            }),
+            counters: counters.clone(),
+        });
+        let partial = partial_name_profile("Alex");
+
+        assert_eq!(runtime.resolve_or_queue(&partial), partial);
+        drain_until_profile_result(&mut runtime);
+        let resolved = runtime.resolve_or_queue(&partial);
+        let resolved_again = runtime.resolve_or_queue(&partial);
+
+        assert_eq!(resolved.kind, ResolvableProfileKindSummary::GameProfile);
+        assert_eq!(resolved.uuid, Some(uuid));
+        assert_eq!(resolved.name.as_deref(), Some("Alex"));
+        assert_eq!(resolved.properties, vec![textures_property()]);
+        assert_eq!(
+            resolved
+                .profile_textures
+                .as_ref()
+                .unwrap()
+                .skin
+                .as_ref()
+                .unwrap()
+                .url,
+            "https://textures.minecraft.net/texture/skinhash"
+        );
+        assert_eq!(resolved_again, resolved);
+        assert_eq!(counters.name_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(counters.id_calls.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn async_profile_resolution_runtime_caches_misses_and_ignores_invalid_names() {
+        let counters = AsyncFetchCounters::default();
+        let mut runtime = AsyncProfileResolutionRuntime::new(AsyncFakeGameProfileFetcher {
+            uuid: Uuid::from_u128(1),
+            name: "Alex".to_string(),
+            profile: None,
+            counters: counters.clone(),
+        });
+        let missing = partial_name_profile("Missing");
+        let invalid = partial_name_profile("Bad\nName");
+
+        assert_eq!(runtime.resolve_or_queue(&invalid), invalid);
+        assert_eq!(runtime.resolve_or_queue(&missing), missing);
+        drain_until_profile_result(&mut runtime);
+        assert_eq!(runtime.resolve_or_queue(&missing), missing);
+
+        assert_eq!(counters.name_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(counters.id_calls.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
     fn http_profile_fetcher_parses_loopback_name_and_session_profile() {
         let uuid = Uuid::from_u128(0x01234567_89ab_cdef_0123_456789abcdef);
         let base_url = spawn_http_routes(vec![
@@ -481,6 +670,42 @@ mod tests {
         }
     }
 
+    #[derive(Clone, Default)]
+    struct AsyncFetchCounters {
+        name_calls: Arc<AtomicUsize>,
+        id_calls: Arc<AtomicUsize>,
+    }
+
+    struct AsyncFakeGameProfileFetcher {
+        uuid: Uuid,
+        name: String,
+        profile: Option<ResolvedGameProfile>,
+        counters: AsyncFetchCounters,
+    }
+
+    impl GameProfileFetcher for AsyncFakeGameProfileFetcher {
+        fn fetch_id_by_name(&mut self, name: &str) -> Result<Option<NameAndId>> {
+            self.counters.name_calls.fetch_add(1, Ordering::Relaxed);
+            if name == self.name {
+                Ok(Some(NameAndId {
+                    uuid: self.uuid,
+                    name: self.name.clone(),
+                }))
+            } else {
+                Ok(None)
+            }
+        }
+
+        fn fetch_profile_by_id(&mut self, id: Uuid) -> Result<Option<ResolvedGameProfile>> {
+            self.counters.id_calls.fetch_add(1, Ordering::Relaxed);
+            if id == self.uuid {
+                Ok(self.profile.clone())
+            } else {
+                Ok(None)
+            }
+        }
+    }
+
     fn partial_name_profile(name: &str) -> ResolvableProfileSummary {
         ResolvableProfileSummary {
             kind: ResolvableProfileKindSummary::Partial,
@@ -509,6 +734,16 @@ mod tests {
             value: SLIM_TEXTURES_PROPERTY.to_string(),
             signature: Some("signature".to_string()),
         }
+    }
+
+    fn drain_until_profile_result(runtime: &mut AsyncProfileResolutionRuntime) {
+        for _ in 0..100 {
+            if runtime.drain_results() > 0 {
+                return;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        panic!("timed out waiting for profile resolution result");
     }
 
     #[derive(Clone)]

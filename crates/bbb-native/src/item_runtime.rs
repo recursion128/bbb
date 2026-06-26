@@ -33,6 +33,8 @@ use bbb_world::{
     WorldItemMiningProfile, WorldItemMiningRule,
 };
 
+use crate::profile_resolver::{AsyncProfileResolutionRuntime, HttpGameProfileFetcher};
+
 mod icon_model;
 mod profile_skin;
 
@@ -116,7 +118,7 @@ pub(crate) struct NativeItemTooltipLine {
     pub(crate) tint: [f32; 4],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct NativeItemRuntime {
     item_definition_count: usize,
     item_registry_count: usize,
@@ -132,6 +134,7 @@ pub(crate) struct NativeItemRuntime {
     registry: Option<ItemRegistryCatalog>,
     language: LanguageCatalog,
     textures: ItemTextureState,
+    profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
     profile_skins: RefCell<ProfileSkinCache>,
 }
 
@@ -307,6 +310,7 @@ impl NativeItemRuntime {
             registry,
             language,
             textures,
+            profile_resolutions: RefCell::default(),
             profile_skins: RefCell::default(),
         })
     }
@@ -414,8 +418,32 @@ impl NativeItemRuntime {
         custom_head_skull_for_resource_id(
             registry.resource_id(protocol_id)?,
             &stack.component_patch,
+            &self.profile_resolutions,
             &self.profile_skins,
         )
+    }
+
+    pub(crate) fn enable_http_profile_resolution(&self) {
+        let mut profile_resolutions = self.profile_resolutions.borrow_mut();
+        if profile_resolutions.is_some() {
+            return;
+        }
+        match HttpGameProfileFetcher::new() {
+            Ok(fetcher) => {
+                *profile_resolutions = Some(AsyncProfileResolutionRuntime::new(fetcher));
+            }
+            Err(err) => {
+                tracing::warn!(?err, "continuing without async profile resolution");
+            }
+        }
+    }
+
+    pub(crate) fn drain_profile_resolution_results(&self) -> usize {
+        self.profile_resolutions
+            .borrow_mut()
+            .as_mut()
+            .map(AsyncProfileResolutionRuntime::drain_results)
+            .unwrap_or(0)
     }
 
     pub(crate) fn mark_profile_skin_resolved(&self, url: &str, texture_handle: u64) {
@@ -1130,12 +1158,15 @@ const DATA_COMPONENT_PROFILE_TYPE_ID: i32 = 70;
 fn custom_head_skull_for_resource_id(
     resource_id: &str,
     component_patch: &DataComponentPatchSummary,
+    profile_resolutions: &RefCell<Option<AsyncProfileResolutionRuntime>>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     match resource_id {
         "minecraft:skeleton_skull" => Some(EntityCustomHeadSkull::Skeleton),
         "minecraft:wither_skeleton_skull" => Some(EntityCustomHeadSkull::WitherSkeleton),
-        "minecraft:player_head" => custom_head_player_skull(component_patch, profile_skins),
+        "minecraft:player_head" => {
+            custom_head_player_skull(component_patch, profile_resolutions, profile_skins)
+        }
         "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
         "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
         "minecraft:dragon_head" => Some(EntityCustomHeadSkull::Dragon),
@@ -1146,6 +1177,7 @@ fn custom_head_skull_for_resource_id(
 
 fn custom_head_player_skull(
     component_patch: &DataComponentPatchSummary,
+    profile_resolutions: &RefCell<Option<AsyncProfileResolutionRuntime>>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     if !component_patch_has_profile(component_patch) {
@@ -1154,10 +1186,14 @@ fn custom_head_player_skull(
         )));
     }
 
+    let profile = component_patch.profile.as_ref()?;
+    let profile = profile_resolutions
+        .borrow_mut()
+        .as_mut()
+        .map(|profile_resolutions| profile_resolutions.resolve_or_queue(profile))
+        .unwrap_or_else(|| profile.clone());
     Some(EntityCustomHeadSkull::Player(
-        profile_skins
-            .borrow_mut()
-            .player_skin_for_profile(component_patch.profile.as_ref()?),
+        profile_skins.borrow_mut().player_skin_for_profile(&profile),
     ))
 }
 

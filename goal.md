@@ -53,8 +53,10 @@ player skin 的 `PlayerSkin.Patch` body；renderer 会把 profiled default/dynam
 native/render-state 也已能携带 profile texture URL 派生的 dynamic skin handle、fallback
 默认皮肤和 slim/wide model，submission 会保留 dynamic handle（renderer 暂按 fallback
 贴图绘制）。native 已补 `ResolvableProfile` 的 name/UUID profile resolution
-缓存 primitive 和 reqwest/rustls HTTP fetcher；剩余的是把 profile/skin 解析下载接入
-运行时异步调度、GPU 动态纹理上传，以及任意动态纹理加载。
+缓存 primitive、reqwest/rustls HTTP fetcher，以及显式启用的异步 profile resolution
+worker；custom-head player head 投影会在 pending/failed 时保留默认 fallback，完成后使用
+resolved profile/properties。剩余的是把 skin PNG 下载接入异步反馈、GPU 动态纹理上传，
+以及任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -111,16 +113,17 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
    其中远程 / 动态 player skin 资源管线按优先级推进：
    1. DONE：解析 profile `textures` property 的 base64 JSON，提取 skin/cape/elytra URL
       和 slim/wide model 信息；保持现有默认皮肤 fallback。
-   2. IN PROGRESS：native 已补 `ResolvableProfile` resolution/cache primitive：
+   2. DONE：native 已补 `ResolvableProfile` resolution/cache 与 custom-head 异步接入：
       按 vanilla 只解析无 properties 且仅有 name 或仅有 UUID 的 dynamic partial
       profile，invalid name / miss / fetch failure 保留默认皮肤 fallback；HTTP fetcher
-      覆盖 Mojang name→UUID 与 session profile/properties 解析。还缺运行时异步调度
-      与接入 custom-head profile 投影。
+      覆盖 Mojang name→UUID 与 session profile/properties 解析；main 显式启用 worker
+      并 drain 完成结果，`player_head` 投影先返回 fallback，完成后使用 resolved
+      profile/properties 与 decoded textures。
    3. IN PROGRESS：renderer 已补下载后 skin PNG 格式/尺寸校验、64x32 legacy skin
       到 64x64 当前布局的 vanilla `SkinTextureDownloader.processLegacySkin` 转换，以及
       opaque-base / Notch transparency alpha 规则；native 已补 fetcher-backed memory/disk
       skin PNG cache（disk hit 优先、miss 后 fetch/write/process）和 reqwest/rustls HTTP
-      fetcher；还缺运行时异步调度。
+      fetcher；还缺把 skin PNG 下载接入运行时异步调度和 profile-skin 状态回写。
    4. IN PROGRESS：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
       dynamic skin handle、slim/wide model、loading/ready/failed 状态，以及按 texture URL
       缓存并可替换 resolved texture handle 的 profile-skin cache；还缺真实异步下载/上传回写

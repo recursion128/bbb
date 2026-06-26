@@ -132,6 +132,7 @@ fn main() -> Result<()> {
             .ok()
     });
     if let Some(items) = &item_runtime {
+        items.enable_http_profile_resolution();
         world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
         world.set_default_item_crafting_remainders(items.item_crafting_remainders_by_protocol_id());
         world.set_recipe_specific_crafting_remainder_item_ids(
@@ -490,6 +491,9 @@ fn main() -> Result<()> {
                             &net_commands,
                         );
                     }
+                    if let Some(items) = item_runtime.as_ref() {
+                        items.drain_profile_resolution_results();
+                    }
                     if !pump_network_and_terrain(
                         &mut net_events,
                         &net_commands,
@@ -609,6 +613,9 @@ fn main() -> Result<()> {
                 {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
+                }
+                if let Some(items) = item_runtime.as_ref() {
+                    items.drain_profile_resolution_results();
                 }
                 if !pump_network_and_terrain(
                     &mut net_events,
