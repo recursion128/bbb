@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::colored::phantom_model_root_transform;
+
 #[test]
 fn phantom_parts_match_vanilla_26_1_body_layer() {
     // Vanilla PhantomModel.createBodyLayer: a body parenting the tail chain, the two wing
@@ -204,18 +206,19 @@ fn phantom_size_scales_the_mesh() {
 #[test]
 fn phantom_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&phantom_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::phantom(99, [0.0, 64.0, 0.0], 0.0, 0)],
-        &atlas,
-    );
-    assert_eq!(mesh.cutout_faces, 48);
-    assert_eq!(mesh.vertices.len(), 192);
-    assert_eq!(mesh.indices.len(), 288);
-    assert!(mesh
+    let instance = EntityModelInstance::phantom(99, [0.0, 64.0, 0.0], 0.0, 0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_phantom_submissions(&meshes, instance, 0);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 48);
+    assert_eq!(meshes.cutout.vertices.len(), 192);
+    assert_eq!(meshes.cutout.indices.len(), 288);
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (min, max) = textured_mesh_extents(&mesh);
+    let (min, max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(min, [-1.3223567, 63.913067, -0.991909]);
     assert_close3(max, [1.2598567, 64.36279, 0.577472]);
 }
@@ -229,6 +232,11 @@ fn phantom_eyes_textured_mesh_uses_parent_model_geometry_and_eyes_render_type() 
     let meshes = entity_model_textured_meshes(
         &[EntityModelInstance::phantom(99, [0.0, 64.0, 0.0], 0.0, 0)],
         &atlas,
+    );
+    assert_phantom_submissions(
+        &meshes,
+        EntityModelInstance::phantom(99, [0.0, 64.0, 0.0], 0.0, 0),
+        0,
     );
     assert_eq!(meshes.cutout.cutout_faces, 48);
     assert_eq!(meshes.eyes.cutout_faces, 48);
@@ -263,11 +271,18 @@ fn phantom_wings_flap_as_age_in_ticks_advances() {
     );
 
     let (atlas, _) = build_entity_model_texture_atlas(&phantom_texture_images()).unwrap();
-    let early_t = entity_model_textured_mesh(&[base], &atlas);
-    let later_t = entity_model_textured_mesh(&[base.with_age_in_ticks(11.0)], &atlas);
+    let early_t = entity_model_textured_meshes(&[base], &atlas);
+    assert_phantom_submissions(&early_t, base, 0);
+    let later_instance = base.with_age_in_ticks(11.0);
+    let later_t = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_phantom_submissions(&later_t, later_instance, 0);
     assert_ne!(
-        early_t.vertices, later_t.vertices,
+        early_t.cutout.vertices, later_t.cutout.vertices,
         "the textured wings flap too"
+    );
+    assert_ne!(
+        early_t.eyes.vertices, later_t.eyes.vertices,
+        "the textured eyes overlay flaps too"
     );
 }
 
@@ -292,4 +307,27 @@ fn phantom_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_phantom_submissions(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    size: i32,
+) {
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, PHANTOM_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, phantom_model_root_transform(instance, size));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, PHANTOM_EYES_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, phantom_model_root_transform(instance, size));
+    assert_eq!((eyes.order, eyes.submit_sequence), (1, 1));
 }
