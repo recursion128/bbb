@@ -101,7 +101,7 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
+    let meshes = entity_model_textured_meshes(
         &[EntityModelInstance::shulker_bullet(
             1130,
             [0.0, 64.0, 0.0],
@@ -109,9 +109,35 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         )],
         &atlas,
     );
-    assert!(!mesh.vertices.is_empty());
+    let mesh = &meshes.cutout;
+    assert_eq!(mesh.vertices.len(), 72);
+    assert_eq!(mesh.indices.len(), 108);
     assert!(mesh
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert_eq!(meshes.translucent.vertices.len(), 72);
+    assert_eq!(meshes.translucent.indices.len(), 108);
+    assert!(meshes
+        .translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 38.0 / 255.0]));
+
+    let (base_min, base_max) = textured_mesh_extents(&meshes.cutout);
+    let (shell_min, shell_max) = textured_mesh_extents(&meshes.translucent);
+    let center = |min: [f32; 3], max: [f32; 3]| {
+        [
+            (min[0] + max[0]) * 0.5,
+            (min[1] + max[1]) * 0.5,
+            (min[2] + max[2]) * 0.5,
+        ]
+    };
+    let size = |min: [f32; 3], max: [f32; 3]| [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+    assert_close3(center(shell_min, shell_max), center(base_min, base_max));
+    let base_size = size(base_min, base_max);
+    assert_close3(
+        size(shell_min, shell_max),
+        [base_size[0] * 1.5, base_size[1] * 1.5, base_size[2] * 1.5],
+    );
 }

@@ -8,8 +8,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // `main.yRot`/`main.xRot` from the bullet's facing (reproduced through `body_rot` / `head_pitch` in
 // `shulker_bullet_model_root_transform`), so the geometry is complete. `ShulkerBulletRenderer.submit`
 // is reproduced in that transform: `translate(0, 0.15, 0)`, the `ageInTicks`-driven tumble, then
-// `scale(-0.5, -0.5, 0.5)`. The `spark.png` texture is wired here; the second translucent 1.5×
-// outer-shell pass stays deferred. Each cube carries the colored tint and the textured UV.
+// `scale(-0.5, -0.5, 0.5)`. The textured path also re-submits this same posed model as the vanilla
+// translucent 1.5× outer shell. Each cube carries the colored tint and the textured UV.
 
 pub(in crate::entity_models) const SHULKER_BULLET_CUBES: [ModelCube; 3] = [
     ModelCube::new(

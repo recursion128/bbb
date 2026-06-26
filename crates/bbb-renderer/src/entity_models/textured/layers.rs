@@ -1007,6 +1007,7 @@ pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<Entity
     )]
 }
 
+#[cfg(test)]
 pub(in crate::entity_models) fn shulker_bullet_textured_layer_passes() -> Vec<EntityModelLayerPass>
 {
     vec![EntityModelLayerPass::base(

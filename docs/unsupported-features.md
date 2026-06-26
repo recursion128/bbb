@@ -2877,10 +2877,10 @@ When an agent does any of the following, update this file in the same slice:
       bullet's yaw/pitch — reproduced through the instance's `body_rot` / `head_pitch` — and the
       `ShulkerBulletRenderer.submit` `translate(0, 0.15, 0)` + the `ageInTicks`-driven tumble
       (`Ry(sin(t·0.1)·180°) · Rx(cos(t·0.1)·180°) · Rz(sin(t·0.15)·360°)`) + `scale(-0.5, -0.5, 0.5)` are
-      captured by `shulker_bullet_model_root_transform`. The base texture is now bound on the textured path
-      (`SHULKER_BULLET_TEXTURE_REF`), the primary now-wired path; the second translucent 1.5× outer-shell
-      pass stays deferred. The colored debug path stays as a fallback (it renders the three slabs with one
-      tint)
+      captured by `shulker_bullet_model_root_transform`. The textured path now reproduces both vanilla
+      submits over `SHULKER_BULLET_TEXTURE_REF`: the base cutout model, then the same posed model multiplied
+      by `scale(1.5)` into the translucent pass with packed color `0x26ffffff`. The colored debug path stays
+      as a fallback (it renders the three slabs with one tint)
     - wind charge and breeze wind charge entities as renderer-owned vanilla 26.1
       `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `143` (wind charge) and `18` (breeze wind charge) — both

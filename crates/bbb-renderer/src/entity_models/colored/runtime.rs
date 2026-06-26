@@ -19,9 +19,9 @@ use super::selection::{
 use super::transforms::{
     end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    scaled_model_root_transform, slime_model_root_transform, squid_model_root_transform,
-    tropical_fish_model_root_transform, wind_charge_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    scaled_model_root_transform, shulker_bullet_model_root_transform, slime_model_root_transform,
+    squid_model_root_transform, tropical_fish_model_root_transform,
+    wind_charge_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -86,6 +86,17 @@ fn entity_model_mesh_with_options(
                             &mut mesh,
                             instance,
                             wind_charge_model_root_transform(*instance),
+                        );
+                    }
+                }
+                EntityModelKind::ShulkerBullet => {
+                    // The shulker bullet is texture-backed; keep the colored fallback mesh for legacy /
+                    // missing-atlas callers, but skip it in the runtime colored path.
+                    if !skip_texture_backed_entities {
+                        ShulkerBulletModel::new().prepare_and_render(
+                            &mut mesh,
+                            instance,
+                            shulker_bullet_model_root_transform(*instance),
                         );
                     }
                 }

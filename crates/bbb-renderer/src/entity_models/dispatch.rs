@@ -19,8 +19,7 @@ use super::colored::{
     llama_spit_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, phantom_model_root_transform,
     polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
-    shulker_bullet_model_root_transform, trident_model_root_transform,
-    villager_adult_model_root_transform, wither_model_root_transform,
+    trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
     wither_skull_model_root_transform, GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
@@ -34,8 +33,8 @@ use super::model_layers::{
     GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel, LeashKnotModel,
     LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel,
     PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel,
-    SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel, SnifferModel, SnowGolemModel,
-    SpiderModel, StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel, VillagerModel,
+    SalmonModel, ShulkerModel, SilverfishModel, SnifferModel, SnowGolemModel, SpiderModel,
+    StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel, VillagerModel,
     WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
     ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
     BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
@@ -58,8 +57,8 @@ use super::textured::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
-    render_textured_layers, salmon_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes, sniffer_textured_layer_passes,
+    render_textured_layers, salmon_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, sniffer_textured_layer_passes,
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
@@ -627,12 +626,8 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &wither_skull_textured_layer_passes(dangerous),
         ),
-        EntityModelKind::ShulkerBullet => sink.model(
-            ShulkerBulletModel::new(),
-            shulker_bullet_model_root_transform(*instance),
-            instance,
-            &shulker_bullet_textured_layer_passes(),
-        ),
+        // The shulker bullet is not uniform: vanilla renders the base model, then re-submits the same
+        // posed model as a larger translucent shell. Colored/textured residual arms handle that split.
         // The wind charge is NOT uniform: its textured render is the scrolling `breezeWind` overlay
         // ([`emit_wind_charge_scroll_model`]), so it is handled by the colored + textured residual arms.
         EntityModelKind::EnderDragon => sink.model(

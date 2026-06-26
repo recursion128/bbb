@@ -61,6 +61,9 @@ Wither skull 的 `isDangerous` 纹理切换已补齐：native 读取 26.1
 `WitherSkull.DATA_DANGEROUS` 布尔同步字段（index 8）并投影到
 `EntityModelKind::WitherSkull { dangerous }`，renderer 在 textured path 里按状态选择
 `wither.png` / `wither_invulnerable.png`。
+Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base `spark.png`
+模型之后复用同一个 posed model，追加 `scale(1.5)` 的 translucent outer shell，
+颜色/alpha 使用 vanilla packed color `0x26ffffff`。
 
 ## 剩余大子系统（按优先级）
 

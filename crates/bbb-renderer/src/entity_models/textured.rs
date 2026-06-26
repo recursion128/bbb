@@ -1,6 +1,7 @@
 use super::colored::{
-    creeper_model_root_transform, villager_adult_model_root_transform,
-    wind_charge_model_root_transform, wither_model_root_transform, HORSE_SCALE,
+    creeper_model_root_transform, shulker_bullet_model_root_transform,
+    villager_adult_model_root_transform, wind_charge_model_root_transform,
+    wither_model_root_transform, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -37,22 +38,24 @@ use super::{
         nautilus_body_armor_texture_ref, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
         DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel,
-        PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
-        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
-        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        PiglinModel, PlayerModel, SheepFurModel, SheepModel, ShulkerBulletModel,
+        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
+        StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel,
+        WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
-        WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -60,6 +63,8 @@ use super::{
 use glam::{Mat4, Vec3};
 
 mod layers;
+#[cfg(test)]
+pub(super) use layers::shulker_bullet_textured_layer_passes;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
@@ -77,8 +82,7 @@ pub(super) use layers::{
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, player_textured_layer_passes, polar_bear_textured_layer_passes,
     rabbit_textured_layer_passes, ravager_textured_layer_passes, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, tropical_fish_textured_layer_passes,
@@ -160,6 +164,9 @@ pub(super) fn entity_model_textured_meshes(
             match instance.kind {
                 EntityModelKind::WindCharge => {
                     emit_wind_charge_scroll_model(&mut meshes, *instance, atlas);
+                }
+                EntityModelKind::ShulkerBullet => {
+                    emit_shulker_bullet_textured_model(&mut meshes, *instance, atlas);
                 }
                 EntityModelKind::Llama {
                     family,
@@ -321,6 +328,36 @@ pub(super) fn entity_model_textured_meshes(
         fill_entity_textured_overlay(&mut meshes.eyes, eyes_start, overlay);
     }
     meshes
+}
+
+/// Vanilla `ShulkerBulletRenderer.submit`: the base `spark.png` model is submitted first, then the same
+/// posed model is scaled by 1.5 and submitted as translucent white with alpha `0x26`.
+fn emit_shulker_bullet_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let mut model = ShulkerBulletModel::new();
+    model.prepare(&instance);
+    let transform = shulker_bullet_model_root_transform(instance);
+    render_textured_pass(
+        meshes,
+        &model,
+        transform,
+        EntityModelLayerRenderType::Cutout,
+        SHULKER_BULLET_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        atlas,
+    );
+    render_textured_pass(
+        meshes,
+        &model,
+        transform * Mat4::from_scale(Vec3::splat(1.5)),
+        EntityModelLayerRenderType::Translucent,
+        SHULKER_BULLET_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 38.0 / 255.0],
+        atlas,
+    );
 }
 
 /// Render one textured pass of an already-prepared model: look up the texture's atlas entry and,

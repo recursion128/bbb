@@ -333,8 +333,8 @@ pub enum EntityModelKind {
     /// `LlamaSpitRenderer` orients it along its flight.
     LlamaSpit,
     /// `ShulkerBulletModel` — a single `main` part of three interlocking slabs. `setupAnim` orients
-    /// it by the bullet's facing (reproduced); the `ShulkerBulletRenderer` age-driven tumble, the
-    /// translucent outer-shell pass, and the texture-backed path are deferred.
+    /// it by the bullet's facing (reproduced). `ShulkerBulletRenderer`'s age-driven tumble and
+    /// translucent 1.5× outer-shell pass are reproduced on the textured path.
     ShulkerBullet,
     /// `WindChargeModel` — the `bone` root parenting the `wind` shell (a fixed `-π/4` bind rotation,
     /// two boxes) and the `wind_charge` core box. Shared by the wind charge and breeze wind charge.
