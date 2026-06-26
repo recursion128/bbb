@@ -1008,7 +1008,7 @@ When an agent does any of the following, update this file in the same slice:
     - a basic hecs-derived entity bounds scene proxy
     - textured entity model submits now carry vanilla-shaped submission
       metadata alongside the existing mesh buckets: `render_type`
-      distinguishes `armorCutoutNoCull`, `entityCutout`, `entityCutoutCull`,
+      distinguishes `entitySolid`, `armorCutoutNoCull`, `entityCutout`, `entityCutoutCull`,
       `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
       `breezeWind`, and `energySwirl`; `order` mirrors
       `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
@@ -1023,7 +1023,8 @@ When an agent does any of the following, update this file in the same slice:
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager
-      profession/type/level overlays, custom-head skull submissions, and the
+      profession/type/level overlays, custom-head skull submissions, player
+      profile cape plus player WINGS/elytra submissions, and the
       Guardian beam / newly textured End Crystal paths are covered by source-verified
       texture/render-type/tint/transform/order tests.
     - dropped item entities as camera-facing item-icon billboards from:
@@ -1276,7 +1277,7 @@ When an agent does any of the following, update this file in the same slice:
         dynamic player texture submissions and draw cutout/translucent dynamic
         profile-texture buckets bound to that atlas, with static-atlas fallback
         when the dynamic entry is absent. Profile `CapeLayer` presentation is
-        now partially covered: native projects the PlayerInfo cape URL as an
+        now covered for player entities: native projects the PlayerInfo cape URL as an
         `EntityDynamicPlayerTextureKind::Cape`, and renderer emits the cape
         layer only when the cape model part is visible and the dynamic atlas
         entry is ready. That submission records vanilla `entitySolid`, the
@@ -1285,9 +1286,17 @@ When an agent does any of the following, update this file in the same slice:
         missing atlas entries wait instead of drawing stale geometry. Pack/native
         now preserve item equippable asset ids and query equipment asset layers,
         so the cape is suppressed for chest WINGS equipment and nudged by the
-        vanilla HUMANOID chest-equipment translation. Still deferred:
-        `WingsLayer`/elytra, full cloak interpolation, and broader arbitrary
-        dynamic texture loading.
+        vanilla HUMANOID chest-equipment translation. Player `WingsLayer` / elytra
+        presentation is also covered for vanilla elytra equipment: native projects
+        the chest WINGS layer texture/use-player-texture metadata, renderer emits an
+        `ElytraModel` `armorCutoutNoCull` submission at order 0 with the vanilla
+        `z=0.125` layer transform, prefers ready profile elytra texture over cape,
+        falls back to a ready profile cape when the cape part is visible, uses the
+        static equipment elytra texture when no profile override exists, and waits
+        when an override texture has not been uploaded. Still deferred: non-player
+        humanoid / armor-stand WINGS presentation, baby elytra model coverage, full
+        cloak interpolation, full elytra animation-state projection, and broader
+        arbitrary dynamic texture loading.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1316,8 +1325,8 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel;
-        `WingsLayer`/elytra, full cloak interpolation, and broader arbitrary
-        dynamic texture loading; the
+        full cloak interpolation, broader arbitrary dynamic texture loading,
+        non-player/baby WINGS layer coverage; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
@@ -1351,7 +1360,7 @@ When an agent does any of the following, update this file in the same slice:
       with `ageInTicks`) — all applied once to the shared
       visibility-filtered part array (colored and textured); true
       `RenderTypes.entityTranslucent` alpha blending, ears, armor/equipment, held items,
-      elytra/wings, shoulder parrots,
+      shoulder parrots,
       arrows/stingers, spectator visibility, the elytra flying offsets, name
       display, the held-item/attack/swim arm poses, and the elytra
       `speedValue` poses remain unsupported; the `HumanoidModel` crouch
@@ -1361,9 +1370,10 @@ When an agent does any of the following, update this file in the same slice:
       (metadata-driven `DATA_PLAYER_MODE_CUSTOMISATION` projection now controls
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer
-      visibility state; profile cape presentation is partially covered by the
-      dynamic `entitySolid` cape layer, while WingsLayer/elytra remains
-      deferred)
+      visibility state; player profile cape presentation is covered by the
+      dynamic `entitySolid` cape layer, and player WingsLayer/elytra presentation
+      is covered for vanilla elytra equipment while non-player/baby WINGS coverage
+      remains deferred)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,

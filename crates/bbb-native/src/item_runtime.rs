@@ -23,7 +23,8 @@ use bbb_protocol::packets::{
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture,
-    EntityDynamicPlayerTextureKind, EntityPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
+    EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture, EntityModelTextureRef,
+    EntityPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkin, EntityPlayerSkinModel};
@@ -54,6 +55,10 @@ use profile_skin::profile_texture_handle;
 use profile_skin::ProfileSkinCache;
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
+const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/equipment/wings/elytra.png",
+    size: [64, 32],
+};
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
 const ITEM_GENERATED_MAX_LAYERS: usize = 5;
@@ -488,6 +493,25 @@ impl NativeItemRuntime {
         self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Wings)
     }
 
+    pub(crate) fn item_equipment_wings_layer(
+        &self,
+        protocol_id: i32,
+    ) -> Option<EntityEquipmentLayerTexture> {
+        let layer = self
+            .item_equipment_asset_layers(protocol_id, EquipmentLayerType::Wings)?
+            .first()?;
+        let texture = match layer.texture_location.as_str() {
+            "minecraft:textures/entity/equipment/wings/elytra.png" => {
+                ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF
+            }
+            _ => return None,
+        };
+        Some(EntityEquipmentLayerTexture {
+            texture,
+            use_player_texture: layer.use_player_texture,
+        })
+    }
+
     pub(crate) fn item_equipment_asset_has_humanoid_layer(&self, protocol_id: i32) -> bool {
         self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Humanoid)
     }
@@ -497,18 +521,20 @@ impl NativeItemRuntime {
         protocol_id: i32,
         layer_type: EquipmentLayerType,
     ) -> bool {
-        let Some(registry) = &self.registry else {
-            return false;
-        };
-        let Some(resource_id) = registry.resource_id(protocol_id) else {
-            return false;
-        };
-        let Some(asset_id) = registry.equippable_asset(resource_id) else {
-            return false;
-        };
-        self.equipment_assets
-            .asset(asset_id)
-            .is_some_and(|asset| !asset.layers(layer_type).is_empty())
+        self.item_equipment_asset_layers(protocol_id, layer_type)
+            .is_some_and(|layers| !layers.is_empty())
+    }
+
+    fn item_equipment_asset_layers(
+        &self,
+        protocol_id: i32,
+        layer_type: EquipmentLayerType,
+    ) -> Option<&[bbb_pack::EquipmentLayer]> {
+        let registry = self.registry.as_ref()?;
+        let resource_id = registry.resource_id(protocol_id)?;
+        let asset_id = registry.equippable_asset(resource_id)?;
+        let asset = self.equipment_assets.asset(asset_id)?;
+        Some(asset.layers(layer_type))
     }
 
     pub(crate) fn custom_head_skull_for_stack(
@@ -2588,6 +2614,14 @@ mod tests {
         assert!(runtime.item_equipment_asset_has_humanoid_layer(chestplate_id));
         assert!(!runtime.item_equipment_asset_has_wings_layer(chestplate_id));
         assert!(runtime.item_equipment_asset_has_wings_layer(elytra_id));
+        assert_eq!(
+            runtime.item_equipment_wings_layer(elytra_id),
+            Some(EntityEquipmentLayerTexture {
+                texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+                use_player_texture: true,
+            })
+        );
+        assert_eq!(runtime.item_equipment_wings_layer(chestplate_id), None);
         assert!(!runtime.item_equipment_asset_has_humanoid_layer(elytra_id));
         assert!(!runtime.item_equipment_asset_has_wings_layer(pumpkin_id));
         assert!(!runtime.item_equipment_asset_has_humanoid_layer(stone_id));

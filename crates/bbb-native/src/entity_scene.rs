@@ -8,14 +8,15 @@ use bbb_renderer::{
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
     DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDefaultPlayerSkin,
     EntityDyeColor, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
-    IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
-    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
-    VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    EntityEquipmentLayerTexture, EntityModelInstance, EntityModelKind, EntityPlayerSkin,
+    FoxModelVariant, FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily,
+    HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily,
+    LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
+    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
+    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+    VillagerModelData, VillagerModelProfession, VillagerModelType, WolfModelVariant,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -920,8 +921,11 @@ fn entity_model_instance(
         item_runtime,
         EntityDynamicPlayerTextureKind::Elytra,
     );
-    let (player_chest_equipment_has_wings, player_chest_equipment_has_humanoid) =
-        player_chest_equipment_layers(&source, world, item_runtime);
+    let (
+        player_chest_wings_layer,
+        player_chest_equipment_has_wings,
+        player_chest_equipment_has_humanoid,
+    ) = player_chest_equipment_layers(&source, world, item_runtime);
     // Only skeletons drive the `BOW_AND_ARROW` aim pose; resolve the held item just for them to avoid a
     // per-entity item lookup for every mob.
     let main_hand_holds_bow =
@@ -1281,6 +1285,7 @@ fn entity_model_instance(
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_player_cape_texture(player_cape_texture)
         .with_player_elytra_texture(player_elytra_texture)
+        .with_player_chest_wings_layer(player_chest_wings_layer)
         .with_player_chest_equipment_has_wings(player_chest_equipment_has_wings)
         .with_player_chest_equipment_has_humanoid(player_chest_equipment_has_humanoid)
         .with_use_item_off_hand(source.use_item_off_hand)
@@ -2459,23 +2464,24 @@ fn player_chest_equipment_layers(
     source: &EntityModelSourceState,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
-) -> (bool, bool) {
+) -> (Option<EntityEquipmentLayerTexture>, bool, bool) {
     if source.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
-        return (false, false);
+        return (None, false, false);
     }
     let Some(item_runtime) = item_runtime else {
-        return (false, false);
+        return (None, false, false);
     };
     let Some(stack) = world.equipment_item(source.entity_id, EquipmentSlot::Chest) else {
-        return (false, false);
+        return (None, false, false);
     };
     if !item_stack_non_empty(&stack) {
-        return (false, false);
+        return (None, false, false);
     }
     let Some(item_id) = stack.item_id else {
-        return (false, false);
+        return (None, false, false);
     };
     (
+        item_runtime.item_equipment_wings_layer(item_id),
         item_runtime.item_equipment_asset_has_wings_layer(item_id),
         item_runtime.item_equipment_asset_has_humanoid_layer(item_id),
     )
@@ -8050,21 +8056,34 @@ mod tests {
         let with_elytra = state(&world, 1553);
         assert!(with_elytra.player_chest_equipment_has_wings);
         assert!(!with_elytra.player_chest_equipment_has_humanoid);
+        assert_eq!(
+            with_elytra.player_chest_wings_layer,
+            Some(EntityEquipmentLayerTexture {
+                texture: bbb_renderer::EntityModelTextureRef {
+                    path: "textures/entity/equipment/wings/elytra.png",
+                    size: [64, 32],
+                },
+                use_player_texture: true,
+            })
+        );
 
         assert!(world.apply_set_equipment(equip(1553, Some(CHESTPLATE_ID), 1)));
         let with_chestplate = state(&world, 1553);
         assert!(!with_chestplate.player_chest_equipment_has_wings);
         assert!(with_chestplate.player_chest_equipment_has_humanoid);
+        assert_eq!(with_chestplate.player_chest_wings_layer, None);
 
         assert!(world.apply_set_equipment(equip(1553, None, 0)));
         let empty_chest = state(&world, 1553);
         assert!(!empty_chest.player_chest_equipment_has_wings);
         assert!(!empty_chest.player_chest_equipment_has_humanoid);
+        assert_eq!(empty_chest.player_chest_wings_layer, None);
 
         assert!(world.apply_set_equipment(equip(1554, Some(ELYTRA_ID), 1)));
         let zombie = state(&world, 1554);
         assert!(!zombie.player_chest_equipment_has_wings);
         assert!(!zombie.player_chest_equipment_has_humanoid);
+        assert_eq!(zombie.player_chest_wings_layer, None);
     }
 
     #[test]

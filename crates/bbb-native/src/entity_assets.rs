@@ -625,6 +625,7 @@ mod tests {
                 "textures/entity/equipment/humanoid_leggings/gold.png",
                 "textures/entity/equipment/humanoid_leggings/diamond.png",
                 "textures/entity/equipment/humanoid_leggings/netherite.png",
+                "textures/entity/equipment/wings/elytra.png",
             ]
         );
         for image in images {

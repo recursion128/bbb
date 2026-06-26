@@ -60,6 +60,15 @@ pub enum EntityDynamicPlayerTextureKind {
     Elytra,
 }
 
+/// One equipment-asset layer texture projected onto an entity layer renderer. This mirrors one
+/// `EquipmentClientInfo.Layer` after the native side has resolved its pack texture path to a renderer
+/// atlas texture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityEquipmentLayerTexture {
+    pub texture: EntityModelTextureRef,
+    pub use_player_texture: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityDynamicPlayerSkinStatus {
     Loading,

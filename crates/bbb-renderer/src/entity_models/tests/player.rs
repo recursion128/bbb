@@ -632,6 +632,204 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
 }
 
 #[test]
+fn player_wings_layer_uses_static_equipment_texture_submission() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_and_elytra_texture_images()).unwrap();
+    let instance = EntityModelInstance::player_with_skin(
+        49,
+        [2.0, 65.0, -3.0],
+        35.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    }))
+    .with_player_chest_equipment_has_wings(true);
+
+    let meshes =
+        entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
+
+    let wings_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("static elytra wings submission");
+    assert_eq!(
+        wings_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(wings_submit.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(wings_submit.dynamic_player_texture, None);
+    assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        wings_submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
+    );
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
+    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 0);
+    assert_eq!(meshes.cutout.vertices.len(), 336);
+}
+
+#[test]
+fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let profile_elytra = EntityDynamicPlayerTexture {
+        handle: 7201,
+        kind: EntityDynamicPlayerTextureKind::Elytra,
+    };
+    let profile_cape = EntityDynamicPlayerTexture {
+        handle: 7202,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: profile_elytra.handle,
+        size: [64, 32],
+        rgba: vec![0x99; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::player_with_skin(
+        50,
+        [1.0, 64.0, -1.0],
+        10.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    }))
+    .with_player_chest_equipment_has_wings(true)
+    .with_player_elytra_texture(Some(profile_elytra))
+    .with_player_cape_texture(Some(profile_cape));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &static_atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    let wings_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.dynamic_player_texture == Some(profile_elytra))
+        .expect("profile elytra wings submission");
+    assert_eq!(
+        wings_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(wings_submit.texture, PLAYER_PROFILE_ELYTRA_TEXTURE_REF);
+    assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        wings_submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
+    );
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submit| submit.dynamic_player_texture != Some(profile_cape)));
+    assert_eq!(meshes.cutout.vertices.len(), 288);
+    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 48);
+}
+
+#[test]
+fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let profile_cape = EntityDynamicPlayerTexture {
+        handle: 7203,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: profile_cape.handle,
+        size: [64, 32],
+        rgba: vec![0x55; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::player_with_skin(
+        51,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    }))
+    .with_player_chest_equipment_has_wings(true)
+    .with_player_cape_texture(Some(profile_cape));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &static_atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    let wings_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.dynamic_player_texture == Some(profile_cape))
+        .expect("profile cape wings submission");
+    assert_eq!(
+        wings_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(wings_submit.texture, PLAYER_PROFILE_CAPE_TEXTURE_REF);
+    assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        wings_submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
+    );
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
+    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 48);
+}
+
+#[test]
+fn player_wings_layer_waits_for_profile_texture_upload() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_and_elytra_texture_images()).unwrap();
+    let profile_elytra = EntityDynamicPlayerTexture {
+        handle: 7204,
+        kind: EntityDynamicPlayerTextureKind::Elytra,
+    };
+    let instance = EntityModelInstance::player_with_skin(
+        52,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    }))
+    .with_player_chest_equipment_has_wings(true)
+    .with_player_elytra_texture(Some(profile_elytra));
+
+    let meshes =
+        entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
+
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submit| submit.dynamic_player_texture != Some(profile_elytra)));
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submit| submit.texture != ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF));
+    assert_eq!(meshes.cutout.vertices.len(), 288);
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+}
+
+#[test]
 fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts() {
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let hidden = entity_model_textured_mesh(
@@ -1630,6 +1828,21 @@ fn steve_player_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn steve_and_elytra_texture_images() -> Vec<EntityModelTextureImage> {
+    [
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        PLAYER_SLIM_STEVE_TEXTURE_REF,
+        ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(texture, vec![index as u8; len])
+    })
+    .collect()
 }
 
 fn dynamic_player_texture_image(

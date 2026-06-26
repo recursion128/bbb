@@ -20,12 +20,13 @@ use super::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
         EntityDyeColor, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
-        EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
-        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        EntityModelUvRect, EntityPlayerSkin, HoglinModelFamily, HorseMarkings, LlamaModelFamily,
-        LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
-        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-        VillagerModelData, VillagerModelHat, ZombieVariantModelFamily,
+        EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
+        EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
+        HoglinModelFamily, HorseMarkings, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -42,10 +43,10 @@ use super::{
         equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
         limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
         BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
-        CustomHeadPiglinSkullModel, CustomHeadSkullModel, DrownedOuterModel, HoglinModel,
-        HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel,
-        SheepFurModel, SheepModel, ShulkerBulletModel, SkeletonClothingModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
+        CustomHeadPiglinSkullModel, CustomHeadSkullModel, DrownedOuterModel, ElytraModel,
+        HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel,
+        PlayerModel, SheepFurModel, SheepModel, ShulkerBulletModel, SkeletonClothingModel,
+        SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
         TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
         ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
@@ -58,10 +59,11 @@ use super::{
         HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, SHULKER_BULLET_TEXTURE_REF,
-        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
-        WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -508,6 +510,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // Skull block items in the head slot use vanilla `CustomHeadLayer`'s skull branch: a static
         // `SkullModel` mob head attached to the host head, not the generic item-model HEAD display path.
         emit_custom_head_skull_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
+        // Player elytra uses vanilla `WingsLayer`: a WINGS equipment layer over the ElytraModel,
+        // optionally replacing the equipment texture with a ready profile elytra/cape texture.
+        emit_player_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
         // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
@@ -2562,6 +2567,93 @@ fn player_cape_animation_transform(instance: &EntityModelInstance) -> Mat4 {
         * Quat::from_rotation_z((state.player_cape_lean2 / 2.0).to_radians())
         * Quat::from_rotation_y((180.0 - state.player_cape_lean2 / 2.0).to_radians());
     Mat4::from_quat(rotation)
+}
+
+fn emit_player_wings_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    let EntityModelKind::Player { parts, .. } = instance.kind else {
+        return;
+    };
+    let Some(layer) = instance.render_state.player_chest_wings_layer else {
+        return;
+    };
+
+    let transform = player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125);
+    let mut model = ElytraModel::new();
+    model.prepare(&instance);
+    let tint = [1.0, 1.0, 1.0, 1.0];
+
+    if let Some(profile_texture) = player_wings_profile_texture(&instance, parts, layer) {
+        let Some(entry) =
+            dynamic_player_texture_atlas_entry(dynamic_player_texture_atlas, profile_texture)
+        else {
+            return;
+        };
+        let submit = EntityModelSubmissionEmit::new(
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            player_profile_wings_texture_ref(profile_texture),
+            tint,
+            transform,
+            0,
+            2,
+        )
+        .with_dynamic_player_texture(profile_texture);
+        render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+        return;
+    }
+
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        layer.texture,
+        tint,
+        transform,
+        0,
+        2,
+    );
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
+fn player_wings_profile_texture(
+    instance: &EntityModelInstance,
+    parts: PlayerModelPartVisibility,
+    layer: EntityEquipmentLayerTexture,
+) -> Option<EntityDynamicPlayerTexture> {
+    if !layer.use_player_texture {
+        return None;
+    }
+    instance.render_state.player_elytra_texture.or_else(|| {
+        parts
+            .cape
+            .then_some(instance.render_state.player_cape_texture)
+            .flatten()
+    })
+}
+
+fn player_profile_wings_texture_ref(texture: EntityDynamicPlayerTexture) -> EntityModelTextureRef {
+    match texture.kind {
+        super::catalog::EntityDynamicPlayerTextureKind::Cape => PLAYER_PROFILE_CAPE_TEXTURE_REF,
+        super::catalog::EntityDynamicPlayerTextureKind::Elytra => PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+    }
 }
 
 fn emit_sheep_textured_model(

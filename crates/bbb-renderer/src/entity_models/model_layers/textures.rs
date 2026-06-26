@@ -54,6 +54,11 @@ pub(in crate::entity_models) const PLAYER_PROFILE_CAPE_TEXTURE_REF: EntityModelT
         path: "dynamic/player/cape",
         size: [64, 32],
     };
+pub(in crate::entity_models) const PLAYER_PROFILE_ELYTRA_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "dynamic/player/elytra",
+        size: [64, 32],
+    };
 pub(in crate::entity_models) const PLAYER_WIDE_SUNNY_TEXTURE_REF: EntityModelTextureRef =
     player_default_skin_ref("textures/entity/player/wide/sunny.png");
 pub(in crate::entity_models) const PLAYER_WIDE_ZURI_TEXTURE_REF: EntityModelTextureRef =
@@ -1503,7 +1508,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 530] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 531] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -2034,6 +2039,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ARMOR_GOLD_LEGGINGS_TEXTURE_REF,
     ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF,
     ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF,
+    ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -4176,6 +4182,14 @@ pub(in crate::entity_models) const ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF: EntityMod
     armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/diamond.png");
 pub(in crate::entity_models) const ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
     armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/netherite.png");
+
+// Vanilla `EquipmentClientInfo.LayerType.WINGS` for the elytra equipment asset. The layer is 64x32
+// and may be overridden by a player's profile elytra/cape texture when `use_player_texture` is true.
+pub(in crate::entity_models) const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/wings/elytra.png",
+        size: [64, 32],
+    };
 
 // The guardian and elder guardian share one mesh/UV layout, differing only by texture (and the elder's
 // 2.35 root scale). The shared attack beam (`guardian_beam.png`, 32×32) is the `GuardianRenderer`

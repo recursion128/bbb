@@ -1,4 +1,5 @@
 use super::catalog::*;
+use super::model_layers::{ELYTRA_DEFAULT_X_ROT, ELYTRA_DEFAULT_Y_ROT, ELYTRA_DEFAULT_Z_ROT};
 use super::SheepHeadEatPose;
 
 /// Vanilla `LightCoordsUtil.FULL_BRIGHT` (`block 15 | sky 15`): the
@@ -338,6 +339,11 @@ entity_render_state! {
     /// Vanilla `AvatarRenderState.skin.elytra()` as a downloaded profile texture. Projected now for the
     /// deferred `WingsLayer`; the cape layer does not consume it.
     (with_player_elytra_texture) player_elytra_texture: Option<EntityDynamicPlayerTexture> = None;
+    /// First renderable WINGS equipment layer from `AvatarRenderState.chestEquipment`'s equipment asset
+    /// (vanilla `WingsLayer` -> `EquipmentLayerRenderer.renderLayers(WINGS, ..., order=0)`). The native
+    /// side resolves the pack layer texture to a renderer atlas texture and preserves
+    /// `use_player_texture` for profile elytra/cape override selection.
+    (with_player_chest_wings_layer) player_chest_wings_layer: Option<EntityEquipmentLayerTexture> = None;
     /// Whether `AvatarRenderState.chestEquipment` has an equipment asset with a WINGS layer. Vanilla
     /// `CapeLayer` suppresses the cape when this is true because the wings layer owns the back slot.
     (with_player_chest_equipment_has_wings) player_chest_equipment_has_wings: bool = false;
@@ -788,6 +794,15 @@ entity_render_state! {
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
     (with_is_crouching) is_crouching: bool = false;
+    /// Vanilla `HumanoidRenderState.elytraRotX` from `LivingEntity.elytraAnimationState`. Defaults to
+    /// `ElytraAnimationState`'s steady non-flying target (`PI/12`) until the native world projects the
+    /// animated per-entity state.
+    (with_elytra_rot_x) elytra_rot_x: f32 = ELYTRA_DEFAULT_X_ROT;
+    /// Vanilla `HumanoidRenderState.elytraRotY`; steady non-flying target is `0`.
+    (with_elytra_rot_y) elytra_rot_y: f32 = ELYTRA_DEFAULT_Y_ROT;
+    /// Vanilla `HumanoidRenderState.elytraRotZ`; steady non-flying target is `-PI/12` and the right wing
+    /// mirrors this value.
+    (with_elytra_rot_z) elytra_rot_z: f32 = ELYTRA_DEFAULT_Z_ROT;
     /// Vanilla `LivingEntityRenderer.isBodyVisible`: a normally-invisible entity
     /// (Invisibility effect / `setInvisible`) draws no body and no layers for a
     /// non-spectator, non-glowing client. Both render paths skip the whole model
@@ -2141,6 +2156,7 @@ mod tests {
                 player_off_hand_item_pose: false,
                 player_cape_texture: None,
                 player_elytra_texture: None,
+                player_chest_wings_layer: None,
                 player_chest_equipment_has_wings: false,
                 player_chest_equipment_has_humanoid: false,
                 player_cape_flap: 0.0,
@@ -2240,6 +2256,9 @@ mod tests {
                 ravager_roar_animation: 0.0,
                 hoglin_attack_animation_tick: 0,
                 is_crouching: false,
+                elytra_rot_x: ELYTRA_DEFAULT_X_ROT,
+                elytra_rot_y: ELYTRA_DEFAULT_Y_ROT,
+                elytra_rot_z: ELYTRA_DEFAULT_Z_ROT,
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
