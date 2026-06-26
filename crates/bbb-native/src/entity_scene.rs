@@ -1360,6 +1360,9 @@ fn entity_model_instance(
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
+        .with_elytra_rot_x(source.elytra_rot_x)
+        .with_elytra_rot_y(source.elytra_rot_y)
+        .with_elytra_rot_z(source.elytra_rot_z)
         .with_wolf_tail_angle(wolf_tail_angle(
             source.entity_type_id,
             &source.data_values,
@@ -5158,6 +5161,46 @@ mod tests {
         );
         assert!((instance.render_state.swim_amount - 0.27).abs() < 1.0e-6);
         assert!((instance.render_state.bounding_box_height - 1.95).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn entity_model_instance_projects_elytra_animation_state_from_source() {
+        // Vanilla `HumanoidMobRenderer.extractHumanoidRenderState` copies
+        // `LivingEntity.elytraAnimationState.getRotX/Y/Z(partialTicks)` into the
+        // render state. The world layer owns those timers; native must preserve them
+        // when building the renderer instance for `WingsLayer`.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 232,
+            "entity_type_id": VANILLA_ENTITY_TYPE_PLAYER_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+            "y_rot": 0.0,
+            "elytra_rot_x": 0.42,
+            "elytra_rot_y": 0.08,
+            "elytra_rot_z": -0.64,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert!((instance.render_state.elytra_rot_x - 0.42).abs() < 1.0e-6);
+        assert!((instance.render_state.elytra_rot_y - 0.08).abs() < 1.0e-6);
+        assert!((instance.render_state.elytra_rot_z + 0.64).abs() < 1.0e-6);
     }
 
     #[test]

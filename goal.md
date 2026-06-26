@@ -72,8 +72,9 @@ pack/native 从 chest equipment asset 投影 WINGS layer 纹理与 `use_player_t
 renderer 用 vanilla `ElytraModel` 几何提交 `armorCutoutNoCull`，order 从 0 起，
 transform 含官方 `z=0.125` layer 平移，并按官方优先级采样 Ready profile elytra、
 profile cape fallback 或静态 `textures/entity/equipment/wings/elytra.png`；缺 profile
-atlas entry 时等待。剩余的是非玩家 / armor-stand / baby WINGS coverage、完整 cloak /
-elytra animation-state projection，以及更泛化的任意动态纹理加载。
+atlas entry 时等待。world/native 也已按 vanilla `LivingEntity.elytraAnimationState`
+投影 elytra rotX/Y/Z，并转发到 renderer。剩余的是非玩家 / armor-stand / baby
+WINGS coverage、完整 cloak，以及更泛化的任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -185,8 +186,9 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
    11. DONE for 玩家 `WingsLayer` / elytra presentation：native 会从 chest equipment asset
       投影 vanilla elytra WINGS layer，renderer 生成 `armorCutoutNoCull` submission，
       pin 住 texture、render type、tint、transform、order，并复现 profile elytra 优先、
-      cape fallback、静态 equipment texture、缺动态上传等待路径。剩余：非玩家 /
-      armor-stand / baby WINGS coverage、完整 cloak/elytra animation-state projection，
-      以及 broader arbitrary dynamic texture loading。
+      cape fallback、静态 equipment texture、缺动态上传等待路径；world/native 已投影
+      vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z。剩余：非玩家 /
+      armor-stand / baby WINGS coverage、完整 cloak，以及 broader arbitrary dynamic
+      texture loading。
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

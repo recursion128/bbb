@@ -68,6 +68,10 @@ const VANILLA_POSE_USING_TONGUE_ID: i32 = 9;
 /// that `Frog.onSyncedDataUpdated` reads to start/stop `jumpAnimationState` (`pose == LONG_JUMPING`
 /// starts it, otherwise stops it).
 const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
+/// Vanilla `Entity.DATA_SHARED_FLAGS_ID`, the base entity flags byte. Bit 7 is
+/// `FLAG_FALL_FLYING`, read by `LivingEntity.isFallFlying()`.
+const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+const ENTITY_FLAG_FALL_FLYING: u8 = 1 << 7;
 const VANILLA_ENTITY_TYPE_BREEZE_ID: i32 = 17;
 /// Vanilla `Pose.SLIDING`/`SHOOTING`/`INHALING` ordinals (`Pose.SLIDING(15, …)`, `SHOOTING(16, …)`,
 /// `INHALING(17, …)`), the synced `DATA_POSE` int values that `Breeze.onSyncedDataUpdated` reads to
@@ -146,6 +150,15 @@ const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
 const LIVING_SWIM_AMOUNT_PER_TICK: f32 = 0.09;
 /// Vanilla `LivingEntity.updateSwimAmount`: the fully visually-swimming upper bound.
 const LIVING_SWIM_AMOUNT_MAX: f32 = 1.0;
+const ELYTRA_DEFAULT_X_ROT: f32 = std::f32::consts::PI / 12.0;
+const ELYTRA_DEFAULT_Y_ROT: f32 = 0.0;
+const ELYTRA_DEFAULT_Z_ROT: f32 = -std::f32::consts::PI / 12.0;
+const ELYTRA_FALL_FLYING_X_ROT: f32 = std::f32::consts::PI / 9.0;
+const ELYTRA_FALL_FLYING_Z_ROT: f32 = -std::f32::consts::PI / 2.0;
+const ELYTRA_CROUCHING_X_ROT: f32 = std::f32::consts::PI * 2.0 / 9.0;
+const ELYTRA_CROUCHING_Y_ROT: f32 = 0.087_266_46;
+const ELYTRA_CROUCHING_Z_ROT: f32 = -std::f32::consts::PI / 4.0;
+const ELYTRA_ROT_EASE: f32 = 0.3;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
 const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
@@ -389,6 +402,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub living_swim: Option<LivingSwimAmountState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elytra: Option<ElytraAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creeper_swell: Option<CreeperSwellAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warden_tendril: Option<WardenTendrilAnimationState>,
@@ -520,6 +535,107 @@ impl LivingSwimAmountState {
             && self.previous_swim_amount == 0.0
             && self.current_swim_amount == 0.0
     }
+}
+
+/// Canonical client-side elytra wing rotation accumulator, mirroring vanilla
+/// `LivingEntity.elytraAnimationState`'s per-tick target/ease/partial-lerp behavior.
+/// `HumanoidMobRenderer.extractHumanoidRenderState` samples it into
+/// `HumanoidRenderState.elytraRotX/Y/Z`, and `WingsLayer` consumes those values
+/// when a WINGS chest equipment layer is present.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ElytraAnimationState {
+    pub rot_x: f32,
+    pub rot_y: f32,
+    pub rot_z: f32,
+    pub rot_x_old: f32,
+    pub rot_y_old: f32,
+    pub rot_z_old: f32,
+}
+
+impl Default for ElytraAnimationState {
+    fn default() -> Self {
+        // Source rows and renderer defaults use the steady non-flying pose when no
+        // ticked state exists. Start the accumulator there so native snapshots do not
+        // briefly fold wings before the first client-animation tick; the tick path
+        // below still follows vanilla's target/ease/partial-lerp math.
+        Self {
+            rot_x: ELYTRA_DEFAULT_X_ROT,
+            rot_y: ELYTRA_DEFAULT_Y_ROT,
+            rot_z: ELYTRA_DEFAULT_Z_ROT,
+            rot_x_old: ELYTRA_DEFAULT_X_ROT,
+            rot_y_old: ELYTRA_DEFAULT_Y_ROT,
+            rot_z_old: ELYTRA_DEFAULT_Z_ROT,
+        }
+    }
+}
+
+impl ElytraAnimationState {
+    fn advance_client_tick(
+        &mut self,
+        is_fall_flying: bool,
+        is_crouching: bool,
+        delta_movement: EntityVec3,
+    ) {
+        self.rot_x_old = self.rot_x;
+        self.rot_y_old = self.rot_y;
+        self.rot_z_old = self.rot_z;
+
+        let (target_x_rot, target_y_rot, target_z_rot) = if is_fall_flying {
+            let ratio = elytra_fall_flying_ratio(delta_movement);
+            (
+                lerp_f32(ratio, ELYTRA_DEFAULT_X_ROT, ELYTRA_FALL_FLYING_X_ROT),
+                ELYTRA_DEFAULT_Y_ROT,
+                lerp_f32(ratio, ELYTRA_DEFAULT_Z_ROT, ELYTRA_FALL_FLYING_Z_ROT),
+            )
+        } else if is_crouching {
+            (
+                ELYTRA_CROUCHING_X_ROT,
+                ELYTRA_CROUCHING_Y_ROT,
+                ELYTRA_CROUCHING_Z_ROT,
+            )
+        } else {
+            (
+                ELYTRA_DEFAULT_X_ROT,
+                ELYTRA_DEFAULT_Y_ROT,
+                ELYTRA_DEFAULT_Z_ROT,
+            )
+        };
+
+        self.rot_x += (target_x_rot - self.rot_x) * ELYTRA_ROT_EASE;
+        self.rot_y += (target_y_rot - self.rot_y) * ELYTRA_ROT_EASE;
+        self.rot_z += (target_z_rot - self.rot_z) * ELYTRA_ROT_EASE;
+    }
+
+    fn rot_x(self, partial_tick: f32) -> f32 {
+        lerp_f32(partial_tick, self.rot_x_old, self.rot_x)
+    }
+
+    fn rot_y(self, partial_tick: f32) -> f32 {
+        lerp_f32(partial_tick, self.rot_y_old, self.rot_y)
+    }
+
+    fn rot_z(self, partial_tick: f32) -> f32 {
+        lerp_f32(partial_tick, self.rot_z_old, self.rot_z)
+    }
+}
+
+fn elytra_fall_flying_ratio(delta_movement: EntityVec3) -> f32 {
+    if delta_movement.y >= 0.0 {
+        return 1.0;
+    }
+    let length = (delta_movement.x * delta_movement.x
+        + delta_movement.y * delta_movement.y
+        + delta_movement.z * delta_movement.z)
+        .sqrt();
+    if length < 1.0e-5 {
+        return 1.0;
+    }
+    let normalized_y = (delta_movement.y / length) as f32;
+    1.0 - (-normalized_y).powf(1.5)
+}
+
+fn lerp_f32(delta: f32, start: f32, end: f32) -> f32 {
+    start + delta * (end - start)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -3209,6 +3325,28 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.swim_amount(partial_tick))
     }
 
+    /// Vanilla `HumanoidRenderState.elytraRotX` =
+    /// `LivingEntity.elytraAnimationState.getRotX(partialTick)`. A source row with
+    /// no ticked state preserves the renderer's steady non-flying default.
+    pub fn elytra_rot_x(&self, partial_tick: f32) -> f32 {
+        self.elytra
+            .map_or(ELYTRA_DEFAULT_X_ROT, |state| state.rot_x(partial_tick))
+    }
+
+    /// Vanilla `HumanoidRenderState.elytraRotY` =
+    /// `LivingEntity.elytraAnimationState.getRotY(partialTick)`.
+    pub fn elytra_rot_y(&self, partial_tick: f32) -> f32 {
+        self.elytra
+            .map_or(ELYTRA_DEFAULT_Y_ROT, |state| state.rot_y(partial_tick))
+    }
+
+    /// Vanilla `HumanoidRenderState.elytraRotZ` =
+    /// `LivingEntity.elytraAnimationState.getRotZ(partialTick)`.
+    pub fn elytra_rot_z(&self, partial_tick: f32) -> f32 {
+        self.elytra
+            .map_or(ELYTRA_DEFAULT_Z_ROT, |state| state.rot_z(partial_tick))
+    }
+
     /// The frog croak's elapsed seconds since `Pose.CROAKING` started (vanilla
     /// `croakAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for
     /// `FrogModel.setupAnim`. Returns `-1.0` (the stopped-animation sentinel) for a
@@ -3674,6 +3812,8 @@ impl EntityClientAnimationState {
         transform: EntityTransform,
         is_passenger: bool,
         is_baby: bool,
+        is_fall_flying: bool,
+        is_crouching: bool,
         // The per-tick world fact `Guardian.aiStep` reads via `isInWater()`,
         // resolved by [`WorldStore::advance_entity_client_animations`] (which holds
         // the chunk/fluid data this context lacks). `false` for entities that do
@@ -3760,6 +3900,15 @@ impl EntityClientAnimationState {
             if !swing.swinging && swing.attack_anim == 0.0 && swing.prev_attack_anim == 0.0 {
                 self.attack_swing = None;
             }
+        }
+        // Vanilla `LivingEntity.tick` always advances `elytraAnimationState` after
+        // refreshing attributes. The state itself branches on `isFallFlying()`,
+        // `isCrouching()`, and `getDeltaMovement()`, independent of whether an
+        // elytra item is currently equipped.
+        if vanilla_living_entity_type(entity_type_id) {
+            self.elytra
+                .get_or_insert_with(ElytraAnimationState::default)
+                .advance_client_tick(is_fall_flying, is_crouching, transform.delta_movement);
         }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_CREEPER_ID => {
@@ -4126,6 +4275,13 @@ pub(crate) fn creaking_can_move(data_values: &[EntityDataValue]) -> bool {
 /// tick loop; non-creakings fall back to `false`.
 pub(crate) fn creaking_is_tearing_down(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, CREAKING_IS_TEARING_DOWN_DATA_ID, false)
+}
+
+/// Vanilla `LivingEntity.isFallFlying()` = `Entity.getSharedFlag(7)`, where
+/// `Entity.DATA_SHARED_FLAGS_ID` is metadata id `0`.
+pub(crate) fn entity_is_fall_flying(data_values: &[EntityDataValue]) -> bool {
+    entity_data_byte(data_values, ENTITY_SHARED_FLAGS_DATA_ID, 0) as u8 & ENTITY_FLAG_FALL_FLYING
+        != 0
 }
 
 /// Vanilla `Warden.getHeartBeatDelay()` = `40 - floor(clamp(clientAngerLevel /

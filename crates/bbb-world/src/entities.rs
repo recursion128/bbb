@@ -578,6 +578,20 @@ pub struct EntityModelSourceState {
     /// only entity the server puts in the crouch pose); `false` for every other entity.
     #[serde(default)]
     pub is_crouching: bool,
+    /// Vanilla `HumanoidRenderState.elytraRotX`, sampled from
+    /// `LivingEntity.elytraAnimationState.getRotX(partialTick)`. The renderer consumes
+    /// it only for humanoid WINGS layers; non-humanoid source rows keep the default.
+    #[serde(default = "entity_model_source_default_elytra_rot_x")]
+    pub elytra_rot_x: f32,
+    /// Vanilla `HumanoidRenderState.elytraRotY`, sampled from
+    /// `LivingEntity.elytraAnimationState.getRotY(partialTick)`.
+    #[serde(default)]
+    pub elytra_rot_y: f32,
+    /// Vanilla `HumanoidRenderState.elytraRotZ`, sampled from
+    /// `LivingEntity.elytraAnimationState.getRotZ(partialTick)`. The right wing
+    /// mirrors this value in `ElytraModel.setupAnim`.
+    #[serde(default = "entity_model_source_default_elytra_rot_z")]
+    pub elytra_rot_z: f32,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin
@@ -1096,6 +1110,14 @@ fn entity_model_source_full_bright_light() -> TerrainLight {
 /// when an `EntityModelSourceState` is deserialized without a recorded scale.
 fn entity_model_source_default_scale() -> f32 {
     1.0
+}
+
+fn entity_model_source_default_elytra_rot_x() -> f32 {
+    std::f32::consts::PI / 12.0
+}
+
+fn entity_model_source_default_elytra_rot_z() -> f32 {
+    -std::f32::consts::PI / 12.0
 }
 
 fn entity_model_source_default_true() -> bool {

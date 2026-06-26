@@ -3024,6 +3024,157 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
 }
 
 #[test]
+fn entity_model_sources_project_elytra_animation_state() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+    const ENTITY_FLAG_FALL_FLYING: i8 = 0x80_u8 as i8;
+    const POSE_CROUCHING: i32 = 5;
+    const EPSILON: f32 = 1.0e-6;
+    const DEFAULT_X: f32 = std::f32::consts::PI / 12.0;
+    const DEFAULT_Y: f32 = 0.0;
+    const DEFAULT_Z: f32 = -std::f32::consts::PI / 12.0;
+
+    let elytra = |store: &WorldStore, id: i32, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (
+            source.elytra_rot_x,
+            source.elytra_rot_y,
+            source.elytra_rot_z,
+        )
+    };
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() <= EPSILON,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+    let add_player = || {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(
+            76,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        ));
+        store
+    };
+
+    // Source rows preserve the renderer's steady non-flying elytra default before
+    // the first living-entity animation tick.
+    let mut standing = add_player();
+    assert_eq!(
+        elytra(&standing, 76, 1.0),
+        (DEFAULT_X, DEFAULT_Y, DEFAULT_Z)
+    );
+    standing.advance_entity_client_animations(1);
+    let (x0, y0, z0) = elytra(&standing, 76, 0.0);
+    assert_close(x0, DEFAULT_X, "standing old x");
+    assert_close(y0, DEFAULT_Y, "standing old y");
+    assert_close(z0, DEFAULT_Z, "standing old z");
+    let (x, y, z) = elytra(&standing, 76, 1.0);
+    assert_close(x, DEFAULT_X, "standing x stays at PI/12");
+    assert_close(y, DEFAULT_Y, "standing y stays zero");
+    assert_close(z, DEFAULT_Z, "standing z stays at -PI/12");
+
+    // Vanilla `Entity.isCrouching()` makes the target (2PI/9, 5deg, -PI/4).
+    let mut crouching = add_player();
+    assert!(crouching.apply_set_entity_data(ProtocolSetEntityData {
+        id: 76,
+        values: vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            POSE_CROUCHING
+        )],
+    }));
+    crouching.advance_entity_client_animations(1);
+    let (x, y, z) = elytra(&crouching, 76, 1.0);
+    let crouching_target_x = std::f32::consts::PI * 2.0 / 9.0;
+    let crouching_target_y = 0.087_266_46;
+    let crouching_target_z = -std::f32::consts::PI / 4.0;
+    assert_close(
+        x,
+        DEFAULT_X + (crouching_target_x - DEFAULT_X) * 0.3,
+        "crouching x target",
+    );
+    assert_close(
+        y,
+        DEFAULT_Y + (crouching_target_y - DEFAULT_Y) * 0.3,
+        "crouching y target",
+    );
+    assert_close(
+        z,
+        DEFAULT_Z + (crouching_target_z - DEFAULT_Z) * 0.3,
+        "crouching z target",
+    );
+
+    // Vanilla `isFallFlying()` reads shared flag bit 7 and then derives the
+    // X/Z target from the normalized downward velocity.
+    let mut fall_flying = add_player();
+    assert!(fall_flying.apply_set_entity_data(ProtocolSetEntityData {
+        id: 76,
+        values: vec![ProtocolEntityDataValue {
+            data_id: ENTITY_SHARED_FLAGS_DATA_ID,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(ENTITY_FLAG_FALL_FLYING),
+        }],
+    }));
+    assert!(
+        fall_flying.apply_set_entity_motion(ProtocolSetEntityMotion {
+            id: 76,
+            delta_movement: ProtocolVec3d {
+                x: 1.0,
+                y: -1.0,
+                z: 0.0,
+            },
+        })
+    );
+    fall_flying.advance_entity_client_animations(1);
+    let normalized_down = 1.0_f32 / 2.0_f32.sqrt();
+    let ratio = 1.0 - normalized_down.powf(1.5);
+    let target_x = std::f32::consts::PI / 12.0
+        + ratio * (std::f32::consts::PI / 9.0 - std::f32::consts::PI / 12.0);
+    let target_z = -std::f32::consts::PI / 12.0
+        + ratio * (-std::f32::consts::PI / 2.0 + std::f32::consts::PI / 12.0);
+    let expected_x = DEFAULT_X + (target_x - DEFAULT_X) * 0.3;
+    let expected_z = DEFAULT_Z + (target_z - DEFAULT_Z) * 0.3;
+    let (x, y, z) = elytra(&fall_flying, 76, 1.0);
+    assert_close(x, expected_x, "fall-flying x velocity target");
+    assert_close(y, DEFAULT_Y, "fall-flying y target");
+    assert_close(z, expected_z, "fall-flying z velocity target");
+    let (mid_x, _, mid_z) = elytra(&fall_flying, 76, 0.5);
+    assert_close(
+        mid_x,
+        DEFAULT_X + (expected_x - DEFAULT_X) * 0.5,
+        "fall-flying x partial lerp",
+    );
+    assert_close(
+        mid_z,
+        DEFAULT_Z + (expected_z - DEFAULT_Z) * 0.5,
+        "fall-flying z partial lerp",
+    );
+
+    // Non-living entities never tick `LivingEntity.elytraAnimationState`; source
+    // rows still preserve the renderer's steady elytra defaults.
+    let mut boat = WorldStore::new();
+    boat.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(boat.apply_set_entity_data(ProtocolSetEntityData {
+        id: 77,
+        values: vec![ProtocolEntityDataValue {
+            data_id: ENTITY_SHARED_FLAGS_DATA_ID,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(ENTITY_FLAG_FALL_FLYING),
+        }],
+    }));
+    boat.advance_entity_client_animations(1);
+    assert_eq!(elytra(&boat, 77, 1.0), (DEFAULT_X, DEFAULT_Y, DEFAULT_Z));
+}
+
+#[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

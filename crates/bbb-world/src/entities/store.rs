@@ -30,10 +30,10 @@ use super::{
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
-    creaking_is_tearing_down, entity_animation_uses_in_water, guardian_attack_duration,
-    guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type,
-    piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
-    warden_heartbeat_delay, VANILLA_ENTITY_TYPE_CREAKING_ID,
+    creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
+    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
+    player_is_using_item, warden_heartbeat_delay, VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
@@ -971,6 +971,13 @@ impl EntityStore {
             vex_charging,
             wither_invulnerable_ticks,
             is_crouching,
+            // Vanilla `HumanoidMobRenderer.extractHumanoidRenderState` copies
+            // `LivingEntity.elytraAnimationState.getRotX/Y/Z(partialTick)` into
+            // `HumanoidRenderState`; `WingsLayer` consumes those rotations when
+            // chest equipment renders a WINGS layer.
+            elytra_rot_x: client_animations.animations.elytra_rot_x(partial_ticks),
+            elytra_rot_y: client_animations.animations.elytra_rot_y(partial_ticks),
+            elytra_rot_z: client_animations.animations.elytra_rot_z(partial_ticks),
             is_auto_spin_attack,
             is_using_item,
             use_item_off_hand,
@@ -1727,6 +1734,9 @@ impl EntityStore {
                 // baby (`updateWalkAnimation`).
                 let is_passenger = mount.vehicle_id.is_some();
                 let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
+                let is_fall_flying = entity_is_fall_flying(&metadata.data_values);
+                let is_crouching =
+                    entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
                 // The per-tick world fact (`isInWater()`) the world resolved before
                 // this mutable pass, defaulting to `false` for non-consumers, and the
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
@@ -1749,6 +1759,8 @@ impl EntityStore {
                     *transform,
                     is_passenger,
                     is_baby,
+                    is_fall_flying,
+                    is_crouching,
                     in_water,
                     is_moving,
                     warden_heartbeat_delay,

@@ -1299,10 +1299,11 @@ When an agent does any of the following, update this file in the same slice:
         `z=0.125` layer transform, prefers ready profile elytra texture over cape,
         falls back to a ready profile cape when the cape part is visible, uses the
         static equipment elytra texture when no profile override exists, and waits
-        when an override texture has not been uploaded. Still deferred: non-player
-        humanoid / armor-stand WINGS presentation, baby elytra model coverage, full
-        cloak interpolation, full elytra animation-state projection, and broader
-        arbitrary dynamic texture loading.
+        when an override texture has not been uploaded. World/native also project
+        vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer.
+        Still deferred: non-player humanoid / armor-stand WINGS presentation, baby
+        elytra model coverage, full cloak interpolation, and broader arbitrary
+        dynamic texture loading.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1378,8 +1379,8 @@ When an agent does any of the following, update this file in the same slice:
       player/mannequin model, and the cape bit is preserved in renderer
       visibility state; player profile cape presentation is covered by the
       dynamic `entitySolid` cape layer, and player WingsLayer/elytra presentation
-      is covered for vanilla elytra equipment while non-player/baby WINGS coverage
-      remains deferred)
+      plus elytra animation-state projection are covered for vanilla elytra equipment
+      while non-player/baby WINGS coverage remains deferred)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,
@@ -1850,7 +1851,7 @@ When an agent does any of the following, update this file in the same slice:
       piglin uses the held-out `animateZombieArms` arms;
       the `DrownedOuterLayer` (adult and baby) and drowned swim re-pose ARE implemented (see the drowned
       note above); zombie/piglin converting shake, remaining zombie-family and
-      piglin-family armor nuances, player WingsLayer/elytra, and
+      piglin-family armor nuances, non-player/baby WingsLayer/elytra coverage, and
       held-item refinements remain unsupported
       (generic non-skull head-slot items and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads, profiled
