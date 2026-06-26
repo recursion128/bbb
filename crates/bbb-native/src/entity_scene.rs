@@ -3933,15 +3933,15 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_instances_project_squid_tentacle_and_body_tilt_from_world() {
+    fn entity_model_instances_project_squid_out_of_water_tentacle_and_body_tilt_from_world() {
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
             95,
             VANILLA_ENTITY_TYPE_SQUID_ID,
             [1.0, 64.0, -2.0],
         ));
-        // Give the squid a diving velocity so the body pitch turns negative
-        // (`Squid.xBodyRot` is driven by `-atan2(horizontal, dm.y)`).
+        // The out-of-water branch ignores horizontal swim velocity for pose, but the motion packet
+        // keeps this test on the same projection path as the in-water branch.
         assert!(world.apply_entity_position_sync(EntityPositionSync {
             id: 95,
             position: Vec3d {
@@ -3969,11 +3969,9 @@ mod tests {
         assert_eq!(resting.render_state.squid_x_body_rot, 0.0);
         assert_eq!(resting.render_state.squid_z_body_rot, 0.0);
 
-        // After ticking deep into the swim cycle, the world-side squid accumulator
-        // develops a non-zero tentacle flex, a body pitch, and a body roll, all of
-        // which flow through EntityModelSourceState into the renderer EntityRenderState
-        // (`SquidModel.setupAnim` tentacle xRot + `SquidRenderer.setupRotations` tilt).
-        world.advance_entity_client_animations(24);
+        // One tick out of water uses the suffocating branch: tentacles flex with
+        // `abs(sin(tentacleMovement))`, xBodyRot eases toward -90 degrees, and zBodyRot is untouched.
+        world.advance_entity_client_animations(1);
         let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
         let squid = instances
             .iter()
@@ -3986,13 +3984,12 @@ mod tests {
         );
         assert!(
             squid.render_state.squid_x_body_rot < 0.0,
-            "a diving squid projects a negative body pitch: {}",
+            "an out-of-water squid projects a negative body pitch: {}",
             squid.render_state.squid_x_body_rot
         );
-        assert!(
-            squid.render_state.squid_z_body_rot > 0.0,
-            "the projected body roll drives SquidRenderer.setupRotations: {}",
-            squid.render_state.squid_z_body_rot
+        assert_eq!(
+            squid.render_state.squid_z_body_rot, 0.0,
+            "out of water leaves the swim roll untouched"
         );
     }
 
@@ -9478,7 +9475,7 @@ mod tests {
         // The squid and glow squid were placeholder render boxes; they now resolve to the
         // real `SquidModel`. The glow variant is keyed off the entity type id and the baby
         // flag is the synced `AgeableMob.DATA_BABY_ID` (index 16, default adult). The
-        // tentacle sweep / body tilt are deferred entity-side animation (default rest pose).
+        // tentacle sweep / body tilt are projected by the world-side squid animation accumulator.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SQUID_ID, &[]),
             EntityModelKind::Squid {

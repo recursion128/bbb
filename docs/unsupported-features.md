@@ -3169,9 +3169,11 @@ When an agent does any of the following, update this file in the same slice:
       half-cycle clamped at `2π` with the server event-`19` reset, `tentacleAngle =
       sin(s²·π)·π·0.25`, `rotateSpeed` evolving `1.0`/`·0.8`/`·0.99`, `zBodyRot +=
       π·rotateSpeed·1.5`, and `xBodyRot` easing toward `-atan2(horizontal, dm.y)` from
-      the synced velocity — all lerped by partial tick and projected world → native →
-      renderer); only the out-of-water suffocating branch and the movement-derived
-      body yaw (`yBodyRot`) remain deferred
+      the synced velocity; out of water, it switches to the vanilla suffocating
+      branch (`tentacleAngle = abs(sin(tentacleMovement)) * π * 0.25`, `xBodyRot`
+      easing toward `-90°`) — all lerped by partial tick and projected world →
+      native → renderer); only the movement-derived body yaw (`yBodyRot`) remains
+      deferred
     - cod entities are wired end to end: the native entity scene (`entity_scene.rs`)
       projects vanilla type id `27` to the real `CodModel`, replacing the former
       placeholder box. Renderer-owned vanilla 26.1 `CodModel.createBodyLayer()`

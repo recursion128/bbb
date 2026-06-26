@@ -1628,8 +1628,8 @@ impl WardenCombatAnimationState {
 /// id-seeded `tentacleSpeed` each client tick and derives the tentacle flex angle
 /// and body pitch/roll; `SquidRenderer.extractRenderState` lerps the pairs.
 ///
-/// Only the in-water branch is modelled (a squid is a water creature; the rare
-/// out-of-water/suffocating branch is deferred — see [`Self::advance_client_tick`]).
+/// Both `isInWater()` branches are modelled. The movement-derived `yBodyRot` refinement stays
+/// deferred because it mutates the entity yaw itself, which is currently owned by the synced transform.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SquidAnimationState {
     /// Vanilla `Squid.tentacleSpeed`, seeded once from the entity id in the
@@ -2594,22 +2594,21 @@ impl SquidAnimationState {
         self.tentacle_movement = 0.0;
     }
 
-    /// Advances one client tick of `Squid.aiStep`, in-water branch.
+    /// Advances one client tick of `Squid.aiStep`.
     ///
     /// Vanilla saves the lerp endpoints (`xBodyRotO`/`zBodyRotO`/
     /// `oldTentacleMovement`/`oldTentacleAngle`), advances `tentacleMovement` by
     /// `tentacleSpeed`, and on the client clamps it at `2π` (the server instead
     /// resets to `0` and broadcasts event `19`). The in-water branch then derives
     /// `tentacleAngle`/`rotateSpeed` from the half-cycle position and turns the
-    /// body roll/pitch from the synced velocity.
+    /// body roll/pitch from the synced velocity. Out of water it switches the tentacle angle to
+    /// `abs(sin(tentacleMovement)) * π * 0.25` and eases the body pitch toward `-90°`; the server-side
+    /// gravity/levitation branch is not mirrored because the client renderer reads only these local
+    /// animation fields.
     ///
-    /// DEFERRED: the out-of-water/suffocating branch (`!isInWater()`:
-    /// `tentacleAngle = abs(sin(tentacleMovement)) * π * 0.25` and `xBodyRot`
-    /// easing toward `-90°`) is not modelled — a squid is a water creature, so the
-    /// in-water branch is the always-relevant case. The vanilla movement-derived
-    /// `yBodyRot` refinement is also deferred (that is the entity body yaw, which
-    /// bbb projects separately and must not be perturbed here).
-    fn advance_client_tick(&mut self, delta_movement: EntityVec3) {
+    /// DEFERRED: the vanilla movement-derived `yBodyRot` refinement is not modelled (that mutates the
+    /// entity body yaw itself, which bbb projects separately from synced transform state).
+    fn advance_client_tick(&mut self, delta_movement: EntityVec3, in_water: bool) {
         use std::f32::consts::{PI, TAU};
 
         self.old_x_body_rot = self.x_body_rot;
@@ -2622,24 +2621,31 @@ impl SquidAnimationState {
             self.tentacle_movement = TAU;
         }
 
-        if self.tentacle_movement < PI {
-            let scale = self.tentacle_movement / PI;
-            self.tentacle_angle = (scale * scale * PI).sin() * PI * 0.25;
-            if scale > 0.75 {
-                self.rotate_speed = 1.0;
+        if in_water {
+            if self.tentacle_movement < PI {
+                let scale = self.tentacle_movement / PI;
+                self.tentacle_angle = (scale * scale * PI).sin() * PI * 0.25;
+                if scale > 0.75 {
+                    self.rotate_speed = 1.0;
+                } else {
+                    self.rotate_speed *= 0.8;
+                }
             } else {
-                self.rotate_speed *= 0.8;
+                self.tentacle_angle = 0.0;
+                self.rotate_speed *= 0.99;
             }
-        } else {
-            self.tentacle_angle = 0.0;
-            self.rotate_speed *= 0.99;
-        }
 
-        let horizontal = (delta_movement.x * delta_movement.x + delta_movement.z * delta_movement.z)
-            .sqrt() as f32;
-        self.z_body_rot += PI * self.rotate_speed * 1.5;
-        self.x_body_rot +=
-            (-(horizontal.atan2(delta_movement.y as f32)) * (180.0 / PI) - self.x_body_rot) * 0.1;
+            let horizontal = (delta_movement.x * delta_movement.x
+                + delta_movement.z * delta_movement.z)
+                .sqrt() as f32;
+            self.z_body_rot += PI * self.rotate_speed * 1.5;
+            self.x_body_rot += (-(horizontal.atan2(delta_movement.y as f32)) * (180.0 / PI)
+                - self.x_body_rot)
+                * 0.1;
+        } else {
+            self.tentacle_angle = self.tentacle_movement.sin().abs() * PI * 0.25;
+            self.x_body_rot += (-90.0 - self.x_body_rot) * 0.02;
+        }
     }
 
     /// Vanilla `SquidRenderer.extractRenderState`: `lerp(partialTicks,
@@ -4484,7 +4490,7 @@ impl EntityClientAnimationState {
             VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => self
                 .squid
                 .get_or_insert_with(|| SquidAnimationState::new(entity_id))
-                .advance_client_tick(transform.delta_movement),
+                .advance_client_tick(transform.delta_movement, in_water),
             VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
@@ -4652,6 +4658,8 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
             | VANILLA_ENTITY_TYPE_FROG_ID
             | VANILLA_ENTITY_TYPE_WOLF_ID
             | VANILLA_ENTITY_TYPE_AXOLOTL_ID
+            | VANILLA_ENTITY_TYPE_SQUID_ID
+            | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
     )
 }
 

@@ -4066,6 +4066,7 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
 fn entity_model_sources_project_squid_tentacle_and_body_animation() {
     const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
     const SQUID_RESET_MOVEMENT_EVENT_ID: i8 = 19;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
     let source = |store: &WorldStore, partial: f32| {
         store
@@ -4075,11 +4076,36 @@ fn entity_model_sources_project_squid_tentacle_and_body_animation() {
             .unwrap()
     };
 
-    let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(
-        70,
-        VANILLA_ENTITY_TYPE_SQUID_ID,
-    ));
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 70,
+        uuid: default_entity_uuid(),
+        entity_type_id: VANILLA_ENTITY_TYPE_SQUID_ID,
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 8.5,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 99,
+    });
+    for y in 1..=3 {
+        assert!(store.apply_block_update(ProtocolBlockUpdate {
+            pos: ProtocolBlockPos { x: 8, y, z: 8 },
+            block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+        }));
+    }
     // Give the squid a horizontal+downward velocity so the body pitch turns away
     // from zero (vanilla `xBodyRot` is driven by `atan2(horizontal, dm.y)`).
     assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
@@ -4157,6 +4183,43 @@ fn entity_model_sources_project_squid_tentacle_and_body_animation() {
     assert!(
         after_reset.squid_tentacle_angle < after_five.squid_tentacle_angle,
         "the event-19 reset rewinds the tentacle cycle"
+    );
+}
+
+#[test]
+fn squid_out_of_water_branch_flexes_tentacles_and_pitches_down() {
+    const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
+
+    let source = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 70)
+            .unwrap()
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_SQUID_ID,
+    ));
+
+    store.advance_entity_client_animations(1);
+    let after_one = source(&store);
+    let tentacle_speed = super::animations::SquidAnimationState::new(70).tentacle_speed;
+    let expected_tentacle_angle = tentacle_speed.sin().abs() * std::f32::consts::PI * 0.25;
+
+    assert!(
+        (after_one.squid_tentacle_angle - expected_tentacle_angle).abs() < 1.0e-6,
+        "out of water uses abs(sin(tentacleMovement)) * pi * 0.25"
+    );
+    assert!(
+        (after_one.squid_x_body_rot - -1.8).abs() < 1.0e-6,
+        "out of water eases xBodyRot toward -90 by 0.02"
+    );
+    assert_eq!(
+        after_one.squid_z_body_rot, 0.0,
+        "out of water leaves the swim roll untouched"
     );
 }
 
