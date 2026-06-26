@@ -1,31 +1,89 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, CatModelVariant, CopperGolemWeathering,
-    EntityArmorMaterial, EntityDyeColor, FoxModelVariant, FrogModelVariant, PandaModelVariant,
-    ParrotModelVariant, RabbitModelVariant,
+    EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor, FoxModelVariant,
+    FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
 };
 
 mod equine;
 
 pub(in crate::entity_models) use equine::*;
 
-pub(in crate::entity_models) const PLAYER_WIDE_STEVE_TEXTURE_REF: EntityModelTextureRef =
+const fn player_default_skin_ref(path: &'static str) -> EntityModelTextureRef {
     EntityModelTextureRef {
-        path: "textures/entity/player/wide/steve.png",
+        path,
         size: [64, 64],
-    };
+    }
+}
 
+pub(in crate::entity_models) const PLAYER_SLIM_ALEX_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/alex.png");
+pub(in crate::entity_models) const PLAYER_SLIM_ARI_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/ari.png");
+pub(in crate::entity_models) const PLAYER_SLIM_EFE_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/efe.png");
+pub(in crate::entity_models) const PLAYER_SLIM_KAI_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/kai.png");
+pub(in crate::entity_models) const PLAYER_SLIM_MAKENA_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/makena.png");
+pub(in crate::entity_models) const PLAYER_SLIM_NOOR_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/noor.png");
 pub(in crate::entity_models) const PLAYER_SLIM_STEVE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/player/slim/steve.png",
-        size: [64, 64],
-    };
+    player_default_skin_ref("textures/entity/player/slim/steve.png");
+pub(in crate::entity_models) const PLAYER_SLIM_SUNNY_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/sunny.png");
+pub(in crate::entity_models) const PLAYER_SLIM_ZURI_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/slim/zuri.png");
+
+pub(in crate::entity_models) const PLAYER_WIDE_ALEX_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/alex.png");
+pub(in crate::entity_models) const PLAYER_WIDE_ARI_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/ari.png");
+pub(in crate::entity_models) const PLAYER_WIDE_EFE_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/efe.png");
+pub(in crate::entity_models) const PLAYER_WIDE_KAI_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/kai.png");
+pub(in crate::entity_models) const PLAYER_WIDE_MAKENA_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/makena.png");
+pub(in crate::entity_models) const PLAYER_WIDE_NOOR_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/noor.png");
+pub(in crate::entity_models) const PLAYER_WIDE_STEVE_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/steve.png");
+pub(in crate::entity_models) const PLAYER_WIDE_SUNNY_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/sunny.png");
+pub(in crate::entity_models) const PLAYER_WIDE_ZURI_TEXTURE_REF: EntityModelTextureRef =
+    player_default_skin_ref("textures/entity/player/wide/zuri.png");
 
 pub(in crate::entity_models) const PLAYER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
     [PLAYER_WIDE_STEVE_TEXTURE_REF, PLAYER_SLIM_STEVE_TEXTURE_REF];
 
 pub fn player_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &PLAYER_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) fn default_player_skin_texture_ref(
+    skin: EntityDefaultPlayerSkin,
+) -> EntityModelTextureRef {
+    match skin {
+        EntityDefaultPlayerSkin::SlimAlex => PLAYER_SLIM_ALEX_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimAri => PLAYER_SLIM_ARI_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimEfe => PLAYER_SLIM_EFE_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimKai => PLAYER_SLIM_KAI_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimMakena => PLAYER_SLIM_MAKENA_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimNoor => PLAYER_SLIM_NOOR_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimSteve => PLAYER_SLIM_STEVE_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimSunny => PLAYER_SLIM_SUNNY_TEXTURE_REF,
+        EntityDefaultPlayerSkin::SlimZuri => PLAYER_SLIM_ZURI_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideAlex => PLAYER_WIDE_ALEX_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideAri => PLAYER_WIDE_ARI_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideEfe => PLAYER_WIDE_EFE_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideKai => PLAYER_WIDE_KAI_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideMakena => PLAYER_WIDE_MAKENA_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideNoor => PLAYER_WIDE_NOOR_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideSteve => PLAYER_WIDE_STEVE_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideSunny => PLAYER_WIDE_SUNNY_TEXTURE_REF,
+        EntityDefaultPlayerSkin::WideZuri => PLAYER_WIDE_ZURI_TEXTURE_REF,
+    }
 }
 
 pub(in crate::entity_models) const ZOMBIE_TEXTURE_REF: EntityModelTextureRef =
@@ -1422,9 +1480,25 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 513] = [
-    PLAYER_WIDE_STEVE_TEXTURE_REF,
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 529] = [
+    PLAYER_SLIM_ALEX_TEXTURE_REF,
+    PLAYER_SLIM_ARI_TEXTURE_REF,
+    PLAYER_SLIM_EFE_TEXTURE_REF,
+    PLAYER_SLIM_KAI_TEXTURE_REF,
+    PLAYER_SLIM_MAKENA_TEXTURE_REF,
+    PLAYER_SLIM_NOOR_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
+    PLAYER_SLIM_SUNNY_TEXTURE_REF,
+    PLAYER_SLIM_ZURI_TEXTURE_REF,
+    PLAYER_WIDE_ALEX_TEXTURE_REF,
+    PLAYER_WIDE_ARI_TEXTURE_REF,
+    PLAYER_WIDE_EFE_TEXTURE_REF,
+    PLAYER_WIDE_KAI_TEXTURE_REF,
+    PLAYER_WIDE_MAKENA_TEXTURE_REF,
+    PLAYER_WIDE_NOOR_TEXTURE_REF,
+    PLAYER_WIDE_STEVE_TEXTURE_REF,
+    PLAYER_WIDE_SUNNY_TEXTURE_REF,
+    PLAYER_WIDE_ZURI_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
     SHEEP_BABY_TEXTURE_REF,
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,

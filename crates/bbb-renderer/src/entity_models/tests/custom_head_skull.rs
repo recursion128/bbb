@@ -74,7 +74,9 @@ fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
             false,
             PLAYER_MODEL_PARTS_ALL_VISIBLE,
         )
-        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player))],
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+            EntityDefaultPlayerSkin::SlimSteve,
+        )))],
         &atlas,
     );
 
@@ -85,6 +87,71 @@ fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}
+
+#[test]
+fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
+    let atlas = build_entity_model_texture_atlas(&[
+        EntityModelTextureImage::new(
+            PLAYER_SLIM_ALEX_TEXTURE_REF,
+            vec![0; usize::try_from(64 * 64 * 4).unwrap()],
+        ),
+        EntityModelTextureImage::new(
+            PLAYER_WIDE_STEVE_TEXTURE_REF,
+            vec![0; usize::try_from(64 * 64 * 4).unwrap()],
+        ),
+    ])
+    .unwrap()
+    .0;
+    let slim = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            914,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+            EntityDefaultPlayerSkin::SlimAlex,
+        )))],
+        &atlas,
+    );
+    let wide = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            915,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+            EntityDefaultPlayerSkin::WideSteve,
+        )))],
+        &atlas,
+    );
+
+    assert_eq!(slim.cutout_faces, 12);
+    assert_eq!(wide.cutout_faces, 12);
+    assert_eq!(
+        slim.vertices
+            .iter()
+            .map(|vertex| vertex.position)
+            .collect::<Vec<_>>(),
+        wide.vertices
+            .iter()
+            .map(|vertex| vertex.position)
+            .collect::<Vec<_>>()
+    );
+    assert_ne!(
+        slim.vertices
+            .iter()
+            .map(|vertex| vertex.uv)
+            .collect::<Vec<_>>(),
+        wide.vertices
+            .iter()
+            .map(|vertex| vertex.uv)
+            .collect::<Vec<_>>()
+    );
 }
 
 #[test]

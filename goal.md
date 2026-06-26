@@ -43,7 +43,9 @@ copper golem 会用 `ItemDisplayContext.HEAD` 渲染头槽物品；custom-head s
 `wornHeadAnimationPos` 也已按 vanilla 在乘骑 living entity 时读取载具 walk animation。
 `DataComponents.PROFILE` 已按 26.1 `ResolvableProfile.STREAM_CODEC` 保留为结构化
 profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资源纹理/模型覆盖）。
-剩余的是 profiled player skin 的解析、默认皮肤选择和动态纹理加载。
+带 profile 的 `player_head` 已按 `PlayerSkinRenderCache` 默认 fallback 选择
+`DefaultPlayerSkin.get(UUID)`（显式 UUID、offline-name UUID 或 nil UUID），并支持指向内置默认
+player skin 的 `PlayerSkin.Patch` body；剩余的是远程 profile 解析、下载皮肤和任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 
 ## 剩余大子系统（按优先级）
@@ -51,7 +53,7 @@ profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资
 1. **实体上的物品渲染器**
    目标中原列的手持物 / 狐狸叼物 / 物品展示框内容已经接到 item-model primitive。
    继续按 `docs/unsupported-features.md` 审计剩余专用 item-on-entity 层（如
-   `CustomHeadLayer` 剩余的 profiled-player 头颅分支、其他专用装备/物品层等），逐项从
+   `CustomHeadLayer` / `SkullBlockRenderer` 的远程或动态 profiled-player 皮肤、其他专用装备/物品层等），逐项从
    deferred 改为 covered。
 2. **世界侧动画计时器**
    狼湿身着色、溺尸/海豚游泳重姿态等 client-tick 动画。

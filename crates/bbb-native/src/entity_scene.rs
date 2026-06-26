@@ -789,7 +789,8 @@ fn entity_offhand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
 
 /// The supported skull block item in the HEAD equipment slot, if any. Vanilla
 /// `LivingEntityRenderer.extractRenderState` routes skull `BlockItem`s to `wornHeadType` and clears the
-/// generic head item; bbb mirrors that only for static mob heads whose `SkullModel` branch is implemented.
+/// generic head item; bbb mirrors the implemented static mob, player-default, dragon, and piglin skull
+/// branches.
 fn entity_custom_head_skull(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,

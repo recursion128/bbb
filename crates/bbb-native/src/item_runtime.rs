@@ -14,8 +14,11 @@ use bbb_pack::{
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
+    ResolvableProfileSummary,
 };
-use bbb_renderer::{EntityCustomHeadSkull, ItemSpriteRect, SpriteAlphaMask};
+use bbb_renderer::{
+    EntityCustomHeadSkull, EntityDefaultPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
+};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
@@ -1107,15 +1110,27 @@ fn custom_head_skull_for_resource_id(
     match resource_id {
         "minecraft:skeleton_skull" => Some(EntityCustomHeadSkull::Skeleton),
         "minecraft:wither_skeleton_skull" => Some(EntityCustomHeadSkull::WitherSkeleton),
-        "minecraft:player_head" if !component_patch_has_profile(component_patch) => {
-            Some(EntityCustomHeadSkull::Player)
-        }
+        "minecraft:player_head" => custom_head_player_skull(component_patch),
         "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
         "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
         "minecraft:dragon_head" => Some(EntityCustomHeadSkull::Dragon),
         "minecraft:piglin_head" => Some(EntityCustomHeadSkull::Piglin),
         _ => None,
     }
+}
+
+fn custom_head_player_skull(
+    component_patch: &DataComponentPatchSummary,
+) -> Option<EntityCustomHeadSkull> {
+    if !component_patch_has_profile(component_patch) {
+        return Some(EntityCustomHeadSkull::Player(
+            EntityDefaultPlayerSkin::SlimSteve,
+        ));
+    }
+
+    Some(EntityCustomHeadSkull::Player(profile_default_player_skin(
+        component_patch.profile.as_ref()?,
+    )))
 }
 
 fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> bool {
@@ -1125,6 +1140,37 @@ fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> b
         && !component_patch
             .removed_type_ids
             .contains(&DATA_COMPONENT_PROFILE_TYPE_ID)
+}
+
+fn profile_default_player_skin(profile: &ResolvableProfileSummary) -> EntityDefaultPlayerSkin {
+    if let Some(body) = profile.skin_patch.body.as_ref() {
+        if let Some(skin) = EntityDefaultPlayerSkin::from_texture_path(&body.texture_path) {
+            return skin;
+        }
+    }
+
+    let profile_id = profile
+        .uuid
+        .map(|uuid| uuid.as_u128())
+        .or_else(|| {
+            profile
+                .name
+                .as_deref()
+                .map(|name| bbb_protocol::codec::offline_player_uuid(name).as_u128())
+        })
+        .unwrap_or(0);
+    EntityDefaultPlayerSkin::from_vanilla_index(default_player_skin_index(profile_id))
+}
+
+fn default_player_skin_index(profile_id: u128) -> usize {
+    java_uuid_hash_code(profile_id).rem_euclid(18) as usize
+}
+
+fn java_uuid_hash_code(profile_id: u128) -> i32 {
+    let most = (profile_id >> 64) as u64;
+    let least = profile_id as u64;
+    let hilo = most ^ least;
+    ((hilo >> 32) as u32 ^ hilo as u32) as i32
 }
 
 fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {
@@ -2178,7 +2224,12 @@ mod tests {
                 "minecraft:creeper_head",
                 Some(EntityCustomHeadSkull::Creeper),
             ),
-            ("minecraft:player_head", Some(EntityCustomHeadSkull::Player)),
+            (
+                "minecraft:player_head",
+                Some(EntityCustomHeadSkull::Player(
+                    EntityDefaultPlayerSkin::SlimSteve,
+                )),
+            ),
             ("minecraft:dragon_head", Some(EntityCustomHeadSkull::Dragon)),
             ("minecraft:piglin_head", Some(EntityCustomHeadSkull::Piglin)),
             ("minecraft:carved_pumpkin", None),
@@ -2208,7 +2259,7 @@ mod tests {
     }
 
     #[test]
-    fn custom_head_skull_projection_skips_profiled_player_heads() {
+    fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
         let root = unique_temp_dir("item-runtime-custom-profiled-player-head");
         let assets = assets_dir(&root);
         write_item_atlases(&assets);
@@ -2229,6 +2280,43 @@ mod tests {
             .push(DATA_COMPONENT_PROFILE_TYPE_ID);
         assert_eq!(runtime.custom_head_skull_for_stack(&profiled), None);
 
+        profiled.component_patch.profile = Some(ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            skin_patch: Default::default(),
+        });
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&profiled),
+            Some(EntityCustomHeadSkull::Player(
+                EntityDefaultPlayerSkin::SlimAlex
+            ))
+        );
+
+        let mut patched = profiled.clone();
+        patched.component_patch.profile = Some(ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+                body: Some(bbb_protocol::packets::ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/wide/steve".to_string(),
+                    texture_path: "minecraft:textures/entity/player/wide/steve.png".to_string(),
+                }),
+                cape: None,
+                elytra: None,
+                model: None,
+            },
+        });
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&patched),
+            Some(EntityCustomHeadSkull::Player(
+                EntityDefaultPlayerSkin::WideSteve
+            ))
+        );
+
         let mut profile_removed = profiled.clone();
         profile_removed
             .component_patch
@@ -2236,7 +2324,9 @@ mod tests {
             .push(DATA_COMPONENT_PROFILE_TYPE_ID);
         assert_eq!(
             runtime.custom_head_skull_for_stack(&profile_removed),
-            Some(EntityCustomHeadSkull::Player)
+            Some(EntityCustomHeadSkull::Player(
+                EntityDefaultPlayerSkin::SlimSteve
+            ))
         );
 
         std::fs::remove_dir_all(root).unwrap();
