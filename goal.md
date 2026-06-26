@@ -195,6 +195,11 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
    12. DONE for full cloak interpolation：world 侧维护 player cloak old/current position、
       walkDist/bob 和 fall-flying ticks，按 vanilla `AvatarRenderer.extractCapeState`
       生成 `capeFlap`/`capeLean`/`capeLean2`；native 转发到 renderer cape submission。
-      剩余：broader arbitrary dynamic texture loading。
+   13. DONE for `PlayerSkin.Patch` cape/elytra resource textures：native 会按 vanilla
+      `PlayerSkin.with(Patch)` 语义优先使用 patch 的本地 `ClientAsset.ResourceTexture`，
+      通过 pack resource stack 加载 `texture_path` PNG，并复用普通 profile texture
+      dynamic atlas 上传/采样路径；远程 cape/elytra URL 会被 patch 覆盖而不下载。
+      剩余：arbitrary `PlayerSkin.Patch` body resource textures 和 broader non-profile
+      dynamic texture loading。
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

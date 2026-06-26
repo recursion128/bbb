@@ -14,11 +14,12 @@ use bbb_pack::{
     ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
     ItemModelCatalog, ItemModelDefinition, ItemMountBodyArmorKind as PackItemMountBodyArmorKind,
     ItemRegistryCatalog, ItemTintSource, ItemUseEffects as PackItemUseEffects, LanguageCatalog,
-    PackRoots, SpriteImage, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    PackResourceStack, PackRoots, ResourceLocation, SpriteImage, TerrainColorMaps,
+    DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
-    ResolvableProfileSummary,
+    ResolvableProfileSummary, ResourceTextureSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -143,6 +144,69 @@ pub(crate) struct NativeDynamicPlayerTextureDownload {
     pub(crate) texture: Option<DynamicPlayerTextureImage>,
 }
 
+#[derive(Debug, Default)]
+struct LocalDynamicPlayerTextureCache {
+    entries: HashMap<String, LocalDynamicPlayerTextureEntry>,
+    pending_uploads: Vec<NativeDynamicPlayerTextureDownload>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum LocalDynamicPlayerTextureEntry {
+    Ready(EntityDynamicPlayerTexture),
+    Failed,
+}
+
+impl LocalDynamicPlayerTextureEntry {
+    const fn texture(self) -> Option<EntityDynamicPlayerTexture> {
+        match self {
+            Self::Ready(texture) => Some(texture),
+            Self::Failed => None,
+        }
+    }
+}
+
+impl LocalDynamicPlayerTextureCache {
+    fn texture_for_patch(
+        &mut self,
+        resources: &PackResourceStack,
+        kind: EntityDynamicPlayerTextureKind,
+        patch: &ResourceTextureSummary,
+    ) -> Option<EntityDynamicPlayerTexture> {
+        let source_id = local_profile_texture_source_id(kind, &patch.texture_path);
+        if let Some(entry) = self.entries.get(&source_id) {
+            return entry.texture();
+        }
+
+        match load_local_dynamic_player_texture(resources, kind, &patch.texture_path, &source_id) {
+            Ok((texture, image)) => {
+                self.pending_uploads
+                    .push(NativeDynamicPlayerTextureDownload {
+                        kind: dynamic_player_texture_download_kind(kind),
+                        url: source_id.clone(),
+                        texture: Some(image),
+                    });
+                self.entries
+                    .insert(source_id, LocalDynamicPlayerTextureEntry::Ready(texture));
+                Some(texture)
+            }
+            Err(err) => {
+                tracing::warn!(
+                    ?err,
+                    texture_path = patch.texture_path.as_str(),
+                    "failed to load player profile resource texture patch"
+                );
+                self.entries
+                    .insert(source_id, LocalDynamicPlayerTextureEntry::Failed);
+                None
+            }
+        }
+    }
+
+    fn drain_results(&mut self) -> Vec<NativeDynamicPlayerTextureDownload> {
+        std::mem::take(&mut self.pending_uploads)
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct NativeItemRuntime {
     item_definition_count: usize,
@@ -163,6 +227,8 @@ pub(crate) struct NativeItemRuntime {
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_skins: RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
     dynamic_textures: RefCell<Option<AsyncDynamicPlayerTextureRuntime>>,
+    profile_texture_resources: PackResourceStack,
+    local_dynamic_textures: RefCell<LocalDynamicPlayerTextureCache>,
     profile_skins: RefCell<ProfileSkinCache>,
 }
 
@@ -255,6 +321,7 @@ impl NativeItemRuntime {
             recipe_specific_crafting_remainder_item_ids,
             equipment_assets,
             language,
+            roots.resource_stack(),
         )
     }
 
@@ -270,6 +337,7 @@ impl NativeItemRuntime {
         recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
         equipment_assets: EquipmentAssetCatalog,
         language: LanguageCatalog,
+        profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
         let mut item_icon_model_refs = HashMap::new();
@@ -352,6 +420,8 @@ impl NativeItemRuntime {
             profile_resolutions: RefCell::default(),
             dynamic_skins: RefCell::default(),
             dynamic_textures: RefCell::default(),
+            profile_texture_resources,
+            local_dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
         })
     }
@@ -380,6 +450,8 @@ impl NativeItemRuntime {
             profile_resolutions: RefCell::default(),
             dynamic_skins: RefCell::default(),
             dynamic_textures: RefCell::default(),
+            profile_texture_resources: PackResourceStack::default(),
+            local_dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
         }
     }
@@ -585,7 +657,12 @@ impl NativeItemRuntime {
             &self.dynamic_skins,
             &self.dynamic_textures,
         );
-        dynamic_player_texture_for_profile(profile, kind)
+        dynamic_player_texture_for_profile(
+            profile,
+            kind,
+            &self.profile_texture_resources,
+            &self.local_dynamic_textures,
+        )
     }
 
     pub(crate) fn enable_http_profile_resolution(&self) {
@@ -672,18 +749,21 @@ impl NativeItemRuntime {
     pub(crate) fn drain_dynamic_player_texture_download_results(
         &self,
     ) -> Vec<NativeDynamicPlayerTextureDownload> {
-        self.dynamic_textures
-            .borrow_mut()
-            .as_mut()
-            .map(AsyncDynamicPlayerTextureRuntime::drain_results)
-            .unwrap_or_default()
-            .into_iter()
-            .map(|result| NativeDynamicPlayerTextureDownload {
-                kind: result.kind,
-                url: result.url,
-                texture: result.texture,
-            })
-            .collect()
+        let mut results = self.local_dynamic_textures.borrow_mut().drain_results();
+        results.extend(
+            self.dynamic_textures
+                .borrow_mut()
+                .as_mut()
+                .map(AsyncDynamicPlayerTextureRuntime::drain_results)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|result| NativeDynamicPlayerTextureDownload {
+                    kind: result.kind,
+                    url: result.url,
+                    texture: result.texture,
+                }),
+        );
+        results
     }
 
     #[cfg(test)]
@@ -1524,21 +1604,73 @@ fn queue_dynamic_profile_texture_downloads(
 fn dynamic_player_texture_for_profile(
     profile: &ResolvableProfileSummary,
     kind: EntityDynamicPlayerTextureKind,
+    profile_texture_resources: &PackResourceStack,
+    local_dynamic_textures: &RefCell<LocalDynamicPlayerTextureCache>,
 ) -> Option<EntityDynamicPlayerTexture> {
+    if let Some(patch) = match kind {
+        EntityDynamicPlayerTextureKind::Cape => profile.skin_patch.cape.as_ref(),
+        EntityDynamicPlayerTextureKind::Elytra => profile.skin_patch.elytra.as_ref(),
+    } {
+        return local_dynamic_textures.borrow_mut().texture_for_patch(
+            profile_texture_resources,
+            kind,
+            patch,
+        );
+    }
+
     let textures = profile.profile_textures.as_ref()?;
     let url = match kind {
-        EntityDynamicPlayerTextureKind::Cape if profile.skin_patch.cape.is_none() => {
-            textures.cape.as_ref()?.url.as_str()
-        }
-        EntityDynamicPlayerTextureKind::Elytra if profile.skin_patch.elytra.is_none() => {
-            textures.elytra.as_ref()?.url.as_str()
-        }
-        _ => return None,
+        EntityDynamicPlayerTextureKind::Cape => textures.cape.as_ref()?.url.as_str(),
+        EntityDynamicPlayerTextureKind::Elytra => textures.elytra.as_ref()?.url.as_str(),
     };
     Some(EntityDynamicPlayerTexture {
         handle: profile_texture_handle(url),
         kind,
     })
+}
+
+fn load_local_dynamic_player_texture(
+    resources: &PackResourceStack,
+    kind: EntityDynamicPlayerTextureKind,
+    texture_path: &str,
+    source_id: &str,
+) -> Result<(EntityDynamicPlayerTexture, DynamicPlayerTextureImage)> {
+    let location = ResourceLocation::parse(texture_path)
+        .with_context(|| format!("parse player profile resource texture path {texture_path}"))?;
+    let resource = resources
+        .get_resource(&location)
+        .with_context(|| format!("missing player profile resource texture {texture_path}"))?;
+    let image = SpriteImage::from_png_file(source_id.to_string(), resource.path)
+        .with_context(|| format!("load player profile resource texture {texture_path}"))?;
+    let handle = profile_texture_handle(source_id);
+    Ok((
+        EntityDynamicPlayerTexture { handle, kind },
+        DynamicPlayerTextureImage {
+            handle,
+            size: [image.width, image.height],
+            rgba: image.rgba,
+        },
+    ))
+}
+
+fn local_profile_texture_source_id(
+    kind: EntityDynamicPlayerTextureKind,
+    texture_path: &str,
+) -> String {
+    let kind = match kind {
+        EntityDynamicPlayerTextureKind::Cape => "cape",
+        EntityDynamicPlayerTextureKind::Elytra => "elytra",
+    };
+    format!("resource:{kind}:{texture_path}")
+}
+
+fn dynamic_player_texture_download_kind(
+    kind: EntityDynamicPlayerTextureKind,
+) -> DynamicPlayerTextureKind {
+    match kind {
+        EntityDynamicPlayerTextureKind::Cape => DynamicPlayerTextureKind::Cape,
+        EntityDynamicPlayerTextureKind::Elytra => DynamicPlayerTextureKind::Elytra,
+    }
 }
 
 fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> bool {
@@ -3017,6 +3149,134 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
         }
         assert_eq!(runtime.downloaded_player_texture_count(), 0);
+        assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() {
+        let root = unique_temp_dir("item-runtime-profile-resource-textures");
+        let assets = assets_dir(&root);
+        let cape_texture_path = "minecraft:textures/entity/player/cape/custom.png";
+        let elytra_texture_path = "minecraft:textures/entity/player/elytra/custom.png";
+        let cape_rgba = vec![
+            10, 0, 0, 255, 20, 0, 0, 255, 30, 0, 0, 255, 40, 0, 0, 255, 50, 0, 0, 255, 60, 0, 0,
+            255, 70, 0, 0, 255, 80, 0, 0, 255,
+        ];
+        let elytra_rgba = vec![
+            0, 10, 0, 255, 0, 20, 0, 255, 0, 30, 0, 255, 0, 40, 0, 255, 0, 50, 0, 255, 0, 60, 0,
+            255,
+        ];
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("entity")
+                .join("player")
+                .join("cape")
+                .join("custom.png"),
+            4,
+            2,
+            &cape_rgba,
+        );
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("entity")
+                .join("player")
+                .join("elytra")
+                .join("custom.png"),
+            2,
+            3,
+            &elytra_rgba,
+        );
+
+        let mut runtime = NativeItemRuntime::empty_for_test();
+        runtime.profile_texture_resources =
+            PackResourceStack::from_roots([root.join("sources").join(bbb_pack::MC_VERSION)]);
+        let texture_download_calls = Arc::new(AtomicUsize::new(0));
+        runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+            root.join("profile-texture-cache"),
+            TestSkinPngFetcher {
+                bytes: player_profile_texture_png_bytes(),
+                calls: texture_download_calls.clone(),
+            },
+        ));
+
+        let profile = ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+                skin: None,
+                cape: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: "https://textures.minecraft.net/texture/remote-cape".to_string(),
+                }),
+                elytra: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: "https://textures.minecraft.net/texture/remote-elytra".to_string(),
+                }),
+            }),
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+                body: None,
+                cape: Some(ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/cape/custom".to_string(),
+                    texture_path: cape_texture_path.to_string(),
+                }),
+                elytra: Some(ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/elytra/custom".to_string(),
+                    texture_path: elytra_texture_path.to_string(),
+                }),
+                model: None,
+            },
+        };
+
+        let cape_source = local_profile_texture_source_id(
+            EntityDynamicPlayerTextureKind::Cape,
+            cape_texture_path,
+        );
+        let elytra_source = local_profile_texture_source_id(
+            EntityDynamicPlayerTextureKind::Elytra,
+            elytra_texture_path,
+        );
+        let cape = runtime
+            .player_profile_texture_for_profile(&profile, EntityDynamicPlayerTextureKind::Cape)
+            .expect("local cape texture");
+        let elytra = runtime
+            .player_profile_texture_for_profile(&profile, EntityDynamicPlayerTextureKind::Elytra)
+            .expect("local elytra texture");
+
+        assert_eq!(cape.kind, EntityDynamicPlayerTextureKind::Cape);
+        assert_eq!(cape.handle, profile_texture_handle(&cape_source));
+        assert_eq!(elytra.kind, EntityDynamicPlayerTextureKind::Elytra);
+        assert_eq!(elytra.handle, profile_texture_handle(&elytra_source));
+        assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+
+        let downloads = runtime.drain_dynamic_player_texture_download_results();
+        assert_eq!(downloads.len(), 2);
+        let cape_download = downloads
+            .iter()
+            .find(|download| download.kind == DynamicPlayerTextureKind::Cape)
+            .expect("cape upload");
+        assert_eq!(cape_download.url, cape_source);
+        let cape_image = cape_download.texture.as_ref().expect("cape image");
+        assert_eq!(cape_image.handle, cape.handle);
+        assert_eq!(cape_image.size, [4, 2]);
+        assert_eq!(cape_image.rgba, cape_rgba);
+
+        let elytra_download = downloads
+            .iter()
+            .find(|download| download.kind == DynamicPlayerTextureKind::Elytra)
+            .expect("elytra upload");
+        assert_eq!(elytra_download.url, elytra_source);
+        let elytra_image = elytra_download.texture.as_ref().expect("elytra image");
+        assert_eq!(elytra_image.handle, elytra.handle);
+        assert_eq!(elytra_image.size, [2, 3]);
+        assert_eq!(elytra_image.rgba, elytra_rgba);
+
+        assert!(runtime
+            .drain_dynamic_player_texture_download_results()
+            .is_empty());
         assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
 
         let _ = std::fs::remove_dir_all(root);

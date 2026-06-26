@@ -1279,7 +1279,12 @@ When an agent does any of the following, update this file in the same slice:
         post-processing, native keeps separate memory/disk caches for cape and
         elytra textures, profile cape/elytra URLs queue async downloads, and
         the main loop uploads successful results into a renderer-owned
-        variable-size dynamic player texture atlas. Renderer can now record
+        variable-size dynamic player texture atlas. `PlayerSkin.Patch`
+        resource-texture overrides for cape/elytra are also covered: native
+        resolves the patch `texture_path` through the pack resource stack,
+        decodes the local PNG without skin post-processing, and drains it
+        through the same dynamic player texture upload path without triggering
+        the remote profile URL download. Renderer can now record
         dynamic player texture submissions and draw cutout/translucent dynamic
         profile-texture buckets bound to that atlas, with static-atlas fallback
         when the dynamic entry is absent. Profile `CapeLayer` presentation is
@@ -1308,7 +1313,8 @@ When an agent does any of the following, update this file in the same slice:
         lag, partial lerps it, applies `AvatarRenderer.extractCapeState`
         flap/lean/lean2 clamps and fall-flying lean suppression, and native
         forwards those values into the renderer cape layer. Still deferred:
-        broader arbitrary dynamic texture loading.
+        arbitrary `PlayerSkin.Patch` body resource textures and broader
+        non-profile dynamic texture loading.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1337,7 +1343,8 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel;
-        broader arbitrary dynamic texture loading; the
+        arbitrary `PlayerSkin.Patch` body resource textures / broader
+        non-profile dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
