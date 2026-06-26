@@ -482,7 +482,7 @@ fn feline_textured_render_matches_vanilla_renderer() {
             );
             assert_eq!(
                 feline_textured_layer_passes(true, baby, cat_variant, None)[0].render_type,
-                EntityModelLayerRenderType::Cutout
+                EntityModelLayerRenderType::EntityCutout
             );
             assert_eq!(
                 EntityModelKind::Feline {
@@ -566,7 +566,10 @@ fn feline_collar_layer_matches_vanilla_cat_collar_layer() {
             Some(EntityDyeColor::Red),
         );
         assert_eq!(passes.len(), 2, "the base body plus the collar overlay");
-        assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[1].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
         assert_eq!(passes[1].texture, collar_texture);
         assert_eq!(passes[1].tint, EntityDyeColor::Red.texture_diffuse_color());
         assert!(entity_model_texture_refs().contains(&collar_texture));

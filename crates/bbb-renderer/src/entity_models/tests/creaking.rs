@@ -267,7 +267,10 @@ fn creaking_textured_render_matches_vanilla_renderer() {
     // An inactive creaking renders just the cutout base body.
     let dormant = creaking_textured_layer_passes(false);
     assert_eq!(dormant.len(), 1);
-    assert_eq!(dormant[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        dormant[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(dormant[0].texture, CREAKING_TEXTURE_REF);
     // An active creaking adds the emissive `creaking_eyes.png` eyes overlay.
     let glowing = creaking_textured_layer_passes(true);

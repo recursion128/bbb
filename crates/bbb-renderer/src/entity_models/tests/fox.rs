@@ -451,7 +451,7 @@ fn fox_textured_render_matches_vanilla_renderer() {
                 );
                 assert_eq!(
                     fox_textured_layer_passes(variant, baby, sleeping)[0].render_type,
-                    EntityModelLayerRenderType::Cutout
+                    EntityModelLayerRenderType::EntityCutout
                 );
                 assert!(entity_model_texture_refs().contains(&texture));
             }

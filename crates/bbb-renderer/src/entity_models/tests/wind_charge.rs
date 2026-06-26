@@ -100,9 +100,20 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
 
     // Vanilla `WindChargeRenderer` draws the whole model with the scrolling `breezeWind` render type,
     // so the wind charge emits no cutout/eyes geometry — only the scroll mesh (3 cubes → 72 vertices).
-    let rest = entity_model_textured_meshes(
-        &[EntityModelInstance::wind_charge(180, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
+    let instance = EntityModelInstance::wind_charge(180, [0.0, 64.0, 0.0], 0.0);
+    let rest = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(rest.submissions.len(), 1);
+    assert_eq!(
+        rest.submissions[0].render_type,
+        EntityModelLayerRenderType::BreezeWind
+    );
+    assert_eq!(rest.submissions[0].texture, WIND_CHARGE_TEXTURE_REF);
+    assert_eq!(rest.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(rest.submissions[0].collector_order, 0);
+    assert_eq!(rest.submissions[0].submit_sequence, 0);
+    assert_eq!(
+        rest.submissions[0].transform,
+        wind_charge_model_root_transform(instance)
     );
     assert!(rest.cutout.vertices.is_empty(), "no cutout pass");
     assert!(rest.eyes.vertices.is_empty(), "no eyes pass");

@@ -87,7 +87,10 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
     let passes = ender_dragon_textured_layer_passes();
     // The cutout base body plus the always-on emissive `dragon_eyes.png` eyes overlay.
     assert_eq!(passes.len(), 2);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].texture, ENDER_DRAGON_TEXTURE_REF);
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].texture, ENDER_DRAGON_EYES_TEXTURE_REF);

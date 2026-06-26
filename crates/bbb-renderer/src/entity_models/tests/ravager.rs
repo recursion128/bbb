@@ -87,7 +87,10 @@ fn ravager_textured_layer_pass_matches_vanilla_renderer_model_layer() {
 
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::RavagerBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_RAVAGER);
     assert_eq!(passes[0].texture, RAVAGER_TEXTURE_REF);
     // The vestigial `parts` slice is nulled; emit builds `RavagerModel::new()` and renders its tree.

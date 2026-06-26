@@ -101,13 +101,30 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let meshes = entity_model_textured_meshes(
-        &[EntityModelInstance::shulker_bullet(
-            1130,
-            [0.0, 64.0, 0.0],
-            0.0,
-        )],
-        &atlas,
+    let instance = EntityModelInstance::shulker_bullet(1130, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(
+        meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(meshes.submissions[0].texture, SHULKER_BULLET_TEXTURE_REF);
+    assert_eq!(meshes.submissions[1].texture, SHULKER_BULLET_TEXTURE_REF);
+    assert_eq!(meshes.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(meshes.submissions[1].tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
+    assert_eq!(meshes.submissions[0].collector_order, 0);
+    assert_eq!(meshes.submissions[1].collector_order, 1);
+    assert_eq!(meshes.submissions[0].submit_sequence, 0);
+    assert_eq!(meshes.submissions[1].submit_sequence, 1);
+    let base_transform = shulker_bullet_model_root_transform(instance);
+    assert_eq!(meshes.submissions[0].transform, base_transform);
+    assert_eq!(
+        meshes.submissions[1].transform,
+        base_transform * Mat4::from_scale(Vec3::splat(1.5))
     );
     let mesh = &meshes.cutout;
     assert_eq!(mesh.vertices.len(), 72);

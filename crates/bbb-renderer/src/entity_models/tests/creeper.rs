@@ -154,17 +154,27 @@ fn charged_creeper_emits_scrolling_energy_swirl() {
         plain.scroll_additive.vertices.is_empty(),
         "no energy swirl when not powered"
     );
+    assert!(!plain
+        .submissions
+        .iter()
+        .any(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl));
 
     // A charged creeper draws the inflated `CREEPER_ARMOR` model (6 cubes → 144 vertices) into the
     // additive scroll mesh, every vertex tinted by the vanilla `0xFF808080` half-grey.
     let grey = 128.0 / 255.0;
-    let rest = entity_model_textured_meshes(
-        &[
-            EntityModelInstance::new(961, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
-                .with_creeper_powered(true),
-        ],
-        &atlas,
-    );
+    let powered = EntityModelInstance::new(961, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+        .with_creeper_powered(true);
+    let rest = entity_model_textured_meshes(&[powered], &atlas);
+    let swirl = rest
+        .submissions
+        .iter()
+        .find(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl)
+        .expect("powered creeper emits an energySwirl submit");
+    assert_eq!(swirl.texture, CREEPER_ARMOR_TEXTURE_REF);
+    assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
+    assert_eq!(swirl.collector_order, 1);
+    assert_eq!(swirl.submit_sequence, 1);
+    assert_eq!(swirl.transform, creeper_model_root_transform(powered));
     assert_eq!(rest.scroll_additive.vertices.len(), 144);
     assert!(rest
         .scroll_additive

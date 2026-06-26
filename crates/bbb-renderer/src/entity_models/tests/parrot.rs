@@ -444,7 +444,10 @@ fn parrot_textured_render_matches_vanilla_renderer() {
         assert!(expected.path.ends_with(file));
         let passes = parrot_textured_layer_passes(variant);
         assert_eq!(passes.len(), 1);
-        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
         assert_eq!(passes[0].texture, expected);
         assert_eq!(
             EntityModelKind::Parrot { variant }.vanilla_texture_ref(),

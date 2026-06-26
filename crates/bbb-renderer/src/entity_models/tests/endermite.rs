@@ -66,7 +66,10 @@ fn endermite_layer_passes_match_vanilla_renderer() {
     let passes = endermite_textured_layer_passes();
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::EndermiteBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_ENDERMITE);
     assert_eq!(passes[0].texture, ENDERMITE_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

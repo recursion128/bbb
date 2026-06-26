@@ -301,7 +301,7 @@ fn panda_textured_render_matches_vanilla_renderer() {
         assert_eq!(panda_textured_layer_passes(variant, true)[0].texture, baby);
         assert_eq!(
             panda_textured_layer_passes(variant, false)[0].render_type,
-            EntityModelLayerRenderType::Cutout
+            EntityModelLayerRenderType::EntityCutout
         );
         assert_eq!(
             EntityModelKind::Panda {

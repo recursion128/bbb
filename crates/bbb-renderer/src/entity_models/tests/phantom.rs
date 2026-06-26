@@ -88,7 +88,10 @@ fn phantom_layer_passes_match_vanilla_renderer() {
     let passes = phantom_textured_layer_passes();
     assert_eq!(passes.len(), 2);
     assert_eq!(passes[0].kind, EntityModelLayerKind::PhantomBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_PHANTOM);
     assert_eq!(passes[0].texture, PHANTOM_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

@@ -129,7 +129,10 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     let passes = iron_golem_textured_layer_passes(IronGolemCrackiness::None);
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::IronGolemBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_IRON_GOLEM);
     assert_eq!(passes[0].texture, IRON_GOLEM_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
@@ -158,7 +161,10 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
         let passes = iron_golem_textured_layer_passes(crackiness);
         assert_eq!(passes.len(), 2);
         assert_eq!(passes[1].kind, EntityModelLayerKind::IronGolemCrackiness);
-        assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[1].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
         assert_eq!(passes[1].model_layer, MODEL_LAYER_IRON_GOLEM);
         assert_eq!(passes[1].texture, texture);
         assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -252,7 +258,10 @@ fn snow_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
 
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::SnowGolemBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_SNOW_GOLEM);
     assert_eq!(passes[0].texture, SNOW_GOLEM_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

@@ -133,7 +133,10 @@ fn shulker_textured_render_matches_vanilla_renderer() {
         let texture = shulker_texture_ref(color);
         let passes = shulker_textured_layer_passes(color);
         assert_eq!(passes.len(), 1);
-        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutoutZOffset
+        );
         assert_eq!(passes[0].texture, texture);
         assert_eq!(
             EntityModelKind::Shulker { color }.vanilla_texture_ref(),

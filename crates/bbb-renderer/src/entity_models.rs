@@ -19,9 +19,11 @@ pub use block_attachment::{
 pub use catalog::*;
 #[cfg(test)]
 use colored::{
-    death_fall_factor, entity_flip_degrees, entity_model_mesh, humanoid_arm_swing_parts,
-    humanoid_limb_swing_parts, quadruped_leg_x_rotations, quadruped_limb_swing_parts,
-    HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
+    creeper_model_root_transform, death_fall_factor, end_crystal_model_root_transform,
+    entity_flip_degrees, entity_model_mesh, humanoid_arm_swing_parts, humanoid_limb_swing_parts,
+    quadruped_leg_x_rotations, quadruped_limb_swing_parts, shulker_bullet_model_root_transform,
+    wind_charge_model_root_transform, wither_model_root_transform, HUMANOID_ARM_PART_INDICES,
+    HUMANOID_LEG_PART_INDICES,
 };
 use colored::{
     entity_model_colored_runtime_mesh, entity_model_root_transform,
@@ -31,7 +33,7 @@ use colored::{
 };
 use geometry::*;
 #[cfg(test)]
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 #[cfg(test)]
 use gpu::{
     build_entity_model_texture_atlas, entity_model_vertex_layout, rgba_offset,
@@ -64,19 +66,19 @@ pub use model_layers::{
     breeze_entity_texture_refs, camel_entity_texture_refs, chicken_entity_texture_refs,
     cod_entity_texture_refs, copper_golem_entity_texture_refs, cow_entity_texture_refs,
     creaking_entity_texture_refs, creeper_entity_texture_refs, dolphin_entity_texture_refs,
-    donkey_entity_texture_refs, drowned_entity_texture_refs, ender_dragon_entity_texture_refs,
-    enderman_entity_texture_refs, endermite_entity_texture_refs, entity_model_texture_refs,
-    evoker_fangs_entity_texture_refs, feline_entity_texture_refs, fox_entity_texture_refs,
-    frog_entity_texture_refs, ghast_entity_texture_refs, goat_entity_texture_refs,
-    guardian_entity_texture_refs, happy_ghast_entity_texture_refs, hoglin_entity_texture_refs,
-    horse_entity_texture_refs, husk_entity_texture_refs, illager_entity_texture_refs,
-    leash_knot_entity_texture_refs, llama_entity_texture_refs, llama_spit_entity_texture_refs,
-    minecart_entity_texture_refs, mooshroom_entity_texture_refs, nautilus_entity_texture_refs,
-    panda_entity_texture_refs, parrot_entity_texture_refs, phantom_entity_texture_refs,
-    pig_entity_texture_refs, piglin_entity_texture_refs, player_entity_texture_refs,
-    polar_bear_entity_texture_refs, pufferfish_entity_texture_refs, rabbit_entity_texture_refs,
-    ravager_entity_texture_refs, salmon_entity_texture_refs, sheep_entity_texture_refs,
-    shulker_bullet_entity_texture_refs, shulker_entity_texture_refs,
+    donkey_entity_texture_refs, drowned_entity_texture_refs, end_crystal_entity_texture_refs,
+    ender_dragon_entity_texture_refs, enderman_entity_texture_refs, endermite_entity_texture_refs,
+    entity_model_texture_refs, evoker_fangs_entity_texture_refs, feline_entity_texture_refs,
+    fox_entity_texture_refs, frog_entity_texture_refs, ghast_entity_texture_refs,
+    goat_entity_texture_refs, guardian_entity_texture_refs, happy_ghast_entity_texture_refs,
+    hoglin_entity_texture_refs, horse_entity_texture_refs, husk_entity_texture_refs,
+    illager_entity_texture_refs, leash_knot_entity_texture_refs, llama_entity_texture_refs,
+    llama_spit_entity_texture_refs, minecart_entity_texture_refs, mooshroom_entity_texture_refs,
+    nautilus_entity_texture_refs, panda_entity_texture_refs, parrot_entity_texture_refs,
+    phantom_entity_texture_refs, pig_entity_texture_refs, piglin_entity_texture_refs,
+    player_entity_texture_refs, polar_bear_entity_texture_refs, pufferfish_entity_texture_refs,
+    rabbit_entity_texture_refs, ravager_entity_texture_refs, salmon_entity_texture_refs,
+    sheep_entity_texture_refs, shulker_bullet_entity_texture_refs, shulker_entity_texture_refs,
     silverfish_entity_texture_refs, skeleton_entity_texture_refs, slime_entity_texture_refs,
     sniffer_entity_texture_refs, spider_entity_texture_refs, squid_entity_texture_refs,
     strider_entity_texture_refs, tadpole_entity_texture_refs, trident_entity_texture_refs,

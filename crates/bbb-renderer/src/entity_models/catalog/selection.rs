@@ -617,6 +617,7 @@ impl EntityModelKind {
             } => Some(VINDICATOR_TEXTURE_REF),
             Self::Boat { family, chest } => Some(boat_texture_ref(family, chest)),
             Self::Minecart => Some(MINECART_TEXTURE_REF),
+            Self::EndCrystal => Some(END_CRYSTAL_TEXTURE_REF),
             _ => None,
         }
     }

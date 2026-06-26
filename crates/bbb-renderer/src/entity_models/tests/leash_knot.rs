@@ -38,7 +38,10 @@ fn leash_knot_mesh_uses_vanilla_body_layer_geometry() {
 fn leash_knot_layer_passes_match_vanilla_renderer() {
     let passes = leash_knot_textured_layer_passes();
     assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].texture, LEASH_KNOT_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);

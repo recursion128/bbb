@@ -167,7 +167,10 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
     let spider = spider_textured_layer_passes(false);
     assert_eq!(spider.len(), 2);
     assert_eq!(spider[0].kind, EntityModelLayerKind::SpiderBase);
-    assert_eq!(spider[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        spider[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(spider[0].model_layer, MODEL_LAYER_SPIDER);
     assert_eq!(spider[0].texture, SPIDER_TEXTURE_REF);
     assert_eq!(spider[0].tint, [1.0, 1.0, 1.0, 1.0]);

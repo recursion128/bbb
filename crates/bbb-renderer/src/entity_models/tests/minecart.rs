@@ -40,7 +40,10 @@ fn minecart_layer_passes_match_vanilla_renderer() {
     let passes = minecart_textured_layer_passes();
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::MinecartBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_MINECART);
     assert_eq!(passes[0].texture, MINECART_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

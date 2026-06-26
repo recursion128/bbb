@@ -198,7 +198,10 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
 
     assert_eq!(adult.len(), 1);
     assert_eq!(adult[0].kind, EntityModelLayerKind::VillagerBase);
-    assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        adult[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(adult[0].model_layer, MODEL_LAYER_VILLAGER);
     assert_eq!(adult[0].texture, VILLAGER_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
@@ -207,7 +210,10 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
 
     assert_eq!(baby.len(), 1);
     assert_eq!(baby[0].kind, EntityModelLayerKind::VillagerBase);
-    assert_eq!(baby[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        baby[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(baby[0].model_layer, MODEL_LAYER_VILLAGER_BABY);
     assert_eq!(baby[0].texture, VILLAGER_BABY_TEXTURE_REF);
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
@@ -216,7 +222,10 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
 
     assert_eq!(trader.len(), 1);
     assert_eq!(trader[0].kind, EntityModelLayerKind::WanderingTraderBase);
-    assert_eq!(trader[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        trader[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(trader[0].model_layer, MODEL_LAYER_WANDERING_TRADER);
     assert_eq!(trader[0].texture, WANDERING_TRADER_TEXTURE_REF);
     assert_eq!(trader[0].visibility, EntityModelLayerVisibility::All);

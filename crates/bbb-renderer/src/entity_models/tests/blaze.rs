@@ -43,7 +43,10 @@ fn blaze_layer_passes_match_vanilla_renderer() {
     let passes = blaze_textured_layer_passes();
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::BlazeBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_BLAZE);
     assert_eq!(passes[0].texture, BLAZE_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

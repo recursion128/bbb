@@ -1007,6 +1007,18 @@ When an agent does any of the following, update this file in the same slice:
     - selection/block-destroy overlays
     - crosshair entity target outlines
     - a basic hecs-derived entity bounds scene proxy
+    - textured entity model submits now carry vanilla-shaped submission
+      metadata alongside the existing mesh buckets: `render_type`
+      distinguishes `entityCutout`, `entityCutoutCull`,
+      `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
+      `breezeWind`, and `energySwirl`; `collector_order` mirrors
+      `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
+      same-order layer order while the GPU backend still folds compatible
+      submits into shared meshes. Uniform layer passes, Warden retained
+      emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
+      WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
+      villager profession/type/level overlays, and the newly textured End
+      Crystal path are covered by source-verified render-type/order tests.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
@@ -2763,7 +2775,7 @@ When an agent does any of the following, update this file in the same slice:
       colored debug path stays as a fallback (the giant reuses the zombie body
       tints; the `Mob.isAggressive` arm-raise is implemented)
     - end crystal entities as renderer-owned vanilla 26.1 `EndCrystalModel.createBodyLayer()` geometry on
-      the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `45` to the new
+      the colored and textured paths: the native entity scene (`entity_scene.rs`) projects vanilla type id `45` to the new
       `EntityModelKind::EndCrystal`, replacing the former placeholder bounds box. The static rest-pose
       hierarchy is emitted directly (atlas 64×32): the 12×4×12 base slab at the model origin plus the nested
       glass stack at `offset(0, 24, 0)` — the unscaled 8×8×8 `outer_glass`, the `inner_glass` at
@@ -2783,9 +2795,11 @@ When an agent does any of the following, update this file in the same slice:
       (the π/3 tilt about the `(sin45, 0, sin45)` axis composed with `Ry(age·3°)` — `outer_glass` as
       `Ry·TILT`, `inner_glass`/`cube` as `TILT·Ry`, hand-walked through the flattened glass stack so the
       inner shells inherit the outer rotation) and the `EndCrystalRenderer.getY` vertical bob
-      (`getY(age)·16/2` lifting the whole glass stack). The `submitCrystalBeams` beam to the dragon and
-      the texture-backed path are deferred, so the colored debug path renders the spinning magenta glass,
-      the bright core, and the dark base with three tints
+      (`getY(age)·16/2` lifting the whole glass stack). The textured path now binds
+      `textures/entity/end_crystal/end_crystal.png` as the vanilla default `entityCutout` submit with
+      collector order `0`, sequence `0`, white tint, and the same `scale(2)·translate(0,-0.5,0)` root
+      transform; the colored debug path stays as the missing-atlas fallback with separate glass/core/base
+      tints. The `submitCrystalBeams` beam to the dragon remains deferred
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
       `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw
@@ -2878,9 +2892,10 @@ When an agent does any of the following, update this file in the same slice:
       `ShulkerBulletRenderer.submit` `translate(0, 0.15, 0)` + the `ageInTicks`-driven tumble
       (`Ry(sin(t·0.1)·180°) · Rx(cos(t·0.1)·180°) · Rz(sin(t·0.15)·360°)`) + `scale(-0.5, -0.5, 0.5)` are
       captured by `shulker_bullet_model_root_transform`. The textured path now reproduces both vanilla
-      submits over `SHULKER_BULLET_TEXTURE_REF`: the base cutout model, then the same posed model multiplied
-      by `scale(1.5)` into the translucent pass with packed color `0x26ffffff`. The colored debug path stays
-      as a fallback (it renders the three slabs with one tint)
+      submits over `SHULKER_BULLET_TEXTURE_REF`: the base `entityCutout` submit at order `0`, then the same
+      posed model multiplied by `scale(1.5)` as `entityTranslucent` at order `1` with packed color
+      `0x26ffffff`. Submission metadata tests pin the texture, render types, alpha tint, transform, and
+      order. The colored debug path stays as a fallback (it renders the three slabs with one tint)
     - wind charge and breeze wind charge entities as renderer-owned vanilla 26.1
       `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `143` (wind charge) and `18` (breeze wind charge) — both
@@ -2902,7 +2917,9 @@ When an agent does any of the following, update this file in the same slice:
       `atlas_uv = uv_rect_min + fract(local_uv)·uv_rect_size` (the per-fragment `fract` recreating the `REPEAT`
       seam) with the `0.1` alpha cutout, translucent-blended and depth-writing. The one simplification is
       lighting: vanilla `breezeWind` is lightmap-lit with `NO_CARDINAL_LIGHTING`, while the scroll shader is
-      full-bright (a glowing projectile reads the same in practice). The colored debug path stays as a fallback
+      full-bright (a glowing projectile reads the same in practice). The wind charge records this as a
+      `breezeWind` submit with collector order `0`; Breeze's separate `BreezeWindLayer` records order `1`,
+      ahead of the same-order eyes layer per `BreezeRenderer.addLayer` order. The colored debug path stays as a fallback
       (it renders the spinning wind shell and core as opaque tinted geometry)
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new

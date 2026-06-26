@@ -1,7 +1,7 @@
 use super::colored::{
-    creeper_model_root_transform, shulker_bullet_model_root_transform,
-    villager_adult_model_root_transform, wind_charge_model_root_transform,
-    wither_model_root_transform, HORSE_SCALE,
+    creeper_model_root_transform, end_crystal_model_root_transform,
+    shulker_bullet_model_root_transform, villager_adult_model_root_transform,
+    wind_charge_model_root_transform, wither_model_root_transform, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -26,29 +26,30 @@ use super::{
     geometry::{
         append_scrolled_textured_mesh, emit_textured_model_cube, emit_textured_model_parts,
         fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
-        EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
+        EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh, PartPose,
         TexturedModelPartDesc,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        armor_layer_tint, armor_slot_texture, default_player_skin_texture_ref,
-        equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
-        horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
-        nautilus_body_armor_texture_ref, BreezeWindModel, CamelModel, CreeperModel,
-        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
-        DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel,
-        PiglinModel, PlayerModel, SheepFurModel, SheepModel, ShulkerBulletModel,
-        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
-        StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel,
-        WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
+        armor_layer_tint, armor_slot_texture, default_player_skin_texture_ref, end_crystal_bob_y,
+        end_crystal_glass_quaternions, equine_head_look_pose, equine_leg_swing_pose,
+        equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
+        limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
+        BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
+        CustomHeadPiglinSkullModel, CustomHeadSkullModel, DrownedOuterModel, HoglinModel,
+        HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel,
+        SheepFurModel, SheepModel, ShulkerBulletModel, SkeletonClothingModel, SkeletonModel,
+        SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
+        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
+        ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
         HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
@@ -96,6 +97,16 @@ pub(super) use layers::{
 #[cfg(test)]
 pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct EntityModelRenderSubmission {
+    pub(super) render_type: EntityModelLayerRenderType,
+    pub(super) texture: EntityModelTextureRef,
+    pub(super) tint: [f32; 4],
+    pub(super) transform: Mat4,
+    pub(super) collector_order: i32,
+    pub(super) submit_sequence: u32,
+}
+
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
@@ -104,6 +115,10 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) scroll: EntityModelScrollMesh,
     /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
     pub(super) scroll_additive: EntityModelScrollMesh,
+    /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
+    /// compatible submits into shared meshes, but this preserves render type, order, tint, texture and
+    /// transform so residual emits can migrate to explicit submissions one by one.
+    pub(super) submissions: Vec<EntityModelRenderSubmission>,
 }
 
 impl EntityModelTexturedMeshes {
@@ -114,6 +129,7 @@ impl EntityModelTexturedMeshes {
             eyes: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
+            submissions: Vec::new(),
         }
     }
 
@@ -122,10 +138,34 @@ impl EntityModelTexturedMeshes {
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
         match render_type {
-            EntityModelLayerRenderType::Cutout => &mut self.cutout,
-            EntityModelLayerRenderType::Translucent => &mut self.translucent,
+            EntityModelLayerRenderType::EntityCutout
+            | EntityModelLayerRenderType::EntityCutoutCull
+            | EntityModelLayerRenderType::EntityCutoutZOffset => &mut self.cutout,
+            EntityModelLayerRenderType::EntityTranslucent => &mut self.translucent,
             EntityModelLayerRenderType::Eyes => &mut self.eyes,
+            EntityModelLayerRenderType::BreezeWind | EntityModelLayerRenderType::EnergySwirl => {
+                panic!("scroll render types are not emitted into textured mesh buckets")
+            }
         }
+    }
+
+    fn record_submission(
+        &mut self,
+        render_type: EntityModelLayerRenderType,
+        texture: EntityModelTextureRef,
+        tint: [f32; 4],
+        transform: Mat4,
+        collector_order: i32,
+        submit_sequence: u32,
+    ) {
+        self.submissions.push(EntityModelRenderSubmission {
+            render_type,
+            texture,
+            tint,
+            transform,
+            collector_order,
+            submit_sequence,
+        });
     }
 }
 
@@ -167,6 +207,9 @@ pub(super) fn entity_model_textured_meshes(
                 }
                 EntityModelKind::ShulkerBullet => {
                     emit_shulker_bullet_textured_model(&mut meshes, *instance, atlas);
+                }
+                EntityModelKind::EndCrystal => {
+                    emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
                 }
                 EntityModelKind::Llama {
                     family,
@@ -340,24 +383,97 @@ fn emit_shulker_bullet_textured_model(
     let mut model = ShulkerBulletModel::new();
     model.prepare(&instance);
     let transform = shulker_bullet_model_root_transform(instance);
-    render_textured_pass(
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         SHULKER_BULLET_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
+        0,
+        0,
         atlas,
     );
-    render_textured_pass(
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform * Mat4::from_scale(Vec3::splat(1.5)),
-        EntityModelLayerRenderType::Translucent,
+        EntityModelLayerRenderType::EntityTranslucent,
         SHULKER_BULLET_TEXTURE_REF,
         [1.0, 1.0, 1.0, 38.0 / 255.0],
+        1,
+        1,
         atlas,
     );
+}
+
+/// Vanilla `EndCrystalRenderer.submit`: render `EndCrystalModel` with `end_crystal.png` after the
+/// renderer root transform (`scale(2)` + `translate(0,-0.5,0)`). The dragon beam is submitted by a
+/// separate renderer helper and remains outside the entity-model mesh path.
+fn emit_end_crystal_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let root = end_crystal_model_root_transform(instance);
+    let tint = [1.0, 1.0, 1.0, 1.0];
+    meshes.record_submission(
+        EntityModelLayerRenderType::EntityCutout,
+        END_CRYSTAL_TEXTURE_REF,
+        tint,
+        root,
+        0,
+        0,
+    );
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, END_CRYSTAL_TEXTURE_REF) else {
+        return;
+    };
+    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::EntityCutout);
+    if instance.render_state.end_crystal_shows_bottom {
+        emit_textured_model_parts(
+            mesh,
+            &END_CRYSTAL_TEXTURED_PARTS[..1],
+            root,
+            END_CRYSTAL_TEXTURE_REF,
+            entry.uv,
+            tint,
+        );
+    }
+
+    let age = instance.render_state.age_in_ticks;
+    let bob = end_crystal_bob_y(age);
+    let (q_outer, q_inner) = end_crystal_glass_quaternions(age);
+    let centre = root
+        * part_pose_transform(PartPose {
+            offset: [0.0, 24.0 + bob, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        });
+    let outer_t = centre * Mat4::from_quat(q_outer);
+    let inner_t = outer_t * Mat4::from_quat(q_inner);
+    let core_t = inner_t * Mat4::from_quat(q_inner);
+    for cube in END_CRYSTAL_TEXTURED_PARTS[1].cubes {
+        emit_textured_model_cube(
+            mesh,
+            outer_t,
+            *cube,
+            END_CRYSTAL_TEXTURE_REF,
+            entry.uv,
+            tint,
+        );
+    }
+    for cube in END_CRYSTAL_TEXTURED_PARTS[2].cubes {
+        emit_textured_model_cube(
+            mesh,
+            inner_t,
+            *cube,
+            END_CRYSTAL_TEXTURE_REF,
+            entry.uv,
+            tint,
+        );
+    }
+    for cube in END_CRYSTAL_TEXTURED_PARTS[3].cubes {
+        emit_textured_model_cube(mesh, core_t, *cube, END_CRYSTAL_TEXTURE_REF, entry.uv, tint);
+    }
 }
 
 /// Render one textured pass of an already-prepared model: look up the texture's atlas entry and,
@@ -372,6 +488,38 @@ fn render_textured_pass<M: EntityModel>(
     tint: [f32; 4],
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    render_textured_pass_ordered(
+        meshes,
+        model,
+        transform,
+        render_type,
+        texture,
+        tint,
+        0,
+        0,
+        atlas,
+    );
+}
+
+fn render_textured_pass_ordered<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    collector_order: i32,
+    submit_sequence: u32,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    meshes.record_submission(
+        render_type,
+        texture,
+        tint,
+        transform,
+        collector_order,
+        submit_sequence,
+    );
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) {
         model.root().render_textured(
             meshes.mesh_mut(render_type),
@@ -379,6 +527,32 @@ fn render_textured_pass<M: EntityModel>(
             texture,
             entry.uv,
             tint,
+        );
+    }
+}
+
+fn render_textured_root_pass(
+    meshes: &mut EntityModelTexturedMeshes,
+    root: &ModelPart,
+    transform: Mat4,
+    pass: EntityModelLayerPass,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    meshes.record_submission(
+        pass.render_type,
+        pass.texture,
+        pass.tint,
+        transform,
+        pass.collector_order,
+        pass.submit_sequence,
+    );
+    if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+        root.render_textured(
+            meshes.mesh_mut(pass.render_type),
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
         );
     }
 }
@@ -395,6 +569,14 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
         match pass.visibility {
             // A part-subset emissive overlay (vanilla `retainExactParts`): render only its named parts.
             layers::EntityModelLayerVisibility::RetainedParts(parts) => {
+                meshes.record_submission(
+                    pass.render_type,
+                    pass.texture,
+                    pass.tint,
+                    transform,
+                    pass.collector_order,
+                    pass.submit_sequence,
+                );
                 if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
                     model.root().render_textured_retained(
                         meshes.mesh_mut(pass.render_type),
@@ -408,13 +590,15 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
                 }
             }
             // `All` (and the player-parts case, whose subset is pre-applied to the tree) render whole.
-            _ => render_textured_pass(
+            _ => render_textured_pass_ordered(
                 meshes,
                 model,
                 transform,
                 pass.render_type,
                 pass.texture,
                 pass.tint,
+                pass.collector_order,
+                pass.submit_sequence,
                 atlas,
             ),
         }
@@ -478,15 +662,7 @@ fn emit_tropical_fish_textured_model(
         } else {
             body.root()
         };
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            root.render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
+        render_textured_root_pass(meshes, root, transform, pass, atlas);
     }
 }
 
@@ -504,10 +680,18 @@ fn emit_wind_charge_scroll_model(
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    let transform = wind_charge_model_root_transform(instance);
+    meshes.record_submission(
+        EntityModelLayerRenderType::BreezeWind,
+        WIND_CHARGE_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        transform,
+        0,
+        0,
+    );
     let Some(entry) = entity_model_texture_atlas_entry(atlas, WIND_CHARGE_TEXTURE_REF) else {
         return;
     };
-    let transform = wind_charge_model_root_transform(instance);
     let mut model = WindChargeModel::new();
     model.prepare(&instance);
     let mut scratch = EntityModelTexturedMesh::new();
@@ -539,10 +723,18 @@ fn emit_breeze_wind_scroll_model(
     if !matches!(instance.kind, EntityModelKind::Breeze) {
         return;
     }
+    let transform = entity_model_root_transform(instance);
+    meshes.record_submission(
+        EntityModelLayerRenderType::BreezeWind,
+        BREEZE_WIND_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        transform,
+        1,
+        1,
+    );
     let Some(entry) = entity_model_texture_atlas_entry(atlas, BREEZE_WIND_TEXTURE_REF) else {
         return;
     };
-    let transform = entity_model_root_transform(instance);
     let mut model = BreezeWindModel::new();
     model.prepare(&instance);
     let mut scratch = EntityModelTexturedMesh::new();
@@ -574,15 +766,23 @@ fn emit_charged_creeper_energy_swirl(
     {
         return;
     }
+    let transform = creeper_model_root_transform(instance);
+    let grey = 128.0 / 255.0;
+    meshes.record_submission(
+        EntityModelLayerRenderType::EnergySwirl,
+        CREEPER_ARMOR_TEXTURE_REF,
+        [grey, grey, grey, 1.0],
+        transform,
+        1,
+        1,
+    );
     let Some(entry) = entity_model_texture_atlas_entry(atlas, CREEPER_ARMOR_TEXTURE_REF) else {
         return;
     };
-    let transform = creeper_model_root_transform(instance);
     let mut model = CreeperModel::new_armor();
     model.prepare(&instance);
     let mut scratch = EntityModelTexturedMesh::new();
     // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
-    let grey = 128.0 / 255.0;
     model.root().render_textured(
         &mut scratch,
         transform,
@@ -615,15 +815,23 @@ fn emit_wither_energy_swirl(
     if !instance.render_state.wither_powered || !matches!(instance.kind, EntityModelKind::Wither) {
         return;
     }
+    let transform = wither_model_root_transform(instance);
+    let grey = 128.0 / 255.0;
+    meshes.record_submission(
+        EntityModelLayerRenderType::EnergySwirl,
+        WITHER_ARMOR_TEXTURE_REF,
+        [grey, grey, grey, 1.0],
+        transform,
+        1,
+        1,
+    );
     let Some(entry) = entity_model_texture_atlas_entry(atlas, WITHER_ARMOR_TEXTURE_REF) else {
         return;
     };
-    let transform = wither_model_root_transform(instance);
     let mut model = WitherModel::new_armor();
     model.prepare(&instance);
     let mut scratch = EntityModelTexturedMesh::new();
     // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
-    let grey = 128.0 / 255.0;
     model.root().render_textured(
         &mut scratch,
         transform,
@@ -803,7 +1011,7 @@ fn emit_humanoid_armor(
         let mut tree = slot.build_tree(outer);
         tree.copy_child_poses_from(host_root, slot.part_names());
         tree.render_textured(
-            meshes.mesh_mut(EntityModelLayerRenderType::Cutout),
+            meshes.mesh_mut(EntityModelLayerRenderType::EntityCutout),
             transform,
             texture,
             entry.uv,
@@ -953,7 +1161,7 @@ fn emit_custom_head_skull_layer(
                 meshes,
                 &model,
                 transform,
-                EntityModelLayerRenderType::Cutout,
+                EntityModelLayerRenderType::EntityCutout,
                 custom_head_skull_texture_ref(skull),
                 [1.0, 1.0, 1.0, 1.0],
                 atlas,
@@ -967,7 +1175,7 @@ fn emit_custom_head_skull_layer(
                 meshes,
                 &model,
                 transform,
-                EntityModelLayerRenderType::Cutout,
+                EntityModelLayerRenderType::EntityCutout,
                 custom_head_skull_texture_ref(skull),
                 [1.0, 1.0, 1.0, 1.0],
                 atlas,
@@ -983,7 +1191,7 @@ fn emit_custom_head_skull_layer(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         custom_head_skull_texture_ref(skull),
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1025,7 +1233,7 @@ fn emit_pig_saddle_layer(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         PIG_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1195,7 +1403,7 @@ fn emit_strider_saddle_layer(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         STRIDER_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1234,7 +1442,7 @@ fn emit_camel_saddle_layer(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         texture,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1266,7 +1474,7 @@ fn emit_nautilus_saddle_layer(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         NAUTILUS_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1302,7 +1510,7 @@ fn emit_nautilus_body_armor_layer(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         texture,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1324,7 +1532,7 @@ fn emit_squid_textured_model(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         texture,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1379,7 +1587,7 @@ fn emit_llama_decor_layer(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         texture,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
@@ -1407,15 +1615,7 @@ fn emit_slime_textured_model(
         } else {
             inner.root()
         };
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            root.render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
+        render_textured_root_pass(meshes, root, transform, pass, atlas);
     }
 }
 
@@ -1462,19 +1662,12 @@ fn emit_drowned_textured_model(
     let mut base = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, baby);
     base.prepare(&instance);
     for pass in drowned_textured_layer_passes(baby) {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let mesh = meshes.mesh_mut(pass.render_type);
         if matches!(pass.kind, EntityModelLayerKind::DrownedOuter) {
             let mut outer = DrownedOuterModel::new(baby);
             outer.prepare(&instance);
-            outer
-                .root()
-                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+            render_textured_root_pass(meshes, outer.root(), transform, pass, atlas);
         } else {
-            base.root()
-                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+            render_textured_root_pass(meshes, base.root(), transform, pass, atlas);
         }
     }
 }
@@ -1568,6 +1761,8 @@ fn emit_villager_data_layers<M: EntityModel>(
         transform,
         type_texture,
         !villager_type_hat_visible(data, zombie),
+        1,
+        1,
         atlas,
     );
 
@@ -1588,6 +1783,8 @@ fn emit_villager_data_layers<M: EntityModel>(
         transform,
         profession_texture,
         false,
+        2,
+        2,
         atlas,
     );
 
@@ -1603,6 +1800,8 @@ fn emit_villager_data_layers<M: EntityModel>(
             transform,
             level_texture,
             false,
+            3,
+            3,
             atlas,
         );
     }
@@ -1625,12 +1824,22 @@ fn emit_villager_profession_layer(
     transform: Mat4,
     texture: EntityModelTextureRef,
     no_hat: bool,
+    collector_order: i32,
+    submit_sequence: u32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    let tint = [1.0, 1.0, 1.0, 1.0];
+    meshes.record_submission(
+        EntityModelLayerRenderType::EntityCutout,
+        texture,
+        tint,
+        transform,
+        collector_order,
+        submit_sequence,
+    );
     let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
         return;
     };
-    let tint = [1.0, 1.0, 1.0, 1.0];
     if no_hat {
         root.render_textured_excluding(
             &mut meshes.cutout,
@@ -1742,15 +1951,7 @@ fn emit_sheep_textured_model(
         } else {
             body.root()
         };
-        if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
-            root.render_textured(
-                meshes.mesh_mut(pass.render_type),
-                transform,
-                pass.texture,
-                entry.uv,
-                pass.tint,
-            );
-        }
+        render_textured_root_pass(meshes, root, transform, pass, atlas);
     }
 }
 
@@ -2047,19 +2248,12 @@ fn emit_skeleton_textured_model(
     let mut base = SkeletonModel::new(family);
     base.prepare(&instance);
     for pass in skeleton_textured_layer_passes(family) {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        let mesh = meshes.mesh_mut(pass.render_type);
         if matches!(pass.kind, EntityModelLayerKind::SkeletonClothing) {
             let mut clothing = SkeletonClothingModel::new(family);
             clothing.prepare(&instance);
-            clothing
-                .root()
-                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+            render_textured_root_pass(meshes, clothing.root(), transform, pass, atlas);
         } else {
-            base.root()
-                .render_textured(mesh, transform, pass.texture, entry.uv, pass.tint);
+            render_textured_root_pass(meshes, base.root(), transform, pass, atlas);
         }
     }
 }

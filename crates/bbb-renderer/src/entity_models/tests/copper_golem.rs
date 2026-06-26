@@ -118,7 +118,10 @@ fn copper_golem_textured_layer_passes_match_vanilla_renderer() {
 
     assert_eq!(passes.len(), 2);
     assert_eq!(passes[0].kind, EntityModelLayerKind::CopperGolemBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_COPPER_GOLEM);
     assert_eq!(passes[0].texture, COPPER_GOLEM_WEATHERED_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

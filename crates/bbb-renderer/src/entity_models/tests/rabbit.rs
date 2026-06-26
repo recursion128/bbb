@@ -258,7 +258,7 @@ fn rabbit_textured_render_matches_vanilla_renderer() {
                 );
                 assert_eq!(
                     rabbit_textured_layer_passes(variant, baby, toast)[0].render_type,
-                    EntityModelLayerRenderType::Cutout
+                    EntityModelLayerRenderType::EntityCutout
                 );
                 assert_eq!(
                     EntityModelKind::Rabbit {

@@ -25,7 +25,10 @@ fn tadpole_geometry_matches_vanilla_26_1_body_layer() {
 fn tadpole_layer_passes_and_texture_ref_match_vanilla_renderer() {
     let passes = tadpole_textured_layer_passes();
     assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].texture, TADPOLE_TEXTURE_REF);
 
     assert_eq!(

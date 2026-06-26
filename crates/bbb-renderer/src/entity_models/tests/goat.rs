@@ -160,7 +160,10 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let adult = goat_textured_layer_passes(false);
     assert_eq!(adult.len(), 1);
     assert_eq!(adult[0].kind, EntityModelLayerKind::GoatBase);
-    assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        adult[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(adult[0].model_layer, MODEL_LAYER_GOAT);
     assert_eq!(adult[0].texture, GOAT_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
@@ -170,7 +173,10 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let baby = goat_textured_layer_passes(true);
     assert_eq!(baby.len(), 1);
     assert_eq!(baby[0].kind, EntityModelLayerKind::GoatBase);
-    assert_eq!(baby[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        baby[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(baby[0].model_layer, MODEL_LAYER_GOAT_BABY);
     assert_eq!(baby[0].texture, GOAT_BABY_TEXTURE_REF);
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);

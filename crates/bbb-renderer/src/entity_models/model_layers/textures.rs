@@ -1480,7 +1480,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 529] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 530] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1778,6 +1778,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     MOOSHROOM_BABY_TEXTURE_REF,
     MOOSHROOM_BROWN_TEXTURE_REF,
     MOOSHROOM_BROWN_BABY_TEXTURE_REF,
+    END_CRYSTAL_TEXTURE_REF,
     ARROW_TEXTURE_REF,
     ARROW_TIPPED_TEXTURE_REF,
     ARROW_SPECTRAL_TEXTURE_REF,
@@ -3985,10 +3986,21 @@ pub fn mooshroom_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &MOOSHROOM_ENTITY_TEXTURE_REFS
 }
 
-// Projectiles: small single-texture models. `WITHER_TEXTURE_REF` (wither.png) is shared by the wither
+// Small single-texture non-living models. `WITHER_TEXTURE_REF` (wither.png) is shared by the wither
 // skull and the wither boss; the skull swaps to `WITHER_INVULNERABLE_TEXTURE_REF` when dangerous, while
 // the boss swaps to it during its spawn charge. The arrow texture variants are selected from entity
 // state.
+pub(in crate::entity_models) const END_CRYSTAL_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/end_crystal/end_crystal.png",
+        size: [64, 32],
+    };
+pub(in crate::entity_models) const END_CRYSTAL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [END_CRYSTAL_TEXTURE_REF];
+pub fn end_crystal_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &END_CRYSTAL_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const ARROW_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/projectiles/arrow.png",

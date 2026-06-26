@@ -723,7 +723,10 @@ fn zombie_textured_layer_passes_match_vanilla_renderer() {
         let passes = zombie_textured_layer_passes(baby);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::ZombieBase);
-        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
@@ -805,7 +808,10 @@ fn husk_textured_layer_passes_match_vanilla_renderer() {
         let passes = husk_textured_layer_passes(baby);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::HuskBase);
-        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
@@ -918,13 +924,19 @@ fn drowned_textured_layer_passes_match_vanilla_renderer() {
     let adult = drowned_textured_layer_passes(false);
     assert_eq!(adult.len(), 2);
     assert_eq!(adult[0].kind, EntityModelLayerKind::DrownedBase);
-    assert_eq!(adult[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        adult[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(adult[0].model_layer, "minecraft:drowned#main");
     assert_eq!(adult[0].texture, DROWNED_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
 
     assert_eq!(adult[1].kind, EntityModelLayerKind::DrownedOuter);
-    assert_eq!(adult[1].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        adult[1].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(adult[1].model_layer, "minecraft:drowned#outer");
     assert_eq!(adult[1].texture, DROWNED_OUTER_LAYER_TEXTURE_REF);
     assert_eq!(adult[1].visibility, EntityModelLayerVisibility::All);
@@ -1165,7 +1177,10 @@ fn zombie_villager_textured_layer_passes_match_vanilla_renderer() {
         let passes = zombie_villager_textured_layer_passes(baby);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::ZombieVillagerBase);
-        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

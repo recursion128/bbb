@@ -73,9 +73,21 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerRenderType {
-    Cutout,
-    Translucent,
+    /// Vanilla `RenderTypes.entityCutout(texture)`; this is also the default
+    /// `EntityModel` render type when the model does not override it.
+    EntityCutout,
+    /// Vanilla `RenderTypes.entityCutoutCull(texture)`.
+    EntityCutoutCull,
+    /// Vanilla `RenderTypes.entityCutoutZOffset(texture)`.
+    EntityCutoutZOffset,
+    /// Vanilla `RenderTypes.entityTranslucent(texture)`.
+    EntityTranslucent,
+    /// Vanilla eyes/emissive render type (`EyesLayer` / translucent emissive overlays).
     Eyes,
+    /// Vanilla `RenderTypes.breezeWind(texture, u, v)`.
+    BreezeWind,
+    /// Vanilla `RenderTypes.energySwirl(texture, u, v)`.
+    EnergySwirl,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -141,6 +153,16 @@ impl EntityModelLayerPass {
             ..Self::base(render_type, texture, tint)
         }
     }
+
+    pub(in crate::entity_models) fn with_order(
+        mut self,
+        collector_order: i32,
+        submit_sequence: u32,
+    ) -> Self {
+        self.collector_order = collector_order;
+        self.submit_sequence = submit_sequence;
+        self
+    }
 }
 
 pub(in crate::entity_models) fn boat_textured_layer_passes(
@@ -149,7 +171,7 @@ pub(in crate::entity_models) fn boat_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::BoatBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: boat_model_layer(family, chest),
         texture: boat_texture_ref(family, chest),
         visibility: EntityModelLayerVisibility::All,
@@ -165,7 +187,7 @@ pub(in crate::entity_models) fn chicken_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ChickenBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: chicken_model_layer(variant, baby),
         texture: chicken_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
@@ -181,7 +203,7 @@ pub(in crate::entity_models) fn pig_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::PigBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: pig_model_layer(variant, baby),
         texture: pig_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
@@ -197,7 +219,7 @@ pub(in crate::entity_models) fn cow_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::CowBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
@@ -212,7 +234,7 @@ pub(in crate::entity_models) fn salmon_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SalmonBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: salmon_model_layer(size),
         texture: SALMON_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -238,7 +260,7 @@ pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::TropicalFishBase,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: tropical_fish_model_layer(shape),
             texture,
             visibility: EntityModelLayerVisibility::All,
@@ -248,7 +270,7 @@ pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::TropicalFishPattern,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: tropical_fish_pattern_model_layer(shape),
             texture: tropical_fish_pattern_texture_ref(pattern),
             visibility: EntityModelLayerVisibility::All,
@@ -265,7 +287,7 @@ pub(in crate::entity_models) fn camel_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::CamelBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: camel_model_layer(family, baby),
         texture: camel_texture_ref(family, baby),
         visibility: EntityModelLayerVisibility::All,
@@ -284,7 +306,7 @@ pub(in crate::entity_models) fn llama_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::LlamaBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: llama_model_layer(baby),
         texture: llama_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
@@ -297,7 +319,7 @@ pub(in crate::entity_models) fn llama_textured_layer_passes(
 pub(in crate::entity_models) fn creeper_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::CreeperBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_CREEPER,
         texture: CREEPER_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -318,7 +340,7 @@ pub(in crate::entity_models) fn spider_textured_layer_passes(
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::SpiderBase,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer,
             texture: if cave {
                 CAVE_SPIDER_TEXTURE_REF
@@ -347,7 +369,7 @@ pub(in crate::entity_models) fn enderman_textured_layer_passes() -> Vec<EntityMo
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::EndermanBase,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: MODEL_LAYER_ENDERMAN,
             texture: ENDERMAN_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
@@ -374,7 +396,7 @@ pub(in crate::entity_models) fn copper_golem_textured_layer_passes(
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::CopperGolemBase,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: MODEL_LAYER_COPPER_GOLEM,
             texture: copper_golem_texture_ref(weathering),
             visibility: EntityModelLayerVisibility::All,
@@ -400,7 +422,7 @@ pub(in crate::entity_models) fn iron_golem_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     let mut passes = vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::IronGolemBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_IRON_GOLEM,
         texture: IRON_GOLEM_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -419,7 +441,7 @@ pub(in crate::entity_models) fn iron_golem_textured_layer_passes(
     if let Some(texture) = crack_texture {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::IronGolemCrackiness,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: MODEL_LAYER_IRON_GOLEM,
             texture,
             visibility: EntityModelLayerVisibility::All,
@@ -434,7 +456,7 @@ pub(in crate::entity_models) fn iron_golem_textured_layer_passes(
 pub(in crate::entity_models) fn snow_golem_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SnowGolemBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_SNOW_GOLEM,
         texture: SNOW_GOLEM_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -447,7 +469,7 @@ pub(in crate::entity_models) fn snow_golem_textured_layer_passes() -> Vec<Entity
 pub(in crate::entity_models) fn witch_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::WitchBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_WITCH,
         texture: WITCH_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -461,7 +483,7 @@ pub(in crate::entity_models) fn slime_textured_layer_passes() -> Vec<EntityModel
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::SlimeBase,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: MODEL_LAYER_SLIME,
             texture: SLIME_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
@@ -471,7 +493,7 @@ pub(in crate::entity_models) fn slime_textured_layer_passes() -> Vec<EntityModel
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::SlimeOuter,
-            render_type: EntityModelLayerRenderType::Translucent,
+            render_type: EntityModelLayerRenderType::EntityTranslucent,
             model_layer: MODEL_LAYER_SLIME_OUTER,
             texture: SLIME_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
@@ -485,7 +507,7 @@ pub(in crate::entity_models) fn slime_textured_layer_passes() -> Vec<EntityModel
 pub(in crate::entity_models) fn magma_cube_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::MagmaCubeBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_MAGMA_CUBE,
         texture: MAGMA_CUBE_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -506,7 +528,7 @@ pub(in crate::entity_models) fn ghast_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::GhastBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_GHAST,
         texture,
         visibility: EntityModelLayerVisibility::All,
@@ -519,7 +541,7 @@ pub(in crate::entity_models) fn ghast_textured_layer_passes(
 pub(in crate::entity_models) fn happy_ghast_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::HappyGhastBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_HAPPY_GHAST,
         texture: HAPPY_GHAST_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -532,7 +554,7 @@ pub(in crate::entity_models) fn happy_ghast_textured_layer_passes() -> Vec<Entit
 pub(in crate::entity_models) fn minecart_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::MinecartBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_MINECART,
         texture: MINECART_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -553,7 +575,7 @@ pub(in crate::entity_models) fn zombie_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture,
         visibility: EntityModelLayerVisibility::All,
@@ -578,7 +600,7 @@ pub(in crate::entity_models) fn husk_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::HuskBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture,
         visibility: EntityModelLayerVisibility::All,
@@ -617,7 +639,7 @@ pub(in crate::entity_models) fn drowned_textured_layer_passes(
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::DrownedBase,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer,
             texture,
             visibility: EntityModelLayerVisibility::All,
@@ -627,7 +649,7 @@ pub(in crate::entity_models) fn drowned_textured_layer_passes(
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::DrownedOuter,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: outer_model_layer,
             texture: outer_texture,
             visibility: EntityModelLayerVisibility::All,
@@ -655,7 +677,7 @@ pub(in crate::entity_models) fn zombie_villager_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieVillagerBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture,
         visibility: EntityModelLayerVisibility::All,
@@ -688,7 +710,7 @@ pub(in crate::entity_models) fn piglin_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::PiglinBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture,
         visibility: EntityModelLayerVisibility::All,
@@ -713,7 +735,7 @@ pub(in crate::entity_models) fn illager_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::IllagerBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture,
         visibility: EntityModelLayerVisibility::All,
@@ -726,7 +748,7 @@ pub(in crate::entity_models) fn illager_textured_layer_passes(
 pub(in crate::entity_models) fn blaze_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::BlazeBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_BLAZE,
         texture: BLAZE_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -739,7 +761,7 @@ pub(in crate::entity_models) fn blaze_textured_layer_passes() -> Vec<EntityModel
 pub(in crate::entity_models) fn endermite_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::EndermiteBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_ENDERMITE,
         texture: ENDERMITE_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -752,7 +774,7 @@ pub(in crate::entity_models) fn endermite_textured_layer_passes() -> Vec<EntityM
 pub(in crate::entity_models) fn silverfish_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SilverfishBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_SILVERFISH,
         texture: SILVERFISH_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -764,7 +786,7 @@ pub(in crate::entity_models) fn silverfish_textured_layer_passes() -> Vec<Entity
 
 pub(in crate::entity_models) fn leash_knot_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         LEASH_KNOT_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -772,7 +794,7 @@ pub(in crate::entity_models) fn leash_knot_textured_layer_passes() -> Vec<Entity
 
 pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         TRIDENT_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -780,7 +802,7 @@ pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityMod
 
 pub(in crate::entity_models) fn evoker_fangs_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         EVOKER_FANGS_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -788,7 +810,7 @@ pub(in crate::entity_models) fn evoker_fangs_textured_layer_passes() -> Vec<Enti
 
 pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         TADPOLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -798,7 +820,7 @@ pub(in crate::entity_models) fn creaking_textured_layer_passes(
     eyes_glowing: bool,
 ) -> Vec<EntityModelLayerPass> {
     let mut passes = vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         CREAKING_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )];
@@ -816,7 +838,7 @@ pub(in crate::entity_models) fn creaking_textured_layer_passes(
 
 pub(in crate::entity_models) fn sniffer_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         SNIFFER_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -828,7 +850,7 @@ pub(in crate::entity_models) fn parrot_textured_layer_passes(
     // The five parrot colours share one model and differ only by texture
     // (`ParrotRenderer.getVariantTexture`).
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         parrot_texture_ref(variant),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -840,7 +862,7 @@ pub(in crate::entity_models) fn shulker_textured_layer_passes(
     // `ShulkerRenderer.getTextureLocation`: the default `shulker.png` when uncolored, else the dyed
     // `shulker_<color>.png`.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
         shulker_texture_ref(color),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -849,7 +871,7 @@ pub(in crate::entity_models) fn shulker_textured_layer_passes(
 pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
         EntityModelLayerPass::base(
-            EntityModelLayerRenderType::Cutout,
+            EntityModelLayerRenderType::EntityCutout,
             ENDER_DRAGON_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
         ),
@@ -867,7 +889,7 @@ pub(in crate::entity_models) fn nautilus_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         if baby {
             NAUTILUS_BABY_TEXTURE_REF
         } else {
@@ -884,7 +906,7 @@ pub(in crate::entity_models) fn zombie_nautilus_textured_layer_passes(
     // body with `zombie_nautilus.png`; the `WARM` variant textures the `ZombieNautilusCoralModel` with
     // `zombie_nautilus_coral.png`.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         if coral {
             ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF
         } else {
@@ -900,7 +922,7 @@ pub(in crate::entity_models) fn panda_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // The seven genes share one `PandaModel` / `BabyPandaModel` and differ only by texture × age.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         panda_texture_ref(variant, baby),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -912,7 +934,7 @@ pub(in crate::entity_models) fn axolotl_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // `AxolotlRenderer.getTextureLocation` picks the colour × age cell from `TEXTURE_BY_TYPE`.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         axolotl_texture_ref(variant, baby),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -925,7 +947,7 @@ pub(in crate::entity_models) fn fox_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // `FoxRenderer.getTextureLocation` picks the {red, snow} × {adult, baby} × {idle, sleeping} cell.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         fox_texture_ref(variant, baby, sleeping),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -939,7 +961,7 @@ pub(in crate::entity_models) fn rabbit_textured_layer_passes(
     // `RabbitRenderer.getTextureLocation` picks the colour × age cell, overridden by `toast`/
     // `toast_baby` for the `Toast` named rabbit.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         rabbit_texture_ref(variant, baby, toast),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -954,7 +976,7 @@ pub(in crate::entity_models) fn feline_textured_layer_passes(
     // The cat and ocelot share `AbstractFelineModel`, so the base pass differs only in which image it
     // binds: the per-breed `CatVariant` texture for cats, the `ocelot` texture otherwise.
     let mut passes = vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         feline_texture_ref(cat, baby, cat_variant),
         [1.0, 1.0, 1.0, 1.0],
     )];
@@ -963,7 +985,7 @@ pub(in crate::entity_models) fn feline_textured_layer_passes(
     if let Some(collar) = collar {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::FelineCollar,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: "",
             texture: feline_collar_texture_ref(baby),
             visibility: EntityModelLayerVisibility::All,
@@ -982,7 +1004,7 @@ pub(in crate::entity_models) fn mooshroom_textured_layer_passes(
     // The mooshroom reuses the cow model tree (geometry drives off it), so this binds only the
     // mooshroom recolor (the red/brown variant face) over the shared cow UVs.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         mooshroom_texture_ref(baby, variant),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -993,7 +1015,7 @@ pub(in crate::entity_models) fn arrow_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // One model shared by the normal / tipped / spectral arrow; only the bound image differs.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutoutCull,
         arrow_texture_ref(texture),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -1001,7 +1023,7 @@ pub(in crate::entity_models) fn arrow_textured_layer_passes(
 
 pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         LLAMA_SPIT_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -1011,7 +1033,7 @@ pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<Entity
 pub(in crate::entity_models) fn shulker_bullet_textured_layer_passes() -> Vec<EntityModelLayerPass>
 {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         SHULKER_BULLET_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -1021,7 +1043,7 @@ pub(in crate::entity_models) fn wither_skull_textured_layer_passes(
     dangerous: bool,
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityTranslucent,
         wither_skull_texture_ref(dangerous),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -1042,7 +1064,7 @@ pub(in crate::entity_models) fn wither_textured_layer_passes(
         WITHER_TEXTURE_REF
     };
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         texture,
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -1054,7 +1076,7 @@ pub(in crate::entity_models) fn guardian_textured_layer_passes(
     // The guardian and elder guardian share one mesh, differing only by texture; the attack beam stays
     // deferred.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         if elder {
             GUARDIAN_ELDER_TEXTURE_REF
         } else {
@@ -1069,7 +1091,7 @@ pub(in crate::entity_models) fn armadillo_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // The adult and baby armadillo share the UV layout; the baby binds its own texture.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         if baby {
             ARMADILLO_BABY_TEXTURE_REF
         } else {
@@ -1084,7 +1106,7 @@ pub(in crate::entity_models) fn frog_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // The frog binds its temperature-variant base texture; all three share one `FrogModel` geometry.
     vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::Cutout,
+        EntityModelLayerRenderType::EntityCutout,
         frog_texture_ref(variant),
         [1.0, 1.0, 1.0, 1.0],
     )]
@@ -1127,7 +1149,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
     // `tendrilAnimation` alpha; and the heart overlay (body only) at the lerped `heartAnimation` alpha.
     vec![
         EntityModelLayerPass::base(
-            EntityModelLayerRenderType::Cutout,
+            EntityModelLayerRenderType::EntityCutout,
             WARDEN_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
         ),
@@ -1136,7 +1158,8 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
             WARDEN_BIOLUMINESCENT_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
             WARDEN_BIOLUMINESCENT_PARTS,
-        ),
+        )
+        .with_order(1, 1),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
@@ -1147,7 +1170,8 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
                 warden_pulsating_spots_alpha(age_in_ticks, 0.0),
             ],
             WARDEN_PULSATING_SPOTS_PARTS,
-        ),
+        )
+        .with_order(1, 2),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
@@ -1158,19 +1182,22 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
                 warden_pulsating_spots_alpha(age_in_ticks, std::f32::consts::PI),
             ],
             WARDEN_PULSATING_SPOTS_PARTS,
-        ),
+        )
+        .with_order(1, 3),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_TEXTURE_REF,
             [1.0, 1.0, 1.0, tendril_animation],
             WARDEN_TENDRILS_PARTS,
-        ),
+        )
+        .with_order(1, 4),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_HEART_TEXTURE_REF,
             [1.0, 1.0, 1.0, heart_animation],
             WARDEN_HEART_PARTS,
-        ),
+        )
+        .with_order(1, 5),
     ]
 }
 
@@ -1178,7 +1205,7 @@ pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityMod
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::PhantomBase,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: MODEL_LAYER_PHANTOM,
             texture: PHANTOM_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
@@ -1206,7 +1233,7 @@ pub(in crate::entity_models) fn polar_bear_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::PolarBearBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: if baby {
             MODEL_LAYER_POLAR_BEAR_BABY
         } else {
@@ -1227,7 +1254,7 @@ pub(in crate::entity_models) fn polar_bear_textured_layer_passes(
 pub(in crate::entity_models) fn ravager_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::RavagerBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_RAVAGER,
         texture: RAVAGER_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -1242,7 +1269,7 @@ pub(in crate::entity_models) fn villager_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::VillagerBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: if baby {
             MODEL_LAYER_VILLAGER_BABY
         } else {
@@ -1264,7 +1291,7 @@ pub(in crate::entity_models) fn wandering_trader_textured_layer_passes() -> Vec<
 {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::WanderingTraderBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_WANDERING_TRADER,
         texture: WANDERING_TRADER_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
@@ -1286,7 +1313,7 @@ pub(in crate::entity_models) fn hoglin_textured_layer_passes(
     };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::HoglinBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture,
         visibility: EntityModelLayerVisibility::All,
@@ -1304,7 +1331,7 @@ pub(in crate::entity_models) fn player_textured_layer_passes(
     // `apply_part_visibility`), so the layer-pass parts are vestigial (`&[]`).
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::PlayerBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: player_model_layer(slim),
         texture: player_texture_ref(slim),
         visibility: EntityModelLayerVisibility::PlayerParts(parts),
@@ -1325,7 +1352,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
     let mut passes = Vec::with_capacity(3);
     passes.push(EntityModelLayerPass {
         kind: EntityModelLayerKind::SheepBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: if baby {
             MODEL_LAYER_SHEEP_BABY
         } else {
@@ -1344,7 +1371,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
     if !baby && (jeb || wool_color != SheepWoolColor::White) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SheepWoolUndercoat,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: MODEL_LAYER_SHEEP_WOOL_UNDERCOAT,
             texture: SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
@@ -1356,7 +1383,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
     if !sheared {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SheepWool,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer: if baby {
                 MODEL_LAYER_SHEEP_BABY_WOOL
             } else {
@@ -1392,7 +1419,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
     let mut passes = Vec::with_capacity(2);
     passes.push(EntityModelLayerPass {
         kind: EntityModelLayerKind::WolfBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer,
         texture: wolf_texture_ref(baby, tame, angry, variant),
         visibility: EntityModelLayerVisibility::All,
@@ -1403,7 +1430,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
     if let Some(collar_color) = tame.then_some(collar_color).flatten() {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::WolfCollar,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer,
             texture: if baby {
                 WOLF_BABY_COLLAR_TEXTURE_REF
@@ -1424,7 +1451,7 @@ pub(in crate::entity_models) fn goat_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::GoatBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: goat_model_layer(baby),
         texture: goat_texture_ref(baby),
         visibility: EntityModelLayerVisibility::All,
@@ -1442,7 +1469,7 @@ pub(in crate::entity_models) fn skeleton_textured_layer_passes(
     // vestigial (`&[]`).
     let mut passes = vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SkeletonBase,
-        render_type: EntityModelLayerRenderType::Cutout,
+        render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: skeleton_model_layer(family),
         texture: skeleton_texture_ref(family),
         visibility: EntityModelLayerVisibility::All,
@@ -1453,7 +1480,7 @@ pub(in crate::entity_models) fn skeleton_textured_layer_passes(
     if let Some((model_layer, texture)) = skeleton_clothing_layer_pass(family) {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::SkeletonClothing,
-            render_type: EntityModelLayerRenderType::Cutout,
+            render_type: EntityModelLayerRenderType::EntityCutout,
             model_layer,
             texture,
             visibility: EntityModelLayerVisibility::All,

@@ -287,7 +287,7 @@ fn nautilus_textured_render_matches_vanilla_renderer() {
     );
     assert_eq!(
         nautilus_textured_layer_passes(false)[0].render_type,
-        EntityModelLayerRenderType::Cutout
+        EntityModelLayerRenderType::EntityCutout
     );
     assert_eq!(
         EntityModelKind::Nautilus { baby: false }.vanilla_texture_ref(),
@@ -571,7 +571,10 @@ fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
     let passes = zombie_nautilus_textured_layer_passes(false);
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].texture, ZOMBIE_NAUTILUS_TEXTURE_REF);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert!(entity_model_texture_refs().contains(&ZOMBIE_NAUTILUS_TEXTURE_REF));
 
     let images: Vec<EntityModelTextureImage> = [NAUTILUS_TEXTURE_REF, ZOMBIE_NAUTILUS_TEXTURE_REF]

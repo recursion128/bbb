@@ -67,6 +67,10 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     ] {
         assert_eq!(arrow_textured_layer_passes(texture)[0].texture, texture_ref);
         assert_eq!(
+            arrow_textured_layer_passes(texture)[0].render_type,
+            EntityModelLayerRenderType::EntityCutoutCull
+        );
+        assert_eq!(
             EntityModelKind::Arrow { texture }.vanilla_texture_ref(),
             Some(texture_ref)
         );

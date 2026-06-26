@@ -293,7 +293,10 @@ fn sniffer_state_animation_re_poses_off_the_walk_pose() {
 fn sniffer_textured_render_matches_vanilla_renderer() {
     let passes = sniffer_textured_layer_passes();
     assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].texture, SNIFFER_TEXTURE_REF);
     assert_eq!(
         EntityModelKind::Sniffer.vanilla_texture_ref(),

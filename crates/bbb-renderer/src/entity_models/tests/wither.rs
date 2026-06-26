@@ -269,15 +269,28 @@ fn powered_wither_emits_scrolling_energy_swirl() {
         plain.scroll_additive.vertices.is_empty(),
         "no energy swirl on a healthy wither"
     );
+    assert!(!plain
+        .submissions
+        .iter()
+        .any(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl));
 
     // A powered wither (≤ half health) draws the inflated `WITHER_ARMOR` model (9 cubes → 216
     // vertices) into the additive scroll mesh, every vertex tinted by the vanilla `0xFF808080`
     // half-grey.
     let grey = 128.0 / 255.0;
-    let rest = entity_model_textured_meshes(
-        &[EntityModelInstance::wither(1471, [0.0, 64.0, 0.0], 0.0).with_wither_powered(true)],
-        &atlas,
-    );
+    let powered =
+        EntityModelInstance::wither(1471, [0.0, 64.0, 0.0], 0.0).with_wither_powered(true);
+    let rest = entity_model_textured_meshes(&[powered], &atlas);
+    let swirl = rest
+        .submissions
+        .iter()
+        .find(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl)
+        .expect("powered wither emits an energySwirl submit");
+    assert_eq!(swirl.texture, WITHER_ARMOR_TEXTURE_REF);
+    assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
+    assert_eq!(swirl.collector_order, 1);
+    assert_eq!(swirl.submit_sequence, 1);
+    assert_eq!(swirl.transform, wither_model_root_transform(powered));
     assert_eq!(rest.scroll_additive.vertices.len(), 216);
     assert!(rest
         .scroll_additive

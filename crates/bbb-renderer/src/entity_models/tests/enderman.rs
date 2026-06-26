@@ -120,7 +120,10 @@ fn enderman_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(passes.len(), 2);
 
     assert_eq!(passes[0].kind, EntityModelLayerKind::EndermanBase);
-    assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(passes[0].model_layer, MODEL_LAYER_ENDERMAN);
     assert_eq!(passes[0].texture, ENDERMAN_TEXTURE_REF);
     // The vestigial `parts` slices are nulled; both passes read the unified `EndermanModel` tree.

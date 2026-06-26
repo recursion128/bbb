@@ -356,7 +356,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             entity_model_root_transform(*instance),
             instance,
             &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::Cutout,
+                EntityModelLayerRenderType::EntityCutout,
                 ARMOR_STAND_TEXTURE_REF,
                 [1.0, 1.0, 1.0, 1.0],
             )],
@@ -366,7 +366,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             entity_model_root_transform(*instance),
             instance,
             &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::Translucent,
+                EntityModelLayerRenderType::EntityTranslucent,
                 if charging {
                     VEX_CHARGING_TEXTURE_REF
                 } else {
@@ -380,7 +380,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             entity_model_root_transform(*instance),
             instance,
             &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::Translucent,
+                EntityModelLayerRenderType::EntityTranslucent,
                 ALLAY_TEXTURE_REF,
                 [1.0, 1.0, 1.0, 1.0],
             )],
@@ -390,7 +390,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             entity_model_root_transform(*instance),
             instance,
             &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::Cutout,
+                EntityModelLayerRenderType::EntityCutout,
                 strider_texture_ref(baby, cold),
                 [1.0, 1.0, 1.0, 1.0],
             )],
@@ -400,7 +400,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             entity_model_root_transform(*instance),
             instance,
             &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::Cutout,
+                EntityModelLayerRenderType::EntityCutoutCull,
                 BAT_TEXTURE_REF,
                 [1.0, 1.0, 1.0, 1.0],
             )],
@@ -416,7 +416,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 entity_model_root_transform(*instance),
                 instance,
                 &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::Cutout,
+                    EntityModelLayerRenderType::EntityCutout,
                     texture,
                     [1.0, 1.0, 1.0, 1.0],
                 )],
@@ -428,7 +428,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &[
                 EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::Translucent,
+                    EntityModelLayerRenderType::EntityTranslucent,
                     BREEZE_TEXTURE_REF,
                     [1.0, 1.0, 1.0, 1.0],
                 ),
@@ -438,7 +438,8 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                     EntityModelLayerRenderType::Eyes,
                     BREEZE_EYES_TEXTURE_REF,
                     [1.0, 1.0, 1.0, 1.0],
-                ),
+                )
+                .with_order(1, 2),
             ],
         ),
         EntityModelKind::Cod => {
@@ -448,7 +449,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 cod_model_root_transform(*instance, in_water),
                 instance,
                 &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::Cutout,
+                    EntityModelLayerRenderType::EntityCutout,
                     COD_TEXTURE_REF,
                     [1.0, 1.0, 1.0, 1.0],
                 )],
@@ -459,7 +460,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             pufferfish_model_root_transform(*instance),
             instance,
             &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::Cutout,
+                EntityModelLayerRenderType::EntityCutout,
                 PUFFERFISH_TEXTURE_REF,
                 [1.0, 1.0, 1.0, 1.0],
             )],
@@ -480,7 +481,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 transform,
                 instance,
                 &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::Cutout,
+                    EntityModelLayerRenderType::EntityCutout,
                     texture,
                     [1.0, 1.0, 1.0, 1.0],
                 )],
@@ -501,7 +502,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 transform,
                 instance,
                 &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::Cutout,
+                    EntityModelLayerRenderType::EntityCutout,
                     texture,
                     [1.0, 1.0, 1.0, 1.0],
                 )],

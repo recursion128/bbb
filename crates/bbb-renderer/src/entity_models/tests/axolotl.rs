@@ -247,7 +247,7 @@ fn axolotl_textured_render_matches_vanilla_renderer() {
             );
             assert_eq!(
                 axolotl_textured_layer_passes(variant, baby)[0].render_type,
-                EntityModelLayerRenderType::Cutout
+                EntityModelLayerRenderType::EntityCutout
             );
             assert_eq!(
                 EntityModelKind::Axolotl { baby, variant }.vanilla_texture_ref(),

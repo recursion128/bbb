@@ -101,8 +101,11 @@ fn entity_model_mesh_with_options(
                     }
                 }
                 EntityModelKind::EndCrystal => {
-                    // Colored-only so far (no texture-backed end crystal yet), so this arm always emits.
-                    emit_end_crystal_model(&mut mesh, *instance);
+                    // The end crystal is texture-backed now; keep the colored fallback mesh for legacy /
+                    // missing-atlas callers, but skip it in the runtime colored path.
+                    if !skip_texture_backed_entities {
+                        emit_end_crystal_model(&mut mesh, *instance);
+                    }
                 }
                 EntityModelKind::NoRender => {
                     // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no

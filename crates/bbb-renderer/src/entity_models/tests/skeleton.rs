@@ -165,7 +165,10 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     let base = skeleton_textured_layer_passes(None);
     assert_eq!(base.len(), 1);
     assert_eq!(base[0].kind, EntityModelLayerKind::SkeletonBase);
-    assert_eq!(base[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        base[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(base[0].model_layer, MODEL_LAYER_SKELETON);
     assert_eq!(base[0].texture, SKELETON_TEXTURE_REF);
     assert_eq!(base[0].visibility, EntityModelLayerVisibility::All);
@@ -177,7 +180,10 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(stray[0].model_layer, MODEL_LAYER_STRAY);
     assert_eq!(stray[0].texture, STRAY_TEXTURE_REF);
     assert_eq!(stray[1].kind, EntityModelLayerKind::SkeletonClothing);
-    assert_eq!(stray[1].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        stray[1].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(stray[1].model_layer, MODEL_LAYER_STRAY_OUTER_LAYER);
     assert_eq!(stray[1].texture, STRAY_OVERLAY_TEXTURE_REF);
     assert_eq!(stray[1].visibility, EntityModelLayerVisibility::All);

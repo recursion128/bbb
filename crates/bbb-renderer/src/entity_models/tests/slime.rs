@@ -86,7 +86,10 @@ fn slime_and_magma_cube_layer_passes_match_vanilla_renderers() {
     let slime = slime_textured_layer_passes();
     assert_eq!(slime.len(), 2);
     assert_eq!(slime[0].kind, EntityModelLayerKind::SlimeBase);
-    assert_eq!(slime[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        slime[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(slime[0].model_layer, MODEL_LAYER_SLIME);
     assert_eq!(slime[0].texture, SLIME_TEXTURE_REF);
     // The vestigial `parts` slices are nulled; emit builds the `SlimeModel`/`SlimeOuterModel` trees.
@@ -96,7 +99,7 @@ fn slime_and_magma_cube_layer_passes_match_vanilla_renderers() {
     assert_eq!(slime[1].kind, EntityModelLayerKind::SlimeOuter);
     assert_eq!(
         slime[1].render_type,
-        EntityModelLayerRenderType::Translucent
+        EntityModelLayerRenderType::EntityTranslucent
     );
     assert_eq!(slime[1].model_layer, MODEL_LAYER_SLIME_OUTER);
     assert_eq!(slime[1].texture, SLIME_TEXTURE_REF);
@@ -107,7 +110,10 @@ fn slime_and_magma_cube_layer_passes_match_vanilla_renderers() {
     let magma = magma_cube_textured_layer_passes();
     assert_eq!(magma.len(), 1);
     assert_eq!(magma[0].kind, EntityModelLayerKind::MagmaCubeBase);
-    assert_eq!(magma[0].render_type, EntityModelLayerRenderType::Cutout);
+    assert_eq!(
+        magma[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(magma[0].model_layer, MODEL_LAYER_MAGMA_CUBE);
     assert_eq!(magma[0].texture, MAGMA_CUBE_TEXTURE_REF);
     assert_eq!(magma[0].visibility, EntityModelLayerVisibility::All);

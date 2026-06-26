@@ -243,7 +243,10 @@ fn hoglin_textured_layer_passes_match_vanilla_renderer_model_choice() {
         let passes = hoglin_textured_layer_passes(family, baby);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::HoglinBase);
-        assert_eq!(passes[0].render_type, EntityModelLayerRenderType::Cutout);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         // The vestigial `parts` slice is nulled; emit builds `HoglinModel::new(baby)` and renders it.

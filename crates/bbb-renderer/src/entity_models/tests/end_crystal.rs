@@ -72,6 +72,68 @@ fn end_crystal_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
+fn end_crystal_colored_runtime_skips_the_texture_backed_crystal() {
+    let instances = [EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0)];
+    assert!(!entity_model_mesh(&instances).vertices.is_empty());
+    assert!(entity_model_colored_runtime_mesh(&instances)
+        .vertices
+        .is_empty());
+}
+
+#[test]
+fn end_crystal_textured_submit_matches_vanilla_renderer() {
+    // Vanilla `EndCrystalRenderer.submit`: submit the `EndCrystalModel` with
+    // `textures/entity/end_crystal/end_crystal.png`, the default `EntityModel` render type
+    // (`entityCutout`), `order(0)`, and the renderer root transform `scale(2)·translate(0,-0.5,0)`.
+    assert_eq!(
+        EntityModelKind::EndCrystal.vanilla_texture_ref(),
+        Some(END_CRYSTAL_TEXTURE_REF)
+    );
+    assert!(entity_model_texture_refs().contains(&END_CRYSTAL_TEXTURE_REF));
+    assert_eq!(
+        end_crystal_entity_texture_refs(),
+        &[END_CRYSTAL_TEXTURE_REF]
+    );
+
+    let len =
+        usize::try_from(END_CRYSTAL_TEXTURE_REF.size[0] * END_CRYSTAL_TEXTURE_REF.size[1] * 4)
+            .unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        END_CRYSTAL_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance =
+        EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(30.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.texture, END_CRYSTAL_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.collector_order, 0);
+    assert_eq!(submit.submit_sequence, 0);
+    assert_eq!(submit.transform, end_crystal_model_root_transform(instance));
+
+    assert_eq!(meshes.cutout.vertices.len(), 96);
+    assert_eq!(meshes.cutout.indices.len(), 144);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    let colored = entity_model_mesh(&[instance]);
+    let (colored_min, colored_max) = mesh_extents(&colored);
+    let (textured_min, textured_max) = textured_mesh_extents(&meshes.cutout);
+    assert_close3(textured_min, colored_min);
+    assert_close3(textured_max, colored_max);
+}
+
+#[test]
 fn end_crystal_hides_base_when_shows_bottom_false() {
     // Vanilla `EndCrystalModel.setupAnim`: `base.visible = showsBottom`. The default instance
     // shows the base (vanilla default `true`); clearing `showsBottom` drops the base slab
@@ -99,6 +161,30 @@ fn end_crystal_hides_base_when_shows_bottom_false() {
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(END_CRYSTAL_CORE, 1.0)));
+}
+
+#[test]
+fn end_crystal_textured_submit_hides_base_when_shows_bottom_false() {
+    let len =
+        usize::try_from(END_CRYSTAL_TEXTURE_REF.size[0] * END_CRYSTAL_TEXTURE_REF.size[1] * 4)
+            .unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        END_CRYSTAL_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let hidden = entity_model_textured_meshes(
+        &[EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0)
+            .with_end_crystal_shows_bottom(false)],
+        &atlas,
+    );
+    assert_eq!(hidden.submissions.len(), 1);
+    assert_eq!(
+        hidden.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(hidden.cutout.vertices.len(), 72);
+    assert_eq!(hidden.cutout.indices.len(), 108);
 }
 
 #[test]

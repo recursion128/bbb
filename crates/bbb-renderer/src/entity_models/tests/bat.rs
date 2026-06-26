@@ -124,6 +124,13 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
     // 54 faces / 216 vertices, with nothing on the translucent or eyes passes and a white tint.
     let base = EntityModelInstance::bat(920, [0.0, 64.0, 0.0], 0.0);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    assert_eq!(
+        meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutoutCull
+    );
+    assert_eq!(meshes.submissions[0].texture, BAT_TEXTURE_REF);
+    assert_eq!(meshes.submissions[0].collector_order, 0);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.cutout.cutout_faces, 54);

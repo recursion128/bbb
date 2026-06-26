@@ -1,6 +1,6 @@
 use super::{
-    bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, END_CRYSTAL_BASE,
-    END_CRYSTAL_CORE, END_CRYSTAL_GLASS,
+    bind_part as part, model_cube as cube, ModelCubeDesc, ModelPartDesc, TexturedModelCubeDesc,
+    TexturedModelPartDesc, END_CRYSTAL_BASE, END_CRYSTAL_CORE, END_CRYSTAL_GLASS,
 };
 use glam::{Quat, Vec3};
 
@@ -17,9 +17,9 @@ use glam::{Quat, Vec3};
 // diagonal tilt composed with `Ry(ageInTicks·3°)`) is applied by hand-walking the nested glass
 // stack; and the `getY` vertical bob ([`end_crystal_bob_y`]) lifts the whole glass stack off the
 // projected `age_in_ticks`. `EndCrystalRenderer` is a plain `EntityRenderer` with only the
-// `scale(2.0)` + `translate(0, -0.5, 0)` transform (no `LivingEntityRenderer` flip). The
-// texture-backed path is deferred, so the colored debug path renders the magenta glass, the bright
-// core, and the dark base with three tints.
+// `scale(2.0)` + `translate(0, -0.5, 0)` transform (no `LivingEntityRenderer` flip). The textured
+// path binds `end_crystal.png` through the same hand-walked setup animation; the colored path remains
+// as a missing-atlas fallback with separate glass/core/base tints.
 
 // `base`: the 12×4×12 bedrock slab at the model origin.
 const END_CRYSTAL_BASE_CUBES: [ModelCubeDesc; 1] =
@@ -46,6 +46,72 @@ pub(in crate::entity_models) const END_CRYSTAL_PARTS: [ModelPartDesc; 4] = [
     part([0.0, 24.0, 0.0], &END_CRYSTAL_OUTER_GLASS_CUBES, &[]),
     part([0.0, 24.0, 0.0], &END_CRYSTAL_INNER_GLASS_CUBES, &[]),
     part([0.0, 24.0, 0.0], &END_CRYSTAL_CORE_CUBES, &[]),
+];
+
+const END_CRYSTAL_BASE_TEXTURED_CUBES: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-6.0, 0.0, -6.0],
+    size: [12.0, 4.0, 12.0],
+    uv_size: [12.0, 4.0, 12.0],
+    tex: [0.0, 16.0],
+    mirror: false,
+}];
+
+const END_CRYSTAL_OUTER_GLASS_TEXTURED_CUBES: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, -4.0, -4.0],
+        size: [8.0, 8.0, 8.0],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+const END_CRYSTAL_INNER_GLASS_TEXTURED_CUBES: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.5, -3.5, -3.5],
+        size: [7.0, 7.0, 7.0],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+const END_CRYSTAL_CORE_TEXTURED_CUBES: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-2.6796875, -2.6796875, -2.6796875],
+    size: [5.359375, 5.359375, 5.359375],
+    uv_size: [8.0, 8.0, 8.0],
+    tex: [32.0, 0.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const END_CRYSTAL_TEXTURED_PARTS: [TexturedModelPartDesc; 4] = [
+    TexturedModelPartDesc {
+        pose: super::PART_POSE_ZERO,
+        cubes: &END_CRYSTAL_BASE_TEXTURED_CUBES,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: super::PartPose {
+            offset: [0.0, 24.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &END_CRYSTAL_OUTER_GLASS_TEXTURED_CUBES,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: super::PartPose {
+            offset: [0.0, 24.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &END_CRYSTAL_INNER_GLASS_TEXTURED_CUBES,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: super::PartPose {
+            offset: [0.0, 24.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &END_CRYSTAL_CORE_TEXTURED_CUBES,
+        children: &[],
+    },
 ];
 
 /// Vanilla `EndCrystalRenderer.getY(timeInTicks)`: the hover height that drives both the glass bob

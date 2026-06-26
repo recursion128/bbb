@@ -74,6 +74,10 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         WITHER_TEXTURE_REF
     );
     assert_eq!(
+        wither_skull_textured_layer_passes(false)[0].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(
         wither_skull_textured_layer_passes(true)[0].texture,
         WITHER_INVULNERABLE_TEXTURE_REF
     );
@@ -101,7 +105,7 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let normal_mesh = entity_model_textured_mesh(
+    let normal_meshes = entity_model_textured_meshes(
         &[EntityModelInstance::wither_skull(
             820,
             [0.0, 64.0, 0.0],
@@ -109,7 +113,7 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         )],
         &atlas,
     );
-    let dangerous_mesh = entity_model_textured_mesh(
+    let dangerous_meshes = entity_model_textured_meshes(
         &[EntityModelInstance::wither_skull_with_dangerous(
             820,
             [0.0, 64.0, 0.0],
@@ -118,6 +122,15 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         )],
         &atlas,
     );
+    assert!(normal_meshes.cutout.vertices.is_empty());
+    assert_eq!(normal_meshes.submissions.len(), 1);
+    assert_eq!(
+        normal_meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(normal_meshes.submissions[0].collector_order, 0);
+    let normal_mesh = &normal_meshes.translucent;
+    let dangerous_mesh = &dangerous_meshes.translucent;
     assert!(!normal_mesh.vertices.is_empty());
     assert_eq!(normal_mesh.vertices.len(), dangerous_mesh.vertices.len());
     assert_ne!(
