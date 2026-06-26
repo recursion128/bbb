@@ -1,5 +1,6 @@
 use bbb_protocol::packets::{
     EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind, EquipmentSlot,
+    ItemStackSummary,
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
@@ -772,8 +773,7 @@ fn entity_main_hand_holds_melee_weapon(world: &WorldStore, entity_id: i32) -> bo
 fn entity_main_hand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
     world
         .held_item(entity_id, false)
-        .and_then(|stack| stack.item_id)
-        .is_some()
+        .is_some_and(|stack| item_stack_non_empty(&stack))
 }
 
 /// Whether the entity's OFF hand holds any item at all. Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)`
@@ -783,8 +783,11 @@ fn entity_main_hand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
 fn entity_offhand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
     world
         .held_item(entity_id, true)
-        .and_then(|stack| stack.item_id)
-        .is_some()
+        .is_some_and(|stack| item_stack_non_empty(&stack))
+}
+
+fn item_stack_non_empty(stack: &ItemStackSummary) -> bool {
+    stack.item_id.is_some() && stack.count > 0
 }
 
 /// The supported skull block item in the HEAD equipment slot, if any. Vanilla
@@ -1052,6 +1055,10 @@ fn entity_model_instance(
                 family: IllagerModelFamily::Pillager
             }
         ) && entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false);
+    // Vanilla `IllagerModel.setupAnim` `ATTACKING` branch selects empty-handed `animateZombieArms` versus
+    // armed `swingWeaponDown` from the rendered main-hand item state.
+    let illager_main_hand_empty = matches!(kind, EntityModelKind::Illager { .. })
+        && !entity_main_hand_non_empty(world, source.entity_id);
     // Vanilla `DrownedRenderer.getArmPose`: a drowned in its main hand holding a trident while aggressive
     // (`getMainArm() == arm && isAggressive() && item.is(Items.TRIDENT)`) raises the trident overhead to
     // throw it. `isAggressive` is already projected (the drowned is in the zombie model family); resolve
@@ -1231,6 +1238,7 @@ fn entity_model_instance(
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
+        .with_illager_main_hand_empty(illager_main_hand_empty)
         .with_drowned_throw_trident(drowned_throw_trident)
         .with_is_charging_crossbow(pillager_is_charging_crossbow(
             source.entity_type_id,
@@ -4666,6 +4674,61 @@ mod tests {
             values: vec![protocol_bool_data(RAIDER_IS_CELEBRATING_DATA_ID, true)],
         }));
         assert!(!celebrating(&world, 172));
+    }
+
+    #[test]
+    fn entity_model_instances_project_illager_main_hand_empty() {
+        // Vanilla `IllagerModel.setupAnim` ATTACKING chooses empty-hand zombie arms vs armed weapon
+        // swing from `state.getMainHandItemState().isEmpty()`. Native projects that from canonical
+        // equipment so renderer can choose the right branch.
+        const PLAIN_ITEM_ID: i32 = 701;
+
+        let main_hand = |entity_id: i32, item_id: Option<i32>, count: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id,
+                    count,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let projected = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .illager_main_hand_empty
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            173,
+            VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            174,
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            [2.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            175,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        assert!(projected(&world, 173));
+        assert!(projected(&world, 174));
+        assert!(!projected(&world, 175));
+
+        assert!(world.apply_set_equipment(main_hand(173, Some(PLAIN_ITEM_ID), 1)));
+        assert!(!projected(&world, 173));
+
+        assert!(world.apply_set_equipment(main_hand(173, None, 0)));
+        assert!(projected(&world, 173));
     }
 
     #[test]

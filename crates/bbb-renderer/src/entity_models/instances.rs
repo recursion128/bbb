@@ -639,6 +639,11 @@ entity_render_state! {
     /// `xRot = cos(ageInTicks · 0.6662) · 0.05`). `false` for every other entity and for an idle illager
     /// (which shows the static CROSSED arms).
     (with_illager_celebrating) illager_celebrating: bool = false;
+    /// Vanilla `IllagerModel.setupAnim` `ATTACKING` branch checks whether the rendered main-hand item is
+    /// empty: empty-handed attacking illagers use `AnimationUtils.animateZombieArms`, while armed ones use
+    /// `AnimationUtils.swingWeaponDown`. `false` preserves the usual armed vindicator path unless native
+    /// has projected an actually empty main hand.
+    (with_illager_main_hand_empty) illager_main_hand_empty: bool = false;
     /// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean): a piglin dancing by a soul
     /// campfire, whose `PiglinModel.setupAnim` returns the `DANCING` arm pose — the ears sway, the head
     /// and body bob, and both arms raise overhead (`zRot = ±(70° + cos·10°)`) wagging with `ageInTicks`.
@@ -2105,6 +2110,7 @@ mod tests {
                 llama_body_decor: None,
                 illager_spellcasting: false,
                 illager_celebrating: false,
+                illager_main_hand_empty: false,
                 piglin_dancing: false,
                 piglin_crossbow_hold: false,
                 piglin_crossbow_charge: false,

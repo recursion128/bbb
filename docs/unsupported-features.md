@@ -623,15 +623,15 @@ When an agent does any of the following, update this file in the same slice:
     `xRot = cos(ageInTicks · 0.6662) · 0.05` and raise asymmetrically (right `zRot =
     2.670354`, left `zRot = -3π/4`). These swaps to the uncrossed separate-arm layout
     mirror vanilla `crossedArms = pose == CROSSED`. The vindicator melee `ATTACKING` swing is
-    projected too (`Vindicator.getArmPose`: `isAggressive` → ATTACKING; the vindicator always
-    holds an iron axe, so `IllagerModel.setupAnim` takes the armed `AnimationUtils.swingWeaponDown`
-    `mainArm = RIGHT` branch over the projected `attack_anim`): the uncrossed right arm raises
-    overhead (`xRot = -1.8849558 + cos(age·0.09)·0.15`) and chops with `+= sin(t·π)·2.2 -
-    sin((1-(1-t)²)·π)·0.4`, the left arm trails (`xRot = cos(age·0.19)·0.5 + sin(t·π)·1.2 -
-    …·0.4`), both yawing apart `±π/20` with the shared `bobArms` roll — and `IllagerModel` is not a
-    `HumanoidModel`, so there is no body twist (no `setupAttackAnimation`). The empty-hand
-    `animateZombieArms` ATTACKING branch (no illager uses it) and the riding sit
-    pose stay deferred. The villager family
+    projected too (`Vindicator.getArmPose`: `isAggressive` → ATTACKING). `IllagerModel.setupAnim`
+    selects the branch from the rendered main-hand item state: an empty hand uses
+    `AnimationUtils.animateZombieArms(left, right, true, state)`, while an armed hand uses
+    `AnimationUtils.swingWeaponDown(mainArm = RIGHT)` over the projected `attack_anim`. The armed
+    right arm raises overhead (`xRot = -1.8849558 + cos(age·0.09)·0.15`) and chops with
+    `+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`, the left arm trails
+    (`xRot = cos(age·0.19)·0.5 + sin(t·π)·1.2 - …·0.4`), both yawing apart `±π/20` with the
+    shared `bobArms` roll. `IllagerModel` is not a `HumanoidModel`, so there is no body twist
+    (no `setupAttackAnimation`). The riding sit pose stays deferred. The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
     `emit_villager_family_textured_passes` textured for the villager/wandering-trader, plus
     the witch's own `emit_witch_model`/`emit_witch_textured_model` that add the idle nose bob)
@@ -859,8 +859,8 @@ When an agent does any of the following, update this file in the same slice:
     riding sit
     pose (the default walk arm swing is implemented for the pillager, and the
     evoker/illusioner spellcasting raise, the illusioner `BOW_AND_ARROW`, the pillager
-    `CROSSBOW_HOLD` and `CROSSBOW_CHARGE`, the evoker/vindicator `CELEBRATING`, and the vindicator `ATTACKING`
-    axe swing poses are implemented — see the
+    `CROSSBOW_HOLD` and `CROSSBOW_CHARGE`, the evoker/vindicator `CELEBRATING`, and the
+    vindicator empty/armed `ATTACKING` poses are implemented — see the
     illager note above), the `VillagerModel` unhappy
     head shake (the `WitchModel` idle nose bob and `isHoldingItem` nose hold pose are
     implemented — see below; the `GoatModel` ramming head
@@ -1229,9 +1229,10 @@ When an agent does any of the following, update this file in the same slice:
       - melee attack swing DONE for the player (`HumanoidModel.setupAttackAnimation`
         WHACK + the spear `STAB` lunge): the swing timer is now projected
         (`attack_anim`/`attack_arm_off_hand` from the `ClientboundAnimate` packet, see
-        the player entry above), so extending the shared
-        `apply_humanoid_attack_animation`/`apply_humanoid_stab_attack_animation` to the
-        zombie/skeleton/illager/vindicator models is now just per-model wiring.
+        the player entry above). Non-player default WHACK arm poses are also covered where vanilla
+        uses model-specific branches: zombie-family `animateZombieArms`, skeleton melee,
+        and vindicator empty/armed `ATTACKING`. STAB/NONE swing-type parity on non-player
+        humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel; remote
         and arbitrary dynamic profiled-player skins in
         `CustomHeadLayer` / `SkullBlockRenderer`; the
@@ -1970,10 +1971,11 @@ When an agent does any of the following, update this file in the same slice:
       shared `CustomHeadLayer` item path, and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads and profiled
       default-skin player heads are implemented by the skull branch;
-      live/dynamic profiled-player skin textures,
-      spell/crossbow/attacking/celebrating/riding
-      arm poses and animation, illusioner clone offsets/invisible-body rendering,
-      and renderer state extraction for dynamic arm visibility remain unsupported
+      live/dynamic profiled-player skin textures, riding sit pose,
+      illusioner clone offsets/invisible-body rendering, and renderer state
+      extraction for dynamic arm visibility remain unsupported. Spellcasting,
+      crossbow hold/charge, illusioner bow aim, evoker/vindicator celebrating,
+      and vindicator empty/armed attacking arm poses are implemented.
     - armor stand entities as renderer-owned vanilla 26.1
       `ArmorStandModel.createBodyLayer()` geometry, including the normal layer,
       `ModelLayers.ARMOR_STAND_SMALL` `HumanoidModel.BABY_TRANSFORMER` root-part

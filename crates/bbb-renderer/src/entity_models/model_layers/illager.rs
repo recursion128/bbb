@@ -1,7 +1,8 @@
 use super::{
     apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_half_amplitude_leg_swing,
-    apply_head_look, apply_humanoid_weapon_swing_down, humanoid_arm_swing_pose, PartPose,
-    CROSSBOW_CHARGE_DURATION_TICKS, ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named,
+    humanoid_arm_swing_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS, ILLAGER_HAT_COLOR,
+    ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -371,9 +372,8 @@ fn resolve_illager_arm_pose(
         }
         IllagerModelFamily::Vindicator => {
             if rs.is_aggressive {
-                // Vanilla `Vindicator.getArmPose`: aggressive → ATTACKING. The vindicator always holds
-                // an iron axe, so `IllagerModel.setupAnim` takes the armed `swingWeaponDown` branch (the
-                // empty-hand `animateZombieArms` ATTACKING branch is deferred).
+                // Vanilla `Vindicator.getArmPose`: aggressive -> ATTACKING. `IllagerModel.setupAnim`
+                // later chooses the empty-hand or armed branch from the rendered main-hand item state.
                 IllagerArmPose::Attacking
             } else if rs.illager_celebrating {
                 IllagerArmPose::Celebrating
@@ -392,7 +392,8 @@ fn resolve_illager_arm_pose(
 /// separate arms ([`humanoid_arm_swing_pose`]) and either pulls back a charging crossbow
 /// ([`apply_crossbow_charge_pose`]) or levels a held one ([`apply_crossbow_hold_pose`]);
 /// a casting evoker/illusioner raises the `SPELLCASTING` arms ([`illager_spellcast_arm_pose`]); an
-/// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); an aggressive vindicator chops its axe
+/// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); an aggressive vindicator either
+/// reaches with empty zombie arms ([`apply_zombie_arms_held_out_named`]) or chops its axe
 /// ([`apply_humanoid_weapon_swing_down`]); a celebrating evoker/vindicator dances
 /// ([`illager_celebrate_arm_pose`]). The riding sit pose defers.
 pub(in crate::entity_models) struct IllagerModel {
@@ -481,10 +482,20 @@ impl EntityModel for IllagerModel {
                 left.pose = illager_celebrate_arm_pose(left.pose, age, false);
             }
             IllagerArmPose::Attacking => {
-                // Vindicator ATTACKING: the armed `swingWeaponDown` raises the axe overhead and chops
-                // with the projected attack swing. IllagerModel is not a HumanoidModel, so there is no
-                // body twist — only the two-arm pose.
-                apply_humanoid_weapon_swing_down(&mut self.root, render_state.attack_anim, age);
+                // Vindicator ATTACKING: vanilla checks the rendered main-hand item. Empty hands use the
+                // same held-out `animateZombieArms` as zombies; armed hands raise the weapon overhead and
+                // chop with `swingWeaponDown`. IllagerModel is not a HumanoidModel, so there is no body
+                // twist in either branch.
+                if render_state.illager_main_hand_empty {
+                    apply_zombie_arms_held_out_named(
+                        &mut self.root,
+                        true,
+                        render_state.attack_anim,
+                        age,
+                    );
+                } else {
+                    apply_humanoid_weapon_swing_down(&mut self.root, render_state.attack_anim, age);
+                }
             }
         }
     }

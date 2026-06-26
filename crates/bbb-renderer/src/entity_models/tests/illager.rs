@@ -841,6 +841,47 @@ fn aggressive_vindicator_chops_with_its_axe() {
 }
 
 #[test]
+fn empty_hand_attacking_vindicator_uses_zombie_arms() {
+    use std::f32::consts::PI;
+
+    // Vanilla `IllagerModel.setupAnim` ATTACKING branch: an empty main hand uses
+    // `AnimationUtils.animateZombieArms(left, right, true, state)` instead of the armed
+    // `swingWeaponDown` chop.
+    let attacking =
+        EntityModelInstance::illager(140, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Vindicator)
+            .with_is_aggressive(true)
+            .with_illager_main_hand_empty(true);
+    let mut model = IllagerModel::new(&attacking, IllagerModelFamily::Vindicator);
+    model.prepare(&attacking);
+
+    let right = model.root_mut().child_mut("right_arm").pose.rotation;
+    assert!(
+        (right[0] - (-PI / 1.5)).abs() < 1.0e-6,
+        "empty-hand attacking right arm reaches forward: {}",
+        right[0]
+    );
+    assert!((right[1] - -0.1).abs() < 1.0e-6);
+    assert!((right[2] - 0.1).abs() < 1.0e-6);
+    let left = model.root_mut().child_mut("left_arm").pose.rotation;
+    assert!((left[0] - (-PI / 1.5)).abs() < 1.0e-6);
+    assert!((left[1] - 0.1).abs() < 1.0e-6);
+    assert!((left[2] - -0.1).abs() < 1.0e-6);
+
+    let mid = attacking.with_attack_anim(0.5);
+    let mut swinging = IllagerModel::new(&mid, IllagerModelFamily::Vindicator);
+    swinging.prepare(&mid);
+    let swinging_right = swinging.root_mut().child_mut("right_arm").pose.rotation;
+    let attack_y = (0.5_f32 * PI).sin();
+    let attack_x = ((1.0 - 0.5 * 0.5) * PI).sin();
+    assert!(
+        (swinging_right[0] - (-PI / 1.5 + attack_y * 1.2 - attack_x * 0.4)).abs() < 1.0e-6,
+        "empty-hand attack uses zombie swing xRot: {}",
+        swinging_right[0]
+    );
+    assert!((swinging_right[1] - -(0.1 - attack_y * 0.6)).abs() < 1.0e-6);
+}
+
+#[test]
 fn crossed_arm_illagers_keep_their_arms_still_when_walking() {
     // The evoker/vindicator/illusioner show the static crossed `arms` part: vanilla swings
     // the *invisible* separate arms, so the visible crossed part holds still. The evoker

@@ -47,6 +47,9 @@ profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资
 `DefaultPlayerSkin.get(UUID)`（显式 UUID、offline-name UUID 或 nil UUID），并支持指向内置默认
 player skin 的 `PlayerSkin.Patch` body；剩余的是远程 profile 解析、下载皮肤和任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
+Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
+pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
+`ATTACKING`。
 
 ## 剩余大子系统（按优先级）
 
