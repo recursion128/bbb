@@ -116,8 +116,10 @@ overlays; custom-head skull residual emits also record texture/render type/tint/
 submissions before folding into cutout or translucent buckets. `breezeWind` / `energySwirl`
 scroll residual emits now also go through a shared scrolled submission helper before folding into
 the scroll buckets, and Guardian attack beams now record vanilla `entityCutout` submissions before
-folding their tiled custom geometry into the scroll bucket. End Crystal 的 residual textured
-geometry 也已改为先生成 `entityCutout` submission，再通过统一 helper 折进 mesh。
+folding their tiled custom geometry into the scroll bucket through a custom scroll-geometry
+submission helper (the submission render type stays `entityCutout` even though the backend folds to
+scroll). End Crystal 的 residual textured geometry 也已改为先生成 `entityCutout` submission，
+再通过统一 helper 折进 mesh。
 End Crystal 已从 colored-only fallback 推进到 textured path，绑定
 `textures/entity/end_crystal/end_crystal.png`，使用 vanilla 默认 `entityCutout`、
 order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；`EndCrystal.DATA_BEAM_TARGET`
@@ -128,6 +130,7 @@ custom beam 也已按 vanilla 投影 target center offset，记录
 world 投影最近 EndCrystal 的 bobbed `beamOffset`，native 转抄到 render state，renderer 在
 body/eyes 后记录 `end_crystal_beam` submission（order 0 / sequence 2）并复用同一八面 prism
 helper；测试同样覆盖 texture、render type、tint、transform、order 和 tiled UV。
+Guardian beam 还覆盖缺少 beam atlas entry 时仍记录 vanilla submission、但不生成折叠几何。
 Wolf 湿身 shade tint 已完成：world 侧按 `Wolf.getWetShade(partialTick)` 维护
 `isWet/shakeAnimO/shakeAnim` 计时，native 转抄到 render state，renderer 只把
 `wetShade` 乘到基础 wolf submit，collar 保持自己的染色 tint/order。

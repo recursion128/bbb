@@ -369,6 +369,18 @@ fn guardian_beam_atlas() -> EntityModelTextureAtlasLayout {
     build_entity_model_texture_atlas(&images).unwrap().0
 }
 
+fn guardian_base_only_atlas() -> EntityModelTextureAtlasLayout {
+    let images = [GUARDIAN_TEXTURE_REF, GUARDIAN_ELDER_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect::<Vec<_>>();
+    build_entity_model_texture_atlas(&images).unwrap().0
+}
+
 #[test]
 fn guardian_without_active_target_emits_no_beam() {
     // Vanilla `GuardianRenderer.submit`: with `attackTargetPosition == null` (no active attack target),
@@ -394,6 +406,41 @@ fn guardian_without_active_target_emits_no_beam() {
             .all(|submit| submit.texture != GUARDIAN_BEAM_TEXTURE_REF),
         "a guardian with no active target emits no beam submission"
     );
+}
+
+#[test]
+fn guardian_beam_submission_survives_missing_beam_texture_atlas_entry() {
+    // The custom beam geometry enters through the same submission-first path as scrolled model
+    // overlays: the vanilla `RenderTypes.entityCutout(guardian_beam.png)` submit is recorded before
+    // atlas lookup, and missing texture data suppresses only the folded mesh output.
+    let atlas = guardian_base_only_atlas();
+    let meshes = entity_model_textured_meshes(
+        &[
+            EntityModelInstance::guardian(501, [0.0, 64.0, 0.0], 0.0, false).with_guardian_beam(
+                Some(GuardianBeamRenderState {
+                    eye_to_target: [0.0, 8.0, 0.0],
+                    eye_height: 0.5,
+                    attack_time: 0.0,
+                    attack_scale: 1.0,
+                }),
+            ),
+        ],
+        &atlas,
+    );
+
+    let beam_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == GUARDIAN_BEAM_TEXTURE_REF)
+        .expect("beam submission is recorded even when the atlas lacks beam texture");
+    assert_eq!(
+        beam_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(beam_submit.tint, [1.0, 223.0 / 255.0, 64.0 / 255.0, 1.0]);
+    assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll.indices.is_empty());
 }
 
 #[test]

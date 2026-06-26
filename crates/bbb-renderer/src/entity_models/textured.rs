@@ -854,7 +854,14 @@ fn scroll_mesh_mut(
     meshes: &mut EntityModelTexturedMeshes,
     render_type: EntityModelLayerRenderType,
 ) -> &mut EntityModelScrollMesh {
-    match render_type.mesh_bucket() {
+    scroll_bucket_mut(meshes, render_type.mesh_bucket())
+}
+
+fn scroll_bucket_mut(
+    meshes: &mut EntityModelTexturedMeshes,
+    bucket: EntityModelLayerRenderBucket,
+) -> &mut EntityModelScrollMesh {
+    match bucket {
         EntityModelLayerRenderBucket::Scroll => &mut meshes.scroll,
         EntityModelLayerRenderBucket::AdditiveScroll => &mut meshes.scroll_additive,
         _ => panic!("only scroll render types are emitted through the scroll mesh"),
@@ -880,6 +887,24 @@ fn render_scrolled_textured_submission(
         entry.uv,
         uv_offset,
     );
+}
+
+fn render_scroll_geometry_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    target_bucket: EntityModelLayerRenderBucket,
+    atlas: &EntityModelTextureAtlasLayout,
+    emit: impl FnOnce(
+        &mut EntityModelScrollMesh,
+        EntityModelTextureAtlasEntry,
+        EntityModelSubmissionEmit,
+    ),
+) {
+    meshes.record_submission(submit);
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
+        return;
+    };
+    emit(scroll_bucket_mut(meshes, target_bucket), entry, submit);
 }
 
 fn render_textured_root_pass(
@@ -1256,59 +1281,60 @@ fn emit_guardian_beam(
         0,
         1,
     );
-    meshes.record_submission(submit);
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
-        return;
-    };
+    render_scroll_geometry_submission(
+        meshes,
+        submit,
+        EntityModelLayerRenderBucket::Scroll,
+        atlas,
+        |mesh, entry, submit| {
+            let top = length;
+            let tex_v_off = (beam.attack_time * 0.5).rem_euclid(1.0);
+            let min_v = -1.0 + tex_v_off;
+            let max_v = min_v + length * 2.5;
+            let v_base = if (beam.attack_time.floor() as i32).rem_euclid(2) == 0 {
+                0.5
+            } else {
+                0.0
+            };
 
-    let top = length;
-    let tex_v_off = (beam.attack_time * 0.5).rem_euclid(1.0);
-    let min_v = -1.0 + tex_v_off;
-    let max_v = min_v + length * 2.5;
-    let v_base = if (beam.attack_time.floor() as i32).rem_euclid(2) == 0 {
-        0.5
-    } else {
-        0.0
-    };
-
-    // 12 vertices in three quads (W↔E strip, N↔S strip, twisting top cap), local UVs in `0..1` for U and
-    // tiling for V — matching `GuardianRenderer.vertex` exactly.
-    let vertices: [(f32, f32, f32, f32, f32); 12] = [
-        (wx, top, wz, 0.4999, max_v),
-        (wx, 0.0, wz, 0.4999, min_v),
-        (ex, 0.0, ez, 0.0, min_v),
-        (ex, top, ez, 0.0, max_v),
-        (nx, top, nz, 0.4999, max_v),
-        (nx, 0.0, nz, 0.4999, min_v),
-        (sx, 0.0, sz, 0.0, min_v),
-        (sx, top, sz, 0.0, max_v),
-        (wnx, top, wnz, 0.5, v_base + 0.5),
-        (enx, top, enz, 1.0, v_base + 0.5),
-        (esx, top, esz, 1.0, v_base),
-        (wsx, top, wsz, 0.5, v_base),
-    ];
-    let rect = entry.uv;
-    let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
-    let base =
-        u32::try_from(meshes.scroll.vertices.len()).expect("scroll vertex count fits in u32");
-    for (x, y, z, u, v) in vertices {
-        let world = transform.transform_point3(Vec3::new(x, y, z));
-        meshes.scroll.vertices.push(EntityModelScrollVertex {
-            position: world.to_array(),
-            local_uv: [u, v],
-            uv_rect_min: rect.min,
-            uv_rect_size: size,
-            tint,
-        });
-    }
-    // Each quad → two triangles (the scroll pipeline renders cull-off, so winding is immaterial).
-    for quad in 0..3u32 {
-        let o = base + quad * 4;
-        meshes
-            .scroll
-            .indices
-            .extend_from_slice(&[o, o + 1, o + 2, o, o + 2, o + 3]);
-    }
+            // 12 vertices in three quads (W↔E strip, N↔S strip, twisting top cap), local UVs in
+            // `0..1` for U and tiling for V — matching `GuardianRenderer.vertex` exactly.
+            let vertices: [(f32, f32, f32, f32, f32); 12] = [
+                (wx, top, wz, 0.4999, max_v),
+                (wx, 0.0, wz, 0.4999, min_v),
+                (ex, 0.0, ez, 0.0, min_v),
+                (ex, top, ez, 0.0, max_v),
+                (nx, top, nz, 0.4999, max_v),
+                (nx, 0.0, nz, 0.4999, min_v),
+                (sx, 0.0, sz, 0.0, min_v),
+                (sx, top, sz, 0.0, max_v),
+                (wnx, top, wnz, 0.5, v_base + 0.5),
+                (enx, top, enz, 1.0, v_base + 0.5),
+                (esx, top, esz, 1.0, v_base),
+                (wsx, top, wsz, 0.5, v_base),
+            ];
+            let rect = entry.uv;
+            let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
+            let base = u32::try_from(mesh.vertices.len()).expect("scroll vertex count fits in u32");
+            for (x, y, z, u, v) in vertices {
+                let world = submit.transform.transform_point3(Vec3::new(x, y, z));
+                mesh.vertices.push(EntityModelScrollVertex {
+                    position: world.to_array(),
+                    local_uv: [u, v],
+                    uv_rect_min: rect.min,
+                    uv_rect_size: size,
+                    tint: submit.tint,
+                });
+            }
+            // Each quad → two triangles (the scroll pipeline renders cull-off, so winding is
+            // immaterial).
+            for quad in 0..3u32 {
+                let o = base + quad * 4;
+                mesh.indices
+                    .extend_from_slice(&[o, o + 1, o + 2, o, o + 2, o + 3]);
+            }
+        },
+    );
 }
 
 /// Vanilla `EnderDragonRenderer.submitCrystalBeams`, as called by `EndCrystalRenderer.submit` when
@@ -1398,64 +1424,67 @@ fn emit_crystal_beam_submission(
     length: f32,
     age: f32,
 ) {
-    meshes.record_submission(submit);
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
-        return;
-    };
+    render_scroll_geometry_submission(
+        meshes,
+        submit,
+        submit.render_type.mesh_bucket(),
+        atlas,
+        |mesh, entry, submit| {
+            let rect = entry.uv;
+            let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
+            let v0 = -age * 0.01;
+            let v1 = length / 32.0 - age * 0.01;
+            let mut last_sin = 0.0;
+            let mut last_cos = 0.75;
+            let mut last_u = 0.0;
 
-    let rect = entry.uv;
-    let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
-    let v0 = -age * 0.01;
-    let v1 = length / 32.0 - age * 0.01;
-    let mut last_sin = 0.0;
-    let mut last_cos = 0.75;
-    let mut last_u = 0.0;
-
-    for i in 1..=8 {
-        let angle = i as f32 * std::f32::consts::TAU / 8.0;
-        let sin = angle.sin() * 0.75;
-        let cos = angle.cos() * 0.75;
-        let u = i as f32 / 8.0;
-        let base =
-            u32::try_from(meshes.scroll.vertices.len()).expect("scroll vertex count fits in u32");
-        for (position, local_uv, tint) in [
-            (
-                Vec3::new(last_sin * 0.2, last_cos * 0.2, 0.0),
-                [last_u, v0],
-                [0.0, 0.0, 0.0, 1.0],
-            ),
-            (
-                Vec3::new(last_sin, last_cos, length),
-                [last_u, v1],
-                [1.0, 1.0, 1.0, 1.0],
-            ),
-            (Vec3::new(sin, cos, length), [u, v1], [1.0, 1.0, 1.0, 1.0]),
-            (
-                Vec3::new(sin * 0.2, cos * 0.2, 0.0),
-                [u, v0],
-                [0.0, 0.0, 0.0, 1.0],
-            ),
-        ] {
-            meshes.scroll.vertices.push(EntityModelScrollVertex {
-                position: submit.transform.transform_point3(position).to_array(),
-                local_uv,
-                uv_rect_min: rect.min,
-                uv_rect_size: size,
-                tint,
-            });
-        }
-        meshes.scroll.indices.extend_from_slice(&[
-            base,
-            base + 1,
-            base + 2,
-            base,
-            base + 2,
-            base + 3,
-        ]);
-        last_sin = sin;
-        last_cos = cos;
-        last_u = u;
-    }
+            for i in 1..=8 {
+                let angle = i as f32 * std::f32::consts::TAU / 8.0;
+                let sin = angle.sin() * 0.75;
+                let cos = angle.cos() * 0.75;
+                let u = i as f32 / 8.0;
+                let base =
+                    u32::try_from(mesh.vertices.len()).expect("scroll vertex count fits in u32");
+                for (position, local_uv, tint) in [
+                    (
+                        Vec3::new(last_sin * 0.2, last_cos * 0.2, 0.0),
+                        [last_u, v0],
+                        [0.0, 0.0, 0.0, 1.0],
+                    ),
+                    (
+                        Vec3::new(last_sin, last_cos, length),
+                        [last_u, v1],
+                        [1.0, 1.0, 1.0, 1.0],
+                    ),
+                    (Vec3::new(sin, cos, length), [u, v1], [1.0, 1.0, 1.0, 1.0]),
+                    (
+                        Vec3::new(sin * 0.2, cos * 0.2, 0.0),
+                        [u, v0],
+                        [0.0, 0.0, 0.0, 1.0],
+                    ),
+                ] {
+                    mesh.vertices.push(EntityModelScrollVertex {
+                        position: submit.transform.transform_point3(position).to_array(),
+                        local_uv,
+                        uv_rect_min: rect.min,
+                        uv_rect_size: size,
+                        tint,
+                    });
+                }
+                mesh.indices.extend_from_slice(&[
+                    base,
+                    base + 1,
+                    base + 2,
+                    base,
+                    base + 2,
+                    base + 3,
+                ]);
+                last_sin = sin;
+                last_cos = cos;
+                last_u = u;
+            }
+        },
+    );
 }
 
 /// The `HumanoidArmorLayer` worn-armor overlay (vanilla `HumanoidArmorLayer.submit`): for each filled

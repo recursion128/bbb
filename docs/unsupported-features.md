@@ -1021,7 +1021,8 @@ When an agent does any of the following, update this file in the same slice:
       `breezeWind` / `energySwirl` residual emits now use a shared scrolled
       submission helper before folding into the scroll mesh buckets; Guardian
       attack beams also record vanilla `entityCutout` submissions before
-      folding their tiled custom geometry into the scroll bucket; End Crystal
+      folding their tiled custom geometry into the scroll bucket through the
+      custom scroll-geometry submission helper; End Crystal
       now creates its vanilla `entityCutout` submission before the residual
       bob/spin geometry is folded through the standard submission helper, and
       crystals with a beam target now record vanilla `end_crystal_beam`
@@ -1038,7 +1039,9 @@ When an agent does any of the following, update this file in the same slice:
       profession/type/level overlays, custom-head skull submissions, player
       profile cape plus player WINGS/elytra submissions, and the
       Guardian beam / End Crystal body+beam paths are covered by source-verified
-      texture/render-type/tint/transform/order tests.
+      texture/render-type/tint/transform/order tests, including the Guardian
+      beam missing-atlas case where submission metadata survives while folded
+      geometry is suppressed.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
