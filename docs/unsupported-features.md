@@ -3290,9 +3290,11 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `wasTouchingWater` AABB-vs-water overlap) and the projected `age_in_ticks`;
       the official `textures/entity/fish/salmon.png` texture reference, texture-backed
       base-layer pass emission (per-size `ModelLayers.SALMON`/`SALMON_SMALL`/`SALMON_LARGE`
-      keys, the right fin keeping its negative `texOffs(-4, 0)` U origin), and the official
-      PNG atlas upload/bind/sample path (colored and textured). Lighting and overlay
-      remain unsupported
+      keys, vanilla `SalmonModel` default `RenderTypes::entityCutout`, and the right fin
+      keeping its negative `texOffs(-4, 0)` U origin) while preserving explicit
+      submission metadata for texture, white tint, water/beached/size root transform, and
+      `order(0)`, and the official PNG atlas upload/bind/sample path (colored and
+      textured). Lighting and overlay remain unsupported
     - tropical fish entities are wired end to end: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `136` to the real tropical fish model,
       decoding the body shape from the synced packed variant (`DATA_ID_TYPE_VARIANT`,

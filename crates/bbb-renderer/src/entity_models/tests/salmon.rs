@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::salmon_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -263,9 +264,15 @@ fn salmon_textured_layer_passes_match_vanilla_renderer() {
         let passes = salmon_textured_layer_passes(size);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::SalmonBase);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, SALMON_TEXTURE_REF);
         assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     }
 }
 
@@ -275,28 +282,36 @@ fn salmon_textured_mesh_uses_vanilla_geometry_and_animates() {
     // Eight cubes → 192 textured vertices on the cutout pass.
     let base = EntityModelInstance::salmon(720, [0.0, 64.0, 0.0], 0.0, SalmonModelSize::Medium)
         .with_in_water(true);
-    let still = entity_model_textured_mesh(&[base], &atlas);
-    assert_eq!(still.vertices.len(), 192);
+    let still = entity_model_textured_meshes(&[base], &atlas);
+    assert_salmon_base_submission(&still, base, SalmonModelSize::Medium, true);
+    assert!(still.translucent.vertices.is_empty());
+    assert!(still.eyes.vertices.is_empty());
+    assert_eq!(still.cutout.vertices.len(), 192);
 
     // The back-body sway / body wiggle reorient the mesh as the age advances.
-    let swimming = entity_model_textured_mesh(&[base.with_age_in_ticks(7.0)], &atlas);
-    assert_eq!(still.vertices.len(), swimming.vertices.len());
-    assert_ne!(still.vertices, swimming.vertices);
+    let swimming_instance = base.with_age_in_ticks(7.0);
+    let swimming = entity_model_textured_meshes(&[swimming_instance], &atlas);
+    assert_salmon_base_submission(&swimming, swimming_instance, SalmonModelSize::Medium, true);
+    assert_eq!(still.cutout.vertices.len(), swimming.cutout.vertices.len());
+    assert_ne!(still.cutout.vertices, swimming.cutout.vertices);
 
     // A beached salmon flops onto its side.
-    let beached = entity_model_textured_mesh(&[base.with_in_water(false)], &atlas);
-    assert_ne!(still.vertices, beached.vertices);
+    let beached_instance = base.with_in_water(false);
+    let beached = entity_model_textured_meshes(&[beached_instance], &atlas);
+    assert_salmon_base_submission(&beached, beached_instance, SalmonModelSize::Medium, false);
+    assert_ne!(still.cutout.vertices, beached.cutout.vertices);
 
     // The size variants scale the textured mesh exactly like the colored path.
-    let small = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::salmon(721, [0.0, 64.0, 0.0], 0.0, SalmonModelSize::Small)
-                .with_in_water(true),
-        ],
-        &atlas,
+    let small_instance =
+        EntityModelInstance::salmon(721, [0.0, 64.0, 0.0], 0.0, SalmonModelSize::Small)
+            .with_in_water(true);
+    let small = entity_model_textured_meshes(&[small_instance], &atlas);
+    assert_salmon_base_submission(&small, small_instance, SalmonModelSize::Small, true);
+    assert_eq!(small.cutout.vertices.len(), still.cutout.vertices.len());
+    assert_ne!(
+        small.cutout.vertices, still.cutout.vertices,
+        "the small salmon is scaled"
     );
-    assert_eq!(small.vertices.len(), still.vertices.len());
-    assert_ne!(small.vertices, still.vertices, "the small salmon is scaled");
 }
 
 fn salmon_texture_images() -> Vec<EntityModelTextureImage> {
@@ -308,4 +323,23 @@ fn salmon_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_salmon_base_submission(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    size: SalmonModelSize,
+    in_water: bool,
+) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, SALMON_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        salmon_model_root_transform(instance, in_water, size)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
