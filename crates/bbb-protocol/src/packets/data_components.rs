@@ -79,6 +79,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub bundle_contents_item_count: Option<usize>,
     #[serde(default)]
+    pub bees_count: usize,
+    #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
     #[serde(default)]
     pub armor_trim_material_id: Option<i32>,
@@ -397,6 +399,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.block_state_properties =
                     decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
             }
+            77 => {
+                summary.bees_count = decode_bees(decoder)?;
+            }
             _ => decode_data_component_value(decoder, type_id)?,
         }
         summary.added_type_ids.push(type_id);
@@ -541,7 +546,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         // banner_patterns, pot_decorations, and bees.
         72 => decode_banner_pattern_layers(decoder)?,
         74 => decode_pot_decorations(decoder)?,
-        77 => decode_bees(decoder)?,
+        77 => {
+            let _ = decode_bees(decoder)?;
+        }
         // block_state.
         76 => {
             let _ = decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
@@ -1308,7 +1315,7 @@ fn decode_pot_decorations(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_bees(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_bees(decoder: &mut Decoder<'_>) -> Result<usize> {
     let bee_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     for _ in 0..bee_count {
         decoder.read_var_i32()?;
@@ -1316,7 +1323,7 @@ fn decode_bees(decoder: &mut Decoder<'_>) -> Result<()> {
         decoder.read_var_i32()?;
         decoder.read_var_i32()?;
     }
-    Ok(())
+    Ok(bee_count)
 }
 
 fn decode_painting_variant_holder(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2100,6 +2107,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                bees_count: 1,
                 profile: Some(ResolvableProfileSummary {
                     kind: ResolvableProfileKindSummary::Partial,
                     uuid: Some(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678)),

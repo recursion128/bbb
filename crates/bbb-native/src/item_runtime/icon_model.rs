@@ -4,7 +4,7 @@ use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
     ItemTintSource, SelectCase, TerrainColorMaps,
 };
-use bbb_protocol::packets::DataComponentPatchSummary;
+use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackTemplateSummary};
 use serde_json::Value;
 
 use super::{
@@ -23,6 +23,8 @@ const POTION_CONTENTS_COMPONENT_ID: i32 = 51;
 const LODESTONE_TRACKER_COMPONENT_ID: i32 = 67;
 const FIREWORK_EXPLOSION_COMPONENT_ID: i32 = 68;
 const FIREWORKS_COMPONENT_ID: i32 = 69;
+const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
+const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ItemIconModelRef {
@@ -62,23 +64,32 @@ pub(super) enum RangeDispatchProperty {
     Damage { normalize: bool },
     /// `minecraft:custom_model_data` — `CustomModelDataProperty.get`.
     CustomModelData { index: usize },
+    /// `minecraft:count` — `Count.get`.
+    Count { normalize: bool },
+    /// `minecraft:bundle/fullness` — `BundleFullness.get`.
+    BundleFullness,
 }
 
 impl RangeDispatchProperty {
     /// Vanilla `RangeSelectItemModelProperty.get(item, level, owner, seed)` for
     /// the context-free properties.
-    fn value(
-        &self,
-        component_patch: Option<&DataComponentPatchSummary>,
-        default_max_damage: Option<i32>,
-    ) -> f32 {
+    fn value(&self, ctx: IconResolveContext<'_>) -> f32 {
         match *self {
             Self::Damage { normalize } => {
-                range_dispatch_damage_value(component_patch, default_max_damage, normalize)
+                range_dispatch_damage_value(ctx.component_patch, ctx.default_max_damage, normalize)
             }
-            Self::CustomModelData { index } => component_patch
+            Self::CustomModelData { index } => ctx
+                .component_patch
                 .and_then(|patch| patch.custom_model_data_floats.get(index).copied())
                 .unwrap_or(0.0),
+            Self::Count { normalize } => range_dispatch_count_value(
+                ctx.stack_count,
+                ctx.effective_max_stack_size(),
+                normalize,
+            ),
+            Self::BundleFullness => {
+                bundle_fullness_value(ctx.component_patch, ctx.default_max_stack_size_for_item)
+            }
         }
     }
 }
@@ -101,6 +112,14 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
                 .and_then(Value::as_u64)
                 .unwrap_or(0) as usize,
         }),
+        "minecraft:count" => Some(RangeDispatchProperty::Count {
+            normalize: property
+                .raw()
+                .get("normalize")
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
+        }),
+        "minecraft:bundle/fullness" => Some(RangeDispatchProperty::BundleFullness),
         _ => None,
     }
 }
@@ -124,6 +143,90 @@ fn range_dispatch_damage_value(
     } else {
         damage.clamp(0.0, max_damage)
     }
+}
+
+/// Vanilla `Count.get`: reads `ItemStack.getCount()` and `ItemStack.getMaxStackSize()`
+/// (component patch over the item prototype default).
+fn range_dispatch_count_value(count: i32, max_stack_size: i32, normalize: bool) -> f32 {
+    let count = count as f32;
+    let max_stack_size = max_stack_size as f32;
+    if normalize {
+        (count / max_stack_size).clamp(0.0, 1.0)
+    } else {
+        count.clamp(0.0, max_stack_size)
+    }
+}
+
+/// Vanilla `BundleItem.getFullnessDisplay`: sum each bundled stack's weight.
+/// Regular entries weigh `1 / getMaxStackSize`; nested bundles weigh their own
+/// contents plus the fixed `1/16` bundle-in-bundle weight; beehives with bees are
+/// full-weight entries.
+fn bundle_fullness_value(
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+) -> f32 {
+    component_patch
+        .map(|patch| {
+            patch
+                .bundle_contents_items
+                .iter()
+                .map(|item| {
+                    bundle_item_weight(item, default_max_stack_size_for_item) * item.count as f32
+                })
+                .sum::<f32>()
+        })
+        .unwrap_or(0.0)
+}
+
+fn bundle_item_weight(
+    item: &ItemStackTemplateSummary,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+) -> f32 {
+    if item.component_patch.bundle_contents_item_count.is_some() {
+        return bundle_fullness_value(Some(&item.component_patch), default_max_stack_size_for_item)
+            + 1.0 / 16.0;
+    }
+    if item.component_patch.bees_count > 0 {
+        return 1.0;
+    }
+    1.0 / effective_item_max_stack_size(
+        Some(&item.component_patch),
+        default_max_stack_size_for_item.map(|max_stack_size| max_stack_size(item.item_id)),
+    ) as f32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundle_item_weight_treats_empty_bundle_component_as_nested_bundle() {
+        // Vanilla `BundleContents.getWeight` checks for the presence of the
+        // BUNDLE_CONTENTS component, not for non-empty contents. An empty nested
+        // bundle therefore still weighs the fixed bundle-in-bundle `1/16`.
+        let nested_empty_bundle = ItemStackTemplateSummary {
+            item_id: 3,
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                bundle_contents_item_count: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+
+        let weight = bundle_item_weight(&nested_empty_bundle, Some(&|_| 64));
+        assert!((weight - 1.0 / 16.0).abs() < f32::EPSILON);
+    }
+}
+
+fn effective_item_max_stack_size(
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_stack_size: Option<i32>,
+) -> i32 {
+    component_patch
+        .and_then(|patch| patch.max_stack_size)
+        .or(default_max_stack_size)
+        .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE)
+        .clamp(1, VANILLA_ABSOLUTE_MAX_STACK_SIZE)
 }
 
 /// Vanilla `RangeSelectItemModel.lastIndexLessOrEqual` (linear path — entry
@@ -327,13 +430,22 @@ pub(super) enum ItemIconModel {
 #[derive(Clone, Copy)]
 pub(super) struct IconResolveContext<'a> {
     pub component_patch: Option<&'a DataComponentPatchSummary>,
+    pub stack_count: i32,
+    pub default_max_stack_size: Option<i32>,
     pub default_max_damage: Option<i32>,
     pub bundle_selected_item_index: Option<i32>,
     pub using_item: bool,
     pub crossbow_charge: CrossbowChargeType,
+    pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
+}
+
+impl IconResolveContext<'_> {
+    fn effective_max_stack_size(self) -> i32 {
+        effective_item_max_stack_size(self.component_patch, self.default_max_stack_size)
+    }
 }
 
 impl ItemIconModel {
@@ -398,7 +510,7 @@ impl ItemIconModel {
                 entries,
                 fallback,
             } => {
-                let value = property.value(ctx.component_patch, ctx.default_max_damage) * scale;
+                let value = property.value(ctx) * scale;
                 let selected = if value.is_nan() {
                     fallback.as_ref()
                 } else {

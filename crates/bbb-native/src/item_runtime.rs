@@ -1221,6 +1221,8 @@ impl NativeItemRuntime {
     #[cfg(test)]
     pub(crate) fn icon_texture_index_for_protocol_id(&self, protocol_id: i32) -> Option<u32> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
+        let default_max_stack_size_for_item =
+            |item_id| self.default_max_stack_size_for_protocol_id(item_id);
         Some(
             self.item_icon_models
                 .get(item_id)
@@ -1228,10 +1230,16 @@ impl NativeItemRuntime {
                     model
                         .icon_layers(IconResolveContext {
                             component_patch: None,
+                            stack_count: 1,
+                            default_max_stack_size: self
+                                .registry
+                                .as_ref()
+                                .and_then(|registry| registry.max_stack_size(item_id)),
                             default_max_damage: None,
                             bundle_selected_item_index: None,
                             using_item: false,
                             crossbow_charge: CrossbowChargeType::None,
+                            default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             trim_material_keys: None,
                         })
                         .into_iter()
@@ -1366,6 +1374,7 @@ impl NativeItemRuntime {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         self.icon_for_resource_id(
             item_id,
+            stack.count,
             Some(&stack.component_patch),
             bundle_selected_item_index,
             using_item,
@@ -1376,12 +1385,13 @@ impl NativeItemRuntime {
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, None, None, false, None)
+        self.icon_for_resource_id(item_id, 1, None, None, false, None)
     }
 
     fn icon_for_resource_id(
         &self,
         item_id: &str,
+        stack_count: i32,
         component_patch: Option<&DataComponentPatchSummary>,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
@@ -1391,12 +1401,21 @@ impl NativeItemRuntime {
             .registry
             .as_ref()
             .and_then(|registry| registry.max_damage(item_id));
+        let default_max_stack_size = self
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.max_stack_size(item_id));
+        let default_max_stack_size_for_item =
+            |item_id| self.default_max_stack_size_for_protocol_id(item_id);
         let context = IconResolveContext {
             component_patch,
+            stack_count,
+            default_max_stack_size,
             default_max_damage,
             bundle_selected_item_index,
             using_item,
             crossbow_charge: self.crossbow_charge_for(component_patch),
+            default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             trim_material_keys,
         };
         let layers = self
@@ -1478,13 +1497,13 @@ impl NativeItemRuntime {
         else {
             return Vec::new();
         };
-        self.item_template_layers(template, context.trim_material_keys, depth)
+        self.item_template_layers(template, context, depth)
     }
 
     fn item_template_layers(
         &self,
         template: &ItemStackTemplateSummary,
-        trim_material_keys: Option<&[String]>,
+        parent_context: IconResolveContext<'_>,
         depth: usize,
     ) -> Vec<ItemIconTextureLayer> {
         let Some(item_id) = self
@@ -1498,13 +1517,19 @@ impl NativeItemRuntime {
             .registry
             .as_ref()
             .and_then(|registry| registry.max_damage(item_id));
+        let default_max_stack_size = parent_context
+            .default_max_stack_size_for_item
+            .map(|max_stack_size| max_stack_size(template.item_id));
         let context = IconResolveContext {
             component_patch: Some(&template.component_patch),
+            stack_count: template.count,
+            default_max_stack_size,
             default_max_damage,
             bundle_selected_item_index: None,
             using_item: false,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
-            trim_material_keys,
+            default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
+            trim_material_keys: parent_context.trim_material_keys,
         };
         let layers = self
             .item_icon_models
@@ -1512,6 +1537,18 @@ impl NativeItemRuntime {
             .map(|model| self.icon_layers_for_model(model, context, depth))
             .unwrap_or_else(|| self.fallback_icon_texture_layers());
         resolve_item_icon_texture_layer_tints(layers, Some(&template.component_patch))
+    }
+
+    fn default_max_stack_size_for_protocol_id(&self, protocol_id: i32) -> i32 {
+        self.registry
+            .as_ref()
+            .and_then(|registry| {
+                registry
+                    .resource_id(protocol_id)
+                    .and_then(|resource_id| registry.max_stack_size(resource_id))
+            })
+            .unwrap_or(64)
+            .clamp(1, 99)
     }
 
     fn fallback_icon_texture_layers(&self) -> Vec<ItemIconTextureLayer> {
@@ -4384,6 +4421,72 @@ mod tests {
         // No custom_model_data at all → 0.0 → the 0.0 entry.
         assert_eq!(selected(&cmd_stack(Vec::new())), uv("cmd_0"));
 
+        let count_stack = |count: i32, max_stack_size: Option<i32>| ItemStackSummary {
+            item_id: Some(2),
+            count,
+            component_patch: DataComponentPatchSummary {
+                max_stack_size,
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        // Count.get defaults to normalized `count / maxStackSize`, using the
+        // item prototype default when the component is absent.
+        assert_eq!(selected(&count_stack(32, None)), uv("count_half"));
+        assert_eq!(selected(&count_stack(64, None)), uv("count_full"));
+        assert_eq!(selected(&count_stack(1, None)), uv("count_fallback"));
+        // The max_stack_size component overrides the prototype default.
+        assert_eq!(selected(&count_stack(8, Some(16))), uv("count_half"));
+
+        let apple_template = |count: i32| ItemStackTemplateSummary {
+            item_id: 4,
+            count,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let bundle_stack = |items: Vec<ItemStackTemplateSummary>| ItemStackSummary {
+            item_id: Some(3),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                bundle_contents_item_count: Some(items.len()),
+                bundle_contents_items: items,
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        // BundleFullness.get sums BundleContents weights; regular items weigh
+        // `count / getMaxStackSize`.
+        assert_eq!(
+            selected(&bundle_stack(vec![apple_template(32)])),
+            uv("bundle_half")
+        );
+        assert_eq!(
+            selected(&bundle_stack(vec![apple_template(16)])),
+            uv("bundle_fallback")
+        );
+        // A nested bundle weighs its contents plus the fixed 1/16 bundle item weight.
+        assert_eq!(
+            selected(&bundle_stack(vec![ItemStackTemplateSummary {
+                item_id: 3,
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![apple_template(32)],
+                    ..DataComponentPatchSummary::default()
+                },
+            }])),
+            uv("bundle_nested")
+        );
+        // A beehive-like stack with non-empty BEES component weighs as a full bundle.
+        assert_eq!(
+            selected(&bundle_stack(vec![ItemStackTemplateSummary {
+                item_id: 5,
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    bees_count: 1,
+                    ..DataComponentPatchSummary::default()
+                },
+            }])),
+            uv("bundle_full")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -4844,7 +4947,17 @@ mod tests {
     fn write_value_aware_range_dispatch_fixture(root: &Path) {
         let assets = assets_dir(root);
         write_item_atlases(&assets);
-        write_item_registry_source(root, &["damage_dispatch", "cmd_dispatch"]);
+        write_item_registry_source(
+            root,
+            &[
+                "damage_dispatch",
+                "cmd_dispatch",
+                "count_dispatch",
+                "bundle_dispatch",
+                "apple",
+                "bee_nest",
+            ],
+        );
         // `minecraft:damage` (normalize default true). Entries listed out of
         // threshold order to prove the resolver sorts before selecting.
         write_json(
@@ -4894,6 +5007,52 @@ mod tests {
                 }
             }"#,
         );
+        // `minecraft:count` normalize default true (value = count / maxStackSize).
+        write_json(
+            &assets.join("items").join("count_dispatch.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:range_dispatch",
+                    "property": "minecraft:count",
+                    "entries": [
+                        {
+                            "threshold": 1.0,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/count_full" }
+                        },
+                        {
+                            "threshold": 0.5,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/count_half" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/count_fallback" }
+                }
+            }"#,
+        );
+        // `minecraft:bundle/fullness` uses BundleContents weight.
+        write_json(
+            &assets.join("items").join("bundle_dispatch.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:range_dispatch",
+                    "property": "minecraft:bundle/fullness",
+                    "entries": [
+                        {
+                            "threshold": 1.0,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/bundle_full" }
+                        },
+                        {
+                            "threshold": 0.5,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/bundle_half" }
+                        },
+                        {
+                            "threshold": 0.55,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/bundle_nested" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/bundle_fallback" }
+                }
+            }"#,
+        );
         write_flat_item_model_and_texture(&assets, "damage_half", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "damage_low", &[120, 80, 40, 255]);
         write_flat_item_model_and_texture(&assets, "damage_fallback", &[80, 120, 40, 255]);
@@ -4901,6 +5060,13 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "cmd_1", &[40, 50, 60, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_3", &[70, 80, 90, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_fallback", &[100, 110, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "count_half", &[20, 80, 140, 255]);
+        write_flat_item_model_and_texture(&assets, "count_full", &[40, 160, 220, 255]);
+        write_flat_item_model_and_texture(&assets, "count_fallback", &[100, 40, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "bundle_half", &[140, 80, 20, 255]);
+        write_flat_item_model_and_texture(&assets, "bundle_nested", &[180, 120, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "bundle_full", &[220, 180, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "bundle_fallback", &[40, 40, 100, 255]);
     }
 
     fn write_bundle_selected_item_fixture(root: &Path) {

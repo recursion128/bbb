@@ -3702,8 +3702,6 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:cooldown` (item cooldown group progress)
     - `minecraft:crossbow/pull`, `minecraft:use_duration`, `minecraft:use_cycle`
       (local `using_item` use-tick state)
-    - `minecraft:bundle/fullness` and `minecraft:count` (stack count +
-      max-stack-size context)
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:context_dimension`, `minecraft:local_time`,
@@ -3741,6 +3739,14 @@ When an agent does any of the following, update this file in the same slice:
       prototype `max_damage` default
     - `minecraft:custom_model_data` — `CustomModelDataProperty.get`
       (`floats[index]`, or `0.0` when absent)
+    - `minecraft:count` — `Count.get`, reading `ItemStack.getCount()` and the
+      effective max stack size (component patch over item prototype), with
+      `normalize` defaulting to `true`
+    - `minecraft:bundle/fullness` — `BundleItem.getFullnessDisplay`, summing
+      `BundleContents` weights: ordinary entries weigh `count / max_stack_size`,
+      nested bundle entries add the fixed `1/16` bundle item weight even when
+      empty, and stacks with non-empty `minecraft:bees` count as full-weight
+      bundle entries
     - `minecraft:block_state` — `ItemBlockState.get`, reading the selected
       property from the stack's `minecraft:block_state` property map and falling
       back when the component/property is absent
@@ -3760,9 +3766,12 @@ When an agent does any of the following, update this file in the same slice:
     (`hud_item_icon_for_stack`); the dropped-item billboard and item-frame paths
     still pass `None`, so a dropped/framed trimmed-armor icon falls back to the
     untrimmed model (documented follow-up).
+  - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
+    (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
+    beehive-like full-weight entries from ordinary stack-size weighted entries.
   - The remaining numeric properties (`compass`, `time`, `cooldown`,
-    `crossbow/pull`, `use_cycle`, `use_duration`, `bundle/fullness`, `count`) and
-    the remaining ambient select properties (`context_dimension`, `local_time`,
+    `crossbow/pull`, `use_cycle`, `use_duration`) and the remaining ambient
+    select properties (`context_dimension`, `local_time`,
     `context_entity_type`, `main_hand`) still collapse to the fallback/first entry
     because their value needs ambient `ClientLevel` / `ItemOwner` / use-tick
     context the GUI icon resolver does not yet receive. `minecraft:component`
