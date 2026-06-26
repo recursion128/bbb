@@ -218,10 +218,13 @@ fn squid_textured_mesh_uses_vanilla_geometry_and_variant_texture() {
 fn squid_textured_mesh_swims_its_tentacles() {
     let (atlas, _) = build_entity_model_texture_atlas(&squid_texture_images()).unwrap();
     let base = EntityModelInstance::squid(813, [0.0, 64.0, 0.0], 0.0, false, false);
-    let rest = entity_model_textured_mesh(&[base], &atlas);
-    let swept = entity_model_textured_mesh(&[base.with_squid_tentacle_angle(0.8)], &atlas);
-    assert_eq!(rest.vertices.len(), swept.vertices.len());
-    assert_ne!(rest.vertices, swept.vertices);
+    let rest = entity_model_textured_meshes(&[base], &atlas);
+    assert_squid_submission(&rest, base, SQUID_TEXTURE_REF, false);
+    let swept_instance = base.with_squid_tentacle_angle(0.8);
+    let swept = entity_model_textured_meshes(&[swept_instance], &atlas);
+    assert_squid_submission(&swept, swept_instance, SQUID_TEXTURE_REF, false);
+    assert_eq!(rest.cutout.vertices.len(), swept.cutout.vertices.len());
+    assert_ne!(rest.cutout.vertices, swept.cutout.vertices);
 }
 
 #[test]
