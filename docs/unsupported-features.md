@@ -1451,14 +1451,15 @@ When an agent does any of the following, update this file in the same slice:
       projection through the server-sent `minecraft:pig_variant` registry
       order, official adult/baby variant texture references, vanilla fallback
       to temperate when no variant metadata is present, texture-backed base
-      layer pass emission, adult/baby/cold model-layer selection, and official
+      layer pass emission, adult/baby/cold model-layer selection, official
       PNG atlas upload/bind/sample path, and the vanilla
-      `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part. The adult
-      pig saddle equipment layer is implemented from `EquipmentSlot.SADDLE`
+      `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part plus the
+      standard diagonal leg walk swing on adult, baby, warm, and cold models.
+      The adult pig saddle equipment layer is implemented from `EquipmentSlot.SADDLE`
       through the default item equipment-slot map, using vanilla `PIG_SADDLE` /
       `PigModel.createBodyLayer(CubeDeformation(0.5F))` and
       `textures/entity/equipment/pig_saddle/saddle.png`; baby pigs intentionally
-      skip it because vanilla provides no baby saddle model. Boost/ridden/leg
+      skip it because vanilla provides no baby saddle model. Boost/ridden
       animation, variant sound metadata, custom/datapack pig variant asset
       decoding, and lighting remain unsupported
     - cow entities as renderer-owned vanilla 26.1 `CowModel`, `WarmCowModel`,
