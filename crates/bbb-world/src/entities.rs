@@ -881,6 +881,10 @@ pub struct EntityModelSourceState {
     pub legs_armor_dye: Option<i32>,
     #[serde(default)]
     pub feet_armor_dye: Option<i32>,
+    /// Vanilla `PigRenderState.saddle`: true when a pig carries a non-empty saddle item in
+    /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
+    #[serde(default)]
+    pub pig_saddle: bool,
     /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
     /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
     /// other entity.
@@ -1181,6 +1185,7 @@ impl WorldStore {
                     target.position,
                     partial_ticks,
                     &self.default_item_armor_materials,
+                    &self.default_item_equipment_slots,
                 )?;
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))

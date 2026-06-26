@@ -552,6 +552,10 @@ entity_render_state! {
     (with_chest_armor_dye) chest_armor_dye: Option<u32> = None;
     (with_legs_armor_dye) legs_armor_dye: Option<u32> = None;
     (with_feet_armor_dye) feet_armor_dye: Option<u32> = None;
+    /// Vanilla `PigRenderState.saddle`: the item in `EquipmentSlot.SADDLE`. A non-empty saddle item
+    /// renders the adult `PigModel.createBodyLayer(CubeDeformation(0.5F))` equipment layer over the
+    /// pig body. Babies do not render this layer because vanilla supplies no baby saddle model.
+    (with_pig_saddle) pig_saddle: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -1998,6 +2002,7 @@ mod tests {
                 chest_armor_dye: None,
                 legs_armor_dye: None,
                 feet_armor_dye: None,
+                pig_saddle: false,
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,

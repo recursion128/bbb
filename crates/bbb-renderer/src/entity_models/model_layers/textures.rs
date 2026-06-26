@@ -903,6 +903,12 @@ pub(in crate::entity_models) const PIG_COLD_BABY_TEXTURE_REF: EntityModelTexture
         size: [32, 32],
     };
 
+pub(in crate::entity_models) const PIG_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/pig_saddle/saddle.png",
+        size: [64, 64],
+    };
+
 pub(in crate::entity_models) const PIG_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 6] = [
     PIG_TEMPERATE_TEXTURE_REF,
     PIG_TEMPERATE_BABY_TEXTURE_REF,
@@ -1410,7 +1416,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 465] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 466] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1531,6 +1537,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PIG_WARM_BABY_TEXTURE_REF,
     PIG_COLD_TEXTURE_REF,
     PIG_COLD_BABY_TEXTURE_REF,
+    PIG_SADDLE_TEXTURE_REF,
     COW_TEMPERATE_TEXTURE_REF,
     COW_TEMPERATE_BABY_TEXTURE_REF,
     COW_WARM_TEXTURE_REF,

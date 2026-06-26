@@ -1055,6 +1055,85 @@ fn entity_model_sources_project_worn_armor_dye_colors() {
 }
 
 #[test]
+fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
+    use crate::ItemEquipmentSlot;
+    use std::collections::BTreeMap;
+
+    const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const SADDLE_ITEM_ID: i32 = 820;
+    const PLAIN_ITEM_ID: i32 = 821;
+
+    fn stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+    fn pig_saddle(store: &WorldStore, entity_id: i32) -> bool {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .pig_saddle
+    }
+
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        60,
+        VANILLA_ENTITY_TYPE_PIG_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        61,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert!(!pig_saddle(&store, 60));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 60,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert!(pig_saddle(&store, 60));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 61,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert!(!pig_saddle(&store, 61));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 60,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(PLAIN_ITEM_ID, 1),
+        }],
+    }));
+    assert!(!pig_saddle(&store, 60));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 60,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: ItemStackSummary::empty(),
+        }],
+    }));
+    assert!(!pig_saddle(&store, 60));
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid

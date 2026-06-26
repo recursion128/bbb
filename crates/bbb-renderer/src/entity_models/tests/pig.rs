@@ -275,10 +275,20 @@ fn pig_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_PIG, "minecraft:pig#main");
     assert_eq!(MODEL_LAYER_PIG_BABY, "minecraft:pig_baby#main");
     assert_eq!(MODEL_LAYER_COLD_PIG, "minecraft:cold_pig#main");
+    assert_eq!(MODEL_LAYER_PIG_SADDLE, "minecraft:pig#saddle");
     assert_eq!(ADULT_PIG_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
     assert_eq!(ADULT_PIG_HEAD[0].tex, [0.0, 0.0]);
     assert_eq!(ADULT_PIG_HEAD[1].tex, [16.0, 16.0]);
     assert_eq!(ADULT_PIG_BODY[0].tex, [28.0, 8.0]);
+    assert_eq!(PIG_SADDLE_HEAD[0].min, [-4.5, -4.5, -8.5]);
+    assert_eq!(PIG_SADDLE_HEAD[0].size, [9.0, 9.0, 9.0]);
+    assert_eq!(PIG_SADDLE_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(PIG_SADDLE_BODY[0].min, [-5.5, -10.5, -7.5]);
+    assert_eq!(PIG_SADDLE_BODY[0].size, [11.0, 17.0, 9.0]);
+    assert_eq!(PIG_SADDLE_BODY[0].uv_size, [10.0, 16.0, 8.0]);
+    assert_eq!(PIG_SADDLE_LEG[0].min, [-2.5, -0.5, -2.5]);
+    assert_eq!(PIG_SADDLE_LEG[0].size, [5.0, 7.0, 5.0]);
+    assert_eq!(PIG_SADDLE_LEG[0].uv_size, [4.0, 6.0, 4.0]);
     // The cold body inflates the geometry while the UV box stays the base size.
     assert_eq!(COLD_PIG_BODY[1].size, [11.0, 17.0, 9.0]);
     assert_eq!(COLD_PIG_BODY[1].uv_size, [10.0, 16.0, 8.0]);
@@ -358,6 +368,54 @@ fn pig_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     let (min, max) = textured_mesh_extents(&mesh);
     assert!(max[0] - min[0] > 2.0);
     assert_close3([min[1], max[1], max[2] - min[2]], [64.001, 65.001, 1.5]);
+}
+
+#[test]
+fn pig_saddle_layer_renders_for_adults_only() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        PIG_TEMPERATE_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF,
+        PIG_TEMPERATE_BABY_TEXTURE_REF,
+    ]))
+    .unwrap();
+    let bare = entity_model_textured_mesh(
+        &[EntityModelInstance::pig(
+            521,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PigModelVariant::Temperate,
+            false,
+        )],
+        &atlas,
+    );
+    let saddled = entity_model_textured_mesh(
+        &[EntityModelInstance::pig(
+            522,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PigModelVariant::Temperate,
+            false,
+        )
+        .with_pig_saddle(true)],
+        &atlas,
+    );
+    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 42);
+    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 168);
+    assert_close2(saddled.vertices[168].uv, [16.0 / 64.0, 64.0 / 160.0]);
+    let (bare_min, bare_max) = textured_mesh_extents(&bare);
+    let (saddle_min, saddle_max) = textured_mesh_extents(&saddled);
+    assert!(saddle_min[0] < bare_min[0]);
+    assert!(saddle_max[0] > bare_max[0]);
+
+    let baby = entity_model_textured_mesh(
+        &[
+            EntityModelInstance::pig(523, [0.0, 64.0, 0.0], 0.0, PigModelVariant::Temperate, true)
+                .with_pig_saddle(true),
+        ],
+        &atlas,
+    );
+    assert_eq!(baby.cutout_faces, 42);
+    assert_eq!(baby.vertices.len(), 168);
 }
 
 #[test]
@@ -462,7 +520,11 @@ fn pig_textured_mesh_swings_its_legs_when_walking() {
 }
 
 fn pig_texture_images() -> Vec<EntityModelTextureImage> {
-    pig_entity_texture_refs()
+    texture_images(pig_entity_texture_refs())
+}
+
+fn texture_images(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
         .iter()
         .enumerate()
         .map(|(index, texture)| {

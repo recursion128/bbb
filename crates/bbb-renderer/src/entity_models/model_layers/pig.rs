@@ -8,6 +8,29 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 pub(in crate::entity_models) const MODEL_LAYER_PIG: &str = "minecraft:pig#main";
 pub(in crate::entity_models) const MODEL_LAYER_PIG_BABY: &str = "minecraft:pig_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_COLD_PIG: &str = "minecraft:cold_pig#main";
+#[cfg(test)]
+pub(in crate::entity_models) const MODEL_LAYER_PIG_SADDLE: &str = "minecraft:pig#saddle";
+
+const PIG_SADDLE_DEFORMATION: f32 = 0.5;
+
+const fn pig_saddle_cube(cube: ModelCube) -> ModelCube {
+    ModelCube::new(
+        [
+            cube.min[0] - PIG_SADDLE_DEFORMATION,
+            cube.min[1] - PIG_SADDLE_DEFORMATION,
+            cube.min[2] - PIG_SADDLE_DEFORMATION,
+        ],
+        [
+            cube.size[0] + 2.0 * PIG_SADDLE_DEFORMATION,
+            cube.size[1] + 2.0 * PIG_SADDLE_DEFORMATION,
+            cube.size[2] + 2.0 * PIG_SADDLE_DEFORMATION,
+        ],
+        PIG_PINK,
+        cube.uv_size,
+        cube.tex,
+        cube.mirror,
+    )
+}
 
 // Vanilla 26.1 PigModel.createBodyLayer(CubeDeformation.NONE). Each cube carries both render paths'
 // data: the colored debug tint and the textured `uv_size` / `texOffs` / `mirror`.
@@ -68,6 +91,16 @@ pub(in crate::entity_models) const ADULT_PIG_LEG: [ModelCube; 1] = [ModelCube::n
     [0.0, 16.0],
     false,
 )];
+
+// Vanilla 26.1 ModelLayers.PIG_SADDLE = PigModel.createBodyLayer(CubeDeformation(0.5F)).
+pub(in crate::entity_models) const PIG_SADDLE_HEAD: [ModelCube; 2] = [
+    pig_saddle_cube(ADULT_PIG_HEAD[0]),
+    pig_saddle_cube(ADULT_PIG_HEAD[1]),
+];
+pub(in crate::entity_models) const PIG_SADDLE_BODY: [ModelCube; 1] =
+    [pig_saddle_cube(ADULT_PIG_BODY[0])];
+pub(in crate::entity_models) const PIG_SADDLE_LEG: [ModelCube; 1] =
+    [pig_saddle_cube(ADULT_PIG_LEG[0])];
 
 pub(in crate::entity_models) const BABY_PIG_BODY: [ModelCube; 1] = [ModelCube::new(
     [-3.5, -3.0, -4.5],
@@ -222,6 +255,26 @@ fn pig_tree(variant: PigModelVariant, baby: bool) -> ModelPart {
     ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
 }
 
+fn pig_saddle_tree() -> ModelPart {
+    let mut children = vec![
+        (
+            "head",
+            ModelPart::leaf(ADULT_HEAD_POSE, PIG_SADDLE_HEAD.to_vec()),
+        ),
+        (
+            "body",
+            ModelPart::leaf(ADULT_BODY_POSE, PIG_SADDLE_BODY.to_vec()),
+        ),
+    ];
+    children.extend(vec![
+        ("right_hind_leg", leg([-3.0, 18.0, 7.0], &PIG_SADDLE_LEG)),
+        ("left_hind_leg", leg([3.0, 18.0, 7.0], &PIG_SADDLE_LEG)),
+        ("right_front_leg", leg([-3.0, 18.0, -5.0], &PIG_SADDLE_LEG)),
+        ("left_front_leg", leg([3.0, 18.0, -5.0], &PIG_SADDLE_LEG)),
+    ]);
+    ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
+
 /// Mutable pig model, mirroring vanilla `PigModel` (a `QuadrupedModel`). The unified tree is built
 /// for the selected `variant`/`baby` layout with the vanilla child names. `setup_anim` looks the
 /// head ([`apply_head_look`] on `head`) and swings the four legs ([`apply_quadruped_leg_swing`]).
@@ -233,6 +286,12 @@ impl PigModel {
     pub(in crate::entity_models) fn new(variant: PigModelVariant, baby: bool) -> Self {
         Self {
             root: pig_tree(variant, baby),
+        }
+    }
+
+    pub(in crate::entity_models) fn new_saddle() -> Self {
+        Self {
+            root: pig_saddle_tree(),
         }
     }
 }

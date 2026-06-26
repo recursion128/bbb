@@ -1258,9 +1258,14 @@ When an agent does any of the following, update this file in the same slice:
       to temperate when no variant metadata is present, texture-backed base
       layer pass emission, adult/baby/cold model-layer selection, and official
       PNG atlas upload/bind/sample path, and the vanilla
-      `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part; saddle
-      equipment layer, boost/ridden/leg animation, variant sound metadata,
-      custom/datapack pig variant asset decoding, and lighting remain unsupported
+      `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part. The adult
+      pig saddle equipment layer is implemented from `EquipmentSlot.SADDLE`
+      through the default item equipment-slot map, using vanilla `PIG_SADDLE` /
+      `PigModel.createBodyLayer(CubeDeformation(0.5F))` and
+      `textures/entity/equipment/pig_saddle/saddle.png`; baby pigs intentionally
+      skip it because vanilla provides no baby saddle model. Boost/ridden/leg
+      animation, variant sound metadata, custom/datapack pig variant asset
+      decoding, and lighting remain unsupported
     - cow entities as renderer-owned vanilla 26.1 `CowModel`, `WarmCowModel`,
       `ColdCowModel`, and `BabyCowModel` body-layer geometry from `CowModel`,
       `WarmCowModel`, `ColdCowModel`, `BabyCowModel`, `CowRenderer`,
@@ -3109,7 +3114,7 @@ When an agent does any of the following, update this file in the same slice:
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
-    variant asset presentation, pig saddle presentation, sheep
+    variant asset presentation, sheep
     head-look-pitch presentation,
     wolf variant/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask

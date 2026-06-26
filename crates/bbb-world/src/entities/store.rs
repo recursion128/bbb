@@ -43,10 +43,14 @@ use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
+use crate::ItemEquipmentSlot;
 
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
 const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
+
+/// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
+const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 
 /// Vanilla `LivingEntity.DATA_LIVING_ENTITY_FLAGS` data id (8): the byte holding
 /// the using-item / off-hand / spin-attack flags.
@@ -497,6 +501,7 @@ impl EntityStore {
         position: super::EntityVec3,
         partial_ticks: f32,
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
+        equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -530,6 +535,31 @@ impl EntityStore {
                 .item
                 .component_patch
                 .dyed_color
+        };
+        // Vanilla `PigRenderer.extractRenderState`: copies `EquipmentSlot.SADDLE` into
+        // `PigRenderState.saddle`; `SimpleEquipmentLayer` renders only a non-empty equippable saddle
+        // item. bbb resolves the vanilla default saddle item from the item equipment-slot map.
+        let pig_saddle = || -> bool {
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_PIG_ID {
+                return false;
+            }
+            let Some(equipment) = equipment.as_ref() else {
+                return false;
+            };
+            let Some(item) = equipment
+                .equipment
+                .iter()
+                .find(|update| update.slot == ProtocolEquipmentSlot::Saddle)
+                .map(|update| &update.item)
+            else {
+                return false;
+            };
+            if item.count <= 0 {
+                return false;
+            }
+            item.item_id
+                .and_then(|item_id| equipment_slots.get(&item_id).copied())
+                == Some(ItemEquipmentSlot::Saddle)
         };
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
@@ -982,6 +1012,7 @@ impl EntityStore {
             chest_armor_dye: armor_dye(ProtocolEquipmentSlot::Chest),
             legs_armor_dye: armor_dye(ProtocolEquipmentSlot::Legs),
             feet_armor_dye: armor_dye(ProtocolEquipmentSlot::Feet),
+            pig_saddle: pig_saddle(),
             guardian_beam: self.guardian_beam_source(
                 identity.entity_type_id,
                 identity.data,

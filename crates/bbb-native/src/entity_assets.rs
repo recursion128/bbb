@@ -215,6 +215,7 @@ mod tests {
                 "textures/entity/pig/pig_warm_baby.png",
                 "textures/entity/pig/pig_cold.png",
                 "textures/entity/pig/pig_cold_baby.png",
+                "textures/entity/equipment/pig_saddle/saddle.png",
                 "textures/entity/cow/cow_temperate.png",
                 "textures/entity/cow/cow_temperate_baby.png",
                 "textures/entity/cow/cow_warm.png",

@@ -1233,6 +1233,7 @@ fn entity_model_instance(
         .with_chest_armor_dye(armor_dye(source.chest_armor_dye))
         .with_legs_armor_dye(armor_dye(source.legs_armor_dye))
         .with_feet_armor_dye(armor_dye(source.feet_armor_dye))
+        .with_pig_saddle(source.pig_saddle)
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -3313,7 +3314,7 @@ mod tests {
         ItemStackSummary, PlayLogin, PlayTime, RegistryTags, SetCamera, SetEntityData,
         SetEquipment, TagNetworkPayload, UpdateAttributes, UpdateTags, Vec3d,
     };
-    use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
+    use bbb_world::{EntityPickBoundsState, EntityVec3, ItemEquipmentSlot, RegistryPacketEntry};
     use uuid::Uuid;
 
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
@@ -6538,6 +6539,49 @@ mod tests {
                 1.0,
             )
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_pig_saddle_render_state() {
+        const SADDLE_ITEM_ID: i32 = 740;
+
+        let saddle = |entity_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: ItemStackSummary {
+                    item_id: Some(SADDLE_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let pig_saddle = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .pig_saddle
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            110,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_equipment(saddle(110)));
+        assert!(
+            !pig_saddle(&world, 110),
+            "without the item registry's saddle-slot map, a raw item id is not enough"
+        );
+
+        world.set_default_item_equipment_slots(std::collections::BTreeMap::from([(
+            SADDLE_ITEM_ID,
+            ItemEquipmentSlot::Saddle,
+        )]));
+        assert!(pig_saddle(&world, 110));
     }
 
     #[test]
