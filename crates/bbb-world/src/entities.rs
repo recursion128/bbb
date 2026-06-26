@@ -325,6 +325,13 @@ pub struct EntityPickTargetState {
     pub bounds: EntityPickBoundsState,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityBlockModelState {
+    pub name: String,
+    #[serde(default)]
+    pub properties: BTreeMap<String, String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityModelSourceState {
     pub entity_id: i32,
@@ -361,6 +368,12 @@ pub struct EntityModelSourceState {
     /// `false` for every other entity.
     #[serde(default)]
     pub enderman_carrying: bool,
+    /// Vanilla `EndermanRenderState.carriedBlock`: the concrete block state carried by the
+    /// enderman, resolved from synced `DATA_CARRY_STATE` through the vanilla block-state registry so
+    /// native can bake the matching block model. `None` for no carried block, every non-enderman, or an
+    /// unknown block-state id.
+    #[serde(default)]
+    pub enderman_carried_block: Option<EntityBlockModelState>,
     /// Vanilla `EndermanRenderState.isCreepy` (`Enderman.isCreepy`, the synced
     /// `DATA_CREEPY`): the enderman is in its aggressive staring state, which
     /// `EndermanModel.setupAnim` shows by dropping the head `y -= 5` and raising the hat
@@ -1265,6 +1278,7 @@ impl WorldStore {
                     target.entity_id,
                     target.position,
                     partial_ticks,
+                    &self.registries,
                     &self.default_item_armor_materials,
                     &self.default_item_equipment_slots,
                     &self.default_llama_body_decor_colors,
@@ -1300,6 +1314,16 @@ impl WorldStore {
                 Some(source)
             })
             .collect()
+    }
+
+    pub fn enderman_carried_block_state(&self, entity_id: i32) -> Option<EntityBlockModelState> {
+        let state_id = self.entities.enderman_carried_block_state_id(entity_id)??;
+        self.registries
+            .block_state(state_id)
+            .map(|state| EntityBlockModelState {
+                name: state.name.clone(),
+                properties: state.properties.clone(),
+            })
     }
 
     /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player

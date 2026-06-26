@@ -14,10 +14,10 @@ use bbb_protocol::packets::ItemStackSummary;
 
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
-    ArmorMaterialKind, EntityAttributes, EntityCameraPoseState, EntityClientAnimations,
-    EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash,
-    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
-    EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
+    ArmorMaterialKind, EntityAttributes, EntityBlockModelState, EntityCameraPoseState,
+    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
     ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
     VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
@@ -48,6 +48,7 @@ use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
+use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
 
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
@@ -380,10 +381,10 @@ impl EntityStore {
         )
     }
 
-    /// Whether the `OPTIONAL_BLOCK_STATE` accessor at `data_id` carries a present block
-    /// (the protocol decodes id `0` to `None`), mirroring vanilla `Optional::isPresent`.
-    /// `false` when absent or never synced.
-    fn metadata_optional_block_state_present(&self, id: i32, data_id: u8) -> Option<bool> {
+    /// The block-state id carried by an `OPTIONAL_BLOCK_STATE` accessor at `data_id`. The
+    /// protocol decodes wire id `0` to `None`, mirroring vanilla's empty optional; an absent or
+    /// wrong-typed metadata entry also defaults to `None`.
+    fn metadata_optional_block_state(&self, id: i32, data_id: u8) -> Option<Option<i32>> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         Some(
@@ -392,11 +393,19 @@ impl EntityStore {
                 .iter()
                 .find(|value| value.data_id == data_id)
                 .and_then(|value| match &value.value {
-                    EntityDataValueKind::OptionalBlockState(state) => Some(state.is_some()),
+                    EntityDataValueKind::OptionalBlockState(state) => Some(*state),
                     _ => None,
                 })
-                .unwrap_or(false),
+                .unwrap_or(None),
         )
+    }
+
+    pub(crate) fn enderman_carried_block_state_id(&self, id: i32) -> Option<Option<i32>> {
+        let identity = self.identity(id)?;
+        if !vanilla_is_enderman(identity.entity_type_id) {
+            return Some(None);
+        }
+        self.metadata_optional_block_state(id, VANILLA_ENDERMAN_CARRY_STATE_DATA_ID)
     }
 
     pub(crate) fn pose(&self, id: i32) -> Option<i32> {
@@ -529,6 +538,7 @@ impl EntityStore {
         id: i32,
         position: super::EntityVec3,
         partial_ticks: f32,
+        registries: &RegistrySet,
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
         llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
@@ -689,10 +699,19 @@ impl EntityStore {
         // synced `DATA_CREEPY`) drops the head / raises the hat. Only the enderman defines
         // these accessors, so the projections are gated to it and default off otherwise.
         let is_enderman = vanilla_is_enderman(identity.entity_type_id);
-        let enderman_carrying = is_enderman
-            && self
-                .metadata_optional_block_state_present(id, VANILLA_ENDERMAN_CARRY_STATE_DATA_ID)
-                .unwrap_or(false);
+        let enderman_carried_block_state_id = if is_enderman {
+            self.metadata_optional_block_state(id, VANILLA_ENDERMAN_CARRY_STATE_DATA_ID)
+                .unwrap_or(None)
+        } else {
+            None
+        };
+        let enderman_carrying = enderman_carried_block_state_id.is_some();
+        let enderman_carried_block = enderman_carried_block_state_id
+            .and_then(|state_id| registries.block_state(state_id))
+            .map(|state| EntityBlockModelState {
+                name: state.name.clone(),
+                properties: state.properties.clone(),
+            });
         let enderman_creepy = is_enderman
             && self
                 .metadata_bool(id, VANILLA_ENDERMAN_CREEPY_DATA_ID, false)
@@ -844,6 +863,7 @@ impl EntityStore {
             is_fully_frozen,
             is_aggressive,
             enderman_carrying,
+            enderman_carried_block,
             enderman_creepy,
             bat_resting,
             bee_has_stinger,

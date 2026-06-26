@@ -11,6 +11,29 @@ use super::model::EntityModel;
 use super::model_layers::{CowModel, IronGolemModel, SnowGolemModel};
 use super::{CowModelVariant, EntityModelInstance, EntityModelKind, MooshroomVariant};
 
+/// World transform for vanilla `CarriedBlockLayer` on endermen.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla applies this
+/// layer from the entity model root, not from the arms: translate `(0, 0.6875, -0.75)`, rotate X 20°,
+/// rotate Y 45°, translate `(0.25, 0.1875, 0.25)`, scale `(-0.5, -0.5, 0.5)`, then rotate Y 90°.
+pub fn enderman_carried_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::Enderman)
+        || !instance.render_state.enderman_carrying
+        || instance.render_state.invisible
+    {
+        return None;
+    }
+    Some(
+        entity_model_root_transform(*instance)
+            * Mat4::from_translation(Vec3::new(0.0, 0.6875, -0.75))
+            * Mat4::from_rotation_x(20.0_f32.to_radians())
+            * Mat4::from_rotation_y(45.0_f32.to_radians())
+            * Mat4::from_translation(Vec3::new(0.25, 0.1875, 0.25))
+            * Mat4::from_scale(Vec3::new(-0.5, -0.5, 0.5))
+            * Mat4::from_rotation_y(PI / 2.0),
+    )
+}
+
 /// World transform for vanilla `IronGolemFlowerLayer`'s held poppy block model.
 ///
 /// The returned matrix expects block quads normalized to the `0..1` unit cube, matching
@@ -131,6 +154,42 @@ mod tests {
             [0.0, 64.0, 0.0],
             0.0,
         )
+    }
+
+    #[test]
+    fn enderman_carried_block_is_gated_on_kind_visibility_and_carry_state() {
+        let enderman =
+            EntityModelInstance::enderman(41, [0.0, 64.0, 0.0], 0.0).with_enderman_carrying(true);
+        assert!(enderman_carried_block_transform(&enderman).is_some());
+
+        let empty = enderman.with_enderman_carrying(false);
+        assert!(enderman_carried_block_transform(&empty).is_none());
+
+        let invisible = enderman.with_invisible(true);
+        assert!(enderman_carried_block_transform(&invisible).is_none());
+
+        let creeper =
+            EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+                .with_enderman_carrying(true);
+        assert!(enderman_carried_block_transform(&creeper).is_none());
+    }
+
+    #[test]
+    fn enderman_carried_block_follows_model_root_rotation() {
+        let base = enderman_carried_block_transform(
+            &EntityModelInstance::enderman(41, [0.0, 64.0, 0.0], 0.0).with_enderman_carrying(true),
+        )
+        .unwrap();
+        let turned = enderman_carried_block_transform(
+            &EntityModelInstance::enderman(41, [0.0, 64.0, 0.0], 90.0).with_enderman_carrying(true),
+        )
+        .unwrap();
+        let base_center = base.transform_point3(Vec3::splat(0.5));
+        let turned_center = turned.transform_point3(Vec3::splat(0.5));
+
+        assert!(base_center.is_finite());
+        assert!(turned_center.is_finite());
+        assert_ne!(base_center, turned_center);
     }
 
     #[test]

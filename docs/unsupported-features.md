@@ -682,8 +682,9 @@ When an agent does any of the following, update this file in the same slice:
     out front), and the creepy stare drops the head `y -= 5` while raising its hat child
     `y += 5` (`ENDERMAN_HEAD_CHILDREN_CREEPY`, so the outer head layer keeps its world
     position as the inner head opens downward) — both gated on the projected
-    `enderman_carrying`/`enderman_creepy`. Only the held block's own block-model render and
-    the creepy render jitter stay deferred. The iron golem
+    `enderman_carrying`/`enderman_creepy`. The held block's own block-model render is
+    implemented through the entity-attached block-model path; only the creepy render jitter stays
+    deferred. The iron golem
     (`emit_iron_golem_model` colored and `emit_iron_golem_textured_model` textured) uses
     `iron_golem_walk_pose`: `IronGolemModel` is a custom `EntityModel` whose
     `setupAnim` swings both the legs (`±1.5 * Mth.triangleWave(pos, 13) * speed`) and —
@@ -1787,8 +1788,9 @@ When an agent does any of the following, update this file in the same slice:
       carried-block arm pose (`enderman_carried_arm_pose`, both arms out front when
       the projected `enderman_carrying` is set) and the creepy head/hat shift
       (head `y -= 5` / hat `y += 5` when `enderman_creepy` is set) (colored and
-      textured); the held block's own block-model render, the creepy render
-      jitter, and lighting remain unsupported
+      textured); the held block's own block-model render is implemented through
+      `CarriedBlockLayer`'s vanilla root transform, while the creepy render
+      jitter and lighting remain unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official
@@ -3194,8 +3196,8 @@ When an agent does any of the following, update this file in the same slice:
     skeleton armor, held-item, and animation presentation,
     creeper swelling/powered overlays,
     spider walk-animation presentation (the 180-degree death flip is implemented),
-    enderman held-block block-model render and creepy render jitter (the
-    carried-block arm pose and creepy head/hat shift are implemented),
+    enderman creepy render jitter (the carried-block arm pose, held-block block-model render,
+    and creepy head/hat shift are implemented),
     iron golem body-wobble presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity

@@ -6,14 +6,17 @@
 //! GROUND display transform, and a stack of items renders as the vanilla cluster of `1..=5` jittered
 //! copies (`submitMultipleFromCount`).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, BTreeSet},
+};
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh, humanoid_hand_attach_transform,
-    iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
-    snow_golem_head_block_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad,
-    MooshroomVariant,
+    bake_generated_item_quads, bake_item_model_mesh, enderman_carried_block_transform,
+    humanoid_hand_attach_transform, iron_golem_flower_block_transform,
+    mooshroom_mushroom_block_transforms, snow_golem_head_block_transform, EntityModelInstance,
+    ItemModelMesh, ItemModelQuad, MooshroomVariant,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -56,7 +59,7 @@ pub(crate) struct DroppedItemModels {
 }
 
 struct EntityBlockAttachment {
-    block_id: &'static str,
+    block_id: Cow<'static, str>,
     properties: BTreeMap<String, String>,
     transform: Mat4,
 }
@@ -66,9 +69,10 @@ struct EntityBlockAttachment {
 /// the block model through the terrain atlas state.
 pub(crate) fn entity_block_models(
     instances: &[EntityModelInstance],
+    world: &WorldStore,
     terrain_textures: &TerrainTextureState,
 ) -> Vec<ItemModelMesh> {
-    let attachments = entity_block_attachments(instances);
+    let attachments = entity_block_attachments(instances, world);
     if attachments.is_empty() {
         return Vec::new();
     }
@@ -76,7 +80,7 @@ pub(crate) fn entity_block_models(
     let mut meshes = Vec::new();
     for attachment in attachments {
         let Some(quads) =
-            terrain_textures.block_item_quads(attachment.block_id, &attachment.properties)
+            terrain_textures.block_item_quads(attachment.block_id.as_ref(), &attachment.properties)
         else {
             continue;
         };
@@ -87,27 +91,39 @@ pub(crate) fn entity_block_models(
     meshes
 }
 
-fn entity_block_attachments(instances: &[EntityModelInstance]) -> Vec<EntityBlockAttachment> {
+fn entity_block_attachments(
+    instances: &[EntityModelInstance],
+    world: &WorldStore,
+) -> Vec<EntityBlockAttachment> {
     let mut attachments = Vec::new();
     for instance in instances {
         if let Some(transform) = snow_golem_head_block_transform(instance) {
             attachments.push(EntityBlockAttachment {
-                block_id: CARVED_PUMPKIN_BLOCK_ID,
+                block_id: Cow::Borrowed(CARVED_PUMPKIN_BLOCK_ID),
                 properties: carved_pumpkin_default_properties(),
                 transform,
             });
         }
         if let Some(transform) = iron_golem_flower_block_transform(instance) {
             attachments.push(EntityBlockAttachment {
-                block_id: POPPY_BLOCK_ID,
+                block_id: Cow::Borrowed(POPPY_BLOCK_ID),
                 properties: poppy_default_properties(),
                 transform,
             });
         }
+        if let Some(transform) = enderman_carried_block_transform(instance) {
+            if let Some(block_state) = world.enderman_carried_block_state(instance.entity_id) {
+                attachments.push(EntityBlockAttachment {
+                    block_id: Cow::Owned(block_state.name),
+                    properties: block_state.properties,
+                    transform,
+                });
+            }
+        }
         if let Some((variant, transforms)) = mooshroom_mushroom_block_transforms(instance) {
             for transform in transforms {
                 attachments.push(EntityBlockAttachment {
-                    block_id: mooshroom_mushroom_block_id(variant),
+                    block_id: Cow::Borrowed(mooshroom_mushroom_block_id(variant)),
                     properties: mooshroom_mushroom_default_properties(),
                     transform,
                 });
@@ -544,6 +560,15 @@ impl LegacyRandom {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::{
+        AddEntity, EntityDataValue, EntityDataValueKind, SetEntityData, Vec3d,
+    };
+    use uuid::Uuid;
+
+    const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
+    const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
+    const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
+    const GRASS_BLOCK_STATE_ID: i32 = 9;
 
     fn unit_block_quads() -> Vec<ItemModelQuad> {
         // A single full-cube face spanning the 0..16 Z range, enough to exercise depth + transforms.
@@ -575,6 +600,51 @@ mod tests {
         }]
     }
 
+    fn protocol_add_entity(id: i32, entity_type_id: i32) -> AddEntity {
+        AddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678 + id as u128),
+            entity_type_id,
+            position: Vec3d {
+                x: 0.0,
+                y: 64.0,
+                z: 0.0,
+            },
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        }
+    }
+
+    fn protocol_optional_block_state_data(
+        data_id: u8,
+        block_state: Option<i32>,
+    ) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+            value: EntityDataValueKind::OptionalBlockState(block_state),
+        }
+    }
+
+    fn world_with_enderman_carried_grass_block(entity_id: i32) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            entity_id,
+            VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: entity_id,
+            values: vec![protocol_optional_block_state_data(
+                ENDERMAN_CARRY_STATE_DATA_ID,
+                Some(GRASS_BLOCK_STATE_ID),
+            )],
+        }));
+        world
+    }
+
     #[test]
     fn carved_pumpkin_layer_uses_vanilla_default_block_state() {
         assert_eq!(
@@ -603,6 +673,7 @@ mod tests {
 
     #[test]
     fn entity_block_attachments_collect_snow_golem_iron_golem_and_mooshroom_layers() {
+        let world = WorldStore::new();
         let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
             .with_snow_golem_pumpkin(true);
         let iron_golem = EntityModelInstance::iron_golem(74, [1.0, 64.0, 0.0], 0.0)
@@ -611,29 +682,49 @@ mod tests {
         let mooshroom = EntityModelInstance::mooshroom(86, [3.0, 64.0, 0.0], 0.0, false);
         let baby_mooshroom = EntityModelInstance::mooshroom(87, [4.0, 64.0, 0.0], 0.0, true);
 
-        let attachments = entity_block_attachments(&[
-            snow_golem,
-            iron_golem,
-            idle_iron_golem,
-            mooshroom,
-            baby_mooshroom,
-        ]);
+        let attachments = entity_block_attachments(
+            &[
+                snow_golem,
+                iron_golem,
+                idle_iron_golem,
+                mooshroom,
+                baby_mooshroom,
+            ],
+            &world,
+        );
 
         assert_eq!(attachments.len(), 5);
-        assert_eq!(attachments[0].block_id, CARVED_PUMPKIN_BLOCK_ID);
+        assert_eq!(attachments[0].block_id.as_ref(), CARVED_PUMPKIN_BLOCK_ID);
         assert_eq!(
             attachments[0].properties,
             carved_pumpkin_default_properties()
         );
-        assert_eq!(attachments[1].block_id, POPPY_BLOCK_ID);
+        assert_eq!(attachments[1].block_id.as_ref(), POPPY_BLOCK_ID);
         assert_eq!(attachments[1].properties, poppy_default_properties());
         for attachment in &attachments[2..] {
-            assert_eq!(attachment.block_id, RED_MUSHROOM_BLOCK_ID);
+            assert_eq!(attachment.block_id.as_ref(), RED_MUSHROOM_BLOCK_ID);
             assert_eq!(
                 attachment.properties,
                 mooshroom_mushroom_default_properties()
             );
         }
+    }
+
+    #[test]
+    fn entity_block_attachments_collect_enderman_carried_block_from_world() {
+        let entity_id = 41;
+        let world = world_with_enderman_carried_grass_block(entity_id);
+        let enderman = EntityModelInstance::enderman(entity_id, [0.0, 64.0, 0.0], 0.0)
+            .with_enderman_carrying(true);
+
+        let attachments = entity_block_attachments(&[enderman], &world);
+
+        assert_eq!(attachments.len(), 1);
+        assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
+        assert_eq!(
+            attachments[0].properties,
+            BTreeMap::from([("snowy".to_string(), "false".to_string())])
+        );
     }
 
     #[test]

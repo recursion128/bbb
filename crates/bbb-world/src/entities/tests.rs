@@ -2475,6 +2475,7 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
     const CREEPY_DATA_ID: u8 = 17;
     const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
     const BOOLEAN_SERIALIZER_ID: i32 = 8;
+    const GRASS_BLOCK_STATE_ID: i32 = 9;
 
     let source = |store: &WorldStore, id: i32| {
         store
@@ -2510,19 +2511,38 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
     // A freshly spawned enderman carries nothing and is not creepy.
     let calm = source(&store, 90);
     assert!(!calm.enderman_carrying);
+    assert_eq!(calm.enderman_carried_block, None);
     assert!(!calm.enderman_creepy);
 
     // A present carried block (non-zero state id → `Some`) poses the arms; `isCreepy` true
-    // drops the head.
-    assert!(set_carry_and_creepy(&mut store, 90, Some(10), true));
+    // drops the head. The carried block's model state resolves through the vanilla block-state registry.
+    assert!(set_carry_and_creepy(
+        &mut store,
+        90,
+        Some(GRASS_BLOCK_STATE_ID),
+        true
+    ));
     let primed = source(&store, 90);
     assert!(primed.enderman_carrying);
+    assert_eq!(
+        primed.enderman_carried_block,
+        Some(EntityBlockModelState {
+            name: "minecraft:grass_block".to_string(),
+            properties: BTreeMap::from([("snowy".to_string(), "false".to_string())]),
+        })
+    );
+    assert_eq!(
+        store.enderman_carried_block_state(90),
+        primed.enderman_carried_block
+    );
     assert!(primed.enderman_creepy);
 
     // Dropping the block (empty optional) and clearing creepy returns to rest.
     assert!(set_carry_and_creepy(&mut store, 90, None, false));
     let rest = source(&store, 90);
     assert!(!rest.enderman_carrying);
+    assert_eq!(rest.enderman_carried_block, None);
+    assert_eq!(store.enderman_carried_block_state(90), None);
     assert!(!rest.enderman_creepy);
 
     // A zombie does not define the enderman accessors, so even if the same data ids arrive
@@ -2531,9 +2551,16 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
         91,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     ));
-    assert!(set_carry_and_creepy(&mut store, 91, Some(10), true));
+    assert!(set_carry_and_creepy(
+        &mut store,
+        91,
+        Some(GRASS_BLOCK_STATE_ID),
+        true
+    ));
     let zombie = source(&store, 91);
     assert!(!zombie.enderman_carrying);
+    assert_eq!(zombie.enderman_carried_block, None);
+    assert_eq!(store.enderman_carried_block_state(91), None);
     assert!(!zombie.enderman_creepy);
 }
 
