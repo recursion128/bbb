@@ -1228,9 +1228,14 @@ When an agent does any of the following, update this file in the same slice:
         skins from profiled fallback skins and can carry a dynamic skin handle,
         the fallback default skin, and the slim/wide model; dynamic player-head
         submissions preserve that handle, though the renderer still samples the
-        fallback until runtime dynamic texture upload exists. Remote
-        profile resolution, downloaded skin textures, loading/error fallback
-        states, and arbitrary dynamic player-skin texture loading remain
+        fallback until runtime dynamic texture upload exists. Renderer now has
+        the vanilla downloaded-skin PNG post-process primitive: it rejects
+        non-PNG and non-64x64/64x32 skins, expands legacy 64x32 skins through
+        `SkinTextureDownloader.processLegacySkin`'s copy rectangles, and applies
+        the opaque-base / Notch transparency alpha rules to produce 64x64 RGBA
+        data for a future dynamic upload. Remote profile resolution, HTTP skin
+        download, memory/disk caching, loading/error fallback states, resolved
+        texture handles, and arbitrary dynamic player-skin texture loading remain
         deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
@@ -1260,7 +1265,7 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel; remote
-        profile resolution, skin PNG download/cache/validation, and arbitrary
+        profile resolution, skin PNG download/cache, and arbitrary
         dynamic profiled-player skin rendering in
         `CustomHeadLayer` / `SkullBlockRenderer`; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the

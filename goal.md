@@ -111,8 +111,9 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
       和 slim/wide model 信息；保持现有默认皮肤 fallback。
    2. 补 `ResolvableProfile` 的异步 profile resolution 与缓存：partial name/UUID
       能解析为完整 profile/properties，失败时保留默认皮肤。
-   3. 补远程 skin PNG 下载、内存/磁盘缓存、尺寸/格式校验，以及 64x32 旧 skin
-      到当前布局的转换。
+   3. IN PROGRESS：renderer 已补下载后 skin PNG 格式/尺寸校验、64x32 legacy skin
+      到 64x64 当前布局的 vanilla `SkinTextureDownloader.processLegacySkin` 转换，以及
+      opaque-base / Notch transparency alpha 规则；还缺远程 skin PNG 下载与内存/磁盘缓存。
    4. IN PROGRESS：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
       dynamic skin handle 和 slim/wide model；还缺 loading/error fallback、resolved texture
       handle 与真实动态纹理采样。

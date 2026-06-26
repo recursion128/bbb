@@ -66,5 +66,6 @@ pub use crate::item_models::{
 pub use crate::particles::{
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
 };
+pub use crate::player_skin::{decode_dynamic_player_skin_png, DynamicPlayerSkinImage};
 pub use crate::renderer::Renderer;
 pub use crate::selection::{SelectionBox, SelectionOutline};

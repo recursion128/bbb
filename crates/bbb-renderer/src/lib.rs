@@ -8,6 +8,7 @@ mod hud;
 mod item_entities;
 mod item_models;
 mod particles;
+mod player_skin;
 mod render;
 mod renderer;
 mod screenshot;
