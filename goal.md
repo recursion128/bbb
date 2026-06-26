@@ -51,13 +51,15 @@ vanilla slim/wide 模型选择（skin 的 `metadata.model=slim`，否则 wide）
 player skin 的 `PlayerSkin.Patch` body；renderer 会把 profiled default/dynamic player head
 按 vanilla `PlayerSkinRenderCache.renderType()` 记录为 `entityTranslucent` submission。
 native/render-state 也已能携带 profile texture URL 派生的 dynamic skin handle、fallback
-默认皮肤和 slim/wide model，submission 会保留 dynamic handle（renderer 暂按 fallback
-贴图绘制）。native 已补 `ResolvableProfile` 的 name/UUID profile resolution
+默认皮肤和 slim/wide model，submission 会保留 dynamic handle；renderer 已补动态
+player skin atlas，`CustomHeadLayer` / `SkullBlockRenderer` 的 Ready `player_head`
+会改采样上传后的动态 skin，Loading/Failed 仍采样 fallback。native 已补
+`ResolvableProfile` 的 name/UUID profile resolution
 缓存 primitive、reqwest/rustls HTTP fetcher，以及显式启用的异步 profile resolution
 worker；custom-head player head 投影会在 pending/failed 时保留默认 fallback，完成后使用
 resolved profile/properties。native 也已补 skin PNG 异步下载队列，成功结果先保留为待上传
-数据、失败回写 failed fallback。剩余的是 GPU 动态纹理上传、成功后 Ready 回写，
-以及任意动态纹理加载。
+数据、失败回写 failed fallback；主循环会在 renderer 上传成功后回写 Ready。剩余的是
+玩家实体本体、cape、elytra 等任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -126,12 +128,14 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
       skin PNG cache（disk hit 优先、miss 后 fetch/write/process）和 reqwest/rustls HTTP
       fetcher；main 显式启用 skin cache dir 和异步下载 worker，custom-head dynamic
       skin URL 会排队下载，失败回写 failed fallback，成功结果保留给后续 GPU 上传。
-   4. IN PROGRESS：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
+   4. DONE：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
       dynamic skin handle、slim/wide model、loading/ready/failed 状态，以及按 texture URL
-      缓存并可替换 resolved texture handle 的 profile-skin cache；还缺 GPU 上传成功后的
-      ready 回写与动态纹理采样。
-   5. 扩展 renderer 动态纹理入口：支持运行时上传/替换 dynamic skin texture
-      或独立动态 skin atlas，先接 `CustomHeadLayer` / `SkullBlockRenderer`
-      的 `player_head`，再推广到玩家实体本体、cape、elytra 等层。
+      缓存并可替换 resolved texture handle 的 profile-skin cache；主循环会在 renderer
+      上传成功后把对应 URL 标记 Ready，上传失败则标记 Failed。
+   5. DONE for `CustomHeadLayer` / `SkullBlockRenderer` `player_head`：renderer 已有
+      独立动态 player skin atlas，Ready dynamic submission 会进入动态 atlas mesh 并用
+      vanilla `entityTranslucent` 采样上传后的 64x64 skin；Loading/Failed 或缺 atlas entry
+      继续采样 fallback 默认皮肤。
+   6. 推广 renderer 动态纹理入口到玩家实体本体、cape、elytra 等层。
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

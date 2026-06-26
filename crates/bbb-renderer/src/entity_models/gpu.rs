@@ -4,14 +4,17 @@ use anyhow::{anyhow, bail, Result};
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 
-use crate::{camera::TerrainBounds, gpu::DEPTH_FORMAT, Renderer};
+use crate::{
+    camera::TerrainBounds, gpu::DEPTH_FORMAT, player_skin::DynamicPlayerSkinImage, Renderer,
+};
 
 use super::{
     catalog::{
+        EntityDynamicPlayerSkinAtlasEntry, EntityDynamicPlayerSkinAtlasLayout,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
         EntityModelUvRect,
     },
-    entity_model_colored_runtime_mesh, entity_model_textured_meshes,
+    entity_model_colored_runtime_mesh, entity_model_textured_meshes_with_dynamic_skins,
     geometry::{
         EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
         EntityModelTexturedVertex, EntityModelVertex,
@@ -46,6 +49,14 @@ pub(crate) struct EntityModelTextureAtlasGpu {
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityModelTextureAtlasLayout,
+}
+
+pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) layout: EntityDynamicPlayerSkinAtlasLayout,
 }
 
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
@@ -543,6 +554,29 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_dynamic_player_skin(&mut self, image: DynamicPlayerSkinImage) -> Result<()> {
+        validate_dynamic_player_skin_image(&image)?;
+        match self
+            .entity_dynamic_player_skin_images
+            .iter_mut()
+            .find(|skin| skin.handle == image.handle)
+        {
+            Some(existing) => *existing = image,
+            None => self.entity_dynamic_player_skin_images.push(image),
+        }
+        self.entity_dynamic_player_skin_images
+            .sort_by_key(|skin| skin.handle);
+        self.entity_dynamic_player_skin_atlas = Some(create_dynamic_player_skin_atlas_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            &self.entity_dynamic_player_skin_images,
+        )?);
+        self.rebuild_entity_model_meshes();
+        Ok(())
+    }
+
     pub fn set_entity_model_instances(&mut self, instances: Vec<EntityModelInstance>) {
         let instances = sanitize_entity_model_instances(instances);
         if self.entity_model_instances.as_slice() == instances.as_slice() {
@@ -557,7 +591,15 @@ impl Renderer {
         self.entity_model_mesh =
             create_entity_model_mesh_gpu(&self.device, self.entity_model_instances.clone());
         if let Some(atlas) = &self.entity_model_texture_atlas {
-            let meshes = entity_model_textured_meshes(&self.entity_model_instances, &atlas.layout);
+            let dynamic_player_skin_atlas = self
+                .entity_dynamic_player_skin_atlas
+                .as_ref()
+                .map(|atlas| &atlas.layout);
+            let meshes = entity_model_textured_meshes_with_dynamic_skins(
+                &self.entity_model_instances,
+                &atlas.layout,
+                dynamic_player_skin_atlas,
+            );
             self.entity_model_textured_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.cutout,
@@ -573,6 +615,12 @@ impl Renderer {
                 meshes.translucent,
                 "bbb-entity-model-translucent",
             );
+            self.entity_dynamic_player_skin_translucent_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_translucent,
+                    "bbb-entity-dynamic-player-skin-translucent",
+                );
             self.entity_model_scroll_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.scroll,
@@ -587,6 +635,7 @@ impl Renderer {
             self.entity_model_textured_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
+            self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_model_scroll_mesh = None;
             self.entity_model_scroll_additive_mesh = None;
         }
@@ -599,6 +648,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_scroll_mesh
@@ -692,6 +744,142 @@ fn create_entity_model_texture_atlas_gpu(
     })
 }
 
+fn create_dynamic_player_skin_atlas_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    images: &[DynamicPlayerSkinImage],
+) -> Result<EntityDynamicPlayerSkinAtlasGpu> {
+    let (layout, rgba) = build_dynamic_player_skin_atlas(images)?;
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-dynamic-player-skin-atlas"),
+        size: wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(layout.width * 4),
+            rows_per_image: Some(layout.height),
+        },
+        wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-dynamic-player-skin-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-dynamic-player-skin-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+
+    Ok(EntityDynamicPlayerSkinAtlasGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+        layout,
+    })
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub(super) fn build_dynamic_player_skin_atlas(
+    images: &[DynamicPlayerSkinImage],
+) -> Result<(EntityDynamicPlayerSkinAtlasLayout, Vec<u8>)> {
+    if images.is_empty() {
+        bail!("dynamic player skin atlas requires at least one image");
+    }
+
+    let width = DynamicPlayerSkinImage::SIZE[0];
+    let skin_height = DynamicPlayerSkinImage::SIZE[1];
+    let height = skin_height
+        .checked_mul(u32::try_from(images.len()).map_err(|_| {
+            anyhow!(
+                "dynamic player skin atlas image count {} overflows u32",
+                images.len()
+            )
+        })?)
+        .ok_or_else(|| anyhow!("dynamic player skin atlas height overflow"))?;
+    let atlas_len = rgba_len(width, height, "dynamic player skin atlas")?;
+    let mut rgba = vec![0u8; atlas_len];
+    let mut entries = Vec::with_capacity(images.len());
+
+    let mut y = 0u32;
+    for image in images {
+        validate_dynamic_player_skin_image(image)?;
+        let row_len = usize::try_from(width)
+            .ok()
+            .and_then(|width| width.checked_mul(4))
+            .ok_or_else(|| anyhow!("dynamic player skin row size overflow"))?;
+        for row in 0..skin_height {
+            let src_start = rgba_offset(width, row, 0, "dynamic player skin source")?;
+            let src_end = src_start + row_len;
+            let dst_start = rgba_offset(width, y + row, 0, "dynamic player skin atlas")?;
+            let dst_end = dst_start + row_len;
+            rgba[dst_start..dst_end].copy_from_slice(&image.rgba[src_start..src_end]);
+        }
+        entries.push(EntityDynamicPlayerSkinAtlasEntry {
+            handle: image.handle,
+            uv: EntityModelUvRect {
+                min: [0.0, y as f32 / height as f32],
+                max: [1.0, (y + skin_height) as f32 / height as f32],
+            },
+        });
+        y += skin_height;
+    }
+
+    Ok((
+        EntityDynamicPlayerSkinAtlasLayout {
+            width,
+            height,
+            entries,
+        },
+        rgba,
+    ))
+}
+
 pub(super) fn build_entity_model_texture_atlas(
     images: &[EntityModelTextureImage],
 ) -> Result<(EntityModelTextureAtlasLayout, Vec<u8>)> {
@@ -768,6 +956,22 @@ fn validate_entity_model_texture_image(image: &EntityModelTextureImage) -> Resul
         bail!(
             "entity model texture {} has {} RGBA bytes, expected {} for {}x{}",
             image.texture.path,
+            image.rgba.len(),
+            expected_len,
+            width,
+            height
+        );
+    }
+    Ok(())
+}
+
+fn validate_dynamic_player_skin_image(image: &DynamicPlayerSkinImage) -> Result<()> {
+    let [width, height] = DynamicPlayerSkinImage::SIZE;
+    let expected_len = rgba_len(width, height, "dynamic player skin")?;
+    if image.rgba.len() != expected_len {
+        bail!(
+            "dynamic player skin {} has {} RGBA bytes, expected {} for {}x{}",
+            image.handle,
             image.rgba.len(),
             expected_len,
             width,

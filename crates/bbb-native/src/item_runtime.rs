@@ -21,8 +21,8 @@ use bbb_protocol::packets::{
     ResolvableProfileSummary,
 };
 use bbb_renderer::{
-    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkinStatus,
-    EntityPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
+    DynamicPlayerSkinImage, EntityCustomHeadSkull, EntityDefaultPlayerSkin,
+    EntityDynamicPlayerSkinStatus, EntityPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkin, EntityPlayerSkinModel};
@@ -119,6 +119,12 @@ const RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS: &[&str] = &[
 pub(crate) struct NativeItemTooltipLine {
     pub(crate) text: String,
     pub(crate) tint: [f32; 4],
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct NativeDynamicPlayerSkinDownload {
+    pub(crate) url: String,
+    pub(crate) skin: Option<DynamicPlayerSkinImage>,
 }
 
 #[derive(Debug)]
@@ -467,7 +473,9 @@ impl NativeItemRuntime {
         }
     }
 
-    pub(crate) fn drain_dynamic_player_skin_download_results(&self) -> usize {
+    pub(crate) fn drain_dynamic_player_skin_download_results(
+        &self,
+    ) -> Vec<NativeDynamicPlayerSkinDownload> {
         let results = self
             .dynamic_skins
             .borrow_mut()
@@ -479,7 +487,13 @@ impl NativeItemRuntime {
                 self.profile_skins.borrow_mut().mark_failed(&result.url);
             }
         }
-        results.len()
+        results
+            .into_iter()
+            .map(|result| NativeDynamicPlayerSkinDownload {
+                url: result.url,
+                skin: result.skin,
+            })
+            .collect()
     }
 
     #[cfg(test)]
@@ -2468,7 +2482,13 @@ mod tests {
                 }
             )))
         );
-        drain_until_player_skin_download_result(&runtime);
+        let downloads = drain_until_player_skin_download_result(&runtime);
+        assert_eq!(downloads.len(), 1);
+        assert_eq!(downloads[0].url, skin_url);
+        assert_eq!(
+            downloads[0].skin.as_ref().unwrap().handle,
+            profile_texture_handle(skin_url)
+        );
         assert_eq!(runtime.downloaded_player_skin_count(), 1);
         assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
         assert_eq!(
@@ -3838,10 +3858,13 @@ mod tests {
         cursor.into_inner()
     }
 
-    fn drain_until_player_skin_download_result(runtime: &NativeItemRuntime) {
+    fn drain_until_player_skin_download_result(
+        runtime: &NativeItemRuntime,
+    ) -> Vec<NativeDynamicPlayerSkinDownload> {
         for _ in 0..100 {
-            if runtime.drain_dynamic_player_skin_download_results() > 0 {
-                return;
+            let downloads = runtime.drain_dynamic_player_skin_download_results();
+            if !downloads.is_empty() {
+                return downloads;
             }
             thread::sleep(Duration::from_millis(10));
         }

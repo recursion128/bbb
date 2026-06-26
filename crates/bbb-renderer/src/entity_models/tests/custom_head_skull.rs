@@ -1,11 +1,24 @@
 use super::super::textured::EntityModelTexturedMeshes;
 use super::*;
+use crate::player_skin::DynamicPlayerSkinImage;
 
 fn atlas_with(texture: EntityModelTextureRef) -> EntityModelTextureAtlasLayout {
     let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
     build_entity_model_texture_atlas(&[EntityModelTextureImage::new(texture, vec![0; len])])
         .unwrap()
         .0
+}
+
+fn atlas_with_many(textures: &[EntityModelTextureRef]) -> EntityModelTextureAtlasLayout {
+    let images: Vec<_> = textures
+        .iter()
+        .copied()
+        .map(|texture| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(texture, vec![0; len])
+        })
+        .collect();
+    build_entity_model_texture_atlas(&images).unwrap().0
 }
 
 fn expected_skull_transform(instance: &EntityModelInstance) -> Mat4 {
@@ -279,6 +292,129 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
             .map(|vertex| vertex.uv)
             .collect::<Vec<_>>()
     );
+}
+
+#[test]
+fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
+    // Vanilla `PlayerSkinRenderCache.getOrDefault(profile).renderType()` returns the resolved
+    // player skin as `SkullBlockRenderer.getPlayerSkinRenderType`, which is `entityTranslucent`.
+    let static_atlas =
+        atlas_with_many(&[PLAYER_SLIM_ALEX_TEXTURE_REF, PLAYER_WIDE_STEVE_TEXTURE_REF]);
+    let dynamic_skin = EntityDynamicPlayerSkin {
+        handle: 42,
+        fallback: EntityDefaultPlayerSkin::WideSteve,
+        model: EntityPlayerSkinModel::Slim,
+        status: EntityDynamicPlayerSkinStatus::Ready,
+    };
+    let instance = EntityModelInstance::player_with_parts(
+        916,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+        EntityPlayerSkin::Dynamic(dynamic_skin),
+    )));
+    let rgba = (0..usize::try_from(64 * 64 * 4).unwrap())
+        .map(|index| index as u8)
+        .collect::<Vec<_>>();
+    let (dynamic_atlas, dynamic_rgba) =
+        build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
+            handle: dynamic_skin.handle,
+            rgba: rgba.clone(),
+        }])
+        .unwrap();
+
+    let fallback_meshes = entity_model_textured_meshes(&[instance], &static_atlas);
+    let dynamic_meshes = entity_model_textured_meshes_with_dynamic_skins(
+        &[instance],
+        &static_atlas,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(dynamic_rgba, rgba);
+    assert_eq!(dynamic_atlas.width, 64);
+    assert_eq!(dynamic_atlas.height, 64);
+    assert_eq!(dynamic_atlas.entries[0].handle, dynamic_skin.handle);
+    assert_eq!(dynamic_atlas.entries[0].uv.min, [0.0, 0.0]);
+    assert_eq!(dynamic_atlas.entries[0].uv.max, [1.0, 1.0]);
+
+    let dynamic_submit = dynamic_meshes
+        .submissions
+        .iter()
+        .copied()
+        .find(|submit| submit.dynamic_player_skin == Some(dynamic_skin))
+        .unwrap();
+    assert_eq!(
+        dynamic_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(dynamic_submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(dynamic_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        dynamic_submit.transform,
+        expected_skull_transform(&instance)
+    );
+    assert_eq!(
+        (
+            dynamic_submit.collector_order,
+            dynamic_submit.submit_sequence
+        ),
+        (0, 0)
+    );
+
+    assert!(dynamic_meshes.translucent.vertices.is_empty());
+    assert_eq!(
+        dynamic_meshes.dynamic_player_skin_translucent.cutout_faces,
+        12
+    );
+    assert_eq!(
+        dynamic_meshes
+            .dynamic_player_skin_translucent
+            .vertices
+            .len(),
+        48
+    );
+    assert_eq!(
+        dynamic_meshes.dynamic_player_skin_translucent.indices.len(),
+        72
+    );
+    assert_eq!(
+        dynamic_meshes
+            .dynamic_player_skin_translucent
+            .vertices
+            .iter()
+            .map(|vertex| vertex.position)
+            .collect::<Vec<_>>(),
+        fallback_meshes
+            .translucent
+            .vertices
+            .iter()
+            .map(|vertex| vertex.position)
+            .collect::<Vec<_>>()
+    );
+    assert_ne!(
+        dynamic_meshes
+            .dynamic_player_skin_translucent
+            .vertices
+            .iter()
+            .map(|vertex| vertex.uv)
+            .collect::<Vec<_>>(),
+        fallback_meshes
+            .translucent
+            .vertices
+            .iter()
+            .map(|vertex| vertex.uv)
+            .collect::<Vec<_>>()
+    );
+    assert!(dynamic_meshes
+        .dynamic_player_skin_translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && (0.0..=1.0).contains(&vertex.uv[0])
+            && (0.0..=1.0).contains(&vertex.uv[1])));
 }
 
 #[test]

@@ -1228,14 +1228,14 @@ When an agent does any of the following, update this file in the same slice:
         skins from profiled fallback skins and can carry a dynamic skin handle,
         the fallback default skin, the slim/wide model, and explicit
         loading/ready/failed status. Native also keeps a small dynamic
-        profile-skin cache keyed by texture URL, so future async download/upload
-        work can replace the request handle with a resolved texture handle while
-        the renderer continues sampling the fallback. Renderer now has
+        profile-skin cache keyed by texture URL; async download/upload work
+        replaces the request handle with a resolved texture handle only after
+        renderer upload succeeds. Renderer now has
         the vanilla downloaded-skin PNG post-process primitive: it rejects
         non-PNG and non-64x64/64x32 skins, expands legacy 64x32 skins through
         `SkinTextureDownloader.processLegacySkin`'s copy rectangles, and applies
         the opaque-base / Notch transparency alpha rules to produce 64x64 RGBA
-        data for a future dynamic upload. Native now also has a fetcher-backed
+        data for dynamic upload. Native now also has a fetcher-backed
         player-skin runtime cache that reuses decoded skins from memory, loads
         cached PNG bytes from disk before fetching, writes fetched bytes to disk,
         and feeds every hit/miss through the vanilla-compatible PNG post-process.
@@ -1252,9 +1252,12 @@ When an agent does any of the following, update this file in the same slice:
         enables an async player-skin download worker with a configurable cache
         directory; dynamic skin URLs queue PNG download/cache/post-process work,
         failed downloads mark the profile skin failed, and successful downloads
-        stay cached as pending upload data. GPU upload completion, Ready status
-        feedback, and arbitrary dynamic player-skin texture loading remain
-        deferred.
+        are uploaded into a renderer-owned dynamic player-skin atlas before the
+        profile skin is marked Ready. Ready `player_head` submissions use
+        vanilla `entityTranslucent` with the dynamic atlas mesh; Loading/Failed
+        or missing atlas entries keep sampling the fallback default skin.
+        Player entity body, cape, elytra, and broader arbitrary dynamic texture
+        loading remain deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1282,10 +1285,9 @@ When an agent does any of the following, update this file in the same slice:
         and vindicator empty/armed `ATTACKING`; illager riding sit pose is also covered
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
-      - remaining slices: held-item refinements (first-person viewmodel; remote
-        profile resolution, skin PNG download/cache, and arbitrary
-        dynamic profiled-player skin rendering in
-        `CustomHeadLayer` / `SkullBlockRenderer`; the
+      - remaining slices: held-item refinements (first-person viewmodel; player
+        entity body/cape/elytra dynamic skin presentation and broader arbitrary
+        dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
@@ -1678,10 +1680,10 @@ When an agent does any of the following, update this file in the same slice:
       through the shared item-model pass; generic non-skull custom-head items
       are implemented through `CustomHeadLayer`'s `HEAD` item display transform,
       and static skeleton/wither-skeleton/zombie/creeper skulls plus
-      profileless default-player heads, profiled default-skin player heads, dragon heads, and piglin heads render through the skull branch;
-      remote/dynamic profiled-player skin loading, unhappy
-      animation, leg walk animation, lighting, and wandering trader baby
-      presentation remain unsupported
+      profileless default-player heads, profiled default-skin player heads,
+      dynamic profiled-player heads, dragon heads, and piglin heads render
+      through the skull branch; unhappy animation, leg walk animation,
+      lighting, and wandering trader baby presentation remain unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
@@ -1802,11 +1804,12 @@ When an agent does any of the following, update this file in the same slice:
       piglin uses the held-out `animateZombieArms` arms;
       the `DrownedOuterLayer` (adult and baby) and drowned swim re-pose ARE implemented (see the drowned
       note above); zombie/piglin converting shake, remaining zombie-family and
-      piglin-family armor nuances, live/dynamic profiled-player skin textures,
+      piglin-family armor nuances, player entity body/cape/elytra dynamic textures,
       and held-item refinements remain unsupported
       (generic non-skull head-slot items and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads, profiled
-      default-skin player heads, dragon heads, and piglin heads are covered by
+      default-skin player heads, dynamic profiled-player heads, dragon heads,
+      and piglin heads are covered by
       the shared custom-head paths); zombie
       villager type/profession/level overlays ARE implemented via
       `VillagerProfessionLayer` parity, reading `VillagerData` at entity-data id
@@ -1979,11 +1982,9 @@ When an agent does any of the following, update this file in the same slice:
       custom-head items are implemented via the shared `CustomHeadLayer` item
       path, including the copper golem `translateToHead` override; static
       skeleton/wither-skeleton/zombie/creeper skulls also use that override in
-      the skull branch. Profileless and profiled-default player heads use the
-      same implemented skull path. The keyframe
-      walk/walk-with-item/idle/interaction animations and live/dynamic
-      profiled-player skin textures remain
-      unsupported
+      the skull branch. Profileless, profiled-default, and dynamic
+      profiled-player heads use the same implemented skull path. The keyframe
+      walk/walk-with-item/idle/interaction animations remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
@@ -2025,10 +2026,10 @@ When an agent does any of the following, update this file in the same slice:
       `left_arm`; generic non-skull custom-head items are implemented by the
       shared `CustomHeadLayer` item path, and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads and profiled
-      default-skin player heads are implemented by the skull branch;
-      live/dynamic profiled-player skin textures,
-      illusioner clone offsets/invisible-body rendering, and renderer state
-      extraction for dynamic arm visibility remain unsupported. Spellcasting,
+      default-skin player heads and dynamic profiled-player heads are
+      implemented by the skull branch; illusioner clone offsets/invisible-body
+      rendering, and renderer state extraction for dynamic arm visibility
+      remain unsupported. Spellcasting,
       crossbow hold/charge, illusioner bow aim, evoker/vindicator celebrating,
       vindicator empty/armed attacking, and riding sit arm/leg poses are implemented.
     - armor stand entities as renderer-owned vanilla 26.1
@@ -2044,9 +2045,9 @@ When an agent does any of the following, update this file in the same slice:
       ride the `BABY_TRANSFORMER` 0.5 arm-part scale), plus the generic
       non-skull custom-head item path and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads, profiled
-      default-skin player heads, piglin heads, and dragon heads; armor/equipment
-      live/dynamic profiled-player skin textures,
-      elytra layers, hurt wiggle, marker/invisible
+      default-skin player heads, dynamic profiled-player heads, piglin heads,
+      and dragon heads; armor/equipment, elytra layers, hurt wiggle,
+      marker/invisible
       render-type nuances, and animation interpolation remain
       unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner

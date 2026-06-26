@@ -1654,3 +1654,16 @@ pub struct EntityModelTextureAtlasLayout {
     pub height: u32,
     pub entries: Vec<EntityModelTextureAtlasEntry>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityDynamicPlayerSkinAtlasEntry {
+    pub(crate) handle: u64,
+    pub(crate) uv: EntityModelUvRect,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityDynamicPlayerSkinAtlasLayout {
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+    pub(crate) entries: Vec<EntityDynamicPlayerSkinAtlasEntry>,
+}

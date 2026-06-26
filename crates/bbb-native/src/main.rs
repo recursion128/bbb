@@ -499,7 +499,7 @@ fn main() -> Result<()> {
                     }
                     if let Some(items) = item_runtime.as_ref() {
                         items.drain_profile_resolution_results();
-                        items.drain_dynamic_player_skin_download_results();
+                        drain_dynamic_player_skin_downloads(items, &mut renderer);
                     }
                     if !pump_network_and_terrain(
                         &mut net_events,
@@ -623,7 +623,7 @@ fn main() -> Result<()> {
                 }
                 if let Some(items) = item_runtime.as_ref() {
                     items.drain_profile_resolution_results();
-                    items.drain_dynamic_player_skin_download_results();
+                    drain_dynamic_player_skin_downloads(items, &mut renderer);
                 }
                 if !pump_network_and_terrain(
                     &mut net_events,
@@ -749,6 +749,28 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
 
 fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
     world_wants_cursor(world) || input.sign_editor_is_active_or_pending(world)
+}
+
+fn drain_dynamic_player_skin_downloads(
+    items: &NativeItemRuntime,
+    renderer: &mut bbb_renderer::Renderer,
+) {
+    for download in items.drain_dynamic_player_skin_download_results() {
+        let Some(skin) = download.skin else {
+            continue;
+        };
+        let handle = skin.handle;
+        if let Err(err) = renderer.upload_dynamic_player_skin(skin) {
+            tracing::warn!(
+                ?err,
+                url = %download.url,
+                "failed to upload dynamic player skin"
+            );
+            items.mark_profile_skin_failed(&download.url);
+            continue;
+        }
+        items.mark_profile_skin_resolved(&download.url, handle);
+    }
 }
 
 #[cfg(test)]

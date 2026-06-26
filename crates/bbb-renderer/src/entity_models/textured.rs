@@ -15,12 +15,13 @@ use super::{
     },
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
-        EntityDyeColor, EntityDynamicPlayerSkin, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        HoglinModelFamily, HorseMarkings, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
-        ZombieVariantModelFamily,
+        EntityDyeColor, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
+        EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus, EntityModelKind,
+        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
+        EntityModelUvRect, EntityPlayerSkin, HoglinModelFamily, HorseMarkings, LlamaModelFamily,
+        LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+        VillagerModelData, VillagerModelHat, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -112,6 +113,9 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
+    /// Ready remote player skins are rendered through a dedicated atlas, matching vanilla
+    /// `SkullBlockRenderer.getPlayerSkinRenderType` (`entityTranslucent(dynamicTexture)`).
+    pub(super) dynamic_player_skin_translucent: EntityModelTexturedMesh,
     /// Translucent scrolling overlay (vanilla `breezeWind` — the wind charge).
     pub(super) scroll: EntityModelScrollMesh,
     /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
@@ -128,6 +132,7 @@ impl EntityModelTexturedMeshes {
             cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
+            dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
             submissions: Vec::new(),
@@ -218,9 +223,18 @@ pub(super) fn entity_model_textured_mesh(
     entity_model_textured_meshes(instances, atlas).cutout
 }
 
+#[cfg(test)]
 pub(super) fn entity_model_textured_meshes(
     instances: &[EntityModelInstance],
     atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    entity_model_textured_meshes_with_dynamic_skins(instances, atlas, None)
+}
+
+pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new();
     for instance in instances {
@@ -230,6 +244,8 @@ pub(super) fn entity_model_textured_meshes(
         let cutout_start = meshes.cutout.vertices.len();
         let translucent_start = meshes.translucent.vertices.len();
         let eyes_start = meshes.eyes.vertices.len();
+        let dynamic_player_skin_translucent_start =
+            meshes.dynamic_player_skin_translucent.vertices.len();
         let handled = {
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
@@ -384,7 +400,7 @@ pub(super) fn entity_model_textured_meshes(
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
         // Skull block items in the head slot use vanilla `CustomHeadLayer`'s skull branch: a static
         // `SkullModel` mob head attached to the host head, not the generic item-model HEAD display path.
-        emit_custom_head_skull_layer(&mut meshes, *instance, atlas);
+        emit_custom_head_skull_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
         // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
@@ -406,10 +422,20 @@ pub(super) fn entity_model_textured_meshes(
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
         fill_entity_textured_light(&mut meshes.eyes, eyes_start, light);
+        fill_entity_textured_light(
+            &mut meshes.dynamic_player_skin_translucent,
+            dynamic_player_skin_translucent_start,
+            light,
+        );
         let overlay = instance.render_state.overlay_coords();
         fill_entity_textured_overlay(&mut meshes.cutout, cutout_start, overlay);
         fill_entity_textured_overlay(&mut meshes.translucent, translucent_start, overlay);
         fill_entity_textured_overlay(&mut meshes.eyes, eyes_start, overlay);
+        fill_entity_textured_overlay(
+            &mut meshes.dynamic_player_skin_translucent,
+            dynamic_player_skin_translucent_start,
+            overlay,
+        );
     }
     meshes
 }
@@ -582,9 +608,29 @@ fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
     dynamic_player_skin: EntityDynamicPlayerSkin,
     tint: [f32; 4],
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) {
     let submit = EntityModelSubmissionEmit::new(render_type, texture, tint, transform, 0, 0)
         .with_dynamic_player_skin(dynamic_player_skin);
+    if submit.render_type == EntityModelLayerRenderType::EntityTranslucent
+        && dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready
+    {
+        if let Some(entry) =
+            dynamic_player_skin_atlas_entry(dynamic_player_skin_atlas, dynamic_player_skin.handle)
+        {
+            render_textured_dynamic_player_skin_submission(meshes, submit, entry, |mesh, entry| {
+                model.root().render_textured(
+                    mesh,
+                    submit.transform,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            });
+            return;
+        }
+    }
+
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         model.root().render_textured(
             mesh,
@@ -594,6 +640,24 @@ fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
             submit.tint,
         );
     });
+}
+
+fn render_textured_dynamic_player_skin_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    entry: EntityDynamicPlayerSkinAtlasEntry,
+    emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerSkinAtlasEntry),
+) {
+    meshes.record_submission(
+        submit.render_type,
+        submit.texture,
+        submit.dynamic_player_skin,
+        submit.tint,
+        submit.transform,
+        submit.collector_order,
+        submit.submit_sequence,
+    );
+    emit(&mut meshes.dynamic_player_skin_translucent, entry);
 }
 
 fn render_textured_submission(
@@ -1250,6 +1314,7 @@ fn emit_custom_head_skull_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) {
     let Some(skull) = instance.render_state.custom_head_skull else {
         return;
@@ -1303,6 +1368,7 @@ fn emit_custom_head_skull_layer(
             dynamic_player_skin,
             [1.0, 1.0, 1.0, 1.0],
             atlas,
+            dynamic_player_skin_atlas,
         );
         return;
     }
@@ -1334,6 +1400,17 @@ fn custom_head_dynamic_player_skin(
         EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(skin)) => Some(skin),
         _ => None,
     }
+}
+
+fn dynamic_player_skin_atlas_entry(
+    atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    handle: u64,
+) -> Option<EntityDynamicPlayerSkinAtlasEntry> {
+    atlas?
+        .entries
+        .iter()
+        .copied()
+        .find(|entry| entry.handle == handle)
 }
 
 fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTextureRef {
