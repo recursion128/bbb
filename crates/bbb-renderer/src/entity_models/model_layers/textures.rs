@@ -1416,7 +1416,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 466] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 471] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1814,6 +1814,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     DONKEY_BABY_TEXTURE_REF,
     MULE_TEXTURE_REF,
     MULE_BABY_TEXTURE_REF,
+    HORSE_SADDLE_TEXTURE_REF,
+    DONKEY_SADDLE_TEXTURE_REF,
+    MULE_SADDLE_TEXTURE_REF,
+    SKELETON_HORSE_SADDLE_TEXTURE_REF,
+    ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
     LLAMA_CREAMY_TEXTURE_REF,
     LLAMA_CREAMY_BABY_TEXTURE_REF,
     LLAMA_WHITE_TEXTURE_REF,

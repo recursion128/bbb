@@ -1353,9 +1353,13 @@ When an agent does any of the following, update this file in the same slice:
       overlay (`HorseMarkingLayer`): a translucent `horse_markings_{white,whitefield,
       whitedots,blackdots}(_baby).png` copy of the same posed model drawn over the coat
       when the `(DATA_ID_TYPE_VARIANT & 0xFF00) >> 8` markings nibble is non-`NONE`
-      (`Markings.NONE` → `INVISIBLE_TEXTURE`, no overlay); horse armor, saddle, the
-      ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and the in-water
-      leg-frequency scaling remain unsupported
+      (`Markings.NONE` → `INVISIBLE_TEXTURE`, no overlay). The adult horse saddle equipment
+      layer is implemented from `EquipmentSlot.SADDLE`, using vanilla `HORSE_SADDLE`,
+      `EquineSaddleModel.createSaddleLayer()` with `livingHorseScale=1.1`, the family-specific
+      `textures/entity/equipment/horse_saddle/saddle.png`, and ridden-only bridle line
+      visibility from passenger state; baby horses intentionally skip it because vanilla
+      supplies no baby saddle model. Horse armor, the ridden/eat/stand/mouth poses, the
+      tail's `ageInTicks` yRot wag, and the in-water leg-frequency scaling remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`. The ADULT donkey/mule now renders on the **textured
@@ -1378,9 +1382,14 @@ When an agent does any of the following, update this file in the same slice:
       per-ear `texOffs` and a mirrored right ear) on the `donkey` / `mule` 64×64
       textures, emitted STATIC and unscaled — its `setupAnim` forces `xRot = -30°`,
       so the equine gait/head/tail posing is deferred (matching the colored baby
-      path), and the empty chest children make `hasChest` immaterial. The baby leg
-      swing / head look / tail, saddle equipment layer, the ridden/eat/stand/mouth
-      poses, the tail's `ageInTicks` yRot wag, and lighting remain unsupported
+      path), and the empty chest children make `hasChest` immaterial. The adult donkey/mule
+      saddle equipment layers are implemented from `EquipmentSlot.SADDLE`, using vanilla
+      `DONKEY_SADDLE` / `MULE_SADDLE`, `DonkeyModel.createSaddleLayer(0.87F/0.92F)`, the
+      family-specific `textures/entity/equipment/{donkey_saddle,mule_saddle}/saddle.png`,
+      and ridden-only bridle line visibility from passenger state; baby donkey/mule entities
+      intentionally skip the layer because vanilla supplies no baby saddle model. The baby leg
+      swing / head look / tail, the ridden/eat/stand/mouth poses, the tail's `ageInTicks`
+      yRot wag, and lighting remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on
@@ -1398,8 +1407,13 @@ When an agent does any of the following, update this file in the same slice:
       tail walk lift (the same formula as the horse, including the baby
       `getTailXRotOffset = −π/2` / `ageScale = 0.5` override) all drive both the
       textured base body and the colored full-mesh fallback; undead horse
-      body-armor layer, saddle layer, the ridden/eat/stand/mouth poses, the tail's
-      `ageInTicks` yRot wag, and lighting remain unsupported
+      adult saddle layers are implemented from `EquipmentSlot.SADDLE`, using vanilla
+      `SKELETON_HORSE_SADDLE` / `ZOMBIE_HORSE_SADDLE`, `EquineSaddleModel.createSaddleLayer()`,
+      the family-specific `textures/entity/equipment/{skeleton_horse_saddle,zombie_horse_saddle}/saddle.png`,
+      and ridden-only bridle line visibility from passenger state; baby undead horses skip
+      the layer because vanilla supplies no baby saddle model. The undead horse body-armor layer,
+      the ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and lighting remain
+      unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
       `CamelHuskRenderer`, including `ModelLayers.CAMEL` / `CAMEL_BABY` (the camel
@@ -3119,8 +3133,8 @@ When an agent does any of the following, update this file in the same slice:
     wolf variant/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
-    horse variant/markings/saddle/armor/animation, donkey/mule saddle and
-    animation presentation, undead horse body-armor/saddle/animation
+    horse armor/animation, donkey/mule animation presentation,
+    undead horse body-armor/animation
     presentation, and remaining non-base-equine presentation,
     villager held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie-family

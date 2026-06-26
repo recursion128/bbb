@@ -556,6 +556,14 @@ entity_render_state! {
     /// renders the adult `PigModel.createBodyLayer(CubeDeformation(0.5F))` equipment layer over the
     /// pig body. Babies do not render this layer because vanilla supplies no baby saddle model.
     (with_pig_saddle) pig_saddle: bool = false;
+    /// Vanilla `EquineRenderState.saddle`: the item in `EquipmentSlot.SADDLE` for horse, donkey, mule,
+    /// skeleton-horse, and zombie-horse renderers. A non-empty saddle item renders the adult
+    /// `EquineSaddleModel` equipment layer; babies do not render it because vanilla supplies no baby
+    /// saddle model.
+    (with_equine_saddle) equine_saddle: bool = false;
+    /// Vanilla `EquineRenderState.isRidden`: the equine saddle layer shows its two bridle line parts
+    /// only while the entity is a vehicle. `false` for unridden equines and every non-equine entity.
+    (with_equine_saddle_ridden) equine_saddle_ridden: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -2003,6 +2011,8 @@ mod tests {
                 legs_armor_dye: None,
                 feet_armor_dye: None,
                 pig_saddle: false,
+                equine_saddle: false,
+                equine_saddle_ridden: false,
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,

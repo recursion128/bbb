@@ -16,7 +16,8 @@ use super::{
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
         EntityModelUvRect, HoglinModelFamily, HorseMarkings, LlamaVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, VillagerModelData, VillagerModelHat, ZombieVariantModelFamily,
+        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -35,10 +36,14 @@ use super::{
         SlimeModel, SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel,
         VillagerModel, WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel,
         ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED,
-        BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        MULE_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
+        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -278,6 +283,8 @@ pub(super) fn entity_model_textured_meshes(
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
+        // Horse/donkey/mule/undead-horse saddles use the shared EquineSaddleModel tree.
+        emit_equine_saddle_layer(&mut meshes, *instance, atlas);
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
         // over the base villager or zombie-villager model and share the same light/overlay fill.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
@@ -894,6 +901,92 @@ fn emit_pig_saddle_layer(
         PIG_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
+    );
+}
+
+/// Vanilla `SimpleEquipmentLayer` over `EquineSaddleModel` for horse, donkey, mule, skeleton-horse,
+/// and zombie-horse saddles. The layer has no baby model, so baby equines skip it. The two bridle line
+/// parts are visible only while `EquineRenderState.isRidden` is true.
+fn emit_equine_saddle_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !instance.render_state.equine_saddle {
+        return;
+    }
+
+    let ridden = instance.render_state.equine_saddle_ridden;
+    let (parts, transform, texture): (&[TexturedModelPartDesc], Mat4, EntityModelTextureRef) =
+        match instance.kind {
+            EntityModelKind::Horse { baby: false, .. } => (
+                if ridden {
+                    &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
+                } else {
+                    &ADULT_HORSE_SADDLE_PARTS_TEXTURED
+                },
+                mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
+                HORSE_SADDLE_TEXTURE_REF,
+            ),
+            EntityModelKind::Donkey {
+                family,
+                baby: false,
+                ..
+            } => {
+                let scale = match family {
+                    DonkeyModelFamily::Donkey => 0.87,
+                    DonkeyModelFamily::Mule => 0.92,
+                };
+                let texture = match family {
+                    DonkeyModelFamily::Donkey => DONKEY_SADDLE_TEXTURE_REF,
+                    DonkeyModelFamily::Mule => MULE_SADDLE_TEXTURE_REF,
+                };
+                (
+                    if ridden {
+                        &ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED
+                    } else {
+                        &ADULT_DONKEY_SADDLE_PARTS_TEXTURED
+                    },
+                    mesh_transformer_scaled_model_root_transform(instance, scale),
+                    texture,
+                )
+            }
+            EntityModelKind::UndeadHorse {
+                family,
+                baby: false,
+            } => {
+                let texture = match family {
+                    UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_SADDLE_TEXTURE_REF,
+                    UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+                };
+                (
+                    if ridden {
+                        &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
+                    } else {
+                        &ADULT_HORSE_SADDLE_PARTS_TEXTURED
+                    },
+                    entity_model_root_transform(instance),
+                    texture,
+                )
+            }
+            _ => return,
+        };
+
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    emit_equine_textured_posed(
+        &mut meshes.cutout,
+        parts,
+        [2, 3, 4, 5],
+        1,
+        0.0,
+        1.0,
+        transform,
+        texture,
+        entry.uv,
+        [1.0, 1.0, 1.0, 1.0],
+        instance,
     );
 }
 

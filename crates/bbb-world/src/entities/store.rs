@@ -19,8 +19,10 @@ use super::{
     EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
     ItemEntityStackState, ItemFrameRenderState, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
     VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -51,6 +53,17 @@ const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
+
+fn vanilla_equine_saddle_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_HORSE_ID
+            | VANILLA_ENTITY_TYPE_DONKEY_ID
+            | VANILLA_ENTITY_TYPE_MULE_ID
+            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
+    )
+}
 
 /// Vanilla `LivingEntity.DATA_LIVING_ENTITY_FLAGS` data id (8): the byte holding
 /// the using-item / off-hand / spin-attack flags.
@@ -513,6 +526,7 @@ impl EntityStore {
         // equipment-asset material. The `EntityEquipment` component holds the synced `SetEquipment`
         // items; a bare entity (no equipment component / empty slot / non-armor item) resolves to None.
         let equipment = self.ecs.get::<&EntityEquipment>(entity).ok();
+        let mount = self.ecs.get::<&EntityMount>(entity).ok();
         let armor_material = |slot: ProtocolEquipmentSlot| -> Option<ArmorMaterialKind> {
             let equipment = equipment.as_ref()?;
             let item_id = equipment
@@ -536,13 +550,10 @@ impl EntityStore {
                 .component_patch
                 .dyed_color
         };
-        // Vanilla `PigRenderer.extractRenderState`: copies `EquipmentSlot.SADDLE` into
-        // `PigRenderState.saddle`; `SimpleEquipmentLayer` renders only a non-empty equippable saddle
-        // item. bbb resolves the vanilla default saddle item from the item equipment-slot map.
-        let pig_saddle = || -> bool {
-            if identity.entity_type_id != VANILLA_ENTITY_TYPE_PIG_ID {
-                return false;
-            }
+        // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
+        // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
+        // from the item equipment-slot map.
+        let saddle_slot_contains_saddle_item = || -> bool {
             let Some(equipment) = equipment.as_ref() else {
                 return false;
             };
@@ -561,6 +572,19 @@ impl EntityStore {
                 .and_then(|item_id| equipment_slots.get(&item_id).copied())
                 == Some(ItemEquipmentSlot::Saddle)
         };
+        let pig_saddle = || -> bool {
+            identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID
+                && saddle_slot_contains_saddle_item()
+        };
+        let equine_saddle = || -> bool {
+            vanilla_equine_saddle_type(identity.entity_type_id)
+                && saddle_slot_contains_saddle_item()
+        };
+        let equine_saddle = equine_saddle();
+        let equine_saddle_ridden = equine_saddle
+            && mount
+                .as_ref()
+                .is_some_and(|mount| !mount.passengers.is_empty());
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -1013,6 +1037,8 @@ impl EntityStore {
             legs_armor_dye: armor_dye(ProtocolEquipmentSlot::Legs),
             feet_armor_dye: armor_dye(ProtocolEquipmentSlot::Feet),
             pig_saddle: pig_saddle(),
+            equine_saddle,
+            equine_saddle_ridden,
             guardian_beam: self.guardian_beam_source(
                 identity.entity_type_id,
                 identity.data,

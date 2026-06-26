@@ -25,13 +25,13 @@
 memory `entity-texture-path-status.md`。其中**马类（equine）贴图脉络已彻底打通**：
 骷髅马/僵尸马、活体马（7 种毛色 + markings 叠层）、成年与幼年驴/骡，
 全部走 textured 路径并带 vanilla 步态/头部/尾巴姿态（幼驴因 `setupAnim` 锁 xRot=-30° 而静态）。
-村民 / 僵尸村民的类型、职业、等级徽章叠层已完成；猪的成人鞍装备层已完成，
-baby 猪按 vanilla 行为不渲染鞍层。
+村民 / 僵尸村民的类型、职业、等级徽章叠层已完成；猪和 adult equine
+（马/驴/骡/骷髅马/僵尸马）的鞍装备层已完成，baby 按 vanilla 行为不渲染鞍层。
 
 ## 剩余大子系统（按优先级）
 
-1. **装备层子系统剩余：非猪鞍 + 羊驼装饰 + 马铠**
-   把已有的 humanoid-armor 框架推广到其它四足鞍位 + 逐材质贴图。
+1. **装备层子系统剩余：骆驼/strider/nautilus 等鞍 + 羊驼装饰 + 马铠**
+   把已有的 humanoid-armor / saddle 框架推广到剩余四足与 rideable mob 装备位。
 2. **实体上的方块模型渲染器**
    雪傀儡南瓜 / 铁傀儡花 / 哞菇蘑菇 / 铜傀儡风化 —— 需要 block-model primitive。
 3. **实体上的物品渲染器**

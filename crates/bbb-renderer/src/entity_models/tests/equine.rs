@@ -1192,6 +1192,17 @@ fn horse_texture_images() -> Vec<EntityModelTextureImage> {
         .collect()
 }
 
+fn texture_images(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
 #[test]
 fn horse_textured_mesh_matches_vanilla_horse_geometry() {
     // Vanilla `HorseRenderer` renders the shared `HorseModel` / `BabyHorseModel` geometry on the
@@ -1339,6 +1350,172 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
     let base_uvs: Vec<_> = marked.cutout.vertices.iter().map(|v| v.uv).collect();
     let overlay_uvs: Vec<_> = marked.translucent.vertices.iter().map(|v| v.uv).collect();
     assert_ne!(base_uvs, overlay_uvs);
+}
+
+#[test]
+fn equine_saddle_model_parts_match_vanilla_layer_sources() {
+    // Vanilla `EquineSaddleModel.createSaddleLayer()` adds the saddle body cube, bridle mouth/wrap
+    // cubes, and two ridden-only zero-width line planes on top of the normal adult equine body mesh.
+    assert_eq!(ADULT_EQUINE_SADDLE_BODY_TEXTURED[0].min, [-5.5, -8.5, -9.5]);
+    assert_eq!(
+        ADULT_EQUINE_SADDLE_BODY_TEXTURED[0].size,
+        [11.0, 10.0, 10.0]
+    );
+    assert_eq!(
+        ADULT_EQUINE_SADDLE_BODY_TEXTURED[0].uv_size,
+        [10.0, 9.0, 9.0]
+    );
+    assert_eq!(ADULT_EQUINE_SADDLE_BODY_TEXTURED[0].tex, [26.0, 0.0]);
+    assert_eq!(
+        ADULT_EQUINE_SADDLE_HEAD_TEXTURED[0].min,
+        [-3.22, -11.22, -2.12]
+    );
+    assert_eq!(
+        ADULT_EQUINE_SADDLE_MOUTH_WRAP_TEXTURED[0].size,
+        [4.4, 5.4, 2.4]
+    );
+    assert_eq!(
+        ADULT_EQUINE_SADDLE_LEFT_LINE_TEXTURED[0].size,
+        [0.0, 3.0, 16.0]
+    );
+    assert_eq!(
+        ADULT_HORSE_SADDLE_RIDDEN_HEAD_PARTS_CHILDREN_TEXTURED[5]
+            .pose
+            .rotation,
+        [-std::f32::consts::FRAC_PI_6, 0.0, 0.0]
+    );
+    assert_eq!(ADULT_HORSE_SADDLE_HEAD_PARTS_CHILDREN_TEXTURED.len(), 7);
+    assert_eq!(
+        ADULT_HORSE_SADDLE_RIDDEN_HEAD_PARTS_CHILDREN_TEXTURED.len(),
+        9
+    );
+    // Donkey/mule saddle layers run the donkey mesh transformer after adding the saddle, so their
+    // saddle tree keeps the two chest cubes even though `EquineSaddleModel` has no chest visibility
+    // flag of its own.
+    assert_eq!(ADULT_DONKEY_SADDLE_BODY_CHILDREN_TEXTURED.len(), 4);
+}
+
+#[test]
+fn equine_saddle_layer_renders_for_adult_horses_only() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        HORSE_WHITE_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF,
+        HORSE_WHITE_BABY_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    let base = EntityModelInstance::horse(172, [0.0, 64.0, 0.0], 0.0, false);
+    let bare = entity_model_textured_mesh(&[base], &atlas);
+    let saddled = entity_model_textured_mesh(&[base.with_equine_saddle(true)], &atlas);
+    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 102);
+    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 408);
+    assert!(
+        saddled.vertices[288].uv[1] >= 64.0 / 192.0,
+        "the overlay samples the horse_saddle atlas region"
+    );
+    let (bare_min, bare_max) = textured_mesh_extents(&bare);
+    let (saddle_min, saddle_max) = textured_mesh_extents(&saddled);
+    assert!(saddle_min[0] < bare_min[0]);
+    assert!(saddle_max[0] > bare_max[0]);
+
+    let ridden = entity_model_textured_mesh(
+        &[base
+            .with_equine_saddle(true)
+            .with_equine_saddle_ridden(true)],
+        &atlas,
+    );
+    assert_eq!(ridden.cutout_faces - saddled.cutout_faces, 12);
+    assert_eq!(ridden.vertices.len() - saddled.vertices.len(), 48);
+
+    let baby = entity_model_textured_mesh(
+        &[EntityModelInstance::horse(173, [0.0, 64.0, 0.0], 0.0, true)
+            .with_equine_saddle(true)
+            .with_equine_saddle_ridden(true)],
+        &atlas,
+    );
+    assert_eq!(baby.cutout_faces, 60);
+    assert_eq!(baby.vertices.len(), 240);
+}
+
+#[test]
+fn equine_saddle_layer_uses_family_specific_models_and_textures() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        DONKEY_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF,
+        MULE_TEXTURE_REF,
+        MULE_SADDLE_TEXTURE_REF,
+        SKELETON_HORSE_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_HORSE_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    let donkey = entity_model_textured_mesh(
+        &[EntityModelInstance::donkey(
+            174,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        )
+        .with_equine_saddle(true)],
+        &atlas,
+    );
+    assert_eq!(donkey.cutout_faces, 72 + 114);
+    assert_eq!(donkey.vertices.len(), 288 + 456);
+
+    let mule = entity_model_textured_mesh(
+        &[EntityModelInstance::donkey(
+            175,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            false,
+            false,
+        )
+        .with_equine_saddle(true)],
+        &atlas,
+    );
+    assert_eq!(mule.cutout_faces, 72 + 114);
+    let (_, donkey_max) = textured_mesh_extents(&donkey);
+    let (_, mule_max) = textured_mesh_extents(&mule);
+    assert!(
+        mule_max[1] > donkey_max[1],
+        "the mule saddle layer uses the larger 0.92 layer scale"
+    );
+
+    let skeleton = entity_model_textured_mesh(
+        &[EntityModelInstance::undead_horse(
+            176,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            false,
+        )
+        .with_equine_saddle(true)],
+        &atlas,
+    );
+    let zombie = entity_model_textured_mesh(
+        &[EntityModelInstance::undead_horse(
+            177,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Zombie,
+            false,
+        )
+        .with_equine_saddle(true)],
+        &atlas,
+    );
+    assert_eq!(skeleton.cutout_faces, 72 + 102);
+    assert_eq!(zombie.cutout_faces, 72 + 102);
+    let skeleton_overlay_uv = skeleton.vertices[288].uv;
+    let zombie_overlay_uv = zombie.vertices[288].uv;
+    assert_ne!(
+        skeleton_overlay_uv, zombie_overlay_uv,
+        "skeleton and zombie horse saddles sample different equipment-layer atlas regions"
+    );
 }
 
 fn donkey_texture_images() -> Vec<EntityModelTextureImage> {

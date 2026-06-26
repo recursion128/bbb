@@ -179,3 +179,33 @@ pub(in crate::entity_models) const ZOMBIE_HORSE_BABY_TEXTURE_REF: EntityModelTex
         path: "textures/entity/horse/horse_zombie_baby.png",
         size: [64, 64],
     };
+
+pub(in crate::entity_models) const HORSE_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/horse_saddle/saddle.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const DONKEY_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/donkey_saddle/saddle.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const MULE_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/mule_saddle/saddle.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const SKELETON_HORSE_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/skeleton_horse_saddle/saddle.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const ZOMBIE_HORSE_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/zombie_horse_saddle/saddle.png",
+        size: [64, 64],
+    };

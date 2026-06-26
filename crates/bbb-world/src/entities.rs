@@ -885,6 +885,14 @@ pub struct EntityModelSourceState {
     /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
     #[serde(default)]
     pub pig_saddle: bool,
+    /// Vanilla `EquineRenderState.saddle`: true when an adult horse/donkey/mule/skeleton-horse/
+    /// zombie-horse carries a non-empty saddle item in `EquipmentSlot.SADDLE`.
+    #[serde(default)]
+    pub equine_saddle: bool,
+    /// Vanilla `EquineRenderState.isRidden`: true when an equine saddle wearer has passengers, which
+    /// makes `EquineSaddleModel` show the two bridle line parts.
+    #[serde(default)]
+    pub equine_saddle_ridden: bool,
     /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
     /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
     /// other entity.

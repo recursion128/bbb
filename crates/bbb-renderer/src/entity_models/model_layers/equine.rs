@@ -515,6 +515,249 @@ pub(in crate::entity_models) const ADULT_HORSE_PARTS_TEXTURED: [TexturedModelPar
     },
 ];
 
+// Vanilla 26.1 `EquineSaddleModel.createSaddleLayer()`: starts from
+// `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)` and adds the saddle / bridle cubes. The
+// equipment texture is mostly transparent over the base equine cubes, but vanilla still submits the
+// whole model, so the textured saddle trees below include the base body, head, legs, ears, mane, mouth,
+// and tail. The two line parts are visible only while the horse is ridden.
+pub(in crate::entity_models) const ADULT_EQUINE_SADDLE_BODY_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-5.5, -8.5, -9.5],
+        size: [11.0, 10.0, 10.0],
+        uv_size: [10.0, 9.0, 9.0],
+        tex: [26.0, 0.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_EQUINE_SADDLE_LEFT_MOUTH_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [2.0, -9.0, -6.0],
+    size: [1.0, 2.0, 2.0],
+    uv_size: [1.0, 2.0, 2.0],
+    tex: [29.0, 5.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const ADULT_EQUINE_SADDLE_RIGHT_MOUTH_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.0, -9.0, -6.0],
+    size: [1.0, 2.0, 2.0],
+    uv_size: [1.0, 2.0, 2.0],
+    tex: [29.0, 5.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const ADULT_EQUINE_SADDLE_LEFT_LINE_TEXTURED: [TexturedModelCubeDesc;
+    1] = [TexturedModelCubeDesc {
+    min: [3.1, -6.0, -8.0],
+    size: [0.0, 3.0, 16.0],
+    uv_size: [0.0, 3.0, 16.0],
+    tex: [32.0, 2.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const ADULT_EQUINE_SADDLE_RIGHT_LINE_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.1, -6.0, -8.0],
+    size: [0.0, 3.0, 16.0],
+    uv_size: [0.0, 3.0, 16.0],
+    tex: [32.0, 2.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const ADULT_EQUINE_SADDLE_HEAD_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-3.22, -11.22, -2.12],
+        size: [6.44, 5.44, 6.44],
+        uv_size: [6.0, 5.0, 6.0],
+        tex: [1.0, 1.0],
+        mirror: false,
+    }];
+
+pub(in crate::entity_models) const ADULT_EQUINE_SADDLE_MOUTH_WRAP_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-2.2, -11.2, -4.2],
+    size: [4.4, 5.4, 2.4],
+    uv_size: [4.0, 5.0, 2.0],
+    tex: [19.0, 0.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const ADULT_HORSE_SADDLE_BODY_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_BODY_CHILDREN[0].pose,
+        cubes: &ADULT_HORSE_TAIL_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_BODY_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_SADDLE_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 7] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_HEAD_TEXTURED,
+        children: &ADULT_HORSE_HEAD_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_MANE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_UPPER_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_LEFT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_RIGHT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_HEAD_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_MOUTH_WRAP_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_SADDLE_RIDDEN_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 9] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_HEAD_TEXTURED,
+        children: &ADULT_HORSE_HEAD_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_MANE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_UPPER_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_LEFT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_RIGHT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 0.0, 0.0],
+            rotation: [-std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_EQUINE_SADDLE_LEFT_LINE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 0.0, 0.0],
+            rotation: [-std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_EQUINE_SADDLE_RIGHT_LINE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_HEAD_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_MOUTH_WRAP_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_SADDLE_PARTS_TEXTURED: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[0].pose,
+        cubes: &ADULT_HORSE_BODY_TEXTURED,
+        children: &ADULT_HORSE_SADDLE_BODY_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[1].pose,
+        cubes: &ADULT_HORSE_NECK_TEXTURED,
+        children: &ADULT_HORSE_SADDLE_HEAD_PARTS_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[2].pose,
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[3].pose,
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[4].pose,
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[5].pose,
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED:
+    [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[0].pose,
+        cubes: &ADULT_HORSE_BODY_TEXTURED,
+        children: &ADULT_HORSE_SADDLE_BODY_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[1].pose,
+        cubes: &ADULT_HORSE_NECK_TEXTURED,
+        children: &ADULT_HORSE_SADDLE_RIDDEN_HEAD_PARTS_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[2].pose,
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[3].pose,
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[4].pose,
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[5].pose,
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+];
+
 pub(in crate::entity_models) const BABY_HORSE_BODY_TEXTURED: [TexturedModelCubeDesc; 1] =
     [TexturedModelCubeDesc {
         min: [-4.0, -3.5, -7.0],
@@ -965,6 +1208,191 @@ pub(in crate::entity_models) const ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED: [Text
         pose: ADULT_DONKEY_PARTS_WITH_CHEST[1].pose,
         cubes: &ADULT_HORSE_NECK_TEXTURED,
         children: &ADULT_DONKEY_HEAD_PARTS_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[2].pose,
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[3].pose,
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[4].pose,
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[5].pose,
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_DONKEY_SADDLE_BODY_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 4] = [
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST[0].pose,
+        cubes: &ADULT_HORSE_TAIL_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_BODY_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST[1].pose,
+        cubes: &ADULT_DONKEY_CHEST_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_BODY_CHILDREN_WITH_CHEST[2].pose,
+        cubes: &ADULT_DONKEY_CHEST_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_DONKEY_SADDLE_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 7] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_HEAD_TEXTURED,
+        children: &ADULT_DONKEY_HEAD_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_MANE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_UPPER_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_LEFT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_RIGHT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_HEAD_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_MOUTH_WRAP_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_DONKEY_SADDLE_RIDDEN_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 9] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_HEAD_TEXTURED,
+        children: &ADULT_DONKEY_HEAD_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_MANE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_UPPER_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_LEFT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_RIGHT_MOUTH_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 0.0, 0.0],
+            rotation: [-std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_EQUINE_SADDLE_LEFT_LINE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 0.0, 0.0],
+            rotation: [-std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_EQUINE_SADDLE_RIGHT_LINE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_HEAD_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_EQUINE_SADDLE_MOUTH_WRAP_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_DONKEY_SADDLE_PARTS_TEXTURED: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[0].pose,
+        cubes: &ADULT_HORSE_BODY_TEXTURED,
+        children: &ADULT_DONKEY_SADDLE_BODY_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[1].pose,
+        cubes: &ADULT_HORSE_NECK_TEXTURED,
+        children: &ADULT_DONKEY_SADDLE_HEAD_PARTS_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[2].pose,
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[3].pose,
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[4].pose,
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[5].pose,
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED:
+    [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[0].pose,
+        cubes: &ADULT_HORSE_BODY_TEXTURED,
+        children: &ADULT_DONKEY_SADDLE_BODY_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_DONKEY_PARTS_WITH_CHEST[1].pose,
+        cubes: &ADULT_HORSE_NECK_TEXTURED,
+        children: &ADULT_DONKEY_SADDLE_RIDDEN_HEAD_PARTS_CHILDREN_TEXTURED,
     },
     TexturedModelPartDesc {
         pose: ADULT_DONKEY_PARTS_WITH_CHEST[2].pose,

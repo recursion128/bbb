@@ -1134,6 +1134,103 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
 }
 
 #[test]
+fn entity_model_sources_project_equine_saddle_and_ridden_state() {
+    use crate::ItemEquipmentSlot;
+    use std::collections::BTreeMap;
+
+    const SADDLE_ITEM_ID: i32 = 830;
+    const PLAIN_ITEM_ID: i32 = 831;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
+
+    fn stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+    fn equine_saddle_state(store: &WorldStore, entity_id: i32) -> (bool, bool) {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap();
+        (source.equine_saddle, source.equine_saddle_ridden)
+    }
+
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        62,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        63,
+        VANILLA_ENTITY_TYPE_DONKEY_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        64,
+        VANILLA_ENTITY_TYPE_PIG_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        65,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert_eq!(equine_saddle_state(&store, 62), (false, false));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 62,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(equine_saddle_state(&store, 62), (true, false));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 62,
+        passenger_ids: vec![65],
+    }));
+    assert_eq!(equine_saddle_state(&store, 62), (true, true));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 63,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(equine_saddle_state(&store, 63), (true, false));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 64,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(
+        equine_saddle_state(&store, 64),
+        (false, false),
+        "the pig saddle projects through its own render-state flag, not the equine one"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 62,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(PLAIN_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(equine_saddle_state(&store, 62), (false, false));
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid
