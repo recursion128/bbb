@@ -254,24 +254,24 @@ fn humanoid_arm_world_transform(
                 false,
             ))
         }
-        // A full-size armor stand holds items on its posed arm bone (vanilla `ArmorStandRenderer`'s
-        // `ItemInHandLayer`); `useBabyOffset` is false for ARMOR_STAND, so it always takes the adult
-        // offset. The small armor stand is deferred: vanilla scales its arm part by the `BABY_TRANSFORMER`
-        // (0.5), which the held item offset rides, but this crate bakes that scale into the small mesh's
-        // vertices (no part scale), so the held item would not pick it up.
+        // Armor stands hold items on their posed arm bone (vanilla `ArmorStandRenderer`'s
+        // `ItemInHandLayer`); `useBabyOffset` is false for ARMOR_STAND, so both full and small stands take
+        // the adult offset. `ModelLayers.ARMOR_STAND_SMALL` applies `HumanoidModel.BABY_TRANSFORMER`, so
+        // the arm part carries a 0.5 local scale that the held item must ride after the arm transform.
         EntityModelKind::ArmorStand {
-            small: false,
+            small,
             show_arms,
             show_base_plate,
             pose,
         } => {
-            let mut model = ArmorStandModel::new(false, show_arms, show_base_plate, pose);
+            let mut model = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
             model.prepare(instance);
-            Some((
-                entity_model_root_transform(*instance)
-                    * model.root().try_child_attach_transform(arm_name)?,
-                false,
-            ))
+            let mut arm_world = entity_model_root_transform(*instance)
+                * model.root().try_child_attach_transform(arm_name)?;
+            if small {
+                arm_world *= Mat4::from_scale(Vec3::splat(0.5));
+            }
+            Some((arm_world, false))
         }
         _ => None,
     }
@@ -515,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn full_size_armor_stand_holds_an_item_but_small_one_is_deferred() {
+    fn armor_stand_held_items_include_the_small_model_part_scale() {
         use crate::entity_models::DEFAULT_ARMOR_STAND_MODEL_POSE;
         let stand = |small| {
             EntityModelInstance::new(
@@ -530,11 +530,20 @@ mod tests {
                 0.0,
             )
         };
-        // A full-size armor stand attaches a held item to its posed arm bone (adult offset).
-        let attach = humanoid_hand_attach_transform(&stand(false), false).unwrap();
-        assert!(attach.transform_point3(Vec3::ZERO).is_finite());
-        // The small armor stand is deferred (its `BABY_TRANSFORMER` part scale is baked into vertices).
-        assert!(humanoid_hand_attach_transform(&stand(true), false).is_none());
+        // Armor stands always use the adult `ItemInHandLayer` offset, but the small model's arm part
+        // carries `HumanoidModel.BABY_TRANSFORMER`'s 0.5 body scale and the held item must ride it.
+        let adult = humanoid_hand_attach_transform(&stand(false), false).unwrap();
+        let small = humanoid_hand_attach_transform(&stand(true), false).unwrap();
+        assert!(adult.transform_point3(Vec3::ZERO).is_finite());
+        assert!(small.transform_point3(Vec3::ZERO).is_finite());
+        let adult_basis =
+            (adult.transform_point3(Vec3::X) - adult.transform_point3(Vec3::ZERO)).length();
+        let small_basis =
+            (small.transform_point3(Vec3::X) - small.transform_point3(Vec3::ZERO)).length();
+        assert!(
+            (small_basis / adult_basis - 0.5).abs() < 1e-5,
+            "small armor stand item scale {small_basis} should be half adult {adult_basis}"
+        );
     }
 
     #[test]

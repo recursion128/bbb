@@ -1016,8 +1016,8 @@ When an agent does any of the following, update this file in the same slice:
       quad meshes sampling the same blocks/items atlas as terrain, for all four
       item consumers (dropped item entities, held items, item frames/armor-stand,
       HUD 3D inventory icons) — every consumer is now implemented; the remaining
-      items are refinements (armor-stand held items, inventory-screen 3D icons,
-      first-person viewmodel, combat arm poses, custom ground transforms). Done:
+      items are refinements (first-person viewmodel, combat arm poses, custom
+      ground transforms). Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
         to the unit cube under a caller `transform`, atlas-absolute UVs, vertex
@@ -1150,16 +1150,16 @@ When an agent does any of the following, update this file in the same slice:
         (`getZsize()`), so a custom transform or a non-full-height sprite seats and
         clusters exactly as vanilla (replacing the old hardcoded
         block=0 / flat=0.1875 lift, which the new path reproduces for defaults).
-      - armor-stand held items DONE (full size): a full-size armor stand renders
-        its hand items as 3D models on its posed arm bone (vanilla
+      - armor-stand held items DONE (full and small): armor stands render their
+        hand items as 3D models on their posed arm bone (vanilla
         `ArmorStandRenderer`'s `ItemInHandLayer`; `useBabyOffset` is false for
-        ARMOR_STAND, so it always takes the adult `(1, 2, -10)/16` offset). The
+        ARMOR_STAND, so both sizes take the adult `(1, 2, -10)/16` offset). The
         held-item dispatch builds the posed `ArmorStandModel` and reads its
-        `right_arm` / `left_arm`; the world already exposes armor-stand hand
-        equipment (`EntityEquipment`, no living-entity gate). The small armor stand
-        is deferred: vanilla scales its arm part by `BABY_TRANSFORMER` (0.5) and the
-        held item rides that scale, but this crate bakes that scale into the small
-        mesh's vertices (no part scale), so the held item would not pick it up.
+        `right_arm` / `left_arm`; for `ModelLayers.ARMOR_STAND_SMALL`, the hand
+        transform carries `HumanoidModel.BABY_TRANSFORMER`'s 0.5 arm-part scale,
+        so the item rides the same small-model scale as vanilla. The world already
+        exposes armor-stand hand equipment (`EntityEquipment`, no living-entity
+        gate).
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1187,9 +1187,7 @@ When an agent does any of the following, update this file in the same slice:
         zombie/skeleton/illager/vindicator models is now just per-model wiring.
       - remaining slices: held-item refinements (first-person viewmodel; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
-        attack swing on the non-player humanoid models); the small armor stand's
-        held items (needs the part-scale path the small mesh's baked-in
-        `BABY_TRANSFORMER` skips). Item lighting
+        attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
         `shade` currently uses the terrain cardinal `Direction.getShade` for both
         block- and generated-items.
@@ -1904,9 +1902,11 @@ When an agent does any of the following, update this file in the same slice:
       arm/leg pose metadata projection; the textured base layer emits the vanilla
       `createBodyLayer` `texOffs` UVs (the small layer reuses the full-model UVs
       because `BABY_TRANSFORMER` only scales geometry, not texture coordinates),
-      with official PNG atlas upload/bind/sample on both render paths;
-      armor/equipment/custom-head/elytra/held-item layers, hurt wiggle,
-      marker/invisible render-type nuances, and animation interpolation remain
+      with official PNG atlas upload/bind/sample on both render paths, and the
+      standard held-item layer for both full and small stands (small hand items
+      ride the `BABY_TRANSFORMER` 0.5 arm-part scale);
+      armor/equipment/custom-head/elytra layers, hurt wiggle, marker/invisible
+      render-type nuances, and animation interpolation remain
       unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
