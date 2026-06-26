@@ -552,7 +552,8 @@ When an agent does any of the following, update this file in the same slice:
     see the piglin dance/crossbow/attack/admire note below), so the
     arm swing is implemented for them too; the
     zombified piglin instead overwrites the arms with `AnimationUtils.animateZombieArms`
-    (the deferred held-out zombie pose), so only its legs swing. The illager family
+    (implemented via the same held-out zombie-arm helper), so only its legs use the
+    inherited walk swing while its arms stay in the zombie pose. The illager family
     (`emit_illager_model`
     — evoker, vindicator, illusioner, pillager) uses a dedicated `illager_leg_swing_pose`
     (`cos(pos * 0.6662 [+ π]) * 1.4 * speed * 0.5`): `IllagerModel` is not a
@@ -612,7 +613,7 @@ When an agent does any of the following, update this file in the same slice:
     network-loaded `minecraft:item` tag set (no item-registry lookup). Vanilla precedence is DANCING >
     ADMIRING > ATTACKING > CROSSBOW, so a loved offhand item suppresses the attack/crossbow poses (the
     regular-piglin gates carry `&& !admiring`); the brute has no admire branch and the zombified piglin
-    uses the deferred `animateZombieArms`. The illusioner `BOW_AND_ARROW` draw is also
+    uses its implemented `animateZombieArms` pose. The illusioner `BOW_AND_ARROW` draw is also
     projected (`Illusioner.getArmPose`: `!casting && isAggressive` → BOW_AND_ARROW): the
     uncrossed arms aim the bow along the head look with the illager bracing the off hand —
     right arm `xRot = -π/2 + head.xRot`, `yRot = -0.1 + head.yRot`; left arm
@@ -850,13 +851,13 @@ When an agent does any of the following, update this file in the same slice:
     `yRot` is already `0`) stay deferred. (The `getArmPose` `isTwoHanded`-forces-off-hand-to-`ITEM` branch
     needs no implementation: every `isTwoHanded` pose is also `affectsOffhandPose`, so `setupAnim` always
     SKIPS the forced arm's `poseArm` and the forced value is never rendered.) The
-    per-subclass arm/ear/nose poses that override it stay deferred (the zombie held-out
+    per-subclass arm/ear/nose poses that override it are tracked separately (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —
     is implemented, see the zombie-arms note below; the skeleton `BOW_AND_ARROW`
     aim and the melee swing (`isAggressive && !isHoldingBow`, the raised-and-chopping arms
     driven by the projected `attack_anim`) are both implemented — see the skeleton note
-    below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose (the
+    below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose is implemented; the
     `PiglinModel` `DANCING`, `CROSSBOW_HOLD`, `ATTACKING_WITH_MELEE_WEAPON`, and `ADMIRING_ITEM` poses
     and the `AbstractPiglinModel` ear flap are implemented for the piglin/brute — see below),
     the `VillagerModel` unhappy
@@ -1740,8 +1741,8 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/piglin/{piglin,piglin_baby,piglin_brute,zombified_piglin,zombified_piglin_baby}.png`,
       with official PNG atlas upload/bind/sample and the vanilla
       `AbstractPiglinModel.setupAnim` head-look, leg swing, ear flap, and (for the
-      non-zombified families) arm counter-swing on both render paths (the zombified
-      piglin keeps its held-out `animateZombieArms` arms deferred);
+      non-zombified families) arm counter-swing on both render paths, while the zombified
+      piglin uses the held-out `animateZombieArms` arms;
       the `DrownedOuterLayer` (adult and baby) IS implemented (see the drowned note above); drowned
       swim
       rotation, zombie/piglin converting shake, remaining zombie-family and
@@ -1774,7 +1775,7 @@ When an agent does any of the following, update this file in the same slice:
       drowned, zombie villager, and the 6× giant) applies the held-out
       `animateZombieArms` resting pose on its two arm parts; the non-zombified piglin
       family (adult/baby piglin and brute) instead applies the inherited arm
-      counter-swing (the zombified piglin's arms keep the deferred
+      counter-swing (the zombified piglin's arms use the implemented
       `animateZombieArms` held-out pose; the `AbstractPiglinModel` ear sway and the
       `PiglinModel` `DANCING` / `ATTACKING_WITH_MELEE_WEAPON` / `CROSSBOW_HOLD` /
       `CROSSBOW_CHARGE` / `ADMIRING_ITEM` arm poses are all implemented)

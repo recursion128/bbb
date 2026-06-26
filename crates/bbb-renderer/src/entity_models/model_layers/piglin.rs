@@ -1,8 +1,8 @@
 use super::{
-    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look,
-    apply_humanoid_leg_swing_named, apply_humanoid_walk, apply_humanoid_weapon_swing_down,
-    piglin_ear_flap_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO,
-    PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look, apply_humanoid_walk,
+    apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named, piglin_ear_flap_pose,
+    PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE,
+    PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -533,16 +533,15 @@ fn apply_piglin_admire(root: &mut ModelPart) {
 /// Mutable piglin model, mirroring vanilla `AbstractPiglinModel extends HumanoidModel` (the piglin,
 /// piglin brute, and zombified piglin). The unified tree is built for the `family`/`baby` layout with
 /// the vanilla child names. `setup_anim` runs `super.setupAnim` — the head look ([`apply_head_look`]
-/// on `head`) and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk`]) — except the
-/// zombified piglin keeps its arms at rest (the held-out `animateZombieArms` pose defers), so it swings
-/// only the legs ([`apply_humanoid_leg_swing_named`]); then it always flaps the two ears
-/// ([`piglin_ear_flap_pose`], head children). A regular piglin holding a charged crossbow then levels it
-/// ([`apply_crossbow_hold_pose`], the `CROSSBOW_HOLD` pose); an aggressive piglin/brute holding a melee
-/// weapon raises and swings it ([`hold_weapon_high`] / [`apply_humanoid_weapon_swing_down`], the
-/// `ATTACKING_WITH_MELEE_WEAPON` pose); a regular piglin with a piglin-loved offhand item admires it
-/// ([`apply_piglin_admire`], the `ADMIRING_ITEM` pose); and a dancing regular piglin runs the `DANCING`
-/// pose ([`apply_piglin_dance`]). The family recolor/texture is supplied by the caller; the
-/// crossbow-charge arm pose, the zombified piglin's `animateZombieArms`, and held items defer.
+/// on `head`) and the humanoid walk (leg + arm swing/bob, [`apply_humanoid_walk`]) — then it always
+/// flaps the two ears ([`piglin_ear_flap_pose`], head children). Zombified piglins overwrite the inherited
+/// arm swing with the held-out `animateZombieArms` pose ([`apply_zombie_arms_held_out_named`]). A regular
+/// piglin holding a charged crossbow then levels it ([`apply_crossbow_hold_pose`], the `CROSSBOW_HOLD`
+/// pose); an aggressive piglin/brute holding a melee weapon raises and swings it ([`hold_weapon_high`] /
+/// [`apply_humanoid_weapon_swing_down`], the `ATTACKING_WITH_MELEE_WEAPON` pose); a regular piglin with a
+/// piglin-loved offhand item admires it ([`apply_piglin_admire`], the `ADMIRING_ITEM` pose); and a dancing
+/// regular piglin runs the `DANCING` pose ([`apply_piglin_dance`]). The family recolor/texture is supplied
+/// by the caller; held items defer.
 pub(in crate::entity_models) struct PiglinModel {
     root: ModelPart,
     family: PiglinModelFamily,
@@ -579,13 +578,7 @@ impl EntityModel for PiglinModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        if self.family == PiglinModelFamily::ZombifiedPiglin {
-            // The zombified piglin's held-out arms (deferred) replace the inherited swing, so only the
-            // legs swing.
-            apply_humanoid_leg_swing_named(&mut self.root, limb_swing, limb_swing_amount);
-        } else {
-            apply_humanoid_walk(&mut self.root, limb_swing, limb_swing_amount, age_in_ticks);
-        }
+        apply_humanoid_walk(&mut self.root, limb_swing, limb_swing_amount, age_in_ticks);
         // Flap the two ears (head children) every frame.
         let default_ear_angle = piglin_default_ear_angle(self.baby_layout);
         let head = self.root.child_mut("head");
@@ -607,6 +600,16 @@ impl EntityModel for PiglinModel {
             limb_swing,
             limb_swing_amount,
         );
+        if self.family == PiglinModelFamily::ZombifiedPiglin {
+            // Vanilla `ZombifiedPiglinModel.setupAnim` runs this after `AbstractPiglinModel`, replacing
+            // the inherited arm walk swing while preserving the leg swing and ear flap.
+            apply_zombie_arms_held_out_named(
+                &mut self.root,
+                render_state.is_aggressive,
+                render_state.attack_anim,
+                age_in_ticks,
+            );
+        }
         // Vanilla `PiglinModel.setupAnim` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow
         // levels it along the head look, overwriting the walk arm swing. Mutually exclusive with DANCING
         // (the projection gates it off while dancing/charging), and applied before the dance block so a

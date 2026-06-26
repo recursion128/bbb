@@ -1116,8 +1116,8 @@ fn entity_model_instance(
     // that is aggressive (`Mob.isAggressive()`) and holds a melee weapon (`isHoldingMeleeWeapon()`, a
     // main-hand item with the `tool` component), not dancing, and (for the regular piglin) not admiring an
     // offhand loved item (both higher priority). The brute has no dance/admire/crossbow poses, so
-    // `piglin_admiring` is always false for it. The zombified piglin uses the deferred zombie-arm pose, so
-    // it is excluded. Resolve the held item just for these families.
+    // `piglin_admiring` is always false for it. The zombified piglin uses its renderer zombie-arm pose
+    // instead of this weapon-raised pose, so it is excluded. Resolve the held item just for these families.
     let piglin_attacking_with_melee = matches!(
         kind,
         EntityModelKind::Piglin {
@@ -5420,7 +5420,7 @@ mod tests {
     fn entity_model_instances_project_piglin_melee_attack_pose() {
         // Vanilla Piglin/PiglinBrute.getArmPose ATTACKING_WITH_MELEE_WEAPON: aggressive (Mob.isAggressive,
         // DATA_MOB_FLAGS_ID 15 bit 4) AND isHoldingMeleeWeapon (main-hand item with DataComponents.TOOL,
-        // wire type 28). Gated to the regular piglin + brute (the zombified piglin uses the deferred
+        // wire type 28). Gated to the regular piglin + brute (the zombified piglin uses its renderer
         // zombie-arm pose); the regular piglin is also suppressed while DANCING (higher priority).
         const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
         const MOB_FLAG_AGGRESSIVE: i8 = 4;
@@ -5469,7 +5469,7 @@ mod tests {
             assert!(world.apply_set_equipment(tool_main_hand(id)));
             assert!(world.apply_set_entity_data(set_aggressive(id)));
         }
-        // The piglin and the brute raise/swing the melee weapon; the zombified piglin defers (zombie arms).
+        // The piglin and the brute raise/swing the melee weapon; the zombified piglin uses zombie arms.
         assert!(attacking(&world, 210));
         assert!(attacking(&world, 211));
         assert!(!attacking(&world, 212));
