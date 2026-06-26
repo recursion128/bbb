@@ -1237,6 +1237,8 @@ fn entity_model_instance(
         .with_pig_saddle(source.pig_saddle)
         .with_equine_saddle(source.equine_saddle)
         .with_equine_saddle_ridden(source.equine_saddle_ridden)
+        .with_equine_body_armor(armor_material(source.equine_body_armor))
+        .with_equine_body_armor_dye(armor_dye(source.equine_body_armor_dye))
         .with_strider_ridden(source.strider_ridden)
         .with_strider_saddle(source.strider_saddle)
         .with_camel_saddle(source.camel_saddle)
@@ -6919,6 +6921,105 @@ mod tests {
             nautilus_body_armor(&world, 125),
             None,
             "baby living nautilus skip the body armor equipment layer"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_horse_body_armor_render_state() {
+        const LEATHER_HORSE_ARMOR_ITEM_ID: i32 = 749;
+        const NETHERITE_HORSE_ARMOR_ITEM_ID: i32 = 750;
+        const AGEABLE_BABY_DATA_ID: u8 = 16;
+        const LEATHER_DYE: i32 = 0x0033_66CC;
+
+        let body_armor = |entity_id: i32, item_id: i32, dyed_color: Option<i32>| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        dyed_color,
+                        ..Default::default()
+                    },
+                },
+            }],
+        };
+        let horse_body_armor = |world: &WorldStore, id: i32| {
+            let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state;
+            (
+                render_state.equine_body_armor,
+                render_state.equine_body_armor_dye,
+            )
+        };
+
+        let mut world = WorldStore::new();
+        world.set_default_horse_body_armor_materials(std::collections::BTreeMap::from([
+            (LEATHER_HORSE_ARMOR_ITEM_ID, WorldArmorMaterialKind::Leather),
+            (
+                NETHERITE_HORSE_ARMOR_ITEM_ID,
+                WorldArmorMaterialKind::Netherite,
+            ),
+        ]));
+        world.apply_add_entity(protocol_add_entity(
+            126,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            127,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            [2.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            128,
+            VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+            [3.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            129,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+            [4.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 129,
+            values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        }));
+
+        assert!(world.apply_set_equipment(body_armor(
+            126,
+            LEATHER_HORSE_ARMOR_ITEM_ID,
+            Some(LEATHER_DYE),
+        )));
+        assert!(world.apply_set_equipment(body_armor(127, NETHERITE_HORSE_ARMOR_ITEM_ID, None,)));
+        assert!(world.apply_set_equipment(body_armor(128, NETHERITE_HORSE_ARMOR_ITEM_ID, None,)));
+        assert!(world.apply_set_equipment(body_armor(
+            129,
+            LEATHER_HORSE_ARMOR_ITEM_ID,
+            Some(LEATHER_DYE),
+        )));
+
+        assert_eq!(
+            horse_body_armor(&world, 126),
+            (Some(EntityArmorMaterial::Leather), Some(LEATHER_DYE as u32))
+        );
+        assert_eq!(
+            horse_body_armor(&world, 127),
+            (Some(EntityArmorMaterial::Netherite), None)
+        );
+        assert_eq!(
+            horse_body_armor(&world, 128),
+            (None, None),
+            "skeleton horses are not in vanilla CAN_WEAR_HORSE_ARMOR"
+        );
+        assert_eq!(
+            horse_body_armor(&world, 129),
+            (None, None),
+            "baby horses skip the body armor equipment layer"
         );
     }
 

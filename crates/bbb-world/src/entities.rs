@@ -894,6 +894,17 @@ pub struct EntityModelSourceState {
     /// makes `EquineSaddleModel` show the two bridle line parts.
     #[serde(default)]
     pub equine_saddle_ridden: bool,
+    /// Vanilla `EquineRenderState.bodyArmorItem`: the horse armor material from an adult horse /
+    /// zombie horse body equipment item whose equipment asset has a `horse_body` layer. Baby horses
+    /// skip it because `SimpleEquipmentLayer` supplies no baby armor model; skeleton horses are
+    /// excluded by the vanilla armor-wearer tag.
+    #[serde(default)]
+    pub equine_body_armor: Option<ArmorMaterialKind>,
+    /// Vanilla `DyedItemColor` for leather horse armor in the body slot: a packed RGB dye carried
+    /// alongside [`Self::equine_body_armor`]. Non-leather horse armor ignores it; undyed leather uses
+    /// the vanilla leather default color in the renderer.
+    #[serde(default)]
+    pub equine_body_armor_dye: Option<i32>,
     /// Vanilla `StriderRenderState.isRidden`: true when a strider has passengers, which makes
     /// `StriderModel.setupAnim` zero body pitch/yaw.
     #[serde(default)]
@@ -1252,6 +1263,7 @@ impl WorldStore {
                     &self.default_item_equipment_slots,
                     &self.default_llama_body_decor_colors,
                     &self.default_nautilus_body_armor_materials,
+                    &self.default_horse_body_armor_materials,
                 )?;
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))

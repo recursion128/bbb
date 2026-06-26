@@ -564,6 +564,15 @@ entity_render_state! {
     /// Vanilla `EquineRenderState.isRidden`: the equine saddle layer shows its two bridle line parts
     /// only while the entity is a vehicle. `false` for unridden equines and every non-equine entity.
     (with_equine_saddle_ridden) equine_saddle_ridden: bool = false;
+    /// Vanilla `EquineRenderState.bodyArmorItem`: an adult horse / zombie horse body equipment item
+    /// whose equipment asset provides a `HORSE_BODY` layer. Leather horse armor is dyeable and carries
+    /// its optional dye through [`Self::equine_body_armor_dye`]. Babies skip it because vanilla
+    /// supplies no baby armor model; skeleton horses are excluded by the vanilla armor-wearer tag.
+    (with_equine_body_armor) equine_body_armor: Option<EntityArmorMaterial> = None;
+    /// Vanilla `DyedItemColor.getOrDefault` for `EquineRenderState.bodyArmorItem`: the packed RGB dye
+    /// component on leather horse armor. Non-leather horse armor ignores it and renders white; undyed
+    /// leather falls back to `DyedItemColor.LEATHER_COLOR`.
+    (with_equine_body_armor_dye) equine_body_armor_dye: Option<u32> = None;
     /// Vanilla `StriderRenderState.isRidden`: a strider with passengers zeroes body pitch/yaw in
     /// `StriderModel.setupAnim`. `false` for unridden striders and every non-strider entity.
     (with_strider_ridden) strider_ridden: bool = false;
@@ -2039,6 +2048,8 @@ mod tests {
                 pig_saddle: false,
                 equine_saddle: false,
                 equine_saddle_ridden: false,
+                equine_body_armor: None,
+                equine_body_armor_dye: None,
                 strider_ridden: false,
                 strider_saddle: false,
                 camel_saddle: false,

@@ -1602,6 +1602,126 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
 }
 
 #[test]
+fn entity_model_sources_project_horse_body_armor_from_body_slot() {
+    use std::collections::BTreeMap;
+
+    const LEATHER_HORSE_ARMOR_ITEM_ID: i32 = 844;
+    const DIAMOND_HORSE_ARMOR_ITEM_ID: i32 = 845;
+    const NETHERITE_HORSE_ARMOR_ITEM_ID: i32 = 846;
+    const PLAIN_ITEM_ID: i32 = 847;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const LEATHER_DYE: i32 = 0x0033_66CC;
+
+    fn stack(item_id: i32, count: i32, dyed_color: Option<i32>) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: DataComponentPatchSummary {
+                dyed_color,
+                ..Default::default()
+            },
+        }
+    }
+    fn horse_body_armor(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (Option<ArmorMaterialKind>, Option<i32>) {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap();
+        (source.equine_body_armor, source.equine_body_armor_dye)
+    }
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        84,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        85,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        86,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 86,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+
+    for (entity_id, item_id, dye) in [
+        (82, LEATHER_HORSE_ARMOR_ITEM_ID, Some(LEATHER_DYE)),
+        (83, NETHERITE_HORSE_ARMOR_ITEM_ID, None),
+        (84, DIAMOND_HORSE_ARMOR_ITEM_ID, None),
+        (85, LEATHER_HORSE_ARMOR_ITEM_ID, Some(LEATHER_DYE)),
+        (86, LEATHER_HORSE_ARMOR_ITEM_ID, Some(LEATHER_DYE)),
+    ] {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: stack(item_id, 1, dye),
+            }],
+        }));
+    }
+    assert_eq!(
+        horse_body_armor(&store, 82),
+        (None, None),
+        "without the item registry's horse armor material map, a raw body item id is not enough"
+    );
+
+    store.set_default_horse_body_armor_materials(BTreeMap::from([
+        (LEATHER_HORSE_ARMOR_ITEM_ID, ArmorMaterialKind::Leather),
+        (DIAMOND_HORSE_ARMOR_ITEM_ID, ArmorMaterialKind::Diamond),
+        (NETHERITE_HORSE_ARMOR_ITEM_ID, ArmorMaterialKind::Netherite),
+    ]));
+    assert_eq!(
+        horse_body_armor(&store, 82),
+        (Some(ArmorMaterialKind::Leather), Some(LEATHER_DYE))
+    );
+    assert_eq!(
+        horse_body_armor(&store, 83),
+        (Some(ArmorMaterialKind::Netherite), None)
+    );
+    assert_eq!(
+        horse_body_armor(&store, 84),
+        (None, None),
+        "EntityTypeTags.CAN_WEAR_HORSE_ARMOR excludes skeleton horses"
+    );
+    assert_eq!(
+        horse_body_armor(&store, 85),
+        (None, None),
+        "non-horse entities do not project horse body armor"
+    );
+    assert_eq!(
+        horse_body_armor(&store, 86),
+        (None, None),
+        "baby horses skip the layer because vanilla supplies no baby armor model"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 82,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(PLAIN_ITEM_ID, 1, Some(LEATHER_DYE)),
+        }],
+    }));
+    assert_eq!(horse_body_armor(&store, 82), (None, None));
+}
+
+#[test]
 fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     use std::collections::BTreeMap;
 

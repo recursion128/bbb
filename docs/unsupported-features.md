@@ -1358,7 +1358,13 @@ When an agent does any of the following, update this file in the same slice:
       `EquineSaddleModel.createSaddleLayer()` with `livingHorseScale=1.1`, the family-specific
       `textures/entity/equipment/horse_saddle/saddle.png`, and ridden-only bridle line
       visibility from passenger state; baby horses intentionally skip it because vanilla
-      supplies no baby saddle model. Horse armor, the ridden/eat/stand/mouth poses, the
+      supplies no baby saddle model. The adult horse body-armor equipment layer is also
+      implemented from `EquipmentSlot.BODY`, using vanilla `HORSE_BODY`,
+      `HorseModel(ModelLayers.HORSE_ARMOR)` with `AbstractEquineModel.createBodyMesh(CubeDeformation(0.1F))`
+      plus `livingHorseScale=1.1`, and the official
+      `textures/entity/equipment/horse_body/{leather,leather_overlay,copper,iron,gold,diamond,netherite}.png`
+      textures; leather uses the dyeable base layer plus white overlay, and baby horses skip it
+      because vanilla supplies no baby armor model. The ridden/eat/stand/mouth poses, the
       tail's `ageInTicks` yRot wag, and the in-water leg-frequency scaling remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
@@ -1411,8 +1417,12 @@ When an agent does any of the following, update this file in the same slice:
       `SKELETON_HORSE_SADDLE` / `ZOMBIE_HORSE_SADDLE`, `EquineSaddleModel.createSaddleLayer()`,
       the family-specific `textures/entity/equipment/{skeleton_horse_saddle,zombie_horse_saddle}/saddle.png`,
       and ridden-only bridle line visibility from passenger state; baby undead horses skip
-      the layer because vanilla supplies no baby saddle model. The undead horse body-armor layer,
-      the ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and lighting remain
+      the layer because vanilla supplies no baby saddle model. The zombie-horse body-armor layer
+      is implemented from `EquipmentSlot.BODY`, using vanilla `HORSE_BODY`,
+      `HorseModel(ModelLayers.UNDEAD_HORSE_ARMOR)` with the unscaled horse armor mesh and the
+      same `horse_body` equipment textures; skeleton horses intentionally do not project horse
+      armor because vanilla `EntityTypeTags.CAN_WEAR_HORSE_ARMOR` includes only horse and
+      zombie_horse. The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and lighting remain
       unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
@@ -3156,9 +3166,8 @@ When an agent does any of the following, update this file in the same slice:
     wolf variant/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
-    horse armor/animation, donkey/mule animation presentation,
-    undead horse body-armor/animation
-    presentation, and remaining non-base-equine presentation,
+    horse animation, donkey/mule animation presentation,
+    undead horse animation presentation, and remaining non-base-equine presentation,
     villager held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie-family
     armor/drowned swim/zombie-villager converting-state/piglin-family

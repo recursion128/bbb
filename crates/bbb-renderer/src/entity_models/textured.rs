@@ -12,7 +12,7 @@ use super::{
         zombie_villager_type_texture_ref,
     },
     catalog::{
-        CamelModelFamily, DonkeyModelFamily, EntityDyeColor, EntityModelKind,
+        CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityDyeColor, EntityModelKind,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
         EntityModelUvRect, HoglinModelFamily, HorseMarkings, LlamaModelFamily, LlamaVariant,
         PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
@@ -30,23 +30,25 @@ use super::{
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
         armor_layer_tint, armor_slot_texture, equine_head_look_pose, equine_leg_swing_pose,
-        equine_tail_swing_pose, head_look_at_rest, limb_swing_at_rest,
-        llama_body_decor_texture_ref, nautilus_body_armor_texture_ref, BreezeWindModel, CamelModel,
-        CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel,
-        PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel,
-        SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
-        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
+        limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
+        BreezeWindModel, CamelModel, CreeperModel, DrownedOuterModel, HoglinModel,
+        HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel,
+        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
+        SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
+        VillagerModel, WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
-        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF,
-        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
+        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -287,6 +289,8 @@ pub(super) fn entity_model_textured_meshes(
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
+        // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
+        emit_equine_body_armor_layer(&mut meshes, *instance, atlas);
         // Horse/donkey/mule/undead-horse saddles use the shared EquineSaddleModel tree.
         emit_equine_saddle_layer(&mut meshes, *instance, atlas);
         // Strider saddles reuse the adult strider body layer with the strider equipment texture.
@@ -1000,6 +1004,61 @@ fn emit_equine_saddle_layer(
         [1.0, 1.0, 1.0, 1.0],
         instance,
     );
+}
+
+/// Vanilla `HorseRenderer` / `UndeadHorseRenderer` `SimpleEquipmentLayer(HORSE_BODY)`: an adult horse
+/// or zombie horse with a body armor item renders `HorseModel(ModelLayers.*_HORSE_ARMOR)`. The living
+/// horse armor model inherits the 1.1 `livingHorseScale`; the zombie horse armor model is unscaled.
+/// Vanilla supplies no baby model. Skeleton horses use the same renderer class but the vanilla
+/// `CAN_WEAR_HORSE_ARMOR` tag excludes them, so the world projection never sets this layer for them.
+fn emit_equine_body_armor_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(material) = instance.render_state.equine_body_armor else {
+        return;
+    };
+    let Some(layers) = horse_body_armor_texture_layers(material) else {
+        return;
+    };
+    let transform = match instance.kind {
+        EntityModelKind::Horse { baby: false, .. } => {
+            mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE)
+        }
+        EntityModelKind::UndeadHorse {
+            family: UndeadHorseModelFamily::Zombie,
+            baby: false,
+        } => entity_model_root_transform(instance),
+        _ => return,
+    };
+
+    for layer in layers {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, layer.texture) else {
+            continue;
+        };
+        let tint = if layer.dyeable {
+            armor_layer_tint(
+                EntityArmorMaterial::Leather,
+                instance.render_state.equine_body_armor_dye,
+            )
+        } else {
+            [1.0, 1.0, 1.0, 1.0]
+        };
+        emit_equine_textured_posed(
+            &mut meshes.cutout,
+            &ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+            [2, 3, 4, 5],
+            1,
+            0.0,
+            1.0,
+            transform,
+            layer.texture,
+            entry.uv,
+            tint,
+            instance,
+        );
+    }
 }
 
 /// Vanilla `StriderRenderer` `SimpleEquipmentLayer(STRIDER_SADDLE)`: a non-empty saddle item renders

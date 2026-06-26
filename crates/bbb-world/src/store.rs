@@ -123,6 +123,9 @@ pub struct WorldStore {
     pub(crate) default_nautilus_body_armor_materials:
         BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     #[serde(default)]
+    pub(crate) default_horse_body_armor_materials:
+        BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+    #[serde(default)]
     pub(crate) default_item_attack_ranges: BTreeMap<i32, ItemAttackRange>,
     #[serde(default)]
     pub(crate) default_item_use_effects: BTreeMap<i32, ItemUseEffects>,

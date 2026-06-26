@@ -170,6 +170,55 @@ fn horse_model_parts_match_vanilla_26_1_body_layers() {
 }
 
 #[test]
+fn horse_body_armor_geometry_matches_vanilla_26_1_layer() {
+    // Vanilla `ModelLayers.HORSE_ARMOR` / `UNDEAD_HORSE_ARMOR` use
+    // `AbstractEquineModel.createBodyMesh(CubeDeformation(0.1F))`. The body keeps its hardcoded
+    // `0.05F` deformation, the neck has no deformation parameter, and the ears keep `-0.001F`.
+    assert_eq!(ADULT_HORSE_ARMOR_PARTS_TEXTURED.len(), 6);
+    assert_eq!(
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED[0].cubes,
+        ADULT_HORSE_BODY_TEXTURED.as_slice()
+    );
+    assert_eq!(
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED[1].cubes,
+        ADULT_HORSE_NECK_TEXTURED.as_slice()
+    );
+    assert_eq!(
+        ADULT_HORSE_ARMOR_HEAD_CHILDREN_TEXTURED[0].cubes,
+        ADULT_HORSE_EAR_TEXTURED.as_slice()
+    );
+    assert_eq!(
+        ADULT_HORSE_ARMOR_HEAD_CHILDREN_TEXTURED[1].cubes,
+        ADULT_HORSE_RIGHT_EAR_TEXTURED.as_slice()
+    );
+
+    assert_close3(ADULT_HORSE_ARMOR_HEAD_TEXTURED[0].min, [-3.1, -11.1, -2.1]);
+    assert_close3(ADULT_HORSE_ARMOR_HEAD_TEXTURED[0].size, [6.2, 5.2, 7.2]);
+    assert_eq!(ADULT_HORSE_ARMOR_HEAD_TEXTURED[0].uv_size, [6.0, 5.0, 7.0]);
+    assert_close3(ADULT_HORSE_ARMOR_MANE_TEXTURED[0].min, [-1.1, -11.1, 4.91]);
+    assert_close3(ADULT_HORSE_ARMOR_MANE_TEXTURED[0].size, [2.2, 16.2, 2.2]);
+    assert_close3(
+        ADULT_HORSE_ARMOR_UPPER_MOUTH_TEXTURED[0].min,
+        [-2.1, -11.1, -7.1],
+    );
+    assert_close3(
+        ADULT_HORSE_ARMOR_UPPER_MOUTH_TEXTURED[0].size,
+        [4.2, 5.2, 5.2],
+    );
+    assert_close3(
+        ADULT_HORSE_ARMOR_LEFT_HIND_LEG_TEXTURED[0].min,
+        [-3.1, -1.11, -1.1],
+    );
+    assert_close3(
+        ADULT_HORSE_ARMOR_LEFT_HIND_LEG_TEXTURED[0].size,
+        [4.2, 11.2, 4.2],
+    );
+    assert_close3(ADULT_HORSE_ARMOR_TAIL_TEXTURED[0].min, [-1.6, -0.1, -0.1]);
+    assert_close3(ADULT_HORSE_ARMOR_TAIL_TEXTURED[0].size, [3.2, 14.2, 4.2]);
+    assert_eq!(ADULT_HORSE_ARMOR_TAIL_TEXTURED[0].uv_size, [3.0, 14.0, 4.0]);
+}
+
+#[test]
 fn horse_meshes_use_vanilla_body_layer_geometry() {
     let adult = entity_model_mesh(&[EntityModelInstance::horse(
         150,
@@ -285,6 +334,44 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
             path: "textures/entity/horse/horse_white_baby.png",
             size: [64, 64],
         })
+    );
+}
+
+#[test]
+fn horse_body_armor_texture_layers_match_vanilla_equipment_assets() {
+    let leather = horse_body_armor_texture_layers(EntityArmorMaterial::Leather).unwrap();
+    assert_eq!(leather.len(), 2);
+    assert_eq!(leather[0].texture, HORSE_BODY_LEATHER_TEXTURE_REF);
+    assert!(leather[0].dyeable);
+    assert_eq!(leather[1].texture, HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF);
+    assert!(!leather[1].dyeable);
+
+    for (material, texture) in [
+        (EntityArmorMaterial::Copper, HORSE_BODY_COPPER_TEXTURE_REF),
+        (EntityArmorMaterial::Iron, HORSE_BODY_IRON_TEXTURE_REF),
+        (EntityArmorMaterial::Gold, HORSE_BODY_GOLD_TEXTURE_REF),
+        (EntityArmorMaterial::Diamond, HORSE_BODY_DIAMOND_TEXTURE_REF),
+        (
+            EntityArmorMaterial::Netherite,
+            HORSE_BODY_NETHERITE_TEXTURE_REF,
+        ),
+    ] {
+        let layers = horse_body_armor_texture_layers(material).unwrap();
+        assert_eq!(
+            layers,
+            &[HorseBodyArmorTextureLayer {
+                texture,
+                dyeable: false
+            }]
+        );
+    }
+    assert_eq!(
+        horse_body_armor_texture_layers(EntityArmorMaterial::Chainmail),
+        None
+    );
+    assert_eq!(
+        horse_body_armor_texture_layers(EntityArmorMaterial::TurtleScute),
+        None
     );
 }
 
@@ -1435,6 +1522,119 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     );
     assert_eq!(baby.cutout_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
+}
+
+#[test]
+fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        HORSE_WHITE_TEXTURE_REF,
+        HORSE_WHITE_BABY_TEXTURE_REF,
+        ZOMBIE_HORSE_TEXTURE_REF,
+        SKELETON_HORSE_TEXTURE_REF,
+        HORSE_BODY_IRON_TEXTURE_REF,
+        HORSE_BODY_LEATHER_TEXTURE_REF,
+        HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF,
+        HORSE_BODY_NETHERITE_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    let horse = EntityModelInstance::horse(182, [0.0, 64.0, 0.0], 0.0, false);
+    let bare = entity_model_textured_mesh(&[horse], &atlas);
+    let iron = entity_model_textured_mesh(
+        &[horse.with_equine_body_armor(Some(EntityArmorMaterial::Iron))],
+        &atlas,
+    );
+    assert_eq!(iron.cutout_faces - bare.cutout_faces, 72);
+    assert_eq!(iron.vertices.len() - bare.vertices.len(), 288);
+    let iron_uv = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == HORSE_BODY_IRON_TEXTURE_REF)
+        .unwrap()
+        .uv;
+    let first_armor_vertex = iron.vertices[bare.vertices.len()].uv;
+    assert!(first_armor_vertex[0] >= iron_uv.min[0]);
+    assert!(first_armor_vertex[0] <= iron_uv.max[0]);
+    assert!(first_armor_vertex[1] >= iron_uv.min[1]);
+    assert!(first_armor_vertex[1] <= iron_uv.max[1]);
+
+    let dye = 0x0033_66CC;
+    let dyed_tint = [
+        0x33 as f32 / 255.0,
+        0x66 as f32 / 255.0,
+        0xCC as f32 / 255.0,
+        1.0,
+    ];
+    let leather = entity_model_textured_mesh(
+        &[horse
+            .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
+            .with_equine_body_armor_dye(Some(dye))],
+        &atlas,
+    );
+    assert_eq!(leather.cutout_faces - bare.cutout_faces, 144);
+    assert_eq!(leather.vertices.len() - bare.vertices.len(), 576);
+    assert!(
+        leather.vertices[bare.vertices.len()..bare.vertices.len() + 288]
+            .iter()
+            .all(|vertex| vertex.tint == dyed_tint)
+    );
+    assert!(leather.vertices[bare.vertices.len() + 288..]
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    let baby = EntityModelInstance::horse(183, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_bare = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_armored = entity_model_textured_mesh(
+        &[baby.with_equine_body_armor(Some(EntityArmorMaterial::Iron))],
+        &atlas,
+    );
+    assert_eq!(baby_armored.vertices.len(), baby_bare.vertices.len());
+
+    let zombie = EntityModelInstance::undead_horse(
+        184,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Zombie,
+        false,
+    );
+    let zombie_bare = entity_model_textured_mesh(&[zombie], &atlas);
+    let zombie_armored = entity_model_textured_mesh(
+        &[zombie.with_equine_body_armor(Some(EntityArmorMaterial::Netherite))],
+        &atlas,
+    );
+    assert_eq!(zombie_armored.cutout_faces - zombie_bare.cutout_faces, 72);
+    assert_eq!(
+        zombie_armored.vertices.len() - zombie_bare.vertices.len(),
+        288
+    );
+
+    let skeleton = EntityModelInstance::undead_horse(
+        185,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Skeleton,
+        false,
+    );
+    let skeleton_bare = entity_model_textured_mesh(&[skeleton], &atlas);
+    let skeleton_armored = entity_model_textured_mesh(
+        &[skeleton.with_equine_body_armor(Some(EntityArmorMaterial::Netherite))],
+        &atlas,
+    );
+    assert_eq!(
+        skeleton_armored.vertices.len(),
+        skeleton_bare.vertices.len(),
+        "EntityTypeTags.CAN_WEAR_HORSE_ARMOR excludes skeleton horses"
+    );
+
+    let invalid_material = entity_model_textured_mesh(
+        &[horse.with_equine_body_armor(Some(EntityArmorMaterial::Chainmail))],
+        &atlas,
+    );
+    assert_eq!(
+        invalid_material.vertices.len(),
+        bare.vertices.len(),
+        "vanilla 26.1 has no chainmail horse_body equipment texture"
+    );
 }
 
 #[test]

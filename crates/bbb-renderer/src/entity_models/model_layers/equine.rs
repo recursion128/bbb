@@ -515,6 +515,147 @@ pub(in crate::entity_models) const ADULT_HORSE_PARTS_TEXTURED: [TexturedModelPar
     },
 ];
 
+const HORSE_ARMOR_DEFORMATION: f32 = 0.1;
+
+const fn inflate_textured_cube(cube: TexturedModelCubeDesc, grow: f32) -> TexturedModelCubeDesc {
+    TexturedModelCubeDesc {
+        min: [cube.min[0] - grow, cube.min[1] - grow, cube.min[2] - grow],
+        size: [
+            cube.size[0] + grow + grow,
+            cube.size[1] + grow + grow,
+            cube.size[2] + grow + grow,
+        ],
+        uv_size: cube.uv_size,
+        tex: cube.tex,
+        mirror: cube.mirror,
+    }
+}
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_TAIL_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        ADULT_HORSE_TAIL_TEXTURED[0],
+        HORSE_ARMOR_DEFORMATION,
+    )];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_BODY_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 1] = [TexturedModelPartDesc {
+    pose: ADULT_HORSE_BODY_CHILDREN[0].pose,
+    cubes: &ADULT_HORSE_ARMOR_TAIL_TEXTURED,
+    children: &[],
+}];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_HEAD_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        ADULT_HORSE_HEAD_TEXTURED[0],
+        HORSE_ARMOR_DEFORMATION,
+    )];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_HEAD_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 2] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_EAR_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_RIGHT_EAR_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_MANE_TEXTURED: [TexturedModelCubeDesc; 1] =
+    [inflate_textured_cube(
+        ADULT_HORSE_MANE_TEXTURED[0],
+        HORSE_ARMOR_DEFORMATION,
+    )];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_UPPER_MOUTH_TEXTURED: [TexturedModelCubeDesc;
+    1] = [inflate_textured_cube(
+    ADULT_HORSE_UPPER_MOUTH_TEXTURED[0],
+    HORSE_ARMOR_DEFORMATION,
+)];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_HEAD_PARTS_CHILDREN_TEXTURED:
+    [TexturedModelPartDesc; 3] = [
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_ARMOR_HEAD_TEXTURED,
+        children: &ADULT_HORSE_ARMOR_HEAD_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_ARMOR_MANE_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_ARMOR_UPPER_MOUTH_TEXTURED,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_LEFT_HIND_LEG_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [inflate_textured_cube(
+    ADULT_HORSE_LEFT_HIND_LEG_TEXTURED[0],
+    HORSE_ARMOR_DEFORMATION,
+)];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_RIGHT_HIND_LEG_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [inflate_textured_cube(
+    ADULT_HORSE_RIGHT_HIND_LEG_TEXTURED[0],
+    HORSE_ARMOR_DEFORMATION,
+)];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_LEFT_FRONT_LEG_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [inflate_textured_cube(
+    ADULT_HORSE_LEFT_FRONT_LEG_TEXTURED[0],
+    HORSE_ARMOR_DEFORMATION,
+)];
+
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_RIGHT_FRONT_LEG_TEXTURED:
+    [TexturedModelCubeDesc; 1] = [inflate_textured_cube(
+    ADULT_HORSE_RIGHT_FRONT_LEG_TEXTURED[0],
+    HORSE_ARMOR_DEFORMATION,
+)];
+
+// Vanilla 26.1 `ModelLayers.HORSE_ARMOR` / `UNDEAD_HORSE_ARMOR`:
+// `AbstractEquineModel.createBodyMesh(CubeDeformation(0.1F))`. The body keeps its hardcoded
+// deformation `0.05F`, the neck has no deformation parameter, and ears keep `-0.001F`; head/mouth,
+// mane, legs, and tail use the armor deformation.
+pub(in crate::entity_models) const ADULT_HORSE_ARMOR_PARTS_TEXTURED: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[0].pose,
+        cubes: &ADULT_HORSE_BODY_TEXTURED,
+        children: &ADULT_HORSE_ARMOR_BODY_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[1].pose,
+        cubes: &ADULT_HORSE_NECK_TEXTURED,
+        children: &ADULT_HORSE_ARMOR_HEAD_PARTS_CHILDREN_TEXTURED,
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[2].pose,
+        cubes: &ADULT_HORSE_ARMOR_LEFT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[3].pose,
+        cubes: &ADULT_HORSE_ARMOR_RIGHT_HIND_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[4].pose,
+        cubes: &ADULT_HORSE_ARMOR_LEFT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_HORSE_PARTS[5].pose,
+        cubes: &ADULT_HORSE_ARMOR_RIGHT_FRONT_LEG_TEXTURED,
+        children: &[],
+    },
+];
+
 // Vanilla 26.1 `EquineSaddleModel.createSaddleLayer()`: starts from
 // `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)` and adds the saddle / bridle cubes. The
 // equipment texture is mostly transparent over the base equine cubes, but vanilla still submits the

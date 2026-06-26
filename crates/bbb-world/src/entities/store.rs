@@ -13,12 +13,13 @@ use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 
 use super::{
-    is_vanilla_abstract_nautilus_type, is_vanilla_llama_type, ArmorMaterialKind, EntityAttributes,
-    EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityState, EntityTransform,
-    EntityTransformState, EntityTransientEvents, ItemEntityStackState, ItemFrameRenderState,
-    LlamaBodyDecorColor, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
+    ArmorMaterialKind, EntityAttributes, EntityCameraPoseState, EntityClientAnimations,
+    EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash,
+    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
+    EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
     VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -526,6 +527,7 @@ impl EntityStore {
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
         llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
         nautilus_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
+        horse_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -621,6 +623,19 @@ impl EntityStore {
                 })
                 .and_then(|update| (update.item.count > 0).then_some(update.item.item_id)?)
         };
+        let body_slot_armor_dye = || -> Option<i32> {
+            equipment
+                .as_ref()
+                .and_then(|equipment| {
+                    equipment
+                        .equipment
+                        .iter()
+                        .find(|update| update.slot == ProtocolEquipmentSlot::Body)
+                })
+                .and_then(|update| {
+                    (update.item.count > 0).then_some(update.item.component_patch.dyed_color)?
+                })
+        };
         let llama_body_decor = if is_vanilla_llama_type(identity.entity_type_id)
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
         {
@@ -636,6 +651,15 @@ impl EntityStore {
         } else {
             None
         };
+        let horse_body_armor = if is_vanilla_can_wear_horse_armor_type(identity.entity_type_id)
+            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
+        {
+            body_slot_item_id()
+                .and_then(|item_id| horse_body_armor_materials.get(&item_id).copied())
+        } else {
+            None
+        };
+        let horse_body_armor_dye = horse_body_armor.and_then(|_| body_slot_armor_dye());
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -1090,6 +1114,8 @@ impl EntityStore {
             pig_saddle: pig_saddle(),
             equine_saddle,
             equine_saddle_ridden,
+            equine_body_armor: horse_body_armor,
+            equine_body_armor_dye: horse_body_armor_dye,
             strider_ridden,
             strider_saddle,
             camel_saddle,

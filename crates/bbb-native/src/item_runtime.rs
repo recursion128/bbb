@@ -451,6 +451,34 @@ impl NativeItemRuntime {
         self.nautilus_body_armor_materials_by_protocol_id().len()
     }
 
+    pub(crate) fn horse_body_armor_materials_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldArmorMaterialKind> {
+        let mut materials = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return materials;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            if registry.mount_body_armor_kind(resource_id)
+                != Some(PackItemMountBodyArmorKind::Horse)
+            {
+                continue;
+            }
+            let Some(asset) = registry.mount_body_armor_asset(resource_id) else {
+                continue;
+            };
+            let Some(material) = horse_body_armor_material_from_asset(asset) else {
+                continue;
+            };
+            materials.insert(protocol_id as i32, material);
+        }
+        materials
+    }
+
+    pub(crate) fn horse_body_armor_material_count(&self) -> usize {
+        self.horse_body_armor_materials_by_protocol_id().len()
+    }
+
     pub(crate) fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.registry
             .as_ref()
@@ -1106,6 +1134,19 @@ fn nautilus_body_armor_material_from_asset(asset: &str) -> Option<WorldArmorMate
         WorldArmorMaterialKind::Leather
         | WorldArmorMaterialKind::Chainmail
         | WorldArmorMaterialKind::TurtleScute => None,
+    }
+}
+
+fn horse_body_armor_material_from_asset(asset: &str) -> Option<WorldArmorMaterialKind> {
+    let material = WorldArmorMaterialKind::from_equipment_asset(asset)?;
+    match material {
+        WorldArmorMaterialKind::Leather
+        | WorldArmorMaterialKind::Copper
+        | WorldArmorMaterialKind::Iron
+        | WorldArmorMaterialKind::Gold
+        | WorldArmorMaterialKind::Diamond
+        | WorldArmorMaterialKind::Netherite => Some(material),
+        WorldArmorMaterialKind::Chainmail | WorldArmorMaterialKind::TurtleScute => None,
     }
 }
 
@@ -2091,6 +2132,75 @@ mod tests {
         );
         assert_eq!(materials.get(&chainmail), None);
         assert_eq!(materials.get(&horse_armor), None);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_projects_horse_body_armor_materials() {
+        let root = unique_temp_dir("item-runtime-horse-body-armor");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item LEATHER_HORSE_ARMOR = registerItem("leather_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.LEATHER));
+                public static final Item COPPER_HORSE_ARMOR = registerItem("copper_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.COPPER));
+                public static final Item DIAMOND_HORSE_ARMOR = registerItem("diamond_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
+                public static final Item NETHERITE_HORSE_ARMOR = registerItem("netherite_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.NETHERITE).fireResistant());
+                public static final Item CHAINMAIL_HORSE_ARMOR = registerItem("chainmail_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.CHAINMAIL));
+                public static final Item IRON_NAUTILUS_ARMOR = registerItem("iron_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.IRON));
+            }"#,
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+        let leather = registry
+            .protocol_id("minecraft:leather_horse_armor")
+            .unwrap();
+        let copper = registry
+            .protocol_id("minecraft:copper_horse_armor")
+            .unwrap();
+        let diamond = registry
+            .protocol_id("minecraft:diamond_horse_armor")
+            .unwrap();
+        let netherite = registry
+            .protocol_id("minecraft:netherite_horse_armor")
+            .unwrap();
+        let chainmail = registry
+            .protocol_id("minecraft:chainmail_horse_armor")
+            .unwrap();
+        let nautilus = registry
+            .protocol_id("minecraft:iron_nautilus_armor")
+            .unwrap();
+        let materials = runtime.horse_body_armor_materials_by_protocol_id();
+
+        assert_eq!(runtime.horse_body_armor_material_count(), 4);
+        assert_eq!(
+            materials.get(&leather),
+            Some(&WorldArmorMaterialKind::Leather)
+        );
+        assert_eq!(
+            materials.get(&copper),
+            Some(&WorldArmorMaterialKind::Copper)
+        );
+        assert_eq!(
+            materials.get(&diamond),
+            Some(&WorldArmorMaterialKind::Diamond)
+        );
+        assert_eq!(
+            materials.get(&netherite),
+            Some(&WorldArmorMaterialKind::Netherite)
+        );
+        assert_eq!(materials.get(&chainmail), None);
+        assert_eq!(materials.get(&nautilus), None);
 
         std::fs::remove_dir_all(root).unwrap();
     }
