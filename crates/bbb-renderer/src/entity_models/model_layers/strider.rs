@@ -385,14 +385,20 @@ fn strider_baby_root() -> ModelPart {
 /// Applies the vanilla `StriderModel.setupAnim` + `{Adult,Baby}StriderModel.customAnimations` to the
 /// unified tree: the legs swing (`xRot`) / roll (`zRot`) / lift (`y`) in opposition, the body tracks
 /// the look and sways (`zRot`) / bobs (`y`), and the bristles flow with the walk plus an `ageInTicks`
-/// ripple — the adult's six bristles on `zRot`, the baby's three on `xRot`. The ridden pose and the
-/// saddle are deferred entity-side state.
+/// ripple — the adult's six bristles on `zRot`, the baby's three on `xRot`. Ridden striders zero body
+/// look pitch/yaw, matching `StriderRenderState.isRidden`.
 fn apply_strider_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
     let age = instance.render_state.age_in_ticks;
     let pos = instance.render_state.walk_animation_pos;
     let speed = strider_animation_speed(instance.render_state.walk_animation_speed);
-    let head_pitch = instance.render_state.head_pitch.to_radians();
-    let head_yaw = instance.render_state.head_yaw.to_radians();
+    let (head_pitch, head_yaw) = if instance.render_state.strider_ridden {
+        (0.0, 0.0)
+    } else {
+        (
+            instance.render_state.head_pitch.to_radians(),
+            instance.render_state.head_yaw.to_radians(),
+        )
+    };
     let (leg_base_y, body_base_y, body_bob_mul, right_leg_x, left_leg_x) = if baby {
         (
             STRIDER_BABY_LEG_BASE_Y,
@@ -470,8 +476,8 @@ fn apply_strider_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelIn
 /// [`strider_baby_root`]): the synthetic root → (`right_leg`, `left_leg`, `body`), with `body`
 /// parenting the bristles. Each cube carries both the colored tint and the textured UV, so one tree
 /// drives both render paths; `setup_anim` runs [`apply_strider_anim`]. The same posed tree drives the
-/// colored fallback and the cutout textured layer; the cold/suffocating texture and the saddle layer
-/// live outside the model.
+/// colored fallback, the base cutout textured layer, and the adult saddle equipment layer; the
+/// cold/suffocating texture swap lives outside the model.
 pub(in crate::entity_models) struct StriderModel {
     root: ModelPart,
     baby: bool,

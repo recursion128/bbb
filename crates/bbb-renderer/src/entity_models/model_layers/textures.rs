@@ -381,8 +381,8 @@ pub(in crate::entity_models) const ALLAY_TEXTURE_REF: EntityModelTextureRef =
         size: [32, 32],
     };
 
-// Vanilla `StriderRenderer` non-suffocating textures. The cold/suffocating swaps
-// (`strider_cold.png` / `strider_cold_baby.png`) and the saddle equipment layer are deferred.
+// Vanilla `StriderRenderer` textures. The cold/suffocating swaps select the cold variants, and the
+// `SimpleEquipmentLayer(STRIDER_SADDLE)` renders the adult model again with the equipment texture.
 pub(in crate::entity_models) const STRIDER_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/strider/strider.png",
@@ -405,6 +405,11 @@ pub(in crate::entity_models) const STRIDER_COLD_BABY_TEXTURE_REF: EntityModelTex
     EntityModelTextureRef {
         path: "textures/entity/strider/strider_cold_baby.png",
         size: [32, 32],
+    };
+pub(in crate::entity_models) const STRIDER_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/strider_saddle/saddle.png",
+        size: [64, 128],
     };
 pub(in crate::entity_models) fn strider_texture_ref(
     baby: bool,
@@ -1416,7 +1421,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 471] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 472] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1845,6 +1850,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     STRIDER_BABY_TEXTURE_REF,
     STRIDER_COLD_TEXTURE_REF,
     STRIDER_COLD_BABY_TEXTURE_REF,
+    STRIDER_SADDLE_TEXTURE_REF,
     TURTLE_TEXTURE_REF,
     TURTLE_BABY_TEXTURE_REF,
     BAT_TEXTURE_REF,

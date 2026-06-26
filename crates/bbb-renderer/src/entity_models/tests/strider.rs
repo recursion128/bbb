@@ -196,6 +196,12 @@ fn strider_body_tracks_look_angles() {
         forward.vertices, looking.vertices,
         "the body tracks the look"
     );
+
+    let ridden = entity_model_mesh(&[base.with_head_look(40.0, -25.0).with_strider_ridden(true)]);
+    assert_eq!(
+        forward.vertices, ridden.vertices,
+        "ridden striders zero the body pitch/yaw instead of tracking the look"
+    );
 }
 
 #[test]
@@ -280,8 +286,16 @@ fn strider_texture_refs_match_vanilla_renderer() {
         strider_texture_ref(true, true),
         STRIDER_COLD_BABY_TEXTURE_REF
     );
+    assert_eq!(
+        STRIDER_SADDLE_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/equipment/strider_saddle/saddle.png",
+            size: [64, 128],
+        }
+    );
     assert!(entity_model_texture_refs().contains(&STRIDER_COLD_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&STRIDER_COLD_BABY_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&STRIDER_SADDLE_TEXTURE_REF));
     assert_eq!(strider_entity_texture_refs().len(), 4);
 }
 
@@ -312,6 +326,14 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
     // The body tracks the look, and the walk + age animate the legs/body/bristles.
     let looking = entity_model_textured_meshes(&[adult.with_head_look(40.0, -25.0)], &atlas);
     assert_ne!(meshes.cutout.vertices, looking.cutout.vertices);
+    let ridden = entity_model_textured_meshes(
+        &[adult.with_head_look(40.0, -25.0).with_strider_ridden(true)],
+        &atlas,
+    );
+    assert_eq!(
+        meshes.cutout.vertices, ridden.cutout.vertices,
+        "ridden striders zero the body pitch/yaw in the textured model"
+    );
     let walking = entity_model_textured_meshes(&[adult.with_walk_animation(3.0, 0.2)], &atlas);
     assert_ne!(meshes.cutout.vertices, walking.cutout.vertices);
     let rippled = entity_model_textured_meshes(
@@ -321,8 +343,51 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_ne!(walking.cutout.vertices, rippled.cutout.vertices);
 }
 
+#[test]
+fn strider_saddle_layer_renders_for_adults_only() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        STRIDER_TEXTURE_REF,
+        STRIDER_BABY_TEXTURE_REF,
+        STRIDER_COLD_TEXTURE_REF,
+        STRIDER_COLD_BABY_TEXTURE_REF,
+        STRIDER_SADDLE_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    let adult = EntityModelInstance::strider(752, [0.0, 64.0, 0.0], 0.0, false, false);
+    let bare = entity_model_textured_mesh(&[adult], &atlas);
+    let saddled = entity_model_textured_mesh(&[adult.with_strider_saddle(true)], &atlas);
+    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 54);
+    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 216);
+
+    let saddle_uv = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == STRIDER_SADDLE_TEXTURE_REF)
+        .unwrap()
+        .uv;
+    let first_saddle_vertex = saddled.vertices[bare.vertices.len()].uv;
+    assert!(first_saddle_vertex[0] >= saddle_uv.min[0]);
+    assert!(first_saddle_vertex[0] <= saddle_uv.max[0]);
+    assert!(first_saddle_vertex[1] >= saddle_uv.min[1]);
+    assert!(first_saddle_vertex[1] <= saddle_uv.max[1]);
+
+    let baby = EntityModelInstance::strider(753, [0.0, 64.0, 0.0], 0.0, true, false)
+        .with_strider_saddle(true);
+    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    assert_eq!(
+        baby_mesh.cutout_faces, 36,
+        "vanilla supplies no baby model for the strider saddle layer"
+    );
+    assert_eq!(baby_mesh.vertices.len(), 144);
+}
+
 fn strider_texture_images() -> Vec<EntityModelTextureImage> {
-    strider_entity_texture_refs()
+    texture_images(strider_entity_texture_refs())
+}
+
+fn texture_images(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
         .iter()
         .enumerate()
         .map(|(index, texture)| {

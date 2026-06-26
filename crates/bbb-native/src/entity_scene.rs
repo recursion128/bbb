@@ -1236,6 +1236,8 @@ fn entity_model_instance(
         .with_pig_saddle(source.pig_saddle)
         .with_equine_saddle(source.equine_saddle)
         .with_equine_saddle_ridden(source.equine_saddle_ridden)
+        .with_strider_ridden(source.strider_ridden)
+        .with_strider_saddle(source.strider_saddle)
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -6645,6 +6647,61 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_instances_project_strider_saddle_and_ridden_render_state() {
+        const SADDLE_ITEM_ID: i32 = 742;
+
+        let saddle = |entity_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: ItemStackSummary {
+                    item_id: Some(SADDLE_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let strider_state = |world: &WorldStore, id: i32| {
+            let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state;
+            (render_state.strider_saddle, render_state.strider_ridden)
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            113,
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            114,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            [2.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_equipment(saddle(113)));
+        assert_eq!(
+            strider_state(&world, 113),
+            (false, false),
+            "without the item registry's saddle-slot map, a raw item id is not enough"
+        );
+
+        world.set_default_item_equipment_slots(std::collections::BTreeMap::from([(
+            SADDLE_ITEM_ID,
+            ItemEquipmentSlot::Saddle,
+        )]));
+        assert_eq!(strider_state(&world, 113), (true, false));
+
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 113,
+            passenger_ids: vec![114],
+        }));
+        assert_eq!(strider_state(&world, 113), (true, true));
+    }
+
+    #[test]
     fn entity_model_instances_project_armor_stand_flags_and_pose() {
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
@@ -7360,7 +7417,7 @@ mod tests {
         // The strider previously fell back to the horse quadruped; it now resolves to the real
         // `AdultStriderModel` / `BabyStriderModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
         // (index 16, default adult). The `cold` flag is the synced `DATA_SUFFOCATING` (19), swapping
-        // to the `strider_cold` texture. The ridden pose and saddle layer stay deferred.
+        // to the `strider_cold` texture; ridden pose and saddle layer are generic render-state flags.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_STRIDER_ID, &[]),
             EntityModelKind::Strider {

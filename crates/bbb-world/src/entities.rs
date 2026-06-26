@@ -80,6 +80,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
 pub(crate) const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
 pub(crate) const VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID: i32 = 125;
 pub(crate) const VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID: i32 = 126;
+pub(crate) const VANILLA_ENTITY_TYPE_STRIDER_ID: i32 = 129;
 pub(crate) const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
 pub(crate) const VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID: i32 = 134;
 pub(crate) const VANILLA_ENTITY_TYPE_WIND_CHARGE_ID: i32 = 143;
@@ -893,6 +894,15 @@ pub struct EntityModelSourceState {
     /// makes `EquineSaddleModel` show the two bridle line parts.
     #[serde(default)]
     pub equine_saddle_ridden: bool,
+    /// Vanilla `StriderRenderState.isRidden`: true when a strider has passengers, which makes
+    /// `StriderModel.setupAnim` zero body pitch/yaw.
+    #[serde(default)]
+    pub strider_ridden: bool,
+    /// Vanilla `StriderRenderState.saddle`: true when a strider carries a non-empty saddle item in
+    /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `STRIDER_SADDLE` equipment
+    /// layer on adult striders.
+    #[serde(default)]
+    pub strider_saddle: bool,
     /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
     /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
     /// other entity.

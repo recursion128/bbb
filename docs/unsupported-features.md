@@ -2006,15 +2006,21 @@ When an agent does any of the following, update this file in the same slice:
       bristle flow `cos(pos·1.5 + π)·speed` with the per-bristle `0.6/1.2/1.3` weights and the
       `0.1·sin(age·0.4)` / `0.1·sin(age·0.2)` / `0.05·sin(age·-0.4)` idle ripple — adult bristles
       flow on `zRot`, baby bristles on `xRot`) are driven by the projected look angles, walk
-      animation, and `age_in_ticks`, under the standard `LivingEntityRenderer.setupRotations`.
+      animation, and `age_in_ticks`, under the standard `LivingEntityRenderer.setupRotations`;
+      `StriderRenderState.isRidden` is projected from passengers and zeros body pitch/yaw, matching
+      vanilla when the strider is a vehicle.
       The textured base layer draws the `textures/entity/strider/strider.png` /
       `strider_baby.png` atlas references into the cutout mesh (default
       `RenderTypes::entityCutout`), hand-emitted through the same animated leg/body/bristle
       hierarchy as the colored path. The cold/suffocating texture swap IS wired:
       `StriderRenderer.getTextureLocation` returns `strider_cold.png` / `strider_cold_baby.png` when
       `isSuffocating()`, projected onto `cold` from the synced `DATA_SUFFOCATING` flag (19) and selected
-      via `strider_texture_ref(baby, cold)` (the strider texture set grows to four). The ridden pose
-      (`isRidden` zeroing the body look), the saddle equipment layer, and the suffocating shake remain
+      via `strider_texture_ref(baby, cold)` (the strider texture set grows to four). The adult saddle
+      equipment layer is implemented from `EquipmentSlot.SADDLE`: vanilla `StriderRenderer` adds
+      `SimpleEquipmentLayer(STRIDER_SADDLE)` with `AdultStriderModel(ModelLayers.STRIDER_SADDLE)`,
+      `LayerDefinitions` maps that layer to the same adult strider body layer, and the renderer draws
+      `textures/entity/equipment/strider_saddle/saddle.png` (64×128). Baby striders intentionally skip
+      this layer because vanilla supplies `null` for the baby saddle model. The suffocating shake remains
       unsupported
     - turtle entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `137` to the real `AdultTurtleModel` /

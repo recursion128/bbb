@@ -564,6 +564,13 @@ entity_render_state! {
     /// Vanilla `EquineRenderState.isRidden`: the equine saddle layer shows its two bridle line parts
     /// only while the entity is a vehicle. `false` for unridden equines and every non-equine entity.
     (with_equine_saddle_ridden) equine_saddle_ridden: bool = false;
+    /// Vanilla `StriderRenderState.isRidden`: a strider with passengers zeroes body pitch/yaw in
+    /// `StriderModel.setupAnim`. `false` for unridden striders and every non-strider entity.
+    (with_strider_ridden) strider_ridden: bool = false;
+    /// Vanilla `StriderRenderState.saddle`: the item in `EquipmentSlot.SADDLE`. A non-empty saddle item
+    /// renders `AdultStriderModel(ModelLayers.STRIDER_SADDLE)` over the base strider. Babies skip the
+    /// layer because vanilla supplies no baby saddle model.
+    (with_strider_saddle) strider_saddle: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -2013,6 +2020,8 @@ mod tests {
                 pig_saddle: false,
                 equine_saddle: false,
                 equine_saddle_ridden: false,
+                strider_ridden: false,
+                strider_saddle: false,
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,

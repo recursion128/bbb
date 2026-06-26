@@ -21,8 +21,9 @@ use super::{
     VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -585,6 +586,12 @@ impl EntityStore {
             && mount
                 .as_ref()
                 .is_some_and(|mount| !mount.passengers.is_empty());
+        let strider_ridden = identity.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID
+            && mount
+                .as_ref()
+                .is_some_and(|mount| !mount.passengers.is_empty());
+        let strider_saddle = identity.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID
+            && saddle_slot_contains_saddle_item();
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -1039,6 +1046,8 @@ impl EntityStore {
             pig_saddle: pig_saddle(),
             equine_saddle,
             equine_saddle_ridden,
+            strider_ridden,
+            strider_saddle,
             guardian_beam: self.guardian_beam_source(
                 identity.entity_type_id,
                 identity.data,
