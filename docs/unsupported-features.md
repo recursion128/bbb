@@ -1016,13 +1016,15 @@ When an agent does any of the following, update this file in the same slice:
       submits into shared meshes. The render-type expression is pinned by
       vanilla-name tests, and `breezeWind` / `energySwirl` residual emits now
       use a shared scrolled submission helper before folding into the scroll
-      mesh buckets. Uniform layer passes, Warden retained
+      mesh buckets; Guardian attack beams also record vanilla `entityCutout`
+      submissions before folding their tiled custom geometry into the scroll
+      bucket. Uniform layer passes, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager
       profession/type/level overlays, custom-head skull submissions, and the
-      newly textured End Crystal path are covered by source-verified
+      Guardian beam / newly textured End Crystal paths are covered by source-verified
       texture/render-type/tint/transform/order tests.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata

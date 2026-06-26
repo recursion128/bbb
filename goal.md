@@ -91,7 +91,8 @@ horse/donkey/undead-horse base+saddle/body-armor, horse markings, and villager t
 overlays; custom-head skull residual emits also record texture/render type/tint/transform/order
 submissions before folding into cutout or translucent buckets. `breezeWind` / `energySwirl`
 scroll residual emits now also go through a shared scrolled submission helper before folding into
-the scroll buckets.
+the scroll buckets, and Guardian attack beams now record vanilla `entityCutout` submissions before
+folding their tiled custom geometry into the scroll bucket.
 End Crystal 已从 colored-only fallback 推进到 textured path，绑定
 `textures/entity/end_crystal/end_crystal.png`，使用 vanilla 默认 `entityCutout`、
 order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon healing beam 仍 deferred。

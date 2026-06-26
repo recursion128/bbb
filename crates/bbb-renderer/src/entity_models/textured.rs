@@ -1089,9 +1089,6 @@ fn emit_guardian_beam(
     let Some(beam) = instance.render_state.guardian_beam else {
         return;
     };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, GUARDIAN_BEAM_TEXTURE_REF) else {
-        return;
-    };
 
     // Orient local +Y onto the world beam direction, then lift the origin from the entity feet to the
     // eye. Vanilla: `xRot = acos(dir.y)`, `yRot = π/2 − atan2(dir.z, dir.x)`.
@@ -1130,6 +1127,22 @@ fn emit_guardian_beam(
         (128 - (color_scale * 64.0) as i32) as f32 / 255.0,
         1.0,
     ];
+    // `GuardianRenderer.submit` calls `super.submit` first, then submits custom geometry with
+    // `BEAM_RENDER_TYPE = RenderTypes.entityCutout(guardian_beam.png)` on the same collector. Preserve
+    // that as a vanilla-shaped submission even though the current backend folds the tiled V coordinates
+    // into the scroll mesh.
+    meshes.record_submission(
+        EntityModelLayerRenderType::EntityCutout,
+        GUARDIAN_BEAM_TEXTURE_REF,
+        None,
+        tint,
+        transform,
+        0,
+        1,
+    );
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, GUARDIAN_BEAM_TEXTURE_REF) else {
+        return;
+    };
 
     let top = length;
     let tex_v_off = (beam.attack_time * 0.5).rem_euclid(1.0);

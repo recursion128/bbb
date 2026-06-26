@@ -1,5 +1,6 @@
 use super::*;
 
+use glam::Vec3;
 use std::f32::consts::PI;
 
 #[test]
@@ -386,6 +387,13 @@ fn guardian_without_active_target_emits_no_beam() {
         meshes.scroll.vertices.is_empty(),
         "a guardian with no active target emits no beam geometry"
     );
+    assert!(
+        meshes
+            .submissions
+            .iter()
+            .all(|submit| submit.texture != GUARDIAN_BEAM_TEXTURE_REF),
+        "a guardian with no active target emits no beam submission"
+    );
 }
 
 #[test]
@@ -417,6 +425,32 @@ fn guardian_beam_emits_twisted_prism_with_scale_color() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == expected));
+    assert_eq!(meshes.submissions.len(), 2);
+    let beam_submissions: Vec<_> = meshes
+        .submissions
+        .iter()
+        .filter(|submit| submit.texture == GUARDIAN_BEAM_TEXTURE_REF)
+        .collect();
+    assert_eq!(beam_submissions.len(), 1);
+    let beam_submit = beam_submissions[0];
+    assert_eq!(
+        beam_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(beam_submit.dynamic_player_skin, None);
+    assert_eq!(beam_submit.tint, expected);
+    assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_point3(Vec3::ZERO)
+            .to_array(),
+        [0.0, 64.5, 0.0],
+    );
+    assert_close3(
+        beam_submit.transform.transform_vector3(Vec3::Y).to_array(),
+        [0.0, 1.0, 0.0],
+    );
     // Every beam vertex carries the beam texture's atlas sub-rect for the shader's vertical tiling.
     let rect_size = meshes.scroll.vertices[0].uv_rect_size;
     assert!(rect_size[0] > 0.0 && rect_size[1] > 0.0);
