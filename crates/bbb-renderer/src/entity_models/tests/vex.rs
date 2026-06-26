@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn vex_geometry_matches_vanilla_26_1_body_layer() {
@@ -83,8 +83,19 @@ fn vex_setup_anim_constants_and_curves_match_vanilla() {
     // Charging (both hands empty, `VexModel.setArmsCharging`): both arms pitch to
     // `xRot = -1.2217305`, yaw to `±π/12`, and roll to `∓0.47123888 ∓ bob`.
     assert!((VEX_ARM_CHARGING_X_ROT - (-1.221_730_5)).abs() < 1.0e-6);
+    assert!((VEX_ARM_CHARGING_ITEM_X_ROT - std::f32::consts::PI * 7.0 / 6.0).abs() < 1.0e-6);
     assert!((VEX_ARM_CHARGING_Y_ROT - std::f32::consts::PI / 12.0).abs() < 1.0e-6);
     assert!((VEX_ARM_CHARGING_Z_ROT - 0.471_238_88).abs() < 1.0e-6);
+}
+
+fn posed_vex_arms(instance: EntityModelInstance) -> ([f32; 3], [f32; 3]) {
+    let mut model = VexModel::new();
+    model.prepare(&instance);
+    let body = model.root_mut().child_mut("root").child_mut("body");
+    (
+        body.child_mut("right_arm").pose.rotation,
+        body.child_mut("left_arm").pose.rotation,
+    )
 }
 
 #[test]
@@ -108,6 +119,34 @@ fn vex_charging_levels_the_body_and_raises_the_arms() {
     // render state is not-charging), confirming the flag is what flips the pose.
     let still_idle = entity_model_mesh(&[idle.with_vex_charging(false)]);
     assert_eq!(idle_mesh.vertices, still_idle.vertices);
+}
+
+#[test]
+fn vex_charging_uses_held_item_arm_variant() {
+    // Vanilla `setArmsCharging`: if either hand item state is non-empty, only those hands switch to
+    // the held-item pitch (`π*7/6`). Empty hands retain the rest roll assigned before the charging
+    // branch instead of taking the empty-hands lunge.
+    let base = EntityModelInstance::vex(962, [0.0, 64.0, 0.0], 0.0)
+        .with_vex_charging(true)
+        .with_age_in_ticks(0.0);
+    let bob = vex_moving_arm_z_bob(0.0);
+
+    let (right_holding, left_empty) = posed_vex_arms(base.with_vex_right_hand_item_non_empty(true));
+    assert!((right_holding[0] - VEX_ARM_CHARGING_ITEM_X_ROT).abs() < 1.0e-6);
+    assert!((right_holding[1] - VEX_ARM_CHARGING_Y_ROT).abs() < 1.0e-6);
+    assert!((right_holding[2] - (-VEX_ARM_CHARGING_Z_ROT - bob)).abs() < 1.0e-6);
+    assert_eq!(left_empty[0], 0.0);
+    assert_eq!(left_empty[1], 0.0);
+    assert!((left_empty[2] - -(VEX_ARM_REST_Z_ROT + bob)).abs() < 1.0e-6);
+
+    let (right_holding, left_holding) = posed_vex_arms(
+        base.with_vex_right_hand_item_non_empty(true)
+            .with_vex_left_hand_item_non_empty(true),
+    );
+    assert!((right_holding[0] - VEX_ARM_CHARGING_ITEM_X_ROT).abs() < 1.0e-6);
+    assert!((left_holding[0] - VEX_ARM_CHARGING_ITEM_X_ROT).abs() < 1.0e-6);
+    assert!((left_holding[1] - (-VEX_ARM_CHARGING_Y_ROT)).abs() < 1.0e-6);
+    assert!((left_holding[2] - (VEX_ARM_CHARGING_Z_ROT + bob)).abs() < 1.0e-6);
 }
 
 #[test]

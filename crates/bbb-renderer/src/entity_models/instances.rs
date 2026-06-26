@@ -548,9 +548,19 @@ entity_render_state! {
     (with_custom_head_skull) custom_head_skull: Option<EntityCustomHeadSkull> = None;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
-    /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
-    /// The held-item arm variant (`xRot = π·7/6`) stays deferred pending held-item projection.
+    /// `setArmsCharging` raises both arms or only the item-bearing arms. `false` for every other
+    /// entity and for an idle vex.
     (with_vex_charging) vex_charging: bool = false;
+    /// Vanilla `ArmedEntityRenderState.rightHandItemState` non-empty for Vex: when charging with an item
+    /// in the RIGHT hand, `VexModel.setArmsCharging` pitches only that arm to `xRot = π*7/6` while
+    /// empty hands keep their pre-charging rest roll. `false` for idle vexes, empty right hands, and every
+    /// non-vex entity. Native currently projects Vex main hand as the default RIGHT arm.
+    (with_vex_right_hand_item_non_empty) vex_right_hand_item_non_empty: bool = false;
+    /// Vanilla `ArmedEntityRenderState.leftHandItemState` non-empty for Vex: when charging with an item in
+    /// the LEFT hand, `VexModel.setArmsCharging` pitches only that arm to `xRot = π*7/6` while empty hands
+    /// keep their pre-charging rest roll. `false` for idle vexes, empty left hands, and every non-vex entity.
+    /// Native currently projects Vex offhand as the default LEFT arm.
+    (with_vex_left_hand_item_non_empty) vex_left_hand_item_non_empty: bool = false;
     /// Vanilla `WitherRenderState.invulnerableTicks` (`WitherBoss.getInvulnerableTicks`, the synced
     /// `DATA_ID_INV` spawn countdown, lerped `invulnerableTicks - partialTicks`): the wither's
     /// spawn-charge progress. `WitherBossRenderer.scale` shrinks the model by
@@ -2090,6 +2100,8 @@ mod tests {
                 copper_golem_holding_item: false,
                 custom_head_skull: None,
                 vex_charging: false,
+                vex_right_hand_item_non_empty: false,
+                vex_left_hand_item_non_empty: false,
                 wither_invulnerable_ticks: 0.0,
                 wither_powered: false,
                 head_armor: None,

@@ -52,6 +52,9 @@ pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicato
 `ATTACKING`；riding sit 坐姿也已按 `Entity.isPassenger()` 投影。
 Zombified piglin 的 `AnimationUtils.animateZombieArms` held-out arms 也已接入，
 复用 zombie-arm helper 并按 `isAggressive` / `attack_anim` 驱动。
+Vex charging 姿态也已补齐 `setArmsCharging` 的持物分支：native 从 main/off-hand
+装备投影 RIGHT/LEFT 手非空状态，renderer 在 charging 时按手选择空手前伸或
+`xRot = π*7/6` 的 held-item arm pose。
 
 ## 剩余大子系统（按优先级）
 

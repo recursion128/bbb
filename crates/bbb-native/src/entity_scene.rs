@@ -1185,6 +1185,13 @@ fn entity_model_instance(
     let auto_spin_age_ticks = source
         .is_auto_spin_attack
         .then_some(source.age_ticks as f32 + entity_partial_tick);
+    // Vanilla `ArmedEntityRenderState.extractArmedEntityRenderState` fills Vex right/left item states
+    // from `getItemHeldByArm(RIGHT/LEFT)`. bbb does not yet project non-player main-arm handedness here;
+    // Vexes use the default RIGHT main arm path, so canonical main/off hand feed RIGHT/LEFT respectively.
+    let is_vex = matches!(kind, EntityModelKind::Vex { .. });
+    let vex_right_hand_item_non_empty =
+        is_vex && entity_main_hand_non_empty(world, source.entity_id);
+    let vex_left_hand_item_non_empty = is_vex && entity_offhand_non_empty(world, source.entity_id);
     // Vanilla setupRotations lifts the upside-down model by its bounding box height.
     let upside_down_height = source.is_upside_down.then_some(source.bounding_box_height);
     // Vanilla setupRotations sleeping branch: the bed yaw (or the body yaw when not
@@ -1283,6 +1290,8 @@ fn entity_model_instance(
         .with_camel_standup_seconds(camel_sit.standup_seconds)
         .with_camel_dash_seconds(source.camel_dash_seconds)
         .with_vex_charging(source.vex_charging)
+        .with_vex_right_hand_item_non_empty(vex_right_hand_item_non_empty)
+        .with_vex_left_hand_item_non_empty(vex_left_hand_item_non_empty)
         .with_wither_invulnerable_ticks(source.wither_invulnerable_ticks)
         .with_wither_powered(wither_powered(source.entity_type_id, &source.data_values))
         .with_head_armor(armor_material(source.head_armor))
@@ -4466,6 +4475,7 @@ mod tests {
         // Vanilla Vex.DATA_FLAGS_ID (16, BYTE) and the FLAG_IS_CHARGING bit (1).
         const VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
         const VEX_FLAG_IS_CHARGING: i8 = 1;
+        const PLAIN_ITEM_ID: i32 = 702;
 
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
@@ -4481,17 +4491,31 @@ mod tests {
             [2.0, 64.0, -2.0],
         ));
 
-        let charging = |world: &WorldStore, id: i32| {
+        let state = |world: &WorldStore, id: i32| {
             entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == id)
                 .unwrap()
                 .render_state
-                .vex_charging
         };
+        let equip =
+            |entity_id: i32, slot: EquipmentSlot, item_id: Option<i32>, count: i32| SetEquipment {
+                entity_id,
+                slots: vec![EquipmentSlotUpdate {
+                    slot,
+                    item: ItemStackSummary {
+                        item_id,
+                        count,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                }],
+            };
 
         // An idle vex projects vex_charging = false.
-        assert!(!charging(&world, 97));
+        let idle = state(&world, 97);
+        assert!(!idle.vex_charging);
+        assert!(!idle.vex_right_hand_item_non_empty);
+        assert!(!idle.vex_left_hand_item_non_empty);
 
         // Setting Vex.isCharging (DATA_FLAGS_ID & 1) projects through to the charging pose.
         assert!(world.apply_set_entity_data(SetEntityData {
@@ -4501,10 +4525,49 @@ mod tests {
                 VEX_FLAG_IS_CHARGING
             )],
         }));
-        assert!(charging(&world, 97));
+        assert!(state(&world, 97).vex_charging);
+
+        // Vanilla `ArmedEntityRenderState` checks RIGHT/LEFT hand item-state emptiness. bbb's current
+        // Vex projection maps default RIGHT main hand to RIGHT and offhand to LEFT.
+        assert!(world.apply_set_equipment(equip(
+            97,
+            EquipmentSlot::MainHand,
+            Some(PLAIN_ITEM_ID),
+            1
+        )));
+        let main_hand_item = state(&world, 97);
+        assert!(main_hand_item.vex_right_hand_item_non_empty);
+        assert!(!main_hand_item.vex_left_hand_item_non_empty);
+
+        assert!(world.apply_set_equipment(equip(
+            97,
+            EquipmentSlot::OffHand,
+            Some(PLAIN_ITEM_ID),
+            1
+        )));
+        let both_hands = state(&world, 97);
+        assert!(both_hands.vex_right_hand_item_non_empty);
+        assert!(both_hands.vex_left_hand_item_non_empty);
+
+        assert!(world.apply_set_equipment(equip(97, EquipmentSlot::MainHand, None, 0)));
+        let offhand_only = state(&world, 97);
+        assert!(!offhand_only.vex_right_hand_item_non_empty);
+        assert!(offhand_only.vex_left_hand_item_non_empty);
 
         // The same flag byte set on a non-vex (bat) does NOT project vex_charging — the
-        // derivation is gated to vanilla_is_vex.
+        // derivation is gated to vanilla_is_vex. The same held items also do not project Vex hand state.
+        assert!(world.apply_set_equipment(equip(
+            98,
+            EquipmentSlot::MainHand,
+            Some(PLAIN_ITEM_ID),
+            1
+        )));
+        assert!(world.apply_set_equipment(equip(
+            98,
+            EquipmentSlot::OffHand,
+            Some(PLAIN_ITEM_ID),
+            1
+        )));
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 98,
             values: vec![protocol_byte_data(
@@ -4512,7 +4575,10 @@ mod tests {
                 VEX_FLAG_IS_CHARGING
             )],
         }));
-        assert!(!charging(&world, 98));
+        let bat = state(&world, 98);
+        assert!(!bat.vex_charging);
+        assert!(!bat.vex_right_hand_item_non_empty);
+        assert!(!bat.vex_left_hand_item_non_empty);
     }
 
     #[test]

@@ -2097,16 +2097,18 @@ When an agent does any of the following, update this file in the same slice:
       yaw/pitch and `age_in_ticks`, under the standard `LivingEntityRenderer.setupRotations`.
       The charging pose is now projected: `Vex.isCharging` (the synced `DATA_FLAGS_ID & 1`, data
       id `16`, gated to the vex type by `vanilla_is_vex` → `vex_charging`) levels the body
-      (`xRot = 0`) and runs `setArmsCharging`'s both-hands-empty branch — both arms pitch to
-      `xRot = -1.2217305`, yaw to `±π/12`, and roll to `∓0.47123888 ∓ bob` — on both render
-      paths. The textured base layer draws into the translucent mesh
+      (`xRot = 0`) and runs `setArmsCharging` on both render paths: if both hands are empty both
+      arms pitch to `xRot = -1.2217305`, yaw to `±π/12`, and roll to `∓0.47123888 ∓ bob`; if a
+      hand item state is non-empty, that arm instead pitches to the held-item `xRot = π*7/6` while
+      the empty hand keeps the pre-charging rest roll. Native projects the default RIGHT Vex main
+      hand from `EquipmentSlot.MAINHAND` and the LEFT hand from `EquipmentSlot.OFFHAND` into
+      `vex_right_hand_item_non_empty` / `vex_left_hand_item_non_empty`. The textured base layer
+      draws into the translucent mesh
       (`RenderTypes::entityTranslucent`), hand-emitted through the same animated body→arm/wing
       hierarchy as the colored path, and the `isCharging` texture swap IS now applied
       (`VexRenderer.getTextureLocation`: `EntityModelKind::Vex { charging }` selects
       `textures/entity/illager/vex_charging.png` over `vex.png`, the same 32×32 model, driven by the
-      already-projected `charging` bit). The held-item charging arm variant (`xRot = π·7/6` per hand,
-      which needs held-item presence projected — equipment is world-level only today) remains
-      unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
+      already-projected `charging` bit). The constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
       (`entity_light_coords` forces the packed block light to 15 for the vex type). Lighting and overlay
       remain unsupported
     - allay entities are wired end to end on both render paths: the native entity scene

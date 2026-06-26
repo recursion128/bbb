@@ -127,6 +127,10 @@ pub(in crate::entity_models) const VEX_WING_Z_ROT: f32 = 0.471_238_88;
 /// Vanilla `VexModel.setArmsCharging` (both hands empty) arm pitch: `xRot = -1.2217305` for
 /// both arms while the vex is charging an attack.
 pub(in crate::entity_models) const VEX_ARM_CHARGING_X_ROT: f32 = -1.221_730_5;
+/// Vanilla `VexModel.setArmsCharging` held-item arm pitch: `xRot = π*7/6` for each hand whose
+/// `ItemStackRenderState` is non-empty while charging.
+pub(in crate::entity_models) const VEX_ARM_CHARGING_ITEM_X_ROT: f32 =
+    std::f32::consts::PI * 7.0 / 6.0;
 /// Charging arm yaw magnitude: `rightArm.yRot = π/12`, `leftArm.yRot = -π/12`.
 pub(in crate::entity_models) const VEX_ARM_CHARGING_Y_ROT: f32 = std::f32::consts::PI / 12.0;
 /// Charging arm roll base: `rightArm.zRot = -0.47123888 - bob`, `leftArm.zRot = 0.47123888 +
@@ -145,19 +149,11 @@ pub(in crate::entity_models) fn vex_left_wing_y_rot(age_in_ticks: f32) -> f32 {
     1.099_557_4 + (age_in_ticks * 45.836_624_f32.to_radians()).cos() * 16.2_f32.to_radians()
 }
 
-/// Applies the vanilla `VexModel.setupAnim` pose to the unified tree: the head look, the body charging
-/// level / idle tilt, the arm charging raise / idle hold (both with the shared `vex_moving_arm_z_bob`),
-/// and the wing flap. The held-item arm variant (`xRot = π·7/6`) is deferred, so this is the
-/// both-hands-empty branch. Every value is set absolutely, reproducing the hand-walked emit exactly.
-fn apply_vex_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
-    let age = instance.render_state.age_in_ticks;
-    let charging = instance.render_state.vex_charging;
-    let head_pitch = instance.render_state.head_pitch.to_radians();
-    let head_yaw = instance.render_state.head_yaw.to_radians();
-    let bob = vex_moving_arm_z_bob(age);
-    let left_wing_yrot = vex_left_wing_y_rot(age);
-    let (right_arm_rot, left_arm_rot) = if charging {
-        (
+fn vex_charging_arm_rotations(instance: &EntityModelInstance, bob: f32) -> ([f32; 3], [f32; 3]) {
+    let right_has_item = instance.render_state.vex_right_hand_item_non_empty;
+    let left_has_item = instance.render_state.vex_left_hand_item_non_empty;
+    if !right_has_item && !left_has_item {
+        return (
             [
                 VEX_ARM_CHARGING_X_ROT,
                 VEX_ARM_CHARGING_Y_ROT,
@@ -168,7 +164,44 @@ fn apply_vex_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
                 -VEX_ARM_CHARGING_Y_ROT,
                 VEX_ARM_CHARGING_Z_ROT + bob,
             ],
-        )
+        );
+    }
+
+    let right_arm_rot = if right_has_item {
+        [
+            VEX_ARM_CHARGING_ITEM_X_ROT,
+            VEX_ARM_CHARGING_Y_ROT,
+            -VEX_ARM_CHARGING_Z_ROT - bob,
+        ]
+    } else {
+        [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob]
+    };
+    let left_arm_rot = if left_has_item {
+        [
+            VEX_ARM_CHARGING_ITEM_X_ROT,
+            -VEX_ARM_CHARGING_Y_ROT,
+            VEX_ARM_CHARGING_Z_ROT + bob,
+        ]
+    } else {
+        [0.0, 0.0, -(VEX_ARM_REST_Z_ROT + bob)]
+    };
+    (right_arm_rot, left_arm_rot)
+}
+
+/// Applies the vanilla `VexModel.setupAnim` pose to the unified tree: the head look, the body charging
+/// level / idle tilt, the arm charging raise / idle hold (both with the shared `vex_moving_arm_z_bob`),
+/// and the wing flap. The charging arm branch follows vanilla `setArmsCharging`: both empty hands use
+/// the two-arm lunge, while item-bearing hands pitch to `π*7/6` and empty hands keep the rest roll.
+/// Every value is set absolutely, reproducing the hand-walked emit exactly.
+fn apply_vex_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
+    let age = instance.render_state.age_in_ticks;
+    let charging = instance.render_state.vex_charging;
+    let head_pitch = instance.render_state.head_pitch.to_radians();
+    let head_yaw = instance.render_state.head_yaw.to_radians();
+    let bob = vex_moving_arm_z_bob(age);
+    let left_wing_yrot = vex_left_wing_y_rot(age);
+    let (right_arm_rot, left_arm_rot) = if charging {
+        vex_charging_arm_rotations(instance, bob)
     } else {
         (
             [0.0, 0.0, VEX_ARM_REST_Z_ROT + bob],

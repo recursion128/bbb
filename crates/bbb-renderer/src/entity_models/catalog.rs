@@ -170,8 +170,8 @@ pub enum EntityModelKind {
     /// Vex (`VexModel`, `VexRenderer`). The idle wing flap, arm bob, head look, and body
     /// tilt read `EntityRenderState.age_in_ticks` and the head yaw/pitch. `charging`
     /// (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`) swaps the texture to
-    /// `vex_charging.png` (vanilla `VexRenderer.getTextureLocation`); held-item arm poses
-    /// stay deferred entity-side state.
+    /// `vex_charging.png` (vanilla `VexRenderer.getTextureLocation`); hand item presence lives
+    /// in `EntityRenderState` because it changes only the charging arm pose, not the model key.
     Vex {
         charging: bool,
     },
