@@ -3037,8 +3037,9 @@ When an agent does any of the following, update this file in the same slice:
       `sized(0.5, 0.8)` pick bounds (type id `47`), so it is enumerated and rendered at all. `EvokerFangsRenderer`
       applies the standard flip and `-1.501` y-offset but a distinct `Ry(90 - yRot)` yaw (captured by
       `evoker_fangs_model_root_transform`). The base texture is bound on the textured path
-      (`EVOKER_FANGS_TEXTURE_REF`), the primary path, with nothing left deferred on the texture side. The
-      colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
+      (`EVOKER_FANGS_TEXTURE_REF`), the primary path, with explicit submission metadata for vanilla
+      `entityCutout`, white tint, the renderer root transform, and `(order, submit_sequence) == (0, 0)`.
+      The colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
     - leash knot entities as renderer-owned vanilla 26.1 `LeashKnotModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `76` to the new
       `EntityModelKind::LeashKnot`, replacing the former placeholder bounds box. The mesh root holds a single

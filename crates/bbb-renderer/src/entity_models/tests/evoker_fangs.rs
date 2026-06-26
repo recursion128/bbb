@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::evoker_fangs_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -62,8 +63,10 @@ fn evoker_fangs_layer_passes_and_texture_ref_match_vanilla_renderer() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].texture, EVOKER_FANGS_TEXTURE_REF);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     assert_eq!(
         EntityModelKind::EvokerFangs.vanilla_texture_ref(),
@@ -91,16 +94,30 @@ fn evoker_fangs_textured_mesh_uses_vanilla_uvs_and_geometry() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     // A mid-attack fang (`biteProgress > 0`); a resting fang is hidden underground (vanilla render gate).
-    let mesh = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::evoker_fangs(470, [0.0, 64.0, 0.0], 0.0)
-                .with_evoker_fangs_bite_progress(0.5),
-        ],
-        &atlas,
+    let instance = EntityModelInstance::evoker_fangs(470, [1.0, 64.0, -2.0], 35.0)
+        .with_evoker_fangs_bite_progress(0.5);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, EVOKER_FANGS_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        evoker_fangs_model_root_transform(instance)
     );
-    assert_eq!(mesh.cutout_faces, 18);
-    assert_eq!(mesh.vertices.len(), 72);
-    assert_eq!(mesh.indices.len(), 108);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(meshes.cutout.cutout_faces, 18);
+    assert_eq!(meshes.cutout.vertices.len(), 72);
+    assert_eq!(meshes.cutout.indices.len(), 108);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }
 
 #[test]
