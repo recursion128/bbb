@@ -31,9 +31,9 @@ use super::{
     model_layers::{
         armor_layer_tint, armor_slot_texture, equine_head_look_pose, equine_leg_swing_pose,
         equine_tail_swing_pose, head_look_at_rest, limb_swing_at_rest, BreezeWindModel, CamelModel,
-        CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, PigModel,
-        PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
+        CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel,
+        PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel,
+        SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
         TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
         ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
@@ -42,9 +42,10 @@ use super::{
         BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
         CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
         GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF,
-        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
+        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -290,6 +291,8 @@ pub(super) fn entity_model_textured_meshes(
         emit_strider_saddle_layer(&mut meshes, *instance, atlas);
         // Camel and camel-husk saddles use the adult CamelSaddleModel tree.
         emit_camel_saddle_layer(&mut meshes, *instance, atlas);
+        // Living and zombie nautilus saddles use the adult NautilusSaddleModel tree.
+        emit_nautilus_saddle_layer(&mut meshes, *instance, atlas);
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
         // over the base villager or zombie-villager model and share the same light/overlay fill.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
@@ -1058,6 +1061,38 @@ fn emit_camel_saddle_layer(
         transform,
         EntityModelLayerRenderType::Cutout,
         texture,
+        [1.0, 1.0, 1.0, 1.0],
+        atlas,
+    );
+}
+
+/// Vanilla `NautilusRenderer` / `ZombieNautilusRenderer` `SimpleEquipmentLayer(NAUTILUS_SADDLE)`:
+/// a non-empty saddle item renders `NautilusSaddleModel(ModelLayers.NAUTILUS_SADDLE)` over adult
+/// living nautilus and zombie nautilus. The layer has no baby model, so baby living nautilus skip it.
+fn emit_nautilus_saddle_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !instance.render_state.nautilus_saddle {
+        return;
+    }
+    if !matches!(
+        instance.kind,
+        EntityModelKind::Nautilus { baby: false } | EntityModelKind::ZombieNautilus { .. }
+    ) {
+        return;
+    }
+
+    let transform = entity_model_root_transform(instance);
+    let mut model = NautilusModel::new_saddle();
+    model.prepare(&instance);
+    render_textured_pass(
+        meshes,
+        &model,
+        transform,
+        EntityModelLayerRenderType::Cutout,
+        NAUTILUS_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
     );

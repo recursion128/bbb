@@ -11,9 +11,10 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // reproduced; the SWIMMING keyframe undulation needs the keyframe machinery + an `AnimationState`, so it
 // stays deferred (the nautilus renders at this bind pose plus the clamped look). Both the adult
 // `createBodyMesh` and the smaller baby `createBabyBodyLayer` are modeled (same `root → shell + body →
-// mouths` structure). The variant textures and the saddle / armor / coral layers are deferred. Each
-// unified cube carries both the colored debug tint (tan shell over a pale body) and the textured
-// `uv_size` / `texOffs`. Nautilus uses a plain `MobRenderer`.
+// mouths` structure), along with the zombie warm coral variant and the adult saddle equipment layer.
+// The body armor equipment layer stays deferred. Each unified cube carries both the colored debug tint
+// (tan shell over a pale body) and the textured `uv_size` / `texOffs`. Nautilus uses a plain
+// `MobRenderer`.
 
 // `shell` cubes: the 14×10×16 dome, the 14×8×20 whorl, and a 14×8×0 rear fin plane.
 pub(in crate::entity_models) const NAUTILUS_SHELL_CUBES: [ModelCube; 3] = [
@@ -42,6 +43,18 @@ pub(in crate::entity_models) const NAUTILUS_SHELL_CUBES: [ModelCube; 3] = [
         false,
     ),
 ];
+
+// Vanilla 26.1 `NautilusSaddleModel.createSaddleLayer`: starts from `NautilusModel.createBodyMesh`,
+// replaces the `shell` child with the same dome box inflated by `CubeDeformation(0.2F)`, and preserves
+// the existing `body` subtree through `PartDefinition.addOrReplaceChild`.
+pub(in crate::entity_models) const NAUTILUS_SADDLE_SHELL_CUBES: [ModelCube; 1] = [ModelCube::new(
+    [-7.2, -10.2, -7.2],
+    [14.4, 10.4, 16.4],
+    NAUTILUS_SHELL,
+    [14.0, 10.0, 16.0],
+    [0.0, 0.0],
+    false,
+)];
 
 // `body` cubes: the 10×8×14 trunk and a 10×8×0 rear fin plane.
 pub(in crate::entity_models) const NAUTILUS_BODY_CUBES: [ModelCube; 2] = [
@@ -464,6 +477,22 @@ fn nautilus_coral_root() -> ModelPart {
     )
 }
 
+/// Builds the adult nautilus saddle layer tree: the full adult body mesh with the shell replaced by
+/// the single inflated `NautilusSaddleModel` shell cube. Vanilla supplies no baby saddle model.
+fn nautilus_saddle_root() -> ModelPart {
+    ModelPart::new(
+        NAUTILUS_ROOT_POSE,
+        Vec::new(),
+        vec![
+            (
+                "shell",
+                ModelPart::leaf(NAUTILUS_SHELL_POSE, NAUTILUS_SADDLE_SHELL_CUBES.to_vec()),
+            ),
+            ("body", nautilus_adult_body()),
+        ],
+    )
+}
+
 /// Vanilla `NautilusModel.applyBodyRotation` clamps the look yaw/pitch to ±10° before steering the body.
 const NAUTILUS_LOOK_CLAMP_DEGREES: f32 = 10.0;
 
@@ -497,6 +526,19 @@ impl NautilusModel {
                 PART_POSE_ZERO,
                 Vec::new(),
                 vec![("root", nautilus_coral_root())],
+            ),
+        }
+    }
+
+    /// Vanilla `NautilusSaddleModel(ModelLayers.NAUTILUS_SADDLE)`: the adult saddle equipment layer.
+    /// It keeps the adult body subtree from `NautilusModel.createBodyMesh` and replaces the shell with
+    /// the inflated saddle shell; no baby saddle model exists.
+    pub(in crate::entity_models) fn new_saddle() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![("root", nautilus_saddle_root())],
             ),
         }
     }

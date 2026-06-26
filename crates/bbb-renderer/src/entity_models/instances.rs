@@ -578,6 +578,10 @@ entity_render_state! {
     /// Vanilla `CamelRenderState.isRidden`: the camel saddle layer shows its `reins` part only while
     /// the camel is a vehicle. `false` for unridden camels and every non-camel entity.
     (with_camel_saddle_ridden) camel_saddle_ridden: bool = false;
+    /// Vanilla `NautilusRenderState.saddle`: the item in `EquipmentSlot.SADDLE` for living nautilus
+    /// and zombie nautilus. A non-empty saddle item renders `NautilusSaddleModel`; baby living
+    /// nautilus skip it because vanilla supplies no baby saddle model.
+    (with_nautilus_saddle) nautilus_saddle: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -2031,6 +2035,7 @@ mod tests {
                 strider_saddle: false,
                 camel_saddle: false,
                 camel_saddle_ridden: false,
+                nautilus_saddle: false,
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,

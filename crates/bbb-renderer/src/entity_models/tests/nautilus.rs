@@ -32,6 +32,18 @@ fn nautilus_geometry_matches_vanilla_26_1_body_layer() {
 }
 
 #[test]
+fn nautilus_saddle_geometry_matches_vanilla_26_1_layer() {
+    // Vanilla `NautilusSaddleModel.createSaddleLayer()` starts from `NautilusModel.createBodyMesh`,
+    // replaces the adult shell with a single `CubeDeformation(0.2F)` dome, and preserves the body and
+    // mouth subtrees. `SimpleEquipmentLayer` supplies no baby model.
+    assert_eq!(NAUTILUS_SADDLE_SHELL_CUBES.len(), 1);
+    assert_eq!(NAUTILUS_SADDLE_SHELL_CUBES[0].min, [-7.2, -10.2, -7.2]);
+    assert_eq!(NAUTILUS_SADDLE_SHELL_CUBES[0].size, [14.4, 10.4, 16.4]);
+    assert_eq!(NAUTILUS_SADDLE_SHELL_CUBES[0].uv_size, [14.0, 10.0, 16.0]);
+    assert_eq!(NAUTILUS_SADDLE_SHELL_CUBES[0].tex, [0.0, 0.0]);
+}
+
+#[test]
 fn nautilus_mesh_uses_vanilla_body_layer_geometry() {
     // 8 cubes → 48 faces / 192 vertices / 288 indices, two tones: tan shell, pale body/mouths.
     let nautilus = entity_model_mesh(&[EntityModelInstance::nautilus(
@@ -265,6 +277,14 @@ fn nautilus_textured_render_matches_vanilla_renderer() {
     assert!(entity_model_texture_refs().contains(&NAUTILUS_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&NAUTILUS_BABY_TEXTURE_REF));
     assert_eq!(
+        NAUTILUS_SADDLE_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/equipment/nautilus_saddle/saddle.png",
+            size: [128, 128],
+        }
+    );
+    assert!(entity_model_texture_refs().contains(&NAUTILUS_SADDLE_TEXTURE_REF));
+    assert_eq!(
         nautilus_entity_texture_refs(),
         &[NAUTILUS_TEXTURE_REF, NAUTILUS_BABY_TEXTURE_REF]
     );
@@ -297,6 +317,77 @@ fn nautilus_textured_render_matches_vanilla_renderer() {
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
+}
+
+#[test]
+fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
+    let images: Vec<EntityModelTextureImage> = [
+        NAUTILUS_TEXTURE_REF,
+        NAUTILUS_BABY_TEXTURE_REF,
+        ZOMBIE_NAUTILUS_TEXTURE_REF,
+        ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF,
+    ]
+    .iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(*texture, vec![(index * 40) as u8; len])
+    })
+    .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let saddle_uv = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == NAUTILUS_SADDLE_TEXTURE_REF)
+        .unwrap()
+        .uv;
+
+    let adult = EntityModelInstance::nautilus(920, [0.0, 64.0, 0.0], 0.0, false);
+    let bare = entity_model_textured_mesh(&[adult], &atlas);
+    let saddled = entity_model_textured_mesh(&[adult.with_nautilus_saddle(true)], &atlas);
+    // Saddle layer: one inflated shell cube plus the adult body/mouth subtree = 6 cubes.
+    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 36);
+    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 144);
+    let first_saddle_vertex = saddled.vertices[bare.vertices.len()].uv;
+    assert!(first_saddle_vertex[0] >= saddle_uv.min[0]);
+    assert!(first_saddle_vertex[0] <= saddle_uv.max[0]);
+    assert!(first_saddle_vertex[1] >= saddle_uv.min[1]);
+    assert!(first_saddle_vertex[1] <= saddle_uv.max[1]);
+
+    let baby = EntityModelInstance::nautilus(921, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_bare = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_saddled = entity_model_textured_mesh(&[baby.with_nautilus_saddle(true)], &atlas);
+    assert_eq!(
+        baby_saddled.vertices.len(),
+        baby_bare.vertices.len(),
+        "vanilla supplies no baby nautilus saddle model"
+    );
+
+    let zombie = EntityModelInstance::new(
+        922,
+        EntityModelKind::ZombieNautilus { coral: false },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let zombie_bare = entity_model_textured_mesh(&[zombie], &atlas);
+    let zombie_saddled = entity_model_textured_mesh(&[zombie.with_nautilus_saddle(true)], &atlas);
+    assert_eq!(zombie_saddled.cutout_faces - zombie_bare.cutout_faces, 36);
+    assert_eq!(
+        zombie_saddled.vertices.len() - zombie_bare.vertices.len(),
+        144
+    );
+
+    let warm = EntityModelInstance::new(
+        923,
+        EntityModelKind::ZombieNautilus { coral: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let warm_bare = entity_model_textured_mesh(&[warm], &atlas);
+    let warm_saddled = entity_model_textured_mesh(&[warm.with_nautilus_saddle(true)], &atlas);
+    assert_eq!(warm_saddled.cutout_faces - warm_bare.cutout_faces, 36);
+    assert_eq!(warm_saddled.vertices.len() - warm_bare.vertices.len(), 144);
 }
 
 #[test]

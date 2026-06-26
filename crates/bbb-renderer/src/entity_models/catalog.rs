@@ -363,8 +363,8 @@ pub enum EntityModelKind {
     /// `NautilusModel` (a custom `EntityModel`, the new rideable nautilus) at its `createBodyMesh` /
     /// `createBabyBodyLayer` rest pose (`baby` selects the smaller hatchling geometry, the same
     /// `root → shell + body → mouths` structure). The `setupAnim` body look — clamped to ±10° — is
-    /// reproduced; the looping `NautilusAnimation.SWIMMING` keyframe undulation, the variant textures,
-    /// and the saddle / armor / coral layers are deferred.
+    /// reproduced; the looping `NautilusAnimation.SWIMMING` keyframe undulation and body armor
+    /// equipment layer are deferred. The adult saddle equipment layer is driven through render state.
     Nautilus {
         baby: bool,
     },
@@ -372,7 +372,8 @@ pub enum EntityModelKind {
     /// `ZombieNautilusVariant` holder. `coral = false` (the `NORMAL`/`TEMPERATE` default) reuses the
     /// living adult `NautilusModel` body textured by `zombie_nautilus.png`; `coral = true` (the `WARM`
     /// variant) renders the `ZombieNautilusCoralModel` (the same body plus the `corals` subtree) over
-    /// `zombie_nautilus_coral.png`. The saddle / armor equipment layers stay deferred.
+    /// `zombie_nautilus_coral.png`. The adult saddle equipment layer is driven through render state;
+    /// the body armor equipment layer stays deferred.
     ZombieNautilus {
         coral: bool,
     },

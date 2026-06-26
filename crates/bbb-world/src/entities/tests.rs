@@ -1410,6 +1410,94 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
 }
 
 #[test]
+fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
+    use crate::ItemEquipmentSlot;
+    use std::collections::BTreeMap;
+
+    const SADDLE_ITEM_ID: i32 = 836;
+    const PLAIN_ITEM_ID: i32 = 837;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+
+    fn stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+    fn nautilus_saddle(store: &WorldStore, entity_id: i32) -> bool {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .nautilus_saddle
+    }
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 71,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert!(
+        !nautilus_saddle(&store, 71),
+        "without the item registry's saddle-slot map, a raw item id is not enough"
+    );
+
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    assert!(nautilus_saddle(&store, 71));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 72,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert!(nautilus_saddle(&store, 72));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 73,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert!(
+        !nautilus_saddle(&store, 73),
+        "non-nautilus entities do not project the nautilus saddle flag"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 71,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(PLAIN_ITEM_ID, 1),
+        }],
+    }));
+    assert!(!nautilus_saddle(&store, 71));
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid

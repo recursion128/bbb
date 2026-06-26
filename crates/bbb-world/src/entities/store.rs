@@ -13,10 +13,10 @@ use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 
 use super::{
-    ArmorMaterialKind, EntityAttributes, EntityCameraPoseState, EntityClientAnimations,
-    EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash,
-    EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
-    EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
+    is_vanilla_abstract_nautilus_type, ArmorMaterialKind, EntityAttributes, EntityCameraPoseState,
+    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
     ItemEntityStackState, ItemFrameRenderState, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
     VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
@@ -605,6 +605,8 @@ impl EntityStore {
             && mount
                 .as_ref()
                 .is_some_and(|mount| !mount.passengers.is_empty());
+        let nautilus_saddle = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
+            && saddle_slot_contains_saddle_item();
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -1063,6 +1065,7 @@ impl EntityStore {
             strider_saddle,
             camel_saddle,
             camel_saddle_ridden,
+            nautilus_saddle,
             guardian_beam: self.guardian_beam_source(
                 identity.entity_type_id,
                 identity.data,

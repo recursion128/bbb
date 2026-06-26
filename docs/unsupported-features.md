@@ -2935,10 +2935,14 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/nautilus/zombie_nautilus.png` (fixing the earlier wrong-skin, where it drew the
       living `nautilus.png`), and the `WARM` variant renders the `ZombieNautilusCoralModel` — the same
       adult body plus the `corals` subtree (four clusters of textured-only cross-planes, eight cubes
-      under `shell`) — over `textures/entity/nautilus/zombie_nautilus_coral.png`. The
-      `corals.visible = bodyArmorItem.isEmpty()` gate is always-visible (body armor deferred), and the
-      dynamic-registry reorder path + the saddle / armor equipment layers stay deferred. The adult
-      rest-pose
+      under `shell`) — over `textures/entity/nautilus/zombie_nautilus_coral.png`. The adult living
+      nautilus and zombie nautilus saddle equipment layer is now wired from `EquipmentSlot.SADDLE`: a
+      non-empty item resolving to `ItemEquipmentSlot::Saddle` renders
+      `NautilusSaddleModel(ModelLayers.NAUTILUS_SADDLE)` over
+      `textures/entity/equipment/nautilus_saddle/saddle.png`, while baby living nautilus skip it because
+      vanilla passes no baby saddle model. The `corals.visible = bodyArmorItem.isEmpty()` gate is
+      always-visible (body armor deferred), and the dynamic-registry reorder path + body armor equipment
+      layer stay deferred. The adult rest-pose
       hierarchy is emitted directly (atlas 128×128): one cubeless `root` pivot at
       `offset(0, 29, -6)` parenting the `shell` at `offset(0, -13, 5)` (the 14×10×16 dome, the 14×8×20
       whorl, and a 14×8×0 rear fin plane) and the `body` at `offset(0, -8.5, 12.3)` (the 10×8×14 trunk
@@ -2952,8 +2956,9 @@ When an agent does any of the following, update this file in the same slice:
       `applyWalk` with the idle baseline `walkAnimationSpeed + 0.2`) needs the keyframe machinery plus an
       `AnimationState`, so it stays deferred, as does the `AgeableMobRenderer` baby render scale (`0.7`).
       The base texture is now bound on the textured path (`NAUTILUS_TEXTURE_REF` /
-      `NAUTILUS_BABY_TEXTURE_REF`), the primary now-wired path; the saddle / armor / coral overlay layers
-      stay deferred. The colored debug path stays as a fallback (it renders a tan shell over a pale body)
+      `NAUTILUS_BABY_TEXTURE_REF`), the primary now-wired path; the zombie coral variant and adult saddle
+      overlay are wired, while the body armor overlay stays deferred. The colored debug path stays as a
+      fallback (it renders a tan shell over a pale body)
     - fox entities (adult and baby) as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` /
       `BabyFoxModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `54` out of the cat/ocelot/fox wolf-shaped quadruped

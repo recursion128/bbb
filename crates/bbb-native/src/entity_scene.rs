@@ -1240,6 +1240,7 @@ fn entity_model_instance(
         .with_strider_saddle(source.strider_saddle)
         .with_camel_saddle(source.camel_saddle)
         .with_camel_saddle_ridden(source.camel_saddle_ridden)
+        .with_nautilus_saddle(source.nautilus_saddle)
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -2177,7 +2178,8 @@ fn nautilus_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Ent
 /// Vanilla `ZombieNautilusRenderer` (a plain `MobRenderer`, so never a baby), selected by the synced
 /// `ZombieNautilusVariant` holder: `NORMAL`/`TEMPERATE` renders the living adult `NautilusModel` body
 /// over `zombie_nautilus.png`, `WARM` renders the `ZombieNautilusCoralModel` (the same body plus the
-/// `corals` subtree) over `zombie_nautilus_coral.png`. The armor / saddle equipment layers defer.
+/// `corals` subtree) over `zombie_nautilus_coral.png`. The saddle equipment layer is driven by
+/// render state; the body armor equipment layer defers.
 fn zombie_nautilus_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
@@ -6764,6 +6766,58 @@ mod tests {
 
         assert!(world.apply_set_equipment(saddle(116)));
         assert_eq!(camel_saddle(&world, 116), (true, false));
+    }
+
+    #[test]
+    fn entity_model_instances_project_nautilus_saddle_render_state() {
+        const SADDLE_ITEM_ID: i32 = 744;
+
+        let saddle = |entity_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: ItemStackSummary {
+                    item_id: Some(SADDLE_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let nautilus_saddle = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .nautilus_saddle
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            118,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            119,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            [2.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_equipment(saddle(118)));
+        assert_eq!(
+            nautilus_saddle(&world, 118),
+            false,
+            "without the item registry's saddle-slot map, a raw item id is not enough"
+        );
+
+        world.set_default_item_equipment_slots(std::collections::BTreeMap::from([(
+            SADDLE_ITEM_ID,
+            ItemEquipmentSlot::Saddle,
+        )]));
+        assert!(nautilus_saddle(&world, 118));
+
+        assert!(world.apply_set_equipment(saddle(119)));
+        assert!(nautilus_saddle(&world, 119));
     }
 
     #[test]

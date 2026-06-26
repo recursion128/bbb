@@ -912,6 +912,11 @@ pub struct EntityModelSourceState {
     /// makes `CamelSaddleModel` show the `reins` part.
     #[serde(default)]
     pub camel_saddle_ridden: bool,
+    /// Vanilla `NautilusRenderState.saddle`: true when a living nautilus or zombie nautilus carries a
+    /// non-empty saddle item in `EquipmentSlot.SADDLE`. The renderer consumes this to draw the adult
+    /// `NautilusSaddleModel` equipment layer.
+    #[serde(default)]
+    pub nautilus_saddle: bool,
     /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
     /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
     /// other entity.
