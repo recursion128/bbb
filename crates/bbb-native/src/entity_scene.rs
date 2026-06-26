@@ -10137,8 +10137,8 @@ mod tests {
     fn entity_model_kind_maps_giant_to_real_model() {
         // The giant was a placeholder bounds box; it now resolves to the real `GiantZombieModel`
         // (the humanoid zombie body layer scaled 6×). The head look and limb swing read the
-        // projected look angles and walk animation; the armor / item-in-hand layers and the zombie
-        // texture are deferred. The giant is never a baby, so no baby flag is read.
+        // projected look angles and walk animation; renderer/native layer paths cover the zombie
+        // texture, armor, and held items. The giant is never a baby, so no baby flag is read.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_GIANT_ID, &[]),
             EntityModelKind::Giant

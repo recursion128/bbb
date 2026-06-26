@@ -7,9 +7,10 @@ use std::f32::consts::{FRAC_PI_2, PI};
 use glam::{Mat4, Vec3};
 
 use super::colored::{
-    entity_model_root_transform, fox_model_root_transform, player_model_root_transform,
+    entity_model_root_transform, fox_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, player_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
-    zombie_variant_root_transform,
+    zombie_variant_root_transform, GIANT_SCALE,
 };
 use super::model::EntityModel;
 use super::model_layers::{
@@ -473,6 +474,15 @@ fn humanoid_arm_world_transform(
                 entity_model_root_transform(*instance)
                     * model.root().try_child_attach_transform(arm_name)?,
                 baby,
+            ))
+        }
+        EntityModelKind::Giant => {
+            let mut model = ZombieModel::new(false);
+            model.prepare(instance);
+            Some((
+                mesh_transformer_scaled_model_root_transform(*instance, GIANT_SCALE)
+                    * model.root().try_child_attach_transform(arm_name)?,
+                false,
             ))
         }
         EntityModelKind::ZombieVariant { family, baby } => {
@@ -991,6 +1001,32 @@ mod tests {
         );
         let attach = humanoid_hand_attach_transform(&zombie, false).unwrap();
         assert!(attach.transform_point3(Vec3::ZERO).is_finite());
+    }
+
+    #[test]
+    fn giant_hand_attach_uses_the_scaled_zombie_model() {
+        // Vanilla `GiantMobRenderer` adds the ordinary `ItemInHandLayer` over `GiantZombieModel`,
+        // whose layer is `MeshTransformer.scaling(6.0)`. The hand basis therefore scales with the
+        // body instead of using the adult zombie's unscaled arm space.
+        let zombie = EntityModelInstance::new(
+            35,
+            EntityModelKind::Zombie { baby: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let giant = EntityModelInstance::giant(36, [0.0, 64.0, 0.0], 0.0);
+        let zombie_attach = humanoid_hand_attach_transform(&zombie, false).unwrap();
+        let giant_attach = humanoid_hand_attach_transform(&giant, false).unwrap();
+
+        assert!(giant_attach.transform_point3(Vec3::ZERO).is_finite());
+        for axis in [Vec3::X, Vec3::Y, Vec3::Z] {
+            let zombie_len = zombie_attach.transform_vector3(axis).length();
+            let giant_len = giant_attach.transform_vector3(axis).length();
+            assert!(
+                (giant_len - zombie_len * GIANT_SCALE).abs() < 1.0e-5,
+                "giant hand basis {giant_len} should be {GIANT_SCALE}x zombie basis {zombie_len}"
+            );
+        }
     }
 
     #[test]

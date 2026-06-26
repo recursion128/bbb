@@ -414,12 +414,12 @@ pub enum EntityModelKind {
     },
     /// `WitherBossModel` at its `createBodyLayer` bind rest pose, rendered at the vanilla 2.0× scale
     /// with the spawn-charge shrink and `wither_invulnerable.png` texture flicker. The procedural
-    /// ribcage/tail breathing sway and the center/side head look are reproduced; the side heads' target
-    /// tracking and the `WITHER_ARMOR` powered energy-swirl overlay layer are deferred.
+    /// ribcage/tail breathing sway, the center/side head look, side-head target tracking, and the
+    /// `WITHER_ARMOR` powered energy-swirl overlay layer are reproduced.
     Wither,
     /// `GiantZombieModel` — the standard humanoid (zombie) body layer `MeshTransformer`-scaled 6×.
-    /// The head look and limb swing match the zombie; the armor / item-in-hand layers and the
-    /// zombie texture are deferred.
+    /// The head look, limb swing, zombie texture, `ItemInHandLayer`, and `HumanoidArmorLayer` match
+    /// vanilla `GiantMobRenderer`.
     Giant,
     /// `EndCrystalModel` (the base slab plus the nested glass / core boxes, scaled 2× by
     /// `EndCrystalRenderer`). The diagonal spin, vertical bob, `showsBottom` base toggle, and

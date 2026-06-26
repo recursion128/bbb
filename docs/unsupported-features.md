@@ -2894,9 +2894,13 @@ When an agent does any of the following, update this file in the same slice:
       limb swing, and the held-out `animateZombieArms` resting arm pose match the zombie (`GiantZombieModel
       extends ZombieModel`, the giant extracts the same `ZombieRenderState`). The base texture is now bound
       on the textured path (the giant binds the zombie texture via the shared `zombie_textured_layer_passes`),
-      the primary now-wired path; the
-      `HumanoidArmorLayer` and the `ItemInHandLayer` remain deferred (the `attack_anim` melee swing is
-      implemented via the shared zombie-family anim). The
+      the primary now-wired path. The vanilla extra layers are now wired too: `ItemInHandLayer` uses the
+      renderer-owned hand attach transform from the same 6.0-scaled zombie model so native bakes main/off
+      hands through the standard third-person item contexts, and `HumanoidArmorLayer` rebuilds the scaled
+      host pose, draping standard adult humanoid armor as `armorCutoutNoCull` submissions at order `1`
+      with vanilla slot sequences. Tests pin the giant armor texture/render type/tint/transform/order and
+      the held-item hand basis scaling (the `attack_anim` melee swing is implemented via the shared
+      zombie-family anim). The
       colored debug path stays as a fallback (the giant reuses the zombie body
       tints; the `Mob.isAggressive` arm-raise is implemented)
     - end crystal entities as renderer-owned vanilla 26.1 `EndCrystalModel.createBodyLayer()` geometry on

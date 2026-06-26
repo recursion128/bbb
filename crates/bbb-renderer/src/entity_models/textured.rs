@@ -2,7 +2,7 @@ use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     creeper_model_root_transform, drowned_model_root_transform, end_crystal_model_root_transform,
     shulker_bullet_model_root_transform, villager_adult_model_root_transform,
-    wind_charge_model_root_transform, wither_model_root_transform, HORSE_SCALE,
+    wind_charge_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -1587,6 +1587,19 @@ fn emit_worn_humanoid_armor(
             let mut host = ZombieModel::new(false);
             host.prepare(&instance);
             let transform = entity_model_root_transform(instance);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                atlas,
+            );
+        }
+        EntityModelKind::Giant => {
+            let mut host = ZombieModel::new(false);
+            host.prepare(&instance);
+            let transform = mesh_transformer_scaled_model_root_transform(instance, GIANT_SCALE);
             emit_humanoid_armor(
                 meshes,
                 instance,

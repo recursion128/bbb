@@ -1,4 +1,5 @@
 use super::*;
+use crate::entity_models::colored::GIANT_SCALE;
 
 // Build an atlas covering the zombie base texture plus the iron equipment-asset textures (humanoid +
 // leggings), enough to render an iron-clad zombie.
@@ -269,6 +270,74 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         armored_x_max > bare_x_max,
         "inflated armor extends beyond the body ({armored_x_max} vs {bare_x_max})"
     );
+}
+
+#[test]
+fn armored_giant_uses_vanilla_giant_armor_layer() {
+    let atlas = iron_armor_atlas();
+    let base = EntityModelInstance::giant(94, [0.0, 64.0, 0.0], 0.0);
+    let armored = base
+        .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+
+    let bare_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let armored_meshes = entity_model_textured_meshes(&[armored], &atlas);
+
+    assert_eq!(
+        armored_meshes.cutout.vertices.len() - bare_meshes.cutout.vertices.len(),
+        240,
+        "GiantMobRenderer's HumanoidArmorLayer adds the standard 10 armor cubes"
+    );
+    assert_eq!(armored_meshes.submissions.len(), 5);
+    let expected_transform = mesh_transformer_scaled_model_root_transform(base, GIANT_SCALE);
+    assert_eq!(
+        armored_meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(armored_meshes.submissions[0].texture, ZOMBIE_TEXTURE_REF);
+    assert_eq!(armored_meshes.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            armored_meshes.submissions[0].order,
+            armored_meshes.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
+    assert_eq!(armored_meshes.submissions[0].transform, expected_transform);
+
+    for (submit, texture, sequence) in [
+        (
+            armored_meshes.submissions[1],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            1,
+        ),
+        (
+            armored_meshes.submissions[2],
+            ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+            2,
+        ),
+        (
+            armored_meshes.submissions[3],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            3,
+        ),
+        (
+            armored_meshes.submissions[4],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            4,
+        ),
+    ] {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+        assert_eq!(submit.transform, expected_transform);
+    }
 }
 
 #[test]

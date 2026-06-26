@@ -350,7 +350,7 @@ pub(crate) struct HeldItemModels {
 }
 
 /// Bakes the third-person main- and off-hand held items for every humanoid entity that holds one
-/// (players and the weapon-holding mobs — zombies, skeletons, piglins, illagers; vanilla
+/// (players and the weapon-holding mobs — zombies, giants, skeletons, piglins, illagers; vanilla
 /// `ItemInHandLayer`). The hand attach transform comes from the renderer's posed humanoid model; native
 /// resolves the item to quads (block or flat) and applies the item's third-person display transform.
 pub(crate) fn held_item_models(
