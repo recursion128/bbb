@@ -15,9 +15,9 @@ use super::{
     },
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
-        EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, HoglinModelFamily,
-        HorseMarkings, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
+        EntityDyeColor, EntityDynamicPlayerSkin, EntityModelKind, EntityModelTextureAtlasEntry,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
+        HoglinModelFamily, HorseMarkings, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
         TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
         ZombieVariantModelFamily,
@@ -101,6 +101,7 @@ pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility
 pub(super) struct EntityModelRenderSubmission {
     pub(super) render_type: EntityModelLayerRenderType,
     pub(super) texture: EntityModelTextureRef,
+    pub(super) dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     pub(super) tint: [f32; 4],
     pub(super) transform: Mat4,
     pub(super) collector_order: i32,
@@ -154,6 +155,7 @@ impl EntityModelTexturedMeshes {
         &mut self,
         render_type: EntityModelLayerRenderType,
         texture: EntityModelTextureRef,
+        dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
         tint: [f32; 4],
         transform: Mat4,
         collector_order: i32,
@@ -162,6 +164,7 @@ impl EntityModelTexturedMeshes {
         self.submissions.push(EntityModelRenderSubmission {
             render_type,
             texture,
+            dynamic_player_skin,
             tint,
             transform,
             collector_order,
@@ -174,6 +177,7 @@ impl EntityModelTexturedMeshes {
 struct EntityModelSubmissionEmit {
     render_type: EntityModelLayerRenderType,
     texture: EntityModelTextureRef,
+    dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     tint: [f32; 4],
     transform: Mat4,
     collector_order: i32,
@@ -192,11 +196,17 @@ impl EntityModelSubmissionEmit {
         Self {
             render_type,
             texture,
+            dynamic_player_skin: None,
             tint,
             transform,
             collector_order,
             submit_sequence,
         }
+    }
+
+    fn with_dynamic_player_skin(mut self, skin: EntityDynamicPlayerSkin) -> Self {
+        self.dynamic_player_skin = Some(skin);
+        self
     }
 }
 
@@ -451,6 +461,7 @@ fn emit_end_crystal_textured_model(
     meshes.record_submission(
         EntityModelLayerRenderType::EntityCutout,
         END_CRYSTAL_TEXTURE_REF,
+        None,
         tint,
         root,
         0,
@@ -562,6 +573,29 @@ fn render_textured_pass_ordered<M: EntityModel>(
     });
 }
 
+fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    dynamic_player_skin: EntityDynamicPlayerSkin,
+    tint: [f32; 4],
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let submit = EntityModelSubmissionEmit::new(render_type, texture, tint, transform, 0, 0)
+        .with_dynamic_player_skin(dynamic_player_skin);
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
 fn render_textured_submission(
     meshes: &mut EntityModelTexturedMeshes,
     submit: EntityModelSubmissionEmit,
@@ -571,6 +605,7 @@ fn render_textured_submission(
     meshes.record_submission(
         submit.render_type,
         submit.texture,
+        submit.dynamic_player_skin,
         submit.tint,
         submit.transform,
         submit.collector_order,
@@ -734,6 +769,7 @@ fn emit_wind_charge_scroll_model(
     meshes.record_submission(
         EntityModelLayerRenderType::BreezeWind,
         WIND_CHARGE_TEXTURE_REF,
+        None,
         [1.0, 1.0, 1.0, 1.0],
         transform,
         0,
@@ -777,6 +813,7 @@ fn emit_breeze_wind_scroll_model(
     meshes.record_submission(
         EntityModelLayerRenderType::BreezeWind,
         BREEZE_WIND_TEXTURE_REF,
+        None,
         [1.0, 1.0, 1.0, 1.0],
         transform,
         1,
@@ -821,6 +858,7 @@ fn emit_charged_creeper_energy_swirl(
     meshes.record_submission(
         EntityModelLayerRenderType::EnergySwirl,
         CREEPER_ARMOR_TEXTURE_REF,
+        None,
         [grey, grey, grey, 1.0],
         transform,
         1,
@@ -870,6 +908,7 @@ fn emit_wither_energy_swirl(
     meshes.record_submission(
         EntityModelLayerRenderType::EnergySwirl,
         WITHER_ARMOR_TEXTURE_REF,
+        None,
         [grey, grey, grey, 1.0],
         transform,
         1,
@@ -1226,7 +1265,7 @@ fn emit_custom_head_skull_layer(
                 meshes,
                 &model,
                 transform,
-                EntityModelLayerRenderType::EntityCutout,
+                EntityModelLayerRenderType::EntityCutoutZOffset,
                 custom_head_skull_texture_ref(skull),
                 [1.0, 1.0, 1.0, 1.0],
                 atlas,
@@ -1240,7 +1279,7 @@ fn emit_custom_head_skull_layer(
                 meshes,
                 &model,
                 transform,
-                EntityModelLayerRenderType::EntityCutout,
+                EntityModelLayerRenderType::EntityCutoutZOffset,
                 custom_head_skull_texture_ref(skull),
                 [1.0, 1.0, 1.0, 1.0],
                 atlas,
@@ -1252,15 +1291,49 @@ fn emit_custom_head_skull_layer(
 
     let mut model = CustomHeadSkullModel::new(matches!(skull, EntityCustomHeadSkull::Player(_)));
     model.prepare(&instance);
+    let render_type = custom_head_skull_render_type(skull);
+    let texture = custom_head_skull_texture_ref(skull);
+    if let Some(dynamic_player_skin) = custom_head_dynamic_player_skin(skull) {
+        render_textured_pass_with_dynamic_player_skin(
+            meshes,
+            &model,
+            transform,
+            render_type,
+            texture,
+            dynamic_player_skin,
+            [1.0, 1.0, 1.0, 1.0],
+            atlas,
+        );
+        return;
+    }
     render_textured_pass(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::EntityCutout,
-        custom_head_skull_texture_ref(skull),
+        render_type,
+        texture,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
     );
+}
+
+fn custom_head_skull_render_type(skull: EntityCustomHeadSkull) -> EntityModelLayerRenderType {
+    match skull {
+        EntityCustomHeadSkull::Player(EntityPlayerSkin::ProfiledDefault(_))
+        | EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(_)) => {
+            EntityModelLayerRenderType::EntityTranslucent
+        }
+        _ => EntityModelLayerRenderType::EntityCutoutZOffset,
+    }
+}
+
+fn custom_head_dynamic_player_skin(
+    skull: EntityCustomHeadSkull,
+) -> Option<EntityDynamicPlayerSkin> {
+    match skull {
+        EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(skin)) => Some(skin),
+        _ => None,
+    }
 }
 
 fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTextureRef {

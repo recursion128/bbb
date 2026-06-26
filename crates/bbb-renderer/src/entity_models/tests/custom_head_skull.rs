@@ -1,3 +1,4 @@
+use super::super::textured::EntityModelTexturedMeshes;
 use super::*;
 
 fn atlas_with(texture: EntityModelTextureRef) -> EntityModelTextureAtlasLayout {
@@ -5,6 +6,37 @@ fn atlas_with(texture: EntityModelTextureRef) -> EntityModelTextureAtlasLayout {
     build_entity_model_texture_atlas(&[EntityModelTextureImage::new(texture, vec![0; len])])
         .unwrap()
         .0
+}
+
+fn expected_skull_transform(instance: &EntityModelInstance) -> Mat4 {
+    super::super::held_item::custom_head_skull_transform(instance).unwrap()
+}
+
+fn assert_skull_submission(
+    instance: &EntityModelInstance,
+    meshes: &EntityModelTexturedMeshes,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+) {
+    let expected_transform = expected_skull_transform(instance);
+    let submissions: Vec<_> = meshes
+        .submissions
+        .iter()
+        .copied()
+        .filter(|submit| {
+            submit.render_type == render_type
+                && submit.texture == texture
+                && submit.transform == expected_transform
+        })
+        .collect();
+    assert_eq!(submissions.len(), 1);
+    let submit = submissions[0];
+    assert_eq!(submit.render_type, render_type);
+    assert_eq!(submit.texture, texture);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.dynamic_player_skin, None);
+    assert_eq!((submit.collector_order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.transform, expected_transform);
 }
 
 #[test]
@@ -41,22 +73,28 @@ fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
         (EntityCustomHeadSkull::Creeper, CREEPER_TEXTURE_REF),
     ] {
         let atlas = atlas_with(texture);
-        let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::player_with_parts(
-                910,
-                [0.0, 64.0, 0.0],
-                0.0,
-                false,
-                PLAYER_MODEL_PARTS_ALL_VISIBLE,
-            )
-            .with_custom_head_skull(Some(skull))],
-            &atlas,
-        );
+        let instance = EntityModelInstance::player_with_parts(
+            910,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+        .with_custom_head_skull(Some(skull));
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
-        assert_eq!(mesh.cutout_faces, 6, "{skull:?}");
-        assert_eq!(mesh.vertices.len(), 24, "{skull:?}");
-        assert_eq!(mesh.indices.len(), 36, "{skull:?}");
-        assert!(mesh
+        assert_skull_submission(
+            &instance,
+            &meshes,
+            EntityModelLayerRenderType::EntityCutoutZOffset,
+            texture,
+        );
+        assert_eq!(meshes.cutout.cutout_faces, 6, "{skull:?}");
+        assert_eq!(meshes.cutout.vertices.len(), 24, "{skull:?}");
+        assert_eq!(meshes.cutout.indices.len(), 36, "{skull:?}");
+        assert!(meshes.translucent.vertices.is_empty(), "{skull:?}");
+        assert!(meshes
+            .cutout
             .vertices
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -66,24 +104,30 @@ fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
 #[test]
 fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
     let atlas = atlas_with(PLAYER_SLIM_STEVE_TEXTURE_REF);
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            913,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            PLAYER_MODEL_PARTS_ALL_VISIBLE,
-        )
-        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
-            EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimSteve),
-        )))],
-        &atlas,
-    );
+    let instance = EntityModelInstance::player_with_parts(
+        910,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimSteve),
+    )));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
-    assert_eq!(mesh.cutout_faces, 12);
-    assert_eq!(mesh.vertices.len(), 48);
-    assert_eq!(mesh.indices.len(), 72);
-    assert!(mesh
+    assert_skull_submission(
+        &instance,
+        &meshes,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        PLAYER_SLIM_STEVE_TEXTURE_REF,
+    );
+    assert_eq!(meshes.cutout.cutout_faces, 12);
+    assert_eq!(meshes.cutout.vertices.len(), 48);
+    assert_eq!(meshes.cutout.indices.len(), 72);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -103,80 +147,133 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     ])
     .unwrap()
     .0;
-    let slim = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            914,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            PLAYER_MODEL_PARTS_ALL_VISIBLE,
-        )
-        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
-            EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimAlex),
-        )))],
-        &atlas,
+    let slim_instance = EntityModelInstance::player_with_parts(
+        914,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+        EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex),
+    )));
+    let wide_instance = EntityModelInstance::player_with_parts(
+        915,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+        EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::WideSteve),
+    )));
+    let dynamic_skin = EntityDynamicPlayerSkin {
+        handle: 42,
+        fallback: EntityDefaultPlayerSkin::WideSteve,
+        model: EntityPlayerSkinModel::Slim,
+    };
+    let dynamic_instance = EntityModelInstance::player_with_parts(
+        916,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+        EntityPlayerSkin::Dynamic(dynamic_skin),
+    )));
+    let slim_meshes = entity_model_textured_meshes(&[slim_instance], &atlas);
+    let wide_meshes = entity_model_textured_meshes(&[wide_instance], &atlas);
+    let dynamic_meshes = entity_model_textured_meshes(&[dynamic_instance], &atlas);
+
+    assert_skull_submission(
+        &slim_instance,
+        &slim_meshes,
+        EntityModelLayerRenderType::EntityTranslucent,
+        PLAYER_SLIM_ALEX_TEXTURE_REF,
     );
-    let wide = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            915,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            PLAYER_MODEL_PARTS_ALL_VISIBLE,
-        )
-        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
-            EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
-        )))],
-        &atlas,
+    assert_skull_submission(
+        &wide_instance,
+        &wide_meshes,
+        EntityModelLayerRenderType::EntityTranslucent,
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
     );
-    let dynamic = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            916,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            PLAYER_MODEL_PARTS_ALL_VISIBLE,
-        )
-        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
-            EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
-                handle: 42,
-                fallback: EntityDefaultPlayerSkin::WideSteve,
-                model: EntityPlayerSkinModel::Slim,
-            }),
-        )))],
-        &atlas,
+    let dynamic_submissions: Vec<_> = dynamic_meshes
+        .submissions
+        .iter()
+        .copied()
+        .filter(|submit| {
+            submit.render_type == EntityModelLayerRenderType::EntityTranslucent
+                && submit.texture == PLAYER_WIDE_STEVE_TEXTURE_REF
+                && submit.dynamic_player_skin == Some(dynamic_skin)
+                && submit.transform == expected_skull_transform(&dynamic_instance)
+        })
+        .collect();
+    assert_eq!(dynamic_submissions.len(), 1);
+    let dynamic_submit = dynamic_submissions[0];
+    assert_eq!(
+        dynamic_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(dynamic_submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(dynamic_submit.dynamic_player_skin, Some(dynamic_skin));
+    assert_eq!(dynamic_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            dynamic_submit.collector_order,
+            dynamic_submit.submit_sequence
+        ),
+        (0, 0)
+    );
+    assert_eq!(
+        dynamic_submit.transform,
+        expected_skull_transform(&dynamic_instance)
     );
 
-    assert_eq!(slim.cutout_faces, 12);
-    assert_eq!(wide.cutout_faces, 12);
-    assert_eq!(dynamic.cutout_faces, 12);
+    assert!(slim_meshes.cutout.vertices.is_empty());
+    assert!(wide_meshes.cutout.vertices.is_empty());
+    assert!(dynamic_meshes.cutout.vertices.is_empty());
+    assert_eq!(slim_meshes.translucent.cutout_faces, 12);
+    assert_eq!(wide_meshes.translucent.cutout_faces, 12);
+    assert_eq!(dynamic_meshes.translucent.cutout_faces, 12);
     assert_eq!(
-        slim.vertices
+        slim_meshes
+            .translucent
+            .vertices
             .iter()
             .map(|vertex| vertex.position)
             .collect::<Vec<_>>(),
-        wide.vertices
+        wide_meshes
+            .translucent
+            .vertices
             .iter()
             .map(|vertex| vertex.position)
             .collect::<Vec<_>>()
     );
     assert_ne!(
-        slim.vertices
+        slim_meshes
+            .translucent
+            .vertices
             .iter()
             .map(|vertex| vertex.uv)
             .collect::<Vec<_>>(),
-        wide.vertices
+        wide_meshes
+            .translucent
+            .vertices
             .iter()
             .map(|vertex| vertex.uv)
             .collect::<Vec<_>>()
     );
     assert_eq!(
-        dynamic
+        dynamic_meshes
+            .translucent
             .vertices
             .iter()
             .map(|vertex| vertex.uv)
             .collect::<Vec<_>>(),
-        wide.vertices
+        wide_meshes
+            .translucent
+            .vertices
             .iter()
             .map(|vertex| vertex.uv)
             .collect::<Vec<_>>()
@@ -186,24 +283,31 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
 #[test]
 fn custom_head_skull_layer_renders_piglin_head_with_specialized_geometry() {
     let atlas = atlas_with(PIGLIN_TEXTURE_REF);
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            914,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            PLAYER_MODEL_PARTS_ALL_VISIBLE,
-        )
-        .with_custom_head_skull(Some(EntityCustomHeadSkull::Piglin))],
-        &atlas,
+    let instance = EntityModelInstance::player_with_parts(
+        914,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Piglin));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_skull_submission(
+        &instance,
+        &meshes,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        PIGLIN_TEXTURE_REF,
     );
 
     // Vanilla `PiglinHeadModel.createHeadModel` reuses `PiglinModel.addHead`: four head cubes and
     // two ear cubes, each rendered as a normal cutout cube.
-    assert_eq!(mesh.cutout_faces, 36);
-    assert_eq!(mesh.vertices.len(), 144);
-    assert_eq!(mesh.indices.len(), 216);
-    assert!(mesh
+    assert_eq!(meshes.cutout.cutout_faces, 36);
+    assert_eq!(meshes.cutout.vertices.len(), 144);
+    assert_eq!(meshes.cutout.indices.len(), 216);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -243,23 +347,30 @@ fn custom_head_dragon_skull_model_uses_vanilla_head_layer_pose() {
 #[test]
 fn custom_head_skull_layer_renders_dragon_head_with_specialized_geometry() {
     let atlas = atlas_with(ENDER_DRAGON_TEXTURE_REF);
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            916,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            PLAYER_MODEL_PARTS_ALL_VISIBLE,
-        )
-        .with_custom_head_skull(Some(EntityCustomHeadSkull::Dragon))],
-        &atlas,
+    let instance = EntityModelInstance::player_with_parts(
+        916,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Dragon));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_skull_submission(
+        &instance,
+        &meshes,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        ENDER_DRAGON_TEXTURE_REF,
     );
 
     // Vanilla `DragonHeadModel.createHeadLayer`: six head cubes plus one jaw cube.
-    assert_eq!(mesh.cutout_faces, 42);
-    assert_eq!(mesh.vertices.len(), 168);
-    assert_eq!(mesh.indices.len(), 252);
-    assert!(mesh
+    assert_eq!(meshes.cutout.cutout_faces, 42);
+    assert_eq!(meshes.cutout.vertices.len(), 168);
+    assert_eq!(meshes.cutout.indices.len(), 252);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));

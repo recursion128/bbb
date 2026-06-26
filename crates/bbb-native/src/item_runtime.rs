@@ -1166,7 +1166,7 @@ fn profile_default_player_skin(profile: &ResolvableProfileSummary) -> EntityDefa
 fn profile_player_skin(profile: &ResolvableProfileSummary) -> EntityPlayerSkin {
     let fallback = profile_default_player_skin(profile);
     if profile.skin_patch.body.is_some() {
-        return EntityPlayerSkin::Default(fallback);
+        return EntityPlayerSkin::ProfiledDefault(fallback);
     }
 
     let Some(skin) = profile
@@ -1174,7 +1174,7 @@ fn profile_player_skin(profile: &ResolvableProfileSummary) -> EntityPlayerSkin {
         .as_ref()
         .and_then(|textures| textures.skin.as_ref())
     else {
-        return EntityPlayerSkin::Default(fallback);
+        return EntityPlayerSkin::ProfiledDefault(fallback);
     };
 
     let model = profile
@@ -2333,9 +2333,9 @@ mod tests {
         });
         assert_eq!(
             runtime.custom_head_skull_for_stack(&profiled),
-            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
-                EntityDefaultPlayerSkin::SlimAlex
-            )))
+            Some(EntityCustomHeadSkull::Player(
+                EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+            ))
         );
 
         let skin_url = "https://textures.minecraft.net/texture/profile-skin";
@@ -2386,9 +2386,9 @@ mod tests {
         });
         assert_eq!(
             runtime.custom_head_skull_for_stack(&resource_patched),
-            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
-                EntityDefaultPlayerSkin::SlimAlex
-            )))
+            Some(EntityCustomHeadSkull::Player(
+                EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+            ))
         );
 
         let mut patched = profiled.clone();
@@ -2410,9 +2410,9 @@ mod tests {
         });
         assert_eq!(
             runtime.custom_head_skull_for_stack(&patched),
-            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
-                EntityDefaultPlayerSkin::WideSteve
-            )))
+            Some(EntityCustomHeadSkull::Player(
+                EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::WideSteve)
+            ))
         );
 
         let mut profile_removed = profiled.clone();

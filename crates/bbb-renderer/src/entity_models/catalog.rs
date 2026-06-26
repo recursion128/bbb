@@ -31,7 +31,10 @@ pub enum EntityCustomHeadSkull {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityPlayerSkin {
+    /// Profileless `player_head` fallback: vanilla `DefaultPlayerSkin.getDefaultTexture()`.
     Default(EntityDefaultPlayerSkin),
+    /// A `player_head` that carried a profile, but resolves to a built-in default skin for now.
+    ProfiledDefault(EntityDefaultPlayerSkin),
     Dynamic(EntityDynamicPlayerSkin),
 }
 
@@ -52,6 +55,7 @@ impl EntityPlayerSkin {
     pub const fn fallback(self) -> EntityDefaultPlayerSkin {
         match self {
             Self::Default(skin) => skin,
+            Self::ProfiledDefault(skin) => skin,
             Self::Dynamic(skin) => skin.fallback,
         }
     }
@@ -59,6 +63,7 @@ impl EntityPlayerSkin {
     pub const fn model(self) -> EntityPlayerSkinModel {
         match self {
             Self::Default(skin) => skin.model(),
+            Self::ProfiledDefault(skin) => skin.model(),
             Self::Dynamic(skin) => skin.model,
         }
     }

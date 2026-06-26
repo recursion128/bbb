@@ -1018,8 +1018,9 @@ When an agent does any of the following, update this file in the same slice:
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager
-      profession/type/level overlays, and the newly textured End Crystal
-      path are covered by source-verified texture/render-type/tint/transform/order tests.
+      profession/type/level overlays, custom-head skull submissions, and the
+      newly textured End Crystal path are covered by source-verified
+      texture/render-type/tint/transform/order tests.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
@@ -1196,17 +1197,21 @@ When an agent does any of the following, update this file in the same slice:
         `wither_skeleton_skull`, `zombie_head`, and `creeper_head` in the
         HEAD slot using vanilla `SkullModel.createMobHeadLayer()` geometry,
         the `SKULL_SCALE = 1.1875` transform, villager skull y-offset, and
-        the matching entity textures via the textured cutout pass. Native
-        resolves these skull block items from the item registry into
-        `EntityRenderState.custom_head_skull`. A `player_head` whose stack has
-        no active `DataComponents.PROFILE` component is rendered with vanilla
-        `DefaultPlayerSkin` (`textures/entity/player/slim/steve.png`) and the
-        humanoid head+hat skull layer. A profiled `player_head` now follows
+        the matching entity textures via vanilla `entityCutoutZOffset`
+        submissions. Native resolves these skull block items from the item
+        registry into `EntityRenderState.custom_head_skull`. A `player_head`
+        whose stack has no active `DataComponents.PROFILE` component is
+        rendered with vanilla `DefaultPlayerSkin`
+        (`textures/entity/player/slim/steve.png`) and the humanoid head+hat
+        skull layer. A profiled `player_head` now follows
         `PlayerSkinRenderCache`'s default fallback: it picks the vanilla
         `DefaultPlayerSkin.get(UUID)` slot from an explicit profile UUID, an
         offline-name UUID, or the nil UUID, and applies a `PlayerSkin.Patch`
         body only when it names one of the built-in default player-skin
-        resources. A `piglin_head` renders with vanilla
+        resources; profiled default-player heads use vanilla
+        `PlayerSkinRenderCache.renderType()` semantics and therefore record
+        `entityTranslucent` submissions even while sampling a fallback default
+        skin. A `piglin_head` renders with vanilla
         `PiglinHeadModel` head/ear geometry and uses
         `wornHeadAnimationPos` for the skull ear flap, including vanilla's
         riding-a-living-entity branch that reads the vehicle walk animation. A
@@ -1219,9 +1224,11 @@ When an agent does any of the following, update this file in the same slice:
         resource texture/model overrides, and the unpacked profile `textures`
         property URLs for skin/cape/elytra plus the vanilla slim/wide model
         selection (`metadata.model=slim`, otherwise wide when a skin URL is
-        present). Native/render-state can now carry a dynamic skin handle, the
-        fallback default skin, and the slim/wide model, though the renderer still
-        samples the fallback until runtime dynamic texture upload exists. Remote
+        present). Native/render-state can now distinguish profileless default
+        skins from profiled fallback skins and can carry a dynamic skin handle,
+        the fallback default skin, and the slim/wide model; dynamic player-head
+        submissions preserve that handle, though the renderer still samples the
+        fallback until runtime dynamic texture upload exists. Remote
         profile resolution, downloaded skin textures, loading/error fallback
         states, and arbitrary dynamic player-skin texture loading remain
         deferred.

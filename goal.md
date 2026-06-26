@@ -36,8 +36,9 @@ layer 已完成，copper golem antenna block decoration 也已通过同一方块
 zombie/skeleton/piglin family、illager、villager/wandering trader、armor stand、
 copper golem 会用 `ItemDisplayContext.HEAD` 渲染头槽物品；custom-head skull 头颅专用
 分支中的静态 mob 头颅也已完成：`skeleton_skull`、`wither_skeleton_skull`、
-`zombie_head`、`creeper_head` 会通过 `SkullModel` 和对应实体贴图渲染；无 profile
-组件的 `player_head` 会通过默认 `DefaultPlayerSkin` / humanoid head+hat layer 渲染。
+`zombie_head`、`creeper_head` 会通过 `SkullModel`、对应实体贴图和 vanilla
+`entityCutoutZOffset` render type 渲染；无 profile 组件的 `player_head` 会通过默认
+`DefaultPlayerSkin` / humanoid head+hat layer 和 `entityCutoutZOffset` 渲染。
 `piglin_head` 会通过专用 PiglinHeadModel 几何和 `wornHeadAnimationPos` 耳朵动画渲染。
 `dragon_head` 会通过专用 DragonHeadModel 几何和 `wornHeadAnimationPos` 下颚动画渲染。
 `wornHeadAnimationPos` 也已按 vanilla 在乘骑 living entity 时读取载具 walk animation。
@@ -47,8 +48,10 @@ profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资
 vanilla slim/wide 模型选择（skin 的 `metadata.model=slim`，否则 wide）。
 带 profile 的 `player_head` 已按 `PlayerSkinRenderCache` 默认 fallback 选择
 `DefaultPlayerSkin.get(UUID)`（显式 UUID、offline-name UUID 或 nil UUID），并支持指向内置默认
-player skin 的 `PlayerSkin.Patch` body；native/render-state 也已能携带 profile texture
-URL 派生的 dynamic skin handle、fallback 默认皮肤和 slim/wide model（renderer 暂按 fallback
+player skin 的 `PlayerSkin.Patch` body；renderer 会把 profiled default/dynamic player head
+按 vanilla `PlayerSkinRenderCache.renderType()` 记录为 `entityTranslucent` submission。
+native/render-state 也已能携带 profile texture URL 派生的 dynamic skin handle、fallback
+默认皮肤和 slim/wide model，submission 会保留 dynamic handle（renderer 暂按 fallback
 贴图绘制）。剩余的是远程 profile 解析、下载皮肤和任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
@@ -75,7 +78,8 @@ Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base
 residual hand-emitted equipment / equine / villager overlay paths are now emitted through
 submission metadata before folding into the mesh buckets, including humanoid armor,
 horse/donkey/undead-horse base+saddle/body-armor, horse markings, and villager type/profession/level
-overlays.
+overlays; custom-head skull residual emits also record texture/render type/tint/transform/order
+submissions before folding into cutout or translucent buckets.
 End Crystal 已从 colored-only fallback 推进到 textured path，绑定
 `textures/entity/end_crystal/end_crystal.png`，使用 vanilla 默认 `entityCutout`、
 order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon healing beam 仍 deferred。
