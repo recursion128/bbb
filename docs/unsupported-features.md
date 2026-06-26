@@ -1300,10 +1300,11 @@ When an agent does any of the following, update this file in the same slice:
         falls back to a ready profile cape when the cape part is visible, uses the
         static equipment elytra texture when no profile override exists, and waits
         when an override texture has not been uploaded. World/native also project
-        vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer.
-        Still deferred: non-player humanoid / armor-stand WINGS presentation, baby
-        elytra model coverage, full cloak interpolation, and broader arbitrary
-        dynamic texture loading.
+        vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer,
+        and the same WINGS path now covers humanoid mobs, armor stands (small
+        armor stands select the baby layer through `ArmorStand.isBaby()`), and
+        baby humanoid mob `ELYTRA_BABY` geometry. Still deferred: full cloak
+        interpolation and broader arbitrary dynamic texture loading.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1332,8 +1333,7 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel;
-        full cloak interpolation, broader arbitrary dynamic texture loading,
-        non-player/baby WINGS layer coverage; the
+        full cloak interpolation, broader arbitrary dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
@@ -1378,9 +1378,9 @@ When an agent does any of the following, update this file in the same slice:
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer
       visibility state; player profile cape presentation is covered by the
-      dynamic `entitySolid` cape layer, and player WingsLayer/elytra presentation
-      plus elytra animation-state projection are covered for vanilla elytra equipment
-      while non-player/baby WINGS coverage remains deferred)
+      dynamic `entitySolid` cape layer, and WingsLayer/elytra presentation plus
+      elytra animation-state projection are covered for vanilla elytra equipment
+      on players, humanoid mobs, armor stands, and baby humanoid mobs)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,
@@ -1849,10 +1849,11 @@ When an agent does any of the following, update this file in the same slice:
       `AbstractPiglinModel.setupAnim` head-look, leg swing, ear flap, and (for the
       non-zombified families) arm counter-swing on both render paths, while the zombified
       piglin uses the held-out `animateZombieArms` arms;
-      the `DrownedOuterLayer` (adult and baby) and drowned swim re-pose ARE implemented (see the drowned
-      note above); zombie/piglin converting shake, remaining zombie-family and
-      piglin-family armor nuances, non-player/baby WingsLayer/elytra coverage, and
-      held-item refinements remain unsupported
+      the `DrownedOuterLayer` (adult and baby), drowned swim re-pose, and
+      non-player/baby WingsLayer/elytra presentation ARE implemented (see the
+      drowned and WINGS notes above); zombie/piglin converting shake, remaining
+      zombie-family and piglin-family armor nuances, and held-item refinements
+      remain unsupported
       (generic non-skull head-slot items and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads, profiled
       default-skin player heads, dynamic profiled-player heads, dragon heads,

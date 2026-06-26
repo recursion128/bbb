@@ -5,6 +5,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 pub(in crate::entity_models) const ELYTRA_DEFAULT_X_ROT: f32 = std::f32::consts::PI / 12.0;
 pub(in crate::entity_models) const ELYTRA_DEFAULT_Y_ROT: f32 = 0.0;
 pub(in crate::entity_models) const ELYTRA_DEFAULT_Z_ROT: f32 = -std::f32::consts::PI / 12.0;
+const ELYTRA_BABY_SCALE: f32 = 0.5;
+const ELYTRA_BABY_Y_OFFSET: f32 = 24.016 * (1.0 - ELYTRA_BABY_SCALE);
 
 const ELYTRA_LEFT_WING: [ModelCube; 1] = [elytra_wing_cube([-10.0, 0.0, 0.0], false)];
 const ELYTRA_RIGHT_WING: [ModelCube; 1] = [elytra_wing_cube([0.0, 0.0, 0.0], true)];
@@ -40,9 +42,16 @@ const fn elytra_wing_cube(min: [f32; 3], mirror: bool) -> ModelCube {
     )
 }
 
-fn elytra_tree() -> ModelPart {
+fn elytra_tree(baby: bool) -> ModelPart {
     ModelPart::new(
-        PART_POSE_ZERO,
+        if baby {
+            PartPose {
+                offset: [0.0, ELYTRA_BABY_Y_OFFSET, 0.0],
+                rotation: [0.0, 0.0, 0.0],
+            }
+        } else {
+            PART_POSE_ZERO
+        },
         Vec::new(),
         vec![
             (
@@ -59,12 +68,14 @@ fn elytra_tree() -> ModelPart {
 
 pub(in crate::entity_models) struct ElytraModel {
     root: ModelPart,
+    baby: bool,
 }
 
 impl ElytraModel {
-    pub(in crate::entity_models) fn new() -> Self {
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
         Self {
-            root: elytra_tree(),
+            root: elytra_tree(baby),
+            baby,
         }
     }
 }
@@ -80,6 +91,9 @@ impl EntityModel for ElytraModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let state = &instance.render_state;
+        if self.baby {
+            self.root.scale = [ELYTRA_BABY_SCALE; 3];
+        }
         let y = if state.is_crouching { 3.0 } else { 0.0 };
         let left = self.root.child_mut("left_wing");
         left.pose.offset[1] = y;

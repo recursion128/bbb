@@ -568,8 +568,8 @@ fn player_cape_layer_is_suppressed_by_wings_chest_equipment() {
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
     .with_player_cape_texture(Some(cape_texture))
-    .with_player_chest_equipment_has_wings(true)
-    .with_player_chest_equipment_has_humanoid(true);
+    .with_chest_equipment_has_wings(true)
+    .with_chest_equipment_has_humanoid(true);
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[instance],
@@ -608,7 +608,7 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
     .with_player_cape_texture(Some(cape_texture))
-    .with_player_chest_equipment_has_humanoid(true);
+    .with_chest_equipment_has_humanoid(true);
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[instance],
@@ -642,11 +642,11 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
-    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
-    .with_player_chest_equipment_has_wings(true);
+    .with_chest_equipment_has_wings(true);
 
     let meshes =
         entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
@@ -698,11 +698,11 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
-    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
-    .with_player_chest_equipment_has_wings(true)
+    .with_chest_equipment_has_wings(true)
     .with_player_elytra_texture(Some(profile_elytra))
     .with_player_cape_texture(Some(profile_cape));
 
@@ -759,11 +759,11 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
-    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
-    .with_player_chest_equipment_has_wings(true)
+    .with_chest_equipment_has_wings(true)
     .with_player_cape_texture(Some(profile_cape));
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
@@ -807,11 +807,11 @@ fn player_wings_layer_waits_for_profile_texture_upload() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
-    .with_player_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
-    .with_player_chest_equipment_has_wings(true)
+    .with_chest_equipment_has_wings(true)
     .with_player_elytra_texture(Some(profile_elytra));
 
     let meshes =

@@ -488,9 +488,10 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // Skull block items in the head slot use vanilla `CustomHeadLayer`'s skull branch: a static
         // `SkullModel` mob head attached to the host head, not the generic item-model HEAD display path.
         emit_custom_head_skull_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
-        // Player elytra uses vanilla `WingsLayer`: a WINGS equipment layer over the ElytraModel,
-        // optionally replacing the equipment texture with a ready profile elytra/cape texture.
-        emit_player_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
+        // Vanilla `WingsLayer`: a WINGS equipment layer over the ElytraModel for players,
+        // humanoid mobs, and armor stands. Only players can replace the equipment texture with
+        // a ready profile elytra/cape texture.
+        emit_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
         // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
@@ -2383,8 +2384,8 @@ fn emit_player_textured_model(
     // The unified `PlayerModel` tree drives both render paths; `setup_anim` looks the head, runs the
     // inherited `HumanoidModel` walk swing + idle arm bob, and applies the crouch sneaking pose. The
     // six skin overlay parts (hat/jacket/sleeves/pants) are toggled by the player's part visibility
-    // after `prepare` (the colored fallback shows every overlay). Held-item/attack/swim arm poses and
-    // the elytra defer; the profile cape is emitted as a separate layer after the base body.
+    // after `prepare` (the colored fallback shows every overlay). Held-item/attack/swim arm poses still
+    // defer; the profile cape and WingsLayer emit as separate layers after the base body.
     let transform = player_model_root_transform(instance);
     let slim = skin.is_slim();
     let mut model = PlayerModel::new(slim);
@@ -2425,7 +2426,7 @@ fn emit_player_cape_layer(
     if !parts.cape {
         return;
     }
-    if instance.render_state.player_chest_equipment_has_wings {
+    if instance.render_state.chest_equipment_has_wings {
         return;
     }
     let Some(cape_texture) = instance.render_state.player_cape_texture else {
@@ -2474,7 +2475,7 @@ fn emit_player_cape_layer(
 }
 
 fn player_cape_chest_equipment_transform(instance: &EntityModelInstance) -> Mat4 {
-    if instance.render_state.player_chest_equipment_has_humanoid {
+    if instance.render_state.chest_equipment_has_humanoid {
         Mat4::from_translation(Vec3::new(0.0, -0.053125, 0.06875))
     } else {
         Mat4::IDENTITY
@@ -2492,25 +2493,24 @@ fn player_cape_animation_transform(instance: &EntityModelInstance) -> Mat4 {
     Mat4::from_quat(rotation)
 }
 
-fn emit_player_wings_layer(
+fn emit_wings_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
-    let EntityModelKind::Player { parts, .. } = instance.kind else {
+    let Some(layer) = instance.render_state.chest_wings_layer else {
         return;
     };
-    let Some(layer) = instance.render_state.player_chest_wings_layer else {
+    let Some((transform, baby)) = wings_layer_transform_and_baby(instance) else {
         return;
     };
 
-    let transform = player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125);
-    let mut model = ElytraModel::new();
+    let mut model = ElytraModel::new(baby);
     model.prepare(&instance);
     let tint = [1.0, 1.0, 1.0, 1.0];
 
-    if let Some(profile_texture) = player_wings_profile_texture(&instance, parts, layer) {
+    if let Some(profile_texture) = player_wings_profile_texture(&instance, layer) {
         let Some(entry) =
             dynamic_player_texture_atlas_entry(dynamic_player_texture_atlas, profile_texture)
         else {
@@ -2556,14 +2556,55 @@ fn emit_player_wings_layer(
     });
 }
 
+fn wings_layer_transform_and_baby(instance: EntityModelInstance) -> Option<(Mat4, bool)> {
+    let (root, baby) = match instance.kind {
+        EntityModelKind::Player { .. } => (player_model_root_transform(instance), false),
+        EntityModelKind::Zombie { baby } => (entity_model_root_transform(instance), baby),
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Husk,
+            baby,
+        } => {
+            let transform = if baby {
+                entity_model_root_transform(instance)
+            } else {
+                mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+            };
+            (transform, baby)
+        }
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Drowned,
+            baby,
+        } => (drowned_model_root_transform(instance), baby),
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            baby,
+        } => (entity_model_root_transform(instance), baby),
+        EntityModelKind::Skeleton => (entity_model_root_transform(instance), false),
+        EntityModelKind::SkeletonVariant { family } => {
+            let transform = if matches!(family, SkeletonModelFamily::WitherSkeleton) {
+                wither_skeleton_model_root_transform(instance)
+            } else {
+                entity_model_root_transform(instance)
+            };
+            (transform, false)
+        }
+        EntityModelKind::Piglin { baby, .. } => (entity_model_root_transform(instance), baby),
+        EntityModelKind::ArmorStand { small, .. } => (entity_model_root_transform(instance), small),
+        _ => return None,
+    };
+    Some((root * Mat4::from_translation(Vec3::Z * 0.125), baby))
+}
+
 fn player_wings_profile_texture(
     instance: &EntityModelInstance,
-    parts: PlayerModelPartVisibility,
     layer: EntityEquipmentLayerTexture,
 ) -> Option<EntityDynamicPlayerTexture> {
     if !layer.use_player_texture {
         return None;
     }
+    let EntityModelKind::Player { parts, .. } = instance.kind else {
+        return None;
+    };
     instance.render_state.player_elytra_texture.or_else(|| {
         parts
             .cape

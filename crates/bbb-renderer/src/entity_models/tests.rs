@@ -82,6 +82,7 @@ mod vex;
 mod villager;
 mod warden;
 mod wind_charge;
+mod wings;
 mod witch;
 mod wither;
 mod wither_skull;

@@ -125,7 +125,7 @@ use textured::{
 #[cfg(test)]
 use textured::{
     dynamic_player_texture_test_meshes, entity_model_textured_meshes,
-    entity_model_textured_meshes_with_dynamic_skins,
+    entity_model_textured_meshes_with_dynamic_skins, EntityModelTexturedMeshes,
 };
 
 #[cfg(test)]

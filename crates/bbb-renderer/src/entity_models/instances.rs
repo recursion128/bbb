@@ -336,20 +336,22 @@ entity_render_state! {
     /// checks the `PlayerModelPart.CAPE` visibility bit carried by [`EntityModelKind::Player`] and emits only
     /// once the dynamic profile-texture atlas has the matching handle.
     (with_player_cape_texture) player_cape_texture: Option<EntityDynamicPlayerTexture> = None;
-    /// Vanilla `AvatarRenderState.skin.elytra()` as a downloaded profile texture. Projected now for the
-    /// deferred `WingsLayer`; the cape layer does not consume it.
+    /// Vanilla `AvatarRenderState.skin.elytra()` as a downloaded profile texture. Projected for
+    /// `WingsLayer`; the cape layer does not consume it.
     (with_player_elytra_texture) player_elytra_texture: Option<EntityDynamicPlayerTexture> = None;
-    /// First renderable WINGS equipment layer from `AvatarRenderState.chestEquipment`'s equipment asset
-    /// (vanilla `WingsLayer` -> `EquipmentLayerRenderer.renderLayers(WINGS, ..., order=0)`). The native
-    /// side resolves the pack layer texture to a renderer atlas texture and preserves
-    /// `use_player_texture` for profile elytra/cape override selection.
-    (with_player_chest_wings_layer) player_chest_wings_layer: Option<EntityEquipmentLayerTexture> = None;
-    /// Whether `AvatarRenderState.chestEquipment` has an equipment asset with a WINGS layer. Vanilla
-    /// `CapeLayer` suppresses the cape when this is true because the wings layer owns the back slot.
-    (with_player_chest_equipment_has_wings) player_chest_equipment_has_wings: bool = false;
-    /// Whether `AvatarRenderState.chestEquipment` has an equipment asset with a HUMANOID layer. Vanilla
-    /// `CapeLayer` nudges the cape away from humanoid chest equipment by `(0, -0.053125, 0.06875)`.
-    (with_player_chest_equipment_has_humanoid) player_chest_equipment_has_humanoid: bool = false;
+    /// First renderable WINGS equipment layer from `HumanoidRenderState.chestEquipment`'s equipment
+    /// asset (vanilla `WingsLayer` -> `EquipmentLayerRenderer.renderLayers(WINGS, ..., order=0)`).
+    /// The native side resolves the pack layer texture to a renderer atlas texture and preserves
+    /// `use_player_texture` for the player-only profile elytra/cape override selection.
+    (with_chest_wings_layer) chest_wings_layer: Option<EntityEquipmentLayerTexture> = None;
+    /// Whether `HumanoidRenderState.chestEquipment` has an equipment asset with a WINGS layer. Vanilla
+    /// player `CapeLayer` suppresses the cape when this is true because the wings layer owns the back
+    /// slot.
+    (with_chest_equipment_has_wings) chest_equipment_has_wings: bool = false;
+    /// Whether `HumanoidRenderState.chestEquipment` has an equipment asset with a HUMANOID layer.
+    /// Vanilla player `CapeLayer` nudges the cape away from humanoid chest equipment by
+    /// `(0, -0.053125, 0.06875)`.
+    (with_chest_equipment_has_humanoid) chest_equipment_has_humanoid: bool = false;
     /// Vanilla `AvatarRenderState.capeFlap`, produced by `AvatarRenderer.extractCapeState`. Defaults to the
     /// still-player value until the world side mirrors cloak interpolation.
     (with_player_cape_flap) player_cape_flap: f32 = 0.0;
@@ -2156,9 +2158,9 @@ mod tests {
                 player_off_hand_item_pose: false,
                 player_cape_texture: None,
                 player_elytra_texture: None,
-                player_chest_wings_layer: None,
-                player_chest_equipment_has_wings: false,
-                player_chest_equipment_has_humanoid: false,
+                chest_wings_layer: None,
+                chest_equipment_has_wings: false,
+                chest_equipment_has_humanoid: false,
                 player_cape_flap: 0.0,
                 player_cape_lean: 0.0,
                 player_cape_lean2: 0.0,
