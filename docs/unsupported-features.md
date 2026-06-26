@@ -1717,10 +1717,11 @@ When an agent does any of the following, update this file in the same slice:
       `PolarBearModel.setupAnim` standing-rear head/body/front-leg pose driven by
       the canonical `clientSideStandAnimation` countdown projected through
       `PolarBear.getStandingAnimationScale` and the renderer partial tick, and the
-      vanilla `QuadrupedModel.setupAnim` head-look yaw/pitch applied before the
-      standing-rear `head.xRot += standScale * π * 0.15` term (colored and
-      textured, matching vanilla's `super.setupAnim`-then-rear order); walk
-      animation and lighting remain unsupported
+      vanilla `QuadrupedModel.setupAnim` head-look yaw/pitch and diagonal leg walk
+      swing applied before the standing-rear deltas (`head.xRot += standScale *
+      π * 0.15`, front-leg rear offset layered on top of the walk) on adult/baby
+      colored and textured models, matching vanilla's `super.setupAnim`-then-rear
+      order; lighting remains unsupported
     - hoglin and zoglin entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `HoglinModel`, `BabyHoglinModel`,
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,
