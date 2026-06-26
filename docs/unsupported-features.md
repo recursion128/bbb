@@ -877,10 +877,11 @@ When an agent does any of the following, update this file in the same slice:
     states the client does not yet track (the `HumanoidModel` crouch sneaking
     pose is implemented for the player — see below);
     (3) consuming the projected values in the remaining model families' `setupAnim`
-    (fish, other birds, etc.) are the next slices, plus the chicken wing flap (untracked
-    `flap`/`flapSpeed`) and the several deferred event/tail poses noted above. (The snow
-    golem has no walk-driven swing; its `setupAnim` head-yaw upper-body twist and arm orbit
-    are implemented.) The `EntityRenderState.ageInTicks` (= entity `tickCount + partialTick`)
+    (fish, other birds, etc.) are the next slices, plus the several deferred event/tail poses
+    noted above. (The chicken wing flap is covered by the pure client-side `flap`/`flapSpeed`
+    accumulator described in the chicken entry below. The snow golem has no walk-driven swing;
+    its `setupAnim` head-yaw upper-body twist and arm orbit are implemented.) The
+    `EntityRenderState.ageInTicks` (= entity `tickCount + partialTick`)
     is now projected for every entity (`with_age_in_ticks`, from the world's per-entity
     client-animation age), driving the continuous `AbstractPiglinModel.setupAnim` ear flap
     (`piglin_ear_flap_pose`, shared by every piglin/zombified-piglin subclass via
@@ -1433,10 +1434,14 @@ When an agent does any of the following, update this file in the same slice:
       `ChickenModel.setupAnim` two-leg walk swing (the `HumanoidModel` phase
       `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[2, 3]` adult/cold and
       `[1, 2]` on the headless baby layer, on both render paths and every variant
-      pass); the chicken has no head look in vanilla (`ChickenModel` never animates
-      the head). The wing flap animation (driven by the untracked client-side
-      `flap`/`flapSpeed` state), variant sound metadata, custom/datapack chicken
-      variant asset decoding, and lighting remain unsupported
+      pass), plus the vanilla wing flap: world mirrors `Chicken.aiStep`'s client
+      `flap`/`oFlap`/`flapSpeed`/`oFlapSpeed`/`flapping` accumulator from `onGround`,
+      store/native project the partial-lerped `ChickenRenderState.flap` and `flapSpeed`,
+      and `ChickenModel.setupAnim` applies `(sin(flap) + 1) * flapSpeed` to
+      `right_wing.zRot` / `-left_wing.zRot` on adult, cold, and baby models. The
+      chicken has no head look in vanilla (`ChickenModel` never animates the head).
+      Variant sound metadata, custom/datapack chicken variant asset decoding, and lighting
+      remain unsupported
     - pig entities as renderer-owned vanilla 26.1
       `PigModel`, `ColdPigModel`, and `BabyPigModel` body-layer geometry from
       `PigModel`, `ColdPigModel`, `BabyPigModel`, `PigRenderer`,
