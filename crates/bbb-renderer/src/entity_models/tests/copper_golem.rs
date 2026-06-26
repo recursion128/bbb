@@ -125,20 +125,14 @@ fn copper_golem_textured_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].model_layer, MODEL_LAYER_COPPER_GOLEM);
     assert_eq!(passes[0].texture, COPPER_GOLEM_WEATHERED_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     assert_eq!(passes[1].kind, EntityModelLayerKind::CopperGolemEyes);
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].model_layer, MODEL_LAYER_COPPER_GOLEM);
     assert_eq!(passes[1].texture, COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF);
     assert_eq!(passes[1].visibility, EntityModelLayerVisibility::All);
-    assert_eq!(
-        (passes[1].collector_order, passes[1].submit_sequence),
-        (1, 1)
-    );
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
 }
 
 #[test]

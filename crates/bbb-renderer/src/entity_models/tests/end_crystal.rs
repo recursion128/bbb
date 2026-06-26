@@ -112,7 +112,7 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
     assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
     assert_eq!(submit.texture, END_CRYSTAL_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(submit.collector_order, 0);
+    assert_eq!(submit.order, 0);
     assert_eq!(submit.submit_sequence, 0);
     assert_eq!(submit.transform, end_crystal_model_root_transform(instance));
 

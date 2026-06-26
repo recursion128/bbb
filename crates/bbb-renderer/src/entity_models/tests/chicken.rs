@@ -201,7 +201,7 @@ fn chicken_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult_temperate[0].model_layer, MODEL_LAYER_CHICKEN);
     assert_eq!(adult_temperate[0].texture, CHICKEN_TEMPERATE_TEXTURE_REF);
     assert_eq!(adult_temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(adult_temperate[0].collector_order, 0);
+    assert_eq!(adult_temperate[0].order, 0);
     assert_eq!(adult_temperate[0].submit_sequence, 0);
 
     let adult_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, false);

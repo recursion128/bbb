@@ -130,7 +130,7 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
         EntityModelLayerRenderType::EntityCutoutCull
     );
     assert_eq!(meshes.submissions[0].texture, BAT_TEXTURE_REF);
-    assert_eq!(meshes.submissions[0].collector_order, 0);
+    assert_eq!(meshes.submissions[0].order, 0);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.cutout.cutout_faces, 54);

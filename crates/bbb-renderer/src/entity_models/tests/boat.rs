@@ -222,10 +222,7 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(oak_boat[0].model_layer, MODEL_LAYER_OAK_BOAT);
     assert_eq!(oak_boat[0].texture, BOAT_OAK_TEXTURE_REF);
     assert_eq!(oak_boat[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (oak_boat[0].collector_order, oak_boat[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((oak_boat[0].order, oak_boat[0].submit_sequence), (0, 0));
 
     let oak_chest_boat = boat_textured_layer_passes(BoatModelFamily::Oak, true);
     assert_eq!(oak_chest_boat[0].kind, EntityModelLayerKind::BoatBase);

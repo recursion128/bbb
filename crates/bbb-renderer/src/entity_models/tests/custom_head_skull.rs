@@ -48,7 +48,7 @@ fn assert_skull_submission(
     assert_eq!(submit.texture, texture);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.dynamic_player_skin, None);
-    assert_eq!((submit.collector_order, submit.submit_sequence), (0, 0));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.transform, expected_transform);
 }
 
@@ -233,10 +233,7 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     assert_eq!(dynamic_submit.dynamic_player_skin, Some(dynamic_skin));
     assert_eq!(dynamic_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
-        (
-            dynamic_submit.collector_order,
-            dynamic_submit.submit_sequence
-        ),
+        (dynamic_submit.order, dynamic_submit.submit_sequence),
         (0, 0)
     );
     assert_eq!(
@@ -357,10 +354,7 @@ fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
         expected_skull_transform(&instance)
     );
     assert_eq!(
-        (
-            dynamic_submit.collector_order,
-            dynamic_submit.submit_sequence
-        ),
+        (dynamic_submit.order, dynamic_submit.submit_sequence),
         (0, 0)
     );
 

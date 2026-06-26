@@ -80,13 +80,16 @@ Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base
 颜色/alpha 使用 vanilla packed color `0x26ffffff`。
 实体 textured path 现在显式记录 vanilla-shaped submission 元数据：render type 区分
 `armorCutoutNoCull` / `entityCutout` / `entityCutoutCull` / `entityCutoutZOffset` /
-`entityTranslucent` / `Eyes` / `breezeWind` / `energySwirl`，`collector_order`
+`entityTranslucent` / `Eyes` / `breezeWind` / `energySwirl`，`order`
 对应 `SubmitNodeCollector.order(n)`，并用 `submit_sequence` 保留同 order 内的 layer 顺序。
+render type 还暴露 vanilla 名称断言，防止这些细分退回粗 bucket。
 residual hand-emitted equipment / equine / villager overlay paths are now emitted through
 submission metadata before folding into the mesh buckets, including humanoid armor,
 horse/donkey/undead-horse base+saddle/body-armor, horse markings, and villager type/profession/level
 overlays; custom-head skull residual emits also record texture/render type/tint/transform/order
-submissions before folding into cutout or translucent buckets.
+submissions before folding into cutout or translucent buckets. `breezeWind` / `energySwirl`
+scroll residual emits now also go through a shared scrolled submission helper before folding into
+the scroll buckets.
 End Crystal 已从 colored-only fallback 推进到 textured path，绑定
 `textures/entity/end_crystal/end_crystal.png`，使用 vanilla 默认 `entityCutout`、
 order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon healing beam 仍 deferred。

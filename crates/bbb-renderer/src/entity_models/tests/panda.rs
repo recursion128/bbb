@@ -632,7 +632,7 @@ fn panda_textured_submission_uses_vanilla_setup_rotations_transform() {
     assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
     assert_eq!(submit.texture, PANDA_BROWN_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((submit.collector_order, submit.submit_sequence), (0, 0));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.transform, panda_model_root_transform(instance));
     assert_ne!(
         submit.transform,

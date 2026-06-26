@@ -255,10 +255,7 @@ fn pig_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_PIG);
     assert_eq!(temperate[0].texture, PIG_TEMPERATE_TEXTURE_REF);
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (temperate[0].collector_order, temperate[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((temperate[0].order, temperate[0].submit_sequence), (0, 0));
 
     let warm_baby = pig_textured_layer_passes(PigModelVariant::Warm, true);
     assert_eq!(warm_baby[0].model_layer, MODEL_LAYER_PIG_BABY);

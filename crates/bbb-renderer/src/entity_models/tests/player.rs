@@ -162,7 +162,7 @@ fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
         EntityModelLayerVisibility::PlayerParts(PLAYER_MODEL_PARTS_ALL_VISIBLE)
     );
     assert_eq!(wide[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((wide[0].collector_order, wide[0].submit_sequence), (0, 0));
+    assert_eq!((wide[0].order, wide[0].submit_sequence), (0, 0));
 
     let slim_parts = PlayerModelPartVisibility::from_vanilla_mask(
         PlayerModelPartVisibility::HAT_MASK | PlayerModelPartVisibility::LEFT_SLEEVE_MASK,
@@ -177,7 +177,7 @@ fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
         EntityModelLayerVisibility::PlayerParts(slim_parts)
     );
     assert_eq!(slim[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((slim[0].collector_order, slim[0].submit_sequence), (0, 0));
+    assert_eq!((slim[0].order, slim[0].submit_sequence), (0, 0));
 }
 
 #[test]
@@ -275,6 +275,30 @@ fn player_textured_mesh_uses_vanilla_uvs_tints_and_avatar_scale() {
     assert!(wide_max[1] - wide_min[1] < 2.0);
     assert!(wide_max[0] - wide_min[0] > slim_max[0] - slim_min[0]);
     assert_ne!(wide.vertices, slim.vertices);
+}
+
+#[test]
+fn player_textured_submission_records_vanilla_render_type_texture_tint_transform_and_order() {
+    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    let instance = EntityModelInstance::player_with_parts(
+        903,
+        [3.0, 64.0, -2.0],
+        25.0,
+        true,
+        PlayerModelPartVisibility::from_vanilla_mask(
+            PlayerModelPartVisibility::HAT_MASK | PlayerModelPartVisibility::RIGHT_SLEEVE_MASK,
+        ),
+    );
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, PLAYER_SLIM_STEVE_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, player_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
 
 #[test]

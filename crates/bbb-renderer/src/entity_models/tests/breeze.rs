@@ -222,7 +222,7 @@ fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
         body_submit.render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
-    assert_eq!(body_submit.collector_order, 0);
+    assert_eq!(body_submit.order, 0);
     assert_eq!(body_submit.submit_sequence, 0);
     assert!(meshes.cutout.vertices.is_empty());
     assert_eq!(meshes.translucent.cutout_faces, 30);
@@ -242,7 +242,7 @@ fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
         .expect("breeze emits a breezeEyes submit");
     assert_eq!(eyes_submit.render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(eyes_submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(eyes_submit.collector_order, 1);
+    assert_eq!(eyes_submit.order, 1);
     assert_eq!(eyes_submit.submit_sequence, 2);
     assert_eq!(eyes_submit.transform, entity_model_root_transform(base));
     assert_eq!(meshes.eyes.cutout_faces, 30);
@@ -299,7 +299,7 @@ fn breeze_wind_body_folds_into_scrolling_overlay() {
         .expect("breeze emits a breezeWind layer submit");
     assert_eq!(wind_submit.texture, BREEZE_WIND_TEXTURE_REF);
     assert_eq!(wind_submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(wind_submit.collector_order, 1);
+    assert_eq!(wind_submit.order, 1);
     assert_eq!(wind_submit.submit_sequence, 1);
     assert_eq!(wind_submit.transform, entity_model_root_transform(base));
     assert_eq!(meshes.scroll.vertices.len(), 168);

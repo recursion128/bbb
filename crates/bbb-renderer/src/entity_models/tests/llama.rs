@@ -355,7 +355,7 @@ fn llama_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult[0].model_layer, MODEL_LAYER_LLAMA);
     assert_eq!(adult[0].texture, LLAMA_CREAMY_TEXTURE_REF);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
+    assert_eq!((adult[0].order, adult[0].submit_sequence), (0, 0));
 
     let adult_chest = llama_textured_layer_passes(LlamaVariant::White, false, true);
     assert_eq!(adult_chest[0].model_layer, MODEL_LAYER_LLAMA);

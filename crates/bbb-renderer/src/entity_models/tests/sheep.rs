@@ -429,30 +429,21 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     assert_eq!(adult_red[0].model_layer, MODEL_LAYER_SHEEP);
     assert_eq!(adult_red[0].texture, SHEEP_TEXTURE_REF);
     assert_eq!(adult_red[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (adult_red[0].collector_order, adult_red[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((adult_red[0].order, adult_red[0].submit_sequence), (0, 0));
     assert_eq!(adult_red[1].model_layer, MODEL_LAYER_SHEEP_WOOL);
     assert_eq!(adult_red[1].texture, SHEEP_WOOL_TEXTURE_REF);
     assert_eq!(
         adult_red[1].tint,
         sheep_wool_layer_color(SheepWoolColor::Red)
     );
-    assert_eq!(
-        (adult_red[1].collector_order, adult_red[1].submit_sequence),
-        (0, 2)
-    );
+    assert_eq!((adult_red[1].order, adult_red[1].submit_sequence), (0, 2));
     assert_eq!(adult_red[2].model_layer, MODEL_LAYER_SHEEP_WOOL_UNDERCOAT);
     assert_eq!(adult_red[2].texture, SHEEP_WOOL_UNDERCOAT_TEXTURE_REF);
     assert_eq!(
         adult_red[2].tint,
         sheep_wool_layer_color(SheepWoolColor::Red)
     );
-    assert_eq!(
-        (adult_red[2].collector_order, adult_red[2].submit_sequence),
-        (1, 1)
-    );
+    assert_eq!((adult_red[2].order, adult_red[2].submit_sequence), (1, 1));
 
     let sheared_red = sheep_textured_layer_passes(false, true, SheepWoolColor::Red, false, 0.0);
     assert_eq!(
@@ -486,12 +477,7 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
     assert_eq!(
         baby_black
             .iter()
-            .map(|pass| (
-                pass.kind,
-                pass.model_layer,
-                pass.texture,
-                pass.collector_order
-            ))
+            .map(|pass| (pass.kind, pass.model_layer, pass.texture, pass.order))
             .collect::<Vec<_>>(),
         vec![
             (

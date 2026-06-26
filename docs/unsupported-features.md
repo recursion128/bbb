@@ -1010,10 +1010,13 @@ When an agent does any of the following, update this file in the same slice:
       metadata alongside the existing mesh buckets: `render_type`
       distinguishes `armorCutoutNoCull`, `entityCutout`, `entityCutoutCull`,
       `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
-      `breezeWind`, and `energySwirl`; `collector_order` mirrors
+      `breezeWind`, and `energySwirl`; `order` mirrors
       `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
       same-order layer order while the GPU backend still folds compatible
-      submits into shared meshes. Uniform layer passes, Warden retained
+      submits into shared meshes. The render-type expression is pinned by
+      vanilla-name tests, and `breezeWind` / `energySwirl` residual emits now
+      use a shared scrolled submission helper before folding into the scroll
+      mesh buckets. Uniform layer passes, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse

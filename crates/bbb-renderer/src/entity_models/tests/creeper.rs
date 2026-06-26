@@ -91,10 +91,7 @@ fn creeper_textured_layer_passes_match_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].model_layer, MODEL_LAYER_CREEPER);
     assert_eq!(passes[0].texture, CREEPER_TEXTURE_REF);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 }
 
 #[test]
@@ -172,7 +169,7 @@ fn charged_creeper_emits_scrolling_energy_swirl() {
         .expect("powered creeper emits an energySwirl submit");
     assert_eq!(swirl.texture, CREEPER_ARMOR_TEXTURE_REF);
     assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
-    assert_eq!(swirl.collector_order, 1);
+    assert_eq!(swirl.order, 1);
     assert_eq!(swirl.submit_sequence, 1);
     assert_eq!(swirl.transform, creeper_model_root_transform(powered));
     assert_eq!(rest.scroll_additive.vertices.len(), 144);

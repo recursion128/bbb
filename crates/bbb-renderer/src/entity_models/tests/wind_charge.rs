@@ -109,7 +109,7 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
     );
     assert_eq!(rest.submissions[0].texture, WIND_CHARGE_TEXTURE_REF);
     assert_eq!(rest.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(rest.submissions[0].collector_order, 0);
+    assert_eq!(rest.submissions[0].order, 0);
     assert_eq!(rest.submissions[0].submit_sequence, 0);
     assert_eq!(
         rest.submissions[0].transform,

@@ -1030,7 +1030,7 @@ fn drowned_textured_layer_passes_match_vanilla_renderer() {
     assert_eq!(adult[0].texture, DROWNED_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
+    assert_eq!((adult[0].order, adult[0].submit_sequence), (0, 0));
 
     assert_eq!(adult[1].kind, EntityModelLayerKind::DrownedOuter);
     assert_eq!(
@@ -1041,7 +1041,7 @@ fn drowned_textured_layer_passes_match_vanilla_renderer() {
     assert_eq!(adult[1].texture, DROWNED_OUTER_LAYER_TEXTURE_REF);
     assert_eq!(adult[1].visibility, EntityModelLayerVisibility::All);
     assert_eq!(adult[1].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((adult[1].collector_order, adult[1].submit_sequence), (1, 1));
+    assert_eq!((adult[1].order, adult[1].submit_sequence), (1, 1));
 
     let baby = drowned_textured_layer_passes(true);
     assert_eq!(baby.len(), 2);
@@ -1051,7 +1051,7 @@ fn drowned_textured_layer_passes_match_vanilla_renderer() {
     assert_eq!(baby[1].kind, EntityModelLayerKind::DrownedOuter);
     assert_eq!(baby[1].model_layer, "minecraft:drowned_baby#outer");
     assert_eq!(baby[1].texture, DROWNED_OUTER_LAYER_BABY_TEXTURE_REF);
-    assert_eq!((baby[1].collector_order, baby[1].submit_sequence), (1, 1));
+    assert_eq!((baby[1].order, baby[1].submit_sequence), (1, 1));
 
     assert!(entity_model_texture_refs().contains(&DROWNED_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&DROWNED_BABY_TEXTURE_REF));
@@ -1186,14 +1186,14 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     assert_eq!(outer_meshes.submissions.len(), 2);
     assert_eq!(outer_meshes.submissions[0].texture, DROWNED_TEXTURE_REF);
     assert_eq!(outer_meshes.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(outer_meshes.submissions[0].collector_order, 0);
+    assert_eq!(outer_meshes.submissions[0].order, 0);
     assert_eq!(outer_meshes.submissions[0].submit_sequence, 0);
     assert_eq!(
         outer_meshes.submissions[1].texture,
         DROWNED_OUTER_LAYER_TEXTURE_REF
     );
     assert_eq!(outer_meshes.submissions[1].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(outer_meshes.submissions[1].collector_order, 1);
+    assert_eq!(outer_meshes.submissions[1].order, 1);
     assert_eq!(outer_meshes.submissions[1].submit_sequence, 1);
 
     // The outer adds exactly the inflated humanoid shell (7 boxes * 6 faces).
@@ -1448,10 +1448,7 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
         assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
         assert_eq!(submit.texture, texture);
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(
-            (submit.collector_order, submit.submit_sequence),
-            (order, sequence)
-        );
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
         assert_eq!(submit.transform, expected_transform);
     }
 }

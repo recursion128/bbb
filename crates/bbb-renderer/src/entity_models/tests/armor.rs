@@ -217,7 +217,7 @@ fn armored_zombie_emits_inflated_armor_pieces() {
     assert_eq!(armored.submissions[0].texture, ZOMBIE_TEXTURE_REF);
     assert_eq!(
         (
-            armored.submissions[0].collector_order,
+            armored.submissions[0].order,
             armored.submissions[0].submit_sequence
         ),
         (0, 0)
@@ -240,10 +240,7 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         );
         assert_eq!(submit.texture, texture);
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(
-            (submit.collector_order, submit.submit_sequence),
-            (1, sequence)
-        );
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
         assert_eq!(submit.transform, expected_transform);
     }
 

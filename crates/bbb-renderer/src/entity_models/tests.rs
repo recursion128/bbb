@@ -89,6 +89,36 @@ mod wolf;
 mod zombie;
 
 #[test]
+fn textured_layer_render_type_names_match_vanilla_render_types() {
+    let cases = [
+        (
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            "armorCutoutNoCull",
+        ),
+        (EntityModelLayerRenderType::EntityCutout, "entityCutout"),
+        (
+            EntityModelLayerRenderType::EntityCutoutCull,
+            "entityCutoutCull",
+        ),
+        (
+            EntityModelLayerRenderType::EntityCutoutZOffset,
+            "entityCutoutZOffset",
+        ),
+        (
+            EntityModelLayerRenderType::EntityTranslucent,
+            "entityTranslucent",
+        ),
+        (EntityModelLayerRenderType::Eyes, "eyes"),
+        (EntityModelLayerRenderType::BreezeWind, "breezeWind"),
+        (EntityModelLayerRenderType::EnergySwirl, "energySwirl"),
+    ];
+
+    for (render_type, vanilla_name) in cases {
+        assert_eq!(render_type.vanilla_name(), vanilla_name);
+    }
+}
+
+#[test]
 fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let chicken = EntityModelInstance::chicken(303, [-2.0, 64.0, 0.0], 0.0, false);
     let sheep = EntityModelInstance::sheep(304, [0.0, 64.0, 0.0], 0.0, false);

@@ -368,10 +368,7 @@ fn cow_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_COW);
     assert_eq!(temperate[0].texture, COW_TEMPERATE_TEXTURE_REF);
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (temperate[0].collector_order, temperate[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((temperate[0].order, temperate[0].submit_sequence), (0, 0));
 
     let temperate_baby = cow_textured_layer_passes(CowModelVariant::Temperate, true);
     assert_eq!(temperate_baby[0].model_layer, MODEL_LAYER_COW_BABY);

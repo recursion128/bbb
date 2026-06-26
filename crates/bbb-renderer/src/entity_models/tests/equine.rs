@@ -1416,7 +1416,7 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
     assert_eq!(plain.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (
-            plain.submissions[0].collector_order,
+            plain.submissions[0].order,
             plain.submissions[0].submit_sequence
         ),
         (0, 0)
@@ -1448,10 +1448,7 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
     );
     assert_eq!(base_submit.texture, HORSE_WHITE_TEXTURE_REF);
     assert_eq!(base_submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (base_submit.collector_order, base_submit.submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((base_submit.order, base_submit.submit_sequence), (0, 0));
     assert_eq!(
         base_submit.transform,
         mesh_transformer_scaled_model_root_transform(marked_instance, 1.1)
@@ -1466,10 +1463,7 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
     );
     assert_eq!(markings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
-        (
-            markings_submit.collector_order,
-            markings_submit.submit_sequence
-        ),
+        (markings_submit.order, markings_submit.submit_sequence),
         (1, 1)
     );
     assert_eq!(markings_submit.transform, base_submit.transform);
@@ -1557,7 +1551,7 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     assert_eq!(saddled_meshes.submissions[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (
-            saddled_meshes.submissions[1].collector_order,
+            saddled_meshes.submissions[1].order,
             saddled_meshes.submissions[1].submit_sequence
         ),
         (2, 2)
@@ -1629,7 +1623,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     assert_eq!(iron_meshes.submissions[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (
-            iron_meshes.submissions[1].collector_order,
+            iron_meshes.submissions[1].order,
             iron_meshes.submissions[1].submit_sequence
         ),
         (2, 2)
@@ -1678,7 +1672,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     assert_eq!(leather_meshes.submissions[1].tint, dyed_tint);
     assert_eq!(
         (
-            leather_meshes.submissions[1].collector_order,
+            leather_meshes.submissions[1].order,
             leather_meshes.submissions[1].submit_sequence
         ),
         (2, 2)
@@ -1689,7 +1683,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     );
     assert_eq!(
         (
-            leather_meshes.submissions[2].collector_order,
+            leather_meshes.submissions[2].order,
             leather_meshes.submissions[2].submit_sequence
         ),
         (3, 3)
@@ -1803,7 +1797,7 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     );
     assert_eq!(
         (
-            donkey_meshes.submissions[1].collector_order,
+            donkey_meshes.submissions[1].order,
             donkey_meshes.submissions[1].submit_sequence
         ),
         (0, 1)
@@ -1865,7 +1859,7 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     );
     assert_eq!(
         (
-            zombie_meshes.submissions[1].collector_order,
+            zombie_meshes.submissions[1].order,
             zombie_meshes.submissions[1].submit_sequence
         ),
         (0, 1)

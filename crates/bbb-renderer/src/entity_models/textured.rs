@@ -105,7 +105,7 @@ pub(super) struct EntityModelRenderSubmission {
     pub(super) dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     pub(super) tint: [f32; 4],
     pub(super) transform: Mat4,
-    pub(super) collector_order: i32,
+    pub(super) order: i32,
     pub(super) submit_sequence: u32,
 }
 
@@ -163,7 +163,7 @@ impl EntityModelTexturedMeshes {
         dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
         tint: [f32; 4],
         transform: Mat4,
-        collector_order: i32,
+        order: i32,
         submit_sequence: u32,
     ) {
         self.submissions.push(EntityModelRenderSubmission {
@@ -172,7 +172,7 @@ impl EntityModelTexturedMeshes {
             dynamic_player_skin,
             tint,
             transform,
-            collector_order,
+            order,
             submit_sequence,
         });
     }
@@ -185,7 +185,7 @@ struct EntityModelSubmissionEmit {
     dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     tint: [f32; 4],
     transform: Mat4,
-    collector_order: i32,
+    order: i32,
     submit_sequence: u32,
 }
 
@@ -195,7 +195,7 @@ impl EntityModelSubmissionEmit {
         texture: EntityModelTextureRef,
         tint: [f32; 4],
         transform: Mat4,
-        collector_order: i32,
+        order: i32,
         submit_sequence: u32,
     ) -> Self {
         Self {
@@ -204,7 +204,7 @@ impl EntityModelSubmissionEmit {
             dynamic_player_skin: None,
             tint,
             transform,
-            collector_order,
+            order,
             submit_sequence,
         }
     }
@@ -576,7 +576,7 @@ fn render_textured_pass_ordered<M: EntityModel>(
     render_type: EntityModelLayerRenderType,
     texture: EntityModelTextureRef,
     tint: [f32; 4],
-    collector_order: i32,
+    order: i32,
     submit_sequence: u32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
@@ -585,7 +585,7 @@ fn render_textured_pass_ordered<M: EntityModel>(
         texture,
         tint,
         transform,
-        collector_order,
+        order,
         submit_sequence,
     );
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
@@ -654,7 +654,7 @@ fn render_textured_dynamic_player_skin_submission(
         submit.dynamic_player_skin,
         submit.tint,
         submit.transform,
-        submit.collector_order,
+        submit.order,
         submit.submit_sequence,
     );
     emit(&mut meshes.dynamic_player_skin_translucent, entry);
@@ -672,12 +672,52 @@ fn render_textured_submission(
         submit.dynamic_player_skin,
         submit.tint,
         submit.transform,
-        submit.collector_order,
+        submit.order,
         submit.submit_sequence,
     );
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
         emit(meshes.mesh_mut(submit.render_type), entry);
     }
+}
+
+fn scroll_mesh_mut(
+    meshes: &mut EntityModelTexturedMeshes,
+    render_type: EntityModelLayerRenderType,
+) -> &mut EntityModelScrollMesh {
+    match render_type {
+        EntityModelLayerRenderType::BreezeWind => &mut meshes.scroll,
+        EntityModelLayerRenderType::EnergySwirl => &mut meshes.scroll_additive,
+        _ => panic!("only scroll render types are emitted through the scroll mesh"),
+    }
+}
+
+fn render_scrolled_textured_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    atlas: &EntityModelTextureAtlasLayout,
+    uv_offset: [f32; 2],
+    emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
+) {
+    meshes.record_submission(
+        submit.render_type,
+        submit.texture,
+        submit.dynamic_player_skin,
+        submit.tint,
+        submit.transform,
+        submit.order,
+        submit.submit_sequence,
+    );
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
+        return;
+    };
+    let mut scratch = EntityModelTexturedMesh::new();
+    emit(&mut scratch, entry);
+    append_scrolled_textured_mesh(
+        scroll_mesh_mut(meshes, submit.render_type),
+        &scratch,
+        entry.uv,
+        uv_offset,
+    );
 }
 
 fn render_textured_root_pass(
@@ -692,7 +732,7 @@ fn render_textured_root_pass(
         pass.texture,
         pass.tint,
         transform,
-        pass.collector_order,
+        pass.order,
         pass.submit_sequence,
     );
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
@@ -723,7 +763,7 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
                     pass.texture,
                     pass.tint,
                     transform,
-                    pass.collector_order,
+                    pass.order,
                     pass.submit_sequence,
                 );
                 render_textured_submission(meshes, submit, atlas, |mesh, entry| {
@@ -746,7 +786,7 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
                 pass.render_type,
                 pass.texture,
                 pass.tint,
-                pass.collector_order,
+                pass.order,
                 pass.submit_sequence,
                 atlas,
             ),
@@ -830,32 +870,28 @@ fn emit_wind_charge_scroll_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = wind_charge_model_root_transform(instance);
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::BreezeWind,
         WIND_CHARGE_TEXTURE_REF,
-        None,
         [1.0, 1.0, 1.0, 1.0],
         transform,
         0,
         0,
     );
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, WIND_CHARGE_TEXTURE_REF) else {
-        return;
-    };
     let mut model = WindChargeModel::new();
     model.prepare(&instance);
-    let mut scratch = EntityModelTexturedMesh::new();
-    model.root().render_textured(
-        &mut scratch,
-        transform,
-        WIND_CHARGE_TEXTURE_REF,
-        entry.uv,
-        [1.0, 1.0, 1.0, 1.0],
-    );
     // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
     // float modulo is `rem_euclid`. V does not scroll.
     let u_offset = (instance.render_state.age_in_ticks * 0.03).rem_euclid(1.0);
-    append_scrolled_textured_mesh(&mut meshes.scroll, &scratch, entry.uv, [u_offset, 0.0]);
+    render_scrolled_textured_submission(meshes, submit, atlas, [u_offset, 0.0], |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
 }
 
 /// The breeze's swirling wind body (vanilla `BreezeWindLayer`): the SEPARATE [`BreezeWindModel`] (the
@@ -874,32 +910,28 @@ fn emit_breeze_wind_scroll_model(
         return;
     }
     let transform = entity_model_root_transform(instance);
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::BreezeWind,
         BREEZE_WIND_TEXTURE_REF,
-        None,
         [1.0, 1.0, 1.0, 1.0],
         transform,
         1,
         1,
     );
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, BREEZE_WIND_TEXTURE_REF) else {
-        return;
-    };
     let mut model = BreezeWindModel::new();
     model.prepare(&instance);
-    let mut scratch = EntityModelTexturedMesh::new();
-    model.root().render_textured(
-        &mut scratch,
-        transform,
-        BREEZE_WIND_TEXTURE_REF,
-        entry.uv,
-        [1.0, 1.0, 1.0, 1.0],
-    );
     // Vanilla `BreezeWindLayer.xOffset(t) = t · 0.02`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
     // float modulo is `rem_euclid`. V does not scroll.
     let u_offset = (instance.render_state.age_in_ticks * 0.02).rem_euclid(1.0);
-    append_scrolled_textured_mesh(&mut meshes.scroll, &scratch, entry.uv, [u_offset, 0.0]);
+    render_scrolled_textured_submission(meshes, submit, atlas, [u_offset, 0.0], |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
 }
 
 /// The charged creeper's `CreeperPowerLayer` energy swirl (vanilla `EnergySwirlLayer`): when the
@@ -919,37 +951,28 @@ fn emit_charged_creeper_energy_swirl(
     }
     let transform = creeper_model_root_transform(instance);
     let grey = 128.0 / 255.0;
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::EnergySwirl,
         CREEPER_ARMOR_TEXTURE_REF,
-        None,
         [grey, grey, grey, 1.0],
         transform,
         1,
         1,
     );
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, CREEPER_ARMOR_TEXTURE_REF) else {
-        return;
-    };
     let mut model = CreeperModel::new_armor();
     model.prepare(&instance);
-    let mut scratch = EntityModelTexturedMesh::new();
-    // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
-    model.root().render_textured(
-        &mut scratch,
-        transform,
-        CREEPER_ARMOR_TEXTURE_REF,
-        entry.uv,
-        [grey, grey, grey, 1.0],
-    );
     // Vanilla creeper `xOffset(t) = t · 0.01`, taken `% 1.0` on both U and V.
     let offset = (instance.render_state.age_in_ticks * 0.01).rem_euclid(1.0);
-    append_scrolled_textured_mesh(
-        &mut meshes.scroll_additive,
-        &scratch,
-        entry.uv,
-        [offset, offset],
-    );
+    // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
+    render_scrolled_textured_submission(meshes, submit, atlas, [offset, offset], |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
 }
 
 /// The wither boss's `WitherArmorLayer` energy swirl (vanilla `EnergySwirlLayer`, the same family as
@@ -969,29 +992,16 @@ fn emit_wither_energy_swirl(
     }
     let transform = wither_model_root_transform(instance);
     let grey = 128.0 / 255.0;
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::EnergySwirl,
         WITHER_ARMOR_TEXTURE_REF,
-        None,
         [grey, grey, grey, 1.0],
         transform,
         1,
         1,
     );
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, WITHER_ARMOR_TEXTURE_REF) else {
-        return;
-    };
     let mut model = WitherModel::new_armor();
     model.prepare(&instance);
-    let mut scratch = EntityModelTexturedMesh::new();
-    // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
-    model.root().render_textured(
-        &mut scratch,
-        transform,
-        WITHER_ARMOR_TEXTURE_REF,
-        entry.uv,
-        [grey, grey, grey, 1.0],
-    );
     // Vanilla `WitherArmorLayer.xOffset(t) = cos(t · 0.02) · 3` on U (oscillating, not linear like the
     // creeper), `t · 0.01` on V, each taken `% 1.0`. Java float modulo of a possibly-negative U keeps
     // the sign, then the shader's `fract` re-wraps it into `[0, 1)`, so plain `% 1.0` (`Rust` `rem`,
@@ -999,11 +1009,21 @@ fn emit_wither_energy_swirl(
     let age = instance.render_state.age_in_ticks;
     let u_offset = ((age * 0.02).cos() * 3.0) % 1.0;
     let v_offset = (age * 0.01).rem_euclid(1.0);
-    append_scrolled_textured_mesh(
-        &mut meshes.scroll_additive,
-        &scratch,
-        entry.uv,
+    // Vanilla `EnergySwirlLayer` tints by `0xFF808080` (half grey) under additive blend.
+    render_scrolled_textured_submission(
+        meshes,
+        submit,
+        atlas,
         [u_offset, v_offset],
+        |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        },
     );
 }
 
@@ -1470,7 +1490,7 @@ fn emit_equine_saddle_layer(
     }
 
     let ridden = instance.render_state.equine_saddle_ridden;
-    let (parts, transform, texture, collector_order, submit_sequence): (
+    let (parts, transform, texture, order, submit_sequence): (
         &[TexturedModelPartDesc],
         Mat4,
         EntityModelTextureRef,
@@ -1565,7 +1585,7 @@ fn emit_equine_saddle_layer(
             texture,
             [1.0, 1.0, 1.0, 1.0],
             transform,
-            collector_order,
+            order,
             submit_sequence,
         ),
         instance,
@@ -1589,7 +1609,7 @@ fn emit_equine_body_armor_layer(
     let Some(layers) = horse_body_armor_texture_layers(material) else {
         return;
     };
-    let (transform, collector_order, first_submit_sequence) = match instance.kind {
+    let (transform, order, first_submit_sequence) = match instance.kind {
         EntityModelKind::Horse { baby: false, .. } => (
             mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
             2,
@@ -1623,7 +1643,7 @@ fn emit_equine_body_armor_layer(
                 layer.texture,
                 tint,
                 transform,
-                collector_order + layer_index as i32,
+                order + layer_index as i32,
                 first_submit_sequence + layer_index as u32,
             ),
             instance,
@@ -2089,7 +2109,7 @@ fn emit_villager_profession_layer(
     transform: Mat4,
     texture: EntityModelTextureRef,
     no_hat: bool,
-    collector_order: i32,
+    order: i32,
     submit_sequence: u32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
@@ -2099,7 +2119,7 @@ fn emit_villager_profession_layer(
         texture,
         tint,
         transform,
-        collector_order,
+        order,
         submit_sequence,
     );
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {

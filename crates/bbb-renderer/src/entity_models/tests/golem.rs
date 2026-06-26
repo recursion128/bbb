@@ -137,10 +137,7 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].texture, IRON_GOLEM_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     // A cracked golem appends the matching crack overlay (Cutout, white, same model layer) — vanilla
     // `IronGolemCrackinessLayer.renderColoredCutoutModel`.
@@ -168,10 +165,7 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
         assert_eq!(passes[1].model_layer, MODEL_LAYER_IRON_GOLEM);
         assert_eq!(passes[1].texture, texture);
         assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(
-            (passes[1].collector_order, passes[1].submit_sequence),
-            (1, 1)
-        );
+        assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
     }
 }
 
@@ -266,10 +260,7 @@ fn snow_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
     assert_eq!(passes[0].texture, SNOW_GOLEM_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 }
 
 #[test]

@@ -128,7 +128,7 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         normal_meshes.submissions[0].render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
-    assert_eq!(normal_meshes.submissions[0].collector_order, 0);
+    assert_eq!(normal_meshes.submissions[0].order, 0);
     let normal_mesh = &normal_meshes.translucent;
     let dangerous_mesh = &dangerous_meshes.translucent;
     assert!(!normal_mesh.vertices.is_empty());

@@ -372,7 +372,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     assert_eq!(wild[0].model_layer, MODEL_LAYER_WOLF);
     assert_eq!(wild[0].texture, WOLF_TEXTURE_REF);
     assert_eq!(wild[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((wild[0].collector_order, wild[0].submit_sequence), (0, 0));
+    assert_eq!((wild[0].order, wild[0].submit_sequence), (0, 0));
 
     let tame_blue = wolf_textured_layer_passes(
         false,
@@ -396,10 +396,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
         tame_blue[1].tint,
         EntityDyeColor::Blue.texture_diffuse_color()
     );
-    assert_eq!(
-        (tame_blue[1].collector_order, tame_blue[1].submit_sequence),
-        (1, 1)
-    );
+    assert_eq!((tame_blue[1].order, tame_blue[1].submit_sequence), (1, 1));
 
     // An untamed wolf carrying collar metadata still emits only the base layer: the collar pass
     // is gated on `tame`, so a wild wolf renders no collar.
@@ -470,17 +467,11 @@ fn wet_wolf_textured_base_tints_like_vanilla_model_tint_without_shading_collar()
     assert_eq!(passes[0].kind, EntityModelLayerKind::WolfBase);
     assert_eq!(passes[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(passes[0].tint, [wet_shade, wet_shade, wet_shade, 1.0]);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     assert_eq!(passes[1].kind, EntityModelLayerKind::WolfCollar);
     assert_eq!(passes[1].texture, WOLF_COLLAR_TEXTURE_REF);
     assert_eq!(passes[1].tint, EntityDyeColor::Blue.texture_diffuse_color());
-    assert_eq!(
-        (passes[1].collector_order, passes[1].submit_sequence),
-        (1, 1)
-    );
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
 
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
     let meshes = entity_model_textured_meshes(
@@ -504,14 +495,14 @@ fn wet_wolf_textured_base_tints_like_vanilla_model_tint_without_shading_collar()
         meshes.submissions[0].tint,
         [wet_shade, wet_shade, wet_shade, 1.0]
     );
-    assert_eq!(meshes.submissions[0].collector_order, 0);
+    assert_eq!(meshes.submissions[0].order, 0);
     assert_eq!(meshes.submissions[0].submit_sequence, 0);
     assert_eq!(meshes.submissions[1].texture, WOLF_COLLAR_TEXTURE_REF);
     assert_eq!(
         meshes.submissions[1].tint,
         EntityDyeColor::Blue.texture_diffuse_color()
     );
-    assert_eq!(meshes.submissions[1].collector_order, 1);
+    assert_eq!(meshes.submissions[1].order, 1);
     assert_eq!(meshes.submissions[1].submit_sequence, 1);
     assert_eq!(
         meshes.cutout.vertices[0].tint,
@@ -863,7 +854,7 @@ fn wolf_textured_mesh_applies_water_shake_roll_to_base_and_collar() {
     assert_eq!(shaking.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (
-            shaking.submissions[0].collector_order,
+            shaking.submissions[0].order,
             shaking.submissions[0].submit_sequence
         ),
         (0, 0)
@@ -875,7 +866,7 @@ fn wolf_textured_mesh_applies_water_shake_roll_to_base_and_collar() {
     );
     assert_eq!(
         (
-            shaking.submissions[1].collector_order,
+            shaking.submissions[1].order,
             shaking.submissions[1].submit_sequence
         ),
         (1, 1)

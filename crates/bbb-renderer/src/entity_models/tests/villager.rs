@@ -207,7 +207,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(adult[0].texture, VILLAGER_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
+    assert_eq!((adult[0].order, adult[0].submit_sequence), (0, 0));
 
     assert_eq!(baby.len(), 1);
     assert_eq!(baby[0].kind, EntityModelLayerKind::VillagerBase);
@@ -219,7 +219,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(baby[0].texture, VILLAGER_BABY_TEXTURE_REF);
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(baby[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((baby[0].collector_order, baby[0].submit_sequence), (0, 0));
+    assert_eq!((baby[0].order, baby[0].submit_sequence), (0, 0));
 
     assert_eq!(trader.len(), 1);
     assert_eq!(trader[0].kind, EntityModelLayerKind::WanderingTraderBase);
@@ -231,10 +231,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(trader[0].texture, WANDERING_TRADER_TEXTURE_REF);
     assert_eq!(trader[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(trader[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (trader[0].collector_order, trader[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((trader[0].order, trader[0].submit_sequence), (0, 0));
 }
 
 #[test]
@@ -407,10 +404,7 @@ fn villager_profession_layers_render_type_profession_and_level_overlays() {
         assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
         assert_eq!(submit.texture, texture);
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(
-            (submit.collector_order, submit.submit_sequence),
-            (order, sequence)
-        );
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
         assert_eq!(submit.transform, expected_transform);
     }
 }

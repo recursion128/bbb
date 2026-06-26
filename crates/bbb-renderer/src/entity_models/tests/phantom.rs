@@ -96,19 +96,13 @@ fn phantom_layer_passes_match_vanilla_renderer() {
     assert_eq!(passes[0].texture, PHANTOM_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     assert_eq!(passes[1].kind, EntityModelLayerKind::PhantomEyes);
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].model_layer, MODEL_LAYER_PHANTOM);
     assert_eq!(passes[1].texture, PHANTOM_EYES_TEXTURE_REF);
-    assert_eq!(
-        (passes[1].collector_order, passes[1].submit_sequence),
-        (1, 1)
-    );
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
 }
 
 #[test]

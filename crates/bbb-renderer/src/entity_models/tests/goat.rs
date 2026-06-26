@@ -168,7 +168,7 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult[0].texture, GOAT_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
+    assert_eq!((adult[0].order, adult[0].submit_sequence), (0, 0));
 
     let baby = goat_textured_layer_passes(true);
     assert_eq!(baby.len(), 1);
@@ -181,7 +181,7 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(baby[0].texture, GOAT_BABY_TEXTURE_REF);
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(baby[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((baby[0].collector_order, baby[0].submit_sequence), (0, 0));
+    assert_eq!((baby[0].order, baby[0].submit_sequence), (0, 0));
 }
 
 #[test]

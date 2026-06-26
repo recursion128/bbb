@@ -116,8 +116,8 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
     assert_eq!(meshes.submissions[1].texture, SHULKER_BULLET_TEXTURE_REF);
     assert_eq!(meshes.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(meshes.submissions[1].tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
-    assert_eq!(meshes.submissions[0].collector_order, 0);
-    assert_eq!(meshes.submissions[1].collector_order, 1);
+    assert_eq!(meshes.submissions[0].order, 0);
+    assert_eq!(meshes.submissions[1].order, 1);
     assert_eq!(meshes.submissions[0].submit_sequence, 0);
     assert_eq!(meshes.submissions[1].submit_sequence, 1);
     let base_transform = shulker_bullet_model_root_transform(instance);

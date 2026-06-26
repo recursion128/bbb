@@ -456,16 +456,10 @@ fn warden_textured_render_matches_vanilla_renderer() {
     );
     assert_eq!(passes[0].texture, WARDEN_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].texture, WARDEN_BIOLUMINESCENT_TEXTURE_REF);
-    assert_eq!(
-        (passes[1].collector_order, passes[1].submit_sequence),
-        (1, 1)
-    );
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
     assert_eq!(
         passes[1].visibility,
         EntityModelLayerVisibility::RetainedParts(&[
@@ -478,10 +472,7 @@ fn warden_textured_render_matches_vanilla_renderer() {
     );
     assert_eq!(passes[2].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[2].texture, WARDEN_PULSATING_SPOTS_1_TEXTURE_REF);
-    assert_eq!(
-        (passes[2].collector_order, passes[2].submit_sequence),
-        (1, 2)
-    );
+    assert_eq!((passes[2].order, passes[2].submit_sequence), (1, 2));
     assert_eq!(
         passes[2].visibility,
         EntityModelLayerVisibility::RetainedParts(&[
@@ -494,19 +485,13 @@ fn warden_textured_render_matches_vanilla_renderer() {
         ])
     );
     assert_eq!(passes[3].texture, WARDEN_PULSATING_SPOTS_2_TEXTURE_REF);
-    assert_eq!(
-        (passes[3].collector_order, passes[3].submit_sequence),
-        (1, 3)
-    );
+    assert_eq!((passes[3].order, passes[3].submit_sequence), (1, 3));
     assert_eq!(passes[3].visibility, passes[2].visibility);
     // The tendril overlay reuses warden.png over the two tendril planes at `tendrilAnimation` (1.0 here).
     assert_eq!(passes[4].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[4].texture, WARDEN_TEXTURE_REF);
     assert_eq!(passes[4].tint[3], 1.0);
-    assert_eq!(
-        (passes[4].collector_order, passes[4].submit_sequence),
-        (1, 4)
-    );
+    assert_eq!((passes[4].order, passes[4].submit_sequence), (1, 4));
     assert_eq!(
         passes[4].visibility,
         EntityModelLayerVisibility::RetainedParts(&["left_tendril", "right_tendril"])
@@ -515,10 +500,7 @@ fn warden_textured_render_matches_vanilla_renderer() {
     assert_eq!(passes[5].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[5].texture, WARDEN_HEART_TEXTURE_REF);
     assert_eq!(passes[5].tint[3], 0.7);
-    assert_eq!(
-        (passes[5].collector_order, passes[5].submit_sequence),
-        (1, 5)
-    );
+    assert_eq!((passes[5].order, passes[5].submit_sequence), (1, 5));
     assert_eq!(
         passes[5].visibility,
         EntityModelLayerVisibility::RetainedParts(&["body"])

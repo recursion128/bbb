@@ -342,7 +342,7 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
         // The overlay is tinted by the pattern dye's diffuse color and drawn after the base.
         assert_eq!(passes[1].tint, EntityDyeColor::Cyan.texture_diffuse_color());
         assert_eq!(passes[1].submit_sequence, 1);
-        assert!(passes[1].collector_order > passes[0].collector_order);
+        assert!(passes[1].order > passes[0].order);
     }
 
     // The base layer uses `CubeDeformation.NONE` (no mirror, `uv_size == size`).

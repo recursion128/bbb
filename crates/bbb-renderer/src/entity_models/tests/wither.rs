@@ -288,7 +288,7 @@ fn powered_wither_emits_scrolling_energy_swirl() {
         .expect("powered wither emits an energySwirl submit");
     assert_eq!(swirl.texture, WITHER_ARMOR_TEXTURE_REF);
     assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
-    assert_eq!(swirl.collector_order, 1);
+    assert_eq!(swirl.order, 1);
     assert_eq!(swirl.submit_sequence, 1);
     assert_eq!(swirl.transform, wither_model_root_transform(powered));
     assert_eq!(rest.scroll_additive.vertices.len(), 216);

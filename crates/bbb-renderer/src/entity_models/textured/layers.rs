@@ -92,6 +92,22 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     EnergySwirl,
 }
 
+impl EntityModelLayerRenderType {
+    #[cfg(test)]
+    pub(in crate::entity_models) const fn vanilla_name(self) -> &'static str {
+        match self {
+            Self::ArmorCutoutNoCull => "armorCutoutNoCull",
+            Self::EntityCutout => "entityCutout",
+            Self::EntityCutoutCull => "entityCutoutCull",
+            Self::EntityCutoutZOffset => "entityCutoutZOffset",
+            Self::EntityTranslucent => "entityTranslucent",
+            Self::Eyes => "eyes",
+            Self::BreezeWind => "breezeWind",
+            Self::EnergySwirl => "energySwirl",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerVisibility {
     All,
@@ -110,13 +126,13 @@ pub(in crate::entity_models) struct EntityModelLayerPass {
     pub(in crate::entity_models) texture: EntityModelTextureRef,
     pub(in crate::entity_models) visibility: EntityModelLayerVisibility,
     pub(in crate::entity_models) tint: [f32; 4],
-    pub(in crate::entity_models) collector_order: i32,
+    pub(in crate::entity_models) order: i32,
     pub(in crate::entity_models) submit_sequence: u32,
 }
 
 impl EntityModelLayerPass {
     /// A single render pass carrying only the fields the renderer consumes (render type, texture,
-    /// tint). The routing-only fields (kind/model_layer/visibility/collector_order/submit_sequence)
+    /// tint). The routing-only fields (kind/model_layer/visibility/order/submit_sequence)
     /// get placeholder defaults; they are never read for a single-tree uniform entity. Used by the
     /// shared dispatch for entities whose textured render is one plain pass.
     pub(in crate::entity_models) fn base(
@@ -136,7 +152,7 @@ impl EntityModelLayerPass {
             texture,
             visibility: EntityModelLayerVisibility::All,
             tint,
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         }
     }
@@ -156,12 +172,8 @@ impl EntityModelLayerPass {
         }
     }
 
-    pub(in crate::entity_models) fn with_order(
-        mut self,
-        collector_order: i32,
-        submit_sequence: u32,
-    ) -> Self {
-        self.collector_order = collector_order;
+    pub(in crate::entity_models) fn with_order(mut self, order: i32, submit_sequence: u32) -> Self {
+        self.order = order;
         self.submit_sequence = submit_sequence;
         self
     }
@@ -178,7 +190,7 @@ pub(in crate::entity_models) fn boat_textured_layer_passes(
         texture: boat_texture_ref(family, chest),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -194,7 +206,7 @@ pub(in crate::entity_models) fn chicken_textured_layer_passes(
         texture: chicken_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -210,7 +222,7 @@ pub(in crate::entity_models) fn pig_textured_layer_passes(
         texture: pig_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -226,7 +238,7 @@ pub(in crate::entity_models) fn cow_textured_layer_passes(
         texture: cow_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -241,7 +253,7 @@ pub(in crate::entity_models) fn salmon_textured_layer_passes(
         texture: SALMON_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -267,7 +279,7 @@ pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
             texture,
             visibility: EntityModelLayerVisibility::All,
             tint: base_color.texture_diffuse_color(),
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         },
         EntityModelLayerPass {
@@ -277,7 +289,7 @@ pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
             texture: tropical_fish_pattern_texture_ref(pattern),
             visibility: EntityModelLayerVisibility::All,
             tint: pattern_color.texture_diffuse_color(),
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         },
     ]
@@ -294,7 +306,7 @@ pub(in crate::entity_models) fn camel_textured_layer_passes(
         texture: camel_texture_ref(family, baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -313,7 +325,7 @@ pub(in crate::entity_models) fn llama_textured_layer_passes(
         texture: llama_texture_ref(variant, baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -326,7 +338,7 @@ pub(in crate::entity_models) fn creeper_textured_layer_passes() -> Vec<EntityMod
         texture: CREEPER_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -351,7 +363,7 @@ pub(in crate::entity_models) fn spider_textured_layer_passes(
             },
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         },
         EntityModelLayerPass {
@@ -361,7 +373,7 @@ pub(in crate::entity_models) fn spider_textured_layer_passes(
             texture: SPIDER_EYES_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         },
     ]
@@ -376,7 +388,7 @@ pub(in crate::entity_models) fn enderman_textured_layer_passes() -> Vec<EntityMo
             texture: ENDERMAN_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         },
         EntityModelLayerPass {
@@ -386,7 +398,7 @@ pub(in crate::entity_models) fn enderman_textured_layer_passes() -> Vec<EntityMo
             texture: ENDERMAN_EYES_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         },
     ]
@@ -403,7 +415,7 @@ pub(in crate::entity_models) fn copper_golem_textured_layer_passes(
             texture: copper_golem_texture_ref(weathering),
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         },
         EntityModelLayerPass {
@@ -413,7 +425,7 @@ pub(in crate::entity_models) fn copper_golem_textured_layer_passes(
             texture: copper_golem_eyes_texture_ref(weathering),
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         },
     ]
@@ -429,7 +441,7 @@ pub(in crate::entity_models) fn iron_golem_textured_layer_passes(
         texture: IRON_GOLEM_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }];
     // Vanilla `IronGolemCrackinessLayer`: when cracked, re-render the same mesh with the matching
@@ -448,7 +460,7 @@ pub(in crate::entity_models) fn iron_golem_textured_layer_passes(
             texture,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         });
     }
@@ -463,7 +475,7 @@ pub(in crate::entity_models) fn snow_golem_textured_layer_passes() -> Vec<Entity
         texture: SNOW_GOLEM_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -476,7 +488,7 @@ pub(in crate::entity_models) fn witch_textured_layer_passes() -> Vec<EntityModel
         texture: WITCH_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -490,7 +502,7 @@ pub(in crate::entity_models) fn slime_textured_layer_passes() -> Vec<EntityModel
             texture: SLIME_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         },
         EntityModelLayerPass {
@@ -500,7 +512,7 @@ pub(in crate::entity_models) fn slime_textured_layer_passes() -> Vec<EntityModel
             texture: SLIME_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         },
     ]
@@ -514,7 +526,7 @@ pub(in crate::entity_models) fn magma_cube_textured_layer_passes() -> Vec<Entity
         texture: MAGMA_CUBE_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -535,7 +547,7 @@ pub(in crate::entity_models) fn ghast_textured_layer_passes(
         texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -548,7 +560,7 @@ pub(in crate::entity_models) fn happy_ghast_textured_layer_passes() -> Vec<Entit
         texture: HAPPY_GHAST_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -561,7 +573,7 @@ pub(in crate::entity_models) fn minecart_textured_layer_passes() -> Vec<EntityMo
         texture: MINECART_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -582,7 +594,7 @@ pub(in crate::entity_models) fn zombie_textured_layer_passes(
         texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -607,7 +619,7 @@ pub(in crate::entity_models) fn husk_textured_layer_passes(
         texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -646,7 +658,7 @@ pub(in crate::entity_models) fn drowned_textured_layer_passes(
             texture,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         },
         EntityModelLayerPass {
@@ -656,7 +668,7 @@ pub(in crate::entity_models) fn drowned_textured_layer_passes(
             texture: outer_texture,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         },
     ]
@@ -684,7 +696,7 @@ pub(in crate::entity_models) fn zombie_villager_textured_layer_passes(
         texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -717,7 +729,7 @@ pub(in crate::entity_models) fn piglin_textured_layer_passes(
         texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -742,7 +754,7 @@ pub(in crate::entity_models) fn illager_textured_layer_passes(
         texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -755,7 +767,7 @@ pub(in crate::entity_models) fn blaze_textured_layer_passes() -> Vec<EntityModel
         texture: BLAZE_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -768,7 +780,7 @@ pub(in crate::entity_models) fn endermite_textured_layer_passes() -> Vec<EntityM
         texture: ENDERMITE_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -781,7 +793,7 @@ pub(in crate::entity_models) fn silverfish_textured_layer_passes() -> Vec<Entity
         texture: SILVERFISH_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -992,7 +1004,7 @@ pub(in crate::entity_models) fn feline_textured_layer_passes(
             texture: feline_collar_texture_ref(baby),
             visibility: EntityModelLayerVisibility::All,
             tint: collar.texture_diffuse_color(),
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         });
     }
@@ -1212,7 +1224,7 @@ pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityMod
             texture: PHANTOM_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 0,
+            order: 0,
             submit_sequence: 0,
         },
         // Vanilla `PhantomEyesLayer` (an `EyesLayer`): the whole model is re-rendered with
@@ -1224,7 +1236,7 @@ pub(in crate::entity_models) fn phantom_textured_layer_passes() -> Vec<EntityMod
             texture: PHANTOM_EYES_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         },
     ]
@@ -1248,7 +1260,7 @@ pub(in crate::entity_models) fn polar_bear_textured_layer_passes(
         },
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -1261,7 +1273,7 @@ pub(in crate::entity_models) fn ravager_textured_layer_passes() -> Vec<EntityMod
         texture: RAVAGER_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -1284,7 +1296,7 @@ pub(in crate::entity_models) fn villager_textured_layer_passes(
         },
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -1298,7 +1310,7 @@ pub(in crate::entity_models) fn wandering_trader_textured_layer_passes() -> Vec<
         texture: WANDERING_TRADER_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -1320,7 +1332,7 @@ pub(in crate::entity_models) fn hoglin_textured_layer_passes(
         texture,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -1338,7 +1350,7 @@ pub(in crate::entity_models) fn player_textured_layer_passes(
         texture: player_texture_ref(slim),
         visibility: EntityModelLayerVisibility::PlayerParts(parts),
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -1367,7 +1379,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
         },
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     });
     if !baby && (jeb || wool_color != SheepWoolColor::White) {
@@ -1378,7 +1390,7 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
             texture: SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: wool_tint,
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         });
     }
@@ -1398,11 +1410,11 @@ pub(in crate::entity_models) fn sheep_textured_layer_passes(
             },
             visibility: EntityModelLayerVisibility::All,
             tint: wool_tint,
-            collector_order: if baby { 1 } else { 0 },
+            order: if baby { 1 } else { 0 },
             submit_sequence: 2,
         });
     }
-    passes.sort_by_key(|pass| (pass.collector_order, pass.submit_sequence));
+    passes.sort_by_key(|pass| (pass.order, pass.submit_sequence));
     passes
 }
 
@@ -1427,7 +1439,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
         texture: wolf_texture_ref(baby, tame, angry, variant),
         visibility: EntityModelLayerVisibility::All,
         tint: [wet_shade, wet_shade, wet_shade, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     });
     if let Some(collar_color) = tame.then_some(collar_color).flatten() {
@@ -1442,7 +1454,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
             },
             visibility: EntityModelLayerVisibility::All,
             tint: collar_color.texture_diffuse_color(),
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         });
     }
@@ -1459,7 +1471,7 @@ pub(in crate::entity_models) fn goat_textured_layer_passes(
         texture: goat_texture_ref(baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }]
 }
@@ -1477,7 +1489,7 @@ pub(in crate::entity_models) fn skeleton_textured_layer_passes(
         texture: skeleton_texture_ref(family),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
+        order: 0,
         submit_sequence: 0,
     }];
     if let Some((model_layer, texture)) = skeleton_clothing_layer_pass(family) {
@@ -1488,7 +1500,7 @@ pub(in crate::entity_models) fn skeleton_textured_layer_passes(
             texture,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
-            collector_order: 1,
+            order: 1,
             submit_sequence: 1,
         });
     }
