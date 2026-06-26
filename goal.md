@@ -89,6 +89,11 @@ Drowned swimAmount 重姿态已完成：world 侧按 `LivingEntity.updateSwimAmo
 从 synced `Pose.SWIMMING` 维护 `swimAmountO/swimAmount`（每 tick `±0.09`），native
 转抄 `swim_amount` 和 `bounding_box_height`，renderer 对 drowned base/outer 同步应用
 `DrownedRenderer.setupRotations` body pitch 与 `DrownedModel.setupAnim` arm/leg swim pose。
+Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tick`
+维护 `sitAmount/onBackAmount/rollAmount`（active `+0.15`，inactive `-0.19`）和
+`rollCounter`，native 转抄 `sitAmount/lieOnBackAmount/rollAmount/rollTime`，renderer
+同步应用 `PandaRenderer.setupRotations` 的 roll tumble / sit / lie root transform，以及
+`PandaModel.setupAnim` 的 adult/baby sitting、eating/scared、lie-on-back、adult roll limb/head 姿态。
 
 ## 剩余大子系统（按优先级）
 
@@ -110,8 +115,5 @@ Drowned swimAmount 重姿态已完成：world 侧按 `LivingEntity.updateSwimAmo
    5. 扩展 renderer 动态纹理入口：支持运行时上传/替换 dynamic skin texture
       或独立动态 skin atlas，先接 `CustomHeadLayer` / `SkullBlockRenderer`
       的 `player_head`，再推广到玩家实体本体、cape、elytra 等层。
-2. **世界侧动画计时器**
-   panda sit/lie/roll 等 client-tick 动画。
-
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

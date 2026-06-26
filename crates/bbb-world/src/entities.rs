@@ -75,6 +75,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
 pub(crate) const VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID: i32 = 90;
 pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID: i32 = 94;
 pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID: i32 = 95;
+pub(crate) const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
 pub(crate) const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
 pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
 pub(crate) const VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID: i32 = 121;
@@ -406,6 +407,26 @@ pub struct EntityModelSourceState {
     /// bee and `0.0` (upright) for every other entity.
     #[serde(default)]
     pub bee_roll_amount: f32,
+    /// Vanilla `PandaRenderState.sitAmount` (`Panda.getSitAmount(partialTick)`): the 0..1 eased
+    /// sitting amount that both `PandaRenderer.setupRotations` and `PandaModel.setupAnim` consume.
+    /// Projected only for the panda and `0.0` for every other entity.
+    #[serde(default)]
+    pub panda_sit_amount: f32,
+    /// Vanilla `PandaRenderState.lieOnBackAmount` (`Panda.getLieOnBackAmount(partialTick)`): the
+    /// 0..1 eased back-lying amount used by the panda root transform and head/limb pose. Projected
+    /// only for the panda and `0.0` otherwise.
+    #[serde(default)]
+    pub panda_lie_on_back_amount: f32,
+    /// Vanilla `PandaRenderState.rollAmount` (`Panda.getRollAmount(partialTick)`, but forced to
+    /// `0.0` for baby pandas by `PandaRenderer.extractRenderState`): the adult model rolling pose
+    /// blend. Projected only for adult pandas and `0.0` otherwise.
+    #[serde(default)]
+    pub panda_roll_amount: f32,
+    /// Vanilla `PandaRenderState.rollTime = rollCounter > 0 ? rollCounter + partialTick : 0.0`:
+    /// whole-model tumble timing consumed by `PandaRenderer.setupRotations`. Projected for adult and
+    /// baby pandas; `0.0` outside an active roll and for every other entity.
+    #[serde(default)]
+    pub panda_roll_time: f32,
     /// Vanilla frog croak timing (`FrogRenderState.croakAnimationState`, the triggered
     /// `AnimationState` started/stopped by the synced `Pose.CROAKING`): the elapsed seconds since the
     /// croak started, which `FrogModel.setupAnim` uses to show the `croaking_body` pouch and sample

@@ -3272,10 +3272,15 @@ When an agent does any of the following, update this file in the same slice:
       swing); `isSneezing = Panda.isSneezing()` (the `DATA_ID_FLAGS` byte id 23 bit `0x02`) dips
       `head.xRot` to `-π/4` over the `sneezeTime` ramp (`SNEEZE_COUNTER` int id 19, ticks 0..14, then
       holds — vanilla's `(sneezeTime-15)/5` integer division makes the 15..19 ease-back term 0). The
-      remaining panda-specific `PandaModel.setupAnim` poses — the `sitAmount` sitting fold with its eating /
-      scared variants, the `lieOnBackAmount` belly roll, and the `rollAmount` somersault — read
-      un-projected client-tick interpolation `AnimationState`s and stay deferred, so an idle panda renders
-      at this bind pose plus the head look, leg swing, and (when active) the unhappy / sneeze poses. The
+      remaining panda-specific client-tick poses are now covered: bbb-world mirrors vanilla
+      `Panda.tick` for `sitAmount/onBackAmount/rollAmount` (`+0.15` while the synced flag is active,
+      `-0.19` while inactive) and `rollCounter`; native forwards `PandaRenderState.sitAmount`,
+      `lieOnBackAmount`, adult-only `rollAmount`, and `rollTime`; renderer applies
+      `PandaRenderer.setupRotations`'s whole-body roll tumble / sitting tilt / lie-on-back tilt plus
+      `PandaModel.setupAnim`'s adult and baby sitting folds, eating/scared sitting overrides,
+      lie-on-back limb/head pose, and adult `rollAmount` somersault limb/head pose. Baby pandas keep
+      vanilla's split behavior: `rollAmount` is forced to `0.0` but `rollTime` still tumbles the whole
+      baby model. The
       textured path IS wired with the seven `Panda.Gene`
       variants: the displayed gene is `Panda.Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two
       synced gene bytes (`MAIN_GENE_ID` 21 / `HIDDEN_GENE_ID` 22) — a dominant main gene always shows, a
@@ -3283,7 +3288,7 @@ When an agent does any of the following, update this file in the same slice:
       `PandaRenderer.getTextureLocation` keys the 14-entry texture matrix (seven genes × adult/baby, with
       the inconsistent vanilla baby filenames `panda_baby.png` / `lazy_panda_baby.png` / … preserved) off
       it, bumping the master `ENTITY_MODEL_TEXTURE_REFS` array to 272. Nothing on the panda base path stays
-      deferred (only the per-gene pose animations above remain). `PandaHoldsItemLayer` is also covered:
+      deferred. `PandaHoldsItemLayer` is also covered:
       native projects `PandaRenderState.isEating` from synced `EAT_COUNTER` int id 20, `isSitting` from
       `DATA_ID_FLAGS` byte id 23 bit `0x08`, and `isScared = isWorried() && level.isThundering()` (displayed
       `WORRIED` gene plus vanilla `rain_level * thunder_level > 0.9` weather-capable-level gate). The

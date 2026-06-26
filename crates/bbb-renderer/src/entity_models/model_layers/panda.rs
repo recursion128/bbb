@@ -7,12 +7,9 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // Vanilla 26.1 `PandaModel.createBodyLayer` (atlas 64×64). `PandaModel extends QuadrupedModel`, so the
 // six root parts follow the quadruped layout — `head` (carrying the muzzle and two ears), the pitched
 // `body`, and the four legs (all sharing one 6×9×6 box) — and the base `QuadrupedModel.setupAnim` turns
-// the head by the look angles and swings the four legs off the walk cycle. The `isUnhappy` head shake /
-// leg paddle and the `isSneezing` head dip are projected and applied ([`apply_panda_emotes`]); the
-// remaining `PandaModel.setupAnim` poses (the `sitAmount` sitting fold with its eating / scared variants,
-// the `lieOnBackAmount` belly roll, and the `rollAmount` somersault) read un-projected client-tick
-// interpolation `AnimationState`s and stay deferred, so an idle panda renders at this bind pose plus the
-// head look and leg swing. The black
+// the head by the look angles and swings the four legs off the walk cycle. `PandaModel.setupAnim` then
+// applies the vanilla panda-specific unhappy/sneeze, sitting/eating/scared, lie-on-back, and roll poses
+// from the projected `PandaRenderState` fields. The black
 // patches (eye rings, shoulders, legs) come from the deferred texture; the colored debug path uses a
 // white body / head / muzzle and black ears / legs, the two tones the geometry separates. Panda uses a
 // plain `MobRenderer` / `LivingEntityRenderer.setupRotations`. Each unified cube carries both render
@@ -311,14 +308,148 @@ fn apply_panda_emotes(
     }
 }
 
+fn apply_panda_sitting(
+    root: &mut ModelPart,
+    baby: bool,
+    sit_amount: f32,
+    eating: bool,
+    scared: bool,
+    age_in_ticks: f32,
+) {
+    if baby {
+        animate_baby_panda_sitting(root, sit_amount);
+    } else {
+        animate_adult_panda_sitting(root, sit_amount);
+    }
+
+    if eating {
+        let eating_wave = (age_in_ticks * 0.6).sin();
+        root.child_mut("head").pose.rotation[0] = std::f32::consts::FRAC_PI_2 + 0.2 * eating_wave;
+        root.child_mut("right_front_leg").pose.rotation[0] = -0.4 - 0.2 * eating_wave;
+        root.child_mut("left_front_leg").pose.rotation[0] = -0.4 - 0.2 * eating_wave;
+    }
+
+    if scared {
+        root.child_mut("head").pose.rotation[0] = 2.1707964;
+        root.child_mut("right_front_leg").pose.rotation[0] = -0.9;
+        root.child_mut("left_front_leg").pose.rotation[0] = -0.9;
+    }
+}
+
+fn animate_adult_panda_sitting(root: &mut ModelPart, sit_amount: f32) {
+    {
+        let body = root.child_mut("body");
+        body.pose.rotation[0] = rot_lerp_rad(sit_amount, body.pose.rotation[0], 1.7407963);
+    }
+    {
+        let head = root.child_mut("head");
+        head.pose.rotation[0] = rot_lerp_rad(
+            sit_amount,
+            head.pose.rotation[0],
+            std::f32::consts::FRAC_PI_2,
+        );
+    }
+    set_panda_sitting_leg_rolls(root);
+}
+
+fn animate_baby_panda_sitting(root: &mut ModelPart, sit_amount: f32) {
+    {
+        let body = root.child_mut("body");
+        body.pose.rotation[0] = rot_lerp_rad(
+            sit_amount,
+            body.pose.rotation[0],
+            std::f32::consts::PI / 18.0,
+        );
+        body.pose.offset[2] = lerp(sit_amount, body.pose.offset[2], -1.5);
+    }
+    {
+        let head = root.child_mut("head");
+        head.pose.offset[2] = lerp(sit_amount, head.pose.offset[2], -11.5);
+        head.pose.offset[1] = lerp(sit_amount, head.pose.offset[1], 17.5);
+    }
+    {
+        let leg = root.child_mut("right_front_leg");
+        leg.pose.offset[2] = lerp(sit_amount, leg.pose.offset[2], -5.0);
+    }
+    {
+        let leg = root.child_mut("left_front_leg");
+        leg.pose.offset[2] = lerp(sit_amount, leg.pose.offset[2], -5.0);
+    }
+    {
+        let leg = root.child_mut("right_hind_leg");
+        leg.pose.offset[2] = lerp(sit_amount, leg.pose.offset[2], 3.0);
+    }
+    {
+        let leg = root.child_mut("left_hind_leg");
+        leg.pose.offset[2] = lerp(sit_amount, leg.pose.offset[2], 3.0);
+    }
+    set_panda_sitting_leg_rolls(root);
+}
+
+fn set_panda_sitting_leg_rolls(root: &mut ModelPart) {
+    root.child_mut("right_front_leg").pose.rotation[2] = -0.27079642;
+    root.child_mut("left_front_leg").pose.rotation[2] = 0.27079642;
+    root.child_mut("right_hind_leg").pose.rotation[2] = 0.5707964;
+    root.child_mut("left_hind_leg").pose.rotation[2] = -0.5707964;
+}
+
+fn reset_panda_leg_rolls(root: &mut ModelPart) {
+    root.child_mut("right_hind_leg").pose.rotation[2] = 0.0;
+    root.child_mut("left_hind_leg").pose.rotation[2] = 0.0;
+    root.child_mut("right_front_leg").pose.rotation[2] = 0.0;
+    root.child_mut("left_front_leg").pose.rotation[2] = 0.0;
+}
+
+fn apply_panda_lie_on_back(root: &mut ModelPart, lie_on_back_amount: f32, age_in_ticks: f32) {
+    root.child_mut("right_hind_leg").pose.rotation[0] = -0.6 * (age_in_ticks * 0.15).sin();
+    root.child_mut("left_hind_leg").pose.rotation[0] = 0.6 * (age_in_ticks * 0.15).sin();
+    root.child_mut("right_front_leg").pose.rotation[0] = 0.3 * (age_in_ticks * 0.25).sin();
+    root.child_mut("left_front_leg").pose.rotation[0] = -0.3 * (age_in_ticks * 0.25).sin();
+    let head = root.child_mut("head");
+    head.pose.rotation[0] = rot_lerp_rad(
+        lie_on_back_amount,
+        head.pose.rotation[0],
+        std::f32::consts::FRAC_PI_2,
+    );
+}
+
+fn apply_panda_roll(root: &mut ModelPart, roll_amount: f32, age_in_ticks: f32) {
+    {
+        let head = root.child_mut("head");
+        head.pose.rotation[0] = rot_lerp_rad(roll_amount, head.pose.rotation[0], 2.0561945);
+    }
+    root.child_mut("right_hind_leg").pose.rotation[0] = -0.5 * (age_in_ticks * 0.5).sin();
+    root.child_mut("left_hind_leg").pose.rotation[0] = 0.5 * (age_in_ticks * 0.5).sin();
+    root.child_mut("right_front_leg").pose.rotation[0] = 0.5 * (age_in_ticks * 0.5).sin();
+    root.child_mut("left_front_leg").pose.rotation[0] = -0.5 * (age_in_ticks * 0.5).sin();
+}
+
+/// Vanilla `Mth.rotLerpRad(a, from, to)`: lerps along the shortest signed angular path.
+fn rot_lerp_rad(a: f32, from: f32, to: f32) -> f32 {
+    let mut diff = to - from;
+    while diff < -std::f32::consts::PI {
+        diff += 2.0 * std::f32::consts::PI;
+    }
+    while diff >= std::f32::consts::PI {
+        diff -= 2.0 * std::f32::consts::PI;
+    }
+    from + a * diff
+}
+
+fn lerp(a: f32, from: f32, to: f32) -> f32 {
+    from + a * (to - from)
+}
+
 pub(in crate::entity_models) struct PandaModel {
     root: ModelPart,
+    baby: bool,
 }
 
 impl PandaModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
         Self {
             root: panda_tree(baby),
+            baby,
         }
     }
 }
@@ -353,5 +484,31 @@ impl EntityModel for PandaModel {
             render_state.panda_sneeze_time,
             render_state.age_in_ticks,
         );
+        if render_state.panda_sit_amount > 0.0 {
+            apply_panda_sitting(
+                &mut self.root,
+                self.baby,
+                render_state.panda_sit_amount,
+                render_state.panda_eating,
+                render_state.panda_scared,
+                render_state.age_in_ticks,
+            );
+        } else {
+            reset_panda_leg_rolls(&mut self.root);
+        }
+        if render_state.panda_lie_on_back_amount > 0.0 {
+            apply_panda_lie_on_back(
+                &mut self.root,
+                render_state.panda_lie_on_back_amount,
+                render_state.age_in_ticks,
+            );
+        }
+        if render_state.panda_roll_amount > 0.0 {
+            apply_panda_roll(
+                &mut self.root,
+                render_state.panda_roll_amount,
+                render_state.age_in_ticks,
+            );
+        }
     }
 }

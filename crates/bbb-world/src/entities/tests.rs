@@ -4347,6 +4347,119 @@ fn entity_model_sources_project_bee_roll_amount() {
 }
 
 #[test]
+fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
+    const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    // Vanilla `Panda.DATA_ID_FLAGS` id 23: roll=4, sitting=8, onBack=16.
+    const PANDA_FLAGS_DATA_ID: u8 = 23;
+    const PANDA_FLAG_ROLLING: i8 = 0x04;
+    const PANDA_FLAG_SITTING: i8 = 0x08;
+    const PANDA_FLAG_ON_BACK: i8 = 0x10;
+    let panda_flags = |raw: i8| ProtocolEntityDataValue {
+        data_id: PANDA_FLAGS_DATA_ID,
+        serializer_id: 0,
+        value: EntityDataValueKind::Byte(raw),
+    };
+    let source = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_PANDA_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_PANDA_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        84,
+        VANILLA_ENTITY_TYPE_PANDA_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 83,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+
+    let rest = source(&store, 82, 1.0);
+    assert_eq!(rest.panda_sit_amount, 0.0);
+    assert_eq!(rest.panda_lie_on_back_amount, 0.0);
+    assert_eq!(rest.panda_roll_amount, 0.0);
+    assert_eq!(rest.panda_roll_time, 0.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![panda_flags(
+            PANDA_FLAG_SITTING | PANDA_FLAG_ON_BACK | PANDA_FLAG_ROLLING
+        )],
+    }));
+    store.advance_entity_client_animations(1);
+    let adult_half = source(&store, 82, 0.5);
+    assert!((adult_half.panda_sit_amount - 0.075).abs() < 1.0e-6);
+    assert!((adult_half.panda_lie_on_back_amount - 0.075).abs() < 1.0e-6);
+    assert!((adult_half.panda_roll_amount - 0.075).abs() < 1.0e-6);
+    assert!((adult_half.panda_roll_time - 1.5).abs() < 1.0e-6);
+    store.advance_entity_client_animations(1);
+    let adult = source(&store, 82, 1.0);
+    assert!((adult.panda_sit_amount - 0.30).abs() < 1.0e-6);
+    assert!((adult.panda_lie_on_back_amount - 0.30).abs() < 1.0e-6);
+    assert!((adult.panda_roll_amount - 0.30).abs() < 1.0e-6);
+    assert!((adult.panda_roll_time - 3.0).abs() < 1.0e-6);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![panda_flags(0)],
+    }));
+    store.advance_entity_client_animations(1);
+    let adult_decay_start = source(&store, 82, 0.0);
+    let adult_decay_end = source(&store, 82, 1.0);
+    assert!((adult_decay_start.panda_sit_amount - 0.30).abs() < 1.0e-6);
+    assert!((adult_decay_end.panda_sit_amount - 0.11).abs() < 1.0e-6);
+    assert_eq!(
+        adult_decay_end.panda_roll_time, 0.0,
+        "clearing the roll flag resets rollCounter on the next client tick"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 83,
+        values: vec![panda_flags(PANDA_FLAG_ROLLING)],
+    }));
+    store.advance_entity_client_animations(1);
+    let baby = source(&store, 83, 0.5);
+    assert_eq!(
+        baby.panda_roll_amount, 0.0,
+        "PandaRenderer.extractRenderState forces baby rollAmount to 0"
+    );
+    assert!(
+        (baby.panda_roll_time - 1.5).abs() < 1.0e-6,
+        "baby pandas still tumble via rollTime"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 84,
+        values: vec![panda_flags(PANDA_FLAG_ROLLING)],
+    }));
+    store.advance_entity_client_animations(33);
+    assert!(
+        source(&store, 84, 0.5).panda_roll_time > 32.0,
+        "the local roll clear happens after the tick-33 render sample"
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 84,
+        // Unrelated data sync must not resurrect the old stored flags byte after
+        // vanilla `handleRoll` has locally called `roll(false)`.
+        values: vec![protocol_int_data(18, 1)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 84, 0.5).panda_roll_time, 0.0);
+}
+
+#[test]
 fn entity_model_sources_project_frog_croak_seconds() {
     const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     // Vanilla `Pose.CROAKING(8, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated` starts

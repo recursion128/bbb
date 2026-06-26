@@ -460,3 +460,190 @@ fn sneezing_panda_dips_its_head() {
         "a non-sneezing panda keeps its look pitch: {quiet_pitch}"
     );
 }
+
+#[test]
+fn sitting_panda_applies_vanilla_adult_and_baby_pose() {
+    use std::f32::consts::{FRAC_PI_2, PI};
+
+    let adult =
+        EntityModelInstance::panda(622, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal)
+            .with_panda_sit_amount(1.0);
+    let mut adult_model = PandaModel::new(false);
+    adult_model.prepare(&adult);
+    assert_close(
+        adult_model.root_mut().child_mut("body").pose.rotation[0],
+        1.7407963,
+    );
+    assert_close(
+        adult_model.root_mut().child_mut("head").pose.rotation[0],
+        FRAC_PI_2,
+    );
+    assert_close(
+        adult_model
+            .root_mut()
+            .child_mut("right_front_leg")
+            .pose
+            .rotation[2],
+        -0.27079642,
+    );
+    assert_close(
+        adult_model
+            .root_mut()
+            .child_mut("left_hind_leg")
+            .pose
+            .rotation[2],
+        -0.5707964,
+    );
+
+    let baby =
+        EntityModelInstance::panda(623, [0.0, 64.0, 0.0], 0.0, true, PandaModelVariant::Normal)
+            .with_panda_sit_amount(1.0);
+    let mut baby_model = PandaModel::new(true);
+    baby_model.prepare(&baby);
+    let body = baby_model.root_mut().child_mut("body");
+    assert_close(body.pose.rotation[0], PI / 18.0);
+    assert_close(body.pose.offset[2], -1.5);
+    let head = baby_model.root_mut().child_mut("head");
+    assert_close(head.pose.offset[1], 17.5);
+    assert_close(head.pose.offset[2], -11.5);
+    assert_close(
+        baby_model
+            .root_mut()
+            .child_mut("right_front_leg")
+            .pose
+            .offset[2],
+        -5.0,
+    );
+    assert_close(
+        baby_model.root_mut().child_mut("left_hind_leg").pose.offset[2],
+        3.0,
+    );
+}
+
+#[test]
+fn sitting_panda_applies_eating_and_scared_overrides() {
+    use std::f32::consts::FRAC_PI_2;
+
+    let age = 5.0_f32;
+    let wave = (age * 0.6).sin();
+    let base =
+        EntityModelInstance::panda(624, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal)
+            .with_panda_sit_amount(1.0)
+            .with_age_in_ticks(age);
+
+    let mut eating = PandaModel::new(false);
+    eating.prepare(&base.with_panda_eating(true));
+    assert_close(
+        eating.root_mut().child_mut("head").pose.rotation[0],
+        FRAC_PI_2 + 0.2 * wave,
+    );
+    assert_close(
+        eating.root_mut().child_mut("right_front_leg").pose.rotation[0],
+        -0.4 - 0.2 * wave,
+    );
+    assert_close(
+        eating.root_mut().child_mut("left_front_leg").pose.rotation[0],
+        -0.4 - 0.2 * wave,
+    );
+
+    let mut scared = PandaModel::new(false);
+    scared.prepare(&base.with_panda_eating(true).with_panda_scared(true));
+    assert_close(
+        scared.root_mut().child_mut("head").pose.rotation[0],
+        2.1707964,
+    );
+    assert_close(
+        scared.root_mut().child_mut("right_front_leg").pose.rotation[0],
+        -0.9,
+    );
+    assert_close(
+        scared.root_mut().child_mut("left_front_leg").pose.rotation[0],
+        -0.9,
+    );
+}
+
+#[test]
+fn panda_lie_on_back_and_roll_amount_pose_limbs_and_head() {
+    use std::f32::consts::FRAC_PI_2;
+
+    let age = 4.0_f32;
+    let base =
+        EntityModelInstance::panda(625, [0.0, 64.0, 0.0], 0.0, false, PandaModelVariant::Normal)
+            .with_age_in_ticks(age);
+
+    let mut lying = PandaModel::new(false);
+    lying.prepare(&base.with_panda_lie_on_back_amount(1.0));
+    assert_close(
+        lying.root_mut().child_mut("head").pose.rotation[0],
+        FRAC_PI_2,
+    );
+    assert_close(
+        lying.root_mut().child_mut("right_hind_leg").pose.rotation[0],
+        -0.6 * (age * 0.15).sin(),
+    );
+    assert_close(
+        lying.root_mut().child_mut("left_front_leg").pose.rotation[0],
+        -0.3 * (age * 0.25).sin(),
+    );
+
+    let mut rolling = PandaModel::new(false);
+    rolling.prepare(&base.with_panda_roll_amount(1.0));
+    assert_close(
+        rolling.root_mut().child_mut("head").pose.rotation[0],
+        2.0561945,
+    );
+    assert_close(
+        rolling
+            .root_mut()
+            .child_mut("right_front_leg")
+            .pose
+            .rotation[0],
+        0.5 * (age * 0.5).sin(),
+    );
+    assert_close(
+        rolling.root_mut().child_mut("left_hind_leg").pose.rotation[0],
+        0.5 * (age * 0.5).sin(),
+    );
+}
+
+#[test]
+fn panda_textured_submission_uses_vanilla_setup_rotations_transform() {
+    let images: Vec<EntityModelTextureImage> = panda_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance =
+        EntityModelInstance::panda(626, [0.0, 64.0, 0.0], 15.0, false, PandaModelVariant::Brown)
+            .with_head_look(10.0, -20.0)
+            .with_age_in_ticks(6.0)
+            .with_panda_sit_amount(0.75)
+            .with_panda_lie_on_back_amount(0.35)
+            .with_panda_roll_time(5.5)
+            .with_panda_scared(true);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.texture, PANDA_BROWN_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((submit.collector_order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.transform, panda_model_root_transform(instance));
+    assert_ne!(
+        submit.transform,
+        entity_model_root_transform(instance),
+        "panda setupRotations changes the root transform when sit/lie/roll are active"
+    );
+}
+
+fn assert_close(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 1.0e-6,
+        "expected {expected}, got {actual}"
+    );
+}

@@ -94,6 +94,126 @@ pub(in crate::entity_models) fn fox_model_root_transform(instance: EntityModelIn
     living_entity_model_root_transform_with_extra_setup_rotation(instance, setup_rotation_tail)
 }
 
+/// Vanilla `PandaRenderer.setupRotations`: after the standard living setup rotation and before the
+/// model flip / `-1.501` translate, a panda applies the whole-body roll tumble, sitting tilt, scared
+/// shake, and lie-on-back tilt from `PandaRenderState.rollTime` / `sitAmount` / `lieOnBackAmount`.
+pub(in crate::entity_models) fn panda_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    let setup_rotation_tail = panda_setup_rotation_tail(instance);
+    living_entity_model_root_transform_with_extra_setup_rotation(instance, setup_rotation_tail)
+}
+
+fn panda_setup_rotation_tail(instance: EntityModelInstance) -> Mat4 {
+    let is_baby = matches!(instance.kind, EntityModelKind::Panda { baby: true, .. });
+    let render_state = instance.render_state;
+    let mut transform = Mat4::IDENTITY;
+
+    if render_state.panda_roll_time > 0.0 {
+        transform = transform * panda_roll_transform(render_state.panda_roll_time, is_baby);
+    }
+
+    let sit_amount = render_state.panda_sit_amount;
+    if sit_amount > 0.0 {
+        transform = transform
+            * Mat4::from_translation(Vec3::new(0.0, 0.8 * sit_amount, 0.0))
+            * Mat4::from_rotation_x((render_state.head_pitch + 90.0 * sit_amount).to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, -sit_amount, 0.0));
+        if render_state.panda_scared {
+            let shake_rot = (render_state.age_in_ticks * 1.25).cos() * std::f32::consts::PI * 0.05;
+            transform = transform * Mat4::from_rotation_y(shake_rot.to_radians());
+            if is_baby {
+                transform = transform * Mat4::from_translation(Vec3::new(0.0, 0.8, 0.55));
+            }
+        }
+    }
+
+    let lie_on_back_amount = render_state.panda_lie_on_back_amount;
+    if lie_on_back_amount > 0.0 {
+        let y = if is_baby { 0.5 } else { 1.3 };
+        transform = transform
+            * Mat4::from_translation(Vec3::new(0.0, y * lie_on_back_amount, 0.0))
+            * Mat4::from_rotation_x(
+                (render_state.head_pitch + 180.0 * lie_on_back_amount).to_radians(),
+            );
+    }
+
+    transform
+}
+
+fn panda_roll_transform(roll_time: f32, is_baby: bool) -> Mat4 {
+    let roll_transition_time = roll_time.fract();
+    let roll_pos = roll_time.floor() as i32;
+    let next_roll_pos = roll_pos + 1;
+    let y = if is_baby { 0.3 } else { 0.8 };
+
+    let (angle, translate_y) = if roll_pos < 8 {
+        let this_angle = 90.0 * roll_pos as f32 / 7.0;
+        let next_angle = 90.0 * next_roll_pos as f32 / 7.0;
+        let angle = panda_roll_angle(
+            this_angle,
+            next_angle,
+            next_roll_pos,
+            roll_transition_time,
+            8,
+        );
+        (angle, (y + 0.2) * (angle / 90.0))
+    } else if roll_pos < 16 {
+        let internal_roll_counter = (roll_pos - 8) as f32 / 7.0;
+        let this_angle = 90.0 + 90.0 * internal_roll_counter;
+        let next_angle = 90.0 + 90.0 * (next_roll_pos - 8) as f32 / 7.0;
+        let angle = panda_roll_angle(
+            this_angle,
+            next_angle,
+            next_roll_pos,
+            roll_transition_time,
+            16,
+        );
+        (angle, y + 0.2 + (y - 0.2) * (angle - 90.0) / 90.0)
+    } else if roll_pos < 24 {
+        let internal_roll_counter = (roll_pos - 16) as f32 / 7.0;
+        let this_angle = 180.0 + 90.0 * internal_roll_counter;
+        let next_angle = 180.0 + 90.0 * (next_roll_pos - 16) as f32 / 7.0;
+        let angle = panda_roll_angle(
+            this_angle,
+            next_angle,
+            next_roll_pos,
+            roll_transition_time,
+            24,
+        );
+        (angle, y + y * (270.0 - angle) / 90.0)
+    } else if roll_pos < 32 {
+        let internal_roll_counter = (roll_pos - 24) as f32 / 7.0;
+        let this_angle = 270.0 + 90.0 * internal_roll_counter;
+        let next_angle = 270.0 + 90.0 * (next_roll_pos - 24) as f32 / 7.0;
+        let angle = panda_roll_angle(
+            this_angle,
+            next_angle,
+            next_roll_pos,
+            roll_transition_time,
+            32,
+        );
+        (angle, y * ((360.0 - angle) / 90.0))
+    } else {
+        return Mat4::IDENTITY;
+    };
+
+    Mat4::from_translation(Vec3::new(0.0, translate_y, 0.0))
+        * Mat4::from_rotation_x((-angle).to_radians())
+}
+
+fn panda_roll_angle(
+    this_angle: f32,
+    next_angle: f32,
+    next_roll_pos: i32,
+    roll_transition_time: f32,
+    threshold: i32,
+) -> f32 {
+    if next_roll_pos < threshold {
+        this_angle + roll_transition_time * (next_angle - this_angle)
+    } else {
+        this_angle
+    }
+}
+
 /// Vanilla `DrownedRenderer.setupRotations`: after the standard living setup, a visually swimming
 /// drowned rotates around `y = boundingBoxHeight / 2 / entityScale` by
 /// `lerp(swimAmount, 0, -10 - xRot)` degrees. The rotation is identity when `swimAmount == 0`.

@@ -35,6 +35,17 @@ const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
 /// distance includes the vertical component.
 const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
 const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
+const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
+/// Vanilla `Panda.DATA_ID_FLAGS`, the panda's synced flags byte after unhappy/sneeze/eat/gene data.
+const PANDA_FLAGS_DATA_ID: u8 = 23;
+/// Vanilla `Panda.isRolling()` / `isSitting()` / `isOnBack()` masks within `DATA_ID_FLAGS`.
+const PANDA_FLAG_ROLLING: i8 = 0x04;
+const PANDA_FLAG_SITTING: i8 = 0x08;
+const PANDA_FLAG_ON_BACK: i8 = 0x10;
+/// Vanilla `Panda.updateSitAmount` / `updateOnBackAnimation` / `updateRollAmount` easing.
+const PANDA_AMOUNT_RISE_PER_TICK: f32 = 0.15;
+const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
+const PANDA_ROLL_COUNTER_MAX: i32 = 32;
 /// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`)
 /// replaces the base distance→speed mapping. `Camel`/`Frog` additionally gate on
 /// pose/jump/dash animation states the client does not yet track, so their limb
@@ -331,6 +342,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bee_roll: Option<BeeRollAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panda: Option<PandaAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fox: Option<FoxAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wolf_wet: Option<WolfWetAnimationState>,
@@ -535,6 +548,27 @@ pub struct BeeRollAnimationState {
     pub rolling: bool,
     pub previous_roll_amount: f32,
     pub current_roll_amount: f32,
+}
+
+/// Canonical client-side panda sit/on-back/roll accumulators, mirroring vanilla
+/// `Panda.sitAmount` / `onBackAmount` / `rollAmount` and `rollCounter`. The
+/// synced `DATA_ID_FLAGS` byte selects the three targets; each amount rises by
+/// `0.15`/tick while active and falls by `0.19`/tick otherwise. `rollCounter`
+/// increments while rolling and clears the local rolling target after tick 32,
+/// matching `Panda.handleRoll`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct PandaAnimationState {
+    pub sitting: bool,
+    pub on_back: bool,
+    pub rolling: bool,
+    pub rolling_locally_cleared: bool,
+    pub previous_sit_amount: f32,
+    pub current_sit_amount: f32,
+    pub previous_on_back_amount: f32,
+    pub current_on_back_amount: f32,
+    pub previous_roll_amount: f32,
+    pub current_roll_amount: f32,
+    pub roll_counter: i32,
 }
 
 /// Canonical client-side triggered keyframe-animation state, mirroring vanilla
@@ -2415,6 +2449,99 @@ impl BeeRollAnimationState {
     }
 }
 
+impl PandaAnimationState {
+    fn set_flags(&mut self, sitting: bool, on_back: bool, rolling: bool) {
+        self.sitting = sitting;
+        self.on_back = on_back;
+        if rolling {
+            if !self.rolling_locally_cleared {
+                self.rolling = true;
+            }
+        } else {
+            self.rolling = false;
+            self.rolling_locally_cleared = false;
+        }
+    }
+
+    fn advance_client_tick(&mut self) {
+        self.previous_sit_amount = self.current_sit_amount;
+        self.current_sit_amount = ease_panda_amount(self.current_sit_amount, self.sitting);
+
+        self.previous_on_back_amount = self.current_on_back_amount;
+        self.current_on_back_amount = ease_panda_amount(self.current_on_back_amount, self.on_back);
+
+        self.previous_roll_amount = self.current_roll_amount;
+        if self.rolling {
+            self.roll_counter += 1;
+            if self.roll_counter > PANDA_ROLL_COUNTER_MAX {
+                self.rolling = false;
+                self.rolling_locally_cleared = true;
+            }
+        } else {
+            self.roll_counter = 0;
+        }
+        self.current_roll_amount = ease_panda_amount(self.current_roll_amount, self.rolling);
+    }
+
+    fn sit_amount(self, partial_tick: f32) -> f32 {
+        lerp_panda_amount(
+            partial_tick,
+            self.previous_sit_amount,
+            self.current_sit_amount,
+        )
+    }
+
+    fn lie_on_back_amount(self, partial_tick: f32) -> f32 {
+        lerp_panda_amount(
+            partial_tick,
+            self.previous_on_back_amount,
+            self.current_on_back_amount,
+        )
+    }
+
+    fn roll_amount(self, partial_tick: f32) -> f32 {
+        lerp_panda_amount(
+            partial_tick,
+            self.previous_roll_amount,
+            self.current_roll_amount,
+        )
+    }
+
+    fn roll_time(self, partial_tick: f32) -> f32 {
+        if self.roll_counter > 0 {
+            self.roll_counter as f32 + partial_tick
+        } else {
+            0.0
+        }
+    }
+
+    fn is_settled(self) -> bool {
+        !self.sitting
+            && !self.on_back
+            && !self.rolling
+            && !self.rolling_locally_cleared
+            && self.previous_sit_amount == 0.0
+            && self.current_sit_amount == 0.0
+            && self.previous_on_back_amount == 0.0
+            && self.current_on_back_amount == 0.0
+            && self.previous_roll_amount == 0.0
+            && self.current_roll_amount == 0.0
+            && self.roll_counter == 0
+    }
+}
+
+fn ease_panda_amount(current: f32, active: bool) -> f32 {
+    if active {
+        (current + PANDA_AMOUNT_RISE_PER_TICK).min(1.0)
+    } else {
+        (current - PANDA_AMOUNT_FALL_PER_TICK).max(0.0)
+    }
+}
+
+fn lerp_panda_amount(partial_tick: f32, previous: f32, current: f32) -> f32 {
+    previous + partial_tick * (current - previous)
+}
+
 impl FoxAnimationState {
     fn set_flags(&mut self, interested: bool, crouching: bool) {
         self.interested = interested;
@@ -2531,6 +2658,19 @@ impl EntityClientAnimationState {
                     self.bee_roll = Some(BeeRollAnimationState {
                         rolling,
                         ..BeeRollAnimationState::default()
+                    });
+                }
+            }
+            VANILLA_ENTITY_TYPE_PANDA_ID => {
+                let (sitting, on_back, rolling) = panda_pose_flags(data_values);
+                if let Some(panda) = self.panda.as_mut() {
+                    panda.set_flags(sitting, on_back, rolling);
+                } else if sitting || on_back || rolling {
+                    self.panda = Some(PandaAnimationState {
+                        sitting,
+                        on_back,
+                        rolling,
+                        ..PandaAnimationState::default()
                     });
                 }
             }
@@ -3026,6 +3166,38 @@ impl EntityClientAnimationState {
     pub fn bee_roll_amount(&self, partial_tick: f32) -> f32 {
         self.bee_roll
             .map_or(0.0, |state| state.roll_amount(partial_tick))
+    }
+
+    /// Vanilla `Panda.getSitAmount(partialTick)`, exposed for
+    /// `PandaRenderState.sitAmount` and `PandaModel.setupAnim`. Returns `0.0`
+    /// for a standing panda and every non-panda entity.
+    pub fn panda_sit_amount(&self, partial_tick: f32) -> f32 {
+        self.panda
+            .map_or(0.0, |state| state.sit_amount(partial_tick))
+    }
+
+    /// Vanilla `Panda.getLieOnBackAmount(partialTick)`, exposed for
+    /// `PandaRenderState.lieOnBackAmount` and `PandaModel.setupAnim`. Returns
+    /// `0.0` for a panda not lying on its back and every non-panda entity.
+    pub fn panda_lie_on_back_amount(&self, partial_tick: f32) -> f32 {
+        self.panda
+            .map_or(0.0, |state| state.lie_on_back_amount(partial_tick))
+    }
+
+    /// Vanilla `Panda.getRollAmount(partialTick)`, exposed for the adult panda
+    /// model roll pose. The vanilla renderer zeroes this for baby pandas while
+    /// still using [`Self::panda_roll_time`] for the whole-model tumble.
+    pub fn panda_roll_amount(&self, partial_tick: f32) -> f32 {
+        self.panda
+            .map_or(0.0, |state| state.roll_amount(partial_tick))
+    }
+
+    /// Vanilla `PandaRenderState.rollTime = rollCounter > 0 ? rollCounter +
+    /// partialTick : 0`, used by `PandaRenderer.setupRotations` for the
+    /// whole-model tumble. Returns `0.0` outside an active roll.
+    pub fn panda_roll_time(&self, partial_tick: f32) -> f32 {
+        self.panda
+            .map_or(0.0, |state| state.roll_time(partial_tick))
     }
 
     /// Vanilla `LivingEntity.getSwimAmount(partialTick)`: the 0..1 eased blend toward
@@ -3675,6 +3847,17 @@ impl EntityClientAnimationState {
                     roll.advance_client_tick();
                 }
             }
+            VANILLA_ENTITY_TYPE_PANDA_ID => {
+                let settled = if let Some(panda) = self.panda.as_mut() {
+                    panda.advance_client_tick();
+                    panda.is_settled()
+                } else {
+                    false
+                };
+                if settled {
+                    self.panda = None;
+                }
+            }
             VANILLA_ENTITY_TYPE_FOX_ID => {
                 if let Some(fox) = self.fox.as_mut() {
                     fox.advance_client_tick();
@@ -3997,6 +4180,15 @@ fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
 /// Vanilla `Bee.isRolling()` = `getFlag(FLAG_ROLL)` = `(flags & 2) != 0`.
 fn bee_is_rolling(data_values: &[EntityDataValue]) -> bool {
     entity_data_byte(data_values, BEE_FLAGS_DATA_ID, 0) & BEE_FLAG_ROLL != 0
+}
+
+fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
+    let flags = entity_data_byte(data_values, PANDA_FLAGS_DATA_ID, 0);
+    (
+        flags & PANDA_FLAG_SITTING != 0,
+        flags & PANDA_FLAG_ON_BACK != 0,
+        flags & PANDA_FLAG_ROLLING != 0,
+    )
 }
 
 /// Vanilla `Fox.isInterested()` = `getFlag(FLAG_INTERESTED)` = `(flags & 8) != 0`.

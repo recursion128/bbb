@@ -348,7 +348,9 @@ const PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 const PANDA_SNEEZE_COUNTER_DATA_ID: u8 = 19;
 const PANDA_FLAGS_DATA_ID: u8 = 23;
 const PANDA_SNEEZING_FLAG: i8 = 0x02;
+const PANDA_ROLLING_FLAG: i8 = 0x04;
 const PANDA_SITTING_FLAG: i8 = 0x08;
+const PANDA_ON_BACK_FLAG: i8 = 0x10;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
 const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
@@ -1371,6 +1373,10 @@ fn entity_model_instance(
             world,
         ))
         .with_panda_sitting(panda_is_sitting(source.entity_type_id, &source.data_values))
+        .with_panda_sit_amount(source.panda_sit_amount)
+        .with_panda_lie_on_back_amount(source.panda_lie_on_back_amount)
+        .with_panda_roll_amount(source.panda_roll_amount)
+        .with_panda_roll_time(source.panda_roll_time)
         .with_goat_ramming_x_head_rot(goat_ramming_x_head_rot)
         .with_iron_golem_attack_ticks_remaining(source.iron_golem_attack_ticks_remaining)
         .with_iron_golem_offer_flower_tick(source.iron_golem_offer_flower_tick)
@@ -5800,8 +5806,8 @@ mod tests {
             [1.0, 64.0, -4.0],
         ));
 
-        let panda = |world: &WorldStore| {
-            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+        let panda = |world: &WorldStore, partial_tick: f32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, partial_tick)
                 .into_iter()
                 .find(|instance| instance.entity_id == 190)
                 .unwrap()
@@ -5809,16 +5815,21 @@ mod tests {
         };
 
         // No data → content panda.
-        let rest = panda(&world);
+        let rest = panda(&world, 0.0);
         assert!(!rest.panda_unhappy);
         assert!(!rest.panda_sneezing);
         assert_eq!(rest.panda_sneeze_time, 0);
         assert!(!rest.panda_eating);
         assert!(!rest.panda_sitting);
         assert!(!rest.panda_scared);
+        assert_eq!(rest.panda_sit_amount, 0.0);
+        assert_eq!(rest.panda_lie_on_back_amount, 0.0);
+        assert_eq!(rest.panda_roll_amount, 0.0);
+        assert_eq!(rest.panda_roll_time, 0.0);
 
         // UNHAPPY_COUNTER > 0 projects the unhappy shake; the sneeze flag + counter project the dip; the
-        // sitting bit + EAT_COUNTER project the held-item layer state.
+        // sitting bit + EAT_COUNTER project the held-item layer state. The same flags byte also feeds
+        // the world-side sit/on-back/roll animation amounts that native copies into render state.
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 190,
             values: vec![
@@ -5827,17 +5838,25 @@ mod tests {
                 protocol_int_data(PANDA_EAT_COUNTER_DATA_ID, 4),
                 protocol_byte_data(
                     PANDA_FLAGS_DATA_ID,
-                    PANDA_SNEEZING_FLAG | PANDA_SITTING_FLAG,
+                    PANDA_SNEEZING_FLAG
+                        | PANDA_ROLLING_FLAG
+                        | PANDA_SITTING_FLAG
+                        | PANDA_ON_BACK_FLAG,
                 ),
             ],
         }));
-        let active = panda(&world);
+        world.advance_entity_client_animations(1);
+        let active = panda(&world, 0.5);
         assert!(active.panda_unhappy);
         assert!(active.panda_sneezing);
         assert_eq!(active.panda_sneeze_time, 9);
         assert!(active.panda_eating);
         assert!(active.panda_sitting);
         assert!(!active.panda_scared);
+        assert!((active.panda_sit_amount - 0.075).abs() < 1.0e-6);
+        assert!((active.panda_lie_on_back_amount - 0.075).abs() < 1.0e-6);
+        assert!((active.panda_roll_amount - 0.075).abs() < 1.0e-6);
+        assert!((active.panda_roll_time - 1.5).abs() < 1.0e-6);
 
         world.apply_game_event(bbb_protocol::packets::GameEvent {
             event_id: 2,
@@ -5854,12 +5873,12 @@ mod tests {
                 protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 0),
             ],
         }));
-        assert!(!panda(&world).panda_scared);
+        assert!(!panda(&world, 0.0).panda_scared);
         world.apply_game_event(bbb_protocol::packets::GameEvent {
             event_id: 8,
             param: 1.0,
         });
-        assert!(panda(&world).panda_scared);
+        assert!(panda(&world, 0.0).panda_scared);
 
         // A zero unhappy counter is content again; clearing the flag stops the sneeze even with a counter.
         assert!(world.apply_set_entity_data(SetEntityData {
@@ -5870,7 +5889,7 @@ mod tests {
                 protocol_byte_data(PANDA_FLAGS_DATA_ID, 0),
             ],
         }));
-        let calmed = panda(&world);
+        let calmed = panda(&world, 0.0);
         assert!(!calmed.panda_unhappy);
         assert!(!calmed.panda_sneezing);
         assert!(!calmed.panda_eating);

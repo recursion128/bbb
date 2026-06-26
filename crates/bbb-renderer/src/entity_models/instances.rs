@@ -719,6 +719,18 @@ entity_render_state! {
     /// Vanilla `PandaRenderState.isSitting` (`DATA_ID_FLAGS` bit `0x08`): the held item layer renders only
     /// while the panda is sitting and not scared. `false` for every other entity and a standing panda.
     (with_panda_sitting) panda_sitting: bool = false;
+    /// Vanilla `PandaRenderState.sitAmount` (`Panda.getSitAmount(partialTick)`): the 0..1 eased sitting
+    /// amount that `PandaRenderer.setupRotations` and `PandaModel.setupAnim` both consume.
+    (with_panda_sit_amount) panda_sit_amount: f32 = 0.0;
+    /// Vanilla `PandaRenderState.lieOnBackAmount` (`Panda.getLieOnBackAmount(partialTick)`): the eased
+    /// blend for the lying-on-back root transform and limb/head pose.
+    (with_panda_lie_on_back_amount) panda_lie_on_back_amount: f32 = 0.0;
+    /// Vanilla `PandaRenderState.rollAmount` (`Panda.getRollAmount(partialTick)`, forced to `0.0` for
+    /// baby pandas): the adult panda model rolling-pose blend.
+    (with_panda_roll_amount) panda_roll_amount: f32 = 0.0;
+    /// Vanilla `PandaRenderState.rollTime` (`rollCounter + partialTick` while rolling): drives the whole
+    /// panda model tumble in `PandaRenderer.setupRotations`, including baby pandas.
+    (with_panda_roll_time) panda_roll_time: f32 = 0.0;
     /// Vanilla `GoatRenderState.rammingXHeadRot` (`Goat.getRammingXHeadRot()`): the head-down tilt
     /// (radians) of a ramming goat, `lowerHeadTick/20 · (baby ? 52.5° : 30°)`. `GoatModel.setupAnim` SETs
     /// `head.xRot` to it while non-zero, overwriting the head-look pitch. `0.0` for a resting goat and
@@ -2173,6 +2185,10 @@ mod tests {
                 panda_eating: false,
                 panda_scared: false,
                 panda_sitting: false,
+                panda_sit_amount: 0.0,
+                panda_lie_on_back_amount: 0.0,
+                panda_roll_amount: 0.0,
+                panda_roll_time: 0.0,
                 goat_ramming_x_head_rot: 0.0,
                 iron_golem_attack_ticks_remaining: 0.0,
                 iron_golem_offer_flower_tick: 0,

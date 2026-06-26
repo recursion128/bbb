@@ -22,10 +22,11 @@ use super::{
     VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -855,6 +856,15 @@ impl EntityStore {
         let walk_animation_position = client_animations
             .animations
             .walk_animation_position(partial_ticks);
+        let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
+        let is_panda = identity.entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID;
+        let panda_roll_amount = if is_panda && !is_baby {
+            client_animations
+                .animations
+                .panda_roll_amount(partial_ticks)
+        } else {
+            0.0
+        };
         let is_passenger = mount
             .as_ref()
             .is_some_and(|mount| mount.vehicle_id.is_some());
@@ -885,6 +895,12 @@ impl EntityStore {
             bat_resting,
             bee_has_stinger,
             bee_roll_amount: client_animations.animations.bee_roll_amount(partial_ticks),
+            panda_sit_amount: client_animations.animations.panda_sit_amount(partial_ticks),
+            panda_lie_on_back_amount: client_animations
+                .animations
+                .panda_lie_on_back_amount(partial_ticks),
+            panda_roll_amount,
+            panda_roll_time: client_animations.animations.panda_roll_time(partial_ticks),
             // Vanilla `Frog.croakAnimationState`: the elapsed seconds since `Pose.CROAKING` started,
             // or `-1.0` for a non-croaking frog (only the frog is given a croak animation state).
             frog_croak_seconds: client_animations
