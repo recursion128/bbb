@@ -3159,7 +3159,10 @@ When an agent does any of the following, update this file in the same slice:
       override replaces `LivingEntityRenderer.setupRotations`); the official squid/glow_squid adult
       (64x32) / baby (32x32) texture references, the hand-emitted texture-backed
       render path over the procedural ring, and the official PNG atlas
-      upload/bind/sample path (colored and textured). The `GlowSquidRenderer.getBlockLightLevel`
+      upload/bind/sample path (colored and textured). Renderer tests now also pin the generated
+      squid submissions' vanilla `entityCutout` render type, selected texture, white tint,
+      root transform, and `order(0)` metadata rather than only counting folded mesh vertices.
+      The `GlowSquidRenderer.getBlockLightLevel`
       darken-ticks light boost IS now applied (`entity_light_coords` reads the synced
       `DATA_DARK_TICKS_REMAINING` int at index 18 and boosts the packed block light to
       `max(block, (int)clampedLerp(1 − darkTicks/10, 0, 15))` — full bright while undamaged, dimming for

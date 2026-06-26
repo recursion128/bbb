@@ -168,31 +168,24 @@ fn squid_texture_refs_match_vanilla_renderer() {
 #[test]
 fn squid_textured_mesh_uses_vanilla_geometry_and_variant_texture() {
     let (atlas, _) = build_entity_model_texture_atlas(&squid_texture_images()).unwrap();
+    // Vanilla `SquidModel` inherits the default `EntityModel` render type (`entityCutout`).
+    // `SquidRenderer` / `GlowSquidRenderer` only switch the texture, so pin the submission metadata
+    // in addition to the folded cutout mesh geometry.
+    let squid_instance = EntityModelInstance::squid(810, [0.0, 64.0, 0.0], 0.0, false, false);
+    let squid_meshes = entity_model_textured_meshes(&[squid_instance], &atlas);
+    assert_squid_submission(&squid_meshes, squid_instance, SQUID_TEXTURE_REF, false);
+    assert!(squid_meshes.translucent.vertices.is_empty());
+    assert!(squid_meshes.eyes.vertices.is_empty());
     // Nine cubes (body + eight tentacles) → 216 textured vertices, all on the cutout pass.
-    let squid = entity_model_textured_mesh(
-        &[EntityModelInstance::squid(
-            810,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-        )],
-        &atlas,
-    );
+    let squid = &squid_meshes.cutout;
     assert_eq!(squid.vertices.len(), 216);
 
     // The glow squid reuses the geometry at the same positions but samples a different
     // texture (glow_squid.png), so the vertex UVs differ from the plain squid.
-    let glow = entity_model_textured_mesh(
-        &[EntityModelInstance::squid(
-            811,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            false,
-        )],
-        &atlas,
-    );
+    let glow_instance = EntityModelInstance::squid(811, [0.0, 64.0, 0.0], 0.0, true, false);
+    let glow_meshes = entity_model_textured_meshes(&[glow_instance], &atlas);
+    assert_squid_submission(&glow_meshes, glow_instance, GLOW_SQUID_TEXTURE_REF, false);
+    let glow = &glow_meshes.cutout;
     assert_eq!(glow.vertices.len(), squid.vertices.len());
     assert_eq!(
         glow.vertices.iter().map(|v| v.position).collect::<Vec<_>>(),
@@ -208,16 +201,10 @@ fn squid_textured_mesh_uses_vanilla_geometry_and_variant_texture() {
     );
 
     // The baby uses the 0.5-scaled body layer.
-    let baby = entity_model_textured_mesh(
-        &[EntityModelInstance::squid(
-            812,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            true,
-        )],
-        &atlas,
-    );
+    let baby_instance = EntityModelInstance::squid(812, [0.0, 64.0, 0.0], 0.0, false, true);
+    let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
+    assert_squid_submission(&baby_meshes, baby_instance, SQUID_BABY_TEXTURE_REF, true);
+    let baby = &baby_meshes.cutout;
     assert_eq!(baby.vertices.len(), 216);
     let (adult_min, adult_max) = textured_mesh_extents(&squid);
     let (baby_min, baby_max) = textured_mesh_extents(&baby);
@@ -282,4 +269,21 @@ fn squid_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_squid_submission(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    texture: EntityModelTextureRef,
+    baby: bool,
+) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, texture);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.order, 0);
+    assert_eq!(submit.submit_sequence, 0);
+    assert_eq!(submit.transform, squid_model_root_transform(instance, baby));
 }
