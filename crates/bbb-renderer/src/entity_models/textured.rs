@@ -34,25 +34,26 @@ use super::{
         armor_layer_tint, armor_slot_texture, equine_head_look_pose, equine_leg_swing_pose,
         equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
         limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
-        BreezeWindModel, CamelModel, CreeperModel, CustomHeadPiglinSkullModel,
-        CustomHeadSkullModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel,
-        NautilusModel, PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
-        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
-        StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel,
-        WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
-        PIG_SADDLE_TEXTURE_REF, PLAYER_SLIM_STEVE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF,
-        SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF,
-        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
+        CustomHeadPiglinSkullModel, CustomHeadSkullModel, DrownedOuterModel, HoglinModel,
+        HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel,
+        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
+        SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
+        VillagerModel, WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_SLIM_STEVE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -908,19 +909,36 @@ fn emit_custom_head_skull_layer(
     let Some(transform) = custom_head_skull_transform(&instance) else {
         return;
     };
-    if skull == EntityCustomHeadSkull::Piglin {
-        let mut model = CustomHeadPiglinSkullModel::new();
-        model.prepare(&instance);
-        render_textured_pass(
-            meshes,
-            &model,
-            transform,
-            EntityModelLayerRenderType::Cutout,
-            custom_head_skull_texture_ref(skull),
-            [1.0, 1.0, 1.0, 1.0],
-            atlas,
-        );
-        return;
+    match skull {
+        EntityCustomHeadSkull::Dragon => {
+            let mut model = CustomHeadDragonSkullModel::new();
+            model.prepare(&instance);
+            render_textured_pass(
+                meshes,
+                &model,
+                transform,
+                EntityModelLayerRenderType::Cutout,
+                custom_head_skull_texture_ref(skull),
+                [1.0, 1.0, 1.0, 1.0],
+                atlas,
+            );
+            return;
+        }
+        EntityCustomHeadSkull::Piglin => {
+            let mut model = CustomHeadPiglinSkullModel::new();
+            model.prepare(&instance);
+            render_textured_pass(
+                meshes,
+                &model,
+                transform,
+                EntityModelLayerRenderType::Cutout,
+                custom_head_skull_texture_ref(skull),
+                [1.0, 1.0, 1.0, 1.0],
+                atlas,
+            );
+            return;
+        }
+        _ => {}
     }
 
     let mut model = CustomHeadSkullModel::new(matches!(skull, EntityCustomHeadSkull::Player));
@@ -943,6 +961,7 @@ fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTex
         EntityCustomHeadSkull::Player => PLAYER_SLIM_STEVE_TEXTURE_REF,
         EntityCustomHeadSkull::Zombie => ZOMBIE_TEXTURE_REF,
         EntityCustomHeadSkull::Creeper => CREEPER_TEXTURE_REF,
+        EntityCustomHeadSkull::Dragon => ENDER_DRAGON_TEXTURE_REF,
         EntityCustomHeadSkull::Piglin => PIGLIN_TEXTURE_REF,
     }
 }

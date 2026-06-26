@@ -137,6 +137,62 @@ fn custom_head_piglin_skull_animates_ears_from_worn_head_animation_pos() {
 }
 
 #[test]
+fn custom_head_dragon_skull_model_uses_vanilla_head_layer_pose() {
+    // Vanilla `DragonHeadModel.createHeadLayer`: `PartPose.offset(0, -7.986666, 0).scaled(0.75)`.
+    assert_eq!(CUSTOM_HEAD_DRAGON_HEAD_POSE.offset, [0.0, -7.986666, 0.0]);
+    assert_eq!(CUSTOM_HEAD_DRAGON_HEAD_POSE.rotation, [0.0, 0.0, 0.0]);
+    assert_eq!(CUSTOM_HEAD_DRAGON_HEAD_SCALE, [0.75, 0.75, 0.75]);
+}
+
+#[test]
+fn custom_head_skull_layer_renders_dragon_head_with_specialized_geometry() {
+    let atlas = atlas_with(ENDER_DRAGON_TEXTURE_REF);
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            916,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Dragon))],
+        &atlas,
+    );
+
+    // Vanilla `DragonHeadModel.createHeadLayer`: six head cubes plus one jaw cube.
+    assert_eq!(mesh.cutout_faces, 42);
+    assert_eq!(mesh.vertices.len(), 168);
+    assert_eq!(mesh.indices.len(), 252);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}
+
+#[test]
+fn custom_head_dragon_skull_animates_jaw_from_worn_head_animation_pos() {
+    let atlas = atlas_with(ENDER_DRAGON_TEXTURE_REF);
+    let base = EntityModelInstance::player_with_parts(
+        917,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Dragon));
+
+    let first = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(0.0)], &atlas);
+    let later = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(2.5)], &atlas);
+
+    assert_eq!(first.cutout_faces, later.cutout_faces);
+    assert_eq!(first.vertices.len(), later.vertices.len());
+    assert_ne!(
+        first.vertices, later.vertices,
+        "DragonHeadModel drives its jaw xRot from SkullModelBase.State.animationPos"
+    );
+}
+
+#[test]
 fn custom_head_skull_layer_follows_host_head_pose() {
     let atlas = atlas_with(SKELETON_TEXTURE_REF);
     let base = EntityModelInstance::new(

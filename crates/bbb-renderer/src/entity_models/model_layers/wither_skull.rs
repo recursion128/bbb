@@ -1,6 +1,7 @@
 use super::{
-    ADULT_PIGLIN_HEAD, ADULT_PIGLIN_LEFT_EAR, ADULT_PIGLIN_LEFT_EAR_POSE, ADULT_PIGLIN_RIGHT_EAR,
-    ADULT_PIGLIN_RIGHT_EAR_POSE, PART_POSE_ZERO, WITHER_SKULL_GRAY,
+    PartPose, ADULT_PIGLIN_HEAD, ADULT_PIGLIN_LEFT_EAR, ADULT_PIGLIN_LEFT_EAR_POSE,
+    ADULT_PIGLIN_RIGHT_EAR, ADULT_PIGLIN_RIGHT_EAR_POSE, DRAGON_HEAD_CUBES, DRAGON_JAW_CUBES,
+    DRAGON_JAW_POSE, PART_POSE_ZERO, WITHER_SKULL_GRAY,
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
@@ -44,6 +45,14 @@ pub(in crate::entity_models) const CUSTOM_HEAD_PLAYER_HAT_CUBE: ModelCube = Mode
     [32.0, 0.0],
     false,
 );
+
+// Vanilla `DragonHeadModel.createHeadLayer`: the dragon skull layer reuses the ender-dragon head
+// and jaw cubes, but the `head` part is at `PartPose.offset(0, -7.986666, 0).scaled(0.75)`.
+pub(in crate::entity_models) const CUSTOM_HEAD_DRAGON_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, -7.986666, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+pub(in crate::entity_models) const CUSTOM_HEAD_DRAGON_HEAD_SCALE: [f32; 3] = [0.75, 0.75, 0.75];
 
 /// Static wither-skull model mirroring vanilla `SkullModel` at its ZERO rest pose: a single `head`
 /// part holding the 8×8×8 skull box (the flight facing lives in the root transform), no `setup_anim`.
@@ -115,6 +124,52 @@ impl EntityModel for CustomHeadSkullModel {
     }
 
     fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}
+
+/// Dragon skull model for `CustomHeadLayer` skull equipment. Vanilla `DragonHeadModel` uses the
+/// ender-dragon head and jaw cubes, a scaled `head` part, and opens the jaw from
+/// `SkullModelBase.State.animationPos`.
+pub(in crate::entity_models) struct CustomHeadDragonSkullModel {
+    root: ModelPart,
+}
+
+impl CustomHeadDragonSkullModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![(
+                    "head",
+                    ModelPart::new(
+                        CUSTOM_HEAD_DRAGON_HEAD_POSE,
+                        DRAGON_HEAD_CUBES.to_vec(),
+                        vec![(
+                            "jaw",
+                            ModelPart::leaf(DRAGON_JAW_POSE, DRAGON_JAW_CUBES.to_vec()),
+                        )],
+                    ),
+                )],
+            ),
+        }
+    }
+}
+
+impl EntityModel for CustomHeadDragonSkullModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let animation_pos = instance.render_state.worn_head_animation_pos;
+        let head = self.root.child_mut("head");
+        head.scale = CUSTOM_HEAD_DRAGON_HEAD_SCALE;
+        head.child_mut("jaw").pose.rotation[0] = ((animation_pos * PI * 0.2).sin() + 1.0) * 0.2;
+    }
 }
 
 /// Piglin skull model for `CustomHeadLayer` skull equipment. Vanilla `PiglinHeadModel` reuses

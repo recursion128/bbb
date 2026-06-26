@@ -15,9 +15,8 @@ pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_w
 ///
 /// Static mob heads share the same 8x8x8 mob-head layer and differ only by entity texture. Player
 /// heads use the humanoid head layer (base head plus hat) and are only projected for profileless
-/// stacks until bbb owns profile skin resolution. Piglin heads use their specialized head/ears skull
-/// model. Dragon heads use a specialized jaw model, so those stay out of this enum until that branch
-/// is owned.
+/// stacks until bbb owns profile skin resolution. Dragon and piglin heads use their specialized
+/// animated skull models.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityCustomHeadSkull {
     Skeleton,
@@ -25,6 +24,7 @@ pub enum EntityCustomHeadSkull {
     Player,
     Zombie,
     Creeper,
+    Dragon,
     Piglin,
 }
 
