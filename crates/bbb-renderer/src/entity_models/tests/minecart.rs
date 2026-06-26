@@ -44,6 +44,7 @@ fn minecart_layer_passes_match_vanilla_renderer() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].model_layer, MODEL_LAYER_MINECART);
     assert_eq!(passes[0].texture, MINECART_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
@@ -77,10 +78,19 @@ fn minecart_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     let (atlas, _) = build_entity_model_texture_atlas(&minecart_texture_images()).unwrap();
-    let textured = entity_model_textured_mesh(
-        &[EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, MINECART_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    let textured = &meshes.cutout;
     assert_eq!(textured.cutout_faces, 30);
     assert_eq!(textured.vertices.len(), 120);
     assert_eq!(textured.indices.len(), 180);
@@ -91,7 +101,7 @@ fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     // The textured cart shares the colored cart's geometry exactly (same parts and transform).
     let colored = entity_model_mesh(&[EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)]);
     let (cmin, cmax) = mesh_extents(&colored);
-    let (tmin, tmax) = textured_mesh_extents(&textured);
+    let (tmin, tmax) = textured_mesh_extents(textured);
     assert_close3(tmin, cmin);
     assert_close3(tmax, cmax);
 }
