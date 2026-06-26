@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
-    DonkeyModelFamily, EndCrystalBeamRenderState, EntityArmorMaterial, EntityCustomHeadSkull,
-    EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerTexture,
+    DonkeyModelFamily, EndCrystalBeamRenderState, EnderDragonBeamRenderState, EntityArmorMaterial,
+    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerTexture,
     EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture, EntityModelInstance,
     EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant, GuardianBeamRenderState,
     HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness,
@@ -22,7 +22,8 @@ use bbb_renderer::{
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EndCrystalBeamSource as WorldEndCrystalBeamSource,
-    EntityModelSourceState, EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
+    EnderDragonBeamSource as WorldEnderDragonBeamSource, EntityModelSourceState,
+    EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState, WorldStore,
 };
 
@@ -1360,6 +1361,7 @@ fn entity_model_instance(
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_end_crystal_beam(end_crystal_beam(source.end_crystal_beam))
+        .with_ender_dragon_beam(ender_dragon_beam(source.ender_dragon_beam))
         .with_is_crouching(source.is_crouching)
         .with_elytra_rot_x(source.elytra_rot_x)
         .with_elytra_rot_y(source.elytra_rot_y)
@@ -3510,6 +3512,15 @@ fn guardian_beam(beam: Option<WorldGuardianBeamSource>) -> Option<GuardianBeamRe
 /// Maps a projected end-crystal healing beam onto the renderer's `EndCrystalBeamRenderState`.
 fn end_crystal_beam(beam: Option<WorldEndCrystalBeamSource>) -> Option<EndCrystalBeamRenderState> {
     beam.map(|beam| EndCrystalBeamRenderState {
+        beam_offset: beam.beam_offset,
+    })
+}
+
+/// Maps a projected ender-dragon healing beam onto the renderer's `EnderDragonBeamRenderState`.
+fn ender_dragon_beam(
+    beam: Option<WorldEnderDragonBeamSource>,
+) -> Option<EnderDragonBeamRenderState> {
+    beam.map(|beam| EnderDragonBeamRenderState {
         beam_offset: beam.beam_offset,
     })
 }
@@ -6289,6 +6300,49 @@ mod tests {
             )],
         }));
         assert!(beam(&world, 163).is_none());
+    }
+
+    #[test]
+    fn entity_model_instance_projects_ender_dragon_healing_beam_from_source() {
+        // Vanilla `EnderDragonRenderer.extractRenderState` stores nullable `beamOffset`; native must
+        // preserve the world-projected offset so the renderer can submit `endCrystalBeam` after
+        // body+eyes.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 164,
+            "entity_type_id": VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+            "y_rot": 0.0,
+            "ender_dragon_beam": { "beam_offset": [6.0, -0.1, 8.0] },
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            0.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(instance.kind, EntityModelKind::EnderDragon);
+        assert_eq!(
+            instance
+                .render_state
+                .ender_dragon_beam
+                .expect("dragon beam source maps to render state")
+                .beam_offset,
+            [6.0, -0.1, 8.0]
+        );
     }
 
     #[test]

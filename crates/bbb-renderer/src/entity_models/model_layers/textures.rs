@@ -3274,8 +3274,11 @@ pub(in crate::entity_models) const ENDER_DRAGON_EYES_TEXTURE_REF: EntityModelTex
         size: [256, 256],
     };
 
-pub(in crate::entity_models) const ENDER_DRAGON_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [ENDER_DRAGON_TEXTURE_REF, ENDER_DRAGON_EYES_TEXTURE_REF];
+pub(in crate::entity_models) const ENDER_DRAGON_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    ENDER_DRAGON_TEXTURE_REF,
+    ENDER_DRAGON_EYES_TEXTURE_REF,
+    END_CRYSTAL_BEAM_TEXTURE_REF,
+];
 
 pub fn ender_dragon_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &ENDER_DRAGON_ENTITY_TEXTURE_REFS

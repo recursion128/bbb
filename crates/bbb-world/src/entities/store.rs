@@ -61,6 +61,53 @@ const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 /// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.
 const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 
+fn end_crystal_renderer_y(time_in_ticks: f32) -> f32 {
+    let hh = (time_in_ticks * 0.2).sin() / 2.0 + 0.5;
+    (hh * hh + hh) * 0.4 - 1.4
+}
+
+fn end_crystal_intersects_ender_dragon_search_box(
+    dragon_position: super::EntityVec3,
+    crystal_position: super::EntityVec3,
+) -> bool {
+    // Vanilla 26.1 `EntityType.ENDER_DRAGON.sized(16, 8)` and
+    // `EntityType.END_CRYSTAL.sized(2, 2)`, with `EnderDragon.checkCrystals` searching
+    // `getBoundingBox().inflate(32)`.
+    const DRAGON_HALF_WIDTH: f64 = 8.0;
+    const DRAGON_HEIGHT: f64 = 8.0;
+    const CRYSTAL_HALF_WIDTH: f64 = 1.0;
+    const CRYSTAL_HEIGHT: f64 = 2.0;
+    const SEARCH_INFLATE: f64 = 32.0;
+
+    let dragon_min = [
+        dragon_position.x - DRAGON_HALF_WIDTH - SEARCH_INFLATE,
+        dragon_position.y - SEARCH_INFLATE,
+        dragon_position.z - DRAGON_HALF_WIDTH - SEARCH_INFLATE,
+    ];
+    let dragon_max = [
+        dragon_position.x + DRAGON_HALF_WIDTH + SEARCH_INFLATE,
+        dragon_position.y + DRAGON_HEIGHT + SEARCH_INFLATE,
+        dragon_position.z + DRAGON_HALF_WIDTH + SEARCH_INFLATE,
+    ];
+    let crystal_min = [
+        crystal_position.x - CRYSTAL_HALF_WIDTH,
+        crystal_position.y,
+        crystal_position.z - CRYSTAL_HALF_WIDTH,
+    ];
+    let crystal_max = [
+        crystal_position.x + CRYSTAL_HALF_WIDTH,
+        crystal_position.y + CRYSTAL_HEIGHT,
+        crystal_position.z + CRYSTAL_HALF_WIDTH,
+    ];
+
+    crystal_max[0] >= dragon_min[0]
+        && crystal_min[0] <= dragon_max[0]
+        && crystal_max[1] >= dragon_min[1]
+        && crystal_min[1] <= dragon_max[1]
+        && crystal_max[2] >= dragon_min[2]
+        && crystal_min[2] <= dragon_max[2]
+}
+
 fn vanilla_equine_saddle_type(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
@@ -1238,6 +1285,11 @@ impl EntityStore {
                 &metadata.data_values,
                 position,
             ),
+            ender_dragon_beam: self.ender_dragon_beam_source(
+                identity.entity_type_id,
+                position,
+                partial_ticks,
+            ),
             llama_body_decor,
             nautilus_body_armor,
             data_values: metadata.data_values.clone(),
@@ -1322,6 +1374,51 @@ impl EntityStore {
                 (f64::from(target.z) + 0.5 - position.z) as f32,
             ],
         })
+    }
+
+    /// Vanilla `EnderDragon.checkCrystals` tracks the nearest end crystal from
+    /// `getBoundingBox().inflate(32)`, and `EnderDragonRenderer.extractRenderState` projects that
+    /// crystal's bobbed render position relative to the dragon position as `beamOffset`. The exact
+    /// random 10-tick refresh cadence is not replayed client-side here; the rendered state is projected
+    /// from the nearest currently tracked crystal intersecting the vanilla search box.
+    fn ender_dragon_beam_source(
+        &self,
+        entity_type_id: i32,
+        position: super::EntityVec3,
+        partial_ticks: f32,
+    ) -> Option<super::EnderDragonBeamSource> {
+        if entity_type_id != VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+            return None;
+        }
+
+        let mut nearest: Option<(f64, [f32; 3])> = None;
+        let mut query = self
+            .ecs
+            .query::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>();
+        for (_, (identity, transform, client_animations)) in query.iter() {
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_END_CRYSTAL_ID {
+                continue;
+            }
+            if !end_crystal_intersects_ender_dragon_search_box(position, transform.position) {
+                continue;
+            }
+            let dx = transform.position.x - position.x;
+            let dy = transform.position.y - position.y;
+            let dz = transform.position.z - position.z;
+            let distance_sqr = dx * dx + dy * dy + dz * dz;
+            if nearest.is_some_and(|(nearest_distance_sqr, _)| distance_sqr >= nearest_distance_sqr)
+            {
+                continue;
+            }
+            let crystal_age = client_animations.animations.age_ticks as f32 + partial_ticks;
+            let crystal_y = transform.position.y + f64::from(end_crystal_renderer_y(crystal_age));
+            nearest = Some((
+                distance_sqr,
+                [dx as f32, (crystal_y - position.y) as f32, dz as f32],
+            ));
+        }
+
+        nearest.map(|(_, beam_offset)| super::EnderDragonBeamSource { beam_offset })
     }
 
     pub(crate) fn camera_pose_state(&self, id: i32) -> Option<EntityCameraPoseState> {

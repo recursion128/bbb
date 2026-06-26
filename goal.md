@@ -120,7 +120,10 @@ order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；`EndCrys
 custom beam 也已按 vanilla 投影 target center offset，记录
 `RenderTypes.endCrystalBeam(end_crystal_beam.png)` submission（order 0 / sequence 1），
 再把八面 prism 几何折进 scroll mesh，测试覆盖 texture、render type、tint、transform、order
-以及 tiled UV。EnderDragonRenderer 自身的 nearest-crystal healing beam 仍是独立 deferred 项。
+以及 tiled UV。EnderDragonRenderer 自身的 nearest-crystal healing beam 也已接入：
+world 投影最近 EndCrystal 的 bobbed `beamOffset`，native 转抄到 render state，renderer 在
+body/eyes 后记录 `end_crystal_beam` submission（order 0 / sequence 2）并复用同一八面 prism
+helper；测试同样覆盖 texture、render type、tint、transform、order 和 tiled UV。
 Wolf 湿身 shade tint 已完成：world 侧按 `Wolf.getWetShade(partialTick)` 维护
 `isWet/shakeAnimO/shakeAnim` 计时，native 转抄到 render state，renderer 只把
 `wetShade` 乘到基础 wolf submit，collar 保持自己的染色 tint/order。

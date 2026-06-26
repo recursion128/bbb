@@ -484,6 +484,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_guardian_beam(&mut meshes, *instance, atlas);
         // The end-crystal healing beam is custom world-space geometry submitted after the model body.
         emit_end_crystal_beam(&mut meshes, *instance, atlas);
+        // The ender-dragon healing beam reuses the same vanilla custom-geometry submit after body+eyes.
+        emit_ender_dragon_beam(&mut meshes, *instance, atlas);
         emit_player_cape_layer(&mut meshes, *instance, dynamic_player_texture_atlas);
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
@@ -1334,8 +1336,6 @@ fn emit_end_crystal_beam(
         -beam_offset.z,
     );
     let horizontal_length = (delta.x * delta.x + delta.z * delta.z).sqrt();
-    let length = delta.length();
-
     let transform = Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(beam_offset)
         * Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0))
@@ -1349,6 +1349,55 @@ fn emit_end_crystal_beam(
         0,
         1,
     );
+    emit_crystal_beam_submission(meshes, submit, atlas, delta.length(), age);
+}
+
+/// Vanilla `EnderDragonRenderer.submit`: after body and eyes submits, a dragon with
+/// `EnderDragonRenderState.beamOffset` calls the same `submitCrystalBeams` helper from the dragon's
+/// entity-origin pose. Unlike an end crystal, the dragon does not pre-translate by the offset and does
+/// not invert the delta; its `beamOffset` already points from the dragon to the bobbed crystal.
+fn emit_ender_dragon_beam(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::EnderDragon) {
+        return;
+    }
+    let Some(beam) = instance.render_state.ender_dragon_beam else {
+        return;
+    };
+
+    let delta = Vec3::from_array(beam.beam_offset);
+    let horizontal_length = (delta.x * delta.x + delta.z * delta.z).sqrt();
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0))
+        * Mat4::from_rotation_y(-delta.z.atan2(delta.x) - std::f32::consts::FRAC_PI_2)
+        * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::EndCrystalBeam,
+        END_CRYSTAL_BEAM_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        transform,
+        0,
+        2,
+    );
+    emit_crystal_beam_submission(
+        meshes,
+        submit,
+        atlas,
+        delta.length(),
+        instance.render_state.age_in_ticks,
+    );
+}
+
+fn emit_crystal_beam_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    atlas: &EntityModelTextureAtlasLayout,
+    length: f32,
+    age: f32,
+) {
     meshes.record_submission(submit);
     let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
         return;

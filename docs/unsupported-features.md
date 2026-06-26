@@ -1026,7 +1026,10 @@ When an agent does any of the following, update this file in the same slice:
       bob/spin geometry is folded through the standard submission helper, and
       crystals with a beam target now record vanilla `end_crystal_beam`
       submissions before their tiled prism geometry is folded into the scroll
-      bucket.
+      bucket. Ender dragon nearest-crystal healing beams now project the
+      bobbed crystal `beamOffset`, record the same vanilla `end_crystal_beam`
+      submission after body+eyes, and then fold the shared eight-quad prism
+      into the scroll bucket.
       Uniform layer passes, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
@@ -3053,8 +3056,11 @@ When an agent does any of the following, update this file in the same slice:
       identity at rest and the yaw projected through `body_rot`). The base texture is now bound on the
       textured path (`ENDER_DRAGON_TEXTURE_REF`), the primary now-wired path, together with the always-on
       emissive `dragon_eyes.png` eyes overlay (`ENDER_DRAGON_EYES_TEXTURE_REF`, an eyes-render-type pass
-      re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`); the dying-dissolve render
-      type and the crystal-healing beam stay deferred. The colored debug path stays as a fallback (it renders
+      re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`). The nearest-crystal
+      healing beam is now source-projected from the closest tracked end crystal intersecting the vanilla
+      inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and records
+      `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes before folding the shared prism
+      geometry into the scroll mesh. The dying-dissolve render type stays deferred. The colored debug path stays as a fallback (it renders
       the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which emits no geometry — exact parity with vanilla, whose `EntityRenderers` registers all three to

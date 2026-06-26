@@ -4182,6 +4182,106 @@ fn entity_model_sources_project_end_crystal_beam_target() {
 }
 
 #[test]
+fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
+    // Vanilla `EnderDragon.checkCrystals` tracks the nearest end crystal intersecting
+    // `getBoundingBox().inflate(32)`. `EnderDragonRenderer.extractRenderState` then writes
+    // `beamOffset = crystal.getPosition(partialTicks) + getY(crystal.time + partialTicks)
+    // - dragon.getPosition(partialTicks)`.
+    const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
+    const VANILLA_ENTITY_TYPE_END_CRYSTAL_ID: i32 = 45;
+    const VANILLA_ENTITY_TYPE_BAT_ID: i32 = 10;
+
+    let add_at = |id: i32, type_id: i32, position: [f64; 3]| ProtocolAddEntity {
+        id,
+        uuid: default_entity_uuid(),
+        entity_type_id: type_id,
+        position: ProtocolVec3d {
+            x: position[0],
+            y: position[1],
+            z: position[2],
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    };
+    let dragon_beam = |store: &WorldStore, id: i32, partial_ticks: f32| {
+        let position = store.entities.transform(id).unwrap().position;
+        store
+            .entities
+            .model_source(
+                id,
+                position,
+                partial_ticks,
+                &store.registries,
+                &store.default_item_armor_materials,
+                &store.default_item_equipment_slots,
+                &store.default_llama_body_decor_colors,
+                &store.default_nautilus_body_armor_materials,
+                &store.default_horse_body_armor_materials,
+            )
+            .unwrap()
+            .ender_dragon_beam
+    };
+    let vanilla_crystal_y = |age: f32| {
+        let hh = (age * 0.2).sin() / 2.0 + 0.5;
+        (hh * hh + hh) * 0.4 - 1.4
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_at(
+        190,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+        [0.0, 64.0, 0.0],
+    ));
+    assert!(dragon_beam(&store, 190, 0.25).is_none());
+
+    // A crystal outside the vanilla inflated search box is ignored.
+    store.apply_add_entity(add_at(
+        191,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        [42.0, 65.0, 0.0],
+    ));
+    assert!(dragon_beam(&store, 190, 0.25).is_none());
+
+    // Add two in-range crystals; the nearer one supplies the beam offset.
+    store.apply_add_entity(add_at(
+        192,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        [10.0, 66.0, 0.0],
+    ));
+    store.apply_add_entity(add_at(
+        193,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        [6.0, 65.0, 0.0],
+    ));
+    store.apply_add_entity(add_at(194, VANILLA_ENTITY_TYPE_BAT_ID, [3.0, 65.0, 0.0]));
+    store.advance_entity_client_animations(10);
+
+    let beam = dragon_beam(&store, 190, 0.25).expect("dragon has an in-range healing crystal");
+    let expected_y = 1.0 + vanilla_crystal_y(10.25);
+    assert!(
+        (beam.beam_offset[0] - 6.0).abs() < 1.0e-5,
+        "{:?}",
+        beam.beam_offset
+    );
+    assert!(
+        (beam.beam_offset[1] - expected_y).abs() < 1.0e-5,
+        "{:?} vs {expected_y}",
+        beam.beam_offset
+    );
+    assert!(beam.beam_offset[2].abs() < 1.0e-5);
+
+    // Non-dragons do not project the dragon-owned healing beam even when crystals are tracked.
+    assert!(dragon_beam(&store, 194, 0.25).is_none());
+}
+
+#[test]
 fn frog_swim_idle_activates_only_in_water_and_idle() {
     // Vanilla `Frog.tick` (client): `swimIdleAnimationState.animateWhen(isInWater() &&
     // !walkAnimation.isMoving(), tickCount)`. The projected `frog_swim_idle_seconds` is `>= 0` while

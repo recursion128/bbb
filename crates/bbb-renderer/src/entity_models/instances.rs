@@ -857,6 +857,10 @@ entity_render_state! {
     /// when `EndCrystal.DATA_BEAM_TARGET` is present. `None` for crystals without a beam target and
     /// every non-crystal entity.
     (with_end_crystal_beam) end_crystal_beam: Option<EndCrystalBeamRenderState> = None;
+    /// Vanilla `EnderDragonRenderState.beamOffset`: nearest end-crystal position (including its
+    /// `EndCrystalRenderer.getY` bob) relative to the dragon position. `None` for dragons without a
+    /// tracked healing crystal and every non-dragon entity.
+    (with_ender_dragon_beam) ender_dragon_beam: Option<EnderDragonBeamRenderState> = None;
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
@@ -2275,6 +2279,7 @@ mod tests {
                 turtle_laying_egg: false,
                 end_crystal_shows_bottom: true,
                 end_crystal_beam: None,
+                ender_dragon_beam: None,
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,

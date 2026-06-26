@@ -1,6 +1,11 @@
 use super::*;
 use crate::entity_models::model::EntityModel;
 
+fn blank_texture(texture: EntityModelTextureRef) -> EntityModelTextureImage {
+    let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+    EntityModelTextureImage::new(texture, vec![0u8; len])
+}
+
 #[test]
 fn ender_dragon_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `EnderDragonModel.createBodyLayer` (atlas 256×256): head (+jaw), five neck and twelve
@@ -92,8 +97,10 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
         EntityModelLayerRenderType::EntityCutout
     );
     assert_eq!(passes[0].texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(passes[1].texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (0, 1));
     assert_eq!(
         EntityModelKind::EnderDragon.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
@@ -103,9 +110,14 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
     );
     assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_EYES_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&END_CRYSTAL_BEAM_TEXTURE_REF));
     assert_eq!(
         ender_dragon_entity_texture_refs(),
-        &[ENDER_DRAGON_TEXTURE_REF, ENDER_DRAGON_EYES_TEXTURE_REF]
+        &[
+            ENDER_DRAGON_TEXTURE_REF,
+            ENDER_DRAGON_EYES_TEXTURE_REF,
+            END_CRYSTAL_BEAM_TEXTURE_REF
+        ]
     );
 
     let images: Vec<EntityModelTextureImage> = ender_dragon_entity_texture_refs()
@@ -130,4 +142,112 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}
+
+#[test]
+fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
+    // Vanilla `EnderDragonRenderer.submit`: submit body, submit emissive eyes, pop the model pose,
+    // then call `submitCrystalBeams` with `EnderDragonRenderState.beamOffset`. The beam uses
+    // `RenderTypes.endCrystalBeam(end_crystal_beam.png)`, white submit tint, and tiled black/white
+    // prism vertices.
+    let images = vec![
+        blank_texture(ENDER_DRAGON_TEXTURE_REF),
+        blank_texture(ENDER_DRAGON_EYES_TEXTURE_REF),
+        blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF),
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let age = 40.0;
+    let position = [2.0, 70.0, -5.0];
+    let beam_offset = [6.0, -0.1, 8.0];
+    let instance = EntityModelInstance::ender_dragon(430, position, 0.0)
+        .with_age_in_ticks(age)
+        .with_ender_dragon_beam(Some(EnderDragonBeamRenderState { beam_offset }));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 3);
+    assert_eq!(
+        (
+            meshes.submissions[0].render_type,
+            meshes.submissions[0].texture,
+            meshes.submissions[0].tint,
+            meshes.submissions[0].order,
+            meshes.submissions[0].submit_sequence,
+        ),
+        (
+            EntityModelLayerRenderType::EntityCutout,
+            ENDER_DRAGON_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            0,
+            0,
+        )
+    );
+    assert_eq!(
+        (
+            meshes.submissions[1].render_type,
+            meshes.submissions[1].texture,
+            meshes.submissions[1].tint,
+            meshes.submissions[1].order,
+            meshes.submissions[1].submit_sequence,
+        ),
+        (
+            EntityModelLayerRenderType::Eyes,
+            ENDER_DRAGON_EYES_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            0,
+            1,
+        )
+    );
+
+    let beam_submit = meshes.submissions[2];
+    assert_eq!(
+        beam_submit.render_type,
+        EntityModelLayerRenderType::EndCrystalBeam
+    );
+    assert_eq!(beam_submit.render_type.vanilla_name(), "end_crystal_beam");
+    assert_eq!(beam_submit.texture, END_CRYSTAL_BEAM_TEXTURE_REF);
+    assert_eq!(beam_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 2));
+
+    let delta = Vec3::from_array(beam_offset);
+    let origin = Vec3::from_array(position) + Vec3::Y * 2.0;
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_point3(Vec3::ZERO)
+            .to_array(),
+        origin.to_array(),
+    );
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_vector3(Vec3::Z)
+            .normalize()
+            .to_array(),
+        delta.normalize().to_array(),
+    );
+
+    assert_eq!(meshes.scroll.vertices.len(), 32);
+    assert_eq!(meshes.scroll.indices.len(), 48);
+    let rect = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == END_CRYSTAL_BEAM_TEXTURE_REF)
+        .unwrap()
+        .uv;
+    assert_eq!(meshes.scroll.vertices[0].uv_rect_min, rect.min);
+    assert_eq!(
+        meshes.scroll.vertices[0].uv_rect_size,
+        [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]]
+    );
+    assert_eq!(meshes.scroll.vertices[0].tint, [0.0, 0.0, 0.0, 1.0]);
+    assert_eq!(meshes.scroll.vertices[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(meshes.scroll.vertices[0].local_uv[0], 0.0);
+    assert_eq!(meshes.scroll.vertices[3].local_uv[0], 0.125);
+    assert!(
+        (meshes.scroll.vertices[1].local_uv[1]
+            - meshes.scroll.vertices[0].local_uv[1]
+            - delta.length() / 32.0)
+            .abs()
+            < 1.0e-6
+    );
 }

@@ -1019,6 +1019,14 @@ pub struct EndCrystalBeamRenderState {
     pub beam_offset: [f32; 3],
 }
 
+/// Vanilla `EnderDragonRenderState.beamOffset`: nearest end-crystal position (including the crystal
+/// bob from `EndCrystalRenderer.getY`) relative to the dragon position. The dragon renderer submits the
+/// same `endCrystalBeam` custom geometry after the body and eyes passes when this is present.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EnderDragonBeamRenderState {
+    pub beam_offset: [f32; 3],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlamaModelFamily {
     Llama,

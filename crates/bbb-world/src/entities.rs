@@ -1034,6 +1034,11 @@ pub struct EntityModelSourceState {
     /// interpolated position; `None` for a crystal without a target and every non-crystal.
     #[serde(default)]
     pub end_crystal_beam: Option<EndCrystalBeamSource>,
+    /// Vanilla `EnderDragonRenderState.beamOffset`: present when an ender dragon has a nearest
+    /// healing end crystal. This is the bobbed crystal position minus the dragon position; `None`
+    /// for dragons without a tracked nearby crystal and every non-dragon.
+    #[serde(default)]
+    pub ender_dragon_beam: Option<EnderDragonBeamSource>,
     /// Vanilla `LlamaRenderState.bodyItem`: the carpet color from an adult llama/trader-llama body
     /// equipment item. Baby llamas ignore body items for the decor layer; trader llamas still get their
     /// built-in trader decor in the renderer when this is `None`.
@@ -1065,6 +1070,14 @@ pub struct GuardianBeamSource {
 /// with `EndCrystalRenderer.getY(ageInTicks)` when submitting the dragon-healing beam.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EndCrystalBeamSource {
+    pub beam_offset: [f32; 3],
+}
+
+/// Vanilla `EnderDragonRenderer.extractRenderState` beam projection. `beam_offset` is
+/// `nearestCrystal.getPosition(partialTicks) + EndCrystalRenderer.getY(nearestCrystal.time +
+/// partialTicks) - entity.getPosition(partialTicks)`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EnderDragonBeamSource {
     pub beam_offset: [f32; 3],
 }
 
