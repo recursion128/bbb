@@ -1241,6 +1241,16 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_default_llama_body_decor_colors(
+        &mut self,
+        decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
+    ) {
+        self.default_llama_body_decor_colors = decor_colors
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
     pub fn build_container_click_slot(
         &self,
         request: ContainerClickSlotRequest,

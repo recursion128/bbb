@@ -118,6 +118,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) default_mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     #[serde(default)]
+    pub(crate) default_llama_body_decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
+    #[serde(default)]
     pub(crate) default_item_attack_ranges: BTreeMap<i32, ItemAttackRange>,
     #[serde(default)]
     pub(crate) default_item_use_effects: BTreeMap<i32, ItemUseEffects>,

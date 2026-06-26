@@ -1421,7 +1421,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 475] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 493] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1833,6 +1833,24 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     LLAMA_BROWN_BABY_TEXTURE_REF,
     LLAMA_GRAY_TEXTURE_REF,
     LLAMA_GRAY_BABY_TEXTURE_REF,
+    LLAMA_BODY_WHITE_TEXTURE_REF,
+    LLAMA_BODY_ORANGE_TEXTURE_REF,
+    LLAMA_BODY_MAGENTA_TEXTURE_REF,
+    LLAMA_BODY_LIGHT_BLUE_TEXTURE_REF,
+    LLAMA_BODY_YELLOW_TEXTURE_REF,
+    LLAMA_BODY_LIME_TEXTURE_REF,
+    LLAMA_BODY_PINK_TEXTURE_REF,
+    LLAMA_BODY_GRAY_TEXTURE_REF,
+    LLAMA_BODY_LIGHT_GRAY_TEXTURE_REF,
+    LLAMA_BODY_CYAN_TEXTURE_REF,
+    LLAMA_BODY_PURPLE_TEXTURE_REF,
+    LLAMA_BODY_BLUE_TEXTURE_REF,
+    LLAMA_BODY_BROWN_TEXTURE_REF,
+    LLAMA_BODY_GREEN_TEXTURE_REF,
+    LLAMA_BODY_RED_TEXTURE_REF,
+    LLAMA_BODY_BLACK_TEXTURE_REF,
+    LLAMA_BODY_TRADER_TEXTURE_REF,
+    LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
     CAMEL_TEXTURE_REF,
     CAMEL_BABY_TEXTURE_REF,
     CAMEL_HUSK_TEXTURE_REF,
@@ -2296,6 +2314,120 @@ pub(in crate::entity_models) const LLAMA_GRAY_BABY_TEXTURE_REF: EntityModelTextu
         path: "textures/entity/llama/llama_gray_baby.png",
         size: [64, 64],
     };
+
+pub(in crate::entity_models) const LLAMA_BODY_WHITE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/white.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_ORANGE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/orange.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_MAGENTA_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/magenta.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_LIGHT_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/light_blue.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_YELLOW_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/yellow.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_LIME_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/lime.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_PINK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/pink.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/gray.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_LIGHT_GRAY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/light_gray.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_CYAN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/cyan.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_PURPLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/purple.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_BLUE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/blue.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_BROWN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/brown.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_GREEN_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/green.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_RED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/red.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_BLACK_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/black.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_TRADER_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/trader_llama.png",
+        size: [128, 64],
+    };
+pub(in crate::entity_models) const LLAMA_BODY_TRADER_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/llama_body/trader_llama_baby.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) fn llama_body_decor_texture_ref(
+    color: EntityDyeColor,
+) -> EntityModelTextureRef {
+    match color {
+        EntityDyeColor::White => LLAMA_BODY_WHITE_TEXTURE_REF,
+        EntityDyeColor::Orange => LLAMA_BODY_ORANGE_TEXTURE_REF,
+        EntityDyeColor::Magenta => LLAMA_BODY_MAGENTA_TEXTURE_REF,
+        EntityDyeColor::LightBlue => LLAMA_BODY_LIGHT_BLUE_TEXTURE_REF,
+        EntityDyeColor::Yellow => LLAMA_BODY_YELLOW_TEXTURE_REF,
+        EntityDyeColor::Lime => LLAMA_BODY_LIME_TEXTURE_REF,
+        EntityDyeColor::Pink => LLAMA_BODY_PINK_TEXTURE_REF,
+        EntityDyeColor::Gray => LLAMA_BODY_GRAY_TEXTURE_REF,
+        EntityDyeColor::LightGray => LLAMA_BODY_LIGHT_GRAY_TEXTURE_REF,
+        EntityDyeColor::Cyan => LLAMA_BODY_CYAN_TEXTURE_REF,
+        EntityDyeColor::Purple => LLAMA_BODY_PURPLE_TEXTURE_REF,
+        EntityDyeColor::Blue => LLAMA_BODY_BLUE_TEXTURE_REF,
+        EntityDyeColor::Brown => LLAMA_BODY_BROWN_TEXTURE_REF,
+        EntityDyeColor::Green => LLAMA_BODY_GREEN_TEXTURE_REF,
+        EntityDyeColor::Red => LLAMA_BODY_RED_TEXTURE_REF,
+        EntityDyeColor::Black => LLAMA_BODY_BLACK_TEXTURE_REF,
+    }
+}
 
 pub(in crate::entity_models) const GOAT_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {

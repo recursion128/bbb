@@ -15,7 +15,8 @@ use bbb_renderer::{
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
-    GuardianBeamSource as WorldGuardianBeamSource, RegistryContentState, WorldStore,
+    GuardianBeamSource as WorldGuardianBeamSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
+    RegistryContentState, WorldStore,
 };
 
 use crate::item_runtime::NativeItemRuntime;
@@ -1241,6 +1242,7 @@ fn entity_model_instance(
         .with_camel_saddle(source.camel_saddle)
         .with_camel_saddle_ridden(source.camel_saddle_ridden)
         .with_nautilus_saddle(source.nautilus_saddle)
+        .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -3192,6 +3194,29 @@ fn armor_dye(dye: Option<i32>) -> Option<u32> {
     dye.map(|dye| dye as u32)
 }
 
+/// Maps the world-owned vanilla `DyeColor` from `Equippable.llamaSwag(color)` onto the renderer's
+/// shared dye enum for `LlamaDecorLayer` `LLAMA_BODY` equipment textures.
+fn llama_body_decor_color(color: Option<WorldLlamaBodyDecorColor>) -> Option<EntityDyeColor> {
+    color.map(|color| match color {
+        WorldLlamaBodyDecorColor::White => EntityDyeColor::White,
+        WorldLlamaBodyDecorColor::Orange => EntityDyeColor::Orange,
+        WorldLlamaBodyDecorColor::Magenta => EntityDyeColor::Magenta,
+        WorldLlamaBodyDecorColor::LightBlue => EntityDyeColor::LightBlue,
+        WorldLlamaBodyDecorColor::Yellow => EntityDyeColor::Yellow,
+        WorldLlamaBodyDecorColor::Lime => EntityDyeColor::Lime,
+        WorldLlamaBodyDecorColor::Pink => EntityDyeColor::Pink,
+        WorldLlamaBodyDecorColor::Gray => EntityDyeColor::Gray,
+        WorldLlamaBodyDecorColor::LightGray => EntityDyeColor::LightGray,
+        WorldLlamaBodyDecorColor::Cyan => EntityDyeColor::Cyan,
+        WorldLlamaBodyDecorColor::Purple => EntityDyeColor::Purple,
+        WorldLlamaBodyDecorColor::Blue => EntityDyeColor::Blue,
+        WorldLlamaBodyDecorColor::Brown => EntityDyeColor::Brown,
+        WorldLlamaBodyDecorColor::Green => EntityDyeColor::Green,
+        WorldLlamaBodyDecorColor::Red => EntityDyeColor::Red,
+        WorldLlamaBodyDecorColor::Black => EntityDyeColor::Black,
+    })
+}
+
 /// Maps a projected guardian attack beam onto the renderer's `GuardianBeamRenderState` (1:1; the two
 /// structs mirror vanilla `GuardianRenderState`'s beam fields).
 fn guardian_beam(beam: Option<WorldGuardianBeamSource>) -> Option<GuardianBeamRenderState> {
@@ -3322,7 +3347,10 @@ mod tests {
         ItemStackSummary, PlayLogin, PlayTime, RegistryTags, SetCamera, SetEntityData,
         SetEquipment, SetPassengers, TagNetworkPayload, UpdateAttributes, UpdateTags, Vec3d,
     };
-    use bbb_world::{EntityPickBoundsState, EntityVec3, ItemEquipmentSlot, RegistryPacketEntry};
+    use bbb_world::{
+        EntityPickBoundsState, EntityVec3, ItemEquipmentSlot,
+        LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
+    };
     use uuid::Uuid;
 
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
@@ -6818,6 +6846,70 @@ mod tests {
 
         assert!(world.apply_set_equipment(saddle(119)));
         assert!(nautilus_saddle(&world, 119));
+    }
+
+    #[test]
+    fn entity_model_instances_project_llama_body_decor_render_state() {
+        const WHITE_CARPET_ITEM_ID: i32 = 745;
+        const BLACK_CARPET_ITEM_ID: i32 = 746;
+        const AGEABLE_BABY_DATA_ID: u8 = 16;
+
+        let body_item = |entity_id: i32, item_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let llama_body_decor = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .llama_body_decor
+        };
+
+        let mut world = WorldStore::new();
+        world.set_default_llama_body_decor_colors(std::collections::BTreeMap::from([
+            (WHITE_CARPET_ITEM_ID, WorldLlamaBodyDecorColor::White),
+            (BLACK_CARPET_ITEM_ID, WorldLlamaBodyDecorColor::Black),
+        ]));
+        world.apply_add_entity(protocol_add_entity(
+            120,
+            VANILLA_ENTITY_TYPE_LLAMA_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            121,
+            VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+            [2.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            122,
+            VANILLA_ENTITY_TYPE_LLAMA_ID,
+            [3.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 122,
+            values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        }));
+
+        assert!(world.apply_set_equipment(body_item(120, WHITE_CARPET_ITEM_ID)));
+        assert!(world.apply_set_equipment(body_item(121, BLACK_CARPET_ITEM_ID)));
+        assert!(world.apply_set_equipment(body_item(122, WHITE_CARPET_ITEM_ID)));
+
+        assert_eq!(llama_body_decor(&world, 120), Some(EntityDyeColor::White));
+        assert_eq!(llama_body_decor(&world, 121), Some(EntityDyeColor::Black));
+        assert_eq!(
+            llama_body_decor(&world, 122),
+            None,
+            "baby llamas ignore body items; renderer handles trader baby fallback separately"
+        );
     }
 
     #[test]

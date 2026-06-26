@@ -14,10 +14,10 @@ use super::{
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityDyeColor, EntityModelKind,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        EntityModelUvRect, HoglinModelFamily, HorseMarkings, LlamaVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
-        ZombieVariantModelFamily,
+        EntityModelUvRect, HoglinModelFamily, HorseMarkings, LlamaModelFamily, LlamaVariant,
+        PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+        VillagerModelHat, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -30,22 +30,23 @@ use super::{
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
         armor_layer_tint, armor_slot_texture, equine_head_look_pose, equine_leg_swing_pose,
-        equine_tail_swing_pose, head_look_at_rest, limb_swing_at_rest, BreezeWindModel, CamelModel,
-        CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel,
-        PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel,
-        SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
-        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        equine_tail_swing_pose, head_look_at_rest, limb_swing_at_rest,
+        llama_body_decor_texture_ref, BreezeWindModel, CamelModel, CreeperModel, DrownedOuterModel,
+        HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel,
+        PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
+        SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
+        VillagerModel, WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
         BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
         CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF,
-        SKELETON_HORSE_SADDLE_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -155,14 +156,15 @@ pub(super) fn entity_model_textured_meshes(
                     emit_wind_charge_scroll_model(&mut meshes, *instance, atlas);
                 }
                 EntityModelKind::Llama {
+                    family,
                     variant,
                     baby,
                     has_chest,
-                    ..
                 } => {
                     emit_llama_textured_model(
                         &mut meshes,
                         *instance,
+                        family,
                         variant,
                         baby,
                         has_chest,
@@ -1120,14 +1122,14 @@ fn emit_squid_textured_model(
     );
 }
 
-/// The textured llama base layer. The trader llama shares this geometry/texture; its distinguishing
-/// `LlamaDecorLayer` overlay is a deferred equipment layer, so `family` is not consumed here. The
-/// unified `LlamaModel` tree drives both render paths; `setup_anim` is the standard `QuadrupedModel`
-/// head look plus the diagonal leg swing. `new` selects the baby / adult / chested tree; the variant
-/// chooses the texture.
+/// The textured llama base layer plus vanilla `LlamaDecorLayer`: adult carpet body equipment uses the
+/// matching `LLAMA_BODY` equipment texture, otherwise trader llamas render their built-in adult/baby
+/// trader overlay. The unified `LlamaModel` tree drives both render paths; `setup_anim` is the standard
+/// `QuadrupedModel` head look plus the diagonal leg swing.
 fn emit_llama_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
+    family: LlamaModelFamily,
     variant: LlamaVariant,
     baby: bool,
     has_chest: bool,
@@ -1141,6 +1143,36 @@ fn emit_llama_textured_model(
         &model,
         transform,
         llama_textured_layer_passes(variant, baby, has_chest),
+        atlas,
+    );
+    emit_llama_decor_layer(meshes, instance, family, baby, has_chest, transform, atlas);
+}
+
+fn emit_llama_decor_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    family: LlamaModelFamily,
+    baby: bool,
+    has_chest: bool,
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let texture = match (baby, instance.render_state.llama_body_decor, family) {
+        (false, Some(color), _) => llama_body_decor_texture_ref(color),
+        (_, _, LlamaModelFamily::TraderLlama) if baby => LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        (_, _, LlamaModelFamily::TraderLlama) => LLAMA_BODY_TRADER_TEXTURE_REF,
+        _ => return,
+    };
+
+    let mut model = LlamaModel::new_decor(baby, has_chest);
+    model.prepare(&instance);
+    render_textured_pass(
+        meshes,
+        &model,
+        transform,
+        EntityModelLayerRenderType::Cutout,
+        texture,
+        [1.0, 1.0, 1.0, 1.0],
         atlas,
     );
 }

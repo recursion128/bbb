@@ -922,6 +922,11 @@ pub struct EntityModelSourceState {
     /// other entity.
     #[serde(default)]
     pub guardian_beam: Option<GuardianBeamSource>,
+    /// Vanilla `LlamaRenderState.bodyItem`: the carpet color from an adult llama/trader-llama body
+    /// equipment item. Baby llamas ignore body items for the decor layer; trader llamas still get their
+    /// built-in trader decor in the renderer when this is `None`.
+    #[serde(default)]
+    pub llama_body_decor: Option<LlamaBodyDecorColor>,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 
@@ -936,6 +941,28 @@ pub struct GuardianBeamSource {
     pub eye_height: f32,
     pub attack_time: f32,
     pub attack_scale: f32,
+}
+
+/// Vanilla `DyeColor` carried by `Equippable.llamaSwag(color)` carpet body items. The renderer maps
+/// this to `textures/entity/equipment/llama_body/<color>.png`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum LlamaBodyDecorColor {
+    White,
+    Orange,
+    Magenta,
+    LightBlue,
+    Yellow,
+    Lime,
+    Pink,
+    Gray,
+    LightGray,
+    Cyan,
+    Purple,
+    Blue,
+    Brown,
+    Green,
+    Red,
+    Black,
 }
 
 /// A humanoid armor equipment-asset material (vanilla `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`),
@@ -1218,6 +1245,7 @@ impl WorldStore {
                     partial_ticks,
                     &self.default_item_armor_materials,
                     &self.default_item_equipment_slots,
+                    &self.default_llama_body_decor_colors,
                 )?;
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))

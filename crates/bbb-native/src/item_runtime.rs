@@ -19,7 +19,8 @@ use bbb_renderer::{ItemSpriteRect, SpriteAlphaMask};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
-    MountArmorSlotKind as WorldMountArmorSlotKind, WorldItemMiningProfile, WorldItemMiningRule,
+    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, MountArmorSlotKind as WorldMountArmorSlotKind,
+    WorldItemMiningProfile, WorldItemMiningRule,
 };
 
 mod icon_model;
@@ -395,6 +396,31 @@ impl NativeItemRuntime {
 
     pub(crate) fn mount_body_armor_kind_count(&self) -> usize {
         self.mount_body_armor_kinds_by_protocol_id().len()
+    }
+
+    pub(crate) fn llama_body_decor_colors_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldLlamaBodyDecorColor> {
+        let mut colors = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return colors;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            if registry.mount_body_armor_kind(resource_id)
+                != Some(PackItemMountBodyArmorKind::Llama)
+            {
+                continue;
+            }
+            let Some(color) = llama_body_decor_color_from_item_id(resource_id) else {
+                continue;
+            };
+            colors.insert(protocol_id as i32, color);
+        }
+        colors
+    }
+
+    pub(crate) fn llama_body_decor_color_count(&self) -> usize {
+        self.llama_body_decor_colors_by_protocol_id().len()
     }
 
     pub(crate) fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
@@ -1013,6 +1039,32 @@ fn world_mount_armor_slot_kind(kind: PackItemMountBodyArmorKind) -> WorldMountAr
         PackItemMountBodyArmorKind::Llama => WorldMountArmorSlotKind::Llama,
         PackItemMountBodyArmorKind::Nautilus => WorldMountArmorSlotKind::Nautilus,
     }
+}
+
+fn llama_body_decor_color_from_item_id(resource_id: &str) -> Option<WorldLlamaBodyDecorColor> {
+    let path = resource_id
+        .split_once(':')
+        .map_or(resource_id, |(_, path)| path);
+    let color = path.strip_suffix("_carpet")?;
+    Some(match color {
+        "white" => WorldLlamaBodyDecorColor::White,
+        "orange" => WorldLlamaBodyDecorColor::Orange,
+        "magenta" => WorldLlamaBodyDecorColor::Magenta,
+        "light_blue" => WorldLlamaBodyDecorColor::LightBlue,
+        "yellow" => WorldLlamaBodyDecorColor::Yellow,
+        "lime" => WorldLlamaBodyDecorColor::Lime,
+        "pink" => WorldLlamaBodyDecorColor::Pink,
+        "gray" => WorldLlamaBodyDecorColor::Gray,
+        "light_gray" => WorldLlamaBodyDecorColor::LightGray,
+        "cyan" => WorldLlamaBodyDecorColor::Cyan,
+        "purple" => WorldLlamaBodyDecorColor::Purple,
+        "blue" => WorldLlamaBodyDecorColor::Blue,
+        "brown" => WorldLlamaBodyDecorColor::Brown,
+        "green" => WorldLlamaBodyDecorColor::Green,
+        "red" => WorldLlamaBodyDecorColor::Red,
+        "black" => WorldLlamaBodyDecorColor::Black,
+        _ => return None,
+    })
 }
 
 fn world_item_attack_range(range: PackItemAttackRange) -> WorldItemAttackRange {
@@ -1908,6 +1960,42 @@ mod tests {
             runtime.item_display_transform(999, BlockModelDisplayContext::ThirdPersonRightHand),
             None
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_projects_llama_body_decor_colors() {
+        let root = unique_temp_dir("item-runtime-llama-decor");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item WHITE_CARPET = registerBlock(Blocks.WHITE_CARPET, p -> p.component(DataComponents.EQUIPPABLE, Equippable.llamaSwag(DyeColor.WHITE)));
+                public static final Item BLACK_CARPET = registerBlock(Blocks.BLACK_CARPET, p -> p.component(DataComponents.EQUIPPABLE, Equippable.llamaSwag(DyeColor.BLACK)));
+                public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
+            }"#,
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+        let white = registry.protocol_id("minecraft:white_carpet").unwrap();
+        let black = registry.protocol_id("minecraft:black_carpet").unwrap();
+        let horse_armor = registry.protocol_id("minecraft:horse_armor").unwrap();
+        let colors = runtime.llama_body_decor_colors_by_protocol_id();
+
+        assert_eq!(runtime.llama_body_decor_color_count(), 2);
+        assert_eq!(colors.get(&white), Some(&WorldLlamaBodyDecorColor::White));
+        assert_eq!(colors.get(&black), Some(&WorldLlamaBodyDecorColor::Black));
+        assert_eq!(colors.get(&horse_armor), None);
 
         std::fs::remove_dir_all(root).unwrap();
     }

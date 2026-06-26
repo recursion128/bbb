@@ -13,17 +13,18 @@ use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 
 use super::{
-    is_vanilla_abstract_nautilus_type, ArmorMaterialKind, EntityAttributes, EntityCameraPoseState,
-    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
-    ItemEntityStackState, ItemFrameRenderState, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
+    is_vanilla_abstract_nautilus_type, is_vanilla_llama_type, ArmorMaterialKind, EntityAttributes,
+    EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityState, EntityTransform,
+    EntityTransformState, EntityTransientEvents, ItemEntityStackState, ItemFrameRenderState,
+    LlamaBodyDecorColor, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -523,6 +524,7 @@ impl EntityStore {
         partial_ticks: f32,
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+        llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -607,6 +609,22 @@ impl EntityStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let nautilus_saddle = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
             && saddle_slot_contains_saddle_item();
+        let llama_body_decor = if is_vanilla_llama_type(identity.entity_type_id)
+            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
+        {
+            equipment
+                .as_ref()
+                .and_then(|equipment| {
+                    equipment
+                        .equipment
+                        .iter()
+                        .find(|update| update.slot == ProtocolEquipmentSlot::Body)
+                })
+                .and_then(|update| (update.item.count > 0).then_some(update.item.item_id)?)
+                .and_then(|item_id| llama_body_decor_colors.get(&item_id).copied())
+        } else {
+            None
+        };
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -1075,6 +1093,7 @@ impl EntityStore {
                 position,
                 partial_ticks,
             ),
+            llama_body_decor,
             data_values: metadata.data_values.clone(),
         })
     }

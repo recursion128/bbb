@@ -582,6 +582,10 @@ entity_render_state! {
     /// and zombie nautilus. A non-empty saddle item renders `NautilusSaddleModel`; baby living
     /// nautilus skip it because vanilla supplies no baby saddle model.
     (with_nautilus_saddle) nautilus_saddle: bool = false;
+    /// Vanilla `LlamaRenderState.bodyItem`: an adult llama/trader-llama body equipment item whose
+    /// equipment asset is one of the 16 carpet colors. Baby llamas ignore body items for the decor
+    /// layer; trader llamas render their built-in decor when this is `None`.
+    (with_llama_body_decor) llama_body_decor: Option<EntityDyeColor> = None;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -2036,6 +2040,7 @@ mod tests {
                 camel_saddle: false,
                 camel_saddle_ridden: false,
                 nautilus_saddle: false,
+                llama_body_decor: None,
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,

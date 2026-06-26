@@ -197,6 +197,49 @@ fn llama_texture_refs_match_vanilla_renderer() {
         assert_eq!(llama.vanilla_texture_ref(), Some(texture));
         assert_eq!(trader.vanilla_texture_ref(), Some(texture));
     }
+
+    let decor_cases = [
+        (EntityDyeColor::White, LLAMA_BODY_WHITE_TEXTURE_REF),
+        (EntityDyeColor::Orange, LLAMA_BODY_ORANGE_TEXTURE_REF),
+        (EntityDyeColor::Magenta, LLAMA_BODY_MAGENTA_TEXTURE_REF),
+        (EntityDyeColor::LightBlue, LLAMA_BODY_LIGHT_BLUE_TEXTURE_REF),
+        (EntityDyeColor::Yellow, LLAMA_BODY_YELLOW_TEXTURE_REF),
+        (EntityDyeColor::Lime, LLAMA_BODY_LIME_TEXTURE_REF),
+        (EntityDyeColor::Pink, LLAMA_BODY_PINK_TEXTURE_REF),
+        (EntityDyeColor::Gray, LLAMA_BODY_GRAY_TEXTURE_REF),
+        (EntityDyeColor::LightGray, LLAMA_BODY_LIGHT_GRAY_TEXTURE_REF),
+        (EntityDyeColor::Cyan, LLAMA_BODY_CYAN_TEXTURE_REF),
+        (EntityDyeColor::Purple, LLAMA_BODY_PURPLE_TEXTURE_REF),
+        (EntityDyeColor::Blue, LLAMA_BODY_BLUE_TEXTURE_REF),
+        (EntityDyeColor::Brown, LLAMA_BODY_BROWN_TEXTURE_REF),
+        (EntityDyeColor::Green, LLAMA_BODY_GREEN_TEXTURE_REF),
+        (EntityDyeColor::Red, LLAMA_BODY_RED_TEXTURE_REF),
+        (EntityDyeColor::Black, LLAMA_BODY_BLACK_TEXTURE_REF),
+    ];
+    for (color, texture) in decor_cases {
+        assert_eq!(llama_body_decor_texture_ref(color), texture);
+        assert!(
+            entity_model_texture_refs().contains(&texture),
+            "{} is included in the global entity atlas",
+            texture.path
+        );
+    }
+    assert_eq!(
+        LLAMA_BODY_TRADER_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/equipment/llama_body/trader_llama.png",
+            size: [128, 64],
+        }
+    );
+    assert_eq!(
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/equipment/llama_body/trader_llama_baby.png",
+            size: [64, 64],
+        }
+    );
+    assert!(entity_model_texture_refs().contains(&LLAMA_BODY_TRADER_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&LLAMA_BODY_TRADER_BABY_TEXTURE_REF));
 }
 
 #[test]
@@ -304,8 +347,8 @@ fn llama_applies_head_look() {
 
 #[test]
 fn llama_textured_layer_passes_match_vanilla_renderer_model_choice() {
-    // The trader llama shares the same base mesh/texture; only its deferred decor layer
-    // differs, so the textured base layer is selected by variant + baby + chest alone.
+    // The trader llama shares the same base mesh/texture; its decor layer is emitted after
+    // the base pass, so the base layer remains selected by variant + baby + chest alone.
     let adult = llama_textured_layer_passes(LlamaVariant::Creamy, false, false);
     assert_eq!(adult.len(), 1);
     assert_eq!(adult[0].kind, EntityModelLayerKind::LlamaBase);
@@ -332,6 +375,8 @@ fn llama_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_LLAMA, "minecraft:llama#main");
     assert_eq!(MODEL_LAYER_LLAMA_BABY, "minecraft:llama_baby#main");
+    assert_eq!(MODEL_LAYER_LLAMA_DECOR, "minecraft:llama#decor");
+    assert_eq!(MODEL_LAYER_LLAMA_BABY_DECOR, "minecraft:llama_baby#decor");
 
     // Adult `LlamaModel.createBodyLayer` (atlas 128×64): head box, neck, the two ears
     // sharing `texOffs(17, 0)` unmirrored, the body, both chests, and the shared leg.
@@ -358,6 +403,106 @@ fn llama_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(BABY_LLAMA_RIGHT_FRONT_LEG[0].tex, [0.0, 34.0]);
     assert_eq!(BABY_LLAMA_LEFT_FRONT_LEG[0].tex, [12.0, 34.0]);
     assert_eq!(BABY_LLAMA_BODY[0].tex, [0.0, 15.0]);
+}
+
+#[test]
+fn llama_textured_mesh_renders_vanilla_decor_layer() {
+    let images = llama_decor_texture_images();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let adult = EntityModelInstance::llama(
+        606,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::Llama,
+        LlamaVariant::Creamy,
+        false,
+        false,
+    );
+    let bare = entity_model_textured_mesh(&[adult], &atlas);
+    let white = entity_model_textured_mesh(
+        &[adult.with_llama_body_decor(Some(EntityDyeColor::White))],
+        &atlas,
+    );
+    assert_eq!(white.vertices.len(), bare.vertices.len() * 2);
+    assert_eq!(white.indices.len(), bare.indices.len() * 2);
+    assert_vertex_inside_texture(
+        white.vertices[bare.vertices.len()].uv,
+        LLAMA_BODY_WHITE_TEXTURE_REF,
+        &atlas,
+    );
+
+    let (bare_min, bare_max) = textured_mesh_extents(&bare);
+    let (decor_min, decor_max) = textured_mesh_extents(&white);
+    assert!(decor_min[0] < bare_min[0]);
+    assert!(decor_max[0] > bare_max[0]);
+
+    let adult_trader = EntityModelInstance::llama(
+        607,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::TraderLlama,
+        LlamaVariant::Creamy,
+        false,
+        false,
+    );
+    let trader = entity_model_textured_mesh(&[adult_trader], &atlas);
+    assert_eq!(trader.vertices.len(), bare.vertices.len() * 2);
+    assert_vertex_inside_texture(
+        trader.vertices[bare.vertices.len()].uv,
+        LLAMA_BODY_TRADER_TEXTURE_REF,
+        &atlas,
+    );
+
+    let black_trader = entity_model_textured_mesh(
+        &[adult_trader.with_llama_body_decor(Some(EntityDyeColor::Black))],
+        &atlas,
+    );
+    assert_eq!(black_trader.vertices.len(), trader.vertices.len());
+    assert_vertex_inside_texture(
+        black_trader.vertices[bare.vertices.len()].uv,
+        LLAMA_BODY_BLACK_TEXTURE_REF,
+        &atlas,
+    );
+
+    let baby = EntityModelInstance::llama(
+        608,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::Llama,
+        LlamaVariant::Creamy,
+        true,
+        false,
+    );
+    let baby_bare = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_with_decor = entity_model_textured_mesh(
+        &[baby.with_llama_body_decor(Some(EntityDyeColor::White))],
+        &atlas,
+    );
+    assert_eq!(
+        baby_with_decor.vertices, baby_bare.vertices,
+        "baby llamas ignore carpet body equipment"
+    );
+
+    let baby_trader = EntityModelInstance::llama(
+        609,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::TraderLlama,
+        LlamaVariant::Creamy,
+        true,
+        false,
+    )
+    .with_llama_body_decor(Some(EntityDyeColor::Black));
+    let baby_trader_mesh = entity_model_textured_mesh(&[baby_trader], &atlas);
+    assert_eq!(
+        baby_trader_mesh.vertices.len(),
+        baby_bare.vertices.len() * 2
+    );
+    assert_vertex_inside_texture(
+        baby_trader_mesh.vertices[baby_bare.vertices.len()].uv,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        &atlas,
+    );
 }
 
 #[test]
@@ -440,4 +585,42 @@ fn llama_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn llama_decor_texture_images() -> Vec<EntityModelTextureImage> {
+    texture_images(&[
+        LLAMA_CREAMY_TEXTURE_REF,
+        LLAMA_CREAMY_BABY_TEXTURE_REF,
+        LLAMA_BODY_WHITE_TEXTURE_REF,
+        LLAMA_BODY_BLACK_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+    ])
+}
+
+fn texture_images(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![(index * 40) as u8; len])
+        })
+        .collect()
+}
+
+fn assert_vertex_inside_texture(
+    uv: [f32; 2],
+    texture: EntityModelTextureRef,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let entry = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == texture)
+        .unwrap();
+    assert!(uv[0] >= entry.uv.min[0]);
+    assert!(uv[0] <= entry.uv.max[0]);
+    assert!(uv[1] >= entry.uv.min[1]);
+    assert!(uv[1] <= entry.uv.max[1]);
 }

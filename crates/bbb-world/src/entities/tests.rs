@@ -1498,6 +1498,110 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
 }
 
 #[test]
+fn entity_model_sources_project_llama_body_decor_from_body_slot() {
+    use std::collections::BTreeMap;
+
+    const WHITE_CARPET_ITEM_ID: i32 = 838;
+    const BLACK_CARPET_ITEM_ID: i32 = 839;
+    const PLAIN_ITEM_ID: i32 = 840;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+
+    fn stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+    fn llama_decor(store: &WorldStore, entity_id: i32) -> Option<LlamaBodyDecorColor> {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .llama_body_decor
+    }
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        74,
+        VANILLA_ENTITY_TYPE_LLAMA_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        75,
+        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        76,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_LLAMA_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 77,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+
+    for (entity_id, item_id) in [
+        (74, WHITE_CARPET_ITEM_ID),
+        (75, BLACK_CARPET_ITEM_ID),
+        (76, WHITE_CARPET_ITEM_ID),
+        (77, WHITE_CARPET_ITEM_ID),
+    ] {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: stack(item_id, 1),
+            }],
+        }));
+    }
+    assert_eq!(
+        llama_decor(&store, 74),
+        None,
+        "without the item registry's llama carpet map, a raw body item id is not enough"
+    );
+
+    store.set_default_llama_body_decor_colors(BTreeMap::from([
+        (WHITE_CARPET_ITEM_ID, LlamaBodyDecorColor::White),
+        (BLACK_CARPET_ITEM_ID, LlamaBodyDecorColor::Black),
+    ]));
+    assert_eq!(llama_decor(&store, 74), Some(LlamaBodyDecorColor::White));
+    assert_eq!(llama_decor(&store, 75), Some(LlamaBodyDecorColor::Black));
+    assert_eq!(
+        llama_decor(&store, 76),
+        None,
+        "non-llamas do not project the llama body decor flag"
+    );
+    assert_eq!(
+        llama_decor(&store, 77),
+        None,
+        "baby llamas ignore body items for the decor layer"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 74,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(PLAIN_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(llama_decor(&store, 74), None);
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 75,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(BLACK_CARPET_ITEM_ID, 0),
+        }],
+    }));
+    assert_eq!(llama_decor(&store, 75), None);
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid
