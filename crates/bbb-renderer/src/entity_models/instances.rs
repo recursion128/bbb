@@ -256,6 +256,11 @@ entity_render_state! {
     /// (`0.0..=1.0`) that scales the sway in `setupAnim`. `0.0` for a standing
     /// entity, leaving the model in its rest pose.
     () walk_animation_speed: f32 = 0.0;
+    /// Vanilla `LivingEntityRenderState.wornHeadAnimationPos`: the animation position passed to
+    /// `SkullBlockRenderer.submitSkull` for skull equipment. It equals the entity walk animation
+    /// position for non-passenger entities and the vehicle walk animation position when riding a
+    /// living entity.
+    (with_worn_head_animation_pos) worn_head_animation_pos: f32 = 0.0;
     /// Vanilla `HumanoidRenderState.attackTime` (`LivingEntity.getAttackAnim(partialTick)`): the
     /// lerped `0..1` melee swing progress that `HumanoidModel.setupAttackAnimation` turns into the
     /// body twist + arm whack (the off arm tracked via [`attack_arm_off_hand`](Self::attack_arm_off_hand)).
@@ -2019,6 +2024,7 @@ mod tests {
                 scale: 1.0,
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,
+                worn_head_animation_pos: 0.0,
                 attack_anim: 0.0,
                 attack_arm_off_hand: false,
                 age_in_ticks: 0.0,

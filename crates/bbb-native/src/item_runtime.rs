@@ -1112,6 +1112,7 @@ fn custom_head_skull_for_resource_id(
         }
         "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
         "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
+        "minecraft:piglin_head" => Some(EntityCustomHeadSkull::Piglin),
         _ => None,
     }
 }
@@ -2178,7 +2179,7 @@ mod tests {
             ),
             ("minecraft:player_head", Some(EntityCustomHeadSkull::Player)),
             ("minecraft:dragon_head", None),
-            ("minecraft:piglin_head", None),
+            ("minecraft:piglin_head", Some(EntityCustomHeadSkull::Piglin)),
             ("minecraft:carved_pumpkin", None),
         ] {
             let protocol_id = registry.protocol_id(resource_id).unwrap();

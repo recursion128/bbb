@@ -88,6 +88,55 @@ fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
 }
 
 #[test]
+fn custom_head_skull_layer_renders_piglin_head_with_specialized_geometry() {
+    let atlas = atlas_with(PIGLIN_TEXTURE_REF);
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            914,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Piglin))],
+        &atlas,
+    );
+
+    // Vanilla `PiglinHeadModel.createHeadModel` reuses `PiglinModel.addHead`: four head cubes and
+    // two ear cubes, each rendered as a normal cutout cube.
+    assert_eq!(mesh.cutout_faces, 36);
+    assert_eq!(mesh.vertices.len(), 144);
+    assert_eq!(mesh.indices.len(), 216);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}
+
+#[test]
+fn custom_head_piglin_skull_animates_ears_from_worn_head_animation_pos() {
+    let atlas = atlas_with(PIGLIN_TEXTURE_REF);
+    let base = EntityModelInstance::player_with_parts(
+        915,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Piglin));
+
+    let first = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(0.0)], &atlas);
+    let later = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(7.0)], &atlas);
+
+    assert_eq!(first.cutout_faces, later.cutout_faces);
+    assert_eq!(first.vertices.len(), later.vertices.len());
+    assert_ne!(
+        first.vertices, later.vertices,
+        "PiglinHeadModel drives its ear zRot from SkullModelBase.State.animationPos"
+    );
+}
+
+#[test]
 fn custom_head_skull_layer_follows_host_head_pose() {
     let atlas = atlas_with(SKELETON_TEXTURE_REF);
     let base = EntityModelInstance::new(

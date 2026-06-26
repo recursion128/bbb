@@ -1211,6 +1211,7 @@ fn entity_model_instance(
         .with_on_ground(source.on_ground)
         .with_is_moving(source.is_moving)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
+        .with_worn_head_animation_pos(source.walk_animation_position)
         .with_attack_anim(source.attack_anim)
         .with_attack_arm_off_hand(source.attack_arm_off_hand)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
@@ -6207,13 +6208,17 @@ mod tests {
             [0.0, 64.0, 0.0],
         ));
 
-        let walk = |world: &WorldStore| -> (f32, f32) {
+        let walk = |world: &WorldStore| -> (f32, f32, f32) {
             let state = entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
                 .into_iter()
                 .find(|instance| instance.entity_id == 98)
                 .unwrap()
                 .render_state;
-            (state.walk_animation_pos, state.walk_animation_speed)
+            (
+                state.walk_animation_pos,
+                state.walk_animation_speed,
+                state.worn_head_animation_pos,
+            )
         };
         let sync = |world: &mut WorldStore, x: f64| {
             assert!(world.apply_entity_position_sync(EntityPositionSync {
@@ -6232,16 +6237,21 @@ mod tests {
 
         // A standing cow projects no limb swing.
         world.advance_entity_client_animations(1);
-        assert_eq!(walk(&world), (0.0, 0.0));
+        assert_eq!(walk(&world), (0.0, 0.0, 0.0));
 
         // After one 0.5-block step, the WalkAnimationState reaches speed = 0.4 and
         // position = 0.4 (targetSpeed = min(0.5 * 4, 1) = 1.0), and both flow through
-        // EntityModelSourceState to the renderer EntityRenderState.
+        // EntityModelSourceState to the renderer EntityRenderState. Vanilla also reuses the same
+        // position for LivingEntityRenderState.wornHeadAnimationPos while not riding a living entity.
         sync(&mut world, 0.5);
         world.advance_entity_client_animations(1);
-        let (pos, speed) = walk(&world);
+        let (pos, speed, worn_head_pos) = walk(&world);
         assert!((speed - 0.4).abs() < 1e-5, "walk speed: {speed}");
         assert!((pos - 0.4).abs() < 1e-5, "walk position: {pos}");
+        assert!(
+            (worn_head_pos - 0.4).abs() < 1e-5,
+            "worn head animation position: {worn_head_pos}"
+        );
     }
 
     #[test]

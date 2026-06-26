@@ -1,6 +1,10 @@
-use super::{PART_POSE_ZERO, WITHER_SKULL_GRAY};
+use super::{
+    ADULT_PIGLIN_HEAD, ADULT_PIGLIN_LEFT_EAR, ADULT_PIGLIN_LEFT_EAR_POSE, ADULT_PIGLIN_RIGHT_EAR,
+    ADULT_PIGLIN_RIGHT_EAR_POSE, PART_POSE_ZERO, WITHER_SKULL_GRAY,
+};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use std::f32::consts::PI;
 
 // Vanilla 26.1 `WitherSkullRenderer.createSkullLayer` (atlas 64×64): one `head` part at ZERO with a
 // single 8×8×8 box (`addBox(-4, -8, -4, 8, 8, 8)` at `texOffs(0, 35)`). `SkullModel.setupAnim` turns
@@ -111,4 +115,64 @@ impl EntityModel for CustomHeadSkullModel {
     }
 
     fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}
+
+/// Piglin skull model for `CustomHeadLayer` skull equipment. Vanilla `PiglinHeadModel` reuses
+/// `AbstractPiglinModel.addHead(CubeDeformation.NONE)`: adult piglin head cubes plus two ear
+/// children, then drives only the ears from `SkullModelBase.State.animationPos`.
+pub(in crate::entity_models) struct CustomHeadPiglinSkullModel {
+    root: ModelPart,
+}
+
+impl CustomHeadPiglinSkullModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![(
+                    "head",
+                    ModelPart::new(
+                        PART_POSE_ZERO,
+                        ADULT_PIGLIN_HEAD.to_vec(),
+                        vec![
+                            (
+                                "left_ear",
+                                ModelPart::leaf(
+                                    ADULT_PIGLIN_LEFT_EAR_POSE,
+                                    ADULT_PIGLIN_LEFT_EAR.to_vec(),
+                                ),
+                            ),
+                            (
+                                "right_ear",
+                                ModelPart::leaf(
+                                    ADULT_PIGLIN_RIGHT_EAR_POSE,
+                                    ADULT_PIGLIN_RIGHT_EAR.to_vec(),
+                                ),
+                            ),
+                        ],
+                    ),
+                )],
+            ),
+        }
+    }
+}
+
+impl EntityModel for CustomHeadPiglinSkullModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let animation_pos = instance.render_state.worn_head_animation_pos;
+        let head = self.root.child_mut("head");
+        head.child_mut("left_ear").pose.rotation[2] =
+            -((animation_pos * PI * 0.2 * 1.2).cos() + 2.5) * 0.2;
+        head.child_mut("right_ear").pose.rotation[2] =
+            ((animation_pos * PI * 0.2).cos() + 2.5) * 0.2;
+    }
 }

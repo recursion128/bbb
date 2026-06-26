@@ -79,11 +79,11 @@ pub(in crate::entity_models) const ADULT_PIGLIN_RIGHT_EAR: [ModelCube; 1] = [Mod
 )];
 
 /// Adult piglin ear child poses (vanilla `AbstractPiglinModel.addHead`).
-const ADULT_PIGLIN_LEFT_EAR_POSE: PartPose = PartPose {
+pub(in crate::entity_models) const ADULT_PIGLIN_LEFT_EAR_POSE: PartPose = PartPose {
     offset: [4.5, -6.0, 0.0],
     rotation: [0.0, 0.0, -std::f32::consts::FRAC_PI_6],
 };
-const ADULT_PIGLIN_RIGHT_EAR_POSE: PartPose = PartPose {
+pub(in crate::entity_models) const ADULT_PIGLIN_RIGHT_EAR_POSE: PartPose = PartPose {
     offset: [-4.5, -6.0, 0.0],
     rotation: [0.0, 0.0, std::f32::consts::FRAC_PI_6],
 };
