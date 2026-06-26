@@ -11,7 +11,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
 // chain), the `croaking_body` pouch, the tongue, and the two arms (with their hands). The looping
-// The looping `FrogAnimation.FROG_WALK` cycle ([`FROG_WALK`]), the triggered `FROG_CROAK` pouch
+// `FrogAnimation.FROG_WALK` / `FROG_SWIM` cycles ([`FROG_WALK`], [`FROG_SWIM`]), the triggered
+// `FROG_CROAK` pouch
 // ([`FROG_CROAK`], gated on `frog_croak_seconds >= 0`), the `FROG_JUMP` long-jump hold pose
 // ([`FROG_JUMP`], gated on `frog_jump_seconds >= 0`), the looping in-water `FROG_IDLE_WATER`
 // hover ([`FROG_IDLE_WATER`], gated on `frog_swim_idle_seconds >= 0`), and the triggered
@@ -476,10 +477,127 @@ pub(in crate::entity_models) const FROG_WALK: AnimationDefinition = AnimationDef
     bones: &FROG_WALK_BONES,
 };
 
-/// Vanilla `FrogModel.setupAnim` walk-call factors: `applyWalk(pos, speed, 1.5, 2.5)` (the swim
-/// variant uses `1.0, 2.5` and is deferred).
+/// Vanilla `FrogModel.setupAnim` dry walk-call factors: `applyWalk(pos, speed, 1.5, 2.5)`.
 pub(in crate::entity_models) const FROG_WALK_SPEED_FACTOR: f32 = 1.5;
+/// Vanilla `FrogModel.setupAnim` in-water swim-call factors: `applyWalk(pos, speed, 1.0, 2.5)`.
+pub(in crate::entity_models) const FROG_SWIM_SPEED_FACTOR: f32 = 1.0;
 pub(in crate::entity_models) const FROG_WALK_SCALE_FACTOR: f32 = 2.5;
+
+// ----- `FrogAnimation.FROG_SWIM` (length 1.04167s, looping). All keyframes are CATMULLROM; it
+// targets the same five bones as the ground walk. -----
+
+const FROG_SWIM_BODY_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.3333, degree_vec(10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.6667, degree_vec(-10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0417, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const FROG_SWIM_LEFT_ARM_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(90.0, 22.5, 0.0), CATMULLROM),
+    keyframe(0.4583, degree_vec(45.0, 22.5, 0.0), CATMULLROM),
+    keyframe(0.6667, degree_vec(-22.5, -22.5, -22.5), CATMULLROM),
+    keyframe(0.875, degree_vec(-45.0, -22.5, 0.0), CATMULLROM),
+    keyframe(0.9583, degree_vec(22.5, 0.0, 22.5), CATMULLROM),
+    keyframe(1.0417, degree_vec(90.0, 22.5, 0.0), CATMULLROM),
+];
+const FROG_SWIM_LEFT_ARM_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, -0.64, 2.0), CATMULLROM),
+    keyframe(0.4583, pos_vec(0.0, -0.64, 0.0), CATMULLROM),
+    keyframe(0.6667, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.875, pos_vec(0.0, -0.27, -1.14), CATMULLROM),
+    keyframe(0.9583, pos_vec(0.0, -1.45, 0.43), CATMULLROM),
+    keyframe(1.0417, pos_vec(0.0, -0.64, 2.0), CATMULLROM),
+];
+const FROG_SWIM_RIGHT_ARM_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(90.0, -22.5, 0.0), CATMULLROM),
+    keyframe(0.4583, degree_vec(45.0, -22.5, 0.0), CATMULLROM),
+    keyframe(0.6667, degree_vec(-22.5, 22.5, 22.5), CATMULLROM),
+    keyframe(0.875, degree_vec(-45.0, 22.5, 0.0), CATMULLROM),
+    keyframe(0.9583, degree_vec(22.5, 0.0, -22.5), CATMULLROM),
+    keyframe(1.0417, degree_vec(90.0, -22.5, 0.0), CATMULLROM),
+];
+const FROG_SWIM_RIGHT_ARM_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, -0.64, 2.0), CATMULLROM),
+    keyframe(0.4583, pos_vec(0.0, -0.64, 0.0), CATMULLROM),
+    keyframe(0.6667, pos_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.875, pos_vec(0.0, -0.27, -1.14), CATMULLROM),
+    keyframe(0.9583, pos_vec(0.0, -1.45, 0.43), CATMULLROM),
+    keyframe(1.0417, pos_vec(0.0, -0.64, 2.0), CATMULLROM),
+];
+const FROG_SWIM_LEFT_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4583, degree_vec(67.5, -45.0, 0.0), CATMULLROM),
+    keyframe(0.7917, degree_vec(90.0, 45.0, 0.0), CATMULLROM),
+    keyframe(0.9583, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0417, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+];
+const FROG_SWIM_LEFT_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(-2.5, 0.0, 1.0), CATMULLROM),
+    keyframe(0.25, pos_vec(-2.0, 0.0, 1.0), CATMULLROM),
+    keyframe(0.4583, pos_vec(1.0, -2.0, -1.0), CATMULLROM),
+    keyframe(0.7917, pos_vec(0.58, 0.0, -2.83), CATMULLROM),
+    keyframe(0.9583, pos_vec(-2.5, 0.0, 1.0), CATMULLROM),
+    keyframe(1.0417, pos_vec(-2.5, 0.0, 1.0), CATMULLROM),
+];
+const FROG_SWIM_RIGHT_LEG_ROT: [Keyframe; 6] = [
+    keyframe(0.0, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.25, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4583, degree_vec(67.5, 45.0, 0.0), CATMULLROM),
+    keyframe(0.7917, degree_vec(90.0, -45.0, 0.0), CATMULLROM),
+    keyframe(0.9583, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0417, degree_vec(90.0, 0.0, 0.0), CATMULLROM),
+];
+const FROG_SWIM_RIGHT_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(2.5, 0.0, 1.0), CATMULLROM),
+    keyframe(0.25, pos_vec(2.0, 0.0, 1.0), CATMULLROM),
+    keyframe(0.4583, pos_vec(-1.0, -2.0, -1.0), CATMULLROM),
+    keyframe(0.7917, pos_vec(-0.58, 0.0, -2.83), CATMULLROM),
+    keyframe(0.9583, pos_vec(2.5, 0.0, 1.0), CATMULLROM),
+    keyframe(1.0417, pos_vec(2.5, 0.0, 1.0), CATMULLROM),
+];
+
+const FROG_SWIM_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&FROG_SWIM_BODY_ROT)];
+const FROG_SWIM_LEFT_ARM_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_SWIM_LEFT_ARM_ROT), pos(&FROG_SWIM_LEFT_ARM_POS)];
+const FROG_SWIM_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_SWIM_RIGHT_ARM_ROT), pos(&FROG_SWIM_RIGHT_ARM_POS)];
+const FROG_SWIM_LEFT_LEG_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_SWIM_LEFT_LEG_ROT), pos(&FROG_SWIM_LEFT_LEG_POS)];
+const FROG_SWIM_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] =
+    [rot(&FROG_SWIM_RIGHT_LEG_ROT), pos(&FROG_SWIM_RIGHT_LEG_POS)];
+
+const FROG_SWIM_BONES: [BoneAnimation; 5] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &FROG_SWIM_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &FROG_SWIM_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &FROG_SWIM_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &FROG_SWIM_LEFT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &FROG_SWIM_RIGHT_LEG_CHANNELS,
+    },
+];
+
+/// Vanilla `FrogAnimation.FROG_SWIM`: the looping 1.04167s in-water movement cycle, sampled by
+/// `FrogModel.setupAnim` via `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.0, 2.5)` when
+/// `FrogRenderState.isSwimming` (`entity.isInWater()`) is true.
+pub(in crate::entity_models) const FROG_SWIM: AnimationDefinition = AnimationDefinition {
+    length_seconds: 1.04167,
+    looping: true,
+    bones: &FROG_SWIM_BONES,
+};
 
 // ----- `FrogAnimation.FROG_CROAK` (length 3.0s, NOT looping). The single `croaking_body` bone has
 // a POSITION channel (the pouch lifts `+1` y once inflated) and a SCALE channel (the pouch puffs
@@ -797,10 +915,10 @@ pub(in crate::entity_models) const FROG_IDLE_WATER: AnimationDefinition = Animat
 /// Mutable frog model, mirroring vanilla `FrogModel`. The cubeless `root` part (parenting `body`
 /// and the two legs; `body` parents the head, croaking_body pouch, tongue, and two arms) hangs off
 /// a synthetic root, built from the baked colored geometry as a named-children tree. Colored-only:
-/// `setup_anim` applies the looping `FROG_WALK` keyframe cycle to the body, arms, and legs, the
+/// `setup_anim` applies the looping `FROG_WALK` / `FROG_SWIM` keyframe cycle to the body, arms, and legs, the
 /// triggered `FROG_JUMP` long-jump hold pose while long-jumping, the triggered `FROG_CROAK` pouch
 /// animation while croaking, and the looping `FROG_IDLE_WATER` hover while idling underwater (the
-/// tongue and the moving swim/walk cycles stay deferred).
+/// tongue lash and the moving swim/walk cycles are both handled here).
 pub(in crate::entity_models) struct FrogModel {
     root: ModelPart,
 }
@@ -821,19 +939,26 @@ impl EntityModel for FrogModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        // Vanilla `FrogModel.setupAnim` runs `applyWalk(walkAnimationPos, walkAnimationSpeed, 1.5,
-        // 2.5)`: the walk position drives the keyframe sample time and the speed scales the amplitude
-        // (a still frog samples the cycle's rest frame). The cycle offsets the `body` (rotation), the
-        // two arms (`body` children), and the two legs (`root` children); the head and tongue hold.
+        // Vanilla `FrogModel.setupAnim` samples `FROG_SWIM` with `applyWalk(..., 1.0, 2.5)` while
+        // `FrogRenderState.isSwimming` (`entity.isInWater()`) is true, otherwise `FROG_WALK` with
+        // `applyWalk(..., 1.5, 2.5)`. The walk position drives the keyframe sample time and the speed
+        // scales the amplitude (a still frog samples the cycle at amplitude 0). Both cycles offset the
+        // `body` (rotation), the two arms (`body` children), and the two legs (`root` children); the
+        // head and tongue hold.
+        let (walk_definition, walk_speed_factor) = if instance.render_state.in_water {
+            (&FROG_SWIM, FROG_SWIM_SPEED_FACTOR)
+        } else {
+            (&FROG_WALK, FROG_WALK_SPEED_FACTOR)
+        };
         let (seconds, scale) = keyframe_walk_sample(
-            &FROG_WALK,
+            walk_definition,
             instance.render_state.walk_animation_pos,
             instance.render_state.walk_animation_speed,
-            FROG_WALK_SPEED_FACTOR,
+            walk_speed_factor,
             FROG_WALK_SCALE_FACTOR,
         );
         let animate = |part: &mut ModelPart, bone: &str| {
-            let (position, rotation) = sample_bone_offsets(&FROG_WALK, bone, seconds, scale);
+            let (position, rotation) = sample_bone_offsets(walk_definition, bone, seconds, scale);
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 

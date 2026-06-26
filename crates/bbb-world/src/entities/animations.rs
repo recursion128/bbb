@@ -63,8 +63,8 @@ const PANDA_AMOUNT_RISE_PER_TICK: f32 = 0.15;
 const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
 const PANDA_ROLL_COUNTER_MAX: i32 = 32;
 /// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`)
-/// replaces the base distance→speed mapping. `Camel`/`Frog` additionally gate on
-/// pose/jump/dash animation states the client does not yet track, so their limb
+/// replaces the base distance→speed mapping. `Camel` additionally gates on
+/// pose/jump/dash animation states the client does not yet fully track, so its limb
 /// swing is deferred rather than approximated with the base mapping.
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 pub(crate) const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
@@ -2368,6 +2368,7 @@ impl WalkAnimationState {
         is_passenger: bool,
         is_alive: bool,
         is_baby: bool,
+        frog_jump_started: bool,
     ) {
         let distance = match self.previous_feet_position {
             Some(previous) => {
@@ -2389,7 +2390,7 @@ impl WalkAnimationState {
             self.stop();
             return;
         }
-        let target_speed = walk_update_target_speed(entity_type_id, distance);
+        let target_speed = walk_update_target_speed(entity_type_id, distance, frog_jump_started);
         self.update(target_speed, 0.4, if is_baby { 3.0 } else { 1.0 });
     }
 
@@ -2423,24 +2424,22 @@ fn is_flying_animal(entity_type_id: i32) -> bool {
 
 /// Whether an entity's `updateWalkAnimation` override is not yet modelled, so its
 /// limb swing is deferred rather than driven with the base distance→speed mapping.
-/// `Camel`/`Frog` additionally gate on pose/jump/dash animation states the client
-/// does not fully track; the `Creaking` override is pure (`min(distance·25, 3)`,
-/// driven here), so it is no longer deferred.
+/// `Camel` additionally gates on pose/jump/dash animation states the client does not
+/// fully track; the `Creaking` and `Frog` overrides are driven here.
 fn walk_animation_override_is_deferred(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_FROG_ID
-    )
+    matches!(entity_type_id, VANILLA_ENTITY_TYPE_CAMEL_ID)
 }
 
 /// Vanilla `updateWalkAnimation`'s per-entity distance→target-speed mapping, fed to
 /// `WalkAnimationState.update`. The base `LivingEntity` clamps `distance · 4` to `1.0`; `Creaking`
 /// overrides it to `distance · 25` clamped to `3.0` (a faster, higher-amplitude gait that ramps the
-/// limb-swing position ~3× quicker). The `Camel`/`Frog` overrides additionally gate on pose/jump
-/// animation states the client does not track, so they stay deferred (and never reach here).
-fn walk_update_target_speed(entity_type_id: i32, distance: f32) -> f32 {
+/// limb-swing position ~3× quicker). `Frog.updateWalkAnimation` uses `distance · 25` clamped to `1.0`,
+/// but forces the target to `0` while `jumpAnimationState.isStarted()`.
+fn walk_update_target_speed(entity_type_id: i32, distance: f32, frog_jump_started: bool) -> f32 {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CREAKING_ID => (distance * 25.0).min(3.0),
+        VANILLA_ENTITY_TYPE_FROG_ID if frog_jump_started => 0.0,
+        VANILLA_ENTITY_TYPE_FROG_ID => (distance * 25.0).min(1.0),
         _ => (distance * 4.0).min(1.0),
     }
 }
@@ -4626,9 +4625,9 @@ impl EntityClientAnimationState {
                 // && !walkAnimation.isMoving(), tickCount)`. `isInWater()` is the per-tick world fact
                 // threaded in; `walkAnimation.isMoving()` reads the limb-swing speed from the PREVIOUS
                 // tick's `WalkAnimationState` — the walk accumulator below this match advances after,
-                // so reading it here matches vanilla `tick` running before the limb-swing update. The
-                // frog's `updateWalkAnimation` override is deferred (no `walk_animation` state), so a
-                // missing state is treated as not moving (idle), which is the common in-water case.
+                // so reading it here matches vanilla `tick` running before the limb-swing update. A
+                // missing state is treated as not moving, matching the first tick before the accumulator
+                // records a previous feet position.
                 let walk_is_moving = self
                     .walk_animation
                     .as_ref()
@@ -4742,6 +4741,10 @@ impl EntityClientAnimationState {
             // state is present exactly while the entity is dead/dying.
             let is_alive = self.death.is_none();
             let use_y = is_flying_animal(entity_type_id);
+            let frog_jump_started = self
+                .frog_jump
+                .as_ref()
+                .is_some_and(|jump| jump.start_age.is_some());
             self.walk_animation
                 .get_or_insert_with(WalkAnimationState::default)
                 .advance_client_tick(
@@ -4751,6 +4754,7 @@ impl EntityClientAnimationState {
                     is_passenger,
                     is_alive,
                     is_baby,
+                    frog_jump_started,
                 );
         }
     }

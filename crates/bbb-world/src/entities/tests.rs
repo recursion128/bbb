@@ -4729,19 +4729,39 @@ fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
 fn frog_swim_idle_activates_only_in_water_and_idle() {
     // Vanilla `Frog.tick` (client): `swimIdleAnimationState.animateWhen(isInWater() &&
     // !walkAnimation.isMoving(), tickCount)`. The projected `frog_swim_idle_seconds` is `>= 0` while
-    // the timer runs (in water, not moving) and the `-1.0` stopped sentinel otherwise. The frog's
-    // `updateWalkAnimation` override is deferred (no `walk_animation` state), so `isMoving()` is
-    // always false; the gate reduces to `isInWater()`.
+    // the timer runs (in water, not moving) and the `-1.0` stopped sentinel otherwise. The frog
+    // reads the previous tick's `WalkAnimationState.isMoving()` before the current tick's
+    // `updateWalkAnimation` advances, matching vanilla's tick order.
     const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
-    let swim_idle = |store: &WorldStore| {
+    let source = |store: &WorldStore| {
         store
             .entity_model_sources_at_partial_tick(1.0)
             .into_iter()
             .find(|source| source.entity_id == 81)
             .unwrap()
-            .frog_swim_idle_seconds
+    };
+    let swim_idle = |store: &WorldStore| source(store).frog_swim_idle_seconds;
+    let walk = |store: &WorldStore| {
+        let source = source(store);
+        (source.walk_animation_position, source.walk_animation_speed)
+    };
+    let sync_position = |store: &mut WorldStore, x: f64, z: f64| {
+        assert!(
+            store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                id: 81,
+                position: ProtocolVec3d { x, y: 2.0, z },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            })
+        );
     };
 
     // A frog standing in a tall water column (submerged) or out of water.
@@ -4799,6 +4819,30 @@ fn frog_swim_idle_activates_only_in_water_and_idle() {
         swim_idle(&wet)
     );
 
+    // Moving in water: the tick that observes the position delta still reads the previous
+    // non-moving walk speed, then `Frog.updateWalkAnimation` records the movement. The following
+    // tick sees `walkAnimation.isMoving()` and stops the idle animation.
+    let mut wet_moving = make_store(true);
+    wet_moving.advance_entity_client_animations(1);
+    sync_position(&mut wet_moving, 8.52, 8.5);
+    wet_moving.advance_entity_client_animations(1);
+    let (_, moving_speed) = walk(&wet_moving);
+    assert!(
+        (moving_speed - 0.2).abs() < 1.0e-5,
+        "frog movement uses targetSpeed=min(distance*25,1): {moving_speed}"
+    );
+    assert!(
+        (swim_idle(&wet_moving) - 0.10).abs() < 1.0e-6,
+        "the movement tick still reads the previous idle walk speed: {}",
+        swim_idle(&wet_moving)
+    );
+    wet_moving.advance_entity_client_animations(1);
+    assert_eq!(
+        swim_idle(&wet_moving),
+        -1.0,
+        "a moving in-water frog stops its swim-idle on the next tick"
+    );
+
     // Out of water: the gate is false, the timer never starts, so the `-1.0` sentinel holds.
     let mut dry = make_store(false);
     dry.advance_entity_client_animations(3);
@@ -4820,6 +4864,72 @@ fn frog_swim_idle_activates_only_in_water_and_idle() {
         swim_idle(&wet),
         -1.0,
         "a frog that leaves the water stops its swim-idle (back to the sentinel)"
+    );
+}
+
+#[test]
+fn frog_walk_animation_uses_vanilla_update_override() {
+    const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
+    const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
+
+    let walk = |store: &WorldStore| -> (f32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 82)
+            .unwrap();
+        (source.walk_animation_position, source.walk_animation_speed)
+    };
+    let sync_position = |store: &mut WorldStore, x: f64| {
+        assert!(
+            store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                id: 82,
+                position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            })
+        );
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_FROG_ID,
+    ));
+    sync_position(&mut store, 0.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(walk(&store), (0.0, 0.0));
+
+    // `Frog.updateWalkAnimation`: targetSpeed = min(distance * 25, 1). A 0.02-block
+    // step gives target 0.5, so the vanilla 0.4 low-pass reaches speed/position 0.2.
+    sync_position(&mut store, 0.02);
+    store.advance_entity_client_animations(1);
+    let (pos, speed) = walk(&store);
+    assert!((speed - 0.2).abs() < 1.0e-5, "frog walk speed: {speed}");
+    assert!((pos - 0.2).abs() < 1.0e-5, "frog walk pos: {pos}");
+
+    // While `jumpAnimationState.isStarted()` (`Pose.LONG_JUMPING`), vanilla forces
+    // the target speed to 0, so the existing speed decays by the same 0.4 factor.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![protocol_pose_data(6, VANILLA_POSE_LONG_JUMPING_ID)],
+    }));
+    sync_position(&mut store, 0.04);
+    store.advance_entity_client_animations(1);
+    let (jump_pos, jump_speed) = walk(&store);
+    assert!(
+        (jump_speed - 0.12).abs() < 1.0e-5,
+        "long-jumping frog walk speed decays toward zero: {jump_speed}"
+    );
+    assert!(
+        (jump_pos - 0.32).abs() < 1.0e-5,
+        "long-jumping frog walk position keeps integrating the decayed speed: {jump_pos}"
     );
 }
 

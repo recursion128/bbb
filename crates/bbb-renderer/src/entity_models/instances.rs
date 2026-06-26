@@ -997,11 +997,10 @@ entity_render_state! {
     /// branches. `0.0` (wings held) for a grounded/still parrot and every non-parrot
     /// entity.
     (with_parrot_flap_angle) parrot_flap_angle: f32 = 0.0;
-    /// Vanilla `LivingEntityRenderState.isInWater` (`entity.isInWaterOrBubble()`): a fish
-    /// out of water thrashes harder and flops onto its side. `CodModel.setupAnim` scales
-    /// its tail sway by `1.0` in water / `1.5` out, and `CodRenderer.setupRotations` adds
-    /// the beached `RotZ(90)` flop when `false`. `false` (the Java default) for every
-    /// entity until the entity scene projects `entity.isInWater()`.
+    /// Vanilla `LivingEntityRenderState.isInWater` / `FrogRenderState.isSwimming`
+    /// (`entity.isInWater()`): a fish out of water thrashes harder and flops onto its side,
+    /// while `FrogModel.setupAnim` switches from `FROG_WALK` to `FROG_SWIM` while in water.
+    /// `false` (the Java default) for every entity until the entity scene projects it.
     (with_in_water) in_water: bool = false;
     /// Vanilla `Entity.onGround()`: combined with [`in_water`](Self::in_water) to drive the
     /// vanilla `TurtleRenderer` `isOnLand = !isInWater && onGround` walk/swim leg branch.

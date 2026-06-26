@@ -132,6 +132,36 @@ fn frog_walk_animation_matches_vanilla_definition() {
 }
 
 #[test]
+fn frog_swim_animation_matches_vanilla_definition() {
+    // Vanilla `FrogAnimation.FROG_SWIM`: 1.04167 s looping, animating the body (rotation only), the
+    // two arms, and the two legs (each rotation + position). 52 keyframes total.
+    assert_eq!(FROG_SWIM.length_seconds, 1.04167);
+    assert!(FROG_SWIM.looping);
+    assert_eq!(FROG_SWIM.bones.len(), 5);
+    let bones: Vec<&str> = FROG_SWIM.bones.iter().map(|bone| bone.bone).collect();
+    assert_eq!(
+        bones,
+        ["body", "left_arm", "right_arm", "left_leg", "right_leg"]
+    );
+    let keyframes: usize = FROG_SWIM
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(keyframes, 52);
+
+    // Spot-check vanilla frames: body pitches +10° at t=0.3333, the left arm starts at
+    // `(90°, 22.5°, 0°)`, and `posVec(0, -0.64, 2)` flips Y to a `+0.64` offset.
+    let (_, body_rot) = sample_bone_offsets(&FROG_SWIM, "body", 0.3333, 1.0);
+    assert!((body_rot[0] - 10.0_f32.to_radians()).abs() < 1.0e-6);
+    let (left_arm_pos, left_arm_rot) = sample_bone_offsets(&FROG_SWIM, "left_arm", 0.0, 1.0);
+    assert!((left_arm_rot[0] - 90.0_f32.to_radians()).abs() < 1.0e-6);
+    assert!((left_arm_rot[1] - 22.5_f32.to_radians()).abs() < 1.0e-6);
+    assert_eq!(left_arm_pos, [0.0, 0.64, 2.0]);
+}
+
+#[test]
 fn frog_walk_moves_the_limbs_off_the_walk_cycle() {
     // A still frog (walk speed 0) samples the cycle at amplitude 0, collapsing to the bind pose; a
     // walking frog samples the FROG_WALK offsets, animating the body, arms, and legs. The vertex
@@ -163,6 +193,28 @@ fn frog_walk_moves_the_limbs_off_the_walk_cycle() {
         FrogModelVariant::Temperate,
     )]);
     assert_eq!(still.vertices, bind.vertices);
+}
+
+#[test]
+fn frog_in_water_uses_swim_walk_cycle() {
+    // Vanilla `FrogModel.setupAnim` chooses `FROG_SWIM.applyWalk(..., 1.0, 2.5)` when
+    // `FrogRenderState.isSwimming` is true, otherwise `FROG_WALK.applyWalk(..., 1.5, 2.5)`.
+    let walking = EntityModelInstance::frog(73, [0.0, 64.0, 0.0], 0.0, FrogModelVariant::Temperate)
+        .with_walk_animation(0.0, 1.0);
+    let dry = entity_model_mesh(&[walking.clone()]);
+    let wet = entity_model_mesh(&[walking.with_in_water(true)]);
+    assert_eq!(dry.vertices.len(), wet.vertices.len());
+    assert_ne!(
+        dry.vertices, wet.vertices,
+        "an in-water moving frog samples FROG_SWIM instead of FROG_WALK"
+    );
+
+    // At zero walk speed, both applyWalk calls scale to amplitude 0 and collapse to the bind pose.
+    let still = EntityModelInstance::frog(74, [0.0, 64.0, 0.0], 0.0, FrogModelVariant::Temperate);
+    assert_eq!(
+        entity_model_mesh(&[still.clone()]).vertices,
+        entity_model_mesh(&[still.with_in_water(true)]).vertices
+    );
 }
 
 #[test]
