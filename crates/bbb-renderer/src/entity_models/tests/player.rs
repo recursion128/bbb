@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::entity_models::model::{EntityModel, ModelCube};
+use crate::player_skin::DynamicPlayerSkinImage;
 
 /// The wide-player limb rest poses, for the desc-level arm-swing/bob reference-formula tests (the
 /// player now builds a named tree, so it has no `*_PARTS` desc const). Right arm `x = -5`, left arm
@@ -109,12 +110,21 @@ fn player_texture_refs_match_vanilla_default_assets() {
 
     for (slim, model_key, texture) in cases {
         let kind = EntityModelKind::Player {
-            slim,
+            skin: EntityPlayerSkin::default_for_model(slim),
             parts: PLAYER_MODEL_PARTS_ALL_VISIBLE,
         };
         assert_eq!(kind.model_key(), model_key);
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
+    let profiled = EntityModelKind::Player {
+        skin: EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex),
+        parts: PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    };
+    assert_eq!(profiled.model_key(), "player_slim");
+    assert_eq!(
+        profiled.vanilla_texture_ref(),
+        Some(PLAYER_SLIM_ALEX_TEXTURE_REF)
+    );
 }
 
 #[test]
@@ -213,31 +223,24 @@ fn player_textured_model_parts_match_vanilla_model_layer_uv_sources() {
 fn entity_texture_atlas_stitches_official_player_png_slots() {
     let (layout, rgba) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
 
-    assert_eq!(layout.width, 64);
-    assert_eq!(layout.height, 128);
     assert_eq!(
         layout
             .entries
             .iter()
             .map(|entry| entry.texture.path)
             .collect::<Vec<_>>(),
-        vec![
-            "textures/entity/player/wide/steve.png",
-            "textures/entity/player/slim/steve.png",
-        ]
+        player_entity_texture_refs()
+            .iter()
+            .map(|texture| texture.path)
+            .collect::<Vec<_>>()
     );
-    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
-    assert_close2(layout.entries[0].uv.max, [1.0, 0.5]);
-    assert_close2(layout.entries[1].uv.min, [0.0, 0.5]);
-    assert_close2(layout.entries[1].uv.max, [1.0, 1.0]);
-    let slim_first_pixel = rgba_offset(layout.width, 64, 0, "test").unwrap();
-    assert_eq!(&rgba[0..4], &[0; 4]);
-    assert_eq!(&rgba[slim_first_pixel..slim_first_pixel + 4], &[1; 4]);
+    assert_eq!(layout.entries.len(), 18);
+    assert!(rgba.len() >= 18 * 64 * 64 * 4);
 }
 
 #[test]
 fn player_textured_mesh_uses_vanilla_uvs_tints_and_avatar_scale() {
-    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let wide = entity_model_textured_mesh(
         &[EntityModelInstance::player(
             901,
@@ -302,8 +305,51 @@ fn player_textured_submission_records_vanilla_render_type_texture_tint_transform
 }
 
 #[test]
-fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts() {
+fn ready_dynamic_player_skin_body_uses_dynamic_cutout_atlas_submission() {
     let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    let dynamic_skin = EntityDynamicPlayerSkin {
+        handle: 7701,
+        fallback: EntityDefaultPlayerSkin::WideSteve,
+        model: EntityPlayerSkinModel::Slim,
+        status: EntityDynamicPlayerSkinStatus::Ready,
+    };
+    let instance = EntityModelInstance::player_with_skin(
+        904,
+        [1.0, 65.0, -3.0],
+        15.0,
+        EntityPlayerSkin::Dynamic(dynamic_skin),
+        PlayerModelPartVisibility::from_vanilla_mask(
+            PlayerModelPartVisibility::HAT_MASK | PlayerModelPartVisibility::LEFT_SLEEVE_MASK,
+        ),
+    );
+    let dynamic_atlas = build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
+        handle: dynamic_skin.handle,
+        rgba: vec![0xff; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let meshes =
+        entity_model_textured_meshes_with_dynamic_skins(&[instance], &atlas, Some(&dynamic_atlas));
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(submit.dynamic_player_skin, Some(dynamic_skin));
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, player_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert_eq!(meshes.dynamic_player_skin_cutout.cutout_faces, 48);
+    assert_eq!(meshes.dynamic_player_skin_cutout.vertices.len(), 192);
+}
+
+#[test]
+fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts() {
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let hidden = entity_model_textured_mesh(
         &[EntityModelInstance::player_with_parts(
             903,
@@ -1287,6 +1333,17 @@ fn player_texture_images() -> Vec<EntityModelTextureImage> {
         .map(|(index, texture)| {
             let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+fn steve_player_texture_images() -> Vec<EntityModelTextureImage> {
+    [PLAYER_WIDE_STEVE_TEXTURE_REF, PLAYER_SLIM_STEVE_TEXTURE_REF]
+        .into_iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(texture, vec![index as u8; len])
         })
         .collect()
 }

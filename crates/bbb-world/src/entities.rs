@@ -336,6 +336,8 @@ pub struct EntityBlockModelState {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityModelSourceState {
     pub entity_id: i32,
+    #[serde(default)]
+    pub uuid: uuid::Uuid,
     pub entity_type_id: i32,
     pub position: EntityVec3,
     pub y_rot: f32,

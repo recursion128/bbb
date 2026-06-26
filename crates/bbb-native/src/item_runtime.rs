@@ -326,6 +326,32 @@ impl NativeItemRuntime {
         })
     }
 
+    #[cfg(test)]
+    pub(crate) fn empty_for_test() -> Self {
+        let missing = SpriteImage::new(MISSING_TEXTURE_ID, 1, 1, vec![0xff, 0x00, 0xff, 0xff])
+            .expect("test missing texture image is valid");
+        Self {
+            item_definition_count: 0,
+            item_registry_count: 0,
+            resolved_model_count: 0,
+            missing_model_ids: BTreeSet::new(),
+            missing_texture_ids: BTreeSet::new(),
+            furnace_fuel_item_ids: BTreeSet::new(),
+            freeze_immune_wearable_item_ids: BTreeSet::new(),
+            powder_snow_walkable_foot_item_ids: BTreeSet::new(),
+            recipe_specific_crafting_remainder_item_ids: BTreeSet::new(),
+            item_icon_models: HashMap::new(),
+            item_display_transforms: HashMap::new(),
+            registry: None,
+            language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
+            textures: ItemTextureState::from_images(vec![missing])
+                .expect("test item texture atlas is valid"),
+            profile_resolutions: RefCell::default(),
+            dynamic_skins: RefCell::default(),
+            profile_skins: RefCell::default(),
+        }
+    }
+
     pub(crate) fn item_definition_count(&self) -> usize {
         self.item_definition_count
     }
@@ -433,6 +459,18 @@ impl NativeItemRuntime {
             &self.dynamic_skins,
             &self.profile_skins,
         )
+    }
+
+    pub(crate) fn player_skin_for_profile(
+        &self,
+        profile: &ResolvableProfileSummary,
+    ) -> EntityPlayerSkin {
+        let player_skin = self
+            .profile_skins
+            .borrow_mut()
+            .player_skin_for_profile(profile);
+        queue_dynamic_player_skin_download(profile, player_skin, &self.dynamic_skins);
+        player_skin
     }
 
     pub(crate) fn enable_http_profile_resolution(&self) {

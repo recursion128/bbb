@@ -6,8 +6,8 @@ impl EntityModelKind {
         match self {
             Self::Chicken { variant, baby } => chicken_model_key(variant, baby),
             Self::Pig { variant, baby } => pig_model_key(variant, baby),
-            Self::Player { slim: false, .. } => "player",
-            Self::Player { slim: true, .. } => "player_slim",
+            Self::Player { skin, .. } if skin.is_slim() => "player_slim",
+            Self::Player { .. } => "player",
             Self::Humanoid {
                 family: HumanoidModelFamily::Player,
                 baby: false,
@@ -375,7 +375,7 @@ impl EntityModelKind {
         match self {
             Self::Chicken { variant, baby } => Some(chicken_texture_ref(variant, baby)),
             Self::Pig { variant, baby } => Some(pig_texture_ref(variant, baby)),
-            Self::Player { slim, .. } => Some(player_texture_ref(slim)),
+            Self::Player { skin, .. } => Some(default_player_skin_texture_ref(skin.fallback())),
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
             Self::Slime { .. } => Some(SLIME_TEXTURE_REF),
             Self::MagmaCube { .. } => Some(MAGMA_CUBE_TEXTURE_REF),
@@ -1193,6 +1193,7 @@ pub(in crate::entity_models) fn wolf_texture_ref(
     }
 }
 
+#[cfg(test)]
 pub(in crate::entity_models) fn player_texture_ref(slim: bool) -> EntityModelTextureRef {
     if slim {
         PLAYER_SLIM_STEVE_TEXTURE_REF

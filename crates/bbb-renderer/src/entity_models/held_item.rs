@@ -174,7 +174,8 @@ fn custom_head_item_base_transform(
     instance: &EntityModelInstance,
 ) -> Option<(Mat4, Mat4, CustomHeadTransforms)> {
     match instance.kind {
-        EntityModelKind::Player { slim, .. } => {
+        EntityModelKind::Player { skin, .. } => {
+            let slim = skin.is_slim();
             let mut model = PlayerModel::new(slim);
             model.prepare(instance);
             Some((
@@ -455,7 +456,8 @@ fn humanoid_arm_world_transform(
     arm_name: &str,
 ) -> Option<(Mat4, bool)> {
     match instance.kind {
-        EntityModelKind::Player { slim, .. } => {
+        EntityModelKind::Player { skin, .. } => {
+            let slim = skin.is_slim();
             let mut model = PlayerModel::new(slim);
             model.prepare(instance);
             Some((

@@ -1,13 +1,14 @@
 use bbb_protocol::packets::{
-    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind, EquipmentSlot,
-    ItemStackSummary,
+    decode_profile_textures_from_properties, EntityDataEnumSerializer, EntityDataRegistryHolder,
+    EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary, ItemStackSummary,
+    PlayerSkinPatchSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
-    DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor,
-    EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+    DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDefaultPlayerSkin,
+    EntityDyeColor, EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant,
+    FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
     IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
     PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
@@ -15,6 +16,8 @@ use bbb_renderer::{
     TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
     VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
+#[cfg(test)]
+use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
     GuardianBeamSource as WorldGuardianBeamSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
@@ -903,6 +906,7 @@ fn entity_model_instance(
     if let EntityModelKind::Armadillo { rolled_up, .. } = &mut kind {
         *rolled_up = source.armadillo_is_hiding_in_shell;
     }
+    apply_player_profile_skin(&mut kind, &source, world, item_runtime);
     // Only skeletons drive the `BOW_AND_ARROW` aim pose; resolve the held item just for them to avoid a
     // per-entity item lookup for every mob.
     let main_hand_holds_bow =
@@ -2390,8 +2394,56 @@ fn player_model_kind(
     };
     let mask = entity_data_byte(values, AVATAR_MODEL_CUSTOMIZATION_DATA_ID, fallback) as u8;
     EntityModelKind::Player {
-        slim: false,
+        skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         parts: PlayerModelPartVisibility::from_vanilla_mask(mask),
+    }
+}
+
+fn apply_player_profile_skin(
+    kind: &mut EntityModelKind,
+    source: &EntityModelSourceState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    let EntityModelKind::Player { skin, .. } = kind else {
+        return;
+    };
+    if source.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+        return;
+    }
+    let Some(item_runtime) = item_runtime else {
+        return;
+    };
+    let Some(info) = world.player_info_entry(source.uuid) else {
+        return;
+    };
+    *skin = item_runtime.player_skin_for_profile(&player_info_profile_resolvable(&info.profile));
+}
+
+fn player_info_profile_resolvable(
+    profile: &bbb_world::PlayerInfoProfileState,
+) -> ResolvableProfileSummary {
+    let properties: Vec<_> = profile
+        .properties
+        .iter()
+        .map(|property| GameProfilePropertySummary {
+            name: property.name.clone(),
+            value: property.value.clone(),
+            signature: property.signature.clone(),
+        })
+        .collect();
+    let profile_textures = decode_profile_textures_from_properties(
+        properties
+            .iter()
+            .map(|property| (property.name.as_str(), property.value.as_str())),
+    );
+    ResolvableProfileSummary {
+        kind: ResolvableProfileKindSummary::GameProfile,
+        uuid: Some(profile.uuid),
+        name: Some(profile.name.clone()),
+        properties,
+        profile_textures,
+        skin_patch: PlayerSkinPatchSummary::default(),
     }
 }
 
@@ -3524,8 +3576,10 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AttributeSnapshot, CommonPlayerSpawnInfo, DataComponentPatchSummary,
         EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        ItemStackSummary, PlayLogin, PlayTime, RegistryTags, SetCamera, SetEntityData,
-        SetEquipment, SetPassengers, TagNetworkPayload, UpdateAttributes, UpdateTags, Vec3d,
+        GameProfile, GameProfileProperty, GameType, ItemStackSummary, PlayLogin, PlayTime,
+        PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, RegistryTags, SetCamera,
+        SetEntityData, SetEquipment, SetPassengers, TagNetworkPayload, UpdateAttributes,
+        UpdateTags, Vec3d,
     };
     use bbb_world::{
         ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
@@ -7755,6 +7809,56 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_instances_use_player_info_profile_skin_for_players() {
+        const SLIM_TEXTURES_PROPERTY: &str = "eyJ0aW1lc3RhbXAiOjEsInByb2ZpbGVJZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwicHJvZmlsZU5hbWUiOiJBbGV4IiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9za2luaGFzaCIsIm1ldGFkYXRhIjp7Im1vZGVsIjoic2xpbSJ9fSwiQ0FQRSI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9jYXBlaGFzaCJ9LCJFTFlUUkEiOnsidXJsIjoiaHR0cHM6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWx5dHJhaGFzaCJ9fX0=";
+
+        let mut world = WorldStore::new();
+        let player = protocol_add_entity(1552, VANILLA_ENTITY_TYPE_PLAYER_ID, [1.0, 64.0, -2.0]);
+        let profile_id = player.uuid;
+        world.apply_add_entity(player);
+        world.apply_player_info_update(PlayerInfoUpdate {
+            actions: vec![PlayerInfoAction::AddPlayer],
+            entries: vec![PlayerInfoEntry {
+                profile_id,
+                profile: Some(GameProfile {
+                    uuid: profile_id,
+                    name: "Alex".to_string(),
+                    properties: vec![GameProfileProperty {
+                        name: "textures".to_string(),
+                        value: SLIM_TEXTURES_PROPERTY.to_string(),
+                        signature: Some("signature".to_string()),
+                    }],
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: GameType::Survival,
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        });
+        let runtime = NativeItemRuntime::empty_for_test();
+
+        let instance =
+            entity_model_instances_from_world_at_partial_tick(&world, Some(&runtime), 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 1552)
+                .unwrap();
+
+        let EntityModelKind::Player { skin, parts } = instance.kind else {
+            panic!("player entity should use the player model");
+        };
+        let EntityPlayerSkin::Dynamic(skin) = skin else {
+            panic!("player info textures property should produce a dynamic player skin");
+        };
+        assert_eq!(skin.model, EntityPlayerSkinModel::Slim);
+        assert_eq!(skin.status, EntityDynamicPlayerSkinStatus::Loading);
+        assert_ne!(skin.handle, 0);
+        assert_eq!(parts, PlayerModelPartVisibility::from_vanilla_mask(0));
+    }
+
+    #[test]
     fn entity_model_instances_project_slime_and_magma_cube_size() {
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
@@ -10936,14 +11040,14 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PLAYER_ID, &[]),
             EntityModelKind::Player {
-                slim: false,
+                skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
                 parts: PlayerModelPartVisibility::from_vanilla_mask(0),
             }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, &[]),
             EntityModelKind::Player {
-                slim: false,
+                skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
                 parts: PlayerModelPartVisibility::from_vanilla_mask(
                     PlayerModelPartVisibility::ALL_MASK,
                 ),
@@ -10958,7 +11062,7 @@ mod tests {
                 )],
             ),
             EntityModelKind::Player {
-                slim: false,
+                skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
                 parts: hat_and_left_sleeve,
             }
         );
@@ -10968,7 +11072,7 @@ mod tests {
                 &[protocol_byte_data(AVATAR_MODEL_CUSTOMIZATION_DATA_ID, 0)],
             ),
             EntityModelKind::Player {
-                slim: false,
+                skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
                 parts: PlayerModelPartVisibility::from_vanilla_mask(0),
             }
         );

@@ -1,15 +1,16 @@
+#[cfg(test)]
+use super::super::catalog::player_texture_ref;
 use super::super::{
     catalog::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
-        llama_texture_ref, mooshroom_texture_ref, pig_texture_ref, player_texture_ref,
-        sheep_wool_render_color, wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant,
-        BoatModelFamily, CamelModelFamily, CatModelVariant, ChickenModelVariant,
-        CopperGolemWeathering, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        FoxModelVariant, FrogModelVariant, HoglinModelFamily, IllagerModelFamily,
-        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
-        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, WolfModelVariant,
+        llama_texture_ref, mooshroom_texture_ref, pig_texture_ref, sheep_wool_render_color,
+        wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily,
+        CamelModelFamily, CatModelVariant, ChickenModelVariant, CopperGolemWeathering,
+        CowModelVariant, EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
+        HoglinModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
+        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -1337,9 +1338,18 @@ pub(in crate::entity_models) fn hoglin_textured_layer_passes(
     }]
 }
 
+#[cfg(test)]
 pub(in crate::entity_models) fn player_textured_layer_passes(
     slim: bool,
     parts: PlayerModelPartVisibility,
+) -> Vec<EntityModelLayerPass> {
+    player_textured_layer_passes_with_texture(slim, parts, player_texture_ref(slim))
+}
+
+pub(in crate::entity_models) fn player_textured_layer_passes_with_texture(
+    slim: bool,
+    parts: PlayerModelPartVisibility,
+    texture: EntityModelTextureRef,
 ) -> Vec<EntityModelLayerPass> {
     // The unified `PlayerModel` tree drives the geometry (its overlay children are toggled by
     // `apply_part_visibility`), so the layer-pass parts are vestigial (`&[]`).
@@ -1347,7 +1357,7 @@ pub(in crate::entity_models) fn player_textured_layer_passes(
         kind: EntityModelLayerKind::PlayerBase,
         render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: player_model_layer(slim),
-        texture: player_texture_ref(slim),
+        texture,
         visibility: EntityModelLayerVisibility::PlayerParts(parts),
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,

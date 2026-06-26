@@ -880,6 +880,7 @@ impl EntityStore {
             .unwrap_or(walk_animation_position);
         Some(EntityModelSourceState {
             entity_id: identity.id,
+            uuid: identity.uuid,
             entity_type_id: identity.entity_type_id,
             position,
             y_rot: transform.y_rot,

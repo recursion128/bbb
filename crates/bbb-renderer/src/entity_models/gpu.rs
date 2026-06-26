@@ -615,6 +615,12 @@ impl Renderer {
                 meshes.translucent,
                 "bbb-entity-model-translucent",
             );
+            self.entity_dynamic_player_skin_cutout_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_cutout,
+                    "bbb-entity-dynamic-player-skin-cutout",
+                );
             self.entity_dynamic_player_skin_translucent_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -635,6 +641,7 @@ impl Renderer {
             self.entity_model_textured_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
+            self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_model_scroll_mesh = None;
             self.entity_model_scroll_additive_mesh = None;
@@ -648,6 +655,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_cutout_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_translucent_mesh

@@ -61,9 +61,9 @@ fn entity_model_mesh_with_options(
             // The uniform kinds are emitted by `dispatch_uniform_entity_model` above and are unreachable
             // here, so the match ends with `_ => {}`.
             match instance.kind {
-                EntityModelKind::Player { slim, .. } => {
+                EntityModelKind::Player { skin, .. } => {
                     if !skip_texture_backed_entities {
-                        PlayerModel::new(slim).prepare_and_render(
+                        PlayerModel::new(skin.is_slim()).prepare_and_render(
                             &mut mesh,
                             instance,
                             player_model_root_transform(*instance),

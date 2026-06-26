@@ -66,6 +66,8 @@ use glam::{Mat4, Vec3};
 
 mod layers;
 #[cfg(test)]
+pub(super) use layers::player_textured_layer_passes;
+#[cfg(test)]
 pub(super) use layers::shulker_bullet_textured_layer_passes;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -82,18 +84,18 @@ pub(super) use layers::{
     llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
-    piglin_textured_layer_passes, player_textured_layer_passes, polar_bear_textured_layer_passes,
-    rabbit_textured_layer_passes, ravager_textured_layer_passes, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
-    trident_textured_layer_passes, tropical_fish_textured_layer_passes,
-    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    warden_textured_layer_passes, witch_textured_layer_passes, wither_skull_textured_layer_passes,
-    wither_textured_layer_passes, wolf_textured_layer_passes,
-    zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
-    EntityModelLayerRenderType,
+    piglin_textured_layer_passes, player_textured_layer_passes_with_texture,
+    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
+    salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    tropical_fish_textured_layer_passes, villager_textured_layer_passes,
+    wandering_trader_textured_layer_passes, warden_textured_layer_passes,
+    witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
+    wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
+    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
+    EntityModelLayerPass, EntityModelLayerRenderType,
 };
 #[cfg(test)]
 pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
@@ -113,8 +115,9 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
-    /// Ready remote player skins are rendered through a dedicated atlas, matching vanilla
-    /// `SkullBlockRenderer.getPlayerSkinRenderType` (`entityTranslucent(dynamicTexture)`).
+    /// Ready remote player skins are rendered through a dedicated atlas, preserving their vanilla
+    /// cutout/translucent render type while swapping only the texture source.
+    pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_translucent: EntityModelTexturedMesh,
     /// Translucent scrolling overlay (vanilla `breezeWind` — the wind charge).
     pub(super) scroll: EntityModelScrollMesh,
@@ -132,6 +135,7 @@ impl EntityModelTexturedMeshes {
             cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
+            dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
@@ -152,6 +156,28 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderType::Eyes => &mut self.eyes,
             EntityModelLayerRenderType::BreezeWind | EntityModelLayerRenderType::EnergySwirl => {
                 panic!("scroll render types are not emitted into textured mesh buckets")
+            }
+        }
+    }
+
+    fn dynamic_player_skin_mesh_mut(
+        &mut self,
+        render_type: EntityModelLayerRenderType,
+    ) -> &mut EntityModelTexturedMesh {
+        match render_type {
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+            | EntityModelLayerRenderType::EntityCutout
+            | EntityModelLayerRenderType::EntityCutoutCull
+            | EntityModelLayerRenderType::EntityCutoutZOffset => {
+                &mut self.dynamic_player_skin_cutout
+            }
+            EntityModelLayerRenderType::EntityTranslucent => {
+                &mut self.dynamic_player_skin_translucent
+            }
+            EntityModelLayerRenderType::Eyes
+            | EntityModelLayerRenderType::BreezeWind
+            | EntityModelLayerRenderType::EnergySwirl => {
+                panic!("unsupported dynamic player skin render type")
             }
         }
     }
@@ -244,6 +270,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
         let cutout_start = meshes.cutout.vertices.len();
         let translucent_start = meshes.translucent.vertices.len();
         let eyes_start = meshes.eyes.vertices.len();
+        let dynamic_player_skin_cutout_start = meshes.dynamic_player_skin_cutout.vertices.len();
         let dynamic_player_skin_translucent_start =
             meshes.dynamic_player_skin_translucent.vertices.len();
         let handled = {
@@ -333,8 +360,15 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
                 EntityModelKind::Hoglin { family, baby } => {
                     emit_hoglin_textured_model(&mut meshes, *instance, family, baby, atlas);
                 }
-                EntityModelKind::Player { slim, parts } => {
-                    emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
+                EntityModelKind::Player { skin, parts } => {
+                    emit_player_textured_model(
+                        &mut meshes,
+                        *instance,
+                        skin,
+                        parts,
+                        atlas,
+                        dynamic_player_skin_atlas,
+                    );
                 }
                 EntityModelKind::Sheep {
                     baby,
@@ -423,6 +457,11 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
         fill_entity_textured_light(&mut meshes.eyes, eyes_start, light);
         fill_entity_textured_light(
+            &mut meshes.dynamic_player_skin_cutout,
+            dynamic_player_skin_cutout_start,
+            light,
+        );
+        fill_entity_textured_light(
             &mut meshes.dynamic_player_skin_translucent,
             dynamic_player_skin_translucent_start,
             light,
@@ -431,6 +470,11 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
         fill_entity_textured_overlay(&mut meshes.cutout, cutout_start, overlay);
         fill_entity_textured_overlay(&mut meshes.translucent, translucent_start, overlay);
         fill_entity_textured_overlay(&mut meshes.eyes, eyes_start, overlay);
+        fill_entity_textured_overlay(
+            &mut meshes.dynamic_player_skin_cutout,
+            dynamic_player_skin_cutout_start,
+            overlay,
+        );
         fill_entity_textured_overlay(
             &mut meshes.dynamic_player_skin_translucent,
             dynamic_player_skin_translucent_start,
@@ -612,9 +656,7 @@ fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
 ) {
     let submit = EntityModelSubmissionEmit::new(render_type, texture, tint, transform, 0, 0)
         .with_dynamic_player_skin(dynamic_player_skin);
-    if submit.render_type == EntityModelLayerRenderType::EntityTranslucent
-        && dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready
-    {
+    if dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready {
         if let Some(entry) =
             dynamic_player_skin_atlas_entry(dynamic_player_skin_atlas, dynamic_player_skin.handle)
         {
@@ -657,7 +699,10 @@ fn render_textured_dynamic_player_skin_submission(
         submit.order,
         submit.submit_sequence,
     );
-    emit(&mut meshes.dynamic_player_skin_translucent, entry);
+    emit(
+        meshes.dynamic_player_skin_mesh_mut(submit.render_type),
+        entry,
+    );
 }
 
 fn render_textured_submission(
@@ -1293,7 +1338,8 @@ fn emit_worn_humanoid_armor(
                 atlas,
             );
         }
-        EntityModelKind::Player { slim, .. } => {
+        EntityModelKind::Player { skin, .. } => {
+            let slim = skin.is_slim();
             let mut host = PlayerModel::new(slim);
             host.prepare(&instance);
             let transform = player_model_root_transform(instance);
@@ -2194,9 +2240,10 @@ fn emit_hoglin_textured_model(
 fn emit_player_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
-    slim: bool,
+    skin: EntityPlayerSkin,
     parts: PlayerModelPartVisibility,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) {
     // The unified `PlayerModel` tree drives both render paths; `setup_anim` looks the head, runs the
     // inherited `HumanoidModel` walk swing + idle arm bob, and applies the crouch sneaking pose. The
@@ -2204,14 +2251,30 @@ fn emit_player_textured_model(
     // after `prepare` (the colored fallback shows every overlay). Held-item/attack/swim arm poses,
     // the cape, and the elytra defer.
     let transform = player_model_root_transform(instance);
+    let slim = skin.is_slim();
     let mut model = PlayerModel::new(slim);
     model.prepare(&instance);
     model.apply_part_visibility(parts);
+    let texture = default_player_skin_texture_ref(skin.fallback());
+    if let EntityPlayerSkin::Dynamic(dynamic_player_skin) = skin {
+        render_textured_pass_with_dynamic_player_skin(
+            meshes,
+            &model,
+            transform,
+            EntityModelLayerRenderType::EntityCutout,
+            texture,
+            dynamic_player_skin,
+            [1.0, 1.0, 1.0, 1.0],
+            atlas,
+            dynamic_player_skin_atlas,
+        );
+        return;
+    }
     render_textured_layers(
         meshes,
         &model,
         transform,
-        player_textured_layer_passes(slim, parts),
+        player_textured_layer_passes_with_texture(slim, parts, texture),
         atlas,
     );
 }

@@ -1099,9 +1099,25 @@ impl EntityModelInstance {
         slim: bool,
         parts: PlayerModelPartVisibility,
     ) -> Self {
+        Self::player_with_skin(
+            entity_id,
+            position,
+            y_rot,
+            EntityPlayerSkin::default_for_model(slim),
+            parts,
+        )
+    }
+
+    pub fn player_with_skin(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        skin: EntityPlayerSkin,
+        parts: PlayerModelPartVisibility,
+    ) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Player { slim, parts },
+            EntityModelKind::Player { skin, parts },
             position,
             y_rot,
         )

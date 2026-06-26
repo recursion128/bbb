@@ -54,8 +54,26 @@ pub(in crate::entity_models) const PLAYER_WIDE_SUNNY_TEXTURE_REF: EntityModelTex
 pub(in crate::entity_models) const PLAYER_WIDE_ZURI_TEXTURE_REF: EntityModelTextureRef =
     player_default_skin_ref("textures/entity/player/wide/zuri.png");
 
-pub(in crate::entity_models) const PLAYER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [PLAYER_WIDE_STEVE_TEXTURE_REF, PLAYER_SLIM_STEVE_TEXTURE_REF];
+pub(in crate::entity_models) const PLAYER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 18] = [
+    PLAYER_SLIM_ALEX_TEXTURE_REF,
+    PLAYER_SLIM_ARI_TEXTURE_REF,
+    PLAYER_SLIM_EFE_TEXTURE_REF,
+    PLAYER_SLIM_KAI_TEXTURE_REF,
+    PLAYER_SLIM_MAKENA_TEXTURE_REF,
+    PLAYER_SLIM_NOOR_TEXTURE_REF,
+    PLAYER_SLIM_STEVE_TEXTURE_REF,
+    PLAYER_SLIM_SUNNY_TEXTURE_REF,
+    PLAYER_SLIM_ZURI_TEXTURE_REF,
+    PLAYER_WIDE_ALEX_TEXTURE_REF,
+    PLAYER_WIDE_ARI_TEXTURE_REF,
+    PLAYER_WIDE_EFE_TEXTURE_REF,
+    PLAYER_WIDE_KAI_TEXTURE_REF,
+    PLAYER_WIDE_MAKENA_TEXTURE_REF,
+    PLAYER_WIDE_NOOR_TEXTURE_REF,
+    PLAYER_WIDE_STEVE_TEXTURE_REF,
+    PLAYER_WIDE_SUNNY_TEXTURE_REF,
+    PLAYER_WIDE_ZURI_TEXTURE_REF,
+];
 
 pub fn player_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &PLAYER_ENTITY_TEXTURE_REFS

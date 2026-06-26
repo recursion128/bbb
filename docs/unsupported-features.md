@@ -1258,8 +1258,12 @@ When an agent does any of the following, update this file in the same slice:
         are uploaded into a renderer-owned dynamic player-skin atlas before the
         profile skin is marked Ready. Ready `player_head` submissions use
         vanilla `entityTranslucent` with the dynamic atlas mesh; Loading/Failed
-        or missing atlas entries keep sampling the fallback default skin.
-        Player entity body, cape, elytra, and broader arbitrary dynamic texture
+        or missing atlas entries keep sampling the fallback default skin. Player
+        entity bodies now also use PlayerInfo profile skins: the native model
+        kind carries `EntityPlayerSkin`, picks wide/slim from `PlayerSkin.model`,
+        and Ready dynamic body submissions sample the dynamic player-skin atlas
+        through a cutout mesh while preserving vanilla `entityCutout`
+        submission metadata. Cape, elytra, and broader arbitrary dynamic texture
         loading remain deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
@@ -1289,8 +1293,8 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel; player
-        entity body/cape/elytra dynamic skin presentation and broader arbitrary
-        dynamic texture loading; the
+        cape/elytra dynamic skin presentation and broader arbitrary dynamic
+        texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
@@ -1324,8 +1328,7 @@ When an agent does any of the following, update this file in the same slice:
       with `ageInTicks`) — all applied once to the shared
       visibility-filtered part array (colored and textured); true
       `RenderTypes.entityTranslucent` alpha blending, UUID/default-skin
-      selection, live skin downloads, automatic slim-vs-wide model selection
-      from `PlayerSkin`, capes, ears, armor/equipment, held items,
+      selection for players without PlayerInfo, capes, ears, armor/equipment, held items,
       elytra/wings, shoulder parrots,
       arrows/stingers, spectator visibility, the elytra flying offsets, name
       display, the held-item/attack/swim arm poses, and the elytra
@@ -1807,8 +1810,8 @@ When an agent does any of the following, update this file in the same slice:
       piglin uses the held-out `animateZombieArms` arms;
       the `DrownedOuterLayer` (adult and baby) and drowned swim re-pose ARE implemented (see the drowned
       note above); zombie/piglin converting shake, remaining zombie-family and
-      piglin-family armor nuances, player entity body/cape/elytra dynamic textures,
-      and held-item refinements remain unsupported
+      piglin-family armor nuances, player cape/elytra dynamic textures, and
+      held-item refinements remain unsupported
       (generic non-skull head-slot items and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads, profiled
       default-skin player heads, dynamic profiled-player heads, dragon heads,

@@ -3,13 +3,15 @@ mod selection;
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
     horse_markings_texture_ref, llama_texture_ref, mooshroom_texture_ref, pig_texture_ref,
-    player_texture_ref, sheep_wool_render_color, squid_texture_ref, villager_level_texture_ref,
+    sheep_wool_render_color, squid_texture_ref, villager_level_texture_ref,
     villager_profession_texture_ref, villager_type_texture_ref, wolf_texture_ref,
     zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
     zombie_villager_type_texture_ref,
 };
 #[cfg(test)]
-pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_wool_layer_color};
+pub(in crate::entity_models) use selection::{
+    player_texture_ref, sheep_jeb_wool_layer_color, sheep_wool_layer_color,
+};
 
 /// Vanilla `SkullBlock.Type` values currently rendered by bbb's `CustomHeadLayer` skull branch.
 ///
@@ -33,7 +35,7 @@ pub enum EntityCustomHeadSkull {
 pub enum EntityPlayerSkin {
     /// Profileless `player_head` fallback: vanilla `DefaultPlayerSkin.getDefaultTexture()`.
     Default(EntityDefaultPlayerSkin),
-    /// A `player_head` that carried a profile, but resolves to a built-in default skin for now.
+    /// A profile-backed player skin that resolves to a built-in default skin for now.
     ProfiledDefault(EntityDefaultPlayerSkin),
     Dynamic(EntityDynamicPlayerSkin),
 }
@@ -59,6 +61,12 @@ pub enum EntityPlayerSkinModel {
     Wide,
 }
 
+impl EntityPlayerSkinModel {
+    pub const fn is_slim(self) -> bool {
+        matches!(self, Self::Slim)
+    }
+}
+
 impl EntityPlayerSkin {
     pub const fn fallback(self) -> EntityDefaultPlayerSkin {
         match self {
@@ -74,6 +82,18 @@ impl EntityPlayerSkin {
             Self::ProfiledDefault(skin) => skin.model(),
             Self::Dynamic(skin) => skin.model,
         }
+    }
+
+    pub const fn default_for_model(slim: bool) -> Self {
+        if slim {
+            Self::Default(EntityDefaultPlayerSkin::SlimSteve)
+        } else {
+            Self::Default(EntityDefaultPlayerSkin::WideSteve)
+        }
+    }
+
+    pub const fn is_slim(self) -> bool {
+        self.model().is_slim()
     }
 }
 
@@ -210,7 +230,7 @@ pub enum EntityModelKind {
         baby: bool,
     },
     Player {
-        slim: bool,
+        skin: EntityPlayerSkin,
         parts: PlayerModelPartVisibility,
     },
     Humanoid {
