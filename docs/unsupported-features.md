@@ -1235,9 +1235,12 @@ When an agent does any of the following, update this file in the same slice:
         non-PNG and non-64x64/64x32 skins, expands legacy 64x32 skins through
         `SkinTextureDownloader.processLegacySkin`'s copy rectangles, and applies
         the opaque-base / Notch transparency alpha rules to produce 64x64 RGBA
-        data for a future dynamic upload. Remote profile resolution, HTTP skin
-        download, disk caching, actual async upload completion, and arbitrary
-        dynamic player-skin texture loading remain
+        data for a future dynamic upload. Native now also has a fetcher-backed
+        player-skin runtime cache that reuses decoded skins from memory, loads
+        cached PNG bytes from disk before fetching, writes fetched bytes to disk,
+        and feeds every hit/miss through the vanilla-compatible PNG post-process.
+        Remote profile resolution, actual HTTP fetcher wiring, async upload
+        completion, and arbitrary dynamic player-skin texture loading remain
         deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds

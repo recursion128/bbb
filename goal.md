@@ -113,7 +113,9 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
       能解析为完整 profile/properties，失败时保留默认皮肤。
    3. IN PROGRESS：renderer 已补下载后 skin PNG 格式/尺寸校验、64x32 legacy skin
       到 64x64 当前布局的 vanilla `SkinTextureDownloader.processLegacySkin` 转换，以及
-      opaque-base / Notch transparency alpha 规则；还缺远程 skin PNG 下载与内存/磁盘缓存。
+      opaque-base / Notch transparency alpha 规则；native 已补 fetcher-backed memory/disk
+      skin PNG cache（disk hit 优先、miss 后 fetch/write/process）；还缺真实 HTTP fetcher
+      wiring 与运行时调度。
    4. IN PROGRESS：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
       dynamic skin handle、slim/wide model、loading/ready/failed 状态，以及按 texture URL
       缓存并可替换 resolved texture handle 的 profile-skin cache；还缺真实异步下载/上传回写

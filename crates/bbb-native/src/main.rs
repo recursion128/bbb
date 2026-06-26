@@ -31,6 +31,7 @@ mod item_runtime;
 mod particle_registry;
 mod particle_runtime;
 mod runtime;
+mod skin_runtime;
 mod startup;
 mod terrain_runtime;
 
